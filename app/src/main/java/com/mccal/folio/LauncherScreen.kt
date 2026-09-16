@@ -820,7 +820,7 @@ fun LauncherScreen(
                     }
                 }
             }
-            if (sheet.isNotEmpty() && sheet != "widgets") {
+            if (sheet.isNotEmpty() && sheet != "widgets") OwnMethod {
                 val activeCustomizationPage = if (sheet == "settings:wallpaper") CustomizationPage.WALLPAPER else customizationPage
                 ModalBottomSheet(onDismissRequest = {
                     customizationPage = CustomizationPage.OVERVIEW
@@ -929,7 +929,7 @@ fun LauncherScreen(
                         onFinish = onFinishFirstRun, state = state, model = model)
                 }
             }
-            if (sheet == "widgets") {
+            if (sheet == "widgets") OwnMethod {
                 val catalogProfiles = remember(state.profiles) { state.profiles.filter { it.isPersonal || it.isWork } }
                 val selectedProfile = catalogProfiles.firstOrNull { it.userSerial == widgetProfileSerial }
                     ?: catalogProfiles.firstOrNull { it.isPersonal } ?: AppProfile(0, "Personal", true, false, false, true, true)
@@ -1431,3 +1431,8 @@ fun LauncherScreen(
         }
     } } }
 }
+
+// Keeps a block in its own compiled method. Home's content lambda outgrew 256 registers, and R8 then wrote a
+// register into an 8-bit slot, so optimized builds failed ART verification at launch.
+@Composable
+private fun BoxScope.OwnMethod(content: @Composable BoxScope.() -> Unit) = content()
