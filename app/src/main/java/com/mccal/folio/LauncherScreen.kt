@@ -316,7 +316,9 @@ fun LauncherScreen(
         (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))?.let { pager.animateScrollToPage(it) }
     }
     LaunchedEffect(settingsRequests) { if (settingsRequests > 0) {
-        drag.clear(); widgetSession = null; resizeSlot = null; selectedId = null; homeEdit.stop(); sheet = "settings"
+        drag.clear(); widgetSession = null; resizeSlot = null; selectedId = null; homeEdit.stop()
+        if (SoftwareUpdate.openRequested) { SoftwareUpdate.openRequested = false; customizationPage = CustomizationPage.SOFTWARE_UPDATE }
+        sheet = "settings"
     } }
     LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resizeSlot = null; sheet = ""; widgetPackage = null; widgetExactTarget = false; selectedId = null
         if (!state.googleSearch || !onGoogleSearch(null)) pager.animateScrollToPage(homePages)

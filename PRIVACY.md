@@ -31,3 +31,7 @@ A layout export is created only when you choose Save in Backup and select a dest
 There is no automatic diagnostic upload. Settings › Report a Bug opens GitHub's bug form in your browser with the Folio version, phone model and Android version in the link; nothing is sent unless you submit the form, and GitHub's privacy policy applies to what you post there. Screenshots and logs you manually attach to issues may contain personal information, widget content, account names, or work data. Review them first.
 
 Uninstalling or clearing storage removes Folio's local settings, photos, and widget bindings. Exported files remain where you saved them. Android and device vendors may provide their own diagnostics independently of Folio.
+
+**Software Update** (Settings › Software Update) contacts GitHub's public releases API (api.github.com) only when you tap Check for Updates, or once a day if you turn on automatic checks. It downloads the release APK from GitHub, verifies its SHA-256 and signing key on your phone, and hands it to Android's installer; nothing about you or your phone is sent. Folio asks for "Install unknown apps" only to install its own updates, and for notifications only if you turn on update notifications.
+
+**Hidden apps** are listed in Settings only after Android confirms it's you (fingerprint, face or PIN). Folio never sees your biometrics or PIN; Android only tells it whether the check passed.

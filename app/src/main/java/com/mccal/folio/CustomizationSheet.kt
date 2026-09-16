@@ -35,7 +35,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON }
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, SOFTWARE_UPDATE }
 
 @Composable
 internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, model: LauncherModel,
@@ -79,6 +79,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
         CustomizationPage.ISLAND -> "Dynamic Island"
         CustomizationPage.PERMISSIONS -> "Privacy & Permissions"
         CustomizationPage.COMING_SOON -> "Coming Soon"
+        CustomizationPage.SOFTWARE_UPDATE -> "Software Update"
     }
     val bodyScroll = rememberScrollState()
     LaunchedEffect(page) { bodyScroll.scrollTo(0) }
@@ -136,6 +137,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.HelpOutline, 0xFF0A84FF, "Help", "customization-help", selected = selected == CustomizationPage.HELP, chevron = !sidebar) { onPage(CustomizationPage.HELP) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.NewReleases, 0xFF30D158, "What's New", "customization-whats-new", "v" + WhatsNew.currentVersion(androidx.compose.ui.platform.LocalContext.current), chevron = !sidebar) { onClose(); onShowWhatsNew() }
+                        MenuDivider()
+                        val updateStatus by SoftwareUpdate.status.collectAsState()
+                        TweakRow(Icons.Rounded.SystemUpdate, 0xFF8E8E93, "Software Update", "customization-software-update",
+                            if (updateStatus is SoftwareUpdate.Status.Available) "1" else null, selected = selected == CustomizationPage.SOFTWARE_UPDATE, chevron = !sidebar) { onPage(CustomizationPage.SOFTWARE_UPDATE) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.Upcoming, 0xFF5E5CE6, "Coming Soon", "customization-coming-soon", selected = selected == CustomizationPage.COMING_SOON, chevron = !sidebar) { onPage(CustomizationPage.COMING_SOON) }
                         MenuDivider()
@@ -195,6 +200,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 // The old Setup Checklist lives on in Privacy & Permissions (one list of everything Folio can use).
                 CustomizationPage.SETUP -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.COMING_SOON -> ComingSoonPage()
+                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
                     AppIconCard(onChanged = { model.refresh() })
@@ -781,6 +787,7 @@ private val SettingsIndex: List<Triple<String, String, CustomizationPage>> = lis
     Triple("Privacy & Permissions", "privacy permissions setup checklist home app notification access accessibility gestures contacts bluetooth", CustomizationPage.PERMISSIONS),
     Triple("Safe Mode & crash reports", "safe mode crash report bug", CustomizationPage.ADVANCED),
     Triple("Backup & restore", "backup restore export import layout", CustomizationPage.BACKUP),
+    Triple("Software Update", "software update upgrade new version download install github automatic", CustomizationPage.SOFTWARE_UPDATE),
     Triple("Coming Soon", "coming soon roadmap planned future features lock designer keyboard", CustomizationPage.COMING_SOON),
     Triple("Credits", "credits thanks duolauncher jakesgoodapps license", CustomizationPage.CREDITS),
 )
@@ -1215,6 +1222,70 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
             Spacer(Modifier.width(12.dp))
             Text(app.label, Modifier.weight(1f))
             TextButton(onClick = { model.setHidden(app.id, false) }) { Text("Unhide") }
+        }
+    }
+}
+
+@Composable private fun SoftwareUpdatePage() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val status by SoftwareUpdate.status.collectAsState()
+    var auto by remember { mutableStateOf(SoftwareUpdate.autoCheck(context)) }
+    val installed = remember { SoftwareUpdate.installedVersion(context) }
+    SettingsCard("Folio $installed") {
+        if (!SoftwareUpdate.supported(context)) {
+            Text("This is Folio Dev, a test build. Updates for it come from new builds, not GitHub.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            return@SettingsCard
+        }
+        when (val s = status) {
+            SoftwareUpdate.Status.Idle -> Text("Check GitHub for a newer version of Folio.", style = MaterialTheme.typography.bodySmall)
+            SoftwareUpdate.Status.Checking -> Text("Checking for updates…", style = MaterialTheme.typography.bodySmall)
+            SoftwareUpdate.Status.UpToDate -> Text("Folio is up to date.", style = MaterialTheme.typography.bodySmall)
+            is SoftwareUpdate.Status.Available -> Text("Folio ${s.release.version} is available.", fontWeight = FontWeight.SemiBold)
+            is SoftwareUpdate.Status.Downloading -> Text("Downloading Folio ${s.release.version}…", style = MaterialTheme.typography.bodySmall)
+            SoftwareUpdate.Status.Installing -> Text("Installing… Android may ask you to confirm.", style = MaterialTheme.typography.bodySmall)
+            is SoftwareUpdate.Status.Failed -> Text(s.message, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFFF453A))
+        }
+    }
+    if (SoftwareUpdate.supported(context)) {
+        SheetGroup {
+            val available = status as? SoftwareUpdate.Status.Available
+            if (available != null) {
+                IosActionRow("Download and Install", "update-install") { SoftwareUpdate.startInstall(context, available.release) }
+                MenuDivider()
+                IosActionRow("Release Notes", "update-notes") {
+                    runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(available.release.notesUrl))) }
+                }
+            } else IosActionRow("Check for Updates", "update-check",
+                enabled = status !is SoftwareUpdate.Status.Checking && status !is SoftwareUpdate.Status.Downloading) { SoftwareUpdate.startCheck(context) }
+        }
+        var beta by remember { mutableStateOf(SoftwareUpdate.beta(context)) }
+        SettingsCard("Beta Updates") {
+            IosMenuRow("Beta Updates", listOf(false to "Off", true to "Folio Beta"), beta, { beta = it; SoftwareUpdate.setBeta(context, it) }, tag = "update-beta")
+            Text(if (beta) "You'll get Folio betas from GitHub as well as public releases. Betas have new features first and may have bugs: please report them in Help › Report a Bug."
+                else "Turn on to try new features before they're released. If you're on a beta and turn this off, you'll stay on it until a newer public release.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        SettingsCard("Automatic Updates") {
+            SettingsSwitch("Check for Updates Daily", auto, { auto = it; SoftwareUpdate.setAutoCheck(context, it) }, "update-auto")
+            var notify by remember { mutableStateOf(SoftwareUpdate.notify(context)) }
+            val notifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted -> notify = granted; SoftwareUpdate.setNotify(context, granted) }
+            if (auto) SettingsSwitch("Notify Me About Updates", notify, { on ->
+                if (on && !SoftwareUpdate.canPostNotifications(context)) notifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                else { notify = on; SoftwareUpdate.setNotify(context, on) }
+            }, "update-notify")
+            var autoInstall by remember { mutableStateOf(SoftwareUpdate.autoInstall(context)) }
+            // Android may still ask to confirm an install, and when Folio isn't open that request arrives as a notification.
+            val autoInstallPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { autoInstall = true; SoftwareUpdate.setAutoInstall(context, true) }
+            if (auto) SettingsSwitch("Install Updates Automatically", autoInstall, { on ->
+                if (on && !SoftwareUpdate.canPostNotifications(context)) autoInstallPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                else { autoInstall = on; SoftwareUpdate.setAutoInstall(context, on) }
+            }, "update-auto-install")
+            Text("Folio checks GitHub Releases at most once a day and shows the update here. Installing always verifies the download and that it's signed with Folio's key.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

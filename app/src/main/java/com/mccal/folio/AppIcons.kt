@@ -8,6 +8,9 @@ import android.content.pm.PackageManager
  * Alternate app icons, like iOS's setAlternateIconName: each icon is its own launcher entry (an activity-alias of
  * MainActivity), and exactly one is enabled. Only Folio's app entry changes; the Home app itself isn't touched.
  */
+/** Folio's Kotlin package (and the release app ID). */
+internal const val FOLIO_CLASSES = "com.mccal.folio"
+
 internal enum class AppIconChoice(val label: String, val alias: String, val mipmap: Int) {
     OLIVE("Olive", "FolioSettingsApp", R.mipmap.ic_launcher),
     SOFT("Soft", "FolioSettingsAppSoft", R.mipmap.ic_launcher_soft);
