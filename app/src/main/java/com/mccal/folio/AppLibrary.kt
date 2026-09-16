@@ -55,9 +55,9 @@ internal fun AppLibrary(
         (state.homeSlots.asSequence() + state.leadingSlots.asSequence()).filterNotNull().toSet()
     }
     val hasWork = state.profiles.any { it.isWork } || state.apps.any { it.isWork }
+    // With Work turned off in Settings the switch goes away and only personal apps are listed.
+    val workSwitch = hasWork && state.libraryWork
     var showWork by remember { mutableStateOf(false) }
-    var showHidden by remember { mutableStateOf(false) }
-    val hiddenCount = if (editing) 0 else state.apps.count { it.id in state.hiddenApps }
     val context = androidx.compose.ui.platform.LocalContext.current
     val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
@@ -73,13 +73,14 @@ internal fun AppLibrary(
     LaunchedEffect(showWork, selectedProfile?.available, selectedProfile?.quiet) {
         listState.scrollToItem(0)
     }
-    val visibleApps = remember(state.apps, query, showWork, hasWork, showHidden, state.hiddenApps, editing) {
-        state.apps.filter { (!hasWork || it.isWork == showWork) && it.label.contains(query.trim(), true) &&
-            (editing || (it.id in state.hiddenApps) == showHidden) }
+    // Hidden apps stay out of the App Library entirely, like iOS; they're listed (after unlocking) in Settings.
+    val visibleApps = remember(state.apps, query, showWork, workSwitch, hasWork, state.hiddenApps, editing) {
+        state.apps.filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) && it.label.contains(query.trim(), true) &&
+            (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
     var openCategory by remember { mutableStateOf<LibraryCategory?>(null) }
-    val browsing = state.libraryCategories && !editing && query.isBlank() && !showHidden
+    val browsing = state.libraryCategories && !editing && query.isBlank()
     val categorized by produceState(emptyMap<LibraryCategory, List<AppEntry>>(), visibleApps, browsing) {
         if (!browsing) return@produceState
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -116,13 +117,9 @@ internal fun AppLibrary(
                 Text("Choose Home Apps", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("${pinned.size} pinned", color = ink, fontSize = 12.sp)
             }
-            if (hasWork || hiddenCount > 0 || showHidden) Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (hasWork) {
-                    IosChip(selected = !showWork, onClick = { showWork = false }, label = { Text(stringResource(R.string.personal)) })
-                    IosChip(selected = showWork, onClick = { showWork = true }, label = { Text(stringResource(R.string.work)) })
-                }
-                if (!editing) IosChip(selected = showHidden, onClick = { showHidden = !showHidden }, label = { Text("Hidden ($hiddenCount)") },
-                    modifier = Modifier.testTag("hidden-apps-chip"))
+            if (workSwitch) Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IosChip(selected = !showWork, onClick = { showWork = false }, label = { Text(stringResource(R.string.personal)) })
+                IosChip(selected = showWork, onClick = { showWork = true }, label = { Text(stringResource(R.string.work)) })
             }
             IosSearchField(query, onQuery, if (editing) "Search apps" else "App Library", Modifier.padding(vertical = 12.dp),
                 fieldModifier = (if (editing) Modifier else Modifier.focusRequester(searchFocus)).testTag(if (editing) "pin-search" else "library-search"),

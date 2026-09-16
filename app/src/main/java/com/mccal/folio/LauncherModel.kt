@@ -90,6 +90,8 @@ data class LauncherState(
     /** Island system pop-ups the user turned off (IslandEventKind names). */
     val islandEventsOff: Set<String> = emptySet(),
     val libraryCategories: Boolean = true,
+    /** The Personal and Work switch in the App Library (only shown with a work profile); off shows personal apps only. */
+    val libraryWork: Boolean = true,
     val iconTint: Long = 0xFFFFB340,
     val iconShape: IconShape = IconShape.DEFAULT,
     /** Package of the selected third-party icon pack, or null for app icons. */
@@ -789,6 +791,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setIslandEvent(kind: String, enabled: Boolean) = updateSettings(soon = false) {
         it.copy(islandEventsOff = if (enabled) it.islandEventsOff - kind else it.islandEventsOff + kind) }
     fun setLibraryCategories(value: Boolean) = updateSettings(soon = false) { it.copy(libraryCategories = value) }
+    fun setLibraryWork(value: Boolean) = updateSettings(soon = false) { it.copy(libraryWork = value) }
     fun setFoldSnapshot(value: Boolean) = updateSettings(soon = false) { it.copy(foldSnapshot = value) }
     fun setStandBy(value: Boolean) = updateSettings(soon = false) { it.copy(standBy = value) }
     fun setIconStyle(style: IconStyle, tint: Long) = updateSettings(soon = false) { it.copy(iconStyle = style, iconTint = tint) }
@@ -910,7 +913,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications)
             .put("standBy", s.standBy).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
-            .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
+            .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("searchPill", s.searchPill).put("swipeDownSearch", s.swipeDownSearch).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble).put("ccControls", JSONArray(s.ccControls))
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncSplit", s.ncSplit)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1083,6 +1086,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             searchEngine = j.optString("searchEngine", "GOOGLE"),
             islandEventsOff = j.optJSONArray(SettingKeys.ISLAND_EVENTS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
             libraryCategories = j.optBoolean("libraryCategories", true),
+            libraryWork = j.optBoolean("libraryWork", true),
             iconStyle = runCatching { IconStyle.valueOf(j.optString("iconStyle")) }.getOrDefault(IconStyle.DEFAULT),
             iconTint = j.optLong("iconTint", 0xFFFFB340),
             iconShape = runCatching { IconShape.valueOf(j.optString("iconShape")) }.getOrDefault(IconShape.DEFAULT),

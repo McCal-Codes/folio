@@ -306,6 +306,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.app_library)) {
                         SettingsSwitch(stringResource(R.string.group_apps_into_categories), state.libraryCategories, model::setLibraryCategories, "library-categories-switch")
+                        if (state.profiles.any { it.isWork }) SettingsSwitch("Work Apps", state.libraryWork, model::setLibraryWork, "library-work-switch")
+                        HiddenAppsRow(state, model)
                         SettingsSwitch("Add New Apps to Home Screen", state.addNewAppsToHome, model::setAddNewAppsToHome, "add-new-apps-switch")
                         Text("Off, new downloads go to the App Library only. Either way they show a blue dot until you open them.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1173,6 +1175,44 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
         }
         if (state.systemWallpaper) Text(stringResource(R.string.colors_from_your_android_wallpaper_apps),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+/**
+ * Hidden apps, like iOS: kept out of the App Library, and listed here only after unlocking with a fingerprint, face or
+ * the phone's PIN (straight away on a phone with no screen lock, where there's nothing to ask).
+ */
+@Composable private fun HiddenAppsRow(state: LauncherState, model: LauncherModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val hidden = state.apps.filter { it.id in state.hiddenApps }.sortedBy { it.label.lowercase() }
+    var unlocked by remember { mutableStateOf(false) }
+    if (hidden.isEmpty()) return
+    if (!unlocked) {
+        IosActionRow("Hidden Apps (${hidden.size})", "hidden-apps") {
+            val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            runCatching {
+                android.hardware.biometrics.BiometricPrompt.Builder(context).setTitle("Hidden Apps")
+                    .setSubtitle("Unlock to see the apps you've hidden").setAllowedAuthenticators(authenticators).build()
+                    .authenticate(android.os.CancellationSignal(), context.mainExecutor,
+                        object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                            override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult) { unlocked = true }
+                            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                if (errorCode == android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_NO_DEVICE_CREDENTIAL) unlocked = true
+                            }
+                        })
+            }
+        }
+        return
+    }
+    Text("HIDDEN APPS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+    hidden.forEach { app ->
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+            AppIcon(app, null, Modifier.size(32.dp), shape = RoundedCornerShape(8.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(app.label, Modifier.weight(1f))
+            TextButton(onClick = { model.setHidden(app.id, false) }) { Text("Unhide") }
+        }
     }
 }
 
