@@ -927,7 +927,7 @@ fun LauncherScreen(
                     Onboarding(isDefaultHome, onMakeDefault, onShadeSetup,
                         systemWallpaper = state.systemWallpaper,
                         onWallpaper = { value ->
-                            if (value != state.systemWallpaper) { model.setSystemWallpaper(value); launcherActivity.recreate() }
+                            if (value != state.systemWallpaper) { model.setSystemWallpaper(value); launcherActivity.applyWallpaperWindow(value) }
                         },
                         onFinish = onFinishFirstRun, state = state, model = model)
                 }

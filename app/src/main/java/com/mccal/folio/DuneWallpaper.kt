@@ -230,6 +230,18 @@ internal fun SystemWallpaperParallax(pager: androidx.compose.foundation.pager.Pa
     }
 }
 
+/**
+ * Switches Home between Android's wallpaper and Folio's own background on the live window, the same two things
+ * Theme.Duo.Wallpaper sets at start, so changing it (during setup, too) doesn't restart the whole screen.
+ */
+internal fun android.app.Activity.applyWallpaperWindow(system: Boolean) {
+    val background = if (system) android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+        else obtainStyledAttributes(R.style.Theme_Duo, intArrayOf(android.R.attr.windowBackground)).let { it.getDrawable(0).also { _ -> it.recycle() } }
+    window.setBackgroundDrawable(background)
+    if (system) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+    else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+}
+
 /** Whether Home shows Android's wallpaper (read straight from saved state: needed before the activity's window exists). */
 internal fun usesSystemWallpaper(context: android.content.Context): Boolean = runCatching {
     org.json.JSONObject(context.getSharedPreferences(SettingKeys.PREFS, 0).getString(SettingKeys.STATE, "{}") ?: "{}")

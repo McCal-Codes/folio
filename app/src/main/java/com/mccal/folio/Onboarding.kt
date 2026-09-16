@@ -45,6 +45,8 @@ private data class OnboardingPage(
     val key: String, val icon: ImageVector, val color: Long, val title: String, val body: String,
     val uses: List<String> = emptyList(), val action: String? = null, val done: () -> Boolean = { false },
     val onAction: (() -> Unit)? = null, val optional: Boolean = true,
+    /** Show Folio's own icon instead of a symbol (the welcome page). */
+    val appIcon: Boolean = false,
 )
 
 /**
@@ -68,9 +70,9 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // listed in Settings › Privacy & Permissions.
     val all = remember {
         listOf(
-            OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF56603F, "Welcome to Folio",
-                "An iPhone-style Home Screen for Android, made for foldables. Unfold and it just gives you more room.",
-                action = "Continue", optional = false),
+            OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, "Welcome to Folio",
+                "An iPhone-style Home Screen for Android, made for foldables. Setup takes about a minute, and you can skip any step.",
+                action = "Continue", optional = false, appIcon = true),
             OnboardingPage("home", Icons.Rounded.Home, 0xFF0A84FF, "Make Folio Your Home",
                 "So the Home gesture and folding always come back to Folio. You can switch back anytime.",
                 action = "Choose Home App", done = { isDefaultHome }, onAction = onMakeDefault),
@@ -87,9 +89,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 "Keep the wallpaper you already use, or try Folio's dunes. Text on Home adjusts to light and dark wallpapers.",
                 optional = false),
             OnboardingPage("done", Icons.Rounded.CheckCircle, 0xFF30D158, "You're All Set",
-                "Hold an app for its menu, swipe down on Home for Spotlight, and pull down from the top corners. " +
-                    "Everything else, including optional permissions, is in Folio Settings.",
-                action = "Get Started", optional = false),
+                "A few things to try:", action = "Get Started", optional = false),
         ).filter { page -> page.key in setOf("welcome", "look", "done") || !page.done() }
     }
     // Resume by page key: the page list changes between versions (and skips what's already allowed), so an index
@@ -102,6 +102,11 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     val page = all[index]
     val reduceMotion = LocalReduceMotion.current
     val done = remember(tick, page) { page.done() }
+    // Granting something moves setup along by itself; a step that was already done when you got there waits for you.
+    val doneOnArrival = remember(index) { all[index].done() }
+    LaunchedEffect(done, index) {
+        if (done && !doneOnArrival && page.onAction != null) { kotlinx.coroutines.delay(700); go(index + 1) }
+    }
 
     Box(Modifier.fillMaxSize().testTag("onboarding")) {
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 560.dp).fillMaxSize().padding(horizontal = 24.dp)) {
@@ -113,6 +118,9 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     Text(stringResource(R.string.back), color = IosBlue, fontSize = 17.sp)
                 }
                 Spacer(Modifier.weight(1f))
+                // Setup is optional: Home works without it, and everything is in Settings.
+                if (page.key != "done") Text("Skip", color = IosBlue, fontSize = 17.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { finish() }.padding(10.dp).testTag("onboarding-skip"))
             }
             AnimatedContent(index, Modifier.weight(1f), label = "onboarding page",
                 transitionSpec = {
@@ -124,7 +132,9 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 val p = all[i]
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(96.dp).clip(RoundedCornerShape(24.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
+                    val appIcon = if (p.appIcon) remember { folioIconBitmap(context) } else null
+                    if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)))
+                    else Box(Modifier.size(96.dp).clip(RoundedCornerShape(24.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
                         Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(56.dp))
                     }
                     Text(p.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
@@ -138,6 +148,26 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                                 Icon(Icons.Rounded.Check, null, tint = Color(p.color), modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(10.dp))
                                 Text(use, color = Color.White, fontSize = 15.sp)
+                            }
+                        }
+                    }
+                    if (p.key == "done") {
+                        val gestures = remember(tick) { SystemShadeAccessibilityService.isConnected() }
+                        val tips = listOf(
+                            Icons.Rounded.TouchApp to "Hold an app for its menu",
+                            Icons.Rounded.Search to "Swipe down on Home for Spotlight",
+                            Icons.Rounded.SwipeDown to if (gestures) "Pull down from the top corners for Notification Center and Control Center"
+                                else "Turn on gestures in Settings to pull down Notification Center and Control Center",
+                            Icons.Rounded.Settings to "Everything else, including optional permissions, is in Folio Settings",
+                        )
+                        SheetGroup(Modifier.padding(top = 20.dp)) {
+                            tips.forEachIndexed { n, (icon, tip) ->
+                                if (n > 0) MenuDivider()
+                                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(icon, null, tint = IosBlue, modifier = Modifier.size(22.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(tip, color = Color.White, fontSize = 15.sp)
+                                }
                             }
                         }
                     }
