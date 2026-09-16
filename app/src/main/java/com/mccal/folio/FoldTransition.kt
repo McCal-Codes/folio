@@ -53,7 +53,7 @@ import androidx.lifecycle.repeatOnLifecycle
 fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake: Boolean = true,
     snapshotMorph: Boolean = false, content: @Composable () -> Unit) {
     // Which screen we're on, by size in both dimensions, so rotating the cover to landscape never looks like an unfold.
-    val expanded = LocalConfiguration.current.let { it.screenWidthDp >= EXPANDED_WIDTH_DP && it.screenHeightDp >= REGULAR_MIN_HEIGHT_DP }
+    val expanded = LocalConfiguration.current.isRegular()
     val view = LocalView.current
     val context = LocalContext.current
     // Where the hinge is and which half moves, from the real fold and the display's rotation, so the effect is
@@ -421,7 +421,6 @@ private class DuoShader {
     }
 }
 
-private const val EXPANDED_WIDTH_DP = 600
 /** Share of the morph during which the still picture stays fully visible. */
 private const val STILL_HOLD = .55f
 private const val MORPH_UNFOLD_MS = 650f

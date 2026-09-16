@@ -348,7 +348,8 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
     val density = LocalDensity.current
     val context = LocalContext.current
     val fullWidth = fullSize.width / density.density
-    val preset = if (fullWidth >= 650f && fullSize.height / density.density >= REGULAR_MIN_HEIGHT_DP) state.expanded else state.compact
+    val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
+    val preset = if (fullWidth * classScale >= 650f && fullSize.height / density.density * classScale >= REGULAR_MIN_HEIGHT_DP) state.expanded else state.compact
     val apps = remember(state.apps) { state.apps.associateBy { it.id } }
     val progress = DiscoverMotion.progress.floatValue
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
@@ -392,7 +393,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = true,
                 homeBottomSpace = if (context.getSystemService(android.app.role.RoleManager::class.java)
-                    .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f)
+                    .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale)
             if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = 12.dp)
                 .offset(y = geometry.contentTop.dp).width(preset.dockWidth.dp)
                 .onSizeChanged {

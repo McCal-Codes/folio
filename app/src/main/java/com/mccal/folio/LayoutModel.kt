@@ -81,18 +81,29 @@ fun upgradePreset(preset: LayoutPreset, schema: Int, expanded: Boolean): LayoutP
 /** Shortest height that still counts as regular size (the unfolded screen in either rotation; the cover's landscape is ~475dp). */
 const val REGULAR_MIN_HEIGHT_DP = 560f
 
-/** Regular size class in both dimensions, like iOS size classes: never a device, display or orientation check. */
-fun isRegularSize(widthDp: Float, heightDp: Float) = widthDp >= 600f && heightDp >= REGULAR_MIN_HEIGHT_DP
+/**
+ * Regular size class in both dimensions, like iOS size classes: never a device, display or orientation check.
+ * [classScale] converts to dp at the phone's own density (see [classScale]), so a changed display size can't turn a
+ * phone-sized screen into a tablet one.
+ */
+fun isRegularSize(widthDp: Float, heightDp: Float, classScale: Float = 1f) =
+    widthDp * classScale >= 600f && heightDp * classScale >= REGULAR_MIN_HEIGHT_DP
+
+/** Current density over the device's own ([stableDpi]); 1 when either is unknown. */
+fun classScale(densityDpi: Int, stableDpi: Int): Float =
+    if (densityDpi <= 0 || stableDpi <= 0) 1f else densityDpi.toFloat() / stableDpi
 
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
     /** Whether round controls (search, back) sit at the bottom of the rail on Home; without them the dock may run lower. */
-    railControls: Boolean = true): HomeGeometry {
+    railControls: Boolean = true,
+    /** See [isRegularSize]: size classes are judged at the phone's own density. */
+    classScale: Float = 1f): HomeGeometry {
     val p = preset.sanitized()
     // Unfolded Duo layout only with regular size both ways; the cover in landscape is still compact.
     // Two Duo panels side by side need a window wider than tall. Taller than wide (portrait), iPhone Duo keeps one
     // centered Home page with the dock as a horizontal bar: the only pose where Apple keeps horizontal bars.
-    val horizontalDock = width >= 600f && height >= REGULAR_MIN_HEIGHT_DP && height > width
-    val expanded = width >= 650f && height >= REGULAR_MIN_HEIGHT_DP && !horizontalDock
+    val horizontalDock = isRegularSize(width, height, classScale) && height > width
+    val expanded = width * classScale >= 650f && height * classScale >= REGULAR_MIN_HEIGHT_DP && !horizontalDock
     val homeWidth = if (expanded) minOf(460f, width * 0.56f) else width
     val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) + 28f else 0f
     val homeBottomSpace = homeBottomSpace + if (horizontalDock) dockBarHeight + 16f else 0f
@@ -241,8 +252,8 @@ private const val LIBRARY_GAP_DP = 14f
  * and sheets fill the space like iPad does instead of looking like a phone layout floating in a big window.
  * Exactly 1 on phones, flip phones and the Galaxy Z Fold's inner screen; grows with the smaller of the two sides.
  */
-fun uiScale(widthDp: Float, heightDp: Float): Float {
-    if (!isRegularSize(widthDp, heightDp)) return 1f
+fun uiScale(widthDp: Float, heightDp: Float, classScale: Float = 1f): Float {
+    if (!isRegularSize(widthDp, heightDp, classScale)) return 1f
     val long = maxOf(widthDp, heightDp)
     val short = minOf(widthDp, heightDp)
     return minOf(long / 960f, short / 700f).coerceIn(1f, 1.45f)

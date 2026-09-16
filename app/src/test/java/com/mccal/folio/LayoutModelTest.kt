@@ -160,4 +160,15 @@ class LayoutModelTest {
         assertEquals(2, libraryColumns(360f))
         assertEquals(6, libraryColumns(1300f))
     }
+    @Test fun `a phone-sized screen keeps the phone layout when Smallest width is raised`() {
+        // Reported: a Galaxy Z Fold8 cover (1248px wide, 420dpi) set to 600dp got the unfolded layout.
+        val scale = classScale(densityDpi = 1248 * 160 / 600, stableDpi = 420)
+        assertFalse(isRegularSize(600f, 948f, scale))
+        val cover = homeGeometry(600f, 948f, LayoutPreset(), labels = true, classScale = scale)
+        assertFalse(cover.horizontalDock)
+        assertFalse(cover.expanded)
+        assertEquals(1f, uiScale(600f, 948f, scale))
+        assertTrue(isRegularSize(932f, 704f, classScale(420, 420)))
+        assertEquals(1f, classScale(0, 420))
+    }
 }

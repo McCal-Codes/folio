@@ -36,7 +36,7 @@ internal object CrashLog {
             appendLine("Time: ${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}")
             appendLine("Folio: $version")
             appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE}, API ${Build.VERSION.SDK_INT})")
-            appendLine("Screen: ${if (isRegularSize(config.screenWidthDp.toFloat(), config.screenHeightDp.toFloat())) "unfolded" else "folded"} (${config.screenWidthDp}×${config.screenHeightDp} dp)")
+            appendLine("Screen: ${if (config.isRegular()) "unfolded" else "folded"} (${config.screenWidthDp}×${config.screenHeightDp} dp)")
             appendLine("Thread: $threadName")
             appendLine()
             append(error.stackTraceToString())

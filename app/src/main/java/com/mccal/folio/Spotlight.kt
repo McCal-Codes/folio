@@ -205,7 +205,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     }
     var frecency by remember { mutableStateOf(emptyMap<String, Double>()) }
     LaunchedEffect(active) { if (active) frecency = withContext(Dispatchers.IO) { RecentApps.frecency(context) } }
-    val wide = LocalConfiguration.current.let { isRegularSize(it.screenWidthDp.toFloat(), it.screenHeightDp.toFloat()) }
+    val wide = LocalConfiguration.current.isRegular()
 
     val apps = remember(state.apps, state.hiddenApps) { state.apps.filter { it.id !in state.hiddenApps } }
     // Suggestions for this time of day first, then recent and dock apps to fill the row.

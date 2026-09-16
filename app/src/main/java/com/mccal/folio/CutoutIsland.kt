@@ -117,7 +117,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     if (content == null || windowWidth <= 0) return
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    val wide = with(density) { windowWidth.toDp() } >= 600.dp
+    val wide = with(density) { windowWidth.toDp() }.value * androidx.compose.ui.platform.LocalConfiguration.current.classScale >= 600f
     val landscape = windowWidth > windowHeight
     // Camera on a side edge (a screen turned sideways): the island stands upright around it, like iPhone Duo's.
     val side = cameraSideEdge(cutout, windowWidth, windowHeight)

@@ -166,7 +166,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // iPad Settings / One UI on the unfolded screen: sidebar and page side by side, in either orientation.
     // Regular size class (both dimensions roomy), not a device check: the inner screen in either orientation.
     val fullWidth = maxWidth
-    val split = maxWidth >= 600.dp && maxHeight >= 560.dp
+    val split = isRegularSize(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale)
     val pageContent: @Composable ColumnScope.() -> Unit = {
             when (page) {
                 CustomizationPage.OVERVIEW -> if (split) {

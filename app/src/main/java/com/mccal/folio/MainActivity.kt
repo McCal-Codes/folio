@@ -190,11 +190,11 @@ class MainActivity : ComponentActivity() {
                 // big window; phones and foldables stay at exactly the system density (see uiScale).
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.platform.LocalDensity.current.let { d ->
                     val config = androidx.compose.ui.platform.LocalConfiguration.current
-                    val scale = uiScale(config.screenWidthDp.toFloat(), config.screenHeightDp.toFloat())
+                    val scale = uiScale(config.screenWidthDp.toFloat(), config.screenHeightDp.toFloat(), config.classScale)
                     if (scale == 1f) d else androidx.compose.ui.unit.Density(d.density * scale, d.fontScale)
                 },
                 LocalTintOptions provides androidx.compose.ui.platform.LocalConfiguration.current.let { config ->
-                    val screen = screenFor(isRegularSize(config.screenWidthDp.toFloat(), config.screenHeightDp.toFloat()))
+                    val screen = screenFor(config.isRegular())
                     TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
                         FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen),
                         FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen))

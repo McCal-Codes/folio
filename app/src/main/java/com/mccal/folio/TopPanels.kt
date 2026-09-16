@@ -102,7 +102,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             } else Modifier)
         .testTag("top-panel-scrim"))
 
-    val wide = LocalConfiguration.current.let { isRegularSize(it.screenWidthDp.toFloat(), it.screenHeightDp.toFloat()) }
+    val wide = LocalConfiguration.current.isRegular()
     // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right.
     // A split arrangement: clock and list side by side only when the screen is wider than tall; otherwise the clock sits above the list.
     val split = wide && ncSplit && current == ShadePanel.NOTIFICATIONS && LocalConfiguration.current.let { it.screenWidthDp > it.screenHeightDp }

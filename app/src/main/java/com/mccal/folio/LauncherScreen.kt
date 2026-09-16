@@ -489,7 +489,7 @@ fun LauncherScreen(
         onFinish = { cancelled -> finishDrag(cancelled) }, immediate = homeEdit.active)
         .twoFingerSwipeDown(FolioAction.entries.firstOrNull { it.name == state.triggerActions[FolioTrigger.TWO_FINGER_DOWN.name] }
             ?.takeIf { it != FolioAction.NONE && sheet.isEmpty() && !homeEdit.active }) { FolioActions.run(launcherActivity, it) }) { ProvideJiggle(homeEdit) {
-        val panelWide = androidx.compose.ui.platform.LocalConfiguration.current.let { isRegularSize(it.screenWidthDp.toFloat(), it.screenHeightDp.toFloat()) }
+        val panelWide = androidx.compose.ui.platform.LocalConfiguration.current.isRegular()
         val tone = LocalWallpaperTone.current
         val homeInk = homeInkFor(state.homeInk, tone.prefersDarkText)
         val basePalette = LocalDuoPalette.current
@@ -517,8 +517,9 @@ fun LauncherScreen(
             // Short windows run the rail the full height, so keep the upright island's strip clear there. Regular-size
             // windows (unfolded portrait) keep Home centered: the island sits below the status and beside the dock bar.
             .union(rememberSideIslandInsets(state.island && androidx.compose.ui.platform.LocalConfiguration.current.let {
-                !isRegularSize(it.screenWidthDp.toFloat(), it.screenHeightDp.toFloat()) })))) {
-            val wide = maxWidth.value >= 650f && maxHeight.value >= REGULAR_MIN_HEIGHT_DP
+                !it.isRegular() })))) {
+            val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
+            val wide = maxWidth.value * classScale >= 650f && maxHeight.value * classScale >= REGULAR_MIN_HEIGHT_DP
             val preset = if (wide) state.expanded else state.compact
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
@@ -528,7 +529,7 @@ fun LauncherScreen(
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
                 // The rail's round search/back controls only show without the search pill or on Discover.
-                railControls = !state.searchPill || pager.currentPage < 0)
+                railControls = !state.searchPill || pager.currentPage < 0, classScale = classScale)
             SideEffect {
                 resizePitchX = with(density) { geometry.cellWidth.dp.toPx() }
                 resizePitchY = with(density) { minOf((geometry.widgetHeight + 18f) / 2f, geometry.rowHeight).dp.toPx() }
