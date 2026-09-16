@@ -27,7 +27,7 @@
 
 | Version | Price | Android | Root | Tested on |
 | :---: | :---: | :---: | :---: | :---: |
-| 0.5.0 | Free | 12+ | Not needed | Galaxy Z Fold8 |
+| 0.5.1 | Free | 12+ | Not needed | Galaxy Z Fold8 |
 
 </div>
 

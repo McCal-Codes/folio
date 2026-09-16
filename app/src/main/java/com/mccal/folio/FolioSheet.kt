@@ -28,9 +28,39 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+
+/**
+ * Fades or slides an overlay into place, and never leaves it invisible.
+ *
+ * These entrances run on the frame clock, which stops while Folio isn't drawing. A sheet opened just as Folio went
+ * behind a system permission screen could stay at its starting value: fully transparent, or slid off screen. The
+ * window was still there and still took every tap, so Home sat blurred behind an overlay nobody could see or close,
+ * until the phone restarted. The timeout here puts the overlay in place even when no frame ever arrived.
+ */
+@Composable
+internal fun rememberEntrance(stiffness: Float, dampingRatio: Float = 1f, from: Float = 0f, to: Float = 1f):
+    androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D> {
+    val reduceMotion = LocalReduceMotion.current
+    val entrance = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) to else from) }
+    // The animation runs in the composition, which is where the frame clock lives.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        entrance.animateTo(to, androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness))
+    }
+    // The timeout must not depend on frames, so it runs on the main thread alone. Snapping cancels the animation.
+    DisposableEffect(Unit) {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate)
+        scope.launch { kotlinx.coroutines.delay(ENTRANCE_TIMEOUT_MS); if (entrance.value != to) entrance.snapTo(to) }
+        onDispose { scope.cancel() }
+    }
+    return entrance
+}
+
+private const val ENTRANCE_TIMEOUT_MS = 900L
 
 /**
  * Folio's sheet: same API as Material's ModalBottomSheet (this package-level function shadows the
@@ -98,10 +128,13 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                 }
             }
         }
-        val reduceMotion = LocalReduceMotion.current
-        val slide = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 0f else 1f) }
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            slide.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = 500f))
+        val slide = rememberEntrance(stiffness = 500f, from = 1f, to = 0f)
+        // Once the page covers Home, blurring Home is work nobody sees, and it shows up as stutter while you're
+        // moving between Folio and Android's permission screens. It comes back the moment it's needed.
+        val covering = slide.value == 0f
+        DisposableEffect(covering) {
+            if (covering) LauncherPagesOpen.intValue++
+            onDispose { if (covering) LauncherPagesOpen.intValue-- }
         }
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             androidx.compose.material3.Surface(Modifier.fillMaxSize().graphicsLayer {
@@ -122,11 +155,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = dismissOnBack)) {
         FolioDialogWindow(dim = 0f)
-        val reduceMotion = LocalReduceMotion.current
-        val appear = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 1f else 0f) }
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            appear.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = 520f))
-        }
+        val appear = rememberEntrance(stiffness = 520f)
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .35f))
                 .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismissRequest))
@@ -158,11 +187,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = .3f)
-        val reduceMotion = LocalReduceMotion.current
-        val appear = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 1f else 0f) }
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            appear.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .85f, stiffness = 900f))
-        }
+        val appear = rememberEntrance(stiffness = 900f, dampingRatio = .85f)
         val base = MaterialTheme.typography
         val blue = Color(0xFF0A84FF)
         fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, fontWeight = weight))

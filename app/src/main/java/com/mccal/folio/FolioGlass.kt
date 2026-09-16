@@ -43,6 +43,9 @@ internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
 /** Set while any launcher sheet is open, so Home blurs behind it like the other overlays. */
 internal val LauncherSheetsOpen = androidx.compose.runtime.mutableIntStateOf(0)
 
+/** Full-screen pages (Setup, Settings pages): nothing behind them is visible, so Home skips its blur while one is up. */
+internal val LauncherPagesOpen = androidx.compose.runtime.mutableIntStateOf(0)
+
 /**
  * Top-safe insets that respect the real camera cutout. Folio hides the status bar on Home, which
  * makes `statusBarsPadding()` zero, so content slid under the camera; the display cutout is still

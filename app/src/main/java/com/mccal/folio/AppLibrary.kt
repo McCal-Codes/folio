@@ -49,7 +49,9 @@ internal fun AppLibrary(
     onTurnOnWork: (Long) -> Unit = {},
 ) {
     val glass = !editing
-    val hasHinge = LocalHinge.current != null
+    // Only a fold line running top to bottom splits the category columns; a fold across the screen (unfolded portrait)
+    // doesn't, so it shouldn't force an even column count there.
+    val hasHinge = LocalHinge.current?.vertical == true
     val palette = LocalDuoPalette.current
     val ink = if (glass) Ink else MaterialTheme.colorScheme.onSurface
     val pinned = remember(state.homeSlots, state.leadingSlots) {
@@ -148,7 +150,7 @@ internal fun AppLibrary(
                 }
                 if (browsing && categorized.isNotEmpty()) {
                     // Tiles stay iPhone-sized (~180dp): more columns on the wide inner screen instead of giant tiles.
-                    val columns = evenColumns((libraryWidth / 190.dp).toInt().coerceIn(2, 6), 2, hasHinge)
+                    val columns = libraryColumns(libraryWidth.value, hasHinge)
                     items(categorized.entries.toList().chunked(columns), key = { row -> "cat-" + row.first().key.name }) { row ->
                         Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             row.forEach { (cat, apps) ->

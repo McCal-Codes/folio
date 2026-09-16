@@ -211,7 +211,7 @@ class MainActivity : ComponentActivity() {
                     // Fixed radius while any overlay is showing: a constant blur is cached by the RenderThread,
                     // whereas animating the radius re-blurred the whole Home every frame (~14ms of GPU per
                     // frame). The overlay's scrim fades in over it, which hides the switch.
-                    renderEffect = if (p > .02f && backdropBlurPx >= 2f) backdropBlur else null
+                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && LauncherPagesOpen.intValue == 0) backdropBlur else null
                 }) {
                 LauncherScreen(state, model, widgets, homeRequests.intValue,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
@@ -335,6 +335,12 @@ class MainActivity : ComponentActivity() {
     internal fun openSpotlight() { topPanel.value = null; spotlightVisible.value = true }
     private fun closeOverlays() { topPanel.value = null; spotlightVisible.value = false }
 
+    /**
+     * The Home button is the way out of anything. Setup is shown again next time (or from Settings › Show Welcome
+     * Again), so an overlay can never leave Home stuck behind it with no way back.
+     */
+    private fun closeEverything() { closeOverlays(); showFirstRun.value = false; lockCoverVisible.value = false }
+
     internal fun openSystemShade(panel: ShadePanel) {
         if (model.state.value.folioPanels) topPanel.value = panel else openAndroidShade(panel)
     }
@@ -421,7 +427,7 @@ class MainActivity : ComponentActivity() {
         if (intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++
         if (opensSettings(intent)) settingsRequests.intValue++
         else if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.getStringExtra("duo_destination") == "home") {
-            closeOverlays(); homeRequests.intValue++
+            closeEverything(); homeRequests.intValue++
         }
         intent.removeExtra("duo_destination")
     }

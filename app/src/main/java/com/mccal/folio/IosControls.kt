@@ -156,9 +156,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
             val drop = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.roundToPx() }
             if (open) androidx.compose.ui.window.Popup(alignment = Alignment.TopEnd, offset = androidx.compose.ui.unit.IntOffset(0, drop),
                 onDismissRequest = { open = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = true)) {
-                val reduce = LocalReduceMotion.current
-                val appear = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduce) 1f else 0f) }
-                androidx.compose.runtime.LaunchedEffect(Unit) { appear.animateTo(1f, spring(dampingRatio = .82f, stiffness = 800f)) }
+                val appear = rememberEntrance(stiffness = 800f, dampingRatio = .82f)
                 Column(Modifier.widthIn(min = 200.dp, max = 280.dp)
                     .graphicsLayer {
                         val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .6f + .4f * g; scaleY = scaleX

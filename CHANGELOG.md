@@ -5,6 +5,14 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name (MAJOR × 10000 + MINOR × 100 + PATCH), so every release sorts correctly.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.5.1] - 2026-09-16
+
+### Fixed
+- Setup no longer leaves the screen blurry and frozen until you restart the phone. The Home button now also closes anything Folio has open.
+- Setup and full-screen Settings pages are smoother.
+- The App Library on the unfolded screen shows iPad-sized category tiles instead of two giant columns (issue #9).
+- Apps you switched to the Dynamic Island can go back to Android's own pop-ups: Settings › Dynamic Island lists each messaging app with a button to change it, even while the island is off.
+
 ## [0.5.0] - 2026-09-15
 
 ### Added

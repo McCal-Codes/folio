@@ -403,6 +403,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 SettingsSwitch(label, kind !in state.islandEventsOff, { model.setIslandEvent(kind, it) }, "island-event-${kind.lowercase()}")
                             }
                             if ("MESSAGE" !in state.islandEventsOff) MessageBannerSettings(state.messagesAvoidDouble, model::setMessagesAvoidDouble)
+                        } else if (state.messagesAvoidDouble) {
+                            // Apps that were switched to the island show no pop-up at all while the island is off.
+                            Text("The island is off, so message pop-ups only come from Android. Apps below that use the island won’t pop up until you switch them back:",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            MessageChannelList()
                         }
                         Text(stringResource(R.string.reads_only_music_calls_timers_navigation),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1233,13 +1238,18 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
 
 /** Keeps Android's pop-up and Folio's island message card from showing for the same message. */
 @Composable private fun MessageBannerSettings(avoidDouble: Boolean, onAvoidDouble: (Boolean) -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val channels by IslandListenerService.messageChannels.collectAsState()
     SettingsSwitch(stringResource(R.string.dont_double_up_with_android_pop_ups), avoidDouble, onAvoidDouble, "messages-avoid-double-switch")
     Text(if (avoidDouble) "Messages that Android already pops up are left to Android. Turn off Android\u2019s pop-up for an app below and its messages use the island instead (sound, badges and the notification list stay the same)."
         else "The island shows every new message, even when Android also shows its own pop-up.",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (!avoidDouble) return
+    MessageChannelList()
+}
+
+/** Messaging apps Folio has seen, and whether each one pops up through Android or the island. */
+@Composable private fun MessageChannelList() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val channels by IslandListenerService.messageChannels.collectAsState()
     val list = channels.values.sortedWith(compareBy({ !it.popsUp }, { it.appLabel }))
     if (list.isEmpty()) Text(stringResource(R.string.messaging_apps_appear_here_after_they_po),
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1250,8 +1260,11 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
                 Text(listOfNotNull(channel.channelName, if (channel.popsUp) "Android pop-up" else "Island").joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (channel.popsUp) TextButton(onClick = { runCatching { context.startActivity(channel.settingsIntent()) } }) { Text(stringResource(R.string.use_island)) }
-            else Icon(Icons.Rounded.Check, "Uses the island", tint = androidx.compose.ui.graphics.Color(0xFF30D158))
+            // Both ways lead to the app's own notification settings: turn Android's pop-up off to use the island,
+            // or back on to get Android's pop-up again (the only way back once an app was switched over).
+            TextButton(onClick = { runCatching { context.startActivity(channel.settingsIntent()) } }) {
+                Text(if (channel.popsUp) stringResource(R.string.use_island) else "Use Android")
+            }
         }
     }
 }
