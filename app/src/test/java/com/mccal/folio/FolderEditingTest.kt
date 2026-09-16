@@ -78,4 +78,13 @@ class FolderEditingTest {
         assertEquals(widget, after.widgetPlacements.single())
         assertEquals("other", after.slots[4])
     }
+    @Test fun aFolderKeepsTakingAppsPastTwo() {
+        // Reported: only two apps could be put in a folder. The model must accept any number, from Home or anywhere.
+        var layout = HomeLayout(listOf(folderId, "c", "d"), listOf(null), folders = listOf(FolderEntry(folderId, "Group", listOf("a", "b"))))
+        layout = addAppToFolder(layout, folderId, "c")
+        layout = addAppToFolder(layout, folderId, "d")
+        layout = addAppToFolder(layout, folderId, "e")
+        assertEquals(listOf("a", "b", "c", "d", "e"), layout.folder(folderId)?.appIds)
+        assertEquals(listOf(folderId), layout.slots.filterNotNull())
+    }
 }

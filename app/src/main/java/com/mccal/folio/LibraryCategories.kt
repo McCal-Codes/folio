@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.foundation.combinedClickable
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
@@ -108,34 +109,13 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
 }
 
 /** A category opened full size: a simple icon grid with labels. */
-@Composable
-internal fun CategoryGrid(apps: List<AppEntry>, columns: Int, labelColor: Color = Color.White, onLaunch: (AppEntry) -> Unit, onActions: (AppEntry) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        apps.chunked(columns).forEach { row ->
-            Row(Modifier.fillMaxWidth()) {
-                row.forEach { app ->
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
-                        .clickable { onLaunch(app) }.padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
-                        Text(app.label, color = labelColor, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
-                    }
-                }
-                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
-    }
-}
-
 /** An App Library category opened like an iOS folder: big title and a rounded glass card of every app, over a dimmed background. */
 @Composable
 internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -> Unit, onLaunch: (AppEntry) -> Unit, onActions: (AppEntry) -> Unit) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = 0f, blurRadiusDp = 24)
-        val reduceMotion = LocalReduceMotion.current
-        val appear = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 1f else 0f) }
-        androidx.compose.runtime.LaunchedEffect(Unit) { appear.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .82f, stiffness = 600f)) }
+        val appear = rememberEntrance(stiffness = 600f, dampingRatio = .82f)
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
             .testTag("category-folder-scrim"))
         FoldAvoidingBox(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(24.dp)) {
@@ -149,11 +129,26 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                 }) {
                     Text(title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(start = 8.dp, bottom = 12.dp))
-                    Box(Modifier.fillMaxWidth().heightIn(max = availableHeight - 64.dp).clip(RoundedCornerShape(36.dp))
-                        .background(Color(0xFF2C2C2E).copy(alpha = .96f)).border(FolioGlass.edge, RoundedCornerShape(36.dp))
-                        .pointerInput(Unit) { detectTapGestures() }
-                        .verticalScroll(rememberScrollState()).padding(20.dp).testTag("category-folder")) {
-                        CategoryGrid(apps, columns, Color.White, onLaunch, onActions)
+                    // Lazy, so a category with dozens of apps only builds the rows on screen as it opens.
+                    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                        androidx.compose.foundation.lazy.grid.GridCells.Fixed(columns),
+                        Modifier.fillMaxWidth().heightIn(max = availableHeight - 64.dp).clip(RoundedCornerShape(36.dp))
+                            .background(Color(0xFF2C2C2E).copy(alpha = .96f)).border(FolioGlass.edge, RoundedCornerShape(36.dp))
+                            .pointerInput(Unit) { detectTapGestures() }
+                            .testTag("category-folder"),
+                        state = gridState, contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        items(apps.size, key = { apps[it].id }) { index ->
+                            val app = apps[index]
+                            Column(Modifier.clip(RoundedCornerShape(14.dp))
+                                .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
+                                Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
+                            }
+                        }
                     }
                 }
             }

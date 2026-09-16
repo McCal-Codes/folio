@@ -79,7 +79,7 @@ internal fun AppContextMenu(
     app: AppEntry, onHome: Boolean, hidden: Boolean,
     /** The Focus locking Home editing, if any: editing rows are replaced by a note. */
     lockedBy: String? = null,
-    onDismiss: () -> Unit, onMove: () -> Unit, onAddOrRemove: () -> Unit, onCreateFolder: () -> Unit,
+    onDismiss: () -> Unit, onMove: () -> Unit, onAddOrRemove: () -> Unit, onCreateFolder: () -> Unit, hasFolders: Boolean = false,
     onWidgets: (() -> Unit)?, onToggleHidden: () -> Unit, onInfo: () -> Unit,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
@@ -190,7 +190,7 @@ internal fun AppContextMenu(
                 // iOS keeps context menus short: the less common actions sit behind "More".
                 if (!more) MenuRow("More", Icons.Rounded.MoreHoriz) { more = true }
                 else {
-                    if (lockedBy == null) MenuRow("Create Folder", Icons.Rounded.CreateNewFolder) { onCreateFolder() }
+                    if (lockedBy == null) MenuRow(if (hasFolders) "Add to Folder" else "Create Folder", Icons.Rounded.CreateNewFolder) { onCreateFolder() }
                     onWidgets?.let { MenuDivider(); MenuRow("Widgets", Icons.Rounded.Widgets) { it() } }
                     onStack?.let { MenuDivider(); MenuRow("Stack Apps…", Icons.Rounded.Layers) { it() } }
                     MenuDivider()

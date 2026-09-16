@@ -152,13 +152,12 @@ class LayoutModelTest {
     @Test fun `home always has a page independently of the library`() {
         assertEquals(1, homePageCount(0)); assertEquals(1, homePageCount(24)); assertEquals(2, homePageCount(25))
     }
-    @Test fun `app library keeps tiles a sensible size across the fold`() {
-        // Issue #9: an unfolded Fold8 in landscape (~606dp library) fit three tiles and rounded down to two giant ones.
-        assertEquals(4, libraryColumns(606f, verticalHinge = true))
-        assertEquals(3, libraryColumns(606f, verticalHinge = false))
-        assertEquals(2, libraryColumns(520f, verticalHinge = true))
-        assertEquals(2, libraryColumns(340f, verticalHinge = true))
-        assertEquals(6, libraryColumns(1300f, verticalHinge = false))
-        assertEquals(6, libraryColumns(900f, verticalHinge = true))
+    @Test fun `app library tiles stay phone-sized on big screens`() {
+        // Issue #9: an unfolded Fold8 in landscape showed two giant columns; it now shows more, phone-sized tiles.
+        assertEquals(5, libraryColumns(780f))
+        assertEquals(4, libraryColumns(606f))
+        assertEquals(2, libraryColumns(340f))
+        assertEquals(2, libraryColumns(360f))
+        assertEquals(6, libraryColumns(1300f))
     }
 }

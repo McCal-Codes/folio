@@ -226,21 +226,15 @@ fun foldDisplacement(cells: HomeCellLayout, rows: Int, gridTop: Float, hingeTop:
 }
 
 /**
- * App Library category columns for a library [widthDp] wide: as many ~160dp tiles (with 14dp gaps) as fit, like iPad.
- * Across a fold line running top to bottom the count is kept even so no tile sits on the crease, and it rounds to
- * whichever even count still gives good-sized tiles (a 606dp library gets four ~141dp tiles, not two giant ones).
+ * App Library category columns for a library [widthDp] wide: as many tiles as fit at about the size they are on a
+ * phone (~150dp with 14dp gaps, to the nearest count), so the unfolded screen shows more categories rather than bigger
+ * ones. The library panel isn't centered on the fold, so an even column count wouldn't keep tiles off the crease.
  */
-fun libraryColumns(widthDp: Float, verticalHinge: Boolean): Int {
-    val fit = ((widthDp + LIBRARY_GAP_DP) / (LIBRARY_TILE_DP + LIBRARY_GAP_DP)).toInt().coerceIn(2, 6)
-    if (!verticalHinge || fit % 2 == 0) return fit
-    val wider = fit + 1
-    val tile = (widthDp + LIBRARY_GAP_DP) / wider - LIBRARY_GAP_DP
-    return if (wider <= 6 && tile >= LIBRARY_MIN_TILE_DP) wider else fit - 1
-}
+fun libraryColumns(widthDp: Float): Int =
+    kotlin.math.round((widthDp + LIBRARY_GAP_DP) / (LIBRARY_TILE_DP + LIBRARY_GAP_DP)).toInt().coerceIn(2, 6)
 
-private const val LIBRARY_TILE_DP = 160f
+private const val LIBRARY_TILE_DP = 150f
 private const val LIBRARY_GAP_DP = 14f
-private const val LIBRARY_MIN_TILE_DP = 128f
 
 /**
  * How much larger Folio draws on big screens (tablets, desktop windows, large foldables), so Home, the dock, panels
