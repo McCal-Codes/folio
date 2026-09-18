@@ -616,7 +616,6 @@
     <string name="choose">Choose</string>
     <string name="samsung_side_button_press_and_hold_digit">Samsung: Side button › Press and hold › Digital assistant, so holding the key reaches Folio’s picker.</string>
     <string name="message_contacts_from_spotlight_in_openb">Message contacts from Spotlight in OpenBubbles. New messages also pop out of the island with quick reply.</string>
-    <string name="hh_mm">HH:mm</string>
     <string name="mmmm_d">MMMM d</string>
     <string name="saved_widget">Saved widget</string>
     <string name="unavailable_profile">Unavailable profile</string>
@@ -702,6 +701,7 @@
     <string name="ios">iOS</string>
     <string name="classic">Classic</string>
     <string name="banking_apps_note">Some banking apps refuse to open while any accessibility service is on, including Folio\'s gestures service. That is their check, not something Folio can change. Everything except the pull-down panels and the dock and island over other apps works without it, so you can turn it off in Android\'s Accessibility settings and keep using Folio.</string>
+    <string name="gauge">Gauge</string>
     <string name="rename">Rename…</string>
     <string name="rename_app">Rename App</string>
     <string name="leave_it_empty_to_use_s_again">Leave it empty to use %1$s again.</string>

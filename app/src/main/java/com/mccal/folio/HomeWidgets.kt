@@ -127,7 +127,7 @@ internal fun ClockCard(onClick: () -> Unit) {
             modifier = Modifier.semantics { contentDescription = "Clock widget; tap to replace" })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
-        Text(time.format(DateTimeFormatter.ofPattern(if (format == stringResource(R.string.hh_mm)) "EEE" else "a · EEE")), color = LocalHomeInk.current.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(time.format(DateTimeFormatter.ofPattern(if (format == "HH:mm") "EEE" else "a · EEE")), color = LocalHomeInk.current.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 

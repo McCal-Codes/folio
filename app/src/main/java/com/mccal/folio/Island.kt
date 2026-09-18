@@ -368,15 +368,14 @@ class IslandListenerService : NotificationListenerService() {
      */
     private fun stillWorthShowing(controller: MediaController): Boolean {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) {
-            pausedSince.remove(controller.packageName)
-            return true
-        }
         val since = pausedSince.getOrPut(controller.packageName) { now }
         return now - since < PAUSED_KEEP_MS
     }
 
     private fun currentMedia(controllers: List<MediaController>): IslandActivity.Media? {
+        // Anything playing is not forgotten, so its pause clock starts again from zero next time it stops.
+        controllers.filter { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            .forEach { pausedSince.remove(it.packageName) }
         val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PAUSED && stillWorthShowing(it) }
             ?: return null

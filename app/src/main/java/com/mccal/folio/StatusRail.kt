@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -84,8 +85,14 @@ enum class StatusGlyph(@androidx.annotation.StringRes val label: Int) {
     RINGS(R.string.rings),
     /** The battery ring with the percentage inside, like iPhone's Batteries widget. */
     PERCENT(R.string.ring_with_percentage),
+    /** One mark: the connection inside a battery arc, with the percentage above the arc's opening. */
+    GAUGE(R.string.gauge),
     ICONS(R.string.icons), MINIMAL(R.string.battery_only), NONE(R.string.hidden),
 }
+
+/** The Gauge's arc: it opens at the top, leaving room for the percentage above it. */
+private const val GAUGE_START = 145f
+private const val GAUGE_SWEEP = 250f
 
 /** Shared capsule look for the side rail (status, dock, island). */
 
@@ -258,6 +265,42 @@ fun StatusRail(
                         if (style.glyph == StatusGlyph.RING && status.airplane && !status.wifiConnected)
                             Icon(Icons.Rounded.AirplanemodeActive, null, tint = ink, modifier = Modifier.size(visualSize * .42f))
                     }
+                    StatusGlyph.GAUGE -> Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(top = 2.dp)) {
+                        // The number reads first, then the arc says how full, then what's inside says how you're connected.
+                        Text(status.battery?.toString() ?: "\u2014", color = if (status.charging && style.colorfulBattery) charging else ink,
+                            fontSize = (visualSize.value * .30f / fontScale).sp, fontWeight = FontWeight.SemiBold,
+                            maxLines = 1, softWrap = false, modifier = Modifier.padding(bottom = 1.dp))
+                        Box(Modifier.size(visualSize * .88f), contentAlignment = Alignment.Center) {
+                            Canvas(Modifier.fillMaxSize()) {
+                                val w = size.width
+                                val center = Offset(w / 2, w / 2)
+                                // An arc open at the top, where the number sits: it starts at the left and fills clockwise.
+                                val radius = w * .46f
+                                val corner = Offset(center.x - radius, center.y - radius)
+                                val box = Size(radius * 2, radius * 2)
+                                val stroke = Stroke(width = w * .085f, cap = StrokeCap.Round)
+                                drawArc(ink.copy(alpha = faint(.22f)), GAUGE_START, GAUGE_SWEEP, false, corner, box, style = stroke)
+                                status.battery?.let { level ->
+                                    drawArc(batteryColor, GAUGE_START, GAUGE_SWEEP * level / 100f, false, corner, box, style = stroke)
+                                }
+                                // The connection sits inside the arc, drawn a little smaller so it keeps clear of it.
+                                scale(.72f, center) {
+                                    when {
+                                        wifiVisual is WifiSignalVisual.Connected -> {
+                                            drawWifiFan(w, wifiVisual, ink = ink, onLight = onLight)
+                                            for (i in 0..4) drawCircle(ink.copy(alpha = if (i < activeDots) 1f else faint(.28f)), w * .026f,
+                                                Offset(center.x + (i - 2) * w * .085f, w * .74f))
+                                        }
+                                        cellularVisual is CellularSignalVisual.Available -> drawCellBars(w, activeDots, ink, onLight)
+                                        else -> Unit
+                                    }
+                                }
+                            }
+                            if (status.airplane && !status.wifiConnected)
+                                Icon(Icons.Rounded.AirplanemodeActive, null, tint = ink, modifier = Modifier.size(visualSize * .34f))
+                        }
+                    }
                     StatusGlyph.ICONS -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.padding(top = 2.dp)) {
                         // Wi-Fi when joined (in Home's text color, so it reads on light wallpapers), an airplane in Airplane Mode;
@@ -289,7 +332,8 @@ fun StatusRail(
                     StatusGlyph.NONE -> Unit
                 }
                 // The percentage is already inside the ring in that style.
-                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT) Text(if (status.airplane) "Airplane" else status.battery?.let { "$it%" } ?: "—",
+                // Glyphs that carry the number themselves don't need it repeated underneath.
+                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) Text(if (status.airplane) "Airplane" else status.battery?.let { "$it%" } ?: "—",
                     color = if (status.charging && style.colorfulBattery) charging else ink,
                     fontSize = detailSize, fontWeight = FontWeight.Medium,
                     maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)

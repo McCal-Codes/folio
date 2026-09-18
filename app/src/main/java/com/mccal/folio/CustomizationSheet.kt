@@ -1750,11 +1750,12 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
     SettingsCard(stringResource(R.string.app_icon)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             AppIconChoice.entries.forEach { choice ->
+                val choiceName = stringResource(choice.label)
                 val bitmap = remember(choice) { choice.artwork(context, 180) }
                 val selected = choice == current
                 Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable {
                     if (!selected) { AppIconChoice.set(context, choice); current = choice; onChanged() }
-                }.padding(6.dp).semantics { this.selected = selected; contentDescription = "${choice.label} app icon" }.testTag("app-icon-${choice.name.lowercase()}"),
+                }.padding(6.dp).semantics { this.selected = selected; contentDescription = choiceName + " app icon" }.testTag("app-icon-${choice.name.lowercase()}"),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(64.dp).then(if (selected) Modifier.border(2.5.dp, IosBlue, RoundedCornerShape(18.dp)).padding(4.dp) else Modifier.padding(4.dp))) {
                         bitmap?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp))) }

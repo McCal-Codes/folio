@@ -32,7 +32,9 @@ private const val NOTE = "settings-note"
  */
 @Composable
 internal fun CardNote(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier.layoutId(NOTE), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // Footnotes read as a block of small text, so they need more room between lines than a row label does.
+    Text(text, modifier.layoutId(NOTE), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Settings rows are laid out top to bottom; the card lays them out itself, so Column-only modifiers do nothing here. */
@@ -61,7 +63,7 @@ internal fun GroupedCard(background: Color, divider: Color, modifier: Modifier =
     }) { measurables, constraints ->
         val side = 16.dp.roundToPx()
         val padV = 6.dp.roundToPx()
-        val noteGap = 8.dp.roundToPx()
+        val noteGap = 12.dp.roundToPx()
         val inner = Constraints(maxWidth = (constraints.maxWidth - 2 * side).coerceAtLeast(0))
         val placeables = measurables.map { it.measure(inner) }
         val isNote = measurables.map { it.layoutId == NOTE }
@@ -74,7 +76,8 @@ internal fun GroupedCard(background: Color, divider: Color, modifier: Modifier =
         var previousRow = false
         for (i in 0..lastRow) {
             if (!visible[i]) continue
-            if (isNote[i]) { y += 2.dp.roundToPx(); ys[i] = y; y += placeables[i].height + 6.dp.roundToPx(); previousRow = false; continue }
+            // A note between rows: enough air above and below that it reads as a footnote, not a squeezed row.
+            if (isNote[i]) { y += 6.dp.roundToPx(); ys[i] = y; y += placeables[i].height + 10.dp.roundToPx(); previousRow = false; continue }
             if (previousRow) lines.add(y.toFloat())
             ys[i] = y; y += placeables[i].height; previousRow = true
         }
@@ -83,7 +86,7 @@ internal fun GroupedCard(background: Color, divider: Color, modifier: Modifier =
         var footer = false
         for (i in lastRow + 1 until placeables.size) {
             if (!visible[i]) continue
-            y += if (footer) 4.dp.roundToPx() else if (lastRow >= 0) noteGap else 0
+            y += if (footer) 8.dp.roundToPx() else if (lastRow >= 0) noteGap else 0
             ys[i] = y; y += placeables[i].height; footer = true
         }
         layout(constraints.maxWidth, y.coerceAtLeast(constraints.minHeight)) {
