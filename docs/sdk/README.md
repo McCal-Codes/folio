@@ -18,7 +18,16 @@ Make themes, tweaks and layouts for the Folio Market.
 
 1. Copy `examples/cabinet/` and change `id`, `name` and `author` in `manifest.json`.
 2. Add `"$schema"` to each JSON file (the sample already does). VS Code then autocompletes fields and flags mistakes as you type.
-3. Check your package with `folio-pkg validate`. The tool arrives later in the 0.7.0 cycle.
+3. Check it with the validator, which needs python3 and nothing else:
+
+   ```bash
+   tools/folio-pkg.py validate path/to/your/source
+   ```
+
+   It takes a source, a single package folder or a `.foliopkg`, and checks three things: every file against the
+   schemas, the things the schemas can't see (that the index and the packages agree, that every picture named is
+   actually there, that a signed source's entry matches its index), and the limits a phone applies before it will
+   open a package at all.
 4. Publish it in one of three ways:
    - **Your own source:** use the template repo; a GitHub Action signs it and publishes it to Pages.
    - **The Community source:** open a pull request, CI checks it, and the Folio project reviews it.
