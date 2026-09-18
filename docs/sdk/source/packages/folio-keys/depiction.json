@@ -1,0 +1,61 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
+  "format": 1,
+  "tint": "#2C5B63",
+  "blocks": [
+    {
+      "type": "markdown",
+      "text": "**In design. There is nothing to install yet.**\n\nFolio Keys is a keyboard for the rest of Folio: a separate app, because Android requires a keyboard to be its own input method, listed here so it shows up where Folio's other pieces do.\n\nIt reads the window rather than the phone model. On a book fold it splits around the crease so no key sits on the hinge; unfolded it splits with the middle holding what thumbs cannot reach; on a short window it gets out of the way. It has no internet permission, which is the one promise the system can enforce on your behalf.\n\nThe pictures below are from Folio's mockup lab, not from a shipping app."
+    },
+    {
+      "type": "screenshots",
+      "images": [
+        "assets/keys-default.png",
+        "assets/keys-split.png",
+        "assets/keys-shelf.png",
+        "assets/keys-insights.png"
+      ]
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Splits around the crease of a book fold",
+        "Split, one-handed and floating, chosen by the window",
+        "Key gestures: swipe a key to copy, paste, cut or undo",
+        "An action shelf that stays pinned instead of hiding",
+        "Clipboard history with pinned clips and snippets",
+        "A profile per app: theme, shelf, layout, gestures, learning",
+        "Typing insights: the words you fix most and the keys you miss",
+        "Swearing is never corrected into another word",
+        "Folio's look or the flat Android one",
+        "No internet permission, no account, nothing leaves the phone"
+      ]
+    },
+    {
+      "type": "compatibility",
+      "screens": [
+        "cover",
+        "inner"
+      ]
+    },
+    {
+      "type": "changelog",
+      "entries": [
+        {
+          "version": "0.1.0",
+          "date": "2026-09-18",
+          "notes": "Design only: the concept, the screens and the rules it has to follow. No code yet."
+        }
+      ]
+    },
+    {
+      "type": "link",
+      "title": "Folio Keys on GitHub",
+      "url": "https://github.com/McCal-Codes/folio-keys"
+    },
+    {
+      "type": "donation",
+      "url": "https://ko-fi.com/mccal"
+    }
+  ]
+}
