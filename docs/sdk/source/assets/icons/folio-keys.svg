@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Folio Keys">
+  <title>Folio Keys</title>
+  <!-- Folio Keys, icon 6b: the keyboard bent at the crease. Folio's own palette and composition -->
+  <!-- (dark teal squircle, one muted panel, one white panel), made of keys instead of screens. -->
+  <rect width="512" height="512" rx="115" fill="#2C5B63"/>
+  <path d="M78 178 L250 148 L250 364 L78 334 Z" fill="#9DB3B8"/>
+  <path d="M262 148 L434 178 L434 334 L262 364 Z" fill="#FFFFFF"/>
+  <g fill="#2C5B63" opacity=".32">
+    <rect x="104" y="204" width="126" height="30" rx="15"/>
+    <rect x="104" y="256" width="126" height="30" rx="15"/>
+    <rect x="282" y="204" width="126" height="30" rx="15"/>
+    <rect x="282" y="256" width="126" height="30" rx="15"/>
+  </g>
+</svg>
