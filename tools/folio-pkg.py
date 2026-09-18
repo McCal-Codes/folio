@@ -23,13 +23,30 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import re
 import sys
 import time
 import zipfile
 
-SCHEMA_DIR = pathlib.Path(__file__).resolve().parent.parent / "docs" / "sdk" / "schema" / "v1"
+def _schema_dir() -> pathlib.Path:
+    """Where the schemas are: a source repository keeps a copy, Folio's own repository has the originals."""
+    here = pathlib.Path(__file__).resolve().parent
+    candidates = [
+        pathlib.Path(os.environ["FOLIO_SCHEMAS"]) if os.environ.get("FOLIO_SCHEMAS") else None,
+        here.parent / "schema" / "v1",
+        here.parent / "docs" / "sdk" / "schema" / "v1",
+    ]
+    for candidate in candidates:
+        if candidate and (candidate / "manifest.schema.json").is_file():
+            return candidate
+    raise SystemExit(
+        "folio-pkg: can't find the schemas. Keep a copy in schema/v1, or point FOLIO_SCHEMAS at one."
+    )
+
+
+SCHEMA_DIR = _schema_dir()
 
 # The extensions a source or a package may contain. Anything else is rejected on sight by the phone, so it is an
 # error here. `.sig` and `.pub` belong to a source rather than a package.
@@ -409,9 +426,27 @@ def check_source(root: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
                             f"{folder.name}: index.json carries a different manifest from the one in the folder"
                         )
 
+    # A published source carries .foliopkg zips rather than folders. Check those too, and check that what is inside
+    # each one is what the index advertises - a stale zip beside a fresh index is the classic publishing mistake.
+    packed: dict[str, pathlib.Path] = {}
+    for archive_path in sorted((root / "packages").glob("*.foliopkg")) if packages_dir.is_dir() else []:
+        inside = check_foliopkg(archive_path, schemas, report, standalone=False)
+        if inside and inside.get("id"):
+            packed[inside["id"]] = archive_path
+            entry = listed.get(inside["id"])
+            if entry is None:
+                report.error(f"packages/{archive_path.name}: {inside['id']} is not in index.json, so nobody will see it")
+            else:
+                advertised = {k: v for k, v in entry.get("manifest", {}).items() if k != "$schema"}
+                actual = {k: v for k, v in inside.items() if k != "$schema"}
+                if advertised != actual:
+                    report.error(
+                        f"packages/{archive_path.name}: what is inside differs from what index.json advertises"
+                    )
+
     for package_id in listed:
-        if package_id not in on_disk:
-            report.note(f"index.json lists {package_id}, which has no folder here (fine if it is packed elsewhere)")
+        if package_id not in on_disk and package_id not in packed:
+            report.error(f"index.json lists {package_id}, but there is no folder or .foliopkg for it here")
 
     signed = (root / "entry.json").is_file()
     check_entry(root, schemas, report)
@@ -472,15 +507,15 @@ def check_revoked(root: pathlib.Path, schemas: SchemaSet, report: Report, signed
         report.error("revoked.json has no signature beside it, so a phone will ignore it")
 
 
-def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
-    """A packed package: the limits a phone applies before it will open one."""
+def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report, standalone: bool = True):
+    """A packed package: the limits a phone applies before it will open one. Returns the manifest inside it."""
     if path.stat().st_size > MAX_ZIP_COMPRESSED:
         report.error(f"{path.name} is over the 20 MB a .foliopkg may be")
     try:
         archive = zipfile.ZipFile(path)
     except zipfile.BadZipFile:
         report.error(f"{path.name}: not a zip archive")
-        return "1 package"
+        return None
 
     names = archive.namelist()
     if len(names) > MAX_ZIP_ENTRIES:
@@ -499,15 +534,21 @@ def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report) -> st
         report.error(f"{path.name}: unpacks to over the 50 MB allowed")
     if "manifest.json" not in names:
         report.error(f"{path.name}: no manifest.json at the top of the archive")
-        return "1 package"
+        return None
 
-    manifest = json.loads(archive.read("manifest.json"))
-    for problem in schemas.validate(manifest, schemas.get("manifest.schema.json"), "manifest.json"):
+    try:
+        manifest = json.loads(archive.read("manifest.json"))
+    except json.JSONDecodeError as problem:
+        report.error(f"{path.name}: manifest.json is not valid JSON - {problem.msg}")
+        return None
+    label = "manifest.json" if standalone else f"packages/{path.name}: manifest.json"
+    for problem in schemas.validate(manifest, schemas.get("manifest.schema.json"), label):
         report.error(problem)
     if "depiction" in manifest and manifest["depiction"] not in names:
-        report.error(f"manifest.json: names {manifest['depiction']}, which is not in the archive")
-    report.note("pictures are not checked here: they live on the source, not in the package")
-    return "1 package"
+        report.error(f"{label}: names {manifest['depiction']}, which is not in the archive")
+    if standalone:
+        report.note("pictures are not checked here: they live on the source, not in the package")
+    return manifest
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -517,7 +558,8 @@ def validate(target: pathlib.Path, strict: bool) -> int:
     report = Report()
     print(f"{target}")
     if target.is_file() and target.suffix == ".foliopkg":
-        counted = check_foliopkg(target, schemas, report)
+        check_foliopkg(target, schemas, report)
+        counted = "1 package"
     elif (target / "index.json").is_file():
         counted = check_source(target, schemas, report)
     elif (target / "manifest.json").is_file():
