@@ -658,4 +658,7 @@
     <string name="work_focus_on_off">Work Focus On/Off</string>
     <string name="personal_focus_on_off">Personal Focus On/Off</string>
     <string name="turn_off_focus">Turn Off Focus</string>
+    <string name="rename">Rename…</string>
+    <string name="rename_app">Rename App</string>
+    <string name="leave_it_empty_to_use_s_again">Leave it empty to use %1$s again.</string>
 </resources>

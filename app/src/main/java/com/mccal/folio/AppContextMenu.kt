@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -36,6 +37,8 @@ import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -80,7 +83,7 @@ internal fun AppContextMenu(
     /** The Focus locking Home editing, if any: editing rows are replaced by a note. */
     lockedBy: String? = null,
     onDismiss: () -> Unit, onMove: () -> Unit, onAddOrRemove: () -> Unit, onCreateFolder: () -> Unit, hasFolders: Boolean = false,
-    onWidgets: (() -> Unit)?, onToggleHidden: () -> Unit, onInfo: () -> Unit,
+    onWidgets: (() -> Unit)?, onToggleHidden: () -> Unit, onInfo: () -> Unit, onRename: () -> Unit,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
 ) {
@@ -194,6 +197,8 @@ internal fun AppContextMenu(
                     onWidgets?.let { MenuDivider(); MenuRow("Widgets", Icons.Rounded.Widgets) { it() } }
                     onStack?.let { MenuDivider(); MenuRow("Stack Apps…", Icons.Rounded.Layers) { it() } }
                     MenuDivider()
+                    MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
+                    MenuDivider()
                     MenuRow(if (hidden) "Show in App Library" else "Hide from App Library", if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
                     MenuDivider()
                     MenuRow(if (app.isShortcut) "Info for App" else "App Info", Icons.Rounded.Info) { onInfo() }
@@ -220,3 +225,38 @@ internal fun MenuRow(label: String, icon: ImageVector? = null, bitmap: Bitmap? =
 
 @Composable
 internal fun MenuDivider() = HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
+
+/** Rename an app: the typed name replaces the label everywhere, and an empty field puts Android's name back. */
+@Composable
+internal fun RenameAppAlert(app: AppEntry, onDismiss: () -> Unit, onRename: (String) -> Unit) {
+    var name by remember(app.id) { mutableStateOf(if (app.label == app.systemLabel) "" else app.label) }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(app.id) { runCatching { focus.requestFocus() } }
+    // The alert follows the system's light or dark theme, so the field takes its colors from the dialog
+    // rather than assuming white on dark.
+    val ink = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+    androidx.compose.material3.AlertDialog(onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.rename_app)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.leave_it_empty_to_use_s_again, app.systemLabel), fontSize = 13.sp)
+                androidx.compose.foundation.text.BasicTextField(name, { name = it.take(MAX_APP_NAME) },
+                    Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        .background(ink.copy(alpha = .08f)).padding(horizontal = 10.dp, vertical = 10.dp)
+                        .focusRequester(focus).testTag("app-name"),
+                    singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = ink, fontSize = 17.sp),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(ink),
+                    decorationBox = { field ->
+                        Box {
+                            // The app's own name as a hint, so an empty field doesn't look like a blank row.
+                            if (name.isEmpty()) Text(app.systemLabel, color = ink.copy(alpha = .4f), fontSize = 17.sp)
+                            field()
+                        }
+                    },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onRename(name) }))
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { onRename(name) }) { Text(stringResource(R.string.done)) } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })
+}
