@@ -129,11 +129,16 @@ internal class DiscoverClient(
                     onState("Discover disconnected. Tap Retry to reconnect.")
                 }
             }
-            override fun onNullBinding(name: ComponentName) { failed("The Google app did not provide a feed.", attempt) }
+            override fun onNullBinding(name: ComponentName) {
+                failed("The Google app did not provide a feed. Update the Google app, or use Today View instead " +
+                    "(Settings \u203a Today View).", attempt)
+            }
             override fun onBindingDied(name: ComponentName) { failed("Discover disconnected. Tap Retry to reconnect.", attempt) }
         }
-        val intent = Intent("com.android.launcher3.WINDOW_OVERLAY").setPackage(GOOGLE_PACKAGE)
-            .setData(Uri.parse("app://${activity.packageName}:${Process.myUid()}?v=5"))
+        val intent = Intent(OVERLAY_ACTION).setPackage(GOOGLE_PACKAGE)
+            // Launcher3's own client asks for version 9 of the overlay protocol, and so must we: the Google app
+            // answers an older number with no binder at all, which is why Discover looked broken (r/GalaxyFold).
+            .setData(Uri.parse("app://${activity.packageName}:${Process.myUid()}?v=$OVERLAY_VERSION&cv=$OVERLAY_VERSION"))
         try {
             if (activity.bindService(intent, binding, Context.BIND_AUTO_CREATE)) connection = binding
             else onState("Install or enable the Google app to use Discover.")
@@ -227,7 +232,8 @@ internal class DiscoverClient(
     }
     private fun failed(message: String, attempt: Int) {
         if (generation != attempt) return
-        disconnect(); onState(message)
+        disconnect()
+        onState(message)
     }
 
     private fun send(code: Int, payload: Parcel.() -> Unit = {}) {
@@ -259,6 +265,11 @@ internal class DiscoverClient(
 
     companion object {
         const val GOOGLE_PACKAGE = "com.google.android.googlequicksearchbox"
+
+        const val OVERLAY_ACTION = "com.android.launcher3.WINDOW_OVERLAY"
+
+        /** The overlay protocol version Launcher3's own client asks for; the Google app refuses versions it doesn't know. */
+        private const val OVERLAY_VERSION = 9
         private const val TAG = "DuoDiscover"
         private const val OVERLAY = "com.google.android.libraries.launcherclient.ILauncherOverlay"
         private const val CALLBACK = "com.google.android.libraries.launcherclient.ILauncherOverlayCallback"

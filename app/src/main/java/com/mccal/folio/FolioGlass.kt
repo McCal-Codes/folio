@@ -82,20 +82,20 @@ internal data class GlassLook(val widget: Float = .26f, val outline: Float = .16
 internal val LocalGlassLook = androidx.compose.runtime.staticCompositionLocalOf { GlassLook() }
 
 /** Settings › Home Screen & Dock › Folders. */
-enum class FolderBackground(val label: String) { GLASS("Glass"), SOLID("Solid"), CLEAR("Clear") }
+enum class FolderBackground(@androidx.annotation.StringRes val label: Int) { GLASS(R.string.glass), SOLID(R.string.solid), CLEAR(R.string.clear) }
 internal data class FolderLook(val columns: Int = 0, val background: FolderBackground = FolderBackground.GLASS)
 internal val LocalFolderLook = androidx.compose.runtime.staticCompositionLocalOf { FolderLook() }
 
 /** App name size on Home (Settings › Icons & Side Bar). */
-enum class LabelSize(val label: String, val sp: Float, val lineSp: Float) { SMALL("Small", 10f, 13f), STANDARD("Standard", 11f, 14f), LARGE("Large", 13f, 16f) }
+enum class LabelSize(@androidx.annotation.StringRes val label: Int, val sp: Float, val lineSp: Float) { SMALL(R.string.small, 10f, 13f), STANDARD(R.string.standard, 11f, 14f), LARGE(R.string.large, 13f, 16f) }
 internal val LocalLabelSize = androidx.compose.runtime.staticCompositionLocalOf { LabelSize.STANDARD }
 
 /**
  * Animation Speed (Settings › Gestures & Actions): scales the stiffness of Folio's springs, so panels, folders, menus
  * and page snaps all move faster or slower together. Android's Remove animations still turns motion off.
  */
-enum class MotionSpeed(val label: String, val factor: Float) {
-    RELAXED("Relaxed", .55f), STANDARD("Standard", 1f), SNAPPY("Snappy", 1.8f);
+enum class MotionSpeed(@androidx.annotation.StringRes val label: Int, val factor: Float) {
+    RELAXED(R.string.relaxed, .55f), STANDARD(R.string.standard, 1f), SNAPPY(R.string.snappy, 1.8f);
     companion object {
         @Volatile var current: MotionSpeed = STANDARD
         fun <T> spring(dampingRatio: Float, stiffness: Float) =

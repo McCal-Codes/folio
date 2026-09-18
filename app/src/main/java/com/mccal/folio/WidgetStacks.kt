@@ -46,8 +46,8 @@ internal val LocalWidgetStacks = androidx.compose.runtime.compositionLocalOf { e
 internal val LocalStackRotate = androidx.compose.runtime.compositionLocalOf { true }
 
 /** Size of a widget on the Today View's two-column grid. */
-enum class TodaySize(val label: String, val columns: Int, val rows: Int) {
-    SMALL("Small", 1, 1), MEDIUM("Medium", 2, 1), LARGE("Large", 2, 2);
+enum class TodaySize(@androidx.annotation.StringRes val label: Int, val columns: Int, val rows: Int) {
+    SMALL(R.string.small, 1, 1), MEDIUM(R.string.medium, 2, 1), LARGE(R.string.large, 2, 2);
 
     companion object {
         /** iOS-style size for a widget's preferred Home footprint (in 4×6 grid cells). */

@@ -78,13 +78,13 @@ data class StatusStyle(
     }
 }
 
-enum class StatusGlyph(val label: String) {
-    RING("Ring"),
+enum class StatusGlyph(@androidx.annotation.StringRes val label: Int) {
+    RING(R.string.ring),
     /** Apple Watch Activity-style: battery, Wi-Fi and cellular as three nested rings. */
-    RINGS("Rings"),
+    RINGS(R.string.rings),
     /** The battery ring with the percentage inside, like iPhone's Batteries widget. */
-    PERCENT("Ring with Percentage"),
-    ICONS("Icons"), MINIMAL("Battery only"), NONE("Hidden"),
+    PERCENT(R.string.ring_with_percentage),
+    ICONS(R.string.icons), MINIMAL(R.string.battery_only), NONE(R.string.hidden),
 }
 
 /** Shared capsule look for the side rail (status, dock, island). */

@@ -51,8 +51,7 @@ internal fun SupporterPage() {
         val current = code
         if (current == null) {
             CardAction(stringResource(R.string.redeem_a_code), onClick = { problem = null; redeeming = true })
-            CardNote(stringResource(R.string.codes_come_with_a_ko_fi_thank_you_folio) +
-                "app: it works with no signal, needs no account, and tells nobody that you supported.")
+            CardNote(stringResource(R.string.codes_come_with_a_ko_fi_thank_you_folio))
         } else {
             InfoRow(stringResource(R.string.code), shortCode(stored.orEmpty()))
             InfoRow(stringResource(R.string.unlocks), unlocksText(context, current.scopes))
@@ -66,14 +65,11 @@ internal fun SupporterPage() {
 
     if (code?.scopes?.contains(BetaCodes.SCOPE_BETA) == true) SettingsCard("BETA FEATURES") {
         SettingsSwitch(stringResource(R.string.beta_features), beta, { on -> Supporter.setBetaOn(context, on); beta = on }, "supporter-beta-switch")
-        CardNote(stringResource(R.string.beta_features_arrive_a_release_or_two_ea) +
-            "more bugs than usual — that's the trade. Turn this off whenever you like and Folio goes straight back " +
-            "to the way the stable release behaves.")
+        CardNote(stringResource(R.string.beta_features_arrive_a_release_or_two_ea))
     }
 
     SettingsCard("SUPPORT") {
-        CardNote(stringResource(R.string.folio_s_core_is_free_and_stays_free_home) +
-            "behind a code. Supporting buys time to keep building, and these extras are the thank-you.")
+        CardNote(stringResource(R.string.folio_s_core_is_free_and_stays_free_home))
     }
 
     if (redeeming) RedeemAlert(onCancel = { redeeming = false }, onRedeem = { typed ->

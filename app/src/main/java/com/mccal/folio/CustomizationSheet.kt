@@ -293,7 +293,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         IosActionRow(stringResource(R.string.preview_as_phone_wallpaper), "wallpaper-preview", onClick = onWallpaperPreview)
                     }
                     if (backgrounds.loading) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("background-loading"))
-                    CardNote(stringResource(R.string.changes_the_image_behind_folio_s_home_sc) + " " + stringResource(R.string.opens_android_s_preview_to_use_folio_s_b), Modifier.padding(horizontal = 4.dp))
+                    CardNote(stringResource(R.string.changes_the_image_behind_folio_s_home_sc) + stringResource(R.string.opens_android_s_preview_to_use_folio_s_b), Modifier.padding(horizontal = 4.dp))
                     (backgrounds.errorMessage ?: backgrounds.successMessage)?.let { message ->
                         TextButton(onClick = backgrounds::clearMessage, Modifier.fillMaxWidth().testTag("background-message")) { Text(message) }
                     }
@@ -304,19 +304,18 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     HomeLayoutSettings(state, wide, { wide = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
                     SettingsCard(stringResource(R.string.folders)) {
                         IosMenuRow(stringResource(R.string.columns), listOf(0 to stringResource(R.string.automatic), 3 to "3", 4 to "4"), state.folderColumns, model::setFolderColumns, tag = "folder-columns")
-                        IosMenuRow(stringResource(R.string.background), FolderBackground.entries.map { it to it.label }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
+                        IosMenuRow(stringResource(R.string.background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
                     }
                     RecentDotsCard(state, model)
                 }
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
-                        IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to it.label }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
+                        IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")
                         SettingsSwitch(stringResource(R.string.haptic_feedback), state.haptics, model::setHaptics, "haptics-switch")
-                        CardNote(stringResource(R.string.pull_down_from_the_top_left_for_notifica) +
-                            " A swipe down lower on Home does what you pick above — set it to Notification Center for the usual Android pull-down, from anywhere on the page.")
+                        CardNote(stringResource(R.string.pull_down_from_the_top_left_for_notifica))
                     }
                     // One page for the panels: the on/off switch and, when on, their options.
                     if (page == CustomizationPage.NOTIFICATIONS) SettingsCard(stringResource(R.string.panels)) {
@@ -397,17 +396,17 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         IosMenuRow(stringResource(R.string.clock_calendar), listOf("OFF" to stringResource(R.string.app_icons_2), "AUTO" to stringResource(R.string.live_automatic), "LIGHT" to stringResource(R.string.live_light), "DARK" to stringResource(R.string.live_dark)),
                             if (state.liveIcons) state.liveIconLook else "OFF",
                             { if (it == "OFF") model.setLiveIcons(false) else model.setLiveIconLook(it) }, tag = "live-icons-menu")
-                        IosMenuRow(stringResource(R.string.shape), IconShape.entries.map { it to it.label }, state.iconShape, model::setIconShape, tag = "icon-shape")
-                        IosMenuRow(stringResource(R.string.notification_badges), BadgeStyle.entries.map { it to it.label }, state.badgeStyle, model::setBadgeStyle, tag = "badge-style")
+                        IosMenuRow(stringResource(R.string.shape), IconShape.entries.map { it to stringResource(it.label) }, state.iconShape, model::setIconShape, tag = "icon-shape")
+                        IosMenuRow(stringResource(R.string.notification_badges), BadgeStyle.entries.map { it to stringResource(it.label) }, state.badgeStyle, model::setBadgeStyle, tag = "badge-style")
                         if (state.badgeStyle != BadgeStyle.OFF) {
-                            IosMenuRow(stringResource(R.string.badge_color), BadgeColor.entries.map { it to it.label }, state.badgeColor, model::setBadgeColor, tag = "badge-color")
-                            IosMenuRow(stringResource(R.string.badge_look), BadgeLook.entries.map { it to it.label }, state.badgeLook, model::setBadgeLook, tag = "badge-look")
-                            IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to it.label }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
+                            IosMenuRow(stringResource(R.string.badge_color), BadgeColor.entries.map { it to stringResource(it.label) }, state.badgeColor, model::setBadgeColor, tag = "badge-color")
+                            IosMenuRow(stringResource(R.string.badge_look), BadgeLook.entries.map { it to stringResource(it.label) }, state.badgeLook, model::setBadgeLook, tag = "badge-look")
+                            IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to stringResource(it.label) }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
                             BadgePreviewRow(state)
                         }
                         // iOS Home Screen customization: Default, Dark and Tinted side by side.
                         Text(stringResource(R.string.style), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                        IosSegmented(IconStyle.entries.map { it to it.label }, state.iconStyle, { model.setIconStyle(it, state.iconTint) }, Modifier.padding(vertical = 4.dp), tag = "icon-style")
+                        IosSegmented(IconStyle.entries.map { it to stringResource(it.label) }, state.iconStyle, { model.setIconStyle(it, state.iconTint) }, Modifier.padding(vertical = 4.dp), tag = "icon-style")
                         if (state.iconStyle == IconStyle.TINTED) Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             // Wallpaper color (follows the wallpaper when it changes)
                             val tone = LocalWallpaperTone.current
@@ -430,13 +429,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.side_rail)) {
                         SettingsSwitch(stringResource(R.string.left_handed_layout_rail_on_the_left), state.leftHanded, model::setLeftHanded, "left-handed-switch")
                         SettingsSwitch(stringResource(R.string.show_app_names), state.labels, model::setLabels, "label-switch")
-                        if (state.labels) IosMenuRow(stringResource(R.string.name_size), LabelSize.entries.map { it to it.label }, state.labelSize, model::setLabelSize, tag = "label-size")
+                        if (state.labels) IosMenuRow(stringResource(R.string.name_size), LabelSize.entries.map { it to stringResource(it.label) }, state.labelSize, model::setLabelSize, tag = "label-size")
                         CardNote(stringResource(R.string.frost_and_outline_are_in_wallpaper_appea))
                     }
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.status)) {
                         SettingsSwitch(stringResource(R.string.show_status_in_the_rail), state.verticalStatus, model::setVerticalStatus, "status-switch")
                         if (state.verticalStatus) {
-                            IosMenuRow(stringResource(R.string.icon_style), StatusGlyph.entries.map { it to it.label }, st.glyph, { model.setStatusStyle(st.copy(glyph = it)) }, tag = "status-glyph")
+                            IosMenuRow(stringResource(R.string.icon_style), StatusGlyph.entries.map { it to stringResource(it.label) }, st.glyph, { model.setStatusStyle(st.copy(glyph = it)) }, tag = "status-glyph")
                             SettingsSwitch(stringResource(R.string.time), st.showTime, { model.setStatusStyle(st.copy(showTime = it)) }, "status-time")
                             SettingsSwitch(stringResource(R.string.date), st.showDate, { model.setStatusStyle(st.copy(showDate = it)) }, "status-date")
                             SettingsSwitch(stringResource(R.string.battery_percentage), st.showBatteryPercent, { model.setStatusStyle(st.copy(showBatteryPercent = it)) }, "status-percent")
@@ -560,7 +559,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         MenuDivider()
                         IosActionRow(stringResource(R.string.restore_from_backup), "layout-import", onClick = onImportLayout)
                     }
-                    CardNote(stringResource(R.string.save_the_current_home_layout_folders_wid) + " " + stringResource(R.string.restore_shows_a_review_before_changing_h), Modifier.padding(horizontal = 4.dp))
+                    CardNote(stringResource(R.string.save_the_current_home_layout_folders_wid) + stringResource(R.string.restore_shows_a_review_before_changing_h), Modifier.padding(horizontal = 4.dp))
                     LayoutHistoryCard(state, model, onClose)
                 }
                 CustomizationPage.SIDE_KEY -> SideKeyPage()
@@ -991,6 +990,9 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
                 Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
             }
         }
+        // Some banking apps refuse to run while any accessibility service is on, Folio's included (reported on
+        // r/GalaxyFold, 18 Sep 2026). Nothing Folio can do from its side, so say so before someone is caught out.
+        CardNote(stringResource(R.string.banking_apps_note))
     }
 }
 
@@ -1014,7 +1016,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
         Column(Modifier.alpha(if (on) 1f else .4f)) {
             FolioScreen.entries.forEach { screen ->
                 val value = FeatureScopes.value(state.featureScopes, tweak.id, screen)
-                IosMenuRow(screen.label, ScopeValue.entries.map { it to it.label }, value, { model.setFeatureScope(tweak.id, screen, it) }, enabled = on, tag = "scope-${tweak.id}-${screen.name.lowercase()}")
+                IosMenuRow(stringResource(screen.label), ScopeValue.entries.map { it to stringResource(it.label) }, value, { model.setFeatureScope(tweak.id, screen, it) }, enabled = on, tag = "scope-${tweak.id}-${screen.name.lowercase()}")
             }
         }
         CardNote(stringResource(R.string.default_follows_enabled_on_or_off_applie))
@@ -1757,7 +1759,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                     Box(Modifier.size(64.dp).then(if (selected) Modifier.border(2.5.dp, IosBlue, RoundedCornerShape(18.dp)).padding(4.dp) else Modifier.padding(4.dp))) {
                         bitmap?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp))) }
                     }
-                    Text(choice.label, color = if (selected) IosBlue else androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                    Text(stringResource(choice.label), color = if (selected) IosBlue else androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         }
@@ -1938,9 +1940,11 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                     status == SoftwareUpdate.Status.Checking -> stringResource(R.string.checking_for_updates)
                     status == SoftwareUpdate.Status.UpToDate -> stringResource(R.string.folio_is_up_to_date)
                     status is SoftwareUpdate.Status.Failed -> (status as SoftwareUpdate.Status.Failed).message
-                    else -> SoftwareUpdate.lastChecked(context).takeIf { it > 0 }?.let { stringResource(R.string.last_checked) +
-                        if (System.currentTimeMillis() - it < 60_000) "just now"
-                        else android.text.format.DateUtils.getRelativeTimeSpanString(it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS) }
+                    else -> SoftwareUpdate.lastChecked(context).takeIf { it > 0 }?.let {
+                        val ago = if (System.currentTimeMillis() - it < 60_000) stringResource(R.string.just_now)
+                            else android.text.format.DateUtils.getRelativeTimeSpanString(it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
+                        stringResource(R.string.last_checked, ago)
+                    }
                         ?: stringResource(R.string.updates_come_from_folio_s_github_release)
                 }, style = MaterialTheme.typography.bodySmall,
                     color = if (status is SoftwareUpdate.Status.Failed) FolioColors.Red else MaterialTheme.colorScheme.onSurfaceVariant)

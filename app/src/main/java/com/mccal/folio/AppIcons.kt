@@ -12,10 +12,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 /** Folio's Kotlin package: class names stay the same in the Folio Dev build, whose app ID ends in ".dev". */
 internal const val FOLIO_CLASSES = "com.mccal.folio"
 
-internal enum class AppIconChoice(val label: String, val alias: String, private val background: Int, private val foreground: Int) {
-    TEAL("Teal", "FolioSettingsApp", R.drawable.folio_icon_teal_background, R.drawable.ic_launcher_foreground),
-    SOFT("Soft", "FolioSettingsAppSoft", R.drawable.folio_icon_soft_background, R.drawable.ic_launcher_soft_foreground),
-    OLIVE("Olive", "FolioSettingsAppOlive", R.drawable.ic_launcher_olive_background, R.drawable.ic_launcher_olive_foreground);
+internal enum class AppIconChoice(@androidx.annotation.StringRes val label: Int, val alias: String, private val background: Int, private val foreground: Int) {
+    TEAL(R.string.teal, "FolioSettingsApp", R.drawable.folio_icon_teal_background, R.drawable.ic_launcher_foreground),
+    SOFT(R.string.soft, "FolioSettingsAppSoft", R.drawable.folio_icon_soft_background, R.drawable.ic_launcher_soft_foreground),
+    OLIVE(R.string.olive, "FolioSettingsAppOlive", R.drawable.ic_launcher_olive_background, R.drawable.ic_launcher_olive_foreground);
 
     /**
      * The icon as Folio draws it in its own screens: the real artwork (never Folio Dev's launcher tint) as an iOS

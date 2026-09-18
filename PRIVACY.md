@@ -33,3 +33,14 @@ A layout export is created only when you choose Save in Backup and select a dest
 Opening Settings › Roadmap fetches Folio's roadmap file from GitHub (raw.githubusercontent.com) at most every six hours; it's a plain request for a public file and sends nothing about you beyond what any web request does. There is no automatic diagnostic upload. Folio keeps a few local problem reports (crashes, freezes, being closed by Android, or the phone restarting while Folio was on screen) with your phone model, screen settings and the last few Folio events, such as "Home shown" or "Control Center open"; no notification content, messages or app lists. Report a Bug › Copy Diagnostics and Advanced › Share Diagnostics also include Folio's own recent log lines; you see and choose where they go. Settings › Help › Report a Bug opens GitHub's bug form in your browser with the Folio version, phone model and Android version in the link; nothing is sent unless you submit the form, and GitHub's privacy policy applies to what you post there. Screenshots and logs you manually attach to issues may contain personal information, widget content, account names, or work data. Review them first.
 
 Uninstalling or clearing storage removes Folio's local settings, photos, and widget bindings. Exported files remain where you saved them. Android and device vendors may provide their own diagnostics independently of Folio.
+
+## Banking apps and the gestures service
+
+Some banking apps refuse to run while any accessibility service is enabled, Folio's included. That is their own
+check against screen-reading malware, and nothing Folio can change from its side: Android doesn't let an app say
+"I only use this for gestures."
+
+Folio's gestures service is optional. Without it you lose the pull-down Notification Center and Control Center, the
+dock and island over other apps, and Big Buttons; everything else — Home, layouts, folders, the App Library,
+Spotlight, themes, the island on Home — works exactly the same. Turn it off in Android's Settings › Accessibility
+› Installed apps whenever a banking app objects.

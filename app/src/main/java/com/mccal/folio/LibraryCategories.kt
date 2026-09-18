@@ -28,10 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** App Library categories, from the category apps declare plus simple package hints. */
-internal enum class LibraryCategory(val title: String) {
-    SUGGESTIONS("Suggestions"), SOCIAL("Social"), PRODUCTIVITY("Productivity & Finance"), CREATIVITY("Photo & Video"),
-    ENTERTAINMENT("Entertainment"), GAMES("Games"), INFO("Information & Reading"), TRAVEL("Travel & Maps"),
-    SHOPPING("Shopping & Food"), UTILITIES("Utilities"), OTHER("Other");
+internal enum class LibraryCategory(@androidx.annotation.StringRes val title: Int) {
+    SUGGESTIONS(R.string.suggestions), SOCIAL(R.string.social), PRODUCTIVITY(R.string.productivity_finance), CREATIVITY(R.string.photo_video),
+    ENTERTAINMENT(R.string.entertainment), GAMES(R.string.games), INFO(R.string.information_reading), TRAVEL(R.string.travel_maps),
+    SHOPPING(R.string.shopping_food), UTILITIES(R.string.utilities), OTHER(R.string.other);
 
     companion object {
         fun of(pm: PackageManager, packageName: String): LibraryCategory {

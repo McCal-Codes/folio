@@ -361,9 +361,24 @@ class IslandListenerService : NotificationListenerService() {
         return null
     }
 
+    /**
+     * A paused session that nobody comes back to: some players (Spotify among them) keep their session alive long
+     * after the app is gone, and the island was left showing a track whose buttons did nothing. Playing music is
+     * always shown; a pause is held for a while, then let go. Reported on r/GalaxyFold, 18 Sep 2026.
+     */
+    private fun stillWorthShowing(controller: MediaController): Boolean {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) {
+            pausedSince.remove(controller.packageName)
+            return true
+        }
+        val since = pausedSince.getOrPut(controller.packageName) { now }
+        return now - since < PAUSED_KEEP_MS
+    }
+
     private fun currentMedia(controllers: List<MediaController>): IslandActivity.Media? {
         val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PAUSED }
+            ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PAUSED && stillWorthShowing(it) }
             ?: return null
         val meta = active.metadata ?: return null
         val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE) ?: return null
@@ -479,6 +494,10 @@ class IslandListenerService : NotificationListenerService() {
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)
         private val artCache = android.util.LruCache<String, Bitmap>(8)
+        /** When each app's playback was first seen paused, so a forgotten session doesn't sit in the island forever. */
+        private val pausedSince = mutableMapOf<String, Long>()
+        /** How long a paused track stays in the island: long enough to come back to, short enough not to be clutter. */
+        private const val PAUSED_KEEP_MS = 15 * 60 * 1000L
         private val QUIET_CATEGORIES = setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_TRANSPORT, Notification.CATEGORY_PROGRESS,
             Notification.CATEGORY_SERVICE, Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_STATUS, "stopwatch", "location_sharing", "workout")
         private val OVERFLOW_TITLE = Regex("^\\d+ more notifications?$", RegexOption.IGNORE_CASE)
