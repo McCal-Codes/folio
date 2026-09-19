@@ -39,7 +39,7 @@ internal object Roadmap {
                 val items = section.getJSONArray("items")
                 Section(title, release, (0 until minOf(items.length(), 30)).mapNotNull { i ->
                     val item = items.getJSONObject(i)
-                    val status = runCatching { Status.valueOf(item.getString("status").uppercase()) }.getOrNull() ?: return@mapNotNull null
+                    val status = runCatching { Status.valueOf(item.getString("status").uppercase(java.util.Locale.ROOT)) }.getOrNull() ?: return@mapNotNull null
                     val itemTitle = item.optString("title").trim().takeIf { it.isNotEmpty() }?.take(60) ?: return@mapNotNull null
                     Item(item.optString("icon").take(24), color(item.optString("color")), itemTitle,
                         item.optString("detail").trim().take(240), status)

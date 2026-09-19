@@ -102,7 +102,7 @@ internal object BetaCodes {
 
     /** Groups, spaces and lower case are all fine: people copy codes out of email. */
     internal fun decode(text: String): ByteArray? {
-        val clean = text.uppercase().filter { it != '-' && !it.isWhitespace() }
+        val clean = text.uppercase(java.util.Locale.ROOT).filter { it != '-' && !it.isWhitespace() }
             .map { if (it == 'I' || it == 'L') '1' else if (it == 'O') '0' else it }
         if (clean.isEmpty()) return null
         var buffer = 0L
@@ -134,6 +134,6 @@ internal object BetaCodes {
     }
 
     /** How a code reads back to the person who typed it: FOLIO-XXXXX-XXXXX-… */
-    internal fun group(text: String): String = text.uppercase().filter { it.isLetterOrDigit() }
+    internal fun group(text: String): String = text.uppercase(java.util.Locale.ROOT).filter { it.isLetterOrDigit() }
         .chunked(5).joinToString("-")
 }
