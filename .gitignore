@@ -22,3 +22,6 @@ tools/kofi-worker/.wrangler/
 tools/kofi-worker/node_modules/
 supporter-key.pem
 supporter-codes*.txt
+
+# Claude Code's parallel-session worktrees, which live inside the repository.
+.claude/worktrees/
