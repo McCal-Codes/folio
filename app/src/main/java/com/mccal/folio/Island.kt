@@ -373,19 +373,25 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     private fun currentMedia(controllers: List<MediaController>): IslandActivity.Media? {
+        // A session that has gone away takes its pause clock with it, so a player that comes back paused gets its
+        // fifteen minutes again instead of being judged on a pause from an hour ago — and the map can't grow forever.
+        pausedSince.keys.retainAll(controllers.map { it.packageName }.toSet())
         // Anything playing is not forgotten, so its pause clock starts again from zero next time it stops.
-        controllers.filter { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+        controllers.filter { playbackIsLive(it.playbackState?.state) }
             .forEach { pausedSince.remove(it.packageName) }
-        val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PAUSED && stillWorthShowing(it) }
-            ?: return null
-        val meta = active.metadata ?: return null
-        val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE) ?: return null
-        val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
-        return IslandActivity.Media(active.packageName, title, artist,
-            appIcon(active.packageName), active.playbackState?.state == PlaybackState.STATE_PLAYING, active.sessionToken,
-            art = albumArt(active.packageName, title, artist, meta))
-            .also { it.controller = active }
+        val order = controllers.filter { playbackIsLive(it.playbackState?.state) } +
+            controllers.filter { it.playbackState?.state == PlaybackState.STATE_PAUSED && stillWorthShowing(it) }
+        // One session without a title used to hide a perfectly good one behind it, so each is tried in turn.
+        for (active in order) {
+            val meta = active.metadata ?: continue
+            val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE) ?: continue
+            val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
+            return IslandActivity.Media(active.packageName, title, artist,
+                appIcon(active.packageName), playbackIsLive(active.playbackState?.state), active.sessionToken,
+                art = albumArt(active.packageName, title, artist, meta))
+                .also { it.controller = active }
+        }
+        return null
     }
 
     /** Cached per track so each playback update reuses one small bitmap (stable equality, no re-scaling). */
@@ -497,6 +503,13 @@ class IslandListenerService : NotificationListenerService() {
         private val pausedSince = mutableMapOf<String, Long>()
         /** How long a paused track stays in the island: long enough to come back to, short enough not to be clutter. */
         private const val PAUSED_KEEP_MS = 15 * 60 * 1000L
+
+        /**
+         * Playback that is running, not stopped: buffering and connecting count, because a track that pauses to load
+         * would otherwise drop out of the island and reappear a second later, once on every skip.
+         */
+        internal fun playbackIsLive(state: Int?) = state == PlaybackState.STATE_PLAYING ||
+            state == PlaybackState.STATE_BUFFERING || state == PlaybackState.STATE_CONNECTING
         private val QUIET_CATEGORIES = setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_TRANSPORT, Notification.CATEGORY_PROGRESS,
             Notification.CATEGORY_SERVICE, Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_STATUS, "stopwatch", "location_sharing", "workout")
         private val OVERFLOW_TITLE = Regex("^\\d+ more notifications?$", RegexOption.IGNORE_CASE)
