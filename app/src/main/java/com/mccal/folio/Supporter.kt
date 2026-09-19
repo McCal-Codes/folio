@@ -25,6 +25,9 @@ internal object Supporter {
      */
     private fun startedKey(serial: Long) = "supporter_started_$serial"
 
+    /** No Folio code exists before this, so a phone whose clock says earlier than this doesn't know the date yet. */
+    private val CLOCK_FLOOR: LocalDate = LocalDate.of(2026, 1, 1)
+
     /** Public keys a code may be signed with: McCal's, plus a test key the dev build (com.mccal.folio.dev) accepts. */
     private fun keys(context: Context): List<String> = listOfNotNull(
         BetaKeys.SUPPORTER.takeIf { it.isNotBlank() },
@@ -37,11 +40,26 @@ internal object Supporter {
         val text = stored(context) ?: return null
         val code = (BetaCodes.verify(text, keys(context), today, BetaKeys.WITHDRAWN) as? BetaCodes.Result.Valid)?.code
             ?: return null
-        return code.takeIf { !it.expired(today, started(context, it)) }
+        return code.takeIf { !it.expired(today, window(context, it, today)) }
     }
 
-    /** When this code's time runs out here, counting a months code from the day it was redeemed. */
-    fun ends(context: Context, code: BetaCodes.Code): LocalDate? = code.ends(started(context, code))
+    /** When this code's time runs out here, counting a months code from the day its window began. */
+    fun ends(context: Context, code: BetaCodes.Code, today: LocalDate = LocalDate.now()): LocalDate? =
+        code.ends(supporterWindowStart(started(context, code), today, code.months, CLOCK_FLOOR))
+
+    /**
+     * The day this code's window began here, written down the first time there's a day worth writing down. A phone
+     * that doesn't know the date yet doesn't start anyone's month, and a day in the future — a clock that was wrong
+     * when the code was redeemed — is replaced rather than kept, so a bad clock can't burn a code for good.
+     */
+    private fun window(context: Context, code: BetaCodes.Code, today: LocalDate): LocalDate? {
+        val stored = started(context, code)
+        val start = supporterWindowStart(stored, today, code.months, CLOCK_FLOOR)
+        if (start != null && start != stored) {
+            context.getSharedPreferences(PREFS, 0).edit().putLong(startedKey(code.serial), start.toEpochDay()).apply()
+        }
+        return start
+    }
 
     private fun started(context: Context, code: BetaCodes.Code): LocalDate? =
         context.getSharedPreferences(PREFS, 0).getLong(startedKey(code.serial), 0L)
@@ -55,14 +73,10 @@ internal object Supporter {
         val result = BetaCodes.verify(text, keys(context), today, BetaKeys.WITHDRAWN)
         if (result !is BetaCodes.Result.Valid) return result
         val code = result.code
-        val prefs = context.getSharedPreferences(PREFS, 0)
         // A months code starts its window the first time it is redeemed here; a code coming back after its window
         // has run out is expired, not a fresh month.
-        val started = started(context, code) ?: today.takeIf { code.months > 0 }
-        if (code.expired(today, started)) return BetaCodes.Result.Expired(code)
-        val editor = prefs.edit().putString(CODE, BetaCodes.group(text))
-        started?.let { editor.putLong(startedKey(code.serial), it.toEpochDay()) }
-        editor.apply()
+        if (code.expired(today, window(context, code, today))) return BetaCodes.Result.Expired(code)
+        context.getSharedPreferences(PREFS, 0).edit().putString(CODE, BetaCodes.group(text)).apply()
         return result
     }
 
@@ -84,6 +98,22 @@ internal object Supporter {
     fun setBetaOn(context: Context, on: Boolean) {
         context.getSharedPreferences(PREFS, 0).edit().putBoolean(BETA, on).apply()
     }
+}
+
+/**
+ * When a months code's window begins, apart from Android so it can be checked. [stored] is the day already written
+ * down for this code, [today] what the phone believes the date is, and [floor] the earliest date a Folio code could
+ * have been redeemed on.
+ *
+ * A day already written down is kept, because the window must not restart when someone re-pastes their code. It is
+ * dropped only when it lies in the future, which means the clock was wrong when the code was redeemed — otherwise a
+ * phone that had the wrong year for a minute would refuse that code for good. A phone whose clock hasn't been set
+ * starts nobody's month: the window waits until there's a real date to count from.
+ */
+internal fun supporterWindowStart(stored: LocalDate?, today: LocalDate, months: Int, floor: LocalDate): LocalDate? {
+    if (months <= 0) return null
+    if (stored != null && !stored.isAfter(today)) return stored
+    return today.takeIf { !it.isBefore(floor) }
 }
 
 /**

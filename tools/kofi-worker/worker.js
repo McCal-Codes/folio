@@ -84,7 +84,8 @@ function poolFor(data, env) {
   if (data.type === 'Tip' || data.type === 'Donation') {
     const paid = Number(data.amount ?? 0)
     const bands = [...(rules.tipBands ?? [])].sort((a, b) => Number(b.from) - Number(a.from))
-    for (const band of bands) if (paid >= Number(band.from)) return band.pool ?? null
+    // A band with no pool is half-written, not a rule to obey: skip it so the flat tipPool below is still reachable.
+    for (const band of bands) if (band.pool && paid >= Number(band.from)) return band.pool
     const from = Number(rules.tipFrom ?? Infinity)
     return paid >= from ? rules.tipPool ?? null : null
   }
