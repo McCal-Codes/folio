@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -116,7 +117,7 @@ private fun PinCard(onCancel: () -> Unit, error: String?, addLabel: String, tag:
                 .clickable(onClick = onAdd).testTag("$tag-add"), contentAlignment = Alignment.Center) {
                 Text(addLabel, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             }
-            Text("Cancel", color = FolioColors.Blue, fontSize = 17.sp, modifier = Modifier.clickable(onClick = onCancel).padding(8.dp))
+            Text(stringResource(R.string.cancel), color = FolioColors.Blue, fontSize = 17.sp, modifier = Modifier.clickable(onClick = onCancel).padding(8.dp))
         }
     }
 }

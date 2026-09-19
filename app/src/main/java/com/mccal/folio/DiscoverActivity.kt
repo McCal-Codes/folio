@@ -177,7 +177,7 @@ class DiscoverActivity : DiscoverPageActivity() {
         val bounds = windowManager.currentWindowMetrics.bounds
         fullSize.value = Size(bounds.width().toFloat(), bounds.height().toFloat())
         if (!DiscoverEmbedding.supported(this)) {
-            Toast.makeText(this, "This device can't show Discover beside the dock.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.this_device_can_t_show_discover_beside, Toast.LENGTH_LONG).show()
             DiscoverSession.home(this); return
         }
         lifecycleScope.launch {
@@ -219,7 +219,7 @@ class DiscoverActivity : DiscoverPageActivity() {
             val launcherApps = getSystemService(LauncherApps::class.java)
             app.shortcutId?.let { launcherApps.startShortcut(app.packageName, it, null, null, user) }
                 ?: launcherApps.startMainActivity(app.component, user, null, null)
-        } catch (_: RuntimeException) { Toast.makeText(this, "${app.label} is unavailable.", Toast.LENGTH_SHORT).show() }
+        } catch (_: RuntimeException) { Toast.makeText(this, getString(R.string.app_is_unavailable, app.label), Toast.LENGTH_SHORT).show() }
     }
 }
 
@@ -338,7 +338,7 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
     private fun openGoogle() {
         val intent = packageManager.getLaunchIntentForPackage(DiscoverClient.GOOGLE_PACKAGE)
         if (intent != null) runCatching { startActivity(intent) }
-        else Toast.makeText(this, "Install or enable the Google app first.", Toast.LENGTH_LONG).show()
+        else Toast.makeText(this, R.string.install_or_enable_the_google_app_first, Toast.LENGTH_LONG).show()
     }
 }
 

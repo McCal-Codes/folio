@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 /** One version's notes from CHANGELOG.md: its number, date, and bullet points grouped by heading (Added, Changed, Fixed). */
 data class ReleaseNotes(val version: String, val date: String?, val sections: List<Pair<String, List<String>>>)
@@ -126,13 +127,13 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
                         folioIconBitmap(context)?.let { androidx.compose.foundation.Image(it, null, androidx.compose.ui.Modifier.size(72.dp)
                             .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))) }
-                        androidx.compose.material3.Text("What's New in Folio", color = androidx.compose.ui.graphics.Color.White, fontSize = 30.sp,
+                        androidx.compose.material3.Text(stringResource(R.string.what_s_new_in_folio), color = androidx.compose.ui.graphics.Color.White, fontSize = 30.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = androidx.compose.ui.Modifier.padding(top = 14.dp))
                         release?.let {
                             androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.padding(top = 8.dp),
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                androidx.compose.material3.Text("Version ${it.version}", color = FolioColors.Cyan,
+                                androidx.compose.material3.Text(stringResource(R.string.version_1, it.version), color = FolioColors.Cyan,
                                     fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                                     modifier = androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                                         .background(FolioColors.Cyan.copy(alpha = .16f)).padding(horizontal = 10.dp, vertical = 4.dp))
@@ -175,7 +176,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                             androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 .clickable { expanded = if (open) expanded - notes.version else expanded + notes.version }
                                 .padding(horizontal = 16.dp).testTag("history-${notes.version}"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                androidx.compose.material3.Text("Version ${notes.version}", color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
+                                androidx.compose.material3.Text(stringResource(R.string.version_1, notes.version), color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
                                     modifier = androidx.compose.ui.Modifier.weight(1f))
                                 notes.date?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 15.sp) }
                                 androidx.compose.material3.Icon(if (open) androidx.compose.material.icons.Icons.Rounded.ExpandLess else androidx.compose.material.icons.Icons.Rounded.ExpandMore,
@@ -197,7 +198,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = 16.dp).heightIn(min = 52.dp)
                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(FolioColors.Blue)
                 .clickable(onClick = onDismiss).testTag("whats-new-continue"), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                androidx.compose.material3.Text("Continue", color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp,
+                androidx.compose.material3.Text(stringResource(R.string.continue_choice), color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
             }
         }

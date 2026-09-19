@@ -44,6 +44,7 @@ internal class DiscoverClient(
     fun connect() {
         if (activity.isDestroyed || activity.isFinishing) return
         disconnect()
+        trace { "connect: pagerDriven=$pagerDriven verticalStatus=$verticalStatus" }
         onState("Connecting to Discover…")
         val attempt = generation
         val callback = object : Binder() {
@@ -55,6 +56,8 @@ internal class DiscoverClient(
                 val status = if (code == 2) data.readInt() else 0
                 handler.post {
                     if (generation != attempt || remote == null) return@post
+                    trace { if (code == 2) "status=$status ready=${status and 1 != 0} closing=$closing resumed=$resumed"
+                        else "scroll=%.3f tracking=%b closing=%b".format(scroll, dismissal.tracking, closing) }
                     if (code == 2) {
                         if (closing) return@post
                         ready = status and 1 != 0
@@ -96,6 +99,7 @@ internal class DiscoverClient(
                     return
                 }
                 remote = service
+                trace { "bound to ${name.flattenToShortString()}" }
                 handler.post {
                     if (generation != attempt || activity.isDestroyed) return@post
                     val attrs = WindowManager.LayoutParams().apply {
@@ -118,6 +122,7 @@ internal class DiscoverClient(
                         putParcelable("configuration", activity.resources.configuration)
                         putInt("client_options", 1)
                     }
+                    trace { "windowAttached: resumed=$resumed bounds=${activity.window.decorView.width}x${activity.window.decorView.height}" }
                     send(14) { writeInt(1); bundle.writeToParcel(this, 0); writeStrongBinder(callback) }
                     // Resume attachment, then wait for Google's ready status before opening.
                     if (resumed) send(8)
@@ -231,6 +236,7 @@ internal class DiscoverClient(
         }
     }
     private fun failed(message: String, attempt: Int) {
+        trace { "failed: $message" }
         if (generation != attempt) return
         disconnect()
         onState(message)
@@ -238,6 +244,7 @@ internal class DiscoverClient(
 
     private fun send(code: Int, payload: Parcel.() -> Unit = {}) {
         val binder = remote ?: return
+        trace { "send ${transactionName(code)}" }
         val data = Parcel.obtain()
         try {
             data.writeInterfaceToken(OVERLAY); data.payload()
@@ -268,9 +275,24 @@ internal class DiscoverClient(
 
         const val OVERLAY_ACTION = "com.android.launcher3.WINDOW_OVERLAY"
 
+        /**
+         * Turn on with `adb shell setprop log.tag.FolioDiscover DEBUG`, then watch `adb logcat -s FolioDiscover`.
+         * Off in everyone's build: nothing is written unless the tag is switched on by hand.
+         */
+        internal inline fun trace(message: () -> String) {
+            if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) android.util.Log.d(TAG, message())
+        }
+
+        /** Launcher3's overlay AIDL, by transaction number, so the log reads like the protocol. */
+        private fun transactionName(code: Int) = when (code) {
+            1 -> "startScroll"; 2 -> "onScroll"; 3 -> "endScroll"; 6 -> "closeOverlay"
+            7 -> "onPause"; 8 -> "onResume"; 9 -> "openOverlay"; 14 -> "windowAttached"; 15 -> "setActivityState"
+            else -> "transaction $code"
+        }
+
         /** The overlay protocol version Launcher3's own client asks for; the Google app refuses versions it doesn't know. */
         private const val OVERLAY_VERSION = 9
-        private const val TAG = "DuoDiscover"
+        const val TAG = "FolioDiscover"
         private const val OVERLAY = "com.google.android.libraries.launcherclient.ILauncherOverlay"
         private const val CALLBACK = "com.google.android.libraries.launcherclient.ILauncherOverlayCallback"
     }

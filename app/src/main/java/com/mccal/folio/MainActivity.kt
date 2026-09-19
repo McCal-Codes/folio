@@ -25,6 +25,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.viewModels
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.res.stringResource
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -125,7 +126,7 @@ class MainActivity : ComponentActivity() {
             val safeAcknowledged = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
             if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {},
                 title = { androidx.compose.material3.Text(getString(R.string.folio_started_in_safe_mode)) },
-                text = { androidx.compose.material3.Text("Folio closed unexpectedly twice, so optional features are paused: app panels, Actions, the fold animation, Lock Cover, the island and dock over other apps, and tinting. Your settings haven’t changed.") },
+                text = { androidx.compose.material3.Text(stringResource(R.string.folio_closed_unexpectedly_twice_so_opt)) },
                 confirmButton = { androidx.compose.material3.TextButton(onClick = { SafeMode.exit(this@MainActivity); safeMode.value = false }) {
                     androidx.compose.material3.Text(getString(R.string.restart_normally)) } },
                 dismissButton = { androidx.compose.material3.TextButton(onClick = { safeAcknowledged.value = true }) {
@@ -257,8 +258,8 @@ class MainActivity : ComponentActivity() {
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
-                        title = { androidx.compose.material3.Text("Apply \u201c${theme.name}\u201d?") },
-                        text = { androidx.compose.material3.Text("This changes icons, badges, glass, text on Home and the status bar. Your apps, pages and widgets stay as they are. You can undo it in Settings \u203a Themes.") },
+                        title = { androidx.compose.material3.Text(stringResource(R.string.apply_1, theme.name)) },
+                        text = { androidx.compose.material3.Text(stringResource(R.string.this_changes_icons_badges_glass_text_on)) },
                         confirmButton = { androidx.compose.material3.TextButton(onClick = { model.applyTheme(theme); sharedTheme.value = null }) {
                             androidx.compose.material3.Text(getString(R.string.apply)) } },
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { sharedTheme.value = null }) {
@@ -492,7 +493,7 @@ class MainActivity : ComponentActivity() {
             val shortcut = app.shortcutId
             if (shortcut != null) launcherApps.startShortcut(app.packageName, shortcut, screenBounds(bounds), launchOptions(bounds), user)
             else launcherApps.startMainActivity(app.component, user, screenBounds(bounds), launchOptions(bounds))
-        } catch (_: Exception) { IslandEvents.notice(this, "${app.label} is unavailable.", app.icon); model.refresh() }
+        } catch (_: Exception) { IslandEvents.notice(this, getString(R.string.app_is_unavailable, app.label), app.icon); model.refresh() }
     }
 
     private fun screenBounds(bounds: android.graphics.Rect?): android.graphics.Rect? = bounds?.takeUnless { it.isEmpty }?.let {
@@ -618,8 +619,21 @@ class MainActivity : ComponentActivity() {
         LiveDiscover.setExternalResultPending(this, "main", "appearance-location", false)
     }
 
+    /** The window's size in dp, to tell a fold or a resize from a change that leaves the layout alone. */
+    private var lastWindowSize: Pair<Int, Int>? = null
+        get() = field ?: (resources.configuration.screenWidthDp to resources.configuration.screenHeightDp).also { field = it }
+
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        // A panel is drawn for the screen it opened on. Folding, unfolding or being resized leaves it laid out for a
+        // screen that is no longer there, and on some phones it can't be dismissed at all (reported on r/GalaxyFold
+        // from a Fold8 Ultra), so a real size change closes it and Home comes back clean.
+        val size = newConfig.screenWidthDp to newConfig.screenHeightDp
+        val was = lastWindowSize
+        lastWindowSize = size
+        // Only the panel: Spotlight lays itself out for the new screen, and closing it would throw away a search
+        // somebody is halfway through typing.
+        if (windowChangedShape(was, size)) topPanel.value = null
         // Folding, Display size, Smallest width or split screen can bring Android's status bar back over the Side Bar
         // status; hide it again once the new layout is in place.
         window.decorView.post { setStatusMode(model.state.value.verticalStatus) }
@@ -647,7 +661,7 @@ class MainActivity : ComponentActivity() {
                 ?: throw IllegalStateException(getString(R.string.profile_is_unavailable))
             getSystemService(LauncherApps::class.java).startAppDetailsActivity(app.component, user, null, null)
         } catch (_: Exception) {
-            IslandEvents.notice(this, "${app.label} is unavailable.", app.icon)
+            IslandEvents.notice(this, getString(R.string.app_is_unavailable, app.label), app.icon)
             model.refresh()
         }
     }

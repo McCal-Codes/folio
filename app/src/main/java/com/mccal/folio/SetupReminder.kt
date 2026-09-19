@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -107,7 +108,7 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
                     SetupRing(required.size - left, required.size, 52.dp, secondary.copy(alpha = .25f))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Finish Setting Up Folio", color = primary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.finish_setting_up_folio), color = primary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         Text(required.filterNot { it.done }.joinToString(", ") { it.title }, color = secondary, fontSize = 14.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }

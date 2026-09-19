@@ -24,6 +24,7 @@ internal object DiscoverBounds {
     @Volatile private var measuredViewport: Rect? = null
     val available get() = overlayKey != null
     fun resetViewport() { measuredViewport = null }
+    /** A mismatch here is why the feed can come back the wrong size after a fold; the trace says which size won. */
     fun matchesViewport(width: Int, height: Int): Boolean = !available || measuredViewport?.let {
         kotlin.math.abs(it.width() - width) <= 2 && kotlin.math.abs(it.height() - height) <= 2
     } == true
@@ -99,6 +100,7 @@ internal object DiscoverBounds {
             }
             componentType.getMethod("setActivityStackAttributesCalculator", functionType).invoke(component, calculator)
             overlayKey = key
+            DiscoverClient.trace { "embedding ready" }
         } catch (e: ReflectiveOperationException) {
             Log.i("DuoDiscover", "Using split host; padded extension unavailable", e)
         } catch (e: LinkageError) {

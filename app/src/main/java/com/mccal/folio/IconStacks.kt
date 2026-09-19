@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -153,10 +154,10 @@ internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: Lis
             AppIcon(anchor, null, Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), badge = false)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("${anchor.label} Stack", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("Swipe down on ${anchor.label} to open these. ${chosen.size} of ${IconStacks.MAX}", color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
+                Text(stringResource(R.string.stack_1, anchor.label), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.swipe_down_on_1_to_open_these_2_of_3, anchor.label, chosen.size, IconStacks.MAX), color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
             }
-            Text("Done", color = FolioColors.Blue, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+            Text(stringResource(R.string.done), color = FolioColors.Blue, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onDone).padding(8.dp))
         }
         IosSearchField(query, { query = it }, "Search apps", Modifier.padding(vertical = 12.dp))

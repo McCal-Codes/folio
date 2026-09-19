@@ -383,7 +383,7 @@ internal fun WidgetActions(
                     Text(stringResource(R.string.width), Modifier.weight(1f), color = Color.White)
                     IconButton(enabled = constraints?.canResizeHorizontally != false,
                         onClick = { if (feasible) width = (width - 1).coerceAtLeast(minWidth) }) { Icon(Icons.Rounded.Remove, "Decrease widget width", tint = Color.White) }
-                    Text("$width columns", Modifier.width(88.dp), textAlign = TextAlign.Center, color = Color.White)
+                    Text(stringResource(R.string.columns_1, width), Modifier.width(88.dp), textAlign = TextAlign.Center, color = Color.White)
                     IconButton(enabled = constraints?.canResizeHorizontally != false,
                         onClick = { if (feasible) width = (width + 1).coerceAtMost(maxWidth) }) { Icon(Icons.Rounded.Add, "Increase widget width", tint = Color.White) }
                 }
@@ -391,7 +391,7 @@ internal fun WidgetActions(
                     Text(stringResource(R.string.height), Modifier.weight(1f), color = Color.White)
                     IconButton(enabled = constraints?.canResizeVertically != false,
                         onClick = { if (feasible) height = (height - 1).coerceAtLeast(minHeight) }) { Icon(Icons.Rounded.Remove, "Decrease widget height", tint = Color.White) }
-                    Text("$height rows", Modifier.width(88.dp), textAlign = TextAlign.Center, color = Color.White)
+                    Text(stringResource(R.string.rows_1, height), Modifier.width(88.dp), textAlign = TextAlign.Center, color = Color.White)
                     IconButton(enabled = constraints?.canResizeVertically != false,
                         onClick = { if (feasible) height = (height + 1).coerceAtMost(maxHeight) }) { Icon(Icons.Rounded.Add, "Increase widget height", tint = Color.White) }
                 }
@@ -410,7 +410,7 @@ internal fun WidgetActions(
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     repeat(homePages) { page ->
                         IosChip(selected = placement.page == page, onClick = { onMoveToPage(page) },
-                            label = { Text("Page ${page + 1}") }, modifier = Modifier.testTag("widget-move-${placement.slot}-page-$page"))
+                            label = { Text(stringResource(R.string.page_1, page + 1)) }, modifier = Modifier.testTag("widget-move-${placement.slot}-page-$page"))
                     }
                 }
             }

@@ -332,7 +332,7 @@ fun LauncherScreen(
     state.error?.takeIf { !problemDismissed && sheet.isEmpty() }?.let { message ->
         if (model.layoutDamaged) AlertDialog(onDismissRequest = { problemDismissed = true },
             title = { Text(stringResource(R.string.your_home_layout_couldn_t_be_loaded)) },
-            text = { Text("Folio kept your saved layout untouched and is showing a basic Home for now. Restore a backup or an earlier layout, or start fresh (Folio keeps a copy of the old one).") },
+            text = { Text(stringResource(R.string.folio_kept_your_saved_layout_untouched)) },
             confirmButton = { TextButton(onClick = { SettingsLink.page = CustomizationPage.BACKUP; customizationPage = CustomizationPage.BACKUP; sheet = "settings" }) { Text(stringResource(R.string.restore_2)) } },
             dismissButton = { Row {
                 TextButton(onClick = { problemDismissed = true }) { Text(stringResource(R.string.not_now)) }

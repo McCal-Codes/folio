@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -114,12 +115,12 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green, modifier = Modifier.size(18.dp))
-            Text("Connected", color = secondary, fontSize = 15.sp)
+            Text(stringResource(R.string.connected), color = secondary, fontSize = 15.sp)
         }
         Spacer(Modifier.height(18.dp))
         Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
             .clickable(role = Role.Button, onClick = onDone), contentAlignment = Alignment.Center) {
-            Text("Done", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.done), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

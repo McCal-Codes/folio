@@ -523,7 +523,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     val foldPrefs = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("folio", 0)
                     var learned by remember { mutableStateOf(foldPrefs.getFloat("fold_open_ms", 520f) to foldPrefs.getFloat("fold_close_ms", 650f)) }
                     SettingsCard(stringResource(R.string.your_fold_timing)) {
-                        Text("Unfold: about ${learned.first.toInt()} ms · Fold: about ${learned.second.toInt()} ms",
+                        Text(stringResource(R.string.unfold_about_1_ms_fold_about_2_ms, learned.first.toInt(), learned.second.toInt()),
                             style = MaterialTheme.typography.bodyLarge)
                         CardAction(stringResource(R.string.reset_fold_timing), onClick = {
                             foldPrefs.edit().remove("fold_open_ms").remove("fold_close_ms").apply()
@@ -581,9 +581,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             fun openForm() { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.url(helpContext)))) } }
                             AlertDialog(onDismissRequest = { askDiagnostics = false },
                                 title = { Text(stringResource(R.string.include_diagnostics)) },
-                                text = { Text("Copy Diagnostics puts your phone and screen settings, recent Folio events and Folio's own log on the clipboard, so you can paste it into the form. Check it before posting; nothing is sent until you submit.") },
+                                text = { Text(stringResource(R.string.copy_diagnostics_puts_your_phone_and_scr)) },
                                 confirmButton = { TextButton(onClick = { askDiagnostics = false; Diagnostics.copy(helpContext); openForm() },
-                                    modifier = Modifier.testTag("report-copy-diagnostics")) { Text("Copy Diagnostics") } },
+                                    modifier = Modifier.testTag("report-copy-diagnostics")) { Text(stringResource(R.string.copy_diagnostics)) } },
                                 dismissButton = { TextButton(onClick = { askDiagnostics = false; openForm() }) { Text(stringResource(R.string.just_open_form)) } })
                         }
                         MenuDivider()
@@ -803,7 +803,7 @@ private val IosBlue = FolioColors.Blue
         val icon = remember { folioIconBitmap(context) }
         if (icon != null) androidx.compose.foundation.Image(icon, null, Modifier.size(72.dp).clip(RoundedCornerShape(18.dp)))
         Text(stringResource(R.string.folio), color = androidx.compose.ui.graphics.Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-        Text("iPhone Duo for your Fold · v$version", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 14.sp)
+        Text(stringResource(R.string.iphone_duo_for_your_fold_v, version), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 14.sp)
     }
 }
 
@@ -846,7 +846,7 @@ private val IosBlue = FolioColors.Blue
         CardNote(stringResource(R.string.still_nothing_choose_a_different_digital))
         // Good Lock's RegiStar can take over the side key before Android's assistant setting is used.
         val registar = remember(tick) { runCatching { context.packageManager.getPackageInfo("com.samsung.android.app.galaxyregistry", 0) }.isSuccess }
-        if (registar) Text("RegiStar (Good Lock) is installed. If it has its own side key action, it runs instead: set RegiStar's Press and hold to Digital assistant, or turn that action off.",
+        if (registar) Text(stringResource(R.string.registar_good_lock_is_installed_if_it_h),
             style = MaterialTheme.typography.bodySmall, color = FolioColors.Orange)
     }
     SettingsCard(stringResource(R.string.double_press)) {
@@ -936,7 +936,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
 
 @Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit) {
     val results = SettingsIndex.filter { (title, keywords) -> settingsMatches(query, title, keywords) }
-    if (results.isEmpty()) Text("No Results for “${query.trim()}”", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
+    if (results.isEmpty()) Text(stringResource(R.string.no_results_for_1, query.trim()), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
         modifier = Modifier.fillMaxWidth().padding(24.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     else SheetGroup {
         results.forEachIndexed { index, (title, _, page) ->
@@ -983,7 +983,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
             Row(Modifier.fillMaxWidth().clickable(onClick = perm.action).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(perm.name, color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp)
-                    Text("Used by: ${perm.usedBy}", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 13.sp)
+                    Text(stringResource(R.string.used_by_1, perm.usedBy), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 13.sp)
                 }
                 Text(if (perm.allowed) stringResource(R.string.allowed) else "Off", color = if (perm.allowed) FolioColors.Green
                     else androidx.compose.ui.graphics.Color.White.copy(alpha = .5f), fontSize = 15.sp)
@@ -1022,7 +1022,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
         CardNote(stringResource(R.string.default_follows_enabled_on_or_off_applie))
     }
     SettingsCard(stringResource(R.string.about)) {
-        TextButton(onClick = { model.resetTweak(tweak) }) { Text("Reset ${tweak.name}") }
+        TextButton(onClick = { model.resetTweak(tweak) }) { Text(stringResource(R.string.reset_1, tweak.name)) }
         CardNote("Inspired by ${tweak.inspiredBy}. Re-created from scratch; no tweak code is included.")
     }
     SheetGroup { IosActionRow("Remove ${tweak.name}", "tweak-remove-${tweak.id}", destructive = true) { model.removeTweak(tweak) } }
@@ -1159,13 +1159,13 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
         val pages = real.layout.pageCount
         Text(stringResource(R.string.show_pages), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IosChip(mode.pages == null, { model.updateFocusMode(mode.copy(pages = null)) }, label = { Text("All") })
+            IosChip(mode.pages == null, { model.updateFocusMode(mode.copy(pages = null)) }, label = { Text(stringResource(R.string.all)) })
             repeat(pages) { page ->
                 val shown = mode.pages?.contains(page) == true
                 IosChip(shown, {
                     val next = (mode.pages ?: emptySet()).let { if (shown) it - page else it + page }
                     model.updateFocusMode(mode.copy(pages = next.ifEmpty { null }))
-                }, label = { Text("Page ${page + 1}") }, modifier = Modifier.testTag("focus-page-$page"))
+                }, label = { Text(stringResource(R.string.page_1, page + 1)) }, modifier = Modifier.testTag("focus-page-$page"))
             }
         }
         CardNote("Only these pages show while ${mode.name} is on. Editing Home is paused until it ends, so nothing moves on the hidden pages.")
@@ -1401,7 +1401,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
         }
         return
     }
-    Text("HIDDEN APPS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+    Text(stringResource(R.string.hidden_apps), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
     hidden.forEach { app ->
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             AppIcon(app, null, Modifier.size(32.dp), shape = RoundedCornerShape(8.dp))
@@ -1441,7 +1441,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
     }
     if (confirmIPhone) AlertDialog(onDismissRequest = { confirmIPhone = false },
         title = { Text(stringResource(R.string.arrange_like_iphone_2)) },
-        text = { Text("Your first Home page and dock get iPhone’s layout (FaceTime, Calendar, Photos, Camera… with Phone, Safari, Messages and Music in the dock) using the matching apps on this phone. Apps already there move to your next page. You can undo this.") },
+        text = { Text(stringResource(R.string.your_first_home_page_and_dock_get_iphon)) },
         confirmButton = { TextButton(onClick = { confirmIPhone = false; model.arrangeLikeIPhone() }) { Text(stringResource(R.string.arrange)) } },
         dismissButton = { TextButton(onClick = { confirmIPhone = false }) { Text(stringResource(R.string.cancel)) } })
     SettingsCard(stringResource(R.string.layout)) {
@@ -1489,7 +1489,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
             val style = real.pageStyles[page] ?: PageStyle()
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).testTag("page-style-$page"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Page ${page + 1}", color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.page_1, page + 1), color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
                     if (page == homePage) Text(stringResource(R.string.showing), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .5f), fontSize = 13.sp)
                 }
                 IosSegmented(PageStyle.SIZES.map { it.second to it.first }, style.iconScale, { model.setPageStyle(page, style.copy(iconScale = it)) }, tag = "page-size-$page")
@@ -1770,7 +1770,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
 
 /** Beta label beside a title, like TestFlight features. */
 @Composable private fun BetaTag() {
-    Text("BETA", color = FolioColors.Orange, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+    Text(stringResource(R.string.beta), color = FolioColors.Orange, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
         modifier = Modifier.padding(start = 8.dp).border(1.dp, FolioColors.Orange, RoundedCornerShape(5.dp))
             .padding(horizontal = 5.dp, vertical = 1.dp))
 }
@@ -1803,7 +1803,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
     confirm?.let { snapshot ->
         AlertDialog(onDismissRequest = { confirm = null },
             title = { Text(stringResource(R.string.restore_this_layout)) },
-            text = { Text("Home goes back to how it was (${snapshot.reason.lowercase()}). Your current layout is saved first, and apps you've since removed stay removed.") },
+            text = { Text(stringResource(R.string.home_goes_back_to_how_it_was_1, snapshot.reason.lowercase())) },
             confirmButton = { TextButton(onClick = { model.restoreLayoutSnapshot(snapshot); confirm = null; onClose() }) { Text(stringResource(R.string.restore)) } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text(stringResource(R.string.cancel)) } })
     }
@@ -1877,7 +1877,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
         title = { Text(stringResource(R.string.save_backup_2)) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Saved to ${FolioFiles.displayPath}.", fontSize = 13.sp)
+                Text(stringResource(R.string.saved_to_1, FolioFiles.displayPath), fontSize = 13.sp)
                 androidx.compose.foundation.text.BasicTextField(name, { name = it.take(60) },
                     Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
                         .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .1f)).padding(horizontal = 10.dp, vertical = 8.dp)
@@ -1908,7 +1908,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(tweak.name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Inspired by ${tweak.inspiredBy.substringBefore(" by ")}", fontSize = 13.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), maxLines = 1)
+                    Text(stringResource(R.string.inspired_by_1, tweak.inspiredBy.substringBefore(" by ")), fontSize = 13.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), maxLines = 1)
                 }
                 // Sileo's pill: Get in blue; once installed it reads Open and goes to the tweak's settings.
                 Text(if (installed) stringResource(R.string.open) else "Get", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
@@ -2027,9 +2027,9 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
             if (status !is SoftwareUpdate.Status.Downloading) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(onClick = {
                     if (status is SoftwareUpdate.Status.Ready) SoftwareUpdate.installReadyNow(context) else SoftwareUpdate.startInstall(context, release)
-                }, modifier = Modifier.weight(1f).testTag("update-install")) { Text("Update Now") }
+                }, modifier = Modifier.weight(1f).testTag("update-install")) { Text(stringResource(R.string.update_now)) }
                 if (!(status is SoftwareUpdate.Status.Ready && status.tonight)) OutlinedButton(onClick = { SoftwareUpdate.startUpdateTonight(context, release) },
-                    modifier = Modifier.weight(1f).testTag("update-tonight")) { Text("Update Tonight") }
+                    modifier = Modifier.weight(1f).testTag("update-tonight")) { Text(stringResource(R.string.update_tonight)) }
             }
             CardNote(stringResource(R.string.updating_restarts_home_for_a_moment))
         }

@@ -30,6 +30,9 @@ internal object FolioColors {
  * Settings › Gestures › Animation Speed; Reduce Motion is handled by the callers.
  */
 internal object FolioMotion {
+    /** How long the Gauge takes to sweep to a new battery level: long enough to read as movement, short enough to ignore. */
+    const val GAUGE_MS = 650
+
     /** Sheets and panels settling into place. */
     val Settle = .86f to 420f
     /** Quick responses to a touch (buttons, toggles, closing). */

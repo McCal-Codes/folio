@@ -13,17 +13,18 @@ class RedeemActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val code = redeemCode(intent?.data?.toString())
+        // The same wording Settings › Supporter uses, so a link and a typed code answer alike, in any language.
         val said = when {
-            code == null -> "That link doesn't carry a Folio code."
+            code == null -> R.string.that_link_doesn_t_carry_a_folio_code
             else -> when (Supporter.redeem(this, code)) {
-                is BetaCodes.Result.Valid -> "Code added. Thank you."
-                is BetaCodes.Result.Expired -> "That code has run out."
-                BetaCodes.Result.Withdrawn -> "That code has been withdrawn."
-                BetaCodes.Result.NotOurs -> "Folio doesn't recognize that code."
-                BetaCodes.Result.Unreadable -> "That doesn't look like a Folio code."
+                is BetaCodes.Result.Valid -> R.string.code_added_thank_you
+                is BetaCodes.Result.Expired -> R.string.that_code_has_run_out_ko_fi_codes_have_a
+                BetaCodes.Result.Withdrawn -> R.string.that_code_has_been_withdrawn_if_you_thin
+                BetaCodes.Result.NotOurs -> R.string.folio_doesn_t_recognize_that_code_check
+                BetaCodes.Result.Unreadable -> R.string.that_doesn_t_look_like_a_folio_code_past
             }
         }
-        Toast.makeText(this, said, Toast.LENGTH_LONG).show()
+        Toast.makeText(this, getString(said), Toast.LENGTH_LONG).show()
         runCatching {
             startActivity(android.content.Intent(this, MainActivity::class.java)
                 .setAction(android.content.Intent.ACTION_APPLICATION_PREFERENCES)

@@ -83,8 +83,12 @@ class BetaCodesTest {
         val other = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
         assertEquals(BetaCodes.Result.NotOurs,
             BetaCodes.verify(mint(0b1111), listOf(Base64.getEncoder().encodeToString(other.public.encoded)), today))
-        // One character changed is a code we didn't sign, never a different set of features.
-        val tampered = mint(0b0001).let { it.dropLast(1) + if (it.last() == 'Z') '0' else 'Z' }
+        // One character changed is a code we didn't sign, never a different set of features. The change has to land
+        // in the middle: base32's last character carries padding bits, and flipping those decodes to the same bytes.
+        val tampered = mint(0b0001).let { code ->
+            val at = code.length / 2
+            code.take(at) + (if (code[at] == 'Z') '0' else 'Z') + code.drop(at + 1)
+        }
         assertTrue(BetaCodes.verify(tampered, publicKey, today) is BetaCodes.Result.NotOurs)
         assertEquals(BetaCodes.Result.Unreadable, BetaCodes.verify("FOLIO-12345", publicKey, today))
         assertEquals(BetaCodes.Result.Unreadable, BetaCodes.verify("", publicKey, today))

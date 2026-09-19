@@ -22,7 +22,7 @@ class ThemeImportActivity : ComponentActivity() {
             val theme = kotlinx.coroutines.withTimeoutOrNull(2_000) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { readTheme(intent) }
             }
-            if (theme == null) Toast.makeText(this@ThemeImportActivity, "That file isn't a Folio theme.", Toast.LENGTH_SHORT).show()
+            if (theme == null) Toast.makeText(this@ThemeImportActivity, R.string.that_file_isn_t_a_folio_theme, Toast.LENGTH_SHORT).show()
             else startActivity(Intent(this@ThemeImportActivity, MainActivity::class.java).putExtra(EXTRA_THEME, theme.toJson().toString())
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             finish()

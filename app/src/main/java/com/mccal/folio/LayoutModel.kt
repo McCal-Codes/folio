@@ -147,6 +147,14 @@ const val HOME_REGULAR_MIN_HEIGHT_DP = 560f
 fun fitsRegularHomeLayout(widthDp: Float, heightDp: Float, classScale: Float = 1f) =
     widthDp * classScale >= ANDROID_MEDIUM_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
 
+/**
+ * Whether a configuration change actually moved the walls: a fold, an unfold, a rotation or a resize, rather than
+ * something like a font-scale or theme change that leaves the window where it was. A few dp of difference is the
+ * system bars coming and going, not a new screen.
+ */
+fun windowChangedShape(was: Pair<Int, Int>?, now: Pair<Int, Int>, slack: Int = 8): Boolean =
+    was != null && (kotlin.math.abs(was.first - now.first) > slack || kotlin.math.abs(was.second - now.second) > slack)
+
 /** Current density over the device's own ([stableDpi]); 1 when either is unknown. */
 fun classScale(densityDpi: Int, stableDpi: Int): Float =
     if (densityDpi <= 0 || stableDpi <= 0) 1f else densityDpi.toFloat() / stableDpi

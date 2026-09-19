@@ -313,7 +313,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                 }
                 item.text?.let { Text(it.lines().filter(String::isNotBlank).joinToString(" "), color = Color.White.copy(alpha = .88f),
                     fontSize = 14.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
-                if (extraCount > 0) Text("$extraCount more from ${item.appLabel}",
+                if (extraCount > 0) Text(stringResource(R.string.more_from_1_2, extraCount, item.appLabel),
                     color = FolioGlass.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
                 if (extraCount == 0 && (item.canReply || item.canMarkRead)) {
                     var replying by remember(item.key) { mutableStateOf(false) }
@@ -613,7 +613,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
                                 Spacer(Modifier.width(12.dp))
                                 Text(mode.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                if (on) Text("On", color = FolioGlass.secondary, fontSize = 13.sp)
+                                if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = 13.sp)
                             }
                         }
                     }
@@ -626,7 +626,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            if (current != null) Text("On", color = FolioGlass.secondary, fontSize = 13.sp)
+                            if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = 13.sp)
                         }
                     }
                 }

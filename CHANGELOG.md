@@ -21,6 +21,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Folder badges:** folders show the total of their apps' notification badges.
 - **Better bug reports:** Folio notes freezes and restarts, and Report a Bug can include them (kept on your phone).
 - **A live Roadmap:** see what's coming, updated from Folio's GitHub page.
+- **Folio Keys, for supporters:** a code that carries the keyboard scope shows where Folio's own keyboard has got to, in Settings › Supporter. It's in design — a separate app, because Android needs a keyboard to be its own input method — so there is nothing to install yet.
 
 - **Move apps without dragging:** TalkBack actions and Alt+arrow keys move apps and folders around Home and between pages.
 - **Wallpaper Tint:** one slider from Clear to Tinted glass (Wallpaper & Appearance › Glass).
@@ -56,6 +57,9 @@ Folio shows the newest section on the phone after an update, and every version u
 - Google Discover beside Home is only used on Android 17 and newer; on Android 16 (reported on the Galaxy Z Fold7, issue #12) it could leave smeared copies of Home on screen, so Discover opens as its own page there.
 - Creating a folder no longer shows a second copy of it on the unfolded screen's extra left page.
 - Folders can be moved again: dragging one no longer drops it onto itself (which buzzed and put it back).
+- Folding or rotating no longer throws away a search: the pull-down panel closes, Spotlight keeps what you typed, and the panel now closes on the first fold after a restart too.
+- In the Gauge, the mark shown when there's nothing to connect to sits in the middle of the ring, level with the Wi-Fi one.
+- The last of Folio's own words follow your language: brief messages (a file that isn't a theme, an app that won't open, a redeemed code) and the text left in What's New, Choose Home Apps, widget editing, Up Next, restore and the alerts.
 
 ## [0.6.0] - 2026-09-16
 

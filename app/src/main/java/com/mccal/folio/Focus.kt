@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 /**
  * An iOS-style Focus. Turning one on can silence notifications (an Android Do Not Disturb rule Folio owns),
@@ -298,7 +299,7 @@ internal fun FocusLockNotice(trigger: Int, mode: FocusMode?, modifier: androidx.
             .padding(horizontal = 16.dp, vertical = 10.dp).testTag("focus-lock-notice"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             androidx.compose.material3.Icon(m.icon(), null, tint = androidx.compose.ui.graphics.Color(m.color), modifier = androidx.compose.ui.Modifier.size(18.dp))
             androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.width(8.dp))
-            androidx.compose.material3.Text("Turn off ${m.name} to edit Home Screen", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp,
+            androidx.compose.material3.Text(stringResource(R.string.turn_off_1_to_edit_home_screen, m.name), color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
     }

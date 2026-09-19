@@ -65,7 +65,7 @@ internal object Supporter {
  * his Mac; `scripts/beta-code.py` makes both the key and the codes). [TEST] signs codes for development builds only.
  */
 internal object BetaKeys {
-    const val SUPPORTER = ""
+    const val SUPPORTER = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM4vVq0D/ZzqkVWlyQYMTFN3TTbdqRgKdt2a30T88NkeQhDEWnujFjfyXyKtPIVBKMSiRVXeY/OcC0+TaB6eypg=="
     const val TEST = ""
 
     /**

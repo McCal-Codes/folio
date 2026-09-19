@@ -119,7 +119,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 }
                 Spacer(Modifier.weight(1f))
                 // Setup is optional: Home works without it, and everything is in Settings.
-                if (page.key != "done") Text("Skip", color = IosBlue, fontSize = 17.sp,
+                if (page.key != "done") Text(stringResource(R.string.skip), color = IosBlue, fontSize = 17.sp,
                     modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { finish() }.padding(10.dp).testTag("onboarding-skip"))
             }
             AnimatedContent(index, Modifier.weight(1f), label = "onboarding page",

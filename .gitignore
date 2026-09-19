@@ -21,3 +21,4 @@ tools/kofi-worker/pool.sql
 tools/kofi-worker/.wrangler/
 tools/kofi-worker/node_modules/
 supporter-key.pem
+supporter-codes*.txt

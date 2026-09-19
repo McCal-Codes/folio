@@ -165,7 +165,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     }
                 }
                 if (media == null && notifications.isEmpty() && actions.isEmpty())
-                    Text("No shortcuts or notifications for ${app.label} right now.", color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
+                    Text(stringResource(R.string.no_shortcuts_or_notifications_for_1, app.label), color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
             }
         }
     }
