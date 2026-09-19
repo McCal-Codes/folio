@@ -141,7 +141,7 @@ internal object Diagnostics {
         ).joinToString(", ")
     }
 
-    fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}${if (Build.VERSION.SDK_INT >= 31) ", ${Build.SOC_MODEL}" else ""})"
+    fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"
 
     /**
      * Everything useful for a bug report in one text: phone and screen, the latest reports, the recent trail and
