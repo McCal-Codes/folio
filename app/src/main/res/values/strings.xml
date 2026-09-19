@@ -706,4 +706,7 @@
     <string name="classic">Classic</string>
     <string name="banking_apps_note">Some banking apps refuse to open while any accessibility service is on, including Folio\'s gestures service. That is their check, not something Folio can change. Everything except the pull-down panels and the dock and island over other apps works without it, so you can turn it off in Android\'s Accessibility settings and keep using Folio.</string>
     <string name="gauge">Gauge</string>
+    <string name="rename">Rename…</string>
+    <string name="rename_app">Rename App</string>
+    <string name="leave_it_empty_to_use_s_again">Leave it empty to use %1$s again.</string>
 </resources>

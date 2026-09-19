@@ -27,6 +27,8 @@ To switch back to another launcher, open **Folio Settings › Change home app**,
 - While they wiggle, drag apps around, onto another app to make a folder, or to the screen edge to change pages.
   Tap **+** to add widgets and **Done** when you're finished. **Edit** has Add Widget, Wallpaper & Appearance, Add Page and Folio Settings.
 - **Long press an empty spot** for **Add Widget**, **Wallpaper & Appearance**, **Add Page** and **Folio Settings**.
+- **Rename an app** with **More › Rename…** in that menu. The new name shows on Home, in the dock, in folders, in the
+  App Library and in search; searching the app's own name still finds it, and clearing the field puts that name back.
 - **Swipe down on an icon** to fan out its Icon Stack, if you made one.
 - Want iPhone's order? **Arrange Like iPhone…** in Settings sorts Home the way an iPhone does. Per-page icon size and labels are in Settings too.
 

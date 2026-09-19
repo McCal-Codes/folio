@@ -75,7 +75,10 @@ internal fun AppLibrary(
     }
     // Hidden apps stay out of the App Library entirely, like iOS; they're listed (after unlocking) in Settings.
     val visibleApps = remember(state.apps, query, showWork, workSwitch, hasWork, state.hiddenApps, editing) {
-        state.apps.filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) && it.label.contains(query.trim(), true) &&
+        val text = query.trim()
+        // A renamed app answers to both names here, the same as in Spotlight.
+        state.apps.filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) &&
+            (it.label.contains(text, true) || it.systemLabel.contains(text, true)) &&
             (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
