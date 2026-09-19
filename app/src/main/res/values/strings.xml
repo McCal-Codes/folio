@@ -733,14 +733,11 @@
     <string name="allow_calendar_access">Allow calendar access</string>
     <string name="no_more_events_today">No more events today</string>
     <string name="suggestions_appear_as_you_use_your_apps">Suggestions appear as you use your apps.</string>
-    <string name="columns_1">%1$d columns</string>
-    <string name="rows_1">%1$d rows</string>
     <string name="what_s_new_in_folio">What\'s New in Folio</string>
     <string name="version_1">Version %1$s</string>
     <string name="continue_choice">Continue</string>
     <string name="connected">Connected</string>
     <string name="finish_setting_up_folio">Finish Setting Up Folio</string>
-    <string name="pinned_1">%1$d pinned</string>
     <string name="search_1_with">Search “%1$s” with</string>
     <string name="stack_1">%1$s Stack</string>
     <string name="swipe_down_on_1_to_open_these_2_of_3">Swipe down on %1$s to open these. %2$d of %3$d</string>
@@ -748,8 +745,6 @@
     <string name="home_editing_is_off_while_1_is_on">Home editing is off while %1$s is on</string>
     <string name="turn_off_1_to_edit_home_screen">Turn off %1$s to edit Home Screen</string>
     <string name="skip">Skip</string>
-    <string name="more_from_1_2">%1$d more from %2$s</string>
-    <string name="apps_folders_widgets_1_2_3">%1$d apps · %2$d folders · %3$d widgets</string>
     <string name="unavailable_apps_1">Unavailable apps (%1$d)</string>
     <string name="its_saved_position_will_stay_empty_1">• %1$s — its saved position will stay empty</string>
     <string name="folio_kept_your_saved_layout_untouched">Folio kept your saved layout untouched and is showing a basic Home for now. Restore a backup or an earlier layout, or start fresh (Folio keeps a copy of the old one).</string>
@@ -762,4 +757,32 @@
         <item quantity="other">%1$d widgets will keep their saved space and ask to reconnect after restore.</item>
     </plurals>
     <string name="choose_home_apps_title">Choose Home Apps</string>
+    <plurals name="columns">
+        <item quantity="one">%1$d column</item>
+        <item quantity="other">%1$d columns</item>
+    </plurals>
+    <plurals name="rows">
+        <item quantity="one">%1$d row</item>
+        <item quantity="other">%1$d rows</item>
+    </plurals>
+    <plurals name="pinned">
+        <item quantity="one">%1$d pinned</item>
+        <item quantity="other">%1$d pinned</item>
+    </plurals>
+    <plurals name="more_from_app">
+        <item quantity="one">%1$d more from %2$s</item>
+        <item quantity="other">%1$d more from %2$s</item>
+    </plurals>
+    <plurals name="restore_apps">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <plurals name="restore_folders">
+        <item quantity="one">%1$d folder</item>
+        <item quantity="other">%1$d folders</item>
+    </plurals>
+    <plurals name="restore_widgets">
+        <item quantity="one">%1$d widget</item>
+        <item quantity="other">%1$d widgets</item>
+    </plurals>
 </resources>
