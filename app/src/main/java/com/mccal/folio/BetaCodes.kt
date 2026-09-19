@@ -25,17 +25,37 @@ internal object BetaCodes {
     /** Day 0 of the expiry field, so two bytes cover well past any plan of mine. */
     private val EPOCH: Long = LocalDate.of(2026, 1, 1).toEpochDay()
 
+    /**
+     * Version 1 codes carry a fixed last day, decided when the code was minted. Version 2 adds the other kind: a
+     * number of months that starts the day the code is redeemed, so a code from a pool minted months ago still gives
+     * a full month. The months share the tier byte — months in the high nibble, tier in the low one — so a code is
+     * the same length either way, and a version 1 code reads exactly as it always did.
+     */
     private const val VERSION = 1
+    private const val VERSION_MONTHS = 2
     private const val PAYLOAD = 9
     private const val SIGNATURE = 64
 
     /** Crockford's base32: no I, L, O or U, so a typed code can't be read wrong. */
     private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
-    internal data class Code(val scopes: Set<String>, val tier: Int, val expiryDay: Int, val serial: Long) {
-        /** The last day this code works, or null when it never expires. */
+    internal data class Code(val scopes: Set<String>, val tier: Int, val expiryDay: Int, val serial: Long,
+        /** Months of access counted from the day the code is redeemed; 0 means it doesn't work that way. */
+        val months: Int = 0) {
+        /** The last day this code works on its own terms, or null when it never expires. */
         val expires: LocalDate? get() = expiryDay.takeIf { it > 0 }?.let { LocalDate.ofEpochDay(EPOCH + it) }
-        fun expired(today: LocalDate = LocalDate.now()): Boolean = expires?.isBefore(today) == true
+
+        /**
+         * The last day this code works, given the day it was first redeemed here. A code can carry both a window and
+         * a fixed last day; whichever comes first wins, so neither can be stretched by the other.
+         */
+        fun ends(redeemed: LocalDate?): LocalDate? {
+            val window = redeemed?.takeIf { months > 0 }?.plusMonths(months.toLong())
+            return listOfNotNull(expires, window).minOrNull()
+        }
+
+        fun expired(today: LocalDate = LocalDate.now(), redeemed: LocalDate? = null): Boolean =
+            ends(redeemed)?.isBefore(today) == true
     }
 
     internal sealed interface Result {
@@ -52,15 +72,21 @@ internal object BetaCodes {
     fun verify(text: String, keys: List<String>, today: LocalDate = LocalDate.now(),
         withdrawn: Set<Long> = emptySet()): Result {
         val bytes = decode(text) ?: return Result.Unreadable
-        if (bytes.size != PAYLOAD + SIGNATURE || bytes[0].toInt() != VERSION) return Result.Unreadable
+        val version = bytes.firstOrNull()?.toInt()
+        if (bytes.size != PAYLOAD + SIGNATURE || (version != VERSION && version != VERSION_MONTHS)) {
+            return Result.Unreadable
+        }
         val payload = bytes.copyOfRange(0, PAYLOAD)
         val signature = derSignature(bytes.copyOfRange(PAYLOAD, bytes.size)) ?: return Result.Unreadable
         val signed = keys.any { key -> runCatching { verifyWith(key, payload, signature) }.getOrDefault(false) }
         if (!signed) return Result.NotOurs
         val scopes = SCOPE_BITS.filterIndexed { bit, _ -> payload[1].toInt() shr bit and 1 == 1 }.toSet()
-        val code = Code(scopes, payload[2].toInt() and 0xFF,
+        val tierByte = payload[2].toInt() and 0xFF
+        val months = if (version == VERSION_MONTHS) tierByte shr 4 else 0
+        val tier = if (version == VERSION_MONTHS) tierByte and 0x0F else tierByte
+        val code = Code(scopes, tier,
             (payload[3].toInt() and 0xFF shl 8) or (payload[4].toInt() and 0xFF),
-            payload.copyOfRange(5, 9).fold(0L) { total, b -> total shl 8 or (b.toLong() and 0xFF) })
+            payload.copyOfRange(5, 9).fold(0L) { total, b -> total shl 8 or (b.toLong() and 0xFF) }, months)
         return when {
             code.serial in withdrawn -> Result.Withdrawn
             code.expired(today) -> Result.Expired(code)

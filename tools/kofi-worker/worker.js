@@ -65,6 +65,11 @@ function sameSecret(a, b) {
  * Which pool of codes this payment earns. POOLS is JSON in the worker's settings, for example:
  *   {"tiers":{"Bronze":"beta","Gold":"all"},"shop":{"1a2b3c4d5e":"all"},"tipFrom":5,"tipPool":"beta"}
  * Anything not mentioned earns nothing, which is the safe default.
+ *
+ * A one-off payment can also buy time rather than one flat thank-you: `tipBands` names a pool per amount, so $5,
+ * $10 and $20 can hand out one, two and four months of access. The bands are read largest first, and `tipFrom` /
+ * `tipPool` still work on their own for a single threshold.
+ *   {"tipBands":[{"from":5,"pool":"months1"},{"from":10,"pool":"months2"},{"from":20,"pool":"months4"}]}
  */
 function poolFor(data, env) {
   const rules = JSON.parse(env.POOLS ?? '{}')
@@ -77,8 +82,11 @@ function poolFor(data, env) {
   }
   if (data.type === 'Subscription') return rules.tiers?.[data.tier_name ?? ''] ?? rules.tiers?.['*'] ?? null
   if (data.type === 'Tip' || data.type === 'Donation') {
+    const paid = Number(data.amount ?? 0)
+    const bands = [...(rules.tipBands ?? [])].sort((a, b) => Number(b.from) - Number(a.from))
+    for (const band of bands) if (paid >= Number(band.from)) return band.pool ?? null
     const from = Number(rules.tipFrom ?? Infinity)
-    return Number(data.amount ?? 0) >= from ? rules.tipPool ?? null : null
+    return paid >= from ? rules.tipPool ?? null : null
   }
   return null
 }

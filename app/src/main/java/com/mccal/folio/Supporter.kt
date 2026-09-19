@@ -16,6 +16,15 @@ internal object Supporter {
     private const val CODE = "supporter_code"
     private const val BETA = "supporter_beta_on"
 
+    /**
+     * The day a code was first redeemed on this phone, one key per serial. A code that buys months rather than a
+     * fixed date counts from here, so a code minted long before it was handed out still gives its full time.
+     *
+     * It outlives [remove] on purpose: pasting the same code again resumes the window it started, rather than
+     * handing out another month for free. It's a serial number and a date, kept on the phone and sent nowhere.
+     */
+    private fun startedKey(serial: Long) = "supporter_started_$serial"
+
     /** Public keys a code may be signed with: McCal's, plus a test key the dev build (com.mccal.folio.dev) accepts. */
     private fun keys(context: Context): List<String> = listOfNotNull(
         BetaKeys.SUPPORTER.takeIf { it.isNotBlank() },
@@ -24,9 +33,19 @@ internal object Supporter {
     /** Whether this build can check codes at all: without a key, Settings doesn't offer the row. */
     fun available(context: Context): Boolean = keys(context).isNotEmpty()
 
-    fun code(context: Context): BetaCodes.Code? = stored(context)?.let {
-        (BetaCodes.verify(it, keys(context), withdrawn = BetaKeys.WITHDRAWN) as? BetaCodes.Result.Valid)?.code
+    fun code(context: Context, today: LocalDate = LocalDate.now()): BetaCodes.Code? {
+        val text = stored(context) ?: return null
+        val code = (BetaCodes.verify(text, keys(context), today, BetaKeys.WITHDRAWN) as? BetaCodes.Result.Valid)?.code
+            ?: return null
+        return code.takeIf { !it.expired(today, started(context, it)) }
     }
+
+    /** When this code's time runs out here, counting a months code from the day it was redeemed. */
+    fun ends(context: Context, code: BetaCodes.Code): LocalDate? = code.ends(started(context, code))
+
+    private fun started(context: Context, code: BetaCodes.Code): LocalDate? =
+        context.getSharedPreferences(PREFS, 0).getLong(startedKey(code.serial), 0L)
+            .takeIf { it > 0L }?.let { LocalDate.ofEpochDay(it) }
 
     private fun stored(context: Context): String? =
         context.getSharedPreferences(PREFS, 0).getString(CODE, null)?.takeIf { it.isNotBlank() }
@@ -34,9 +53,16 @@ internal object Supporter {
     /** Checks a code and keeps it when it's good. The result is what Settings shows the person. */
     fun redeem(context: Context, text: String, today: LocalDate = LocalDate.now()): BetaCodes.Result {
         val result = BetaCodes.verify(text, keys(context), today, BetaKeys.WITHDRAWN)
-        if (result is BetaCodes.Result.Valid) {
-            context.getSharedPreferences(PREFS, 0).edit().putString(CODE, BetaCodes.group(text)).apply()
-        }
+        if (result !is BetaCodes.Result.Valid) return result
+        val code = result.code
+        val prefs = context.getSharedPreferences(PREFS, 0)
+        // A months code starts its window the first time it is redeemed here; a code coming back after its window
+        // has run out is expired, not a fresh month.
+        val started = started(context, code) ?: today.takeIf { code.months > 0 }
+        if (code.expired(today, started)) return BetaCodes.Result.Expired(code)
+        val editor = prefs.edit().putString(CODE, BetaCodes.group(text))
+        started?.let { editor.putLong(startedKey(code.serial), it.toEpochDay()) }
+        editor.apply()
         return result
     }
 

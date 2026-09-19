@@ -21,6 +21,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Folder badges:** folders show the total of their apps' notification badges.
 - **Better bug reports:** Folio notes freezes and restarts, and Report a Bug can include them (kept on your phone).
 - **A live Roadmap:** see what's coming, updated from Folio's GitHub page.
+- **Supporter codes with months:** a code can carry a number of months that starts the day you redeem it, so one handed out from a batch still gives its full time. Settings › Supporter shows the day it runs out.
 - **Folio Keys, for supporters:** a code that carries the keyboard scope shows where Folio's own keyboard has got to, in Settings › Supporter. It's in design — a separate app, because Android needs a keyboard to be its own input method — so there is nothing to install yet.
 
 - **Move apps without dragging:** TalkBack actions and Alt+arrow keys move apps and folders around Home and between pages.

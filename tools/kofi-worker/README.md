@@ -47,6 +47,18 @@ Edit `POOLS` in `wrangler.toml`:
 - `tiers` — by membership tier name, exactly as Ko-fi spells it. `"*"` covers every tier.
 - `shop` — by the shop item's `direct_link_code` (it's in the webhook payload, and in the item's Ko-fi link).
 - `tipFrom` / `tipPool` — one-off tips from this amount up earn this pool. Leave both out and tips earn nothing.
+- `tipBands` — a pool per amount, for buying time rather than one flat thank-you. A payment earns the largest band
+  it clears, and anything under the smallest earns nothing.
+
+```json
+{"tipBands": [{"from": 5, "pool": "months1"}, {"from": 10, "pool": "months2"}, {"from": 20, "pool": "months4"}]}
+```
+
+Mint those pools with the months on the code, so the clock starts when it's redeemed rather than when it was minted:
+
+```bash
+python3 ../../scripts/beta-code.py pool --scopes beta,keys --months 1 --count 50 --pool months1 > pool.sql
+```
 
 Anything not named here earns nothing, which is the safe default.
 
