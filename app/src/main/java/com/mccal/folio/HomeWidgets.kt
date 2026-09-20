@@ -375,9 +375,9 @@ internal fun WidgetActions(
                 }
             }
             MenuDivider()
-            MenuRow("Resize on Home", Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
+            MenuRow(stringResource(R.string.resize_on_home), Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
             MenuDivider()
-            MenuRow(if (customSize) "Hide Custom Size" else "Custom Size", Icons.Rounded.Tune) { customSize = !customSize }
+            MenuRow(if (customSize) stringResource(R.string.hide_custom_size) else stringResource(R.string.custom_size), Icons.Rounded.Tune) { customSize = !customSize }
             if (customSize) Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!feasible) Text(stringResource(R.string.move_this_widget_into_the_six_row_grid_b), color = FolioColors.Red, fontSize = 13.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -404,8 +404,8 @@ internal fun WidgetActions(
 
         SheetGroupLabel(stringResource(R.string.widget))
         SheetGroup {
-            if (canConfigure) { MenuRow("Edit Widget", Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
-            MenuRow("Replace Widget", Icons.Rounded.FindReplace) { onReplace() }
+            if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
+            MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
             if (homePages > 1) {
                 MenuDivider()
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,7 +419,7 @@ internal fun WidgetActions(
 
         SheetGroupLabel(stringResource(R.string.smart_stack))
         SheetGroup {
-            MenuRow(if (stackCards.size > 1) "Add Widget to Stack" else "Make a Stack", Icons.Rounded.Layers) { onAddToStack() }
+            MenuRow(if (stackCards.size > 1) stringResource(R.string.add_widget_to_stack) else stringResource(R.string.make_a_stack), Icons.Rounded.Layers) { onAddToStack() }
             if (stackCards.size > 1) {
                 stackCards.forEachIndexed { index, card ->
                     MenuDivider()
@@ -446,7 +446,7 @@ internal fun WidgetActions(
             modifier = Modifier.padding(start = 4.dp))
 
         SheetGroup(Modifier.padding(top = 8.dp)) {
-            MenuRow(if (stackCards.size > 1) "Remove Stack" else "Remove Widget", Icons.Rounded.RemoveCircleOutline, destructive = true) { onRemove() }
+            MenuRow(if (stackCards.size > 1) stringResource(R.string.remove_stack) else stringResource(R.string.remove_widget_2), Icons.Rounded.RemoveCircleOutline, destructive = true) { onRemove() }
         }
         Spacer(Modifier.height(16.dp))
     }

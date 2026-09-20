@@ -175,33 +175,33 @@ internal fun AppContextMenu(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
                     MenuDivider()
                 } else {
-                MenuRow("Edit Home Screen", Icons.Rounded.AppRegistration) { onMove() }
+                MenuRow(stringResource(R.string.edit_home_screen), Icons.Rounded.AppRegistration) { onMove() }
                 MenuDivider()
                 if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF) {
                     val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
-                    MenuRow("Clear Badge", Icons.Rounded.NotificationsOff) {
+                    MenuRow(stringResource(R.string.clear_badge), Icons.Rounded.NotificationsOff) {
                         activity?.let { BadgeClears.clear(app.packageName, it.latestNotifications) }; onDismiss()
                     }
                     MenuDivider()
                 }
                 // A shortcut exists only as this icon, so removing it deletes it (like iOS's "Delete Bookmark").
-                MenuRow(when { app.isShortcut -> "Delete Shortcut"; onHome -> "Remove from Home"; else -> "Add to Home" },
+                MenuRow(when { app.isShortcut -> stringResource(R.string.delete_shortcut); onHome -> stringResource(R.string.remove_from_home); else -> stringResource(R.string.add_to_home) },
                     if (onHome || app.isShortcut) Icons.Rounded.RemoveCircleOutline else Icons.Rounded.AddCircleOutline,
                     destructive = onHome || app.isShortcut) { onAddOrRemove() }
                 MenuDivider()
                 }
                 // iOS keeps context menus short: the less common actions sit behind "More".
-                if (!more) MenuRow("More", Icons.Rounded.MoreHoriz) { more = true }
+                if (!more) MenuRow(stringResource(R.string.more), Icons.Rounded.MoreHoriz) { more = true }
                 else {
-                    if (lockedBy == null) MenuRow(if (hasFolders) "Add to Folder" else "Create Folder", Icons.Rounded.CreateNewFolder) { onCreateFolder() }
-                    onWidgets?.let { MenuDivider(); MenuRow("Widgets", Icons.Rounded.Widgets) { it() } }
-                    onStack?.let { MenuDivider(); MenuRow("Stack Apps…", Icons.Rounded.Layers) { it() } }
+                    if (lockedBy == null) MenuRow(if (hasFolders) stringResource(R.string.add_to_folder) else stringResource(R.string.create_folder), Icons.Rounded.CreateNewFolder) { onCreateFolder() }
+                    onWidgets?.let { MenuDivider(); MenuRow(stringResource(R.string.widgets), Icons.Rounded.Widgets) { it() } }
+                    onStack?.let { MenuDivider(); MenuRow(stringResource(R.string.stack_apps), Icons.Rounded.Layers) { it() } }
                     MenuDivider()
                     MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
                     MenuDivider()
-                    MenuRow(if (hidden) "Show in App Library" else "Hide from App Library", if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
+                    MenuRow(if (hidden) stringResource(R.string.show_in_app_library) else stringResource(R.string.hide_from_app_library), if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
                     MenuDivider()
-                    MenuRow(if (app.isShortcut) "Info for App" else "App Info", Icons.Rounded.Info) { onInfo() }
+                    MenuRow(if (app.isShortcut) stringResource(R.string.info_for_app) else stringResource(R.string.app_info), Icons.Rounded.Info) { onInfo() }
                 }
             }
         }

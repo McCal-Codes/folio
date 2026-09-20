@@ -101,14 +101,14 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
             .shadow(18.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f))
             .border(FolioGlass.edge, RoundedCornerShape(18.dp)).testTag("home-edit-menu")) {
             fun act(action: () -> Unit) = { onDismiss(); action() }
-            Box(Modifier.testTag("empty-space-widgets")) { MenuRow("Add Widget", Icons.Rounded.Widgets, onClick = act(onWidgets)) }
+            Box(Modifier.testTag("empty-space-widgets")) { MenuRow(stringResource(R.string.add_widget_2), Icons.Rounded.Widgets, onClick = act(onWidgets)) }
             MenuDivider()
-            Box(Modifier.testTag("empty-space-wallpaper")) { MenuRow("Wallpaper & Appearance", Icons.Rounded.Wallpaper, onClick = act(onWallpaper)) }
+            Box(Modifier.testTag("empty-space-wallpaper")) { MenuRow(stringResource(R.string.wallpaper_appearance_2), Icons.Rounded.Wallpaper, onClick = act(onWallpaper)) }
             // A thicker gap between groups, like iOS menus.
             Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
-            onAddPage?.let { Box(Modifier.testTag("empty-space-add-page")) { MenuRow("Add Page", Icons.Rounded.AddToPhotos, onClick = act(it)) }; MenuDivider() }
-            onRemovePage?.let { Box(Modifier.testTag("empty-space-remove-page")) { MenuRow("Remove This Empty Page", Icons.Rounded.DeleteOutline, destructive = true, onClick = act(it)) }; MenuDivider() }
-            Box(Modifier.testTag("empty-space-customize")) { MenuRow("Folio Settings", Icons.Rounded.Tune, onClick = act(onCustomize)) }
+            onAddPage?.let { Box(Modifier.testTag("empty-space-add-page")) { MenuRow(stringResource(R.string.add_page), Icons.Rounded.AddToPhotos, onClick = act(it)) }; MenuDivider() }
+            onRemovePage?.let { Box(Modifier.testTag("empty-space-remove-page")) { MenuRow(stringResource(R.string.remove_this_empty_page), Icons.Rounded.DeleteOutline, destructive = true, onClick = act(it)) }; MenuDivider() }
+            Box(Modifier.testTag("empty-space-customize")) { MenuRow(stringResource(R.string.folio_settings), Icons.Rounded.Tune, onClick = act(onCustomize)) }
         }
     }
 }

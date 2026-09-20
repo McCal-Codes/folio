@@ -418,24 +418,24 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                             transformOrigin = TransformOrigin(0f, if (below) 0f else 1f) }
                         .clip(RoundedCornerShape(16.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(16.dp))
                         .clickable(remember { MutableInteractionSource() }, null) {}) {
-                        MenuRow("Open", Icons.Rounded.OpenInNew) { act { IslandListenerService.openNotification(context, item) } }
+                        MenuRow(stringResource(R.string.open), Icons.Rounded.OpenInNew) { act { IslandListenerService.openNotification(context, item) } }
                         if (item.clearable) {
                             MenuDivider()
-                            MenuRow("Snooze for 1 Hour", Icons.Rounded.Snooze) { act { IslandListenerService.snooze(item.key, 60 * 60_000L) } }
+                            MenuRow(stringResource(R.string.snooze_for_1_hour), Icons.Rounded.Snooze) { act { IslandListenerService.snooze(item.key, 60 * 60_000L) } }
                             MenuDivider()
-                            MenuRow("Snooze Until Tomorrow", Icons.Rounded.Bedtime) { act {
+                            MenuRow(stringResource(R.string.snooze_until_tomorrow), Icons.Rounded.Bedtime) { act {
                                 val morning = java.time.LocalDate.now().plusDays(1).atTime(8, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
                                 IslandListenerService.snooze(item.key, (morning - System.currentTimeMillis()).coerceAtLeast(60_000L))
                             } }
                         }
                         MenuDivider()
-                        MenuRow("Notification Settings", Icons.Rounded.Tune) { act {
+                        MenuRow(stringResource(R.string.notification_settings), Icons.Rounded.Tune) { act {
                             val intent = item.channelId?.let { MessageChannel(item.packageName, item.appLabel, it, null, 0).settingsIntent() }
                                 ?: Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, item.packageName)
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             runCatching { context.startActivity(intent) }
                         } }
-                        if (item.clearable) { MenuDivider(); MenuRow("Clear", Icons.Rounded.Close, destructive = true) { act { IslandListenerService.dismiss(item.key) } } }
+                        if (item.clearable) { MenuDivider(); MenuRow(stringResource(R.string.clear), Icons.Rounded.Close, destructive = true) { act { IslandListenerService.dismiss(item.key) } } }
                     }
                 }
                 card(); menu()
