@@ -1,4 +1,5 @@
-# Files a fresh worktree needs that git doesn't carry, copied into every worktree Claude Code makes.
+# Files a fresh worktree needs that git doesn't carry, copied into every worktree Claude Code makes —
+# including the throwaway one a subagent gets, so what's named here should be small.
 # Same syntax as .gitignore, and only files that match here *and* are ignored are copied, so nothing
 # tracked is ever duplicated. See https://code.claude.com/docs/en/worktrees
 #
@@ -8,8 +9,23 @@
 # Where the SDK is, so :app builds without being set up again.
 local.properties
 
-# The Mockup Lab and the feature walls, which every UI change goes through.
-docs/mockups/**
+# The Mockup Lab's own code, which every UI change goes through. About 360 KB.
+docs/mockups/*.html
+docs/mockups/*.js
+docs/mockups/lab/*.html
+docs/mockups/lab/*.css
+docs/mockups/lab/*.js
+docs/mockups/lab/*.py
+docs/mockups/lab/*.md
+docs/mockups/lab/*.svg
+docs/mockups/lab/scenes/**
+docs/mockups/lab/data/**
+
+# The feature walls' structure, but not their captures: 4.2 MB of screenshots stays in the checkout that
+# took them, and a wall opened in a worktree names the files it's missing rather than failing to load.
+docs/mockups/lab/walls/index.json
+docs/mockups/lab/walls/README.md
+docs/mockups/lab/walls/*/wall.json
 
 # The preview servers, so `preview_start` knows the same names in a new worktree.
 .claude/launch.json
