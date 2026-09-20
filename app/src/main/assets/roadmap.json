@@ -231,6 +231,13 @@
           "title": "Page Effects",
           "detail": "3D effects when you swipe between Home pages. Inspired by Barrel.",
           "status": "planned"
+        },
+        {
+          "icon": "clock",
+          "color": "#FF9F0A",
+          "title": "StandBy without the fold",
+          "detail": "StandBy as a screen saver, so it turns on while the phone charges instead of only when it is set down half open. Chosen in Android’s Settings › Display › Screen saver.",
+          "status": "planned"
         }
       ]
     },
