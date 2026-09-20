@@ -72,6 +72,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - An automatic update tidies up after itself again, instead of leaving the installed APK in Folio's storage.
 - Opening Software Update no longer uses up the day's check, so an automatic update still installs; a check that Android stops mid-way no longer stops the daily check for good.
 - A folio://redeem link can add a supporter code but never replace one you already have — swapping is done in Settings › Supporter, which the link now opens.
+- Unfolded, the row of page dots, Search and App Library sits under Home instead of across the middle of the screen, where it ran into the widgets on the page beside it.
 
 ## [0.6.0] - 2026-09-16
 

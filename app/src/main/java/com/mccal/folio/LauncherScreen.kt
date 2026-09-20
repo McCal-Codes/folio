@@ -825,8 +825,13 @@ fun LauncherScreen(
                             !LocalReduceMotion.current, leftHanded = state.leftHanded, horizontal = geometry.horizontalDock)
                 }
             }
+            // Unfolded, the pager carries the extra left page beside Home, so a row centred on the whole pager lands
+            // over that page's widgets rather than under the Home it belongs to (reported 20 Sep 2026). The extra
+            // page's width is held out of the row, leaving it centred on Home on both screens.
+            val besideHome = if (geometry.expanded) panelWidth.coerceAtLeast(0.dp) else 0.dp
             Column(Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart).width(pagerWidth)
-                .padding(start = if (state.leftHanded) 0.dp else 16.dp, end = if (state.leftHanded) 16.dp else 0.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                .padding(start = if (state.leftHanded) 0.dp else besideHome + 16.dp,
+                    end = if (state.leftHanded) besideHome + 16.dp else 0.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDefaultHome && !homeEdit.active && !drag.active) PreviewBar(onUseAsHome = { sheet = ""; onMakeDefault() },
                     onExit = { launcherActivity.moveTaskToBack(true) })
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
