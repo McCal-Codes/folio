@@ -41,6 +41,6 @@ check against screen-reading malware, and nothing Folio can change from its side
 "I only use this for gestures."
 
 Folio's gestures service is optional. Without it you lose the pull-down Notification Center and Control Center, the
-dock and island over other apps, and Big Buttons; everything else — Home, layouts, folders, the App Library,
-Spotlight, themes, the island on Home — works exactly the same. Turn it off in Android's Settings › Accessibility
+dock and island over other apps, and Big Buttons; everything else (Home, layouts, folders, the App Library,
+Spotlight, themes, the island on Home) works exactly the same. Turn it off in Android's Settings › Accessibility
 › Installed apps whenever a banking app objects.

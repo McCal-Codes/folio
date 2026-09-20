@@ -27,7 +27,7 @@ Folio keeps working.
 ## What Folio never does
 
 - **No ads, no analytics, no tracking, no accounts.** Nothing about you leaves the phone.
-- **Network only when you ask.** Update checks and the roadmap — nothing else. Requests carry a plain
+- **Network only when you ask.** Update checks and the roadmap, nothing else. Requests carry a plain
   `User-Agent: Folio` and no identifiers, and everything is HTTPS: Folio targets a recent Android, where plain
   HTTP is blocked unless an app opts in, and Folio doesn't.
 - **Contacts, calendar and notifications stay on the phone.** They're read to draw a screen and never uploaded.
@@ -42,8 +42,8 @@ shasum -a 256 Folio-0.6.5.apk
 
 Releases also link a [VirusTotal](https://www.virustotal.com/) scan of that exact APK, so you don't have to take the
 checksum on faith. Every release carries the certificate it was signed with (`signing-certificate.txt`), so you can
-check it's the same key that signed the last one — and Android won't let a build signed by anyone else update the
+check it's the same key that signed the last one. Android won't let a build signed by anyone else update the
 Folio you already have.
 
 An unsigned or sideloaded launcher deserves suspicion. If anything here doesn't match what you see in the code, please
-[open an issue](https://github.com/McCal-Codes/folio/issues/new) — that's a bug worth fixing.
+[open an issue](https://github.com/McCal-Codes/folio/issues/new). That's a bug worth fixing.
