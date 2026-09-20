@@ -8,7 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.5] - Unreleased
 
 ### Added
-- **Gauge status glyph:** a sixth Icon style for the Side Bar — the battery as an arc, your connection inside it, and the percentage above (Icons & Side Bar › Icon style).
+- **Gauge status glyph:** a sixth Icon style for the Side Bar: the battery as an arc, your connection inside it, and the percentage above (Icons & Side Bar › Icon style).
 - **More rows:** Home fills taller screens with up to 3 more rows, the same on both screens of a foldable.
 - **Layout sliders:** adjust row, column and dock spacing, widget size and status spacing, and watch Home change as you drag.
 - **Apps, dock and status position:** apps at the top, the dock on the side or bottom, and the status anywhere, for each screen.
@@ -22,14 +22,14 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Better bug reports:** Folio notes freezes and restarts, and Report a Bug can include them (kept on your phone).
 - **A live Roadmap:** see what's coming, updated from Folio's GitHub page.
 - **Supporter codes with months:** a code can carry a number of months that starts the day you redeem it, so one handed out from a batch still gives its full time. Settings › Supporter shows the day it runs out.
-- **Folio Keys, for supporters:** a code that carries the keyboard scope shows where Folio's own keyboard has got to, in Settings › Supporter. It's in design — a separate app, because Android needs a keyboard to be its own input method — so there is nothing to install yet.
-- **Beta updates for supporters:** with a code that carries beta access, Beta Updates installs the beta builds the same way as any other update. They live in a private repository, and Folio reaches them through the supporter worker, which checks your code and never puts a key on your phone — no GitHub account, no downloading APKs by hand.
+- **Folio Keys, for supporters:** a code that carries the keyboard scope shows where Folio's own keyboard has got to, in Settings › Supporter. It's in design (a separate app, because Android needs a keyboard to be its own input method), so there is nothing to install yet.
+- **Beta updates for supporters:** with a code that carries beta access, Beta Updates installs the beta builds the same way as any other update. They live in a private repository, and Folio reaches them through the supporter worker, which checks your code and never puts a key on your phone. No GitHub account, no downloading APKs by hand.
 
 - **Move apps without dragging:** TalkBack actions and Alt+arrow keys move apps and folders around Home and between pages.
 - **Wallpaper Tint:** one slider from Clear to Tinted glass (Wallpaper & Appearance › Glass).
 - **Reduce Transparency:** nearly solid widgets, Side Bar and dock; it also turns on with Android's high contrast.
 - **Big Buttons:** optional large Back, Home and Recents buttons over other apps, for when the system's are too small (Dynamic Island › In Every App). They sit above Android's own navigation, hide in full-screen apps and fade when idle.
-- **Swipe Down on Home:** pick what a swipe down the middle of Home does — Spotlight, Notification Center or nothing (Gestures & Actions). Set to Notification Center it works like Android's usual one-finger pull-down, and follows your choice of Folio's panels or Android's own shade.
+- **Swipe Down on Home:** pick what a swipe down the middle of Home does: Spotlight, Notification Center or nothing (Gestures & Actions). Set to Notification Center it works like Android's usual one-finger pull-down, and follows your choice of Folio's panels or Android's own shade.
 - **Move the buttons:** long-press and drag Big Buttons up the screen, away from the keyboard or an app's own bottom bar; Settings puts them back.
 - **Rename apps:** long-press an app, More › Rename… and give it any name; the new name shows on Home, in the dock, in folders, in the App Library and in search. Searching the app's original name still finds it, and clearing the field puts that name back.
 - **The island steps aside in full screen:** the island in every app now leaves full-screen video and games alone, with switches for full screen and landscape (Dynamic Island › In Every App).
@@ -71,7 +71,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - A message with the same words as the last one shows in the island again: repeats are judged by when the app posted them, and dismissing one ends its quiet window.
 - An automatic update tidies up after itself again, instead of leaving the installed APK in Folio's storage.
 - Opening Software Update no longer uses up the day's check, so an automatic update still installs; a check that Android stops mid-way no longer stops the daily check for good.
-- A folio://redeem link can add a supporter code but never replace one you already have — swapping is done in Settings › Supporter, which the link now opens.
+- A folio://redeem link can add a supporter code but never replace one you already have. Swapping is done in Settings › Supporter, which the link now opens.
 - Unfolded, the row of page dots, Search and App Library sits under Home instead of across the middle of the screen, where it ran into the widgets on the page beside it.
 
 ## [0.6.0] - 2026-09-16
