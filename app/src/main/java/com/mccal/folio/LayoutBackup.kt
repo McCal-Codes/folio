@@ -32,6 +32,8 @@ data class LayoutImportPreview(
     val labels: Boolean,
     val googleSearch: Boolean,
     val verticalStatus: Boolean,
+    /** Names people typed themselves. They exist nowhere else on the phone, so a backup that left them out lost them. */
+    val appNames: Map<String, String> = emptyMap(),
 )
 
 fun layoutBackupScope(context: Context): String {
@@ -73,7 +75,9 @@ fun encodeLayoutBackup(state: LauncherState, widgetDescriptors: List<BackupWidge
         .put("homeSlots", JSONArray(state.homeSlots)).put("leadingSlots", JSONArray(state.leadingSlots))
         .put("dock", JSONArray(state.dock)).put("folders", folders).put("widgets", widgets)
         .put("labels", state.labels).put("googleSearch", state.googleSearch).put("verticalStatus", state.verticalStatus)
-        .put("compact", preset(state.compact)).put("expanded", preset(state.expanded)).toString(2)
+        .put("compact", preset(state.compact)).put("expanded", preset(state.expanded))
+        .put("appNames", JSONObject().apply { state.appNames.forEach { (id, name) -> put(id, name) } })
+        .toString(2)
 }
 
 internal fun exportedWidgetScope(restore: WidgetRestore, currentScope: String) = restore.sourceScope ?: currentScope
@@ -199,11 +203,16 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
     val compact = preset("compact"); val expanded = preset("expanded")
     val labels = root.strictBoolean("labels"); val googleSearch = root.strictBoolean("googleSearch")
     val verticalStatus = root.strictBoolean("verticalStatus")
+    // Written since 0.6.5; a backup made before that simply has none, and the names already on the phone stay.
+    val appNames = root.optJSONObject("appNames")?.let { o ->
+        o.keys().asSequence().mapNotNull { id -> o.optString(id).takeIf { it.isNotBlank() }?.let { id to it.take(60) } }.toMap()
+    }.orEmpty()
     return LayoutImportPreview(layout, missing.toList(), profileIssues.toList(),
         appCount = (slots + leadingSlots).count { it != null && !isReservedFolderId(it) } +
             dock.count { it != null } + folders.sumOf { it.appIds.size },
         folderCount = folders.size, widgetCount = layout.widgetPlacements.size,
-        compact = compact, expanded = expanded, labels = labels, googleSearch = googleSearch, verticalStatus = verticalStatus)
+        compact = compact, expanded = expanded, labels = labels, googleSearch = googleSearch, verticalStatus = verticalStatus,
+        appNames = appNames)
 }
 
 internal fun validBackupPlacement(value: WidgetPlacement): Boolean {

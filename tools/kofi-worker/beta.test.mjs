@@ -144,21 +144,49 @@ test('a months code runs from the day it is first seen here', async () => {
 test('a download link expires, and a forged one never worked', async () => {
   const key = await folioKey()
   const env = environment(key)
-  const ticket = await makeTicket(env, 42, NOW + 60_000)
-  assert.equal(await ticketIsGood(env, 42, ticket, NOW), true)
-  assert.equal(await ticketIsGood(env, 42, ticket, NOW + 120_000), false, 'a link has to stop working')
-  assert.equal(await ticketIsGood(env, 43, ticket, NOW), false, 'a link is for one file')
-  assert.equal(await ticketIsGood(env, 42, `${NOW + 60_000}.made-up`, NOW), false)
+  const ticket = await makeTicket(env, 42, NOW + 60_000, 7)
+  assert.equal(await ticketIsGood(env, 42, ticket, 7, NOW), true)
+  assert.equal(await ticketIsGood(env, 42, ticket, 7, NOW + 120_000), false, 'a link has to stop working')
+  assert.equal(await ticketIsGood(env, 43, ticket, 7, NOW), false, 'a link is for one file')
+  assert.equal(await ticketIsGood(env, 42, ticket, 8, NOW), false, 'a link is for one code')
+  assert.equal(await ticketIsGood(env, 42, `${NOW + 60_000}.made-up`, 7, NOW), false)
+  assert.equal(await ticketIsGood(env, 42, 'later.made-up', 7, NOW), false, 'an expiry that is not a number is not an expiry')
 
   const answer = await betaAsset(new Request('https://codes.example/beta/asset/42?t=nonsense'), env,
     new URL('https://codes.example/beta/asset/42?t=nonsense'), NOW)
-  assert.equal(answer.status, 403)
+  assert.equal(answer.status, 400, 'no code, nothing to check the link against')
+})
+
+test('a link passed to somebody else is no use without the code', async () => {
+  const key = await folioKey()
+  const env = environment(key)
+  const code = await mint(key, { serial: 7 })
+  const ticket = await makeTicket(env, 42, NOW + 60_000, 7)
+  const url = new URL(`https://codes.example/beta/asset/42?t=${ticket}`)
+
+  // Pasted into a forum: no code at all.
+  const anonymous = await betaAsset(new Request(url), env, url, NOW)
+  assert.equal(anonymous.status, 400)
+
+  // Handed to another supporter: a real code, but not the one the link was made for.
+  const other = await mint(key, { serial: 8 })
+  const borrowed = await betaAsset(new Request(url, { headers: { Authorization: `Bearer ${other}` } }), env, url, NOW)
+  assert.equal(borrowed.status, 403)
+
+  // The supporter it was made for still gets through; GitHub is stood in for below.
+  const github = globalThis.fetch
+  globalThis.fetch = async () => new Response(null, { status: 302, headers: { location: 'https://objects.github.com/f.apk' } })
+  try {
+    const mine = await betaAsset(new Request(url, { headers: { Authorization: `Bearer ${code}` } }), env, url, NOW)
+    assert.equal(mine.status, 302)
+  } finally { globalThis.fetch = github }
 })
 
 test('a good link hands back GitHub own address, never the token', async () => {
   const key = await folioKey()
   const env = environment(key)
-  const ticket = await makeTicket(env, 42, NOW + 60_000)
+  const code = await mint(key, { serial: 7 })
+  const ticket = await makeTicket(env, 42, NOW + 60_000, 7)
   const github = globalThis.fetch
   let sawToken = false
   globalThis.fetch = async (url, options) => {
@@ -167,7 +195,7 @@ test('a good link hands back GitHub own address, never the token', async () => {
   }
   try {
     const url = new URL(`https://codes.example/beta/asset/42?t=${ticket}`)
-    const answer = await betaAsset(new Request(url), env, url, NOW)
+    const answer = await betaAsset(new Request(url, { headers: { Authorization: `Bearer ${code}` } }), env, url, NOW)
     assert.equal(answer.status, 302)
     assert.equal(answer.headers.get('location'), 'https://objects.github.com/folio.apk?signed')
     assert.equal(sawToken, true, 'the worker is the one holding the token')

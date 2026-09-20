@@ -5,7 +5,7 @@
  * in a private one, so Folio asks this worker instead and sends the supporter code as its credential. The worker
  * checks the code's signature against McCal's public key — the same check the app makes offline — and only then uses
  * its GitHub token to read the private releases. The token never reaches the phone, and a download link is a
- * short-lived ticket rather than anything that can be passed around.
+ * short-lived ticket tied to the code that asked for it, so passing it on gets nobody in.
  *
  * Nothing here can mint a code or grant access on its own: an unsigned code is refused exactly as the app refuses it.
  */
@@ -111,7 +111,10 @@ export async function checkBetaCode(env, text, now = Date.now()) {
   if (withdrawn.includes(code.serial)) return { ok: false, why: 'this code has been withdrawn', status: 403 }
 
   let firstSeen = null
-  if (code.months > 0 && env.DB) {
+  // Without the database there is nowhere to count a month from, and counting from nothing would mean never
+  // running out. A code that buys months is refused until the binding is there, rather than quietly lasting forever.
+  if (code.months > 0 && !env.DB) return { ok: false, why: 'beta access cannot be checked right now', status: 503 }
+  if (code.months > 0) {
     const today = new Date(now).toISOString().slice(0, 10)
     await env.DB.prepare('INSERT OR IGNORE INTO beta_seen (serial, first_seen) VALUES (?, ?)').bind(code.serial, today).run()
     const row = await env.DB.prepare('SELECT first_seen FROM beta_seen WHERE serial = ?').bind(code.serial).first()
@@ -129,19 +132,22 @@ function bytesToBase64Url(bytes) {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }
 
-/** A download link nobody can forge and that stops working on its own. */
-export async function makeTicket(env, assetId, expiresAt) {
+/** A download link nobody can forge, that stops working on its own, and that only its own code can use. */
+export async function makeTicket(env, assetId, expiresAt, serial) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(env.TICKET_SECRET ?? '')),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${assetId}.${expiresAt}`))
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${assetId}.${expiresAt}.${serial}`))
   return `${expiresAt}.${bytesToBase64Url(new Uint8Array(mac))}`
 }
 
-export async function ticketIsGood(env, assetId, ticket, now = Date.now()) {
+export async function ticketIsGood(env, assetId, ticket, serial, now = Date.now()) {
   const [expiresAt, signature] = String(ticket ?? '').split('.')
   if (!expiresAt || !signature) return false
-  if (Number(expiresAt) < now) return false
-  const expected = await makeTicket(env, assetId, Number(expiresAt))
+  // A timestamp that isn't a number is not an expiry that has passed — Number('abc') < now is false — so it is
+  // refused here rather than carried into the signature as NaN.
+  const at = Number(expiresAt)
+  if (!Number.isFinite(at) || at < now) return false
+  const expected = await makeTicket(env, assetId, at, serial)
   return sameSecret(expected, `${expiresAt}.${signature}`)
 }
 
@@ -192,7 +198,7 @@ export async function betaReleases(request, env, url, now = Date.now()) {
       assets.push({
         name: asset.name,
         size: asset.size,
-        browser_download_url: `${url.origin}/beta/asset/${asset.id}?t=${await makeTicket(env, asset.id, expiresAt)}`,
+        browser_download_url: `${url.origin}/beta/asset/${asset.id}?t=${await makeTicket(env, asset.id, expiresAt, allowed.code.serial)}`,
       })
     }
     rewritten.push({
@@ -211,7 +217,10 @@ export async function betaReleases(request, env, url, now = Date.now()) {
 export async function betaAsset(request, env, url, now = Date.now()) {
   const assetId = url.pathname.split('/').pop()
   if (!/^\d+$/.test(assetId ?? '')) return new Response('no such asset', { status: 404 })
-  if (!(await ticketIsGood(env, assetId, url.searchParams.get('t'), now))) {
+  // The code comes with the link, not only to make it: a ticket passed to somebody else has nothing to present.
+  const allowed = await checkBetaCode(env, codeFrom(request), now)
+  if (!allowed.ok) return new Response(allowed.why, { status: allowed.status })
+  if (!(await ticketIsGood(env, assetId, url.searchParams.get('t'), allowed.code.serial, now))) {
     return new Response('that download link has expired', { status: 403 })
   }
   const answer = await github(env, `/releases/assets/${assetId}`, { Accept: 'application/octet-stream' })

@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -182,7 +183,8 @@ internal object SoftwareUpdate {
         val now = installedVersion(context)
         if (!isNewer(now, from)) return
         prefs.edit().remove(AUTO_UPDATED_FROM).apply()
-        File(context.cacheDir, "updates").deleteRecursively()
+        updatesDir(context).deleteRecursively()
+        File(context.cacheDir, "updates").deleteRecursively()  // where 0.6.0 and earlier downloaded
         if (!canPostNotifications(context)) return
         val manager = context.getSystemService(android.app.NotificationManager::class.java)
         createChannel(context, manager)
@@ -253,6 +255,9 @@ internal object SoftwareUpdate {
         if (!supported(context) || mode(context) == Mode.MANUAL) return
         val prefs = context.getSharedPreferences(PREFS, 0)
         if (System.currentTimeMillis() - prefs.getLong(LAST_CHECK, 0) < DAY_MS) return
+        // Stamped here rather than inside check(): opening Settings › Software Update used to spend the day's
+        // check on a look, and the download that Automatic owes you never ran.
+        prefs.edit().putLong(LAST_CHECK, System.currentTimeMillis()).apply()
         check(context)
         val available = (status.value as? Status.Available)?.release ?: return
         if (mode(context) == Mode.AUTOMATIC) { if (download(context, available)) SoftwareUpdateJob.scheduleInstall(context, tonight = false) }
@@ -282,7 +287,6 @@ internal object SoftwareUpdate {
     private suspend fun check(context: Context) {
         if (!supported(context)) return
         status.value = Status.Checking
-        context.getSharedPreferences(PREFS, 0).edit().putLong(LAST_CHECK, System.currentTimeMillis()).apply()
         status.value = withContext(Dispatchers.IO) {
             runCatching {
                 val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
@@ -464,7 +468,15 @@ class SoftwareUpdateJob : android.app.job.JobService() {
         return true
     }
 
-    override fun onStopJob(params: android.app.job.JobParameters) = true
+    /**
+      * Android wants the job back. Whatever it started has to stop with it: an abandoned download went on holding
+      * [SoftwareUpdate.busy], so the rescheduled job found it taken, did nothing, and reported success — and the
+      * daily check was over for the life of the process.
+      */
+    override fun onStopJob(params: android.app.job.JobParameters): Boolean {
+        scope.coroutineContext.cancelChildren()
+        return true
+    }
 
     companion object {
         private const val CHECK = 4102

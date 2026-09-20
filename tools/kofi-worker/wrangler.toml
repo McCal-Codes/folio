@@ -24,5 +24,5 @@ SUPPORTER_KEYS = ""                # the public key from scripts/beta-code.py, b
 
 # Secrets go in with `wrangler secret put`, never in this file:
 #   GITHUB_TOKEN   a fine-grained token with Contents: read on the beta repository, and nothing else
-#   TICKET_SECRET  any long random string; it signs download links so they can't be forged or shared
+#   TICKET_SECRET  any long random string; it signs each download link to the code that asked for it
 #   WITHDRAWN      optional, serials of codes that no longer work, separated by commas

@@ -13,9 +13,15 @@ class RedeemActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val code = redeemCode(intent?.data?.toString())
+        // A link is something anyone can put in front of you, so it may add a code but never replace one: a page
+        // offering a smaller code could otherwise quietly take the place of the one you paid for. Swapping codes
+        // is done in Settings › Supporter, where you can see what you already have.
+        val held = Supporter.storedText(this)
+        val replacing = code != null && held != null && BetaCodes.group(held) != BetaCodes.group(code)
         // The same wording Settings › Supporter uses, so a link and a typed code answer alike, in any language.
         val said = when {
             code == null -> R.string.that_link_doesn_t_carry_a_folio_code
+            replacing -> R.string.you_already_have_a_code_paste_this_one
             else -> when (Supporter.redeem(this, code)) {
                 is BetaCodes.Result.Valid -> R.string.code_added_thank_you
                 is BetaCodes.Result.Expired -> R.string.that_code_has_run_out_ko_fi_codes_have_a
@@ -25,6 +31,9 @@ class RedeemActivity : ComponentActivity() {
             }
         }
         Toast.makeText(this, getString(said), Toast.LENGTH_LONG).show()
+        // Settings opens on Supporter, as this says it does: with a link there is nothing else on screen to show
+        // what happened.
+        SettingsLink.page = CustomizationPage.SUPPORTER
         runCatching {
             startActivity(android.content.Intent(this, MainActivity::class.java)
                 .setAction(android.content.Intent.ACTION_APPLICATION_PREFERENCES)

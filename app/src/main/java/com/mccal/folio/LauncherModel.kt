@@ -664,7 +664,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         saveLayoutSnapshot("Before restoring a backup")
         undoLayout = old.layout to preview.layout
         undoImportSettings = UndoImportSettings(old.compact, old.expanded, old.labels, old.googleSearch, old.verticalStatus)
-        mutable.value = old.copy(homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = preview.layout.dock,
+        // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
+        val names = old.appNames + preview.appNames
+        mutable.value = old.copy(appNames = names, apps = old.apps.withAppNames(names),
+            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = preview.layout.dock,
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
@@ -1035,7 +1038,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** Starts over with a default Home after a damaged save; the damaged copy stays as `state_damaged_backup`. */
     fun resetDamagedLayout() {
         if (!statePayloadInvalid) return
-        prefs.getString("state", null)?.let { prefs.edit().putString("state_damaged_backup", it).apply() }
+        // Once, like the schema backups beside it: a second damaged layout must not write over the first one,
+        // which may be the only copy of a Home someone spent an evening arranging.
+        if (!prefs.contains("state_damaged_backup")) {
+            prefs.getString("state", null)?.let { prefs.edit().putString("state_damaged_backup", it).apply() }
+        }
         statePayloadInvalid = false
         mutable.update { it.copy(error = null) }
         persist()

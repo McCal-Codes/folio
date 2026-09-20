@@ -17,7 +17,8 @@ discover-probe/
 *.p12
 *.pem
 *.key
-tools/kofi-worker/pool.sql
+pool.sql
+**/pool.sql
 tools/kofi-worker/.wrangler/
 tools/kofi-worker/node_modules/
 supporter-key.pem

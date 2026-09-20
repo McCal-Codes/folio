@@ -50,9 +50,13 @@ internal object LayoutHistory {
 
     fun decode(raw: String?): List<LayoutSnapshot> = runCatching {
         val array = JSONArray(raw ?: return emptyList())
-        List(array.length()) { i ->
-            val o = array.getJSONObject(i)
-            LayoutSnapshot(o.getLong("time"), o.optString("reason"), decodeLayout(o.getJSONObject("layout")))
+        // Each snapshot is read on its own: one entry a later build can't parse used to take the other nine with
+        // it, and the next automatic snapshot wrote that loss back to disk.
+        (0 until array.length()).mapNotNull { i ->
+            runCatching {
+                val o = array.getJSONObject(i)
+                LayoutSnapshot(o.getLong("time"), o.optString("reason"), decodeLayout(o.getJSONObject("layout")))
+            }.getOrNull()
         }
     }.getOrDefault(emptyList())
 

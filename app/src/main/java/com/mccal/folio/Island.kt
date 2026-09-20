@@ -183,8 +183,11 @@ class IslandListenerService : NotificationListenerService() {
     private val shownContent = object : LinkedHashMap<String, Pair<Int, Long>>(32, .75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Long>>?) = size > 64
     }
-    private fun isRepeat(key: String, title: String?, text: String?): Boolean {
-        val signature = (title to text).hashCode()
+    private fun isRepeat(key: String, title: String?, text: String?, posted: Long): Boolean {
+        // The time the app itself posted goes into the signature: an app re-posting one warning keeps its own
+        // `when`, while a person sending "ok" twice in a conversation makes a new notification with a new one —
+        // and messaging apps reuse a single key per conversation, so without this the second "ok" never appeared.
+        val signature = (title to text).hashCode() * 31 + posted.hashCode()
         val now = System.currentTimeMillis()
         val last = shownContent[key]
         if (last != null && last.first == signature && now - last.second < REPEAT_QUIET_MS) return true
@@ -241,7 +244,8 @@ class IslandListenerService : NotificationListenerService() {
         val text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))
             ?.toString()?.takeIf { it.isNotBlank() }
         if (title == null && text == null) return
-        if (isRepeat(sbn.key, title, text)) return
+        // `when` is the app's own idea of when this was posted; postTime is Android's, and stands in when an app leaves it unset.
+        if (isRepeat(sbn.key, title, text, n.`when`.takeIf { it > 0L } ?: sbn.postTime)) return
         val picture = runCatching { n.getLargeIcon()?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
         IslandEvents.post(IslandEvent.Message(sbn.key, sbn.packageName, label, title ?: label, text, picture,
             appIcon(sbn.packageName), Messaging.replyAction(n) != null, alert = true))
@@ -257,7 +261,11 @@ class IslandListenerService : NotificationListenerService() {
         return n.extras.getCharSequence(Notification.EXTRA_TITLE) != null || n.extras.getCharSequence(Notification.EXTRA_TEXT) != null
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification) = publish()
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        // Swiping one away ends its quiet window: what comes back after that is new, not a re-post.
+        shownContent.remove(sbn.key)
+        publish()
+    }
     // Fires when a channel's importance changes (e.g. its pop-up was turned off), so the settings list updates.
     override fun onNotificationRankingUpdate(rankingMap: RankingMap?) = publish()
 

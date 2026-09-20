@@ -144,8 +144,22 @@ internal object Supporter {
  * phone on its build date — and neither a month that has run out nor one that hasn't should turn on that. Null is
  * a phone that has never had a real date at all: a fresh one that hasn't reached the network yet.
  */
-internal fun supporterClock(seen: LocalDate?, today: LocalDate, floor: LocalDate): LocalDate? =
-    listOfNotNull(seen, today.takeIf { !it.isBefore(floor) }).maxOrNull()
+/**
+ * A phone's date can be wrong in both directions. Winding it back must not hand back time that has been used, which
+ * is why the latest day ever seen is kept — but a dead battery can bring the clock up as 2030, and latching that
+ * would expire every code for good, with nothing in the app able to undo it. So the day only moves forward by days
+ * that could plausibly have passed: a leap further than [MAX_CLOCK_LEAP] is not believed, and the phone keeps the
+ * day it had until the clock agrees again.
+ */
+internal fun supporterClock(seen: LocalDate?, today: LocalDate, floor: LocalDate): LocalDate? {
+    val real = today.takeIf { !it.isBefore(floor) }
+    if (seen == null) return real
+    if (real == null || !real.isAfter(seen)) return seen
+    return if (real.toEpochDay() - seen.toEpochDay() > MAX_CLOCK_LEAP) seen else real
+}
+
+/** A year and a half: longer than any phone is left in a drawer, shorter than the jumps a broken clock makes. */
+internal const val MAX_CLOCK_LEAP = 550L
 
 /**
  * When a months code's window begins. [stored] is the day already written down for this code and [clock] the day

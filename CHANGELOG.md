@@ -65,6 +65,13 @@ Folio shows the newest section on the phone after an update, and every version u
 - On a phone set to Turkish, supporter codes typed in lower case can be redeemed, the Roadmap shows every item, and What's New keeps its symbols: Folio was reading its own data through the phone's language.
 - The time on each notification ("now", "5m ago") follows your language and its plural rules, and a phone whose clock has just been corrected no longer shows a notification as arriving in the future.
 - The last of Folio's own words follow your language: brief messages (a file that isn't a theme, an app that won't open, a redeemed code) and the text left in What's New, Choose Home Apps, widget editing, Up Next, restore and the alerts.
+- A backup now carries the names you gave your apps, and restoring puts them back: renames lived in one file on the phone and went no further.
+- A clock that comes back years ahead after a flat battery no longer expires your supporter code for good; winding the date back still can't hand time back.
+- Layout History keeps the snapshots it can read instead of dropping all ten when one of them can't be, and a second damaged layout no longer writes over the first rescue copy.
+- A message with the same words as the last one shows in the island again: repeats are judged by when the app posted them, and dismissing one ends its quiet window.
+- An automatic update tidies up after itself again, instead of leaving the installed APK in Folio's storage.
+- Opening Software Update no longer uses up the day's check, so an automatic update still installs; a check that Android stops mid-way no longer stops the daily check for good.
+- A folio://redeem link can add a supporter code but never replace one you already have — swapping is done in Settings › Supporter, which the link now opens.
 
 ## [0.6.0] - 2026-09-16
 

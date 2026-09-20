@@ -143,8 +143,9 @@ Folio  --GET /beta/asset/<id>?t=...-->  worker --302-->  GitHub's own short-live
 ```
 
 What that buys: the GitHub token never reaches a phone, the repository stays private, supporters need no GitHub
-account, and access follows the code you issued rather than a list of invitations. A download link lasts 30 minutes
-and works only for the one file it was made for.
+account, and access follows the code you issued rather than a list of invitations. A download link lasts 30 minutes,
+works only for the one file it was made for, and only for the code it was made for — the code has to be sent with it,
+so a link pasted somewhere public gets nobody in.
 
 **What it refuses:** a code nobody signed, a code without the `beta` scope, a withdrawn serial, a code that has run
 out, and a forged or expired download link. A months-code's window runs from the day it was first used here, recorded

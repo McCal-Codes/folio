@@ -199,7 +199,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         if (Supporter.available(supportContext)) MenuDivider()
                         if (Supporter.available(supportContext)) TweakRow(Icons.Rounded.Redeem, 0xFFBF5AF2, "Supporter", "customization-supporter",
-                            Supporter.code(supportContext)?.let { stringResource(R.string.code_added) }, selected = selected == CustomizationPage.SUPPORTER,
+                            remember(supportContext) { Supporter.code(supportContext) }?.let { stringResource(R.string.code_added) },
+                            selected = selected == CustomizationPage.SUPPORTER,
                             chevron = !sidebar) { onPage(CustomizationPage.SUPPORTER) }
                     }
                     CardNote(stringResource(R.string.folio_is_free_and_always_will_be_if_it_m), Modifier.padding(horizontal = 16.dp))

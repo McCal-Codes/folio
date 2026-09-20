@@ -858,4 +858,5 @@
     <string name="dev_line_big_clock">Big Clock</string>
     <string name="dev_line_software_update">Software Update</string>
     <string name="dev_line_since_065">New in 0.6.5</string>
+    <string name="you_already_have_a_code_paste_this_one">You already have a supporter code. Paste this one in Settings \u203a Supporter if you want to swap it.</string>
 </resources>

@@ -41,10 +41,13 @@ class ButtonsRoomProvider : ContentProvider() {
 
     /** The strip the buttons occupy at the bottom, in dp, or zero when they aren't sitting in it. */
     private fun roomDp(context: Context): Float = runCatching {
-        val prefs = context.getSharedPreferences("folio", Context.MODE_PRIVATE)
-        val lift = listOf(true, false).maxOf { wide ->
-            listOf(true, false).maxOf { landscape -> ButtonBarPosition.load(context, wide, landscape) }
-        }
+        val prefs = context.getSharedPreferences(SettingKeys.PREFS, Context.MODE_PRIVATE)
+        // The lift is saved per screen and orientation, so ask about the one the keyboard is opening on: taking the
+        // largest of all four made a bar lifted on the inner screen report no room on the cover, where it still sits
+        // at the bottom.
+        val configuration = context.resources.configuration
+        val lift = ButtonBarPosition.load(context, configuration.smallestScreenWidthDp >= 600,
+            configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
         buttonsRoomDp(prefs.getString(SettingKeys.STATE, "{}") ?: "{}", lift)
     }.getOrDefault(0f)
 
