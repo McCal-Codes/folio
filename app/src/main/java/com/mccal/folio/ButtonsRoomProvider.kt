@@ -12,7 +12,7 @@ import org.json.JSONObject
  * How much room Big Buttons take at the bottom of the screen, for anything that has to stay clear of them.
  *
  * Big Buttons float above Android's own navigation, so the system tells no other app they are there — a keyboard
- * sizing itself from window insets alone will sit underneath them. Folio Keys reads this; anything else may too.
+ * sizing itself from window insets alone will sit underneath them. Keyd reads this; anything else may too.
  *
  * It answers with one number and nothing else: no identifiers, no settings, nothing about the person using the phone.
  * Reading it is allowed without a permission because the answer is a height in dp, and a keyboard that had to ask for

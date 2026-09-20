@@ -643,7 +643,7 @@
     <string name="automation">Automation</string>
     <string name="keyboard_extras">Keyboard extras</string>
     <string name="in_design">In design</string>
-    <string name="folio_keys_is_a_keyboard_for_the_rest_of">Folio Keys is a keyboard for the rest of Folio: a separate app, because Android needs a keyboard to be its own input method. It splits around the crease of a fold, learns which words you fix, and asks for no internet permission. Your code already covers it — there is just nothing to install yet.</string>
+    <string name="folio_keys_is_a_keyboard_for_the_rest_of">Keyd is a keyboard for the rest of Folio: a separate app, because Android needs a keyboard to be its own input method. It splits around the crease of a fold, learns which words you fix, and asks for no internet permission. Your code already covers it — there is just nothing to install yet.</string>
     <string name="what_it_will_do">What it will do</string>
     <string name="splits_around_the_crease_key_gestures_pe">Splits around the crease · key gestures · an action shelf · clipboard with snippets · a profile per app · typing insights · no internet permission</string>
     <string name="nothing_yet">Nothing yet</string>
