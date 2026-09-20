@@ -148,19 +148,12 @@ fun LauncherScreen(
     var widgetProfileSerial by rememberSaveable { mutableStateOf<Long?>(null) }
     var widgetSession by remember { mutableStateOf<WidgetPickerSession?>(null) }
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
-    var emptyCellIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     val resize = rememberWidgetResize()
-    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    var renameAppId by rememberSaveable { mutableStateOf<String?>(null) }
-    var panelAppId by rememberSaveable { mutableStateOf<String?>(null) }
-    var stackAppId by rememberSaveable { mutableStateOf<String?>(null) }
-    var stackEditId by rememberSaveable { mutableStateOf<String?>(null) }
+    val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
         if (sheet != "widgets") { stackTargetSlot = null; todayAdd = false }
     }
-    var openFolderId by rememberSaveable { mutableStateOf<String?>(null) }
-    var createFolderFirstId by rememberSaveable { mutableStateOf<String?>(null) }
     var savedPage by rememberSaveable { mutableIntStateOf(0) }
     var lastHomePage by rememberSaveable { mutableIntStateOf(0) }
     var libraryQuery by rememberSaveable { mutableStateOf("") }
@@ -174,7 +167,7 @@ fun LauncherScreen(
     }
     val appsById = remember(state.apps) { state.apps.associateBy { it.id } }
     val drag = remember { HomeDragState() }
-    val folderOwnsInput = openFolderId != null || drag.source?.folderId != null
+    val folderOwnsInput = overlays.folder != null || drag.source?.folderId != null
     DisposableEffect(folderOwnsInput) {
         if (folderOwnsInput) LiveDiscover.setExternalResultPending(launcherActivity, "main", "folder-panel", true)
         onDispose { if (folderOwnsInput) LiveDiscover.setExternalResultPending(launcherActivity, "main", "folder-panel", false) }
@@ -189,7 +182,7 @@ fun LauncherScreen(
     // Long-press on empty Home starts jiggle mode (iPhone); a second long-press opens the Home options.
     val onEmptyLongPress: (Int) -> Unit = { index ->
         if (focusLock != null) { haptic.performHapticFeedback(HapticFeedbackType.Reject); lockNotice++ }
-        else if (homeEdit.active) emptyCellIndex = index
+        else if (homeEdit.active) overlays.emptyCell = index
         else { homeEdit.lastEmptyIndex = index; haptic.performHapticFeedback(HapticFeedbackType.LongPress); homeEdit.start() }
     }
     val homePages = state.homePages
@@ -304,8 +297,8 @@ fun LauncherScreen(
             ?: pager.currentPage.takeIf { it in 0 until homePages }
             ?: lastHomePage.coerceIn(0, homePages - 1)
         drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null
-        widgetExactTarget = false; widgetPlacementMessage = null; selectedId = null
-        openFolderId = null; createFolderFirstId = null; emptyCellIndex = null; homeEdit.stop()
+        widgetExactTarget = false; widgetPlacementMessage = null; overlays.menu = null
+        overlays.folder = null; overlays.newFolder = null; overlays.emptyCell = null; homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
     } }
@@ -315,7 +308,7 @@ fun LauncherScreen(
         (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))?.let { pager.animateScrollToPage(it) }
     }
     LaunchedEffect(settingsRequests) { if (settingsRequests > 0) {
-        drag.clear(); widgetSession = null; resize.stop(); selectedId = null; homeEdit.stop()
+        drag.clear(); widgetSession = null; resize.stop(); overlays.menu = null; homeEdit.stop()
         if (SoftwareUpdate.openRequested) { SoftwareUpdate.openRequested = false; customizationPage = CustomizationPage.SOFTWARE_UPDATE }
         SettingsLink.page?.let { customizationPage = it; SettingsLink.page = null }
         sheet = "settings"
@@ -337,7 +330,7 @@ fun LauncherScreen(
             confirmButton = { TextButton(onClick = { problemDismissed = true; model.refresh() }) { Text(stringResource(R.string.try_again)) } },
             dismissButton = { TextButton(onClick = { problemDismissed = true }) { Text(stringResource(R.string.not_now)) } })
     }
-    LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null; widgetExactTarget = false; selectedId = null
+    LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null; widgetExactTarget = false; overlays.menu = null
         if (!state.googleSearch || !onGoogleSearch(null)) pager.animateScrollToPage(homePages)
     } }
     val widgetPickerBack = {
@@ -352,13 +345,13 @@ fun LauncherScreen(
     // App Library, predictive back: the library eases back as you swipe and returns to Home when you let go.
     var libraryBack by remember { mutableFloatStateOf(0f) }
     val libraryBackActive = sheet.isEmpty() && !launcherActivity.spotlightVisible.value && launcherActivity.topPanel.value == null &&
-        pager.currentPage == visibleHomePages && !resize.active && !drag.active && selectedId == null && !homeEdit.active
+        pager.currentPage == visibleHomePages && !resize.active && !drag.active && overlays.menu == null && !homeEdit.active
     PredictiveBack(enabled = libraryBackActive, onProgress = { libraryBack = it }, onCancel = { libraryBack = 0f },
         onBack = { focus.clearFocus(); scope.launch { pager.animateScrollToPage(0); libraryBack = 0f } })
     BackHandler(enabled = sheet.isEmpty() && !launcherActivity.spotlightVisible.value && launcherActivity.topPanel.value == null && !libraryBackActive) { if (resize.active) resize.stop() else if (drag.active) {
         val destination = if (drag.source?.target is DropTarget.Library) homePages else drag.originPage.coerceAtMost(homePages - 1)
         drag.clear(); scope.launch { pager.scrollToPage(destination) }
-    } else if (selectedId != null) selectedId = null else if (homeEdit.active) homeEdit.stop()
+    } else if (overlays.menu != null) overlays.menu = null else if (homeEdit.active) homeEdit.stop()
         // Previewing (Folio isn't the Home app yet): Back on the first page leaves, like any other app.
         else if (!isDefaultHome && pager.currentPage == 0) launcherActivity.moveTaskToBack(true)
         else { focus.clearFocus(); scope.launch { pager.animateScrollToPage(0) } } }
@@ -398,8 +391,8 @@ fun LauncherScreen(
     LaunchedEffect(drag.active, drag.moved) {
         val source = drag.source
         val id = source?.appId
-        if (focusLock != null && drag.active && drag.moved) { drag.clear(); selectedId = null; lockNotice++; return@LaunchedEffect }
-        if (drag.active && drag.moved && id != null && selectedId == id) { selectedId = null; homeEdit.start() }
+        if (focusLock != null && drag.active && drag.moved) { drag.clear(); overlays.menu = null; lockNotice++; return@LaunchedEffect }
+        if (drag.active && drag.moved && id != null && overlays.menu == id) { overlays.menu = null; homeEdit.start() }
         // Dragging out of the App Library heads to Home only once the app actually moves (holding just shows the menu).
         if (drag.active && drag.moved && source?.target is DropTarget.Library) {
             withFrameNanos { }
@@ -488,10 +481,10 @@ fun LauncherScreen(
             pager.scrollToPage(if (returnToLibrary) model.state.value.homePages else page.coerceIn(0, model.state.value.homePages - 1))
             if (!moved && !cancelled) {
                 // A held dock app already shows its menu; only an empty slot opens the app chooser.
-                if (source.target is DropTarget.Dock) { if (source.appId == null) { dockSlot = source.target.index; sheet = "dock" } else selectedId = source.appId }
+                if (source.target is DropTarget.Dock) { if (source.appId == null) { dockSlot = source.target.index; sheet = "dock" } else overlays.menu = source.appId }
                 else if (source.target is DropTarget.Widget) { if (focusLock != null) lockNotice++ else { widgetSlot = source.target.index; sheet = "widgetActions" } }
-                else if (source.appId?.let(::isFolderId) == true) openFolderId = source.appId
-                else if (source.folderId == null) selectedId = source.appId
+                else if (source.appId?.let(::isFolderId) == true) overlays.folder = source.appId
+                else if (source.folderId == null) overlays.menu = source.appId
             }
         }
     }
@@ -509,16 +502,16 @@ fun LauncherScreen(
         compositingStrategy = if (!hostedDiscover) androidx.compose.ui.graphics.CompositingStrategy.Auto
             else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
     }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").homeDragInput(drag,
-        enabled = sheet.isEmpty() && !showFirstRun && selectedId == null && !resize.active && pager.currentPage >= 0,
+        enabled = sheet.isEmpty() && !showFirstRun && overlays.menu == null && !resize.active && pager.currentPage >= 0,
         page = pager.currentPage, eligiblePages = eligibleDragPages, onStart = {
             focus.clearFocus(); keyboard?.hide(); haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             // iPhone: holding an app shows its menu right away (no Android-style pick-up). Moving while still
             // holding dismisses the menu, picks the app up and starts jiggle mode (see the effect below).
             drag.source?.let { src ->
                 if (!homeEdit.active && src.appId != null && !isFolderId(src.appId) && src.folderId == null && src.target !is DropTarget.Widget)
-                    selectedId = src.appId
+                    overlays.menu = src.appId
             }
-            if (drag.source?.folderId != null) openFolderId = null
+            if (drag.source?.folderId != null) overlays.folder = null
         },
         onFinish = { cancelled -> finishDrag(cancelled) }, immediate = homeEdit.active)
         .twoFingerSwipeDown(FolioAction.entries.firstOrNull { it.name == state.triggerActions[FolioTrigger.TWO_FINGER_DOWN.name] }
@@ -539,11 +532,11 @@ fun LauncherScreen(
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
             LocalIconStack provides remember(homeEdit.active, haptic) {
-                if (homeEdit.active) null else { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); stackAppId = app.id }
+                if (homeEdit.active) null else { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); overlays.stackFan = app.id }
             },
             LocalAppPanel provides remember(state.appPanels, state.featureScopes, homeEdit.active, haptic, panelWide) {
                 val panelsOn = FeatureScopes.on(state.featureScopes, "appPanels", state.appPanels, screenFor(panelWide))
-                if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); panelAppId = app.id } else null
+                if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); overlays.panel = app.id } else null
             }) {
         if (!state.systemWallpaper) DuneWallpaper()
         else if (state.wallpaperMotion) SystemWallpaperParallax(nativePager)
@@ -654,8 +647,8 @@ fun LauncherScreen(
             var gestureOriginInWindow by remember { mutableStateOf(Offset.Zero) }
             var scrubberBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
             val pagerInputEnabled = pager.currentPage in -firstHome..visibleHomePages && !drag.active &&
-                widgetSession == null && !resize.active && sheet.isEmpty() && !showFirstRun && selectedId == null &&
-                openFolderId == null && emptyCellIndex == null && createFolderFirstId == null &&
+                widgetSession == null && !resize.active && sheet.isEmpty() && !showFirstRun && overlays.menu == null &&
+                overlays.folder == null && overlays.emptyCell == null && overlays.newFolder == null &&
                 launcherActivity.backups.preview == null && !launcherActivity.backups.pickerPending &&
                 !launcherActivity.backgrounds.pickerPending && widgets.setupStatus == null &&
                 widgets.reconfigureWidgetId == null
@@ -715,7 +708,7 @@ fun LauncherScreen(
                     LiveDiscover.host.get()?.invalidateFrame()
                 }.testTag("app-pager")
                 .discoverSwipe(discoverMode && firstHome == 0 && pager.currentPage == 0 && !drag.active && sheet.isEmpty() &&
-                    !showFirstRun && selectedId == null, onDiscover)
+                    !showFirstRun && overlays.menu == null, onDiscover)
                 .onGloballyPositioned {
                     if (firstHome > 0 && !todayMode) {
                         val bounds = it.boundsInWindow()
@@ -743,8 +736,8 @@ fun LauncherScreen(
                         libraryQuery = libraryQuery, onLibraryQuery = { libraryQuery = it },
                         onLaunch = onLaunch, onLaunchFrom = onLaunchFrom, onPinned = model::setPinned,
                         onTurnOnWork = { model.turnOnWork(it) },
-                        onActions = { selectedId = it.id }, onWidget = { if (focusLock != null) lockNotice++ else { widgetSlot = it; sheet = "widgetActions" } },
-                        onFolder = { openFolderId = it },
+                        onActions = { overlays.menu = it.id }, onWidget = { if (focusLock != null) lockNotice++ else { widgetSlot = it; sheet = "widgetActions" } },
+                        onFolder = { overlays.folder = it },
                         onEmptyWidget = onEmptyLongPress,
                         onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
                         onRefresh = model::refresh,
@@ -769,7 +762,7 @@ fun LauncherScreen(
                         AppLibrary(state, libraryQuery, { libraryQuery = it }, onLaunch, model::setPinned,
                             // Unfolded portrait: the Side Bar's status capsule sits in the top corner, so the library keeps
                             // the same side margin Home does instead of running underneath it.
-                            onActions = { selectedId = it.id }, modifier = Modifier.fillMaxSize()
+                            onActions = { overlays.menu = it.id }, modifier = Modifier.fillMaxSize()
                                 .graphicsLayer { val b = libraryBack; scaleX = 1f - .14f * b; scaleY = scaleX; alpha = 1f - .35f * b; translationX = size.width * .08f * b }
                                 .padding(top = 16.dp, bottom = bottomSpace)
                                 .padding(libraryEdges(geometry.horizontalDock && !geometry.dockBesideRail && state.verticalStatus, preset.dockWidth, state.leftHanded)).testTag("library-page"),
@@ -779,9 +772,9 @@ fun LauncherScreen(
                         Row(Modifier.fillMaxSize().testTag("home-surface"), horizontalArrangement = Arrangement.Center) {
                             HomePagePane(page, state, previewLayout.slots, previewLayout.leadingSlots, previewLayout.widgetPlacements, appsById, geometry, contentHeight,
                                 bottomSpace, widgets, drag, target, insertionTarget, showLargeWidget = false,
-                                onLaunch = onLaunchFrom, onActions = { selectedId = it.id },
+                                onLaunch = onLaunchFrom, onActions = { overlays.menu = it.id },
                                 onWidget = { if (focusLock != null) lockNotice++ else { widgetSlot = it; sheet = "widgetActions" } },
-                                onFolder = { openFolderId = it },
+                                onFolder = { overlays.folder = it },
                                 onEmptyWidget = onEmptyLongPress,
                                 onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
                                 onRefresh = model::refresh)
@@ -906,7 +899,7 @@ fun LauncherScreen(
                         widgetPackage = null; widgetProfileSerial = null; sheet = "widgets"
                     }
                     JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
-                        emptyCellIndex = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
+                        overlays.emptyCell = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
                     }
                     // Unfolded, keep all three together at the top right instead of spread across two pages.
                     if (!geometry.expanded) Spacer(Modifier.weight(1f))
@@ -949,7 +942,7 @@ fun LauncherScreen(
                                 }
                             },
                             onClear = { model.removePlacement(DropTarget.Dock(dockSlot)) },
-                            onLongClick = { selectedId = it.id; sheet = "" },
+                            onLongClick = { overlays.menu = it.id; sheet = "" },
                             canSelect = { canPlaceInDock(state.layout, it.id) },
                             blockedHint = if (state.dock.none { it == null }) stringResource(R.string.dock_full_move_an_app_out_first) else null)
                         "pins" -> Column(Modifier.fillMaxHeight(.9f).imePadding()) {
@@ -957,7 +950,7 @@ fun LauncherScreen(
                                 TextButton(onClick = { sheet = "" }) { Text(stringResource(R.string.done)) }
                             }
                             AppLibrary(state, pinQuery, { pinQuery = it }, onLaunch, model::setPinned,
-                                onActions = { selectedId = it.id; sheet = "" }, editing = true, modifier = Modifier.weight(1f).fillMaxWidth(),
+                                onActions = { overlays.menu = it.id; sheet = "" }, editing = true, modifier = Modifier.weight(1f).fillMaxWidth(),
                                 onTurnOnWork = { model.turnOnWork(it) })
                         }
                         "settings", "settings:wallpaper" -> CustomizationSheet(state, wide, model, isDefaultHome,
@@ -1404,21 +1397,21 @@ fun LauncherScreen(
                 }
             }
         }
-        appsById[stackAppId]?.let { anchor ->
+        appsById[overlays.stackFan]?.let { anchor ->
             val stacked = state.iconStacks[anchor.id].orEmpty().mapNotNull(appsById::get)
-            if (stacked.isEmpty()) LaunchedEffect(anchor.id) { stackAppId = null }
-            else IconStackFan(anchor, stacked, onDismiss = { stackAppId = null }) { stackAppId = null; onLaunchFrom(it, IconBounds.of(anchor.id)) }
+            if (stacked.isEmpty()) LaunchedEffect(anchor.id) { overlays.stackFan = null }
+            else IconStackFan(anchor, stacked, onDismiss = { overlays.stackFan = null }) { overlays.stackFan = null; onLaunchFrom(it, IconBounds.of(anchor.id)) }
         }
-        appsById[stackEditId]?.let { anchor ->
-            ModalBottomSheet(onDismissRequest = { stackEditId = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        appsById[overlays.stackEditor]?.let { anchor ->
+            ModalBottomSheet(onDismissRequest = { overlays.stackEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 IconStackEditor(anchor, state.apps.filter { it.id !in state.hiddenApps }, state.iconStacks[anchor.id].orEmpty(),
-                    onToggle = { model.toggleStackApp(anchor.id, it) }, onDone = { stackEditId = null })
+                    onToggle = { model.toggleStackApp(anchor.id, it) }, onDone = { overlays.stackEditor = null })
             }
         }
-        appsById[panelAppId]?.let { app ->
-            AppPanel(app, onDismiss = { panelAppId = null }, onOpen = { panelAppId = null; onLaunchFrom(app, IconBounds.of(app.id)) })
+        appsById[overlays.panel]?.let { app ->
+            AppPanel(app, onDismiss = { overlays.panel = null }, onOpen = { overlays.panel = null; onLaunchFrom(app, IconBounds.of(app.id)) })
         }
-        appsById[selectedId]?.let { app ->
+        appsById[overlays.menu]?.let { app ->
             val pinned = state.layout.indexOfShortcut(app.id) != null
             val packageName = app.packageName
             val hasWidgets = packageName.isNotEmpty() && runCatching {
@@ -1428,25 +1421,25 @@ fun LauncherScreen(
                 val page = lastHomePage.coerceIn(0, homePages - 1)
                 widgetTargetIndex = homeCellIndex(page, 0); widgetExactTarget = false
                 widgetSlot = model.nextWidgetSlot(); widgetPackage = packageName
-                widgetProfileSerial = app.userSerial; selectedId = null; sheet = "widgets"
+                widgetProfileSerial = app.userSerial; overlays.menu = null; sheet = "widgets"
             }} else null
             // iPhone-style menu next to the icon; "Edit Home Screen" starts jiggle mode for moving.
             AppContextMenu(app, onHome = pinned, hidden = app.id in state.hiddenApps,
                 lockedBy = focusLock?.mode?.name,
-                onDismiss = { selectedId = null }, onMove = { selectedId = null; homeEdit.start() },
-                onAddOrRemove = { if (app.isShortcut) model.deleteShortcut(app) else model.setPinned(app.id, !pinned); selectedId = null },
-                onCreateFolder = { createFolderFirstId = app.id; selectedId = null }, hasFolders = state.folders.any { app.id !in it.appIds },
+                onDismiss = { overlays.menu = null }, onMove = { overlays.menu = null; homeEdit.start() },
+                onAddOrRemove = { if (app.isShortcut) model.deleteShortcut(app) else model.setPinned(app.id, !pinned); overlays.menu = null },
+                onCreateFolder = { overlays.newFolder = app.id; overlays.menu = null }, hasFolders = state.folders.any { app.id !in it.appIds },
                 onWidgets = openWidgetsFor,
-                onToggleHidden = { model.setHidden(app.id, app.id !in state.hiddenApps); selectedId = null },
-                onInfo = { onAppInfo(app); selectedId = null },
-                onRename = { renameAppId = app.id; selectedId = null },
-                onStack = if (pinned) {{ stackEditId = app.id; selectedId = null }} else null)
+                onToggleHidden = { model.setHidden(app.id, app.id !in state.hiddenApps); overlays.menu = null },
+                onInfo = { onAppInfo(app); overlays.menu = null },
+                onRename = { overlays.rename = app.id; overlays.menu = null },
+                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null)
         }
-        appsById[renameAppId]?.let { app ->
-            RenameAppAlert(app, onDismiss = { renameAppId = null }, onRename = { model.renameApp(app.id, it); renameAppId = null })
+        appsById[overlays.rename]?.let { app ->
+            RenameAppAlert(app, onDismiss = { overlays.rename = null }, onRename = { model.renameApp(app.id, it); overlays.rename = null })
         }
-        emptyCellIndex?.let { index ->
-            HomeEditMenu(anchor = editPillBounds.takeIf { homeEdit.active }, onDismiss = { emptyCellIndex = null },
+        overlays.emptyCell?.let { index ->
+            HomeEditMenu(anchor = editPillBounds.takeIf { homeEdit.active }, onDismiss = { overlays.emptyCell = null },
                 onWidgets = {
                     widgetTargetIndex = index; widgetExactTarget = true; widgetSlot = model.nextWidgetSlot(); widgetPackage = null; widgetProfileSerial = null
                     sheet = "widgets"
@@ -1457,15 +1450,15 @@ fun LauncherScreen(
                     if (model.removeLastEmptyPage()) scope.launch { pager.animateScrollToPage(homePages - 2) }
                 }} else null)
         }
-        createFolderFirstId?.let { firstId ->
+        overlays.newFolder?.let { firstId ->
             val first = appsById[firstId]
             // Existing folders first (the only other way in is dragging onto one), then a new folder with another app.
             val folders = state.folders.filter { firstId !in it.appIds }
-            AlertDialog(onDismissRequest = { createFolderFirstId = null },
+            AlertDialog(onDismissRequest = { overlays.newFolder = null },
                 title = { Text(if (folders.isEmpty()) "Create folder with ${first?.label ?: "app"}" else "Add ${first?.label ?: "app"} to a folder") },
                 text = { LazyColumn(Modifier.heightIn(max = 420.dp).testTag("folder-app-picker")) {
                     items(folders, key = { it.id }) { folder ->
-                        TextButton(onClick = { model.addAppToFolder(folder.id, firstId); createFolderFirstId = null },
+                        TextButton(onClick = { model.addAppToFolder(folder.id, firstId); overlays.newFolder = null },
                             modifier = Modifier.fillMaxWidth().testTag("folder-add-${folder.id}")) {
                             Icon(Icons.Rounded.Folder, null, Modifier.size(20.dp)); Spacer(Modifier.width(10.dp))
                             Text("${folder.title} (${folder.appIds.size})", Modifier.weight(1f))
@@ -1484,14 +1477,14 @@ fun LauncherScreen(
                                 .firstOrNull { it !in blocked && homeCellShown(it, homeAppRows) && state.layout.slotAt(it) in listOf(null, firstId, second.id) }
                                 ?: state.layout.indexOfShortcut(firstId)
                             if (targetIndex != null) model.createFolder(firstId, second.id, targetIndex)
-                            createFolderFirstId = null
+                            overlays.newFolder = null
                         }, modifier = Modifier.fillMaxWidth().testTag("folder-app-${second.id}")) {
                             Text(second.label, Modifier.fillMaxWidth())
                         }
                     }
-                } }, confirmButton = { TextButton(onClick = { createFolderFirstId = null }) { Text(stringResource(R.string.cancel)) } })
+                } }, confirmButton = { TextButton(onClick = { overlays.newFolder = null }) { Text(stringResource(R.string.cancel)) } })
         }
-        openFolderId?.let { id ->
+        overlays.folder?.let { id ->
             state.folders.firstOrNull { it.id == id }?.let { folder ->
                 val blocked = state.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }
                 val destinationPages = (if (expandedWorkspace) listOf(-1) else emptyList()) + (0 until homePages)
@@ -1501,13 +1494,13 @@ fun LauncherScreen(
                 }
                 FolderPanel(folder, appsById, drag, pager.currentPage, homeDestinations,
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
-                    onDismiss = { openFolderId = null }, onRename = { model.renameFolder(id, it) },
+                    onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
                     onLaunch = onLaunchFrom,
                     onMoveOut = { appId, destination ->
-                        if (model.removeAppFromFolder(id, appId, destination)) openFolderId = model.folder(id)?.id
+                        if (model.removeAppFromFolder(id, appId, destination)) overlays.folder = model.folder(id)?.id
                     })
-            } ?: LaunchedEffect(id) { openFolderId = null }
+            } ?: LaunchedEffect(id) { overlays.folder = null }
         }
         launcherActivity.backups.preview?.let { preview ->
             LayoutRestorePreview(preview, onRestore = {
