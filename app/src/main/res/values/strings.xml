@@ -1,5 +1,5 @@
 <resources>
-    <string name="dune_wallpaper_description">Folio dunes — the launcher’s landscape, sized for your display.</string>
+    <string name="dune_wallpaper_description">Folio dunes, the launcher’s landscape, sized for your display.</string>
     <string name="shade_service_label">Folio gestures &amp; overlays</string>
     <string name="shade_service_description">Lets Folio open the system notifications and Quick Settings panels from Home gestures, and, only if you turn them on, show Folio’s dock handle and Dynamic Island over other apps, launch your dock apps and go Home. It does not read screen content or observe what you do in other apps.</string>
     <string name="personal">Personal</string>
@@ -34,7 +34,7 @@
     <string name="opens_android_s_preview_to_use_folio_s_b">Opens Android’s preview to use Folio’s background as your phone’s wallpaper too (a live wallpaper), so it matches outside Folio.</string>
     <string name="preview_as_phone_wallpaper">Preview as phone wallpaper</string>
     <string name="gestures">Gestures</string>
-    <string name="pull_down_from_the_top_left_for_notifica">Pull down from the top-left for notifications, top-right for Control Center. Swipe sideways to change pages. A swipe down lower on Home does what you pick above — set it to Notification Center for the usual Android pull-down, from anywhere on the page.</string>
+    <string name="pull_down_from_the_top_left_for_notifica">Pull down from the top-left for notifications, top-right for Control Center. Swipe sideways to change pages. A swipe down lower on Home does what you pick above: set it to Notification Center for the usual Android pull-down, from anywhere on the page.</string>
     <string name="iphone_style_control_center_and_notifica">iPhone-style Control Center and notifications</string>
     <string name="panels">Panels</string>
     <string name="big_clock_in_notification_center">Big clock in Notification Center</string>
@@ -632,18 +632,18 @@
     <string name="until">Until</string>
     <string name="remove_code">Remove Code</string>
     <string name="beta_features">Beta Features</string>
-    <string name="beta_features_arrive_a_release_or_two_ea">Beta features arrive a release or two early, before they\'ve been through everyone\'s phones. Expect more bugs than usual — that\'s the trade. Turn this off whenever you like and Folio goes straight back to the way the stable release behaves.</string>
-    <string name="folio_s_core_is_free_and_stays_free_home">Folio\'s core is free and stays free — Home, the island, panels, gestures and themes are never behind a code. Supporting buys time to keep building, and these extras are the thank-you.</string>
+    <string name="beta_features_arrive_a_release_or_two_ea">Beta features arrive a release or two early, before they\'ve been through everyone\'s phones. Expect more bugs than usual, and that\'s the trade. Turn this off whenever you like and Folio goes straight back to the way the stable release behaves.</string>
+    <string name="folio_s_core_is_free_and_stays_free_home">Folio\'s core is free and stays free: Home, the island, panels, gestures and themes are never behind a code. Supporting buys time to keep building, and these extras are the thank-you.</string>
     <string name="that_code_has_run_out_ko_fi_codes_have_a">That code has run out. Ko-fi codes have a date on them; a new one will work.</string>
     <string name="that_code_has_been_withdrawn_if_you_thin">That code has been withdrawn. If you think that\'s wrong, message me on Ko-fi and I\'ll sort it out.</string>
-    <string name="folio_doesn_t_recognize_that_code_check">Folio doesn\'t recognize that code. Check for a typo — the letters I, L and O aren\'t used.</string>
+    <string name="folio_doesn_t_recognize_that_code_check">Folio doesn\'t recognize that code. Check for a typo. The letters I, L and O aren\'t used.</string>
     <string name="that_doesn_t_look_like_a_folio_code_past">That doesn\'t look like a Folio code. Paste the whole thing, dashes and all.</string>
     <string name="beta_features_2">Beta features</string>
     <string name="personalization">Personalization</string>
     <string name="automation">Automation</string>
     <string name="keyboard_extras">Keyboard extras</string>
     <string name="in_design">In design</string>
-    <string name="folio_keys_is_a_keyboard_for_the_rest_of">Keyd is a keyboard for the rest of Folio: a separate app, because Android needs a keyboard to be its own input method. It splits around the crease of a fold, learns which words you fix, and asks for no internet permission. Your code already covers it — there is just nothing to install yet.</string>
+    <string name="folio_keys_is_a_keyboard_for_the_rest_of">Keyd is a keyboard for the rest of Folio: a separate app, because Android needs a keyboard to be its own input method. It splits around the crease of a fold, learns which words you fix, and asks for no internet permission. Your code already covers it. There is just nothing to install yet.</string>
     <string name="what_it_will_do">What it will do</string>
     <string name="splits_around_the_crease_key_gestures_pe">Splits around the crease · key gestures · an action shelf · clipboard with snippets · a profile per app · typing insights · no internet permission</string>
     <string name="nothing_yet">Nothing yet</string>
@@ -746,7 +746,7 @@
     <string name="turn_off_1_to_edit_home_screen">Turn off %1$s to edit Home Screen</string>
     <string name="skip">Skip</string>
     <string name="unavailable_apps_1">Unavailable apps (%1$d)</string>
-    <string name="its_saved_position_will_stay_empty_1">• %1$s — its saved position will stay empty</string>
+    <string name="its_saved_position_will_stay_empty_1">• %1$s, its saved position will stay empty</string>
     <string name="folio_kept_your_saved_layout_untouched">Folio kept your saved layout untouched and is showing a basic Home for now. Restore a backup or an earlier layout, or start fresh (Folio keeps a copy of the old one).</string>
     <string name="folio_closed_unexpectedly_twice_so_opt">Folio closed unexpectedly twice, so optional features are paused: app panels, Actions, the fold animation, Lock Cover, the island and dock over other apps, and tinting. Your settings haven’t changed.</string>
     <string name="apply_1">Apply “%1$s”?</string>
