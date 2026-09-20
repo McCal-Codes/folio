@@ -137,22 +137,14 @@ fun LauncherScreen(
 ) {
     var sheet by rememberSaveable { mutableStateOf("") }
     var dockSlot by rememberSaveable { mutableIntStateOf(0) }
-    var widgetSlot by rememberSaveable { mutableIntStateOf(0) }
-    var widgetTargetIndex by rememberSaveable { mutableIntStateOf(Int.MIN_VALUE) }
-    var widgetExactTarget by rememberSaveable { mutableStateOf(false) }
-    /** Set while the widget picker is adding to the Smart Stack at this placement slot. */
-    var stackTargetSlot by rememberSaveable { mutableStateOf<Int?>(null) }
-    /** Set while the widget picker is adding to the Today View. */
-    var todayAdd by rememberSaveable { mutableStateOf(false) }
-    var widgetPackage by rememberSaveable { mutableStateOf<String?>(null) }
-    var widgetProfileSerial by rememberSaveable { mutableStateOf<Long?>(null) }
     var widgetSession by remember { mutableStateOf<WidgetPickerSession?>(null) }
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
+    val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
-        if (sheet != "widgets") { stackTargetSlot = null; todayAdd = false }
+        if (sheet != "widgets") { picker.stackSlot = null; picker.toToday = false }
     }
     var savedPage by rememberSaveable { mutableIntStateOf(0) }
     var lastHomePage by rememberSaveable { mutableIntStateOf(0) }
@@ -296,8 +288,8 @@ fun LauncherScreen(
         val page = (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))
             ?: pager.currentPage.takeIf { it in 0 until homePages }
             ?: lastHomePage.coerceIn(0, homePages - 1)
-        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null
-        widgetExactTarget = false; widgetPlacementMessage = null; overlays.menu = null
+        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
+        picker.exactTarget = false; widgetPlacementMessage = null; overlays.menu = null
         overlays.folder = null; overlays.newFolder = null; overlays.emptyCell = null; homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
@@ -330,14 +322,14 @@ fun LauncherScreen(
             confirmButton = { TextButton(onClick = { problemDismissed = true; model.refresh() }) { Text(stringResource(R.string.try_again)) } },
             dismissButton = { TextButton(onClick = { problemDismissed = true }) { Text(stringResource(R.string.not_now)) } })
     }
-    LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null; widgetExactTarget = false; overlays.menu = null
+    LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null; picker.exactTarget = false; overlays.menu = null
         if (!state.googleSearch || !onGoogleSearch(null)) pager.animateScrollToPage(homePages)
     } }
     val widgetPickerBack = {
         if (widgetSession != null) {
             leaveTemporaryWidgetPage(); widgetSession = null; widgetPlacementMessage = null
         } else {
-            sheet = ""; widgetPackage = null; widgetExactTarget = false; widgetPlacementMessage = null
+            sheet = ""; picker.packageName = null; picker.exactTarget = false; widgetPlacementMessage = null
         }
     }
     BackHandler(enabled = sheet == "widgets") { widgetPickerBack() }
@@ -360,7 +352,7 @@ fun LauncherScreen(
     val todayContent: @Composable (Modifier) -> Unit = { pageModifier ->
         TodayView(state, widgets, pageModifier,
             onSearch = { launcherActivity.openSpotlight() }, onLaunch = onLaunch,
-            onAddWidget = { todayAdd = true; widgetPackage = null; widgetProfileSerial = null; widgetExactTarget = false; sheet = "widgets" },
+            onAddWidget = { picker.toToday = true; picker.anyApp(); sheet = "widgets" },
             onRemove = model::removeTodayWidget, onMove = model::moveTodayWidget)
     }
     val leftPageContent: @Composable (Modifier) -> Unit = { pageModifier ->
@@ -482,7 +474,7 @@ fun LauncherScreen(
             if (!moved && !cancelled) {
                 // A held dock app already shows its menu; only an empty slot opens the app chooser.
                 if (source.target is DropTarget.Dock) { if (source.appId == null) { dockSlot = source.target.index; sheet = "dock" } else overlays.menu = source.appId }
-                else if (source.target is DropTarget.Widget) { if (focusLock != null) lockNotice++ else { widgetSlot = source.target.index; sheet = "widgetActions" } }
+                else if (source.target is DropTarget.Widget) { if (focusLock != null) lockNotice++ else { picker.slot = source.target.index; sheet = "widgetActions" } }
                 else if (source.appId?.let(::isFolderId) == true) overlays.folder = source.appId
                 else if (source.folderId == null) overlays.menu = source.appId
             }
@@ -614,13 +606,12 @@ fun LauncherScreen(
                     val sessionTargetsLeading = widgetSession?.let { session ->
                         session.candidate?.page == -1 || session.targetIndex?.let(::homeCellPage) == -1
                     } == true
-                    val savedTargetLeading = widgetTargetIndex != Int.MIN_VALUE && homeCellPage(widgetTargetIndex) == -1
+                    val savedTargetLeading = picker.targetIndex != Int.MIN_VALUE && homeCellPage(picker.targetIndex) == -1
                     if (sessionTargetsLeading || savedTargetLeading) {
                         widgetSession = null
-                        widgetTargetIndex = Int.MIN_VALUE
-                        widgetExactTarget = false
-                        widgetPackage = null
-                        widgetProfileSerial = null
+                        picker.targetIndex = Int.MIN_VALUE
+                        picker.anyApp()
+                        picker.profileSerial = null
                         widgetPlacementMessage = null
                         sheet = ""
                     }
@@ -736,7 +727,7 @@ fun LauncherScreen(
                         libraryQuery = libraryQuery, onLibraryQuery = { libraryQuery = it },
                         onLaunch = onLaunch, onLaunchFrom = onLaunchFrom, onPinned = model::setPinned,
                         onTurnOnWork = { model.turnOnWork(it) },
-                        onActions = { overlays.menu = it.id }, onWidget = { if (focusLock != null) lockNotice++ else { widgetSlot = it; sheet = "widgetActions" } },
+                        onActions = { overlays.menu = it.id }, onWidget = { if (focusLock != null) lockNotice++ else { picker.slot = it; sheet = "widgetActions" } },
                         onFolder = { overlays.folder = it },
                         onEmptyWidget = onEmptyLongPress,
                         onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
@@ -773,7 +764,7 @@ fun LauncherScreen(
                             HomePagePane(page, state, previewLayout.slots, previewLayout.leadingSlots, previewLayout.widgetPlacements, appsById, geometry, contentHeight,
                                 bottomSpace, widgets, drag, target, insertionTarget, showLargeWidget = false,
                                 onLaunch = onLaunchFrom, onActions = { overlays.menu = it.id },
-                                onWidget = { if (focusLock != null) lockNotice++ else { widgetSlot = it; sheet = "widgetActions" } },
+                                onWidget = { if (focusLock != null) lockNotice++ else { picker.slot = it; sheet = "widgetActions" } },
                                 onFolder = { overlays.folder = it },
                                 onEmptyWidget = onEmptyLongPress,
                                 onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
@@ -895,8 +886,7 @@ fun LauncherScreen(
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
                     JigglePill("", Icons.Rounded.Add, description = "Add widget") {
-                        widgetSlot = model.nextWidgetSlot(); widgetTargetIndex = homeCellIndex(editPage, 0); widgetExactTarget = false
-                        widgetPackage = null; widgetProfileSerial = null; sheet = "widgets"
+                        picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
                     }
                     JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
                         overlays.emptyCell = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
@@ -921,7 +911,7 @@ fun LauncherScreen(
             if (sheet.isNotEmpty() && sheet != "widgets") OwnMethod {
                 val activeCustomizationPage = if (sheet == "settings:wallpaper") CustomizationPage.WALLPAPER else customizationPage
                 ModalBottomSheet(onDismissRequest = {
-                    sheet = ""; widgetPackage = null; widgetExactTarget = false
+                    sheet = ""; picker.packageName = null; picker.exactTarget = false
                 }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                     properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
                     containerColor = MaterialTheme.colorScheme.surface, fullScreen = sheet.startsWith("settings")) {
@@ -931,7 +921,7 @@ fun LauncherScreen(
                             customizationPage = activeCustomizationPage.parent
                             sheet = "settings"
                         } else {
-                            sheet = ""; widgetPackage = null; widgetExactTarget = false
+                            sheet = ""; picker.packageName = null; picker.exactTarget = false
                         }
                     }
                     when (sheet) {
@@ -957,8 +947,8 @@ fun LauncherScreen(
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = "settings" },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
                             onClose = { sheet = "" }, onEditPins = { sheet = "pins" },
-                            onWidget = { widgetSlot = it; widgetPackage = null; widgetProfileSerial = null; widgetExactTarget = false; sheet = "widgets" },
-                            onAddWidget = { page -> widgetSlot = model.nextWidgetSlot(); widgetTargetIndex = page * HOME_CELLS; widgetPackage = null; widgetProfileSerial = null; widgetExactTarget = false; sheet = "widgets" },
+                            onWidget = { picker.slot = it; picker.anyApp(); sheet = "widgets" },
+                            onAddWidget = { page -> picker.slot = model.nextWidgetSlot(); picker.targetIndex = page * HOME_CELLS; picker.anyApp(); sheet = "widgets" },
                             onRemoveWidget = widgets::remove,
                             onExportLayout = { sheet = ""; launcherActivity.backups.startExport() },
                             onSaveLayoutToFolder = { launcherActivity.backups.saveToFolioFolder(it) },
@@ -971,7 +961,7 @@ fun LauncherScreen(
                             onShowWhatsNew = { sheet = ""; onShowWhatsNew() },
                             backgrounds = launcherActivity.backgrounds,
                             onWallpaperPreview = { sheet = ""; onWallpaperPreview() }, homePage = pager.currentPage.coerceIn(0, homePages - 1))
-                        "widgetActions" -> model.placement(widgetSlot)?.let { placement ->
+                        "widgetActions" -> model.placement(picker.slot)?.let { placement ->
                             val topPitch = (geometry.widgetHeight + 18f) / 2f
                             val gridSizing = WidgetGridSizing(GRID_COLUMNS, pageRows(placement.page).coerceAtLeast(visibleRows), geometry.cellWidth,
                                 minOf(topPitch, geometry.rowHeight), maxOf(topPitch, geometry.rowHeight), 10f, 18f,
@@ -981,17 +971,17 @@ fun LauncherScreen(
                                 stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets) },
                                 stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
                                 onAddToStack = {
-                                    stackTargetSlot = placement.slot; widgetSlot = placement.slot
-                                    widgetPackage = null; widgetProfileSerial = null; widgetExactTarget = false; sheet = "widgets"
+                                    picker.stackSlot = placement.slot; picker.slot = placement.slot
+                                    picker.anyApp(); sheet = "widgets"
                                 },
                                 onRemoveFromStack = { model.removeFromStack(placement.slot, it) },
                                 onShowFirstInStack = { model.showFirstInStack(placement.slot, it) },
                                 canConfigure = widgets.canReconfigure(placement.id),
                                 onConfigure = { widgets.reconfigure(placement.id); sheet = "" },
-                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidget(state.layout, widgetSlot, x, y) != state.layout },
-                                onResize = { x, y -> model.resizeWidget(widgetSlot, x, y) },
+                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidget(state.layout, picker.slot, x, y) != state.layout },
+                                onResize = { x, y -> model.resizeWidget(picker.slot, x, y) },
                                 onStartResize = { x, y ->
-                                    resize.start(widgetSlot, x, y, constraints)
+                                    resize.start(picker.slot, x, y, constraints)
                                     sheet = ""
                                 },
                                 onMoveToPage = { page ->
@@ -1001,13 +991,13 @@ fun LauncherScreen(
                                     }?.let { model.moveWidgetTo(placement.slot, page * HOME_CELLS + it) } == true
                                 }, homePages = homePages,
                                 onReplace = {
-                                    widgetPackage = null
-                                    widgetProfileSerial = widgets.manager.getAppWidgetInfo(placement.id)?.profile?.let {
+                                    picker.packageName = null
+                                    picker.profileSerial = widgets.manager.getAppWidgetInfo(placement.id)?.profile?.let {
                                         launcherActivity.getSystemService(UserManager::class.java).getSerialNumberForUser(it)
                                     }?.takeIf { it >= 0 }
-                                    widgetExactTarget = false; sheet = "widgets"
+                                    picker.exactTarget = false; sheet = "widgets"
                                 },
-                                onRemove = { widgets.remove(widgetSlot); sheet = "" },
+                                onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" })
                         }
                     }
@@ -1028,13 +1018,13 @@ fun LauncherScreen(
             }
             if (sheet == "widgets") OwnMethod {
                 val catalogProfiles = remember(state.profiles) { state.profiles.filter { it.isPersonal || it.isWork } }
-                val selectedProfile = catalogProfiles.firstOrNull { it.userSerial == widgetProfileSerial }
+                val selectedProfile = catalogProfiles.firstOrNull { it.userSerial == picker.profileSerial }
                     ?: catalogProfiles.firstOrNull { it.isPersonal } ?: AppProfile(0, stringResource(R.string.personal), true, false, false, true, true)
                 val userManager = remember(launcherActivity) { launcherActivity.getSystemService(UserManager::class.java) }
-                val providers = remember(widgetPackage, selectedProfile, sheet, state.apps) {
+                val providers = remember(picker.packageName, selectedProfile, sheet, state.apps) {
                     val user = userManager.getUserForSerialNumber(selectedProfile.userSerial)
                     if (user == null || !selectedProfile.available || !selectedProfile.unlocked || selectedProfile.quiet) emptyList()
-                    else runCatching { widgetPackage?.let { widgets.providersForPackage(it, user) }
+                    else runCatching { picker.packageName?.let { widgets.providersForPackage(it, user) }
                         ?: widgets.providers(user) }.getOrDefault(emptyList()).filter { provider ->
                         provider.widgetCategory and AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN != 0 &&
                             provider.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_HIDE_FROM_PICKER == 0
@@ -1052,30 +1042,30 @@ fun LauncherScreen(
                     widgets.sizing(provider, pickerSizing)?.takeIf { it.minimumFitsGrid }?.preferred
                 }
                 VisualWidgetPicker(catalog, catalogProfiles.ifEmpty { listOf(selectedProfile) }, selectedProfile,
-                    onSelectProfile = { widgetProfileSerial = it.userSerial; widgetPlacementMessage = null },
+                    onSelectProfile = { picker.profileSerial = it.userSerial; widgetPlacementMessage = null },
                     onTurnOnWork = { model.turnOnWork(it) }, hiddenForDrag = widgetSession != null,
                     footprint = footprint,
                     onBack = widgetPickerBack,
                     onTap = tap@{ provider ->
-                        if (todayAdd) {
+                        if (picker.toToday) {
                             val span = widgets.sizing(provider, pickerSizing)?.preferred
                             widgets.addToToday(provider, span?.let { TodaySize.forSpan(it.width, it.height) } ?: TodaySize.MEDIUM, pickerSizing)
-                            todayAdd = false; sheet = ""; widgetPackage = null
+                            picker.toToday = false; sheet = ""; picker.packageName = null
                             return@tap
                         }
-                        stackTargetSlot?.let { stackSlot ->
+                        picker.stackSlot?.let { stackSlot ->
                             val placement = model.placement(stackSlot)
                             val min = widgets.sizing(provider, pickerSizing)?.minimum
                             if (placement == null || (min != null && (min.width > placement.spanX || min.height > placement.spanY))) {
                                 widgetPlacementMessage = launcherActivity.getString(R.string.this_widget_needs_a_bigger_space_than_th)
                             } else {
                                 widgets.addToStack(stackSlot, provider, pickerSizing)
-                                stackTargetSlot = null; sheet = ""; widgetPackage = null; widgetPlacementMessage = null
+                                picker.stackSlot = null; sheet = ""; picker.packageName = null; widgetPlacementMessage = null
                             }
                             return@tap
                         }
                         footprint(provider)?.let { preferredSpan ->
-                            val existing = model.placement(widgetSlot)
+                            val existing = model.placement(picker.slot)
                             val constraints = widgets.sizing(provider, pickerSizing)
                             val span = existing?.let { placement ->
                                 WidgetSpan(placement.spanX, placement.spanY).takeIf {
@@ -1085,7 +1075,7 @@ fun LauncherScreen(
                             } ?: preferredSpan
                             val special = existing?.takeIf { it.row + it.spanY > GRID_ROWS }
                             if (special != null) {
-                                widgetSession = WidgetPickerSession(provider, widgetSlot,
+                                widgetSession = WidgetPickerSession(provider, picker.slot,
                                     WidgetSpan(special.spanX, special.spanY), Offset.Zero,
                                     dragging = false, candidate = special)
                                 widgetPlacementMessage = null
@@ -1093,17 +1083,17 @@ fun LauncherScreen(
                                 return@let
                             }
                             val requestedIndex = existing?.let { homeCellIndex(it.page, it.row * GRID_COLUMNS + it.column) }
-                                ?: widgetTargetIndex.takeUnless { it == Int.MIN_VALUE } ?: 0
+                                ?: picker.targetIndex.takeUnless { it == Int.MIN_VALUE } ?: 0
                             val requestedPage = homeCellPage(requestedIndex).coerceIn(if (expandedWorkspace) -1 else 0, homePages)
                             val availablePages = (if (expandedWorkspace) -1 else 0)..homePages
                             val autoPages = (listOf(requestedPage) + availablePages.filter { it != requestedPage })
-                            val freeIndex = if (existing != null || widgetExactTarget) requestedIndex.takeIf {
-                                draftAt(it, span, widgetSlot) != null
+                            val freeIndex = if (existing != null || picker.exactTarget) requestedIndex.takeIf {
+                                draftAt(it, span, picker.slot) != null
                             } else autoPages.asSequence().flatMap { page ->
                                 (0 until HOME_CELLS).asSequence().map { homeCellIndex(page, it) }
-                            }.firstOrNull { widgetCandidate(state.layout, widgetSlot, it, span.width, span.height, visibleRows) != null }
+                            }.firstOrNull { widgetCandidate(state.layout, picker.slot, it, span.width, span.height, visibleRows) != null }
                             val targetIndex = freeIndex ?: requestedIndex
-                            widgetSession = WidgetPickerSession(provider, widgetSlot, span, Offset.Zero,
+                            widgetSession = WidgetPickerSession(provider, picker.slot, span, Offset.Zero,
                                 dragging = false, targetIndex = targetIndex)
                             widgetPlacementMessage = if (freeIndex == null)
                                 launcherActivity.getString(R.string.there_isn_t_room_for_this_size_choose_an) else null
@@ -1111,17 +1101,17 @@ fun LauncherScreen(
                         }
                     },
                     onBuiltin = builtin@{ builtinId ->
-                        if (todayAdd) { model.addTodayWidget(builtinId, TodaySize.SMALL); todayAdd = false; sheet = ""; return@builtin }
-                        stackTargetSlot?.let { stackSlot ->
-                            model.addToStack(stackSlot, builtinId); stackTargetSlot = null; sheet = ""; widgetPackage = null
+                        if (picker.toToday) { model.addTodayWidget(builtinId, TodaySize.SMALL); picker.toToday = false; sheet = ""; return@builtin }
+                        picker.stackSlot?.let { stackSlot ->
+                            model.addToStack(stackSlot, builtinId); picker.stackSlot = null; sheet = ""; picker.packageName = null
                             return@builtin
                         }
-                        val existing = model.placement(widgetSlot)
+                        val existing = model.placement(picker.slot)
                         val special = existing?.takeIf { it.row + it.spanY > GRID_ROWS }
                         // Big Clock starts as wide as the page, like the Lock Screen clock; the others are small.
                         val span = existing?.let { WidgetSpan(it.spanX, it.spanY) } ?: WidgetSpan(if (builtinId == BIG_CLOCK_WIDGET) 4 else 2, 2)
                         if (special != null) {
-                            widgetSession = WidgetPickerSession(null, widgetSlot, span, Offset.Zero,
+                            widgetSession = WidgetPickerSession(null, picker.slot, span, Offset.Zero,
                                 dragging = false, candidate = special, builtinId = builtinId)
                             widgetPlacementMessage = null
                             scope.launch { pager.scrollToPage(special.page.coerceAtLeast(0).coerceAtMost(homePages - 1)) }
@@ -1129,25 +1119,25 @@ fun LauncherScreen(
                         }
                         val requested = existing?.let {
                             homeCellIndex(it.page, it.row * GRID_COLUMNS + it.column)
-                        } ?: widgetTargetIndex.takeUnless { it == Int.MIN_VALUE } ?: 0
+                        } ?: picker.targetIndex.takeUnless { it == Int.MIN_VALUE } ?: 0
                         val requestedPage = homeCellPage(requested).coerceIn(if (expandedWorkspace) -1 else 0, homePages)
                         val availablePages = (if (expandedWorkspace) -1 else 0)..homePages
-                        val exact = model.placement(widgetSlot) != null || widgetExactTarget
+                        val exact = model.placement(picker.slot) != null || picker.exactTarget
                         val candidates = if (exact) sequenceOf(requested)
                             else (listOf(requestedPage) + availablePages.filter { it != requestedPage }).asSequence()
                                 .flatMap { page -> (0 until HOME_CELLS).asSequence().map { homeCellIndex(page, it) } }
                         val free = candidates.firstOrNull {
-                            widgetCandidate(state.layout, widgetSlot, it, span.width, span.height, if (exact) pageRows(homeCellPage(it)) else visibleRows) != null
+                            widgetCandidate(state.layout, picker.slot, it, span.width, span.height, if (exact) pageRows(homeCellPage(it)) else visibleRows) != null
                         }
-                        widgetSession = WidgetPickerSession(null, widgetSlot, span, Offset.Zero,
+                        widgetSession = WidgetPickerSession(null, picker.slot, span, Offset.Zero,
                             dragging = false, targetIndex = free ?: requested, builtinId = builtinId)
                         widgetPlacementMessage = if (free == null)
                             launcherActivity.getString(R.string.there_isn_t_room_for_this_card_choose_an) else null
                         scope.launch { pager.scrollToPage(homeCellPage(free ?: requested).coerceIn(0, homePages)) }
                     },
                     onDragStart = { provider, point ->
-                        if (stackTargetSlot == null && !todayAdd) footprint(provider)?.let { span ->
-                            widgetSession = WidgetPickerSession(provider, widgetSlot, span, point, dragging = true)
+                        if (picker.stackSlot == null && !picker.toToday) footprint(provider)?.let { span ->
+                            widgetSession = WidgetPickerSession(provider, picker.slot, span, point, dragging = true)
                             widgetPlacementMessage = null
                             scope.launch { pager.scrollToPage(lastHomePage.coerceIn(0, homePages - 1)) }
                         }
@@ -1158,7 +1148,7 @@ fun LauncherScreen(
                         if (session != null && widgetDraft != null) {
                             session.provider?.let { widgets.add(widgetDraft, it, pickerSizing) }
                                 ?: session.builtinId?.let { widgets.setBuiltin(widgetDraft.copy(id = it)) }
-                            widgetSession = null; sheet = ""; widgetPackage = null
+                            widgetSession = null; sheet = ""; picker.packageName = null
                         } else {
                             leaveTemporaryWidgetPage(); widgetSession = null
                             widgetPlacementMessage = launcherActivity.getString(R.string.there_isn_t_room_there_try_another_space)
@@ -1219,10 +1209,10 @@ fun LauncherScreen(
                                     } }
                                     session.provider?.let { widgets.add(draft, it, pickerSizing, contentSize) }
                                         ?: session.builtinId?.let { widgets.setBuiltin(draft.copy(id = it)) }
-                                    widgetSession = null; sheet = ""; widgetPackage = null
+                                    widgetSession = null; sheet = ""; picker.packageName = null
                                 }
                             }, modifier = Modifier.testTag("widget-placement-apply")) { Text(stringResource(R.string.place)) }
-                            TextButton(onClick = { leaveTemporaryWidgetPage(); widgetSession = null; sheet = ""; widgetPackage = null },
+                            TextButton(onClick = { leaveTemporaryWidgetPage(); widgetSession = null; sheet = ""; picker.packageName = null },
                                 modifier = Modifier.testTag("widget-placement-cancel")) { Text(stringResource(R.string.cancel)) }
                         }
                         if (anchor != null) {
@@ -1419,9 +1409,9 @@ fun LauncherScreen(
             }.getOrDefault(emptyList()).isNotEmpty()
             val openWidgetsFor: (() -> Unit)? = if (hasWidgets) {{
                 val page = lastHomePage.coerceIn(0, homePages - 1)
-                widgetTargetIndex = homeCellIndex(page, 0); widgetExactTarget = false
-                widgetSlot = model.nextWidgetSlot(); widgetPackage = packageName
-                widgetProfileSerial = app.userSerial; overlays.menu = null; sheet = "widgets"
+                picker.targetIndex = homeCellIndex(page, 0); picker.exactTarget = false
+                picker.slot = model.nextWidgetSlot(); picker.packageName = packageName
+                picker.profileSerial = app.userSerial; overlays.menu = null; sheet = "widgets"
             }} else null
             // iPhone-style menu next to the icon; "Edit Home Screen" starts jiggle mode for moving.
             AppContextMenu(app, onHome = pinned, hidden = app.id in state.hiddenApps,
@@ -1441,7 +1431,7 @@ fun LauncherScreen(
         overlays.emptyCell?.let { index ->
             HomeEditMenu(anchor = editPillBounds.takeIf { homeEdit.active }, onDismiss = { overlays.emptyCell = null },
                 onWidgets = {
-                    widgetTargetIndex = index; widgetExactTarget = true; widgetSlot = model.nextWidgetSlot(); widgetPackage = null; widgetProfileSerial = null
+                    picker.targetIndex = index; picker.exactTarget = true; picker.slot = model.nextWidgetSlot(); picker.packageName = null; picker.profileSerial = null
                     sheet = "widgets"
                 }, onWallpaper = { sheet = "settings:wallpaper" },
                 onCustomize = { sheet = "settings" },
