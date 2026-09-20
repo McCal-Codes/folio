@@ -219,8 +219,8 @@ Tests: `./gradlew :app:testDebugUnitTest`
 
 **Why does it ask for so many permissions?** It doesn't need most of them. Only being your Home app is required. The
 rest are optional and asked for where they're used, like notification access for the Dynamic Island, or the gestures
-service for pull-down panels. Every permission is listed with what it's for in Settings › Privacy & Permissions, and in
-[PRIVACY.md](PRIVACY.md).
+service for pull-down panels. Every permission is listed with what it's for in Settings › Privacy & Permissions, in
+[PERMISSIONS.md](PERMISSIONS.md) (all 14, with what breaks if you say no) and in [PRIVACY.md](PRIVACY.md).
 
 **Does Folio send my data anywhere?** No. No accounts, no ads, no analytics. Crash reports stay on your phone unless you
 share one. Software Update only asks GitHub for the latest release when you check (or once a day if you turn that on).
