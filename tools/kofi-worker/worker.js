@@ -10,7 +10,7 @@
  *
  * It also brokers the supporters' beta builds out of a private repository — see beta.js.
  */
-import { betaAsset, betaReleases } from './beta.js'
+import { betaAsset, betaReleases, sameSecret } from './beta.js'
 
 export default {
   async fetch(request, env) {
@@ -64,18 +64,14 @@ async function readPayment(request, env) {
     return { ok: false, why: 'not a Ko-fi payment', status: 400 }
   }
   if (!data?.message_id) return { ok: false, why: 'no message_id', status: 400 }
-  if (!sameSecret(data.verification_token ?? '', env.KOFI_TOKEN ?? '')) {
+  // No token configured means no way to tell Ko-fi from anybody else — and two empty strings compare equal, which
+  // would let every caller through and empty the pool. A worker deployed before `wrangler secret put KOFI_TOKEN`
+  // sits in exactly that state, so it refuses everything until the secret is there.
+  if (!env.KOFI_TOKEN) return { ok: false, why: 'no Ko-fi token configured', status: 503 }
+  if (!sameSecret(data.verification_token ?? '', env.KOFI_TOKEN)) {
     return { ok: false, why: 'wrong token', status: 401 }
   }
   return { ok: true, data }
-}
-
-/** Compare without giving away, by how fast it answers, how much of the token was right. */
-function sameSecret(a, b) {
-  if (typeof a !== 'string' || a.length !== b.length) return false
-  let same = 0
-  for (let i = 0; i < a.length; i++) same |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return same === 0
 }
 
 /**

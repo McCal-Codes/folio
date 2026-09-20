@@ -26,6 +26,14 @@ class SoftwareUpdateTest {
 
     @Test fun `updates default to Automatic, and a choice made with the old switches carries over`() {
         assertEquals(SoftwareUpdate.Mode.AUTOMATIC, SoftwareUpdate.modeFromLegacy(null, false))
+        // Nobody is moved to unattended installs by an update: on 0.6.0 both switches were off until you turned
+        // them on, so an upgrade with no choice recorded waits to be asked rather than assuming a yes.
+        assertEquals(SoftwareUpdate.Mode.MANUAL, SoftwareUpdate.modeFromLegacy(null, false, upgraded = true))
+        assertEquals(SoftwareUpdate.Mode.MANUAL, SoftwareUpdate.modeFromLegacy(null, true, upgraded = true))
+        // A choice that was made still carries over, upgrade or not.
+        assertEquals(SoftwareUpdate.Mode.MANUAL, SoftwareUpdate.modeFromLegacy(false, true, upgraded = true))
+        assertEquals(SoftwareUpdate.Mode.AUTOMATIC, SoftwareUpdate.modeFromLegacy(true, true, upgraded = true))
+        assertEquals(SoftwareUpdate.Mode.NOTIFY, SoftwareUpdate.modeFromLegacy(true, false, upgraded = true))
         assertEquals(SoftwareUpdate.Mode.MANUAL, SoftwareUpdate.modeFromLegacy(false, true))
         assertEquals(SoftwareUpdate.Mode.NOTIFY, SoftwareUpdate.modeFromLegacy(true, false))
         assertEquals(SoftwareUpdate.Mode.AUTOMATIC, SoftwareUpdate.modeFromLegacy(true, true))

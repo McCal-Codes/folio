@@ -146,7 +146,7 @@ export async function ticketIsGood(env, assetId, ticket, now = Date.now()) {
 }
 
 /** Compare without giving away, by how fast it answers, how much of the ticket was right. */
-function sameSecret(a, b) {
+export function sameSecret(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false
   let same = 0
   for (let i = 0; i < a.length; i++) same |= a.charCodeAt(i) ^ b.charCodeAt(i)

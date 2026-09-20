@@ -85,14 +85,32 @@ internal object SoftwareUpdate {
 
     fun supported(context: Context) = context.packageName == FOLIO_CLASSES
 
-    /** The chosen mode. Earlier versions stored separate switches; a choice made there carries over. */
+    /**
+     * The chosen mode. Earlier versions stored separate switches; a choice made there carries over. Where there was
+     * no choice at all, a fresh install starts on Automatic — that is what Folio offers now — but an update to a
+     * phone that was already running Folio does not: on 0.6.0 both switches were off until someone turned them on,
+     * and "left it off" and "never saw it" must not be read the same way. Folio installing itself is a thing people
+     * say yes to, so an upgrade stays on Manual until they do, in Settings › Software Update.
+     *
+     * The answer is written down the first time it is asked for, so a later update can't change it again.
+     */
     fun mode(context: Context): Mode {
         val prefs = context.getSharedPreferences(PREFS, 0)
         prefs.getString(MODE, null)?.let { saved -> Mode.entries.firstOrNull { it.name == saved }?.let { return it } }
-        return modeFromLegacy(prefs.takeIf { it.contains(AUTO) }?.getBoolean(AUTO, false), prefs.getBoolean(AUTO_INSTALL, false))
+        val chosen = modeFromLegacy(prefs.takeIf { it.contains(AUTO) }?.getBoolean(AUTO, false),
+            prefs.getBoolean(AUTO_INSTALL, false), upgraded(context))
+        prefs.edit().putString(MODE, chosen.name).apply()
+        return chosen
     }
-    internal fun modeFromLegacy(autoCheck: Boolean?, autoInstall: Boolean): Mode = when {
-        autoCheck == null -> Mode.AUTOMATIC
+
+    /** True when this build arrived over an earlier one, rather than being installed for the first time. */
+    private fun upgraded(context: Context): Boolean = runCatching {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        info.lastUpdateTime > info.firstInstallTime
+    }.getOrDefault(true)  // unknown: treat it as an upgrade, the answer that asks before acting
+
+    internal fun modeFromLegacy(autoCheck: Boolean?, autoInstall: Boolean, upgraded: Boolean = false): Mode = when {
+        autoCheck == null -> if (upgraded) Mode.MANUAL else Mode.AUTOMATIC
         !autoCheck -> Mode.MANUAL
         autoInstall -> Mode.AUTOMATIC
         else -> Mode.NOTIFY

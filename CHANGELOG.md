@@ -12,7 +12,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **More rows:** Home fills taller screens with up to 3 more rows, the same on both screens of a foldable.
 - **Layout sliders:** adjust row, column and dock spacing, widget size and status spacing, and watch Home change as you drag.
 - **Apps, dock and status position:** apps at the top, the dock on the side or bottom, and the status anywhere, for each screen.
-- **Software Update:** updates install automatically overnight, with release notes, Update Now and Update Tonight.
+- **Software Update:** updates install automatically overnight, with release notes, Update Now and Update Tonight. A new install starts there; updating from an earlier Folio does not change what you chose, and if you never chose, Folio stays on Manual until you say otherwise.
 - **Big Clock:** a large Lock Screen-style clock with the date and what's next.
 - **Try Folio first:** open Folio as a preview before making it your Home app.
 - **Clear icons:** frosted glass icons with white symbols, like iOS.

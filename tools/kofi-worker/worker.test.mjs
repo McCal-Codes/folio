@@ -144,6 +144,21 @@ test('a wrong token is turned away and claims nothing', async () => {
   assert.equal(DB.free.length, 1)
 })
 
+test('with no token configured, nobody gets in', async () => {
+  // A worker deployed before `wrangler secret put KOFI_TOKEN` has no token at all. Two empty strings used to
+  // compare equal, so an unsigned request looked like a genuine payment and could empty the pool code by code.
+  const DB = database()
+  const noToken = await worker.fetch(payment({ verification_token: undefined, type: 'Subscription', tier_name: 'Gold' }), { DB, POOLS })
+  assert.equal(noToken.status, 503)
+  assert.equal(DB.free.length, 1, 'nothing may be claimed while the worker cannot tell who is asking')
+  assert.equal(DB.handled.size, 0)
+
+  // Not even a caller who sends an empty token to match an empty secret.
+  const empty = await worker.fetch(payment({ verification_token: '', type: 'Subscription', tier_name: 'Gold' }), { DB, KOFI_TOKEN: '', POOLS })
+  assert.equal(empty.status, 503)
+  assert.equal(DB.free.length, 1)
+})
+
 test('an empty pool is written down, and Ko-fi is not asked to retry', async () => {
   const DB = database([])
   const response = await worker.fetch(payment({ type: 'Subscription', tier_name: 'Gold' }), { DB, KOFI_TOKEN: TOKEN, POOLS })
