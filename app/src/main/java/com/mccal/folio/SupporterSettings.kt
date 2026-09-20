@@ -55,7 +55,9 @@ internal fun SupporterPage() {
         } else {
             InfoRow(stringResource(R.string.code), shortCode(stored.orEmpty()))
             InfoRow(stringResource(R.string.unlocks), unlocksText(context, current.scopes))
-            current.expires?.let { InfoRow(stringResource(R.string.until), it.format(DateTimeFormatter.ofPattern("d MMM yyyy"))) }
+            Supporter.ends(context, current)?.let {
+                InfoRow(stringResource(R.string.until), it.format(DateTimeFormatter.ofPattern("d MMM yyyy")))
+            }
             CardAction(stringResource(R.string.remove_code), destructive = true, onClick = {
                 Supporter.remove(context); code = null; stored = null; beta = false
             })

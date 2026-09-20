@@ -87,6 +87,30 @@ test('a big enough tip earns the tip pool', async () => {
   assert.equal(DB.handled.get('m1').code, 'CODE-1')
 })
 
+test('a one-off payment lands in the band it paid for', async () => {
+  const BANDS = JSON.stringify({
+    tipBands: [{ from: 5, pool: 'months1' }, { from: 10, pool: 'months2' }, { from: 20, pool: 'months4' }],
+  })
+  const paid = async (amount) => {
+    const DB = database([{ code: 'M1', pool: 'months1' }, { code: 'M2', pool: 'months2' }, { code: 'M4', pool: 'months4' }])
+    await worker.fetch(payment({ amount }), { DB, KOFI_TOKEN: TOKEN, POOLS: BANDS })
+    return DB.handled.get('m1')?.pool ?? null
+  }
+  assert.equal(await paid('5.00'), 'months1')
+  assert.equal(await paid('10.00'), 'months2')
+  assert.equal(await paid('12.00'), 'months2')   // between bands: the one it cleared, not the next one up
+  assert.equal(await paid('20.00'), 'months4')
+  assert.equal(await paid('3.00'), null)         // under the first band, so nothing
+})
+
+test('a half-written band leaves the flat tip pool reachable', async () => {
+  // The from:5 band has no pool yet. A $10 tip should still earn what tipPool says, not nothing at all.
+  const POOLS_HALF = JSON.stringify({ tipBands: [{ from: 20, pool: 'months4' }, { from: 5 }], tipFrom: 5, tipPool: 'beta' })
+  const DB = database([{ code: 'CODE-1', pool: 'beta' }])
+  await worker.fetch(payment({ amount: '10.00' }), { DB, KOFI_TOKEN: TOKEN, POOLS: POOLS_HALF })
+  assert.equal(DB.handled.get('m1').code, 'CODE-1')
+})
+
 test('a wrong token is turned away and claims nothing', async () => {
   const DB = database()
   const response = await worker.fetch(payment({ verification_token: 'someone-else', type: 'Subscription', tier_name: 'Gold' }),

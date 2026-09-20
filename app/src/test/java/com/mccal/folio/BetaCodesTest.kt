@@ -16,9 +16,11 @@ class BetaCodesTest {
     private val today = LocalDate.of(2026, 9, 17)
 
     /** The same code `scripts/beta-code.py` mints: a 9-byte ticket and a raw r‖s signature, in Crockford base32. */
-    private fun mint(scopeBits: Int, tier: Int = 1, expires: LocalDate? = null, serial: Long = 42): String {
+    private fun mint(scopeBits: Int, tier: Int = 1, expires: LocalDate? = null, serial: Long = 42,
+        months: Int = 0, version: Int = if (months > 0) 2 else 1): String {
         val day = expires?.let { it.toEpochDay() - LocalDate.of(2026, 1, 1).toEpochDay() }?.toInt() ?: 0
-        val payload = byteArrayOf(1, scopeBits.toByte(), tier.toByte(), (day shr 8).toByte(), day.toByte()) +
+        val tierByte = if (months > 0) months shl 4 or tier else tier
+        val payload = byteArrayOf(version.toByte(), scopeBits.toByte(), tierByte.toByte(), (day shr 8).toByte(), day.toByte()) +
             ByteArray(4) { i -> (serial shr (24 - i * 8)).toByte() }
         val der = Signature.getInstance("SHA256withECDSA").run { initSign(keys.private); update(payload); sign() }
         return base32(payload + raw(der))
@@ -69,6 +71,31 @@ class BetaCodesTest {
         val code = mint(0b0001, expires = LocalDate.of(2026, 10, 1))
         assertEquals(LocalDate.of(2026, 10, 1), (BetaCodes.verify(code, publicKey, today) as BetaCodes.Result.Valid).code.expires)
         assertTrue(BetaCodes.verify(code, publicKey, LocalDate.of(2026, 10, 2)) is BetaCodes.Result.Expired)
+    }
+
+    @Test fun `a months code counts from the day it was redeemed`() {
+        val code = (BetaCodes.verify(mint(0b1001, tier = 3, months = 2), publicKey, today) as BetaCodes.Result.Valid).code
+        assertEquals(2, code.months)
+        assertEquals(3, code.tier)
+        assertEquals(null, code.expires)
+        // Nothing runs out until the phone says when it started: a pool minted months ago still gives its full time.
+        assertEquals(null, code.ends(null))
+        assertEquals(LocalDate.of(2026, 11, 17), code.ends(today))
+        assertTrue(code.expired(LocalDate.of(2026, 11, 18), today))
+        assertTrue(!code.expired(LocalDate.of(2026, 11, 17), today))
+    }
+
+    @Test fun `months and a fixed date, whichever comes first`() {
+        val code = (BetaCodes.verify(mint(0b0001, months = 6, expires = LocalDate.of(2026, 10, 1)), publicKey, today)
+            as BetaCodes.Result.Valid).code
+        assertEquals(LocalDate.of(2026, 10, 1), code.ends(today))
+        // And the fixed date still ends it on its own, with no redemption date in hand.
+        assertTrue(BetaCodes.verify(mint(0b0001, months = 6, expires = LocalDate.of(2026, 10, 1)), publicKey,
+            LocalDate.of(2026, 10, 2)) is BetaCodes.Result.Expired)
+    }
+
+    @Test fun `a code from a newer Folio isn't read as an old one`() {
+        assertEquals(BetaCodes.Result.Unreadable, BetaCodes.verify(mint(0b0001, version = 3), publicKey, today))
     }
 
     @Test fun `a withdrawn code stops working`() {

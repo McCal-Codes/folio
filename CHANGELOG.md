@@ -21,6 +21,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Folder badges:** folders show the total of their apps' notification badges.
 - **Better bug reports:** Folio notes freezes and restarts, and Report a Bug can include them (kept on your phone).
 - **A live Roadmap:** see what's coming, updated from Folio's GitHub page.
+- **Supporter codes with months:** a code can carry a number of months that starts the day you redeem it, so one handed out from a batch still gives its full time. Settings › Supporter shows the day it runs out.
 - **Folio Keys, for supporters:** a code that carries the keyboard scope shows where Folio's own keyboard has got to, in Settings › Supporter. It's in design — a separate app, because Android needs a keyboard to be its own input method — so there is nothing to install yet.
 
 - **Move apps without dragging:** TalkBack actions and Alt+arrow keys move apps and folders around Home and between pages.
@@ -59,6 +60,9 @@ Folio shows the newest section on the phone after an update, and every version u
 - Folders can be moved again: dragging one no longer drops it onto itself (which buzzed and put it back).
 - Folding or rotating no longer throws away a search: the pull-down panel closes, Spotlight keeps what you typed, and the panel now closes on the first fold after a restart too.
 - In the Gauge, the mark shown when there's nothing to connect to sits in the middle of the ring, level with the Wi-Fi one.
+- Music that stops to load no longer drops out of the island and back in on every skip, and a player with no track title no longer hides one that has it.
+- On a phone set to Turkish, supporter codes typed in lower case can be redeemed, the Roadmap shows every item, and What's New keeps its symbols: Folio was reading its own data through the phone's language.
+- The time on each notification ("now", "5m ago") follows your language and its plural rules, and a phone whose clock has just been corrected no longer shows a notification as arriving in the future.
 - The last of Folio's own words follow your language: brief messages (a file that isn't a theme, an app that won't open, a redeemed code) and the text left in What's New, Choose Home Apps, widget editing, Up Next, restore and the alerts.
 
 ## [0.6.0] - 2026-09-16

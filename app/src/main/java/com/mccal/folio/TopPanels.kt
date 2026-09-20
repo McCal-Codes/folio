@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import android.app.NotificationManager
 import android.content.Context
@@ -313,7 +314,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                 }
                 item.text?.let { Text(it.lines().filter(String::isNotBlank).joinToString(" "), color = Color.White.copy(alpha = .88f),
                     fontSize = 14.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
-                if (extraCount > 0) Text(stringResource(R.string.more_from_1_2, extraCount, item.appLabel),
+                if (extraCount > 0) Text(pluralStringResource(R.plurals.more_from_app, extraCount, extraCount, item.appLabel),
                     color = FolioGlass.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
                 if (extraCount == 0 && (item.canReply || item.canMarkRead)) {
                     var replying by remember(item.key) { mutableStateOf(false) }
@@ -443,15 +444,22 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
     }
 }
 
+@Composable
 private fun relativeTime(time: Long): String {
-    val minutes = (System.currentTimeMillis() - time) / 60_000
+    val minutes = relativeMinutes(time, System.currentTimeMillis())
     return when {
-        minutes < 1 -> "now"
-        minutes < 60 -> "${minutes}m ago"
-        minutes < 24 * 60 -> "${minutes / 60}h ago"
-        else -> "${minutes / (24 * 60)}d ago"
+        minutes < 1 -> stringResource(R.string.time_now)
+        minutes < 60 -> pluralStringResource(R.plurals.minutes_ago, minutes.toInt(), minutes)
+        minutes < 24 * 60 -> (minutes / 60).let { pluralStringResource(R.plurals.hours_ago, it.toInt(), it) }
+        else -> (minutes / (24 * 60)).let { pluralStringResource(R.plurals.days_ago, it.toInt(), it) }
     }
 }
+
+/**
+ * How long ago a notification was posted, in whole minutes, never negative: a phone whose clock has just been
+ * corrected can hand back a notification posted in the future, and "-3m ago" is not a thing to show anybody.
+ */
+internal fun relativeMinutes(time: Long, now: Long): Long = ((now - time) / 60_000).coerceAtLeast(0L)
 
 // ---------------------------------------------------------------------------------------------
 // Control Center: a strict 4-column grid; every module is a whole number of cells.

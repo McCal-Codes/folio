@@ -6,6 +6,7 @@ The private key stays on this machine; Folio only ever carries the public half.
     ./scripts/beta-code.py newkey                      # writes supporter-key.pem, prints the public key
     ./scripts/beta-code.py mint --scopes beta,look     # one code, no expiry
     ./scripts/beta-code.py mint --scopes beta --expires 2027-01-01 --count 25
+    ./scripts/beta-code.py mint --scopes beta,keys --months 1         # one month from the day it's redeemed
     ./scripts/beta-code.py pool --scopes beta --count 200 > pool.sql   # load into the Ko-fi worker
 
 Paste the printed public key into BetaKeys.SUPPORTER (app/src/main/java/com/mccal/folio/Supporter.kt).
@@ -22,7 +23,8 @@ import sys
 ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32, matching BetaCodes.kt
 SCOPES = ["beta", "look", "power", "keys"]     # bit order must match BetaCodes.SCOPE_BITS
 EPOCH = datetime.date(2026, 1, 1)
-VERSION = 1
+VERSION = 1           # a fixed last day, decided here
+VERSION_MONTHS = 2    # months counted from the day the code is redeemed (months and tier share one byte)
 
 
 def run(args, stdin=None):
@@ -75,7 +77,7 @@ def base32(data):
     return "-".join(text[i:i + 5] for i in range(0, len(text), 5))
 
 
-def mint(key, scopes, tier, expires, count, sql_pool=None):
+def mint(key, scopes, tier, expires, count, sql_pool=None, months=0):
     bits = 0
     for scope in scopes:
         if scope not in SCOPES:
@@ -87,9 +89,21 @@ def mint(key, scopes, tier, expires, count, sql_pool=None):
             sys.exit("expiry must be after 2026-01-01 and within about 180 years of it")
     else:
         day = 0
+    # Months and tier share the third byte, so a months code is the same length as any other: months in the high
+    # nibble, tier in the low one. Both are 0-15 in that shape; without --months the byte is the tier alone.
+    if months:
+        if not 1 <= months <= 15:
+            sys.exit("--months takes 1 to 15; for longer, use --expires")
+        if not 0 <= tier <= 15:
+            sys.exit("--tier must be 0-15 when --months is used, since they share a byte")
+        version, tier_byte = VERSION_MONTHS, months << 4 | tier
+    else:
+        if not 0 <= tier <= 255:
+            sys.exit("--tier must be 0-255")
+        version, tier_byte = VERSION, tier
     for _ in range(count):
         serial = secrets.randbits(32)
-        payload = bytes([VERSION, bits, tier, day >> 8 & 0xFF, day & 0xFF]) + serial.to_bytes(4, "big")
+        payload = bytes([version, bits, tier_byte, day >> 8 & 0xFF, day & 0xFF]) + serial.to_bytes(4, "big")
         der = run(["openssl", "dgst", "-sha256", "-sign", key], stdin=payload)
         code = base32(payload + raw_signature(der))
         if sql_pool:
@@ -108,12 +122,16 @@ def main():
     make.add_argument("--scopes", default="beta", help=f"comma separated: {', '.join(SCOPES)}")
     make.add_argument("--tier", type=int, default=1, help="0-255, your own meaning (1 = coffee, 2 = more)")
     make.add_argument("--expires", help="YYYY-MM-DD; leave out for a code that never expires")
+    make.add_argument("--months", type=int, default=0,
+                      help="1-15 months counted from the day it's redeemed, instead of a fixed date")
     make.add_argument("--count", type=int, default=1)
     pool = sub.add_parser("pool", help="codes as SQL, to load into the Ko-fi worker")
     pool.add_argument("--key", default="supporter-key.pem")
     pool.add_argument("--scopes", default="beta", help=f"comma separated: {', '.join(SCOPES)}")
     pool.add_argument("--tier", type=int, default=1)
     pool.add_argument("--expires", help="YYYY-MM-DD; leave out for a code that never expires")
+    pool.add_argument("--months", type=int, default=0,
+                      help="1-15 months counted from the day it's redeemed, instead of a fixed date")
     pool.add_argument("--count", type=int, default=100)
     pool.add_argument("--pool", help="pool name in the worker (default: the scopes joined by +)")
     args = parser.parse_args()
@@ -122,7 +140,7 @@ def main():
         return
     scopes = [s.strip() for s in args.scopes.split(",") if s.strip()]
     pool_name = (args.pool or "+".join(scopes)) if args.command == "pool" else None
-    mint(args.key, scopes, args.tier, args.expires, args.count, pool_name)
+    mint(args.key, scopes, args.tier, args.expires, args.count, pool_name, args.months)
 
 
 if __name__ == "__main__":

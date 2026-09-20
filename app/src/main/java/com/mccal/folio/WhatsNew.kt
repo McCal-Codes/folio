@@ -36,7 +36,7 @@ internal object WhatsNew {
 
     /** A symbol and color for a feature, chosen from words in its title (a star when nothing matches). */
     fun symbol(title: String): Pair<androidx.compose.ui.graphics.vector.ImageVector, Long> {
-        val t = title.lowercase()
+        val t = title.lowercase(java.util.Locale.ROOT)
         return when {
             "row" in t || "grid" in t -> Icons.Rounded.GridView to 0xFF0A84FF
             "slider" in t || "spacing" in t -> Icons.Rounded.Tune to 0xFF5E5CE6

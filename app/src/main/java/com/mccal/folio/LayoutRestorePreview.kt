@@ -16,7 +16,11 @@ internal fun LayoutRestorePreview(preview: LayoutImportPreview, onRestore: () ->
     AlertDialog(onDismissRequest = onCancel, modifier = Modifier.testTag("layout-restore-preview"),
         title = { Text(stringResource(R.string.review_restored_layout)) }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.apps_folders_widgets_1_2_3, preview.appCount, preview.folderCount, preview.widgetCount))
+                Text(listOf(
+                    pluralStringResource(R.plurals.restore_apps, preview.appCount, preview.appCount),
+                    pluralStringResource(R.plurals.restore_folders, preview.folderCount, preview.folderCount),
+                    pluralStringResource(R.plurals.restore_widgets, preview.widgetCount, preview.widgetCount),
+                ).joinToString(" · "))
                 if (preview.layout.leadingSlots.any { it != null } || preview.layout.widgetPlacements.any { it.page == -1 })
                     Text(stringResource(R.string.includes_your_unfolded_only_page), style = MaterialTheme.typography.bodySmall)
                 Text(stringResource(R.string.this_also_restores_icon_layout_labels_se))
