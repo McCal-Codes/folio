@@ -48,10 +48,11 @@ Edit `POOLS` in `wrangler.toml`:
 - `shop` — by the shop item's `direct_link_code` (it's in the webhook payload, and in the item's Ko-fi link).
 - `tipFrom` / `tipPool` — one-off tips from this amount up earn this pool. Leave both out and tips earn nothing.
 - `tipBands` — a pool per amount, for buying time rather than one flat thank-you. A payment earns the largest band
-  it clears, and anything under the smallest earns nothing.
+  it clears, and anything under the smallest earns nothing. Folio's own bands are $3, $6 and $12 for one, two and
+  four months, which is what the Coffee tier costs a month, so nobody can buy access cheaper than a member gets it.
 
 ```json
-{"tipBands": [{"from": 5, "pool": "months1"}, {"from": 10, "pool": "months2"}, {"from": 20, "pool": "months4"}]}
+{"tipBands": [{"from": 3, "pool": "months1"}, {"from": 6, "pool": "months2"}, {"from": 12, "pool": "months4"}]}
 ```
 
 Mint those pools with the months on the code, so the clock starts when it's redeemed rather than when it was minted:
