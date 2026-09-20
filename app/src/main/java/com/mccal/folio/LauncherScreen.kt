@@ -149,14 +149,7 @@ fun LauncherScreen(
     var widgetSession by remember { mutableStateOf<WidgetPickerSession?>(null) }
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     var emptyCellIndex by rememberSaveable { mutableStateOf<Int?>(null) }
-    var resizeSlot by remember { mutableStateOf<Int?>(null) }
-    var resizeWidth by rememberSaveable { mutableIntStateOf(1) }
-    var resizeHeight by rememberSaveable { mutableIntStateOf(1) }
-    var resizeConstraints by remember { mutableStateOf<WidgetSpanConstraints?>(null) }
-    var resizePitchX by remember { mutableFloatStateOf(1f) }
-    var resizePitchY by remember { mutableFloatStateOf(1f) }
-    var resizeTopPitch by remember { mutableFloatStateOf(1f) }
-    var resizeAppPitch by remember { mutableFloatStateOf(1f) }
+    val resize = rememberWidgetResize()
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var renameAppId by rememberSaveable { mutableStateOf<String?>(null) }
     var panelAppId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -235,7 +228,7 @@ fun LauncherScreen(
         }
     }
     val pageGestures = remember(nativePager) { PageGestureLimits(nativePager) }
-    SideEffect { pageGestures.editing = drag.active || widgetSession != null || resizeSlot != null; LiveDiscover.allowNativeOpen = pager.currentPage == 0 && !drag.active && widgetSession == null && resizeSlot == null }
+    SideEffect { pageGestures.editing = drag.active || widgetSession != null || resize.active; LiveDiscover.allowNativeOpen = pager.currentPage == 0 && !drag.active && widgetSession == null && !resize.active }
     val pageFling = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(nativePager, pagerSnapDistance = pageGestures,
         snapAnimationSpec = MotionSpeed.spring(1f, androidx.compose.animation.core.Spring.StiffnessMediumLow * 1.2f))
     var nativeMotion by remember { mutableStateOf(false) }
@@ -310,7 +303,7 @@ fun LauncherScreen(
         val page = (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))
             ?: pager.currentPage.takeIf { it in 0 until homePages }
             ?: lastHomePage.coerceIn(0, homePages - 1)
-        drag.clear(); widgetSession = null; resizeSlot = null; sheet = ""; widgetPackage = null
+        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null
         widgetExactTarget = false; widgetPlacementMessage = null; selectedId = null
         openFolderId = null; createFolderFirstId = null; emptyCellIndex = null; homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
@@ -322,7 +315,7 @@ fun LauncherScreen(
         (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))?.let { pager.animateScrollToPage(it) }
     }
     LaunchedEffect(settingsRequests) { if (settingsRequests > 0) {
-        drag.clear(); widgetSession = null; resizeSlot = null; selectedId = null; homeEdit.stop()
+        drag.clear(); widgetSession = null; resize.stop(); selectedId = null; homeEdit.stop()
         if (SoftwareUpdate.openRequested) { SoftwareUpdate.openRequested = false; customizationPage = CustomizationPage.SOFTWARE_UPDATE }
         SettingsLink.page?.let { customizationPage = it; SettingsLink.page = null }
         sheet = "settings"
@@ -344,7 +337,7 @@ fun LauncherScreen(
             confirmButton = { TextButton(onClick = { problemDismissed = true; model.refresh() }) { Text(stringResource(R.string.try_again)) } },
             dismissButton = { TextButton(onClick = { problemDismissed = true }) { Text(stringResource(R.string.not_now)) } })
     }
-    LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resizeSlot = null; sheet = ""; widgetPackage = null; widgetExactTarget = false; selectedId = null
+    LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resize.stop(); sheet = ""; widgetPackage = null; widgetExactTarget = false; selectedId = null
         if (!state.googleSearch || !onGoogleSearch(null)) pager.animateScrollToPage(homePages)
     } }
     val widgetPickerBack = {
@@ -359,10 +352,10 @@ fun LauncherScreen(
     // App Library, predictive back: the library eases back as you swipe and returns to Home when you let go.
     var libraryBack by remember { mutableFloatStateOf(0f) }
     val libraryBackActive = sheet.isEmpty() && !launcherActivity.spotlightVisible.value && launcherActivity.topPanel.value == null &&
-        pager.currentPage == visibleHomePages && resizeSlot == null && !drag.active && selectedId == null && !homeEdit.active
+        pager.currentPage == visibleHomePages && !resize.active && !drag.active && selectedId == null && !homeEdit.active
     PredictiveBack(enabled = libraryBackActive, onProgress = { libraryBack = it }, onCancel = { libraryBack = 0f },
         onBack = { focus.clearFocus(); scope.launch { pager.animateScrollToPage(0); libraryBack = 0f } })
-    BackHandler(enabled = sheet.isEmpty() && !launcherActivity.spotlightVisible.value && launcherActivity.topPanel.value == null && !libraryBackActive) { if (resizeSlot != null) resizeSlot = null else if (drag.active) {
+    BackHandler(enabled = sheet.isEmpty() && !launcherActivity.spotlightVisible.value && launcherActivity.topPanel.value == null && !libraryBackActive) { if (resize.active) resize.stop() else if (drag.active) {
         val destination = if (drag.source?.target is DropTarget.Library) homePages else drag.originPage.coerceAtMost(homePages - 1)
         drag.clear(); scope.launch { pager.scrollToPage(destination) }
     } else if (selectedId != null) selectedId = null else if (homeEdit.active) homeEdit.stop()
@@ -516,7 +509,7 @@ fun LauncherScreen(
         compositingStrategy = if (!hostedDiscover) androidx.compose.ui.graphics.CompositingStrategy.Auto
             else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
     }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").homeDragInput(drag,
-        enabled = sheet.isEmpty() && !showFirstRun && selectedId == null && resizeSlot == null && pager.currentPage >= 0,
+        enabled = sheet.isEmpty() && !showFirstRun && selectedId == null && !resize.active && pager.currentPage >= 0,
         page = pager.currentPage, eligiblePages = eligibleDragPages, onStart = {
             focus.clearFocus(); keyboard?.hide(); haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             // iPhone: holding an app shows its menu right away (no Android-style pick-up). Moving while still
@@ -609,12 +602,12 @@ fun LauncherScreen(
                 !launcherActivity.isInMultiWindowMode
             LaunchedEffect(measuresRows, wide, geometry.fitAppRows) { if (measuresRows) model.recordHomeFit(wide, geometry.fitAppRows) }
             SideEffect {
-                resizePitchX = with(density) { geometry.cellWidth.dp.toPx() }
-                resizePitchY = with(density) { minOf((geometry.widgetHeight + 18f) / 2f, geometry.rowHeight).dp.toPx() }
-                resizeTopPitch = with(density) { ((geometry.widgetHeight + 18f) / 2f).dp.toPx() }
-                resizeAppPitch = with(density) { geometry.rowHeight.dp.toPx() }
+                resize.pitchX = with(density) { geometry.cellWidth.dp.toPx() }
+                resize.pitchY = with(density) { minOf((geometry.widgetHeight + 18f) / 2f, geometry.rowHeight).dp.toPx() }
+                resize.topPitch = with(density) { ((geometry.widgetHeight + 18f) / 2f).dp.toPx() }
+                resize.appPitch = with(density) { geometry.rowHeight.dp.toPx() }
             }
-            LaunchedEffect(geometry.gridWidth, geometry.widgetHeight, geometry.rowHeight) { resizeSlot = null }
+            LaunchedEffect(geometry.gridWidth, geometry.widgetHeight, geometry.rowHeight) { resize.stop() }
             SideEffect { expandedWorkspace = geometry.expanded }
             // Unfolded with Today View beside Home (or off), there's nothing to the left of Home: spring back.
             val noLeftPageUnfolded = todayMode && geometry.expanded && state.todayUnfolded != "PAGE"
@@ -661,7 +654,7 @@ fun LauncherScreen(
             var gestureOriginInWindow by remember { mutableStateOf(Offset.Zero) }
             var scrubberBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
             val pagerInputEnabled = pager.currentPage in -firstHome..visibleHomePages && !drag.active &&
-                widgetSession == null && resizeSlot == null && sheet.isEmpty() && !showFirstRun && selectedId == null &&
+                widgetSession == null && !resize.active && sheet.isEmpty() && !showFirstRun && selectedId == null &&
                 openFolderId == null && emptyCellIndex == null && createFolderFirstId == null &&
                 launcherActivity.backups.preview == null && !launcherActivity.backups.pickerPending &&
                 !launcherActivity.backgrounds.pickerPending && widgets.setupStatus == null &&
@@ -767,7 +760,7 @@ fun LauncherScreen(
                     // Discover is two physical positions before Home 2. Retain both Home
                     // neighbors to avoid reinflating Home 2's RemoteViews during native exit.
                     beyondViewportPageCount = if (firstHome > 0) 2 else 1,
-                    userScrollEnabled = !drag.active && resizeSlot == null, flingBehavior = pageFling,
+                    userScrollEnabled = !drag.active && !resize.active, flingBehavior = pageFling,
                     key = { if (it < firstHome) "discover" else if (it - firstHome == visibleHomePages) "library" else "home-${it - firstHome}" }) { physicalPage ->
                     val page = physicalPage - firstHome
                     if (page == -1) {
@@ -1005,8 +998,8 @@ fun LauncherScreen(
                                 isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidget(state.layout, widgetSlot, x, y) != state.layout },
                                 onResize = { x, y -> model.resizeWidget(widgetSlot, x, y) },
                                 onStartResize = { x, y ->
-                                    resizeSlot = widgetSlot; resizeWidth = x; resizeHeight = y
-                                    resizeConstraints = constraints; sheet = ""
+                                    resize.start(widgetSlot, x, y, constraints)
+                                    sheet = ""
                                 },
                                 onMoveToPage = { page ->
                                     (0 until HOME_CELLS).firstOrNull { local ->
@@ -1361,23 +1354,23 @@ fun LauncherScreen(
                 }
             }
         }
-        resizeSlot?.let { slot ->
+        resize.slot?.let { slot ->
             val placement = model.placement(slot)
             val bounds = drag.regions[DropTarget.Widget(slot)]?.bounds
             if (placement != null && bounds != null) {
-                val minW = resizeConstraints?.minimum?.width ?: 2
-                val minH = resizeConstraints?.minimum?.height ?: 2
-                val maxW = minOf(GRID_COLUMNS - placement.column, resizeConstraints?.maximum?.width ?: GRID_COLUMNS)
-                val maxH = minOf(pageRows(placement.page) - placement.row, resizeConstraints?.maximum?.height ?: GRID_ROWS)
+                val minW = resize.constraints?.minimum?.width ?: 2
+                val minH = resize.constraints?.minimum?.height ?: 2
+                val maxW = minOf(GRID_COLUMNS - placement.column, resize.constraints?.maximum?.width ?: GRID_COLUMNS)
+                val maxH = minOf(pageRows(placement.page) - placement.row, resize.constraints?.maximum?.height ?: GRID_ROWS)
                 val feasible = placement.page >= -1 && placement.row in 0 until GRID_ROWS &&
-                    !(placement.id >= 0 && resizeConstraints == null) && minW <= maxW && minH <= maxH
-                val candidate = resizeWidget(state.layout, slot, resizeWidth, resizeHeight)
-                val valid = feasible && ((resizeWidth == placement.spanX && resizeHeight == placement.spanY) || candidate != state.layout)
-                val widthPx = (bounds.width + (resizeWidth - placement.spanX) * resizePitchX).coerceAtLeast(resizePitchX)
+                    !(placement.id >= 0 && resize.constraints == null) && minW <= maxW && minH <= maxH
+                val candidate = resizeWidget(state.layout, slot, resize.width, resize.height)
+                val valid = feasible && ((resize.width == placement.spanX && resize.height == placement.spanY) || candidate != state.layout)
+                val widthPx = (bounds.width + (resize.width - placement.spanX) * resize.pitchX).coerceAtLeast(resize.pitchX)
                 val density = LocalDensity.current
-                fun resizeRowTop(row: Int) = if (row <= 2) row * resizeTopPitch else 2 * resizeTopPitch + (row - 2) * resizeAppPitch
-                val heightPx = (resizeRowTop(placement.row + resizeHeight) - resizeRowTop(placement.row) -
-                    with(density) { 18.dp.toPx() }).coerceAtLeast(resizePitchY)
+                fun resizeRowTop(row: Int) = if (row <= 2) row * resize.topPitch else 2 * resize.topPitch + (row - 2) * resize.appPitch
+                val heightPx = (resizeRowTop(placement.row + resize.height) - resizeRowTop(placement.row) -
+                    with(density) { 18.dp.toPx() }).coerceAtLeast(resize.pitchY)
                 Box(Modifier.offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
                     .size(with(density) { widthPx.toDp() }, with(density) { heightPx.toDp() })
                     .border(3.dp, if (valid) Color.White else Color(0xFFFF6B6B), RoundedCornerShape(24.dp))
@@ -1385,25 +1378,25 @@ fun LauncherScreen(
                     Box(Modifier.align(Alignment.BottomEnd).offset(12.dp, 12.dp).size(44.dp)
                         .background(if (valid) Color.White else Color(0xFFFF6B6B), CircleShape)
                         .testTag("widget-resize-handle-$slot")
-                        .pointerInput(slot, resizeConstraints) {
-                            var dx = 0f; var dy = 0f; var startWidth = resizeWidth; var startHeight = resizeHeight
+                        .pointerInput(slot, resize.constraints) {
+                            var dx = 0f; var dy = 0f; var startWidth = resize.width; var startHeight = resize.height
                             detectDragGestures(onDragStart = {
-                                dx = 0f; dy = 0f; startWidth = resizeWidth; startHeight = resizeHeight
+                                dx = 0f; dy = 0f; startWidth = resize.width; startHeight = resize.height
                             }, onDrag = { change, amount ->
                                 change.consume(); dx += amount.x; dy += amount.y
-                                if (feasible && resizeConstraints?.canResizeHorizontally != false)
-                                    resizeWidth = (startWidth + (dx / resizePitchX).roundToInt()).coerceIn(minW, maxW)
-                                if (feasible && resizeConstraints?.canResizeVertically != false)
-                                    resizeHeight = (startHeight + (dy / resizePitchY).roundToInt()).coerceIn(minH, maxH)
+                                if (feasible && resize.constraints?.canResizeHorizontally != false)
+                                    resize.width = (startWidth + (dx / resize.pitchX).roundToInt()).coerceIn(minW, maxW)
+                                if (feasible && resize.constraints?.canResizeVertically != false)
+                                    resize.height = (startHeight + (dy / resize.pitchY).roundToInt()).coerceIn(minH, maxH)
                             })
                         }, contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.OpenInFull, "Drag to resize widget", tint = Ink, modifier = Modifier.size(22.dp))
                     }
                     Row(Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
                         .background(Glass.copy(alpha = .96f), RoundedCornerShape(20.dp))) {
-                        TextButton(onClick = { resizeSlot = null }) { Text(stringResource(R.string.cancel)) }
+                        TextButton(onClick = { resize.stop() }) { Text(stringResource(R.string.cancel)) }
                         TextButton(enabled = valid, onClick = {
-                            model.resizeWidget(slot, resizeWidth, resizeHeight); resizeSlot = null
+                            model.resizeWidget(slot, resize.width, resize.height); resize.stop()
                         }) { Text(stringResource(R.string.apply)) }
                     }
                     if (!feasible) Text(stringResource(R.string.move_this_widget_into_the_six_row_grid_b),
