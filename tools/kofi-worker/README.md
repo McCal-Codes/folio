@@ -115,3 +115,37 @@ node worker.test.mjs
 ```
 
 No account and no network: the database and the mailer are stood in for.
+
+## Beta builds for supporters
+
+Folio's updater reads GitHub's releases API directly, which only works on a public repository. The betas live in a
+private one, so Folio asks this worker instead and sends the supporter code as its credential:
+
+```
+Folio  --GET /beta/releases, Authorization: Bearer <code>-->  worker
+                                                              |- checks the code's signature (the check the app makes)
+                                                              |- reads the private repo with its own GitHub token
+                                                              '- rewrites each download link to /beta/asset/<id>?t=...
+Folio  --GET /beta/asset/<id>?t=...-->  worker --302-->  GitHub's own short-lived file address
+```
+
+What that buys: the GitHub token never reaches a phone, the repository stays private, supporters need no GitHub
+account, and access follows the code you issued rather than a list of invitations. A download link lasts 30 minutes
+and works only for the one file it was made for.
+
+**What it refuses:** a code nobody signed, a code without the `beta` scope, a withdrawn serial, a code that has run
+out, and a forged or expired download link. A months-code's window runs from the day it was first used here, recorded
+in `beta_seen`, so it ends on the same day the phone says it does.
+
+**Setting it up**
+
+1. Run the schema again, for the `beta_seen` table:
+   `npx wrangler d1 execute folio-codes --remote --file=schema.sql`
+2. Put the beta repository and the public key in `wrangler.toml`: `BETA_REPO`, `SUPPORTER_KEYS`.
+3. Add three secrets, each with `npx wrangler secret put <name>`: `GITHUB_TOKEN` (fine-grained, Contents: read, beta
+   repository only), `TICKET_SECRET` (any long random string), and optionally `WITHDRAWN`.
+4. Deploy, then put the worker's address in `SoftwareUpdate.BETA_BROKER` in the app. Until that constant is filled in,
+   Beta Updates reads the public pre-releases exactly as it does today.
+
+Run `node beta.test.mjs` for the checks: they mint real signed codes against a throwaway key, so the gate is exercised
+rather than described.

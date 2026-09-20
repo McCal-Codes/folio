@@ -7,9 +7,17 @@
  *
  * It answers 200 for anything it has already handled or deliberately ignores, so Ko-fi stops retrying, and 500 only
  * when something really failed and a retry might work.
+ *
+ * It also brokers the supporters' beta builds out of a private repository — see beta.js.
  */
+import { betaAsset, betaReleases } from './beta.js'
+
 export default {
   async fetch(request, env) {
+    // Supporters' beta builds: Folio asks here rather than GitHub, because that repository is private.
+    const url = new URL(request.url)
+    if (request.method === 'GET' && url.pathname === '/beta/releases') return betaReleases(request, env, url)
+    if (request.method === 'GET' && url.pathname.startsWith('/beta/asset/')) return betaAsset(request, env, url)
     if (request.method !== 'POST') return new Response('Folio supporter codes', { status: 200 })
 
     const payment = await readPayment(request, env)

@@ -16,3 +16,13 @@ MAIL_FROM = "Folio <folio@example.com>"
 # Secrets, set with `wrangler secret put NAME` (never in this file):
 #   KOFI_TOKEN   the verification token from Ko-fi's Webhooks page
 #   RESEND_KEY   optional; without it codes are still claimed and recorded, just not emailed
+
+# Supporters' beta builds. The worker reads a private repository with its own token and hands Folio a short-lived
+# download link; see the README. Leave BETA_REPO empty to turn the beta broker off.
+BETA_REPO = ""                     # e.g. "McCal-Codes/folio-beta"
+SUPPORTER_KEYS = ""                # the public key from scripts/beta-code.py, base64, the same one the app carries
+
+# Secrets go in with `wrangler secret put`, never in this file:
+#   GITHUB_TOKEN   a fine-grained token with Contents: read on the beta repository, and nothing else
+#   TICKET_SECRET  any long random string; it signs download links so they can't be forged or shared
+#   WITHDRAWN      optional, serials of codes that no longer work, separated by commas

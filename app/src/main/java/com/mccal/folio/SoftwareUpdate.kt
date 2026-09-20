@@ -27,6 +27,13 @@ internal object SoftwareUpdate {
     private const val LATEST = "https://api.github.com/repos/McCal-Codes/folio/releases/latest"
     // GitHub's "latest" skips pre-releases, so the beta channel reads the recent list and takes the newest.
     private const val RECENT = "https://api.github.com/repos/McCal-Codes/folio/releases?per_page=15"
+    /**
+     * Supporters' betas live in a private repository, which GitHub won't show to an app with no credentials. This
+     * worker is asked instead: it checks the supporter code's signature — the same check Folio makes offline — and
+     * only then reads the private releases with its own token. Empty until the worker is deployed, and then Beta
+     * Updates simply reads the public pre-releases as before.
+     */
+    internal const val BETA_BROKER = ""
     private const val PREFS = "software_update"
     // Legacy switches (0.5.1–0.6.0), read once to carry a choice over to [Mode].
     private const val AUTO = "auto"
@@ -189,6 +196,18 @@ internal object SoftwareUpdate {
         return false
     }
 
+    /**
+     * Where to ask for betas, and what to send: the broker's address and the code, or null when there's no broker
+     * deployed or no code that carries beta access.
+     */
+    internal fun betaSource(broker: String, code: String?): Pair<String, String>? {
+        val address = broker.trim().trimEnd('/')
+        val credential = code?.trim().orEmpty()
+        if (address.isEmpty() || credential.isEmpty()) return null
+        if (!address.startsWith("https://")) return null  // a code is a credential; it doesn't travel in the clear
+        return "$address/beta/releases" to credential
+    }
+
     /** A published release with an APK, or null. */
     private fun releaseOf(json: JSONObject): Release? {
         val assets = json.optJSONArray("assets") ?: return null
@@ -238,8 +257,15 @@ internal object SoftwareUpdate {
         context.getSharedPreferences(PREFS, 0).edit().putLong(LAST_CHECK, System.currentTimeMillis()).apply()
         status.value = withContext(Dispatchers.IO) {
             runCatching {
-                val candidates = if (beta(context)) org.json.JSONArray(get(RECENT)).let { list -> (0 until list.length()).map(list::getJSONObject) }
-                    else listOf(JSONObject(get(LATEST)))
+                val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
+                // A supporter's beta comes from the broker; if it can't be reached, the public pre-releases still can.
+                val brokered = betaSource(BETA_BROKER, Supporter.storedText(context)
+                    ?.takeIf { beta(context) && Supporter.has(context, BetaCodes.SCOPE_BETA) })
+                val candidates = when {
+                    brokered != null -> runCatching { list(get(brokered.first, brokered.second)) }.getOrElse { list(get(RECENT)) }
+                    beta(context) -> list(get(RECENT))
+                    else -> listOf(JSONObject(get(LATEST)))
+                }
                 val newest = candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
                     .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a } ?: error(context.getString(R.string.no_release_has_an_apk))
                 if (!isNewer(newest.version, installedVersion(context))) Status.UpToDate
@@ -307,10 +333,12 @@ internal object SoftwareUpdate {
         SoftwareUpdateJob.cancelInstall(context)
     }
 
-    private fun get(url: String): String {
+    private fun get(url: String, code: String? = null): String {
         val c = URL(url).openConnection() as HttpURLConnection
         c.setRequestProperty("Accept", "application/vnd.github+json")
         c.setRequestProperty("User-Agent", "Folio")
+        // The supporter code is the only credential the broker wants, and it goes in a header rather than the address.
+        if (code != null) c.setRequestProperty("Authorization", "Bearer $code")
         c.connectTimeout = 10_000; c.readTimeout = 15_000
         return c.inputStream.bufferedReader().use { it.readText() }.also { c.disconnect() }
     }

@@ -21,3 +21,9 @@ CREATE TABLE IF NOT EXISTS problems (
   pool       TEXT NOT NULL,
   at         TEXT NOT NULL
 );
+
+-- The day a months-code was first used for a beta download, so its window runs from the same day here as on the phone.
+CREATE TABLE IF NOT EXISTS beta_seen (
+  serial     INTEGER PRIMARY KEY,
+  first_seen TEXT NOT NULL          -- YYYY-MM-DD, UTC
+);

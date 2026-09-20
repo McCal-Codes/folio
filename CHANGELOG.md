@@ -23,6 +23,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A live Roadmap:** see what's coming, updated from Folio's GitHub page.
 - **Supporter codes with months:** a code can carry a number of months that starts the day you redeem it, so one handed out from a batch still gives its full time. Settings › Supporter shows the day it runs out.
 - **Folio Keys, for supporters:** a code that carries the keyboard scope shows where Folio's own keyboard has got to, in Settings › Supporter. It's in design — a separate app, because Android needs a keyboard to be its own input method — so there is nothing to install yet.
+- **Beta updates for supporters:** with a code that carries beta access, Beta Updates installs the beta builds the same way as any other update. They live in a private repository, and Folio reaches them through the supporter worker, which checks your code and never puts a key on your phone — no GitHub account, no downloading APKs by hand.
 
 - **Move apps without dragging:** TalkBack actions and Alt+arrow keys move apps and folders around Home and between pages.
 - **Wallpaper Tint:** one slider from Clear to Tinted glass (Wallpaper & Appearance › Glass).
