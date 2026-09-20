@@ -50,10 +50,22 @@ Edit `POOLS` in `wrangler.toml`:
 - `tipBands` — a pool per amount, for buying time rather than one flat thank-you. A payment earns the largest band
   it clears, and anything under the smallest earns nothing. Folio's own bands are $3, $6 and $12 for one, two and
   four months, which is what the Coffee tier costs a month, so nobody can buy access cheaper than a member gets it.
+- `tipCurrency` / `tipRates` — what those amounts are written in, and what other currencies are worth in it.
+  `tipCurrency` is US dollars unless you say otherwise. Ko-fi sends the amount in whatever the payer used, so
+  without a rate a 500 JPY tip — about three dollars — would clear the `from: 12` band and buy four months. A
+  currency with no rate earns nothing instead, and is written into `problems` as `unpriced JPY` for you to price
+  and send by hand.
 
 ```json
-{"tipBands": [{"from": 3, "pool": "months1"}, {"from": 6, "pool": "months2"}, {"from": 12, "pool": "months4"}]}
+{
+  "tipCurrency": "USD",
+  "tipRates": {"EUR": 1.08, "GBP": 1.27},
+  "tipBands": [{"from": 3, "pool": "months1"}, {"from": 6, "pool": "months2"}, {"from": 12, "pool": "months4"}]
+}
 ```
+
+The rates are yours to keep roughly right; they don't need to be to the cent, and a currency you'd rather handle
+yourself can simply be left out.
 
 Mint those pools with the months on the code, so the clock starts when it's redeemed rather than when it was minted:
 

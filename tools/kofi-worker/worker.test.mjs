@@ -103,6 +103,31 @@ test('a one-off payment lands in the band it paid for', async () => {
   assert.equal(await paid('3.00'), null)         // under the first band, so nothing
 })
 
+test('a tip is read in the currency it was paid in, not as dollars', async () => {
+  const BANDS = JSON.stringify({
+    tipCurrency: 'USD',
+    tipRates: { EUR: 1.08 },
+    tipBands: [{ from: 5, pool: 'months1' }, { from: 20, pool: 'months4' }],
+  })
+  const paid = async (fields) => {
+    const DB = database([{ code: 'M1', pool: 'months1' }, { code: 'M4', pool: 'months4' }])
+    await worker.fetch(payment(fields), { DB, KOFI_TOKEN: TOKEN, POOLS: BANDS })
+    return { pool: DB.handled.get('m1')?.pool ?? null, problems: DB.problems }
+  }
+  // 500 yen is about three dollars: the four-month band is for people who paid four months' worth.
+  const yen = await paid({ amount: '500.00', currency: 'JPY' })
+  assert.equal(yen.pool, null)
+  assert.deepEqual(yen.problems, [{ message_id: 'm1', pool: 'unpriced JPY' }])   // paid, so not dropped in silence
+
+  // A currency with a rate is converted: 5 euros clears the five-dollar band, 4 doesn't.
+  assert.equal((await paid({ amount: '5.00', currency: 'EUR' })).pool, 'months1')
+  assert.equal((await paid({ amount: '4.00', currency: 'EUR' })).pool, null)
+
+  const dollars = await paid({ amount: '20.00', currency: 'USD' })
+  assert.equal(dollars.pool, 'months4')
+  assert.deepEqual(dollars.problems, [])
+})
+
 test('a half-written band leaves the flat tip pool reachable', async () => {
   // The from:5 band has no pool yet. A $10 tip should still earn what tipPool says, not nothing at all.
   const POOLS_HALF = JSON.stringify({ tipBands: [{ from: 20, pool: 'months4' }, { from: 5 }], tipFrom: 5, tipPool: 'beta' })
