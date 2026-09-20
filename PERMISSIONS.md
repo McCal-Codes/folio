@@ -27,19 +27,17 @@ Folio keeps working.
 ## What Folio never does
 
 - **No ads, no analytics, no tracking, no accounts.** Nothing about you leaves the phone.
-- **Network only when you ask.** Update checks, the roadmap, and the sources you add — nothing else. Requests carry a
-  plain `User-Agent: Folio` and no identifiers, and everything is HTTPS ([`network_security_config.xml`](app/src/main/res/xml/network_security_config.xml)).
+- **Network only when you ask.** Update checks and the roadmap — nothing else. Requests carry a plain
+  `User-Agent: Folio` and no identifiers, and everything is HTTPS: Folio targets a recent Android, where plain
+  HTTP is blocked unless an app opts in, and Folio doesn't.
 - **Contacts, calendar and notifications stay on the phone.** They're read to draw a screen and never uploaded.
-- **Market packages get no Android permissions.** A package is data: it configures things Folio already does, and its
-  page lists exactly what it may change. Folio never downloads or runs code from a source
-  ([ADR 0004](docs/adr/0004-declarative-first.md)).
 
 ## Checking a build yourself
 
 Every release lists the APK's SHA-256. To check the file you downloaded:
 
 ```bash
-shasum -a 256 folio-0.7.0.apk
+shasum -a 256 folio-0.6.5.apk
 ```
 
 Releases also link a [VirusTotal](https://www.virustotal.com/) scan of that exact APK, so you don't have to take the
