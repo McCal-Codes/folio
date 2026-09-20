@@ -105,6 +105,16 @@ internal object SoftwareUpdate {
 
     /** Like iOS Beta Updates: also offer GitHub pre-releases. Leaving keeps the installed beta until a newer public release. */
     fun beta(context: Context) = context.getSharedPreferences(PREFS, 0).getBoolean(BETA, false)
+
+    /**
+     * Where to actually look for an update. Normally the switch above decides; a development build can point this at
+     * one channel or the other without touching the switch, so the update path can be walked as a stranger sees it.
+     */
+    internal fun betaChannel(context: Context): Boolean = when (Dev.channel(context)) {
+        Dev.Channel.STABLE -> false
+        Dev.Channel.BETA -> true
+        Dev.Channel.DEFAULT -> beta(context)
+    }
     fun setBeta(context: Context, on: Boolean) {
         context.getSharedPreferences(PREFS, 0).edit().putBoolean(BETA, on).apply()
         status.value = Status.Idle
@@ -260,10 +270,10 @@ internal object SoftwareUpdate {
                 val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
                 // A supporter's beta comes from the broker; if it can't be reached, the public pre-releases still can.
                 val brokered = betaSource(BETA_BROKER, Supporter.storedText(context)
-                    ?.takeIf { beta(context) && Supporter.has(context, BetaCodes.SCOPE_BETA) })
+                    ?.takeIf { betaChannel(context) && Supporter.has(context, BetaCodes.SCOPE_BETA) })
                 val candidates = when {
                     brokered != null -> runCatching { list(get(brokered.first, brokered.second)) }.getOrElse { list(get(RECENT)) }
-                    beta(context) -> list(get(RECENT))
+                    betaChannel(context) -> list(get(RECENT))
                     else -> listOf(JSONObject(get(LATEST)))
                 }
                 val newest = candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)

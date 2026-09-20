@@ -118,6 +118,11 @@ internal object Supporter {
 
     /** A code unlocks a feature; beta features also need the switch, so early access can be left at any time. */
     fun has(context: Context, scope: String): Boolean {
+        // A development build can be told to behave as a supporter, so the gated features can be seen without a
+        // code. The developer's own scope is never handed out this way: it has its own lock.
+        if (scope != BetaCodes.SCOPE_DEV && Dev.face(context) != Dev.Face.FREE) {
+            return scope != BetaCodes.SCOPE_BETA || betaOn(context)
+        }
         val code = code(context) ?: return false
         if (scope !in code.scopes) return false
         return scope != BetaCodes.SCOPE_BETA || betaOn(context)
@@ -163,7 +168,11 @@ internal fun supporterWindowStart(stored: LocalDate?, clock: LocalDate?, months:
  */
 internal object BetaKeys {
     const val SUPPORTER = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM4vVq0D/ZzqkVWlyQYMTFN3TTbdqRgKdt2a30T88NkeQhDEWnujFjfyXyKtPIVBKMSiRVXeY/OcC0+TaB6eypg=="
-    const val TEST = ""
+    /**
+     * The development key. Its private half lives in ~/.folio/folio-dev-key.pem and is never committed; codes signed
+     * with it are accepted only by a build whose package id ends in ".dev", so a release build ignores them entirely.
+     */
+    const val TEST = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1ThekiCv9nsyGnrXe7tB/r/p2hQTy/J50m2vdz56roUKiD37LRV6JRyssSx2eB18n3k8CVlCOZt52CCDMr3dLg=="
 
     /**
      * Serial numbers of codes that no longer work: one that was posted publicly, or one a refund took back. A code is

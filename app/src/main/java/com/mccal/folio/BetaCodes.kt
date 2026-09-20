@@ -19,8 +19,11 @@ internal object BetaCodes {
     const val SCOPE_LOOK = "look"    // personalization extras
     const val SCOPE_POWER = "power"  // power-user automation
     const val SCOPE_KEYS = "keys"    // Folio Keyboard extras
+    const val SCOPE_DEV = "dev"      // the developer's own switches, and only in a development build
 
-    private val SCOPE_BITS = listOf(SCOPE_BETA, SCOPE_LOOK, SCOPE_POWER, SCOPE_KEYS)
+    // Appended, never reordered: a bit that already means something has to keep meaning it, or codes already handed
+    // out would unlock the wrong thing.
+    private val SCOPE_BITS = listOf(SCOPE_BETA, SCOPE_LOOK, SCOPE_POWER, SCOPE_KEYS, SCOPE_DEV)
 
     /** Day 0 of the expiry field, so two bytes cover well past any plan of mine. */
     private val EPOCH: Long = LocalDate.of(2026, 1, 1).toEpochDay()

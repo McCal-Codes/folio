@@ -82,6 +82,9 @@ internal fun SupporterPage() {
         CardNote(stringResource(R.string.folio_s_core_is_free_and_stays_free_home))
     }
 
+    // Development builds only, and only after a code signed with the development key: see Dev.
+    if (Dev.possible(context)) DeveloperCard(onFaceChange = { code = Supporter.code(context) })
+
     if (redeeming) RedeemAlert(onCancel = { redeeming = false }, onRedeem = { typed ->
         when (val result = Supporter.redeem(context, typed)) {
             is BetaCodes.Result.Valid -> {
@@ -136,4 +139,65 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
         },
         confirmButton = { TextButton(onClick = { onRedeem(typed) }) { Text(stringResource(R.string.redeem)) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } })
+}
+
+/**
+ * Settings › Supporter › Developer, in a development build. Locked, it offers one action; unlocked, it decides which
+ * audience Folio behaves as, where Software Update looks, and which of this release's features are hidden.
+ */
+@Composable private fun DeveloperCard(onFaceChange: () -> Unit) {
+    val context = LocalContext.current
+    var unlocked by remember { mutableStateOf(Dev.unlocked(context)) }
+    var face by remember { mutableStateOf(Dev.face(context)) }
+    var channel by remember { mutableStateOf(Dev.channel(context)) }
+    var lines by remember { mutableStateOf(Dev.Line.entries.associateWith { Dev.on(context, it) }) }
+    var unlocking by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<String?>(null) }
+
+    SettingsCard("DEVELOPER") {
+        if (!unlocked) {
+            CardAction(stringResource(R.string.unlock_developer_switches), onClick = { problem = null; unlocking = true })
+            CardNote(stringResource(R.string.paste_a_code_signed_with_the_development_key))
+            problem?.let { CardNote(it) }
+        } else {
+            InfoRow(stringResource(R.string.behave_as), stringResource(face.title))
+            for (option in Dev.Face.entries) {
+                SettingsSwitch(stringResource(option.title), face == option, { on ->
+                    if (on) { Dev.setFace(context, option); face = option; onFaceChange() }
+                }, "dev-face-${option.key}")
+            }
+            CardNote(stringResource(face.detail))
+            CardAction(stringResource(R.string.lock_developer_switches), destructive = true, onClick = {
+                Dev.lock(context); unlocked = false; face = Dev.Face.FREE; channel = Dev.Channel.DEFAULT
+                lines = Dev.Line.entries.associateWith { true }; onFaceChange()
+            })
+        }
+    }
+
+    if (unlocked) SettingsCard("UPDATE CHANNEL") {
+        for (option in Dev.Channel.entries) {
+            SettingsSwitch(stringResource(option.title), channel == option, { on ->
+                if (on) { Dev.setChannel(context, option); channel = option }
+            }, "dev-channel-${option.key}")
+        }
+    }
+
+    if (unlocked) SettingsCard("FEATURES") {
+        for (line in Dev.Line.entries) {
+            SettingsSwitch(stringResource(line.title), lines[line] != false, { on ->
+                Dev.setOn(context, line, on); lines = lines + (line to on)
+            }, "dev-line-${line.key}")
+        }
+        CardNote(stringResource(R.string.turn_one_off_to_see_the_release_before_it))
+    }
+
+    if (unlocking) RedeemAlert(onCancel = { unlocking = false }, onRedeem = { typed ->
+        when (Dev.unlock(context, typed)) {
+            is BetaCodes.Result.Valid -> { unlocked = true; face = Dev.face(context); problem = null; unlocking = false }
+            BetaCodes.Result.NotOurs -> problem = context.getString(R.string.that_code_doesn_t_carry_the_developer_scope)
+            is BetaCodes.Result.Expired -> problem = context.getString(R.string.that_code_has_run_out_ko_fi_codes_have_a)
+            BetaCodes.Result.Withdrawn -> problem = context.getString(R.string.that_code_has_been_withdrawn_if_you_thin)
+            BetaCodes.Result.Unreadable -> problem = context.getString(R.string.that_doesn_t_look_like_a_folio_code_past)
+        }
+    })
 }

@@ -98,6 +98,18 @@ class BetaCodesTest {
         assertEquals(BetaCodes.Result.Unreadable, BetaCodes.verify(mint(0b0001, version = 3), publicKey, today))
     }
 
+    @Test fun `the developer scope is its own bit, and doesn't disturb the others`() {
+        val dev = (BetaCodes.verify(mint(0b10000), publicKey, today) as BetaCodes.Result.Valid).code
+        assertEquals(setOf(BetaCodes.SCOPE_DEV), dev.scopes)
+        // Every scope at once, to prove bit 4 didn't move the ones that were already spoken for.
+        val all = (BetaCodes.verify(mint(0b11111), publicKey, today) as BetaCodes.Result.Valid).code
+        assertEquals(setOf(BetaCodes.SCOPE_BETA, BetaCodes.SCOPE_LOOK, BetaCodes.SCOPE_POWER,
+            BetaCodes.SCOPE_KEYS, BetaCodes.SCOPE_DEV), all.scopes)
+        // A supporter's code carries no developer scope.
+        val supporter = (BetaCodes.verify(mint(0b1111), publicKey, today) as BetaCodes.Result.Valid).code
+        assertEquals(false, BetaCodes.SCOPE_DEV in supporter.scopes)
+    }
+
     @Test fun `a withdrawn code stops working`() {
         val code = mint(0b0001, serial = 7)
         assertTrue(BetaCodes.verify(code, publicKey, today) is BetaCodes.Result.Valid)

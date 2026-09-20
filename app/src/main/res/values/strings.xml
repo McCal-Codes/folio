@@ -834,4 +834,28 @@
     <string name="snooze_for_1_hour">Snooze for 1 Hour</string>
     <string name="snooze_until_tomorrow">Snooze Until Tomorrow</string>
     <string name="notification_settings">Notification Settings</string>
+    <!-- Settings > Supporter, development builds only: the switches that let one build be seen three ways. -->
+    <string name="developer">Developer</string>
+    <string name="unlock_developer_switches">Unlock developer switches</string>
+    <string name="paste_a_code_signed_with_the_development_key">Paste a code signed with the development key. A release build has no key to check one against, so these switches exist only here.</string>
+    <string name="that_code_doesn_t_carry_the_developer_scope">That code doesn\'t carry the developer scope. Mint one with --scopes dev.</string>
+    <string name="behave_as">Behave as</string>
+    <string name="lock_developer_switches">Lock and forget the switches</string>
+    <string name="update_channel">Update channel</string>
+    <string name="features">Features</string>
+    <string name="turn_one_off_to_see_the_release_before_it">Turn one off to see how Folio behaved before it arrived, without installing that older Folio.</string>
+    <string name="dev_face_free">Free</string>
+    <string name="dev_face_free_detail">What someone who hasn\'t supported Folio sees.</string>
+    <string name="dev_face_supporter">Supporter</string>
+    <string name="dev_face_supporter_detail">Every scope a code can carry, without a code.</string>
+    <string name="dev_face_dev">Developer</string>
+    <string name="dev_face_dev_detail">As a supporter, and anything built for testing.</string>
+    <string name="dev_channel_default">The Beta Updates switch</string>
+    <string name="dev_channel_stable">Stable only</string>
+    <string name="dev_channel_beta">Betas too</string>
+    <string name="dev_line_clear_icons">Clear icons</string>
+    <string name="dev_line_gauge">Gauge status glyph</string>
+    <string name="dev_line_big_clock">Big Clock</string>
+    <string name="dev_line_software_update">Software Update</string>
+    <string name="dev_line_since_065">New in 0.6.5</string>
 </resources>

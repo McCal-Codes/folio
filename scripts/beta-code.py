@@ -7,6 +7,8 @@ The private key stays on this machine; Folio only ever carries the public half.
     ./scripts/beta-code.py mint --scopes beta,look     # one code, no expiry
     ./scripts/beta-code.py mint --scopes beta --expires 2027-01-01 --count 25
     ./scripts/beta-code.py mint --scopes beta,keys --months 1         # one month from the day it's redeemed
+    ./scripts/beta-code.py newkey --key ~/.folio/folio-dev-key.pem    # a development key, for your own phone
+    ./scripts/beta-code.py mint --key ~/.folio/folio-dev-key.pem --scopes dev,beta,look,power,keys
     ./scripts/beta-code.py pool --scopes beta --count 200 > pool.sql   # load into the Ko-fi worker
 
 Paste the printed public key into BetaKeys.SUPPORTER (app/src/main/java/com/mccal/folio/Supporter.kt).
@@ -21,7 +23,7 @@ import subprocess
 import sys
 
 ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32, matching BetaCodes.kt
-SCOPES = ["beta", "look", "power", "keys"]     # bit order must match BetaCodes.SCOPE_BITS
+SCOPES = ["beta", "look", "power", "keys", "dev"]  # bit order must match BetaCodes.SCOPE_BITS
 EPOCH = datetime.date(2026, 1, 1)
 VERSION = 1           # a fixed last day, decided here
 VERSION_MONTHS = 2    # months counted from the day the code is redeemed (months and tier share one byte)
