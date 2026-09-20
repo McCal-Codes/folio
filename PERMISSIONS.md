@@ -37,11 +37,13 @@ Folio keeps working.
 Every release lists the APK's SHA-256. To check the file you downloaded:
 
 ```bash
-shasum -a 256 folio-0.6.5.apk
+shasum -a 256 Folio-0.6.5.apk
 ```
 
 Releases also link a [VirusTotal](https://www.virustotal.com/) scan of that exact APK, so you don't have to take the
-checksum on faith, and the build comes from a tagged GitHub Actions run whose provenance you can inspect.
+checksum on faith. Every release carries the certificate it was signed with (`signing-certificate.txt`), so you can
+check it's the same key that signed the last one — and Android won't let a build signed by anyone else update the
+Folio you already have.
 
 An unsigned or sideloaded launcher deserves suspicion. If anything here doesn't match what you see in the code, please
 [open an issue](https://github.com/McCal-Codes/folio/issues/new) — that's a bug worth fixing.
