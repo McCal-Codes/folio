@@ -10,7 +10,8 @@ be reproduced without installing that older Folio.
 2. `BetaKeys.TEST` holds a development public key, and a code signed with its private half has been pasted in
    Settings › Supporter. The private half lives in `~/.folio/folio-dev-key.pem`, mode 600, never committed.
 
-A release build has no key to check an unlock against, so there is nothing to find and nothing to brute-force.
+A release build refuses the development key outright: the check is on the package name, so `com.mccal.folio` will not
+open these switches whatever code is pasted into it.
 
 ## Making the key, once
 

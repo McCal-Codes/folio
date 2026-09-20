@@ -47,3 +47,16 @@ class AppRenamingTest {
         assertTrue("com.blank/.B" !in names)
     }
 }
+
+/** A name is cut to fit whatever it is made of, including characters that carry no break of their own. */
+class AppNameCapTest {
+    @Test fun `a single cluster longer than the cap is still cut`() {
+        val stacked = "A" + "́".repeat(60)
+        org.junit.Assert.assertTrue("came back ${stacked.takeAppName().length} long", stacked.takeAppName().length <= MAX_APP_NAME)
+    }
+
+    @Test fun `ordinary names are left whole`() {
+        org.junit.Assert.assertEquals("Calendar", "Calendar".takeAppName())
+        org.junit.Assert.assertEquals("", "".takeAppName())
+    }
+}

@@ -62,7 +62,10 @@ const val MAX_APP_NAME = 40
 internal fun String.takeAppName(max: Int = MAX_APP_NAME): String {
     if (length <= max) return this
     val characters = BreakIterator.getCharacterInstance().also { it.setText(this) }
-    val end = characters.preceding(max + 1).takeIf { it > 0 } ?: characters.following(0).takeIf { it > 0 } ?: 0
+    // A cluster longer than the whole cap (sixty combining marks on one letter) has no break to fall back to, so
+    // it is cut at the cap: a degenerate glyph stacked up the screen is worse than one cut mid-cluster.
+    val end = characters.preceding(max + 1).takeIf { it > 0 }
+        ?: characters.following(0).takeIf { it in 1..max } ?: minOf(max, length)
     return substring(0, end).trimEnd(JOINER)
 }
 
