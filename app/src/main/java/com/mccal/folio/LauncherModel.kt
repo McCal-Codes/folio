@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.BreakIterator
 import java.text.Collator
 
 data class AppEntry(
@@ -50,9 +51,27 @@ const val SHORTCUT_CLASS_PREFIX = "#shortcut:"
 /** Custom names are capped so a renamed icon still reads as a label under it. */
 const val MAX_APP_NAME = 40
 
+/**
+ * The first [max] characters of a name, cut where a reader would see a character rather than where the string
+ * happens to have one. An emoji is two chars to Java and a family is eleven, so `take` alone can leave half of
+ * one behind at the cap, which draws as a hollow box.
+ *
+ * The JDK's character breaks predate emoji joined with U+200D, so a cut inside a family lands between its people;
+ * dropping a joiner left at the end turns that into the first of them standing alone, which at least reads.
+ */
+internal fun String.takeAppName(max: Int = MAX_APP_NAME): String {
+    if (length <= max) return this
+    val characters = BreakIterator.getCharacterInstance().also { it.setText(this) }
+    val end = characters.preceding(max + 1).takeIf { it > 0 } ?: characters.following(0).takeIf { it > 0 } ?: 0
+    return substring(0, end).trimEnd(JOINER)
+}
+
+/** Zero-width joiner: the thread between the people in a family emoji, and between the parts of many others. */
+private const val JOINER = '\u200D'
+
 /** Sets the custom name for [id]; a blank name clears it, so the app goes back to the name Android reports. */
 fun editAppName(names: Map<String, String>, id: String, name: String): Map<String, String> {
-    val trimmed = name.trim().take(MAX_APP_NAME)
+    val trimmed = name.trim().takeAppName()
     return if (trimmed.isEmpty()) names - id else names + (id to trimmed)
 }
 
@@ -1341,7 +1360,10 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             val style = o.optJSONObject(key) ?: return@mapNotNull null
             page to PageStyle(style.optDouble("scale", 1.0).toFloat().coerceIn(.7f, 1.3f), if (style.has("labels")) style.optBoolean("labels") else null)
         }.toMap() } ?: emptyMap(),
-        appNames = j.optJSONObject("appNames")?.let { o -> o.keys().asSequence().associateWith { o.optString(it) }
+        // Held to the same shape as a name typed into the rename field: settings written by an older build, or a
+        // file someone edited by hand, shouldn't be able to hang a paragraph under an icon.
+        appNames = j.optJSONObject("appNames")?.let { o -> o.keys().asSequence()
+            .associateWith { o.optString(it).trim().takeAppName() }
             .filterValues(String::isNotBlank) } ?: emptyMap(),
         iconStacks = j.optJSONObject("iconStacks")?.let { o -> o.keys().asSequence().associateWith { key ->
             o.optJSONArray(key)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()

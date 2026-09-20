@@ -240,7 +240,7 @@ internal fun RenameAppAlert(app: AppEntry, onDismiss: () -> Unit, onRename: (Str
         text = {
             Column {
                 Text(stringResource(R.string.leave_it_empty_to_use_s_again, app.systemLabel), fontSize = 13.sp)
-                androidx.compose.foundation.text.BasicTextField(name, { name = it.take(MAX_APP_NAME) },
+                androidx.compose.foundation.text.BasicTextField(name, { name = it.takeAppName() },
                     Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
                         .background(ink.copy(alpha = .08f)).padding(horizontal = 10.dp, vertical = 10.dp)
                         .focusRequester(focus).testTag("app-name"),
