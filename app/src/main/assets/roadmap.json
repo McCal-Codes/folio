@@ -37,29 +37,29 @@
           "icon": "language",
           "color": "#0A84FF",
           "title": "Your language",
-          "detail": "Folio follows your phone's language, or pick one just for Folio in Settings.",
-          "status": "planned"
+          "detail": "Folio follows your phone's language, and on Android 13 and later you can pick one just for Folio.",
+          "status": "building"
         },
         {
           "icon": "language",
           "color": "#FF3B30",
           "title": "Simplified Chinese",
-          "detail": "Settings, help, setup and permission explanations in 简体中文, with Traditional Chinese to follow.",
-          "status": "planned"
+          "detail": "Folio in 简体中文, from setup to the Market, with Traditional Chinese to follow.",
+          "status": "building"
         },
         {
           "icon": "search",
           "color": "#30D158",
           "title": "Search in pinyin",
           "detail": "Find apps by pinyin or initials, and without typing accents.",
-          "status": "planned"
+          "status": "building"
         },
         {
           "icon": "extension",
           "color": "#BF5AF2",
           "title": "Help translate",
           "detail": "A public way to add a language or fix a translation on GitHub.",
-          "status": "planned"
+          "status": "building"
         }
       ]
     },
@@ -216,6 +216,13 @@
     {
       "title": "Next",
       "items": [
+        {
+          "icon": "language",
+          "color": "#0A84FF",
+          "title": "Language in Settings",
+          "detail": "Choose Folio's language in Settings › General.",
+          "status": "planned"
+        },
         {
           "icon": "redeem",
           "color": "#BF5AF2",
