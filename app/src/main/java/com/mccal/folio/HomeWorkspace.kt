@@ -336,7 +336,8 @@ internal fun HomePagePane(
             SharedHomeGrid(page, state.homeSlots, state.leadingSlots, previewSlots, previewLeadingSlots, previewWidgetPlacements,
                 appsById, geometry.copy(iconSize = pageIcon), pageLabels, widgets, drag, target,
                 folders = state.folders, onLaunch = onLaunch, onActions = onActions, onWidget = onWidget,
-                onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove)
+                onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove,
+                onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }))
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(16.dp))
             if (state.error != null) Text(state.error, color = Color.White,
                 modifier = Modifier.clickable(onClick = onRefresh).padding(12.dp))
@@ -375,6 +376,8 @@ internal fun SharedHomeGrid(
     onFolder: (String) -> Unit,
     onEmptyWidget: (Int) -> Unit,
     onMove: (String, Int) -> Unit = { _, _ -> },
+    /** The Double Tap action, for empty cells: each cell takes its own taps, so the page behind never sees them. */
+    onEmptyDoubleTap: (() -> Unit)? = null,
 ) {
     val rowHeight = geometry.rowHeight
     val iconSize = geometry.iconSize
@@ -442,7 +445,10 @@ internal fun SharedHomeGrid(
                 // Keyboard and switch focus goes to the app or folder itself, not the empty cell behind it.
                 .focusProperties { canFocus = false }
                 .combinedClickable(onClick = { if (savedFolder != null) onFolder(savedFolder.id) else if (edit.active) edit.stop() },
-                    onLongClick = { if (savedId == null && !drag.active) onEmptyWidget(globalIndex) })
+                    onLongClick = { if (savedId == null && !drag.active) onEmptyWidget(globalIndex) },
+                    // Only on an empty cell outside jiggle mode, so a tap on an app or folder isn't held back waiting
+                    // for a second one.
+                    onDoubleClick = onEmptyDoubleTap?.takeIf { savedId == null && !edit.active && !drag.active })
                 .background(if (highlighted) Glass.copy(alpha = .25f) else Color.Transparent, RoundedCornerShape(16.dp))
                 .border(if (highlighted) 2.dp else 0.dp,
                     if (highlighted) Color.White.copy(alpha = .8f) else Color.Transparent, RoundedCornerShape(16.dp)),
