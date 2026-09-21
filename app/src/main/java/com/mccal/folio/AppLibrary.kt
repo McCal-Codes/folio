@@ -80,7 +80,7 @@ internal fun AppLibrary(
         val text = query.trim()
         // A renamed app answers to both names here, the same as in Spotlight.
         state.apps.filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) &&
-            (it.label.contains(text, true) || it.systemLabel.contains(text, true) || Pinyin.matches(it.label, text)) &&
+            (it.label.contains(text, true) || it.systemLabel.contains(text, true) || Pinyin.matches(it.label, text) || Pinyin.matches(it.systemLabel, text)) &&
             (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
