@@ -407,6 +407,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             state.iconPack, { IconPacks.clear(); model.setIconPack(it) }, tag = "icon-pack")
                         CardNote(stringResource(R.string.icon_packs_and_themes_are_made_by_indepe))
                         if (packs.isEmpty()) CardNote(stringResource(R.string.install_any_icon_pack_made_for_nova_styl))
+                        CardAction(stringResource(R.string.refresh_icons), onClick = model::reloadIcons)
+                        CardNote(stringResource(R.string.refresh_icons_note))
                         // Live Clock and Calendar: the app's own icon, or live icons that match the others, or always light/dark.
                         IosMenuRow(stringResource(R.string.clock_calendar), listOf("OFF" to stringResource(R.string.app_icons_2), "AUTO" to stringResource(R.string.live_automatic), "LIGHT" to stringResource(R.string.live_light), "DARK" to stringResource(R.string.live_dark)),
                             if (state.liveIcons) state.liveIconLook else "OFF",

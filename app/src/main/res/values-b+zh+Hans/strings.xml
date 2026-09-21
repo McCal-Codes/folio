@@ -1356,4 +1356,6 @@
     <string name="keyd_what_it_does">功能</string>
     <string name="keyd_features">在折痕处分开 · 建议和自动更正 · 六种语言 · 剪贴板历史 · 快捷短语 · 不申请任何权限</string>
     <string name="keyd_where_to_get_it">Keyd 是一个单独的 App，因为 Android 要求键盘必须是独立的输入法。你的代码已把它的源添加到 Market 中，所以可以直接获取。它不申请任何权限，连网络权限也没有。</string>
+    <string name="refresh_icons">刷新图标</string>
+    <string name="refresh_icons_note">如果主题应用更改了图标，而 Folio 仍显示旧图标，可在这里重新载入。</string>
 </resources>
