@@ -652,10 +652,6 @@
     <string name="personalization">个性化</string>
     <string name="automation">自动化</string>
     <string name="keyboard_extras">键盘扩展</string>
-    <string name="in_design">设计中</string>
-    <string name="folio_keys_is_a_keyboard_for_the_rest_of">Keyd 是为 Folio 其他部分打造的键盘：它是一个单独的 App，因为 Android 要求键盘必须是独立的输入法。它会在折叠屏的折痕处分开，会学习你常改正的单词，而且不申请网络权限。你的代码已经涵盖它，只是目前还没有可安装的内容。</string>
-    <string name="what_it_will_do">它将能做什么</string>
-    <string name="splits_around_the_crease_key_gestures_pe">在折痕处分开 · 按键手势 · 操作栏 · 带片段的剪贴板 · 每个 App 一套配置 · 输入分析 · 无网络权限</string>
     <string name="nothing_yet">暂无</string>
     <string name="paste_the_code_from_your_ko_fi_thank_you">粘贴 Ko-fi 谢礼中的代码。</string>
     <string name="redeem">兑换</string>
@@ -1356,4 +1352,8 @@
     <plurals name="folder_unread">
         <item quantity="other">%1$s，%2$d 条通知</item>
     </plurals>
+    <string name="keyd_in_the_market">已在 Market 中</string>
+    <string name="keyd_what_it_does">功能</string>
+    <string name="keyd_features">在折痕处分开 · 建议和自动更正 · 六种语言 · 剪贴板历史 · 快捷短语 · 不申请任何权限</string>
+    <string name="keyd_where_to_get_it">Keyd 是一个单独的 App，因为 Android 要求键盘必须是独立的输入法。你的代码已把它的源添加到 Market 中，所以可以直接获取。它不申请任何权限，连网络权限也没有。</string>
 </resources>

@@ -10,56 +10,56 @@
           "color": "#0A84FF",
           "title": "Folio Market",
           "detail": "A Sileo-style store for themes, tweaks and layouts, with Featured, Sources, Packages, Installed and Settings.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "palette",
           "color": "#FF375F",
           "title": "Community sources",
           "detail": "Add sources from GitHub. Every source is signed, and nothing is downloaded unless you add it.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "lock",
           "color": "#30D158",
           "title": "Privacy labels",
           "detail": "See what a package can use before you get it.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "extension",
           "color": "#BF5AF2",
           "title": "Make your own tweaks",
           "detail": "A package format, sample and tools so anyone can publish themes and tweaks.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "language",
           "color": "#0A84FF",
           "title": "Your language",
           "detail": "Folio follows your phone's language, and on Android 13 and later you can pick one just for Folio.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "language",
           "color": "#FF3B30",
           "title": "Simplified Chinese",
           "detail": "Folio in 简体中文, from setup to the Market, with Traditional Chinese to follow.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "search",
           "color": "#30D158",
           "title": "Search in pinyin",
           "detail": "Find apps by pinyin or initials, and without typing accents.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "extension",
           "color": "#BF5AF2",
           "title": "Help translate",
           "detail": "A public way to add a language or fix a translation on GitHub.",
-          "status": "building"
+          "status": "done"
         }
       ]
     },

@@ -5,7 +5,7 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name (MAJOR × 10000 + MINOR × 100 + PATCH), so every release sorts correctly.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.6] - Unreleased
+## [0.6.6] - 2026-09-21
 
 ### Added
 - **Simplified Chinese (beta):** Folio speaks 简体中文 when your phone does, on nearly every screen, the Market included. On Android 13 and later you can also set Folio's language on its own in Android Settings › Apps › Folio › Language. Spotlight and the App Library find Chinese app names by pinyin or initials ("weixin" or "wx" for 微信), and the A–Z list files them under their pinyin letter, as on iPhone. It's a beta translation until a native speaker has reviewed it; corrections are welcome (see `docs/translating.md`).
@@ -23,6 +23,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Your packages travel with your layout:** a layout backup now carries what you got from the Market, and restoring one puts those packages back on the new phone - applied over the layout it just restored, not over the old phone's. Anything Safe Mode had turned off comes back turned off, and one this Folio can't apply waits in Installed instead of being half applied.
 - **Folio can install an app from a source** (Settings › Market › Installing apps, off until you turn it on). Some listings are apps of their own rather than something Folio applies, because Android says a keyboard has to be its own app. With this on, Folio downloads one, checks it against the checksum its source signed, and hands it to Android, which asks before installing and names the app itself. With it off, Folio opens the store the author named. What Folio can't check is the app itself: the source vouches for that, and the setting says so.
 - **A source is a place you go into:** tapping one opens its page, the way tapping a repo does in Cydia and Sileo, with its address, when it was signed, Refresh and Remove, and every package it offers. A package's page names the source that lists it, and that leads back there.
+- **Keyd, for supporters:** redeeming a code adds Keyd's own source to the Market, so the keyboard is there to get. Keyd splits around the crease, corrects and suggests in six languages, and asks for no permissions at all. It's also on [GitHub](https://github.com/McCal-Codes/folio-keyd/releases).
 - **Three columns in Settings:** the list, the page, and whatever you opened from it, so tapping a tweak no longer replaces the list you tapped it in.
 - **Report a bug by email:** Settings › Help › Report a Bug opens your mail app with Folio's details attached as a file, so it needs no GitHub account, and you can read everything before you send it. GitHub is still there if you have an account.
 - **A crash offers to send a report:** after Folio closes unexpectedly or freezes, the next launch asks once whether to send one. It never asks twice about the same report.

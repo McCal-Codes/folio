@@ -644,10 +644,6 @@
     <string name="personalization">Personalization</string>
     <string name="automation">Automation</string>
     <string name="keyboard_extras">Keyboard extras</string>
-    <string name="in_design">In design</string>
-    <string name="folio_keys_is_a_keyboard_for_the_rest_of">Keyd is a keyboard for the rest of Folio: a separate app, because Android needs a keyboard to be its own input method. It splits around the crease of a fold, learns which words you fix, and asks for no internet permission. Your code already covers it. There is just nothing to install yet.</string>
-    <string name="what_it_will_do">What it will do</string>
-    <string name="splits_around_the_crease_key_gestures_pe">Splits around the crease · key gestures · an action shelf · clipboard with snippets · a profile per app · typing insights · no internet permission</string>
     <string name="nothing_yet">Nothing yet</string>
     <string name="paste_the_code_from_your_ko_fi_thank_you">Paste the code from your Ko-fi thank-you.</string>
     <string name="redeem">Redeem</string>
@@ -1398,4 +1394,8 @@
     </plurals>
     <!-- Name of the built-in widget in the widget gallery. -->
     <string name="widget_panel_title">Widget Panel</string>
+    <string name="keyd_in_the_market">In the Market</string>
+    <string name="keyd_what_it_does">What it does</string>
+    <string name="keyd_features">Splits around the crease · suggestions and autocorrect · six languages · clipboard history · shortcuts · no permissions at all</string>
+    <string name="keyd_where_to_get_it">Keyd is a separate app, because Android needs a keyboard to be its own input method. Your code added its source to the Market, so it\'s there to get, and it asks for no permissions at all, not even the internet.</string>
 </resources>

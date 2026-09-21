@@ -74,12 +74,12 @@ internal fun SupporterPage() {
         CardNote(stringResource(R.string.your_code_also_switched_on_beta_updates))
     }
 
-    // Keyd is in design, and "keys" is the scope a code carries for it (the scope kept the old name; see BetaCodes). Until there is something to install,
-    // the card says where the keyboard has got to rather than pretending there is a switch to turn on.
+    // "keys" is the scope a code carries for Keyd (the scope kept the old name; see BetaCodes). Keyd itself is in the
+    // supporter source, which redeeming adds to the Market, so the card says where to find it.
     if (code?.scopes?.contains(BetaCodes.SCOPE_KEYS) == true) SettingsCard("KEYD") {
-        InfoRow(stringResource(R.string.status), stringResource(R.string.in_design))
-        InfoRow(stringResource(R.string.what_it_will_do), stringResource(R.string.splits_around_the_crease_key_gestures_pe))
-        CardNote(stringResource(R.string.folio_keys_is_a_keyboard_for_the_rest_of))
+        InfoRow(stringResource(R.string.status), stringResource(R.string.keyd_in_the_market))
+        InfoRow(stringResource(R.string.keyd_what_it_does), stringResource(R.string.keyd_features))
+        CardNote(stringResource(R.string.keyd_where_to_get_it))
     }
 
     SettingsCard("SUPPORT") {
