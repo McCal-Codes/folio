@@ -152,6 +152,13 @@ fun LauncherScreen(
     var libraryQuery by rememberSaveable { mutableStateOf("") }
     var pinQuery by rememberSaveable { mutableStateOf("") }
     val launcherActivity = androidx.activity.compose.LocalActivity.current as MainActivity
+    // The setting says Android's wallpaper but the window was built without it: rebuild it once to match.
+    LaunchedEffect(state.systemWallpaper) {
+        if (state.systemWallpaper && !launcherActivity.showsWallpaper && !WallpaperWindowRepair.tried) {
+            WallpaperWindowRepair.tried = true
+            launcherActivity.applyWallpaperWindow(true)
+        }
+    }
     val launcherRootView = LocalView.current.rootView
     val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model)) }
     // Package Safe Mode: runs as Home starts, so a package that crashed Folio while it was being applied is turned off
@@ -536,7 +543,9 @@ fun LauncherScreen(
                 val panelsOn = FeatureScopes.on(state.featureScopes, "appPanels", state.appPanels, screenFor(panelWide))
                 if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); overlays.panel = app.id } else null
             }) {
-        if (!state.systemWallpaper) DuneWallpaper()
+        // Folio's background unless Android's wallpaper is really behind the window: a see-through window with
+        // nothing behind it shows every earlier frame (#12, #35), so the worst case is the dunes, never a smear.
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper()
         else if (state.wallpaperMotion) SystemWallpaperParallax(nativePager)
         // iOS "dark appearance dims wallpaper".
         val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")

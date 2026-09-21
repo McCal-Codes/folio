@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.conflate
 
 import android.service.wallpaper.WallpaperService
@@ -235,7 +236,7 @@ internal fun SystemWallpaperParallax(pager: androidx.compose.foundation.pager.Pa
  *
  * Turning it on needs the window itself, not just a flag on it: `android:windowShowWallpaper` belongs to the theme
  * the window was built from, and a window built opaque shows the wallpaper only through the relayout before covering
- * it again, which looked like the wallpaper flashing up and vanishing. The setting is saved before this is called and
+ * it again, which looked like the wallpaper flashing up and vanishing. The setting is saved here, at once, and
  * [MainActivity] picks the wallpaper theme from it, so starting the screen again is what actually turns it on.
  *
  * Turning it off needs no restart: an opaque background over the same window hides the wallpaper, as it always did.
@@ -251,8 +252,11 @@ internal tailrec fun android.content.Context.asActivity(): android.app.Activity?
 }
 
 internal fun android.app.Activity.applyWallpaperWindow(system: Boolean) {
-    val showing = window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER != 0
-    if (system && !showing) { recreate(); return }
+    // Saved here and on its own before the screen starts again: the full state save can be held back (a first run
+    // still loading its apps), and the new window is built from what's saved. apply() is enough, since the new screen
+    // runs in this process and reads the same preferences in memory.
+    getSharedPreferences(SettingKeys.PREFS, 0).edit { putBoolean(SettingKeys.SYSTEM_WALLPAPER, system) }
+    if (system && !showsWallpaper) { startAgain(); return }
     val background = if (system) android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
         else obtainStyledAttributes(R.style.Theme_Duo, intArrayOf(android.R.attr.windowBackground)).let { it.getDrawable(0).also { _ -> it.recycle() } }
     window.setBackgroundDrawable(background)
@@ -260,8 +264,27 @@ internal fun android.app.Activity.applyWallpaperWindow(system: Boolean) {
     else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
 }
 
+/**
+ * A new instance of this screen, with a new window. Not `recreate()`: Android keeps the old window across it, and a
+ * window first made opaque stays opaque to the screen even after it asks for the wallpaper, so the wallpaper never
+ * showed and every swipe piled onto the last frame (#12, #35). The same intent, so Settings opens again on top.
+ */
+private fun android.app.Activity.startAgain() {
+    startActivity(android.content.Intent(intent).addFlags(
+        android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+    finish()
+}
+
+/** Whether this window actually shows Android's wallpaper behind it, whatever the setting says. */
+internal val android.app.Activity.showsWallpaper: Boolean
+    get() = window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER != 0
+
 /** Whether Home shows Android's wallpaper (read straight from saved state: needed before the activity's window exists). */
 internal fun usesSystemWallpaper(context: android.content.Context): Boolean = runCatching {
-    org.json.JSONObject(context.getSharedPreferences(SettingKeys.PREFS, 0).getString(SettingKeys.STATE, "{}") ?: "{}")
-        .optBoolean("systemWallpaper", false)
+    val prefs = context.getSharedPreferences(SettingKeys.PREFS, 0)
+    if (prefs.contains(SettingKeys.SYSTEM_WALLPAPER)) return@runCatching prefs.getBoolean(SettingKeys.SYSTEM_WALLPAPER, false)
+    org.json.JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}").optBoolean("systemWallpaper", false)
 }.getOrDefault(false)
+
+/** Once per process: the window is rebuilt at most once to match the setting, so a mismatch can never loop. */
+internal object WallpaperWindowRepair { var tried = false }

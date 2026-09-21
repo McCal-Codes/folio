@@ -1151,7 +1151,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editor.putString("state_v7_backup", legacyRaw)
         if (legacyRaw != null && sourceSchema < 9 && !prefs.contains("state_v8_backup"))
             editor.putString("state_v8_backup", legacyRaw)
-        editor.putString("state", data.toString()).putBoolean("initialized", true).apply()
+        editor.putString("state", data.toString()).putBoolean("initialized", true)
+            // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
+            .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
     }
 
     private fun load(): LauncherState = runCatching {
