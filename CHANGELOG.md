@@ -8,10 +8,10 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.6] - 2026-09-21
 
 ### Added
-- **Simplified Chinese (beta):** Folio speaks 简体中文 when your phone does, on nearly every screen, the Market included. On Android 13 and later you can also set Folio's language on its own in Android Settings › Apps › Folio › Language. Spotlight and the App Library find Chinese app names by pinyin or initials ("weixin" or "wx" for 微信), and the A–Z list files them under their pinyin letter, as on iPhone. It's a beta translation until a native speaker has reviewed it; corrections are welcome (see `docs/translating.md`).
 - **The Folio Market:** the app icon opens a store with Featured, Sources, Packages, Installed and Settings. For now it's for supporters: a code redeemed in Settings › Supporter opens it, and switches on Beta Updates so the builds come too. Everyone gets it in 0.7.0. Every theme and tweak it hands out is still in Settings for everyone else, so nothing is waiting behind it.
 - **Themes and tweaks are packages:** Folio's own now have a page each, with what they do, what you see, screenshots, what's changed, and a privacy label built from what the package asks for rather than from anything its author wrote.
 - **Add a source:** any HTTPS address, or a `folio://source/` link. Folio shows the source's key fingerprint before you trust it, remembers it, and says plainly what a changed key looks like.
+- **A source is a place you go into:** tapping one opens its page, the way tapping a repo does in Cydia and Sileo, with its address, when it was signed, Refresh and Remove, and every package it offers. A package's page names the source that lists it, and that leads back there.
 - **Nothing is applied unchecked:** size, checksum and signature first, then the whole package in one go, with Undo beside it. A package that fails halfway is put back the way it was.
 - **Signed by its developer:** not just by the source handing it out, so a mirror can carry a package but can't change it or publish under someone else's name. A `.foliopkg` sent to you carries its own signature too.
 - **Progress in the Get button:** a ring that fills, App Store style, and roughly how much longer on the package's page.
@@ -20,27 +20,21 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Safe Mode per package:** if Folio stops twice just after a package changed something, only that package is turned off, and its settings are kept.
 - **A source can pull a package:** a withdrawn one can be removed but never installed again, including as an update.
 - **Share and Report:** a package's page links to its source's issue form with the id, version and checksum filled in.
-- **Your packages travel with your layout:** a layout backup now carries what you got from the Market, and restoring one puts those packages back on the new phone - applied over the layout it just restored, not over the old phone's. Anything Safe Mode had turned off comes back turned off, and one this Folio can't apply waits in Installed instead of being half applied.
+- **Your packages travel with your layout:** a layout backup now carries what you got from the Market, and restoring one puts those packages back on the new phone, applied over the layout it just restored, not over the old phone's. Anything Safe Mode had turned off comes back turned off, and one this Folio can't apply waits in Installed instead of being half applied.
 - **Folio can install an app from a source** (Settings › Market › Installing apps, off until you turn it on). Some listings are apps of their own rather than something Folio applies, because Android says a keyboard has to be its own app. With this on, Folio downloads one, checks it against the checksum its source signed, and hands it to Android, which asks before installing and names the app itself. With it off, Folio opens the store the author named. What Folio can't check is the app itself: the source vouches for that, and the setting says so.
-- **A source is a place you go into:** tapping one opens its page, the way tapping a repo does in Cydia and Sileo, with its address, when it was signed, Refresh and Remove, and every package it offers. A package's page names the source that lists it, and that leads back there.
 - **Keyd, for supporters:** redeeming a code adds Keyd's own source to the Market, so the keyboard is there to get. Keyd splits around the crease, corrects and suggests in six languages, and asks for no permissions at all. It's also on [GitHub](https://github.com/McCal-Codes/folio-keyd/releases).
-- **Three columns in Settings:** the list, the page, and whatever you opened from it, so tapping a tweak no longer replaces the list you tapped it in.
+- **Simplified Chinese (beta):** Folio speaks 简体中文 when your phone does, on nearly every screen, the Market included. On Android 13 and later you can also set Folio's language on its own in Android Settings › Apps › Folio › Language. Spotlight and the App Library find Chinese app names by pinyin or initials ("weixin" or "wx" for 微信), and the A–Z list files them under their pinyin letter, as on iPhone. It's a beta translation until a native speaker has reviewed it; corrections are welcome through the Translation form on GitHub.
 - **Report a bug by email:** Settings › Help › Report a Bug opens your mail app with Folio's details attached as a file, so it needs no GitHub account, and you can read everything before you send it. GitHub is still there if you have an account.
 - **A crash offers to send a report:** after Folio closes unexpectedly or freezes, the next launch asks once whether to send one. It never asks twice about the same report.
 
 ### Changed
-- Settings shows two columns from 700 dp in either orientation, not only in landscape, and three from 920 dp. Half folded the divider stays on the crease.
+- Settings shows two columns from 700 dp in either orientation, not only in landscape, and three from 920 dp: the list, the page, and whatever you opened from it, so tapping a tweak no longer replaces the list you tapped it in. Half folded, the divider stays on the crease.
 - A settings row title wraps to a second line in a narrow window or at a large text size instead of being cut short, and its value moves underneath when there isn't room beside it.
 
 ### Fixed
 - Switching Background to Android wallpaper shows it straight away. Turned on from Settings it did nothing to Home's window, so the wallpaper flashed up and vanished and Home was left a flat colour. Left of Home and the setup step's wallpaper button were quietly doing nothing in the same way.
 - Coming from Folio 0.6.0 or earlier, Home keeps the four rows you arranged instead of growing on a tall screen. Settings › Home Screen & Dock › Rows turns Automatic on.
 - With TalkBack, every saved layout under Layout History offered a button that read as just "Restore", with no way to hear which layout it would put back. Each row is now one thing to land on, and it names the layout and when it was saved.
-- An install now outlives the screen that started it: pressing Back during a download used to leave the package applied with no message and no Undo.
-- A failed write to Folio's own store no longer destroys the value it was replacing: for a source, that value is its pinned key.
-- A source that published a list Folio couldn't read used to stay stuck on a tamper warning; it recovers as soon as the source publishes a good one.
-- A shared `.foliopkg` opened while Settings was on a sub-page was dropped, and one opened while the Market was up was ignored until later.
-- Reading the installed list, the bundled index, cached source lists and a package's files no longer happens while a frame is being drawn.
 
 ## [0.6.5] - 2026-09-20
 
