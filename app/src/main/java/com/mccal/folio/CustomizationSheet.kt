@@ -793,8 +793,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 divider()
             }
             Column(Modifier.weight(1f).fillMaxHeight().padding(horizontal = 20.dp)) {
-                // With the list still on screen there's nothing for Back to reveal, so the bar keeps only Done.
-                SettingsNavBar(if (threeColumns) null else nestedBackLabel, onBack, onClose,
+                // With the list still on screen there's nothing for Back to reveal, so the bar keeps only Done. Without
+                // it, every page but the first gets a way back, not only the sidebar button, which doesn't read as one.
+                SettingsNavBar(if (threeColumns) null else nestedBackLabel
+                    ?: if (!tiled && page != CustomizationPage.OVERVIEW) stringResource(R.string.folio) else null, onBack, onClose,
                     leading = if (tiled) null else ({ SidebarButton { sidebarOpen = !sidebarOpen } }))
                 if (page != CustomizationPage.OVERVIEW) SettingsLargeTitle(title)
                 Column(Modifier.weight(1f).edgeFade(bodyScroll).verticalScroll(bodyScroll).padding(bottom = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -846,14 +848,16 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 }
 
 @Composable private fun SettingsNavBar(backLabel: String?, onBack: () -> Unit, onClose: () -> Unit, leading: (@Composable () -> Unit)? = null) {
-    // iOS navigation bar: "‹ Back" on sub-pages (or the sidebar button), Done on the right.
+    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right.
     Box(Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-        if (backLabel == null && leading != null) Box(Modifier.align(Alignment.CenterStart)) { leading() }
-        if (backLabel != null) Row(Modifier.align(Alignment.CenterStart).clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onBack).padding(vertical = 8.dp, horizontal = 2.dp).testTag("customization-back"),
-            verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.ChevronLeft, null, tint = IosBlue, modifier = Modifier.size(28.dp))
-            Text(backLabel, color = IosBlue, fontSize = 17.sp)
+        Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+            leading?.invoke()
+            if (backLabel != null) Row(Modifier.clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onBack).padding(vertical = 8.dp, horizontal = 2.dp).testTag("customization-back"),
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.ChevronLeft, null, tint = IosBlue, modifier = Modifier.size(28.dp))
+                Text(backLabel, color = IosBlue, fontSize = 17.sp)
+            }
         }
         Text(stringResource(R.string.done), color = IosBlue, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.CenterEnd).clip(RoundedCornerShape(10.dp)).clickable(onClick = onClose)
