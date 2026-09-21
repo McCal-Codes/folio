@@ -444,18 +444,22 @@ internal fun <T> rankByLabel(items: List<T>, query: String, boost: (T) -> Double
     val q = query.lowercase()
     return items.mapNotNull { item ->
         val text = label(item).lowercase()
-        val words = text.split(' ', '-', '.', '_').filter { it.isNotEmpty() }
-        val score = when {
-            text == q -> 0
-            text.startsWith(q) -> 1
-            words.any { it.startsWith(q) } -> 2
-            text.contains(q) -> 3
-            words.joinToString("") { it.take(1) }.startsWith(q) -> 4
-            isSubsequence(q, text) -> 5 // fuzzy: letters in order ("spfy" → Spotify)
-            else -> null
-        }
+        // A Chinese name also answers to its pinyin, joined ("weixin") and by initials ("wx"), like iOS.
+        val pinyin = Pinyin.syllables(text)
+        val score = listOfNotNull(labelScore(text, text.split(' ', '-', '.', '_').filter { it.isNotEmpty() }, q),
+            pinyin.takeIf { it.isNotEmpty() }?.let { labelScore(it.joinToString(""), it, q) }).minOrNull()
         score?.let { Triple(it, item, label(item).length) }
     }.sortedWith(compareBy<Triple<Int, T, Int>>({ it.first }, { -boost(it.second) }, { it.third })).map { it.second }
+}
+
+private fun labelScore(text: String, words: List<String>, q: String): Int? = when {
+    text == q -> 0
+    text.startsWith(q) -> 1
+    words.any { it.startsWith(q) } -> 2
+    text.contains(q) -> 3
+    words.joinToString("") { it.take(1) }.startsWith(q) -> 4
+    isSubsequence(q, text) -> 5 // fuzzy: letters in order ("spfy" → Spotify)
+    else -> null
 }
 
 internal fun isSubsequence(needle: String, hay: String): Boolean {

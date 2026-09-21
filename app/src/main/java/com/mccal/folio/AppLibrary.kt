@@ -80,7 +80,7 @@ internal fun AppLibrary(
         val text = query.trim()
         // A renamed app answers to both names here, the same as in Spotlight.
         state.apps.filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) &&
-            (it.label.contains(text, true) || it.systemLabel.contains(text, true)) &&
+            (it.label.contains(text, true) || it.systemLabel.contains(text, true) || Pinyin.matches(it.label, text)) &&
             (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
@@ -93,7 +93,7 @@ internal fun AppLibrary(
             val byId = visibleApps.associateBy { it.id }
             val suggestions = RecentApps.load(context).mapNotNull(byId::get).take(8)
             val grouped = visibleApps.groupBy { LibraryCategory.of(pm, it.component.packageName) }
-                .mapValues { (_, apps) -> apps.sortedBy { it.label.lowercase() } }
+                .mapValues { (_, apps) -> apps.sortedWith(compareBy(java.text.Collator.getInstance()) { it.label }) }
             buildMap {
                 if (suggestions.isNotEmpty()) put(LibraryCategory.SUGGESTIONS, suggestions)
                 grouped.entries.sortedWith(compareBy({ it.key == LibraryCategory.OTHER }, { -it.value.size })).forEach { put(it.key, it.value) }
@@ -102,7 +102,7 @@ internal fun AppLibrary(
     }
     val groups = remember(visibleApps) {
         visibleApps.groupBy {
-            it.label.firstOrNull()?.takeIf(Char::isLetter)?.uppercaseChar()?.toString() ?: "#"
+            Pinyin.heading(it.label)
         }
     }
     // Like iOS, a category opens as an expanded folder over the library instead of replacing it.

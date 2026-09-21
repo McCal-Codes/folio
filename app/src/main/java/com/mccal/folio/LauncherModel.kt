@@ -476,6 +476,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val entries = (live + unavailable).distinctBy(AppEntry::id)
                         .sortedWith { a, b -> collator.compare(a.label, b.label) }
                     saveCachedApps(entries)
+                    // Spell Chinese names in pinyin here, off the main thread, so search and the A–Z list don't wait.
+                    entries.forEach { Pinyin.syllables(it.label) }
                     iconCache.keys.retainAll(entries.map { it.id }.toSet())
                     RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, true,
                         quiet = true, unlocked = false, available = false) }).distinctBy(AppProfile::userSerial),
