@@ -796,7 +796,13 @@ fun LauncherScreen(
             // Portrait unfolded (iPhone Duo): a horizontal dock bar centered along the bottom, above the page controls.
             val dockPitch = geometry.dockPitch
             val dockBarWidth = (dockPitch * state.dock.size + 16f).dp
-            Box((if (geometry.horizontalDock) (if (hinge?.active == true && hinge.vertical)
+            // Like iPhone, the dock bar steps aside for Today View: it follows the swipe out, then leaves altogether so
+            // it can't sit over Today's widgets and Edit button (#25). Only the bar; the Side Bar dock is beside Today.
+            val dockStepsAsideForToday = todayMode && firstHome > 0 && geometry.horizontalDock
+            val dockAwayForToday by remember(dockStepsAsideForToday, nativePager) {
+                derivedStateOf { dockStepsAsideForToday && nativePager.currentPage + nativePager.currentPageOffsetFraction <= .02f }
+            }
+            if (!dockAwayForToday) Box((if (geometry.horizontalDock) (if (hinge?.active == true && hinge.vertical)
                     // Half folded like a book: the bar sits centered on the trailing half, off the hinge.
                     Modifier.align(Alignment.BottomEnd).padding(end = ((contentWidth / 2 - dockBarWidth) / 2).coerceAtLeast(0.dp))
                 else if (geometry.dockBesideRail)
@@ -809,6 +815,12 @@ fun LauncherScreen(
                     .width(dockBarWidth).height(geometry.dockBarHeight.dp)
                 else Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp).offset(y = dockTopShown.dp)
                     .width(preset.dockWidth.dp).height(dockHeightShown.dp)).graphicsLayer {
+                    if (dockStepsAsideForToday) {
+                        // Read here, not in composition, so following the swipe doesn't recompose the screen.
+                        val towardToday = (1f - nativePager.currentPage - nativePager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                        alpha = 1f - towardToday
+                        translationY = towardToday * size.height * .6f
+                    }
                     // Composite the stationary dock independently of the shared pager layer (not while magnifying: it would clip).
                     compositingStrategy = if (state.dockMagnify) androidx.compose.ui.graphics.CompositingStrategy.Auto
                         else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
