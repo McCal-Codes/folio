@@ -34,8 +34,8 @@ The short version:
   an icon pack, a wallpaper, a layout preset) as **AI-assisted**, naming the tool:
   - a Market package sets `aiAssisted` in its manifest: `{ "tools": ["Claude"], "note": "Drafted the colours." }`
     ([format](../sdk/format-v1.md));
-  - and, until the Market shows that field, also starts `description` with "AI-assisted (tool name)." so every Folio
-    version shows it (see Gaps);
+  - and also starts `description` with "AI-assisted (tool name).", because Folio 0.6.6 doesn't show the field
+    (later versions show it on the package page and the install sheet; see Gaps);
   - a theme in `themes/` starts its description the same way;
   - the credits or README that travels with it says so too.
 - **AI-7 MUST NOT** remove or reword an AI-assisted label when republishing, forking or updating someone else's
@@ -73,6 +73,6 @@ The short version:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | Show `aiAssisted` on the Market's package page and at install; then the `description` prefix is no longer needed (the field itself is in schema v1 and the parser) | S |
+| 1 | Drop the `description` prefix rule once the release that shows `aiAssisted` (package page and install sheet) has replaced 0.6.6 on most phones | S |
 | 2 | The same field in the community theme format (`themes/README.md`, `CommunityThemesTest`) | S |
 | 3 | A "made with AI" filter in the Market | S |
