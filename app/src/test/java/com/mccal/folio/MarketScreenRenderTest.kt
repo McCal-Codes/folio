@@ -171,6 +171,22 @@ class MarketScreenRenderTest {
         assertEquals(listOf("com.mccal.folio.cabinet"), session.installed().map { it.id })
     }
 
+    @Test fun `the install sheet says when AI helped make a package, and says nothing when it didn't`() {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val cabinet = org.json.JSONObject(java.io.File(root, "docs/sdk/source/packages/cabinet/manifest.json").readText())
+        fun manifest(json: org.json.JSONObject) =
+            (com.mccal.folio.market.PackageManifest.parse(json.toString()) as com.mccal.folio.market.ParseResult.Ok).value
+        val helped = manifest(org.json.JSONObject(cabinet.toString()).put("aiAssisted",
+            org.json.JSONObject().put("tools", org.json.JSONArray().put("Claude").put("Example tool")).put("note", "Drafted the page.")))
+        val shown = androidx.compose.runtime.mutableStateOf(helped)
+        compose.setContent { MarketInstallSheet(shown.value, InstallOrigin("From a source"), onGet = {}, onCancel = {}) }
+        compose.onNodeWithText("Made with help from AI: Claude, Example tool").assertExists()
+        compose.onNodeWithText("Drafted the page.").assertExists()
+        shown.value = manifest(cabinet)
+        compose.waitForIdle()
+        compose.onNodeWithTag("install-ai-assisted", useUnmergedTree = true).assertDoesNotExist()
+    }
+
     @Test fun `a package from a source shows up in the list, with where it came from`() {
         val session = session()
         session.prefs.introductionSeen = true

@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -1086,6 +1087,9 @@ private fun MarketPackagePage(
             Column {
                 Text(name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 entry.manifest?.author?.name?.english?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = 14.sp) }
+                // The author said AI helped make it (the manifest's aiAssisted). A plain tag, not a warning: it's
+                // how the package was made, the way the author line says who made it.
+                if (entry.manifest?.aiAssisted != null) AiAssistedTag(Modifier.padding(top = 4.dp))
             }
         }
 
@@ -1221,6 +1225,13 @@ private fun MarketPackagePage(
                     color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
                 )
                 installed?.let { Text(stringResource(R.string.installed_1_s, it.version), color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                entry.manifest?.aiAssisted?.let { ai ->
+                    Text(
+                        stringResource(R.string.made_with_ai_1_s, ai.tools.joinToString()),
+                        color = Color.White.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp),
+                    )
+                    ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                }
                 if (external) {
                     // Where it comes from, and whether Android has it - the two things the store can honestly say
                     // about an app it doesn't install.
@@ -1259,6 +1270,17 @@ private fun MarketPackagePage(
             }
         }
     }
+}
+
+/** "AI-assisted", beside the developer on a package page. */
+@Composable
+internal fun AiAssistedTag(modifier: Modifier = Modifier) {
+    Text(
+        stringResource(R.string.ai_assisted),
+        color = Color.White.copy(alpha = .7f), fontSize = 11.sp,
+        modifier = modifier.border(0.5.dp, Color.White.copy(alpha = .3f), RoundedCornerShape(50))
+            .padding(horizontal = 7.dp, vertical = 1.dp).testTag("package-ai-assisted"),
+    )
 }
 
 /** The "… is on · Undo" line, the same shape as Folio's other undo messages. */

@@ -33,13 +33,14 @@ get in the way of helping:
 
 Keep changes focused. In the PR, describe what's different for someone using Folio, and how you checked it.
 
-Read the [code map](docs/architecture.md) for ownership, persistence and gesture constraints. The [user guide](docs/user-guide.md)
+Read the [code map](docs/architecture.md) for ownership, persistence and gesture constraints, and the
+[Folio Standards](docs/standards/README.md) for the rules a change follows (cite rule IDs like `ADP-1` in the PR). The [user guide](docs/user-guide.md)
 and [troubleshooting guide](docs/troubleshooting.md) describe the behavior changes should preserve.
 
 Folio builds with Java 17:
 
 ```bash
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
 ```
 
 CI runs the same command on every pull request. Use disposable emulators for instrumentation tests. Fixtures that change
@@ -48,6 +49,13 @@ Home selection, profiles, widgets or settings must restore them; never use a per
 Preserve one-page-per-swipe behavior, native widget scrolling and long-press pickup, placements, widget bindings and
 Home-page retention. Keep access optional and explain it where it's used. Layouts follow screen size, not device
 checks. Tests should reproduce failures or protect meaningful behavior.
+
+## Using AI tools
+
+If an AI agent helps with your contribution, it may only **test for and fix bugs**: reproduce a problem, write a test
+that shows it, and make the smallest fix. New features, UI changes, refactors and translations need a person. Say in the
+pull request which tool you used and what it did. Themes, tweaks and Market packages made with AI are welcome,
+labelled "AI-assisted". The full rules are in [AI contributions](docs/standards/ai-contributions.md).
 
 ## Translating Folio
 

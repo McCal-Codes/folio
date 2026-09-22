@@ -1,5 +1,7 @@
 # Contributor code map
 
+This page says how Folio works. The [Folio Standards](standards/README.md) say how changes to it should be built.
+
 Folio is a Kotlin/Jetpack Compose Android Home application with one normal app module. It owns its Home content, dock, editing UI and widget hosts. Android owns the secure lock screen, recents, notification panels and system app transitions. Google owns the content and input inside its Discover feed.
 
 ## Where to start

@@ -9,3 +9,4 @@ Short records of decisions that shape Folio, why they were made, and what they c
 | 0003 | Script engine (QuickJS or LuaJ) | Decided in Phase 9 |
 | [0004](0004-declarative-first.md) | Packages are declarative first; no downloaded executable code | Accepted |
 | [0005](0005-org-json.md) | Keep org.json for Market parsing | Accepted |
+| [0006](0006-standards.md) | Folio Standards are the build contract; outside AI agents only test and fix bugs | Proposed |

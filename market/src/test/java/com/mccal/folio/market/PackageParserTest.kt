@@ -53,6 +53,23 @@ class PackageParserTest {
         assertEquals(setOf(Provides.FOLIO_THEME), m.provides)
     }
 
+    @Test fun `reads who says AI helped, and refuses a malformed declaration`() {
+        val m = ok(PackageManifest.parse(full))
+        assertEquals(listOf("Claude", "Example tool"), m.aiAssisted?.tools)
+        assertEquals("Escribió el primer borrador de los colores.", m.aiAssisted?.note?.resolve(listOf("es")))
+        assertNull(ok(PackageManifest.parse(cabinet)).aiAssisted)
+        assertNull(ok(PackageManifest.parse(edit(cabinet) { put("aiAssisted", JSONObject().put("tools", JSONArray().put("Claude"))) })).aiAssisted?.note)
+
+        fun errors(ai: Any) = manifestErrors(edit(cabinet) { put("aiAssisted", ai) })
+        assertTrue(errors(JSONObject()).any { "aiAssisted.tools is required" in it })
+        assertTrue(errors(JSONObject().put("tools", JSONArray())).any { "aiAssisted.tools" in it })
+        assertTrue(errors(JSONObject().put("tools", JSONArray().put("  "))).any { "aiAssisted.tools[0]" in it })
+        assertTrue(errors(JSONObject().put("tools", JSONArray().put("Claude").put("Claude"))).any { "twice" in it })
+        assertTrue(errors(JSONObject().put("tools", JSONArray((1..6).map { "Tool $it" }))).any { "more than 5" in it })
+        assertTrue(errors(JSONObject().put("tools", JSONArray().put("x".repeat(61)))).any { "longer than 60" in it })
+        assertTrue(errors(true).any { "aiAssisted must be an object" in it })
+    }
+
     @Test fun `screens default to both`() {
         val m = ok(PackageManifest.parse(edit(cabinet) { remove("screens") }))
         assertEquals(setOf(Screen.COVER, Screen.INNER), m.screens)

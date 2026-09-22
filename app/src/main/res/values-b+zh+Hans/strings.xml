@@ -834,6 +834,9 @@
     <string name="information">信息</string>
     <string name="source_1_s">源：%1$s</string>
     <string name="built_into_folio">内置于 Folio</string>
+    <string name="ai_assisted">AI 辅助</string>
+    <string name="made_with_ai_1_s">借助 AI 制作：%1$s</string>
+    <string name="made_with_help_from_ai_1_s">在 AI 帮助下制作：%1$s</string>
     <string name="inside_the_app">在 App 内</string>
     <string name="folio_couldn_t_reach_this_source">Folio 无法连接到这个源</string>
     <string name="showing_the_list_it_had_before">显示的是之前的列表。</string>

@@ -838,6 +838,10 @@
     <string name="information">Information</string>
     <string name="source_1_s">Source: %1$s</string>
     <string name="built_into_folio">Built into Folio</string>
+    <!-- A package's manifest declares aiAssisted: the tag beside its developer, then who helped. %1$s is a list of tool names. -->
+    <string name="ai_assisted">AI-assisted</string>
+    <string name="made_with_ai_1_s">Made with AI: %1$s</string>
+    <string name="made_with_help_from_ai_1_s">Made with help from AI: %1$s</string>
     <string name="inside_the_app">Inside the app</string>
     <string name="folio_couldn_t_reach_this_source">Folio couldn\'t reach this source</string>
     <string name="showing_the_list_it_had_before">Showing the list it had before.</string>
