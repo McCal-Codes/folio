@@ -3,6 +3,25 @@
   "note": "Where Folio is headed. Plans can change with feedback, and Android doesn't allow everything iOS does.",
   "sections": [
     {
+      "release": "0.6.7",
+      "items": [
+        {
+          "icon": "update",
+          "color": "#FF9F0A",
+          "title": "Folio Beta in the Market",
+          "detail": "Supporters update Folio to the newest beta from the Market, checked against Folio's signing key.",
+          "status": "building"
+        },
+        {
+          "icon": "grid",
+          "color": "#0A84FF",
+          "title": "Panes that fit the screen",
+          "detail": "The Market and Settings use two panes on a Fold's inner screen, like iPad, and never leave one empty.",
+          "status": "building"
+        }
+      ]
+    },
+    {
       "release": "0.6.6",
       "items": [
         {

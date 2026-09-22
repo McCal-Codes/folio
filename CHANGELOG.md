@@ -5,6 +5,17 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name (MAJOR × 10000 + MINOR × 100 + PATCH), so every release sorts correctly.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.7] - Unreleased
+
+### Added
+- **Folio Beta in the Market:** supporters see Folio Beta under Sources, with what you're on, the newest beta and an Update button. It's the same download Settings › Software Update makes: through your supporter code, checked against Folio's own signing key before anything installs, with Update Now or Tonight.
+
+### Changed
+- **Panes fit the screen:** the Market and Settings show as many panes as the window has room for, the way iPad's App Store and Settings do. On a Fold's inner screen that's two: a package, a source or a nested setting opens over the list with Back, and the Market's list uses the whole width, in two columns. Three panes are for windows 1200 dp and wider.
+
+### Fixed
+- A beta from the supporters' source can be downloaded. Folio asked for the list of betas with your code but downloaded the file without it, and the supporter service turns those downloads away.
+
 ## [0.6.6] - 2026-09-21
 
 ### Added
