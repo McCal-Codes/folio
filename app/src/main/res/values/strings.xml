@@ -1398,4 +1398,14 @@
     <string name="keyd_what_it_does">What it does</string>
     <string name="keyd_features">Splits around the crease · suggestions and autocorrect · six languages · clipboard history · shortcuts · no permissions at all</string>
     <string name="keyd_where_to_get_it">Keyd is a separate app, because Android needs a keyboard to be its own input method. Your code added its source to the Market, so it\'s there to get, and it asks for no permissions at all, not even the internet.</string>
+    <!-- Folio Beta, the supporters' source in the Market (0.6.7). -->
+    <string name="folio_beta_for_supporters">For supporters · checked with your code</string>
+    <string name="update_available">Update available</string>
+    <string name="you_re_on">You\'re on</string>
+    <string name="newest_beta">Newest beta</string>
+    <string name="checked">Checked</string>
+    <string name="never">Never</string>
+    <string name="folio_beta_page_note">Betas get new things first and can have more bugs. Settings › Software Update › Beta Updates turns them off, and you stay on your beta until a newer public release.</string>
+    <string name="beta_updates_are_off_here">Beta Updates is off, so Folio only looks for public releases. Turn it on to get betas here.</string>
+    <string name="turn_on_beta_updates">Turn On Beta Updates</string>
 </resources>

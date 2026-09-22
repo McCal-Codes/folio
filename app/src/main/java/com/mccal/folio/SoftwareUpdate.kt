@@ -249,6 +249,23 @@ internal object SoftwareUpdate {
         return "$address/beta/releases" to credential
     }
 
+    /** The code to show the broker: the stored supporter code, when it carries beta access. */
+    private fun brokerCode(context: Context): String? =
+        Supporter.storedText(context)?.takeIf { Supporter.has(context, BetaCodes.SCOPE_BETA) }
+
+    /** Whether this phone can get betas from the broker at all: there is one, and a code it will accept. */
+    fun betaSourceReady(context: Context): Boolean = betaSource(BETA_BROKER, brokerCode(context)) != null
+
+    /**
+     * The code to send with a download, or null. The broker's download links check the code again ("a ticket passed
+     * to somebody else has nothing to present"), so a link from the broker needs it; anything else, GitHub above
+     * all, must never see it.
+     */
+    internal fun downloadCredential(url: String, broker: String, code: String?): String? {
+        val address = betaSource(broker, code)?.first?.removeSuffix("/beta/releases") ?: return null
+        return code?.trim().takeIf { url.startsWith("$address/") }
+    }
+
     /** A published release with an APK, or null. */
     private fun releaseOf(json: JSONObject): Release? {
         val assets = json.optJSONArray("assets") ?: return null
@@ -306,8 +323,7 @@ internal object SoftwareUpdate {
                 // through the broker, since the beta repository is private; until it's deployed there are none to
                 // read, and the public releases carry on alone.
                 val candidates = if (betaChannel(context)) {
-                    val brokered = betaSource(BETA_BROKER, Supporter.storedText(context)
-                        ?.takeIf { Supporter.has(context, BetaCodes.SCOPE_BETA) })
+                    val brokered = betaSource(BETA_BROKER, brokerCode(context))
                     val betas = brokered?.let { runCatching { list(get(it.first, it.second)) }.getOrNull() }
                     val public = runCatching { list(get(RECENT)) }.getOrNull()
                     // Either may fail on its own; both failing is a failed check.
@@ -341,9 +357,12 @@ internal object SoftwareUpdate {
             runCatching {
                 val dir = updatesDir(context).apply { deleteRecursively(); mkdirs() }
                 val apk = File(dir, "Folio-${release.version}.apk.part")
-                download(release.apkUrl, apk, release.size) { status.value = Status.Downloading(release, it) }
+                val code = brokerCode(context)
+                download(release.apkUrl, apk, release.size, downloadCredential(release.apkUrl, BETA_BROKER, code)) {
+                    status.value = Status.Downloading(release, it)
+                }
                 release.sumsUrl?.let { url ->
-                    val expected = get(url).lines().firstOrNull { it.trim().endsWith(".apk") }?.substringBefore(' ')?.trim()
+                    val expected = fetch(url, downloadCredential(url, BETA_BROKER, code)).lines().firstOrNull { it.trim().endsWith(".apk") }?.substringBefore(' ')?.trim()
                     require(expected != null && expected.equals(sha256(apk), ignoreCase = true)) { context.getString(R.string.the_download_didn_t_match_its_checksum) }
                 }
                 require(sameSigner(context, apk)) { context.getString(R.string.the_update_isn_t_signed_with_folio_s_key) }
@@ -393,10 +412,34 @@ internal object SoftwareUpdate {
         return c.inputStream.bufferedReader().use { it.readText() }.also { c.disconnect() }
     }
 
-    private fun download(url: String, target: File, expectedSize: Long, onProgress: (Float?) -> Unit) {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.setRequestProperty("User-Agent", "Folio")
-        c.connectTimeout = 10_000; c.readTimeout = 60_000; c.instanceFollowRedirects = true
+    /**
+     * Opens [url] for reading. With a [code], it goes to the broker alone: the broker answers with a redirect to
+     * GitHub's own short-lived address, which is followed here by hand, without the code, rather than trusting the
+     * connection to leave the header behind.
+     */
+    private fun open(url: String, code: String?, readTimeout: Int): HttpURLConnection {
+        fun connect(address: String) = (URL(address).openConnection() as HttpURLConnection).apply {
+            setRequestProperty("User-Agent", "Folio")  // HTTP headers, never shown // english-only
+            connectTimeout = 10_000; this.readTimeout = readTimeout
+        }
+        if (code == null) return connect(url).apply { instanceFollowRedirects = true }
+        val first = connect(url).apply { instanceFollowRedirects = false; setRequestProperty("Authorization", "Bearer $code") }  // HTTP headers, never shown // english-only
+        if (first.responseCode !in 300..399) return first
+        val location = first.getHeaderField("Location")  // HTTP headers, never shown // english-only
+        first.disconnect()
+        // No message: the page then says the update couldn't be downloaded, in the reader's language.
+        if (location == null || !location.startsWith("https://")) throw java.io.IOException()
+        return connect(location).apply { instanceFollowRedirects = true }
+    }
+
+    /** A small file, such as the checksums, read whole. */
+    private fun fetch(url: String, code: String?): String {
+        val c = open(url, code, 15_000)
+        try { return c.inputStream.bufferedReader().use { it.readText() } } finally { c.disconnect() }
+    }
+
+    private fun download(url: String, target: File, expectedSize: Long, code: String?, onProgress: (Float?) -> Unit) {
+        val c = open(url, code, 60_000)
         try {
             val total = c.contentLengthLong.takeIf { it > 0 } ?: expectedSize
             var done = 0L; var reported = -1

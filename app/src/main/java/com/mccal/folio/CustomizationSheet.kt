@@ -2168,7 +2168,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
 }
 
 /** The available update, like iOS's: version, size, the release notes, progress, and Update Now / Update Tonight. */
-@Composable private fun UpdateCard(release: SoftwareUpdate.Release, status: SoftwareUpdate.Status) {
+@Composable internal fun UpdateCard(release: SoftwareUpdate.Release, status: SoftwareUpdate.Status) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var expanded by remember(release.version) { mutableStateOf(false) }
     val notes = remember(release.notes) { releaseNoteLines(release.notes) }

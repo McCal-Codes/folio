@@ -345,6 +345,8 @@ internal fun MarketScreen(
         val settingsMost = if (tabs == TabPlacement.SIDEBAR) settingsColumnsBesideSidebar(maxWidth.value) else 3
         val packages = entries.map { it.entry }
         val open = openId?.let { id -> entries.firstOrNull { it.id == id } }
+        val folioBeta = remember(returns) { SoftwareUpdate.betaSourceReady(context) }
+        val betaOpen = folioBeta && tab == MarketTab.SOURCES && open == null && openSourceUrl == FOLIO_BETA_SOURCE_URL
         // A source's page, when one is open and no package is open in front of it. Only on the Sources tab: the
         // same source seen from a package's "Show source" row lands here too, by way of that tab.
         val openSource = openSourceUrl
@@ -364,8 +366,8 @@ internal fun MarketScreen(
                     Box(Modifier.fillMaxSize()) {
                         CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
                     }
-                } else if (beside || (open == null && openSource == null)) {
-                    val narrow = beside && (open != null || openSource != null)
+                } else if (beside || (open == null && openSource == null && !betaOpen)) {
+                    val narrow = beside && (open != null || openSource != null || betaOpen)
                     BoxWithConstraints(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight()) {
                         MarketList(
                             session = session,
@@ -378,6 +380,7 @@ internal fun MarketScreen(
                             openSourceUrl = openSourceUrl,
                             onOpenSource = { openSourceUrl = it; openId = null },
                             onAddSource = { addingSource = true },
+                            folioBeta = folioBeta,
                             onAddLocalDev = {
                                 scope.launch {
                                     val result = session.sources.addLocalDev(DEFAULT_LOCAL_SOURCE)
@@ -397,6 +400,11 @@ internal fun MarketScreen(
                             onGet = { onExternalOrConfirm(it) },
                             onRemove = { id, name -> remove(id, name) },
                         )
+                    }
+                }
+                if (betaOpen) {
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        MarketFolioBetaPage(showBack = !beside, backTitle = stringResource(tab.label), onBack = { openSourceUrl = null })
                     }
                 }
                 if (openSource != null) {
@@ -759,6 +767,7 @@ private fun MarketList(
     onOpenSource: (String) -> Unit,
     onAddSource: () -> Unit,
     onAddLocalDev: () -> Unit,
+    folioBeta: Boolean,
     entries: List<MarketEntry>,
     installed: Map<String, InstalledPackage>,
     openId: String?,
@@ -809,6 +818,7 @@ private fun MarketList(
                     onOpen = onOpenSource,
                     onAdd = onAddSource,
                     onAddLocalDev = onAddLocalDev,
+                    folioBeta = folioBeta,
                 )
             }
         }
