@@ -3,7 +3,7 @@ main = "worker.js"
 account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"   # the McCal account
 compatibility_date = "2026-09-01"
 
-# Made with: wrangler d1 create folio-codes   (paste the id it prints)
+# Made with: wrangler d1 create folio-codes (22 Sep 2026, on the McCal account)
 [[d1_databases]]
 binding = "DB"
 database_name = "folio-codes"
@@ -11,7 +11,10 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 
 [vars]
 # Which payment earns which pool of codes. Anything not named here earns nothing.
-POOLS = '{"tiers":{"*":"beta"},"tipFrom":5,"tipPool":"beta"}'
+# Decided 22 Sep 2026: every code is one month. A tip of $3 or more earns one, and so does each monthly payment of
+# the Backer and Builder tiers; Coffee is posts, previews and the vote, with no code. Tier names must match Ko-fi's
+# exactly. A tip in another currency earns nothing until tipRates prices it, and is written to `problems`.
+POOLS = '{"tiers":{"Backer":"beta","Builder":"beta"},"tipFrom":3,"tipPool":"beta","tipCurrency":"USD"}'
 MAIL_FROM = "Folio <folio@example.com>"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
