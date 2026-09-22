@@ -163,6 +163,7 @@ internal fun MarketSourcePage(
     status: SourceStatus?,
     packageCount: Int,
     showBack: Boolean,
+    backTitle: String? = null,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onForget: () -> Unit,
@@ -180,7 +181,7 @@ internal fun MarketSourcePage(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = Color(0xFF0A84FF), modifier = Modifier.size(18.dp))
-                Text(back, color = Color(0xFF0A84FF), fontSize = 16.sp)
+                Text(backTitle ?: back, color = Color(0xFF0A84FF), fontSize = 16.sp)
             }
         }
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {

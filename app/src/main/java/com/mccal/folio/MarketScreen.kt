@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -337,6 +338,11 @@ internal fun MarketScreen(
             split && maxWidth.value >= 920f -> TabPlacement.SIDEBAR
             else -> TabPlacement.BOTTOM
         }
+        // The list stays beside what it opened only when both still get a readable width; otherwise the package or
+        // source pushes over the list with Back, as the App Store does on an iPad. Nothing open, the list has it all.
+        val beside = split && marketListBeside(maxWidth.value, sidebar = tabs == TabPlacement.SIDEBAR)
+        // The sidebar is already one of the window's panes, so the Settings tab gets what's left of them.
+        val settingsMost = if (tabs == TabPlacement.SIDEBAR) settingsColumnsBesideSidebar(maxWidth.value) else 3
         val packages = entries.map { it.entry }
         val open = openId?.let { id -> entries.firstOrNull { it.id == id } }
         // A source's page, when one is open and no package is open in front of it. Only on the Sources tab: the
@@ -348,17 +354,24 @@ internal fun MarketScreen(
                 else statuses.firstOrNull { it.source.url == url }?.let { it.source to it }
             }
 
+        // Kept here rather than in the list, so coming Back from a package lands where the list was, per tab.
+        val listState = rememberSaveable(tab, saver = LazyListState.Saver) { LazyListState() }
         Row(Modifier.fillMaxSize()) {
         if (tabs == TabPlacement.SIDEBAR) MarketSidebar(tab) { tab = it; openId = null; openSourceUrl = null }
         Column(Modifier.weight(1f)) {
             Row(Modifier.weight(1f)) {
                 if (tab == MarketTab.SETTINGS && settingsContent != null) {
-                    Box(Modifier.fillMaxSize()) { settingsContent() }
-                } else if (split || (open == null && openSource == null)) {
-                    Box(if (split) Modifier.width(360.dp).fillMaxHeight() else Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
+                    }
+                } else if (beside || (open == null && openSource == null)) {
+                    val narrow = beside && (open != null || openSource != null)
+                    BoxWithConstraints(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight()) {
                         MarketList(
                             session = session,
                             tab = tab,
+                            state = listState,
+                            columns = if (narrow) 1 else marketListColumns(maxWidth.value),
                             index = index,
                             statuses = statuses,
                             localDevAllowed = session.localDevAllowed,
@@ -399,7 +412,8 @@ internal fun MarketScreen(
                             source = sourceOpen,
                             status = statusOpen,
                             packageCount = fromSource.size,
-                            showBack = !split,
+                            showBack = !beside,
+                            backTitle = stringResource(tab.label),
                             onBack = { openSourceUrl = null },
                             onRefresh = { refreshSource(sourceOpen) },
                             onForget = { forgetSource(sourceOpen) },
@@ -429,7 +443,12 @@ internal fun MarketScreen(
                             installed = installed[open.id],
                             revoked = open.revokedReason,
                             source = open.source,
-                            showBack = !split,
+                            showBack = !beside,
+                            // Back from a package opened on a source's page goes to that page, so it says its name.
+                            backTitle = openSourceUrl?.takeIf { tab == MarketTab.SOURCES }?.let { url ->
+                                if (url == BUILT_IN_SOURCE_URL) index?.name?.english
+                                else statuses.firstOrNull { it.source.url == url }?.source?.label
+                            } ?: stringResource(tab.label),
                             onBack = { openId = null },
                             onGet = { onExternalOrConfirm(open) },
                             onRemove = { remove(open.id, open.name) },
@@ -731,6 +750,8 @@ private fun MarketTabLabel(tab: MarketTab, on: Boolean) = Text(
 private fun MarketList(
     session: MarketSession,
     tab: MarketTab,
+    state: LazyListState,
+    columns: Int,
     index: RepoIndex?,
     statuses: List<SourceStatus>,
     localDevAllowed: Boolean,
@@ -758,7 +779,7 @@ private fun MarketList(
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), state = state, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         item {
             Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
                 if (tab == MarketTab.FEATURED) Text(stringResource(R.string.welcome_to_folio), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
@@ -828,17 +849,26 @@ private fun MarketList(
             item(key = "label-${section.id}") { SheetGroupLabel(section.id.replaceFirstChar(Char::uppercase)) }
             item(key = "group-${section.id}") {
                 SheetGroup(Modifier.padding(bottom = 10.dp)) {
-                    for (entry in inSection) {
-                        MarketRow(
-                            session = session,
-                            entry = entry,
-                            installed = installed[entry.id],
-                            busy = entry.id == busyId,
-                            selected = entry.id == openId,
-                            onOpen = { onOpen(entry.id) },
-                            onGet = { onGet(entry) },
-                            onRemove = { onRemove(entry.id, entry.name) },
-                        )
+                    // Row by row, left to right, so reading order and TalkBack's order stay the list's order.
+                    for (pair in inSection.chunked(columns)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            for (entry in pair) {
+                                Box(Modifier.weight(1f)) {
+                                    MarketRow(
+                                        session = session,
+                                        entry = entry,
+                                        installed = installed[entry.id],
+                                        busy = entry.id == busyId,
+                                        selected = entry.id == openId,
+                                        onOpen = { onOpen(entry.id) },
+                                        onGet = { onGet(entry) },
+                                        onRemove = { onRemove(entry.id, entry.name) },
+                                    )
+                                }
+                            }
+                            // An odd last row keeps its half, so rows line up down both columns.
+                            repeat(columns - pair.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
             }
@@ -1002,6 +1032,7 @@ private fun MarketPackagePage(
     revoked: String?,
     source: Source,
     showBack: Boolean,
+    backTitle: String? = null,
     onBack: () -> Unit,
     onGet: () -> Unit,
     onRemove: () -> Unit,
@@ -1035,7 +1066,8 @@ private fun MarketPackagePage(
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = Color(0xFF0A84FF), modifier = Modifier.size(18.dp))
-                Text(backLabel, color = Color(0xFF0A84FF), fontSize = 16.sp)
+                // Where Back goes, as on iPhone ("‹ Packages"); TalkBack still hears "Back" as the action.
+                Text(backTitle ?: backLabel, color = Color(0xFF0A84FF), fontSize = 16.sp)
             }
         }
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {

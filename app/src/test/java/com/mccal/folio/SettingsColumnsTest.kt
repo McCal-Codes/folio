@@ -5,7 +5,7 @@ import org.junit.Test
 
 /**
  * How many columns Settings shows, on the windows Folio actually meets. The rule is about the window, never the
- * device: the same 700 and 920 dp thresholds the Market and the Mockup Lab use.
+ * device: 700 dp for two columns, as the Market uses, and [THREE_PANES_DP] (1200) for three.
  */
 class SettingsColumnsTest {
     private fun columns(w: Float, h: Float, nested: Boolean = false, onFold: Boolean = false) =
@@ -30,12 +30,18 @@ class SettingsColumnsTest {
         assertEquals(2, columns(1280f, 800f))         // tablet, landscape
     }
 
-    @Test fun `a page opened from a list gets its own column when there is room`() {
-        assertEquals(3, columns(932f, 704f, nested = true))    // Fold8 inner: Settings, Tweaks, the tweak
-        assertEquals(3, columns(1280f, 800f, nested = true))
-        // Under 920 dp a third column would leave all three too narrow, so the page still takes the list's place.
+    @Test fun `a page opened from a list pushes inside the page column, as iPad Settings does`() {
+        assertEquals(2, columns(932f, 704f, nested = true))    // Fold8 inner: the tweak replaces Tweaks, with Back
         assertEquals(2, columns(852f, 883f, nested = true))
         assertEquals(2, columns(838f, 945f, nested = true))    // 8" fold-out
+        assertEquals(2, columns(1199f, 800f, nested = true))
+    }
+
+    @Test fun `a window of 1200 dp or more keeps the list beside the page it opened`() {
+        assertEquals(3, columns(1200f, 800f, nested = true))
+        assertEquals(3, columns(1280f, 800f, nested = true))   // tablet, landscape
+        assertEquals(3, columns(1920f, 1080f, nested = true))  // desktop
+        assertEquals(2, columns(1280f, 800f))                  // a top-level page has nothing to sit beside
     }
 
     @Test fun `half folded, the fold keeps the divider and there is no third column`() {
