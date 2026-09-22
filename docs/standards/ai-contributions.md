@@ -32,8 +32,12 @@ The short version:
   (found the bug, wrote the test, wrote the fix). The pull request template has a checkbox for this.
 - **AI-6 MUST** label anything an AI helped make that ships to users (a theme in `themes/`, a tweak, a Market package,
   an icon pack, a wallpaper, a layout preset) as **AI-assisted**, naming the tool:
-  - in the package or theme description, in the first line, until the manifest has a field for it (see Gaps);
-  - in the credits or README that travels with it.
+  - a Market package sets `aiAssisted` in its manifest: `{ "tools": ["Claude"], "note": "Drafted the colours." }`
+    ([format](../sdk/format-v1.md));
+  - and, until the Market shows that field, also starts `description` with "AI-assisted (tool name)." so every Folio
+    version shows it (see Gaps);
+  - a theme in `themes/` starts its description the same way;
+  - the credits or README that travels with it says so too.
 - **AI-7 MUST NOT** remove or reword an AI-assisted label when republishing, forking or updating someone else's
   package.
 - **AI-8** An unlabelled contribution that turns out to be AI-made may be closed, delisted or removed from a source,
@@ -69,6 +73,6 @@ The short version:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | An optional `aiAssisted` field in the package manifest (schema v1 addition, `folio-pkg validate`, shown on the Market's package page and at install) | M |
+| 1 | Show `aiAssisted` on the Market's package page and at install; then the `description` prefix is no longer needed (the field itself is in schema v1 and the parser) | S |
 | 2 | The same field in the community theme format (`themes/README.md`, `CommunityThemesTest`) | S |
 | 3 | A "made with AI" filter in the Market | S |
