@@ -32,6 +32,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Density
@@ -46,7 +47,12 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier) {
     val photo = produceState(initialValue = initial, key1 = context, key2 = revision) {
         value = withContext(Dispatchers.IO) { loadLauncherBackground(context) }
     }.value
-    Canvas(Modifier.fillMaxSize().then(modifier)) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
+    // Drawn once into its own layer and reused: the background never moves, but during a swipe everything above it
+    // does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU missed
+    // frames. A cached layer is one texture copy a frame instead.
+    Canvas(Modifier.fillMaxSize().then(modifier).graphicsLayer {
+        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+    }) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
 }
 
 internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false) {
