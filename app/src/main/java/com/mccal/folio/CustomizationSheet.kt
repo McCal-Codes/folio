@@ -2186,7 +2186,8 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
             }
             if (notes.isNotEmpty()) {
                 (if (expanded) notes else notes.take(6)).forEach { line -> Text(line, style = MaterialTheme.typography.bodyMedium) }
-                if (notes.size > 6 || release.notesUrl.isNotBlank()) Text(if (!expanded && notes.size > 6) stringResource(R.string.more) else stringResource(R.string.full_release_notes),
+                // A beta's notes have no page to open (its repository is private), so once they're expanded there's no link.
+                if ((!expanded && notes.size > 6) || release.notesUrl.isNotBlank()) Text(if (!expanded && notes.size > 6) stringResource(R.string.more) else stringResource(R.string.full_release_notes),
                     color = FolioColors.Blue, style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
                         if (!expanded && notes.size > 6) expanded = true
