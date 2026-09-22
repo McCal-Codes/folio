@@ -1,12 +1,13 @@
 name = "folio-supporter-codes"
 main = "worker.js"
+account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"   # the McCal account
 compatibility_date = "2026-09-01"
 
 # Made with: wrangler d1 create folio-codes   (paste the id it prints)
 [[d1_databases]]
 binding = "DB"
 database_name = "folio-codes"
-database_id = "paste-the-id-from-wrangler-d1-create"
+database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 
 [vars]
 # Which payment earns which pool of codes. Anything not named here earns nothing.
@@ -19,8 +20,8 @@ MAIL_FROM = "Folio <folio@example.com>"
 
 # Supporters' beta builds. The worker reads a private repository with its own token and hands Folio a short-lived
 # download link; see the README. Leave BETA_REPO empty to turn the beta broker off.
-BETA_REPO = ""                     # e.g. "McCal-Codes/folio-beta"
-SUPPORTER_KEYS = ""                # the public key from scripts/beta-code.py, base64, the same one the app carries
+BETA_REPO = "McCal-Codes/folio-beta"
+SUPPORTER_KEYS = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM4vVq0D/ZzqkVWlyQYMTFN3TTbdqRgKdt2a30T88NkeQhDEWnujFjfyXyKtPIVBKMSiRVXeY/OcC0+TaB6eypg=="   # BetaKeys.SUPPORTER
 
 # Secrets go in with `wrangler secret put`, never in this file:
 #   GITHUB_TOKEN   a fine-grained token with Contents: read on the beta repository, and nothing else

@@ -42,10 +42,10 @@ internal object SoftwareUpdate {
     /**
      * Supporters' betas live in a private repository, which GitHub won't show to an app with no credentials. This
      * worker is asked instead: it checks the supporter code's signature — the same check Folio makes offline — and
-     * only then reads the private releases with its own token. Empty until the worker is deployed, and then Beta
-     * Updates simply reads the public pre-releases as before.
+     * only then reads the private releases with its own token. Deployed 22 Sep 2026 on McCal's Cloudflare account
+     * (tools/kofi-worker). Empty turns it off, and Beta Updates then reads only the public pre-releases.
      */
-    internal const val BETA_BROKER = ""
+    internal const val BETA_BROKER = "https://folio-supporter-codes.mccal.workers.dev"
     private const val PREFS = "software_update"
     // Legacy switches (0.5.1–0.6.0), read once to carry a choice over to [Mode].
     private const val AUTO = "auto"
