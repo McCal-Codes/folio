@@ -23,6 +23,9 @@ tools/kofi-worker/.wrangler/
 tools/kofi-worker/node_modules/
 supporter-key.pem
 supporter-codes*.txt
+# The code admin's ledger: every code with who it went to and their email (scripts/code-admin.py).
+supporter-ledger*.json
+**/pool-*.sql
 
 # Jazzer's generated corpus (seeds live in market/src/test/resources)
 .cifuzz-corpus/

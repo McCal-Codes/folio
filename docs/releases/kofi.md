@@ -298,10 +298,16 @@ becomes real with the first one, and *This week in Folio* is the shape suggested
 Both must keep saying the same thing about what Folio *does*; only the emphasis changes. When one is edited, check
 the other.
 
-### One-off support: a month per $3
+### One-off support: a month per donation
 
-**Decided (McCal, 19 Sep 2026):** a one-off payment earns a dated code — **$3 → one month, $6 → two, $12 → four** —
-matching the Coffee tier, so nobody can buy cheaper access than a member gets. Three ways to do it, cheapest first.
+**Decided (McCal, 22 Sep 2026), replacing the 19 Sep rule below:** a one-off tip or donation earns **one month**,
+whatever the amount, and each payment counts (two tips, two months). The tiers stay **Coffee $3, Backer $7, Builder
+$15**; each Backer or Builder payment is one month, and Coffee carries no code. `scripts/code-admin.py` applies this
+when it reads the Ko-fi CSV (see *The admin page* below).
+
+*Earlier (19 Sep 2026):* a one-off payment earned a dated code, $3 → one month, $6 → two, $12 → four, matching the
+Coffee tier. The shop, worker and pool notes below were written for that rule; the pools become one-month pools.
+Three ways to do it, cheapest first.
 
 1. **Shop items, one per length.** "Folio early access · 1 month", "· 2 months", "· 4 months", each with a months
    code attached. Nothing to run, works while asleep, and the files never go stale.
@@ -367,6 +373,19 @@ done
 ```
 
 `pool.sql` holds real codes, so it never gets committed.
+
+### The admin page
+
+`./scripts/code-admin.py`, run from the checkout that holds `supporter-key.pem`, opens a page on this Mac only
+(127.0.0.1, a fresh token each launch). Drop in the Ko-fi CSV export and it lists who needs a code and for how many
+months; one click hands out a ready code of that length or mints one, with the code, the `folio://redeem` link and a
+draft message to copy. It also marks codes sent or withdrawn (and prints the serial for `BetaKeys.WITHDRAWN`), and
+makes ready codes or a `tools/kofi-worker/pool-m<N>.sql` pool. Everything it knows is in `supporter-ledger.json`
+(gitignored, 0600, real codes and emails); the first run takes in the codes already in `supporter-codes*.txt`.
+
+Ko-fi has no API for reading transactions, so the CSV covers what already happened and the worker's webhook is the
+only way codes go out on their own. The key never leaves the Mac: the worker and Folio Dev only ever hand out codes
+minted here in advance.
 
 ### Two posts, in this order
 

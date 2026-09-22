@@ -141,14 +141,17 @@ def base32(data):
     return "-".join(text[i:i + 5] for i in range(0, len(text), 5))
 
 
-def mint(key, scopes, tier, expires, count, sql_pool=None, months=0):
-    # Asked once, not once per code: minting two hundred shouldn't mean typing the passphrase two hundred times.
-    signing = passin(key)
+def scope_bits(scopes):
     bits = 0
     for scope in scopes:
         if scope not in SCOPES:
             sys.exit(f"unknown scope {scope}; pick from {', '.join(SCOPES)}")
         bits |= 1 << SCOPES.index(scope)
+    return bits
+
+
+def shape(tier, expires, months):
+    """The version, tier byte and day a code is minted with, checked the way BetaCodes reads them."""
     if expires:
         day = (datetime.date.fromisoformat(expires) - EPOCH).days
         if not 1 <= day <= 0xFFFF:
@@ -162,16 +165,48 @@ def mint(key, scopes, tier, expires, count, sql_pool=None, months=0):
             sys.exit("--months takes 1 to 15; for longer, use --expires")
         if not 0 <= tier <= 15:
             sys.exit("--tier must be 0-15 when --months is used, since they share a byte")
-        version, tier_byte = VERSION_MONTHS, months << 4 | tier
-    else:
-        if not 0 <= tier <= 255:
-            sys.exit("--tier must be 0-255")
-        version, tier_byte = VERSION, tier
+        return VERSION_MONTHS, months << 4 | tier, day
+    if not 0 <= tier <= 255:
+        sys.exit("--tier must be 0-255")
+    return VERSION, tier, day
+
+
+def sign(key, signing, version, bits, tier_byte, day):
+    """One code with a fresh random serial. `signing` is what passin() returned, so the passphrase is asked once."""
+    serial = secrets.randbits(32)
+    payload = bytes([version, bits, tier_byte, day >> 8 & 0xFF, day & 0xFF]) + serial.to_bytes(4, "big")
+    der = run(["openssl", "dgst", "-sha256", "-sign", key] + signing, stdin=payload)
+    return base32(payload + raw_signature(der))
+
+
+def describe(code):
+    """What a code carries, read without checking its signature: serial, scopes, months or last day, tier."""
+    value = 0
+    count = 0
+    for ch in code.replace("-", "").upper():
+        value = value << 5 | ALPHABET.index(ch)
+        count += 5
+    data = (value >> (count % 8)).to_bytes(count // 8, "big")
+    version, bits, tier_byte = data[0], data[1], data[2]
+    day = data[3] << 8 | data[4]
+    months = tier_byte >> 4 if version == VERSION_MONTHS else 0
+    return {
+        "version": version,
+        "serial": int.from_bytes(data[5:9], "big"),
+        "scopes": [s for i, s in enumerate(SCOPES) if bits >> i & 1],
+        "tier": tier_byte & 0x0F if version == VERSION_MONTHS else tier_byte,
+        "months": months,
+        "expires": (EPOCH + datetime.timedelta(days=day)).isoformat() if day else None,
+    }
+
+
+def mint(key, scopes, tier, expires, count, sql_pool=None, months=0):
+    # Asked once, not once per code: minting two hundred shouldn't mean typing the passphrase two hundred times.
+    signing = passin(key)
+    bits = scope_bits(scopes)
+    version, tier_byte, day = shape(tier, expires, months)
     for _ in range(count):
-        serial = secrets.randbits(32)
-        payload = bytes([version, bits, tier_byte, day >> 8 & 0xFF, day & 0xFF]) + serial.to_bytes(4, "big")
-        der = run(["openssl", "dgst", "-sha256", "-sign", key] + signing, stdin=payload)
-        code = base32(payload + raw_signature(der))
+        code = sign(key, signing, version, bits, tier_byte, day)
         if sql_pool:
             print(f"INSERT OR IGNORE INTO codes (code, pool) VALUES ('{code}', '{sql_pool}');")
         else:
