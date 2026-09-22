@@ -17,11 +17,15 @@ data class PackageManifest(
     val depiction: String? = null,
     val license: String? = null,
     val description: LocalizedText? = null,
+    val aiAssisted: AiAssisted? = null,
     val via: List<ExternalSource> = emptyList(),
     val provides: Set<Provides> = emptySet(),
     val requiredFeatures: Set<Capability> = emptySet(),
 ) {
     data class Author(val name: LocalizedText, val url: String?)
+
+    /** `aiAssisted`: the AI tools that helped make the package, and an optional note on what they did. */
+    data class AiAssisted(val tools: List<String>, val note: LocalizedText?)
 
     /** Capabilities this package configures that [available] doesn't include ("Needs a newer Folio"). */
     fun missingCapabilities(available: Set<Capability>): Set<Capability> = requiredFeatures - available
@@ -30,13 +34,16 @@ data class PackageManifest(
         const val MAX_CHARS = 64 * 1024
         const val MAX_NAME = 40
         const val MAX_RELATIONS = 32
+        const val MAX_AI_TOOLS = 5
+        const val MAX_AI_TOOL = 60
+        private val NOT_BLANK = Regex("\\S")
         val ID = Regex("^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+\\z")
         const val MAX_ID = 120
         private val ANDROID_PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+\\z")
 
         private val KNOWN = setOf(
             "\$schema", "format", "id", "name", "version", "author", "minFolio", "section", "kind", "permissions",
-            "screens", "depends", "conflicts", "icon", "depiction", "license", "description", "via", "provides", "requires",
+            "screens", "depends", "conflicts", "icon", "depiction", "license", "description", "aiAssisted", "via", "provides", "requires",
         )
 
         fun parse(text: String): ParseResult<PackageManifest> {
@@ -66,6 +73,13 @@ data class PackageManifest(
             val depiction = f.string("depiction", false, SAFE_PATH, MAX_PATH, "must be a relative path inside the package")
             val license = f.string("license", false, maxLength = 64)
             val description = f.text("description", false)
+            val aiAssisted = f.obj("aiAssisted", false, setOf("tools", "note"))?.let { a ->
+                val tools = a.strings("tools", true, minItems = 1, maxItems = MAX_AI_TOOLS, unique = true) { value, at ->
+                    a.checkString(value, at, NOT_BLANK, MAX_AI_TOOL, "must name a tool")
+                }
+                val note = a.text("note", false)
+                tools?.let { AiAssisted(it, note) }
+            }
             val via = readVia(f)
             val provides = f.ids("provides", false, Provides::from)
             val features = f.obj("requires", false, setOf("features"))?.ids("features", false, Capability::from)
@@ -76,7 +90,7 @@ data class PackageManifest(
                     kinds = kinds!!.toSet(), permissions = permissions!!.toSet(),
                     screens = screens?.toSet() ?: Screen.entries.toSet(),
                     depends = depends.orEmpty(), conflicts = conflicts.orEmpty(), icon = icon, depiction = depiction,
-                    license = license, description = description, via = via.orEmpty(),
+                    license = license, description = description, aiAssisted = aiAssisted, via = via.orEmpty(),
                     provides = provides.orEmpty().toSet(), requiredFeatures = features.orEmpty().toSet(),
                 )
             }

@@ -209,6 +209,51 @@
         }
       ]
     },
+    "aiAssisted": {
+      "description": "Declares that AI helped make this package, and which tools.",
+      "type": "object",
+      "required": [
+        "tools"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "\\S",
+            "maxLength": 60
+          }
+        },
+        "note": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 400
+            },
+            {
+              "type": "object",
+              "required": [
+                "en"
+              ],
+              "propertyNames": {
+                "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400
+              },
+              "maxProperties": 64
+            }
+          ]
+        }
+      }
+    },
     "via": {
       "type": "array",
       "items": {

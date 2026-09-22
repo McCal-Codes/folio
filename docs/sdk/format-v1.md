@@ -50,6 +50,7 @@ Limits:
 | `depiction` | path | Usually `depiction.json`. |
 | `license` | string | SPDX id, e.g. `MIT`. GPL code isn't accepted in the Community source. |
 | `description` | text | One or two sentences, shown under the name. |
+| `aiAssisted` | object | Required if AI helped make the package: `{ "tools": [1 to 5 tool names, 60 characters each], "note"?: text }`. The note says what the AI did. Folio 0.6.6 skips it; see [AI contributions](../standards/ai-contributions.md). |
 | `provides` *(later)* | array of enum | `iconPack`, `wallpapers`, `widgets`, `folioTheme`: what an external app brings. |
 | `via` *(later)* | array of object | Required with kind `externalApp`: `{ "store": "playStore"\|"fdroid", "id": … }` or `{ "store": "obtainium", "repoUrl": … }`. |
 | `requires` | object | `{ "features": [capability ids] }`: the Folio capabilities this package configures. See [Capabilities](#capabilities). |

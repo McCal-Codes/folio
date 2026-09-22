@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Shield
@@ -78,6 +79,16 @@ internal fun MarketInstallSheet(
             stringResource(R.string.text_1_s_version_2_s, manifest.author.name.english, manifest.version.toString()),
             color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
         )
+        // Said before Get, because it's part of deciding: the author declared AI helped make this.
+        manifest.aiAssisted?.let { ai ->
+            Row(Modifier.padding(bottom = 12.dp).testTag("install-ai-assisted"), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = Color.White.copy(alpha = .55f), modifier = Modifier.size(16.dp).padding(top = 2.dp))
+                Column(Modifier.padding(start = 8.dp)) {
+                    Text(stringResource(R.string.made_with_help_from_ai_1_s, ai.tools.joinToString()), color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
+                    ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                }
+            }
+        }
 
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFF2C2C2E)).padding(14.dp)) {
             Icon(Icons.Rounded.Shield, contentDescription = null, tint = Color(0xFF30D158), modifier = Modifier.size(20.dp))
