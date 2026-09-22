@@ -25,6 +25,7 @@ monthly payments is one month; Coffee's perks are posts, previews and the vote, 
 import argparse
 import csv
 import datetime
+import errno
 import hmac
 import http.server
 import importlib.util
@@ -33,8 +34,12 @@ import json
 import os
 import re
 import secrets
+import subprocess
 import sys
+import tempfile
 import threading
+import urllib.error
+import urllib.request
 import webbrowser
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,6 +52,7 @@ CODE_PATTERN = re.compile(r"\b[0-9A-HJKMNP-TV-Z]{5}(?:-[0-9A-HJKMNP-TV-Z]{1,5}){
 ONE_OFF = {"tip", "donation"}
 CODE_TIER_FROM = 7  # Backer ($7) and Builder ($15) carry a code; Coffee ($3) doesn't
 MAX_MONTHS = 15  # what a version 2 code can carry
+DEFAULT_PORT = 8770
 
 
 def months_for(payment):
@@ -70,12 +76,14 @@ class Ledger:
             data = {"codes": [], "payments": []}
         self.codes = data["codes"]
         self.payments = data["payments"]
+        # What the Ko-fi worker said last: stock, when it went live, the last check and sync.
+        self.worker = data.get("worker", {})
 
     def save(self):
         temporary = self.path + ".saving"
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as f:
-            json.dump({"codes": self.codes, "payments": self.payments}, f, indent=1)
+            json.dump({"codes": self.codes, "payments": self.payments, "worker": self.worker}, f, indent=1)
         os.replace(temporary, self.path)
         os.chmod(self.path, 0o600)
 
@@ -165,6 +173,68 @@ class Ledger:
         return sorted(newest_first, key=lambda g: not g["owed"])
 
 
+def missed(people, since):
+    """Payments the worker should have covered on its own: owed a code, and made after it went live."""
+    if not since:
+        return []
+    out = []
+    for person in people:
+        late = [x for x in person["payments"] if x["id"] in person["owed"] and x["date"][:10] >= since[:10]]
+        if late:
+            out.append({"key": person["key"], "name": person["name"], "payments": late})
+    return out
+
+
+class Worker:
+    """The Ko-fi worker's admin routes, from this Mac. Its address and token live in supporter-worker.json (0600)."""
+
+    def __init__(self, path):
+        self.path = path
+        self.settings = json.load(open(path)) if os.path.exists(path) else {}
+
+    def configured(self):
+        return bool(self.settings.get("url") and self.settings.get("token"))
+
+    def save(self, url, token, low):
+        url = (url or "").strip().rstrip("/")
+        if url and not re.match(r"^(https://[^\s/]+|http://(127\.0\.0\.1|localhost)(:\d+)?)(/.*)?$", url):
+            raise ValueError("The worker's address has to start with https:// (or http://127.0.0.1 for wrangler dev)")
+        if url:
+            self.settings["url"] = url
+        if token:
+            self.settings["token"] = token.strip()
+        self.settings["low"] = max(0, min(int(low if low is not None else self.settings.get("low", 10)), 1000))
+        fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(self.settings, f, indent=1)
+        os.chmod(self.path, 0o600)
+
+    def public(self):
+        """What the page may see: never the token itself."""
+        return {"url": self.settings.get("url", ""), "hasToken": bool(self.settings.get("token")),
+                "low": self.settings.get("low", 10)}
+
+    def call(self, method, path, body=None):
+        if not self.configured():
+            raise ValueError("Add the worker's address and admin token first")
+        request = urllib.request.Request(self.settings["url"] + path, method=method,
+                                         data=None if body is None else json.dumps(body).encode(),
+                                         headers={"Authorization": "Bearer " + self.settings["token"],
+                                                  "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as problem:
+            detail = problem.read().decode("utf-8", "replace")[:200]
+            try:
+                detail = json.loads(detail).get("error", detail)
+            except ValueError:
+                pass
+            raise ValueError(f"The worker said {problem.code}: {detail}")
+        except (urllib.error.URLError, TimeoutError, OSError) as problem:
+            raise ValueError(f"Couldn't reach the worker: {getattr(problem, 'reason', problem)}")
+
+
 def today():
     return datetime.date.today().isoformat()
 
@@ -224,19 +294,44 @@ def redeem_link(entry):
 
 
 class Admin:
-    def __init__(self, root, key, ledger_path):
+    def __init__(self, root, key, ledger_path, worker_path):
         self.root = root
         self.key = key
         self.ledger = Ledger(ledger_path)
+        self.worker = Worker(worker_path)
         self.signing = None
+        self.public_pem = None
 
     def unlock(self):
         """Asked once at launch, like beta-code.py, so the page never handles the passphrase."""
         if not os.path.exists(self.key):
             sys.exit(f"{self.key} isn't here; run from the checkout that holds the key, or pass --key")
         self.signing = bc.passin(self.key)
-        # Prove the key opens now rather than on the first click.
-        bc.run(["openssl", "ec", "-in", self.key, "-noout"] + self.signing)
+        # Prove the key opens now rather than on the first click, and keep its public half for checking the pool.
+        self.public_pem = bc.run(["openssl", "ec", "-in", self.key, "-pubout"] + self.signing)
+
+    def signed_here(self, code):
+        """Whether a code carries this key's signature: the same check Folio makes, done with openssl."""
+        info = bc.describe(code)
+        value, bits = 0, 0
+        for ch in code.replace("-", ""):
+            value = value << 5 | bc.ALPHABET.index(ch)
+            bits += 5
+        data = (value >> (bits % 8)).to_bytes(bits // 8, "big")
+        payload, raw = data[:9], data[9:73]
+
+        def der_int(x):
+            b = x.to_bytes((x.bit_length() + 8) // 8, "big")
+            return b"\x02" + bytes([len(b)]) + b
+        body = der_int(int.from_bytes(raw[:32], "big")) + der_int(int.from_bytes(raw[32:], "big"))
+        with tempfile.TemporaryDirectory() as folder:
+            paths = {name: os.path.join(folder, name) for name in ("pub.pem", "sig", "payload")}
+            open(paths["pub.pem"], "wb").write(self.public_pem)
+            open(paths["sig"], "wb").write(b"\x30" + bytes([len(body)]) + body)
+            open(paths["payload"], "wb").write(payload)
+            done = subprocess.run(["openssl", "dgst", "-sha256", "-verify", paths["pub.pem"], "-signature",
+                                   paths["sig"], paths["payload"]], capture_output=True)
+        return done.returncode == 0 and info["version"] in (1, 2)
 
     def state(self):
         return {
@@ -246,7 +341,101 @@ class Admin:
             "people": self.ledger.people(),
             "ready": ready_counts(self.ledger.codes),
             "pools": pool_files(self.root),
+            "worker": {**self.worker.public(), **self.ledger.worker},
+            "missed": missed(self.ledger.people(), self.ledger.worker.get("since")),
         }
+
+    # The Ko-fi worker, from here. Each answer lands in the ledger, so the page still knows the stock after a restart.
+
+    def check(self):
+        """The health check: is the worker set up, is every pool it hands out from stocked and signed by this key."""
+        h = self.worker.call("GET", "/admin/health")
+        items = []
+        add = lambda level, text: items.append({"level": level, "text": text})
+        c = h["configured"]
+        add("good" if c["kofiToken"] else "bad", "Ko-fi's verification token is set" if c["kofiToken"]
+            else "No KOFI_TOKEN: the worker refuses every payment until it's set")
+        if c.get("poolsError"):
+            add("bad", "POOLS in wrangler.toml isn't valid JSON: " + c["poolsError"])
+        add("good" if c["resendKey"] else "warn", "Resend is set, so codes are emailed" if c["resendKey"]
+            else "No RESEND_KEY: codes are claimed and recorded, but you send them by hand")
+        if c["resendKey"] and not c["mailFrom"]:
+            add("bad", "MAIL_FROM is still the example address; Resend will refuse it")
+        stock = {row["pool"]: row for row in h["stock"]}
+        low = self.worker.settings.get("low", 10)
+        for pool in h["wanted"] or ["m1"]:
+            free = stock.get(pool, {}).get("free", 0)
+            level = "bad" if free == 0 else "warn" if free < low else "good"
+            add(level, f"Pool {pool}: {free} left" + (" (below your warning level of %d)" % low if 0 < free < low
+                                                          else ": payments get no code until it's refilled" if free == 0 else ""))
+        signed = [self.signed_here(s["code"]) for s in h["samples"]]
+        if h["samples"]:
+            add("good" if all(signed) else "bad", f"{sum(signed)} of {len(signed)} sample codes carry your key's signature"
+                if all(signed) else f"{len(signed) - sum(signed)} sample codes aren't signed by your key: Folio will refuse them")
+            known = {c["code"] for c in self.ledger.codes}
+            strangers = [s for s in h["samples"] if s["code"] not in known]
+            if strangers:
+                add("warn", f"{len(strangers)} codes in the worker aren't in this ledger (minted somewhere else?)")
+        for problem in h["problems"][:5]:
+            add("bad", f"A payment on {problem['at'][:10]} got no code: {problem['pool']}")
+        test = h.get("lastKofiTest")
+        add("good" if test else "warn", f"Ko-fi's Send test reached the worker on {test['at'][:10]}" if test
+            else "Ko-fi's Send test hasn't reached the worker yet (Ko-fi › Settings › API › Webhooks)")
+        self.ledger.worker.update(stock={p: stock.get(p, {}).get("free", 0) for p in (h["wanted"] or ["m1"])},
+                                  checked=datetime.datetime.now().isoformat(timespec="minutes"),
+                                  items=items)
+        self.ledger.save()
+        return items
+
+    def test_payment(self, email):
+        return self.worker.call("POST", "/admin/test", {"email": email} if email else {})
+
+    def sync(self):
+        """Every code the worker handed out, matched into the ledger by the code itself."""
+        handled = self.worker.call("GET", "/admin/recent?limit=1000")["handled"]
+        by_code = {c["code"]: c for c in self.ledger.codes}
+        updated, strangers = 0, 0
+        for row in handled:
+            entry = by_code.get(row["code"])
+            if entry is None:
+                strangers += 1
+                continue
+            if entry["status"] in ("pool", "ready"):
+                entry.update(status="sent" if row["emailed"] else "given", name=row["from_name"] or entry["name"],
+                             payments=[row["transaction_id"]] if row["transaction_id"] else [],
+                             given=row["at"][:10], sent=row["at"][:10] if row["emailed"] else None,
+                             how="Ko-fi worker" if not row["by_hand"] else "by hand (Folio Dev)")
+                updated += 1
+        firsts = [row["at"] for row in handled if not row["by_hand"]]
+        if firsts:
+            since = min(firsts)
+            if not self.ledger.worker.get("since") or since < self.ledger.worker["since"]:
+                self.ledger.worker["since"] = since
+        self.ledger.worker["synced"] = datetime.datetime.now().isoformat(timespec="minutes")
+        self.ledger.save()
+        return {"updated": updated, "strangers": strangers, "seen": len(handled)}
+
+    def refill(self, months, count):
+        """Mint here, send to the worker. If the worker won't take them, they stay here as ready codes."""
+        if not 1 <= months <= MAX_MONTHS or not 1 <= count <= 500:
+            raise ValueError("1 to 15 months, 1 to 500 codes")
+        name = f"m{months}"
+        version, tier_byte, day = bc.shape(1, None, months)
+        codes = [bc.sign(self.key, self.signing, version, bc.scope_bits(ALL_SCOPES), tier_byte, day)
+                 for _ in range(count)]
+        try:
+            answer = self.worker.call("POST", "/admin/pool", {"pool": name, "codes": codes})
+        except ValueError:
+            for code in codes:
+                self.ledger.add(code, note="minted for the worker, which didn't take them")
+            self.ledger.save()
+            raise
+        for code in codes:
+            self.ledger.add(code, status="pool", note=f"worker pool {name}")
+        stock = self.ledger.worker.setdefault("stock", {})
+        stock[name] = stock.get(name, 0) + answer.get("added", 0)
+        self.ledger.save()
+        return {"added": answer.get("added", 0), "pool": name}
 
     def give(self, key, months, scopes, fresh):
         person = next((p for p in self.ledger.people() if p["key"] == key), None)
@@ -436,6 +625,17 @@ def handler(admin, token, port):
             if path == "/api/ready":
                 admin.mint_ready(int(body["months"]), int(body["count"]))
                 return admin.state()
+            if path == "/api/worker/settings":
+                admin.worker.save(body.get("url"), body.get("token"), body.get("low"))
+                return admin.state()
+            if path == "/api/worker/check":
+                return {"items": admin.check(), **admin.state()}
+            if path == "/api/worker/test":
+                return {"test": admin.test_payment(body.get("email", "").strip()), **admin.state()}
+            if path == "/api/worker/sync":
+                return {"sync": admin.sync(), **admin.state()}
+            if path == "/api/worker/refill":
+                return {"refill": admin.refill(int(body["months"]), int(body["count"])), **admin.state()}
             if path == "/api/pool":
                 written = admin.pool(int(body["months"]), int(body["count"]))
                 return {"written": written, **admin.state()}
@@ -507,6 +707,16 @@ pre.message { white-space: pre-wrap; margin: 0; padding: 12px 16px; font: 14px/1
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--card); color: var(--text);
   padding: 10px 18px; border-radius: 99px; box-shadow: 0 6px 24px #0003; font-size: 15px; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.on { opacity: 1; }
+input.field { font: inherit; font-size: 15px; width: 100%; border: 0; background: var(--fill); color: var(--text);
+  border-radius: 8px; padding: 8px 10px; min-height: 36px; }
+.checks { list-style: none; margin: 0; padding: 0; }
+.checks li { padding: 9px 16px 9px 40px; position: relative; font-size: 15px; }
+.checks li + li { border-top: .5px solid var(--sep); }
+.checks li::before { position: absolute; left: 14px; top: 8px; font-weight: 700; }
+.checks li.good::before { content: "✓"; color: var(--green); }
+.checks li.warn::before { content: "!"; color: var(--orange); left: 18px; }
+.checks li.bad::before { content: "✕"; color: var(--red); }
+.banner.bad { background: color-mix(in srgb, var(--red) 14%, var(--card)); }
 .empty { color: var(--secondary); text-align: center; padding: 18px 16px; font-size: 15px; }
 .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 @media (max-width: 520px) { .row { flex-wrap: wrap; } .actions { width: 100%; justify-content: flex-start; } h1 { font-size: 30px; } }
@@ -517,6 +727,7 @@ pre.message { white-space: pre-wrap; margin: 0; padding: 12px 16px; font: 14px/1
   <h1>Supporter Codes</h1>
   <p class="sub" id="sub">Codes are signed on this Mac. Nothing here is sent anywhere.</p>
   <div id="warn"></div>
+  <div id="stockWarn"></div>
 
   <div class="header">Ko-fi</div>
   <label class="drop" id="drop">
@@ -538,6 +749,10 @@ pre.message { white-space: pre-wrap; margin: 0; padding: 12px 16px; font: 14px/1
   </div>
   <div class="group" id="codes"></div>
 
+  <div class="header">Ko-fi worker</div>
+  <div class="group" id="worker"></div>
+  <div class="footer" id="workerFoot">The worker hands out codes minted here when Ko-fi reports a payment. The signing key stays on this Mac.</div>
+
   <div class="header">Make codes</div>
   <div class="group">
     <div class="row">
@@ -553,7 +768,7 @@ pre.message { white-space: pre-wrap; margin: 0; padding: 12px 16px; font: 14px/1
       <button class="tinted" id="makeReady">Make</button>
     </div>
     <div class="row">
-      <div class="main"><div class="title">For the Ko-fi worker</div><div class="detail" id="poolDetail">Written to tools/kofi-worker as SQL</div></div>
+      <div class="main"><div class="title" id="poolTitle">For the Ko-fi worker</div><div class="detail" id="poolDetail">Written to tools/kofi-worker as SQL</div></div>
       <button class="tinted" id="makePool">Make</button>
     </div>
   </div>
@@ -592,13 +807,15 @@ async function copy(text, what) { await navigator.clipboard.writeText(text); toa
 function render() {
   $("warn").innerHTML = state.encrypted ? "" : `<div class="banner"><b>${esc(state.key)} isn't encrypted.</b> Anyone who gets a copy of it can make codes. Run <code>./scripts/beta-code.py protect</code> once and keep the passphrase in your password manager.</div>`;
   const need = state.people.filter(p => p.owed.length), have = state.people.filter(p => !p.owed.length);
-  $("needHead").textContent = need.length ? `Needs a code · ${need.length}` : "Needs a code";
+  // Paid after the worker went live and still owed: the worker should have sent these, so they're flagged.
+  const missed = new Set((state.missed || []).map(m => m.key));
+  $("needHead").textContent = need.length ? `Needs a code · ${need.length}` + (missed.size ? ` · ${missed.size} missed by the worker` : "") : "Needs a code";
   $("need").innerHTML = need.length ? need.map(p => {
     const pays = p.payments.filter(x => !x.code);
     const ready = state.ready[p.months] || 0;
     return `<div class="row"><div class="main"><div class="title">${esc(p.name)}</div>
       <div class="detail">${pays.map(x => `${money(x)} ${esc(x.type.toLowerCase())}, ${day(x.date)}`).join(" · ")}${pays.some(x => x.message) ? "<br>“" + esc(pays.map(x => x.message).filter(Boolean).join(" ")) + "”" : ""}</div></div>
-      <div class="actions"><span class="pill need">${plural(p.months, "month")}</span>
+      <div class="actions">${missed.has(p.key) ? `<span class="pill bad" title="Paid after the worker went live, but it sent no code. Usually an empty pool.">Missed by the worker</span>` : ""}<span class="pill need">${plural(p.months, "month")}</span>
       <button class="tinted" data-give="${esc(p.key)}" data-months="${p.months}">${ready ? "Give a ready code" : "Mint a code"}</button></div></div>`;
   }).join("") : `<div class="empty">${state.people.length ? "Everyone who paid has a code." : "Import a Ko-fi CSV to see who needs a code."}</div>`;
   $("have").innerHTML = have.length ? have.map(p => {
@@ -620,9 +837,39 @@ function render() {
       <div class="detail">${c.months ? plural(c.months, "month") : c.expires ? "until " + c.expires : "no end"} · serial ${c.serial}${c.note ? " · " + esc(c.note) : ""}</div></div>
       ${c.status === "withdrawn" ? `<span class="pill bad">Withdrawn</span>` : c.status === "pool" ? `<span class="pill muted">Ko-fi pool</span>` : c.status === "spare" ? `<span class="pill muted">Spare</span>` : ""}
       <button data-show="${c.serial}">Show</button></div>`).join("") : `<div class="empty">None.</div>`;
+  renderWorker();
   $("mMonths").textContent = plural(months, "month"); $("mCount").textContent = count;
-  const pools = Object.entries(state.pools).map(([k, v]) => `${k}: ${v}`).join(", ");
-  $("poolDetail").textContent = pools ? `Written so far: ${pools}` : "Written to tools/kofi-worker as SQL";
+}
+
+let checkItems = null, testSteps = null;
+function renderWorker() {
+  const w = state.worker, set = w.url && w.hasToken;
+  const stock = w.stock || {};
+  const low = Object.entries(stock).filter(([, n]) => n < w.low);
+  $("stockWarn").innerHTML = set && low.length ? `<div class="banner ${low.some(([, n]) => n === 0) ? "bad" : ""}"><b>${low.map(([p, n]) => n === 0 ? `Pool ${esc(p)} is empty.` : `Pool ${esc(p)} has ${n} left.`).join(" ")}</b> ${low.some(([, n]) => n === 0) ? "Payments are getting no code until it's refilled." : "Refill it below before it runs out."}</div>` : "";
+  $("poolTitle").textContent = set ? "Send to the Ko-fi worker" : "For the Ko-fi worker";
+  $("poolDetail").textContent = set ? `Minted here, added to its m${months} pool` + (stock["m" + months] !== undefined ? ` (${stock["m" + months]} there now)` : "")
+    : (Object.keys(state.pools).length ? "Written so far: " + Object.entries(state.pools).map(([k, v]) => `${k}: ${v}`).join(", ") : "Written to tools/kofi-worker as SQL");
+  if (!set) {
+    $("worker").innerHTML = `
+      <div class="row"><div class="main"><div class="detail">Address</div><input class="field" id="wUrl" placeholder="https://folio-supporter-codes.<you>.workers.dev" value="${esc(w.url)}" autocomplete="off"></div></div>
+      <div class="row"><div class="main"><div class="detail">Admin token (the ADMIN_TOKEN secret)</div><input class="field" id="wToken" type="password" placeholder="${w.hasToken ? "Saved" : "Paste it here"}" autocomplete="off"></div></div>
+      <div class="row"><div class="main"></div><button class="tinted" id="wSave">Save</button></div>`;
+    return;
+  }
+  const when = t => t ? new Date(t).toLocaleString(undefined, {day: "numeric", month: "short", hour: "numeric", minute: "2-digit"}) : "never";
+  const items = checkItems || w.items;
+  $("worker").innerHTML = `
+    <div class="row"><div class="main"><div class="title">${esc(w.url.replace(/^https?:\/\//, ""))}</div>
+      <div class="detail">Checked ${when(w.checked)} · synced ${when(w.synced)}${w.since ? " · live since " + day(w.since) : ""}</div></div>
+      <button id="wEdit">Edit</button></div>
+    <div class="row"><div class="actions" style="justify-content:flex-start;width:100%">
+      <button class="tinted" id="wCheck">Check</button><button class="tinted" id="wTest">Test payment</button>
+      <button class="tinted" id="wSync">Sync</button></div></div>
+    ${items ? `<ul class="checks">${items.map(i => `<li class="${esc(i.level)}">${esc(i.text)}</li>`).join("")}</ul>` : ""}
+    ${testSteps ? `<div class="row"><div class="main"><div class="detail">Test payment</div></div></div><ul class="checks">${testSteps.map(t => `<li class="${t.ok ? "good" : "bad"}">${esc(t.step)}: ${esc(t.detail)}</li>`).join("")}</ul>` : ""}
+    <div class="row"><div class="main"><div class="title">Warn when a pool has fewer than</div></div>
+      <div class="stepper"><button data-low="-5" aria-label="Lower">−</button><span>${w.low}</span><button data-low="5" aria-label="Higher">+</button></div></div>`;
 }
 
 function show(c) {
@@ -665,7 +912,18 @@ document.addEventListener("click", async e => {
     else if (b.dataset.step) { months = Math.min(15, Math.max(1, months + +b.dataset.step)); render(); }
     else if (b.dataset.count) { count = Math.min(50, Math.max(1, count + +b.dataset.count)); render(); }
     else if (b.id === "makeReady") { b.disabled = true; await call("/api/ready", {months, count}); toast(`${plural(count, "code")} ready`); b.disabled = false; }
-    else if (b.id === "makePool") { b.disabled = true; const r = await call("/api/pool", {months, count}); toast("Written to " + r.written); b.disabled = false; }
+    else if (b.id === "makePool") {
+      b.disabled = true;
+      if (state.worker.url && state.worker.hasToken) { const r = await call("/api/worker/refill", {months, count}); toast(`${plural(r.refill.added, "code")} added to ${r.refill.pool}`); }
+      else { const r = await call("/api/pool", {months, count}); toast("Written to " + r.written); }
+      b.disabled = false;
+    }
+    else if (b.id === "wSave") { await call("/api/worker/settings", {url: $("wUrl").value, token: $("wToken").value}); toast("Saved"); }
+    else if (b.id === "wEdit") { state.worker.hasToken = false; renderWorker(); state.worker.hasToken = true; $("wToken").placeholder = "Saved (leave empty to keep it)"; }
+    else if (b.id === "wCheck") { b.disabled = true; const r = await call("/api/worker/check", {}); checkItems = r.items; renderWorker(); toast("Checked"); }
+    else if (b.id === "wTest") { b.disabled = true; const r = await call("/api/worker/test", {}); testSteps = r.test.steps; renderWorker(); toast(r.test.ok ? "The test payment worked" : "The test payment stopped"); }
+    else if (b.id === "wSync") { b.disabled = true; const r = await call("/api/worker/sync", {}); toast(`${plural(r.sync.updated, "code")} matched from the worker`); }
+    else if (b.dataset.low) { await call("/api/worker/settings", {low: Math.max(0, state.worker.low + +b.dataset.low)}); }
   } catch (err) { b.disabled = false; toast(err.message); }
 });
 $("close").onclick = () => $("sheet").close();
@@ -691,19 +949,33 @@ def main():
     parser.add_argument("--root", default=root, help="the checkout holding the key and trackers (default: this one)")
     parser.add_argument("--key", help="default: supporter-key.pem in --root")
     parser.add_argument("--ledger", help="default: supporter-ledger.json in --root")
-    parser.add_argument("--port", type=int, default=8770)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--no-open", action="store_true", help="print the address instead of opening it")
     args = parser.parse_args()
     key = args.key or os.path.join(args.root, "supporter-key.pem")
-    admin = Admin(args.root, key, args.ledger or os.path.join(args.root, "supporter-ledger.json"))
+    admin = Admin(args.root, key, args.ledger or os.path.join(args.root, "supporter-ledger.json"),
+                  os.path.join(args.root, "supporter-worker.json"))
     admin.unlock()
     adopted = admin.ledger.adopt_trackers(args.root)
     if adopted:
         admin.ledger.save()
         print(f"Took in {adopted} codes from the supporter-codes trackers.")
     token = secrets.token_urlsafe(24)
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler(admin, token, args.port))
-    url = f"http://127.0.0.1:{args.port}/?t={token}"
+    # Another copy of this page (or anything else) may hold the usual port; take the next free one rather than
+    # stopping with a stack trace. Only the port moves: the address is printed either way.
+    server, port = None, args.port
+    for port in range(args.port, args.port + 20):
+        try:
+            server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler(admin, token, port))
+            break
+        except OSError as taken:
+            if taken.errno != errno.EADDRINUSE or args.port != DEFAULT_PORT:
+                sys.exit(f"Can't listen on 127.0.0.1:{port}: {taken.strerror}")
+    if server is None:
+        sys.exit("Ports 8770 to 8789 are all busy; pass --port")
+    if port != args.port:
+        print(f"Port {args.port} is busy (another copy of this page?), so this one is on {port}.")
+    url = f"http://127.0.0.1:{port}/?t={token}"
     print(f"Supporter code admin on this Mac only: {url}\nCtrl-C to stop. The address changes every launch.")
     if not args.no_open:
         webbrowser.open(url)

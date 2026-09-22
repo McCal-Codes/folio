@@ -10,12 +10,15 @@ database_id = "paste-the-id-from-wrangler-d1-create"
 
 [vars]
 # Which payment earns which pool of codes. Anything not named here earns nothing.
-POOLS = '{"tiers":{"*":"beta"},"tipFrom":5,"tipPool":"beta"}'
+# McCal, 22 Sep 2026: a tip or donation of any size is one month; Backer and Builder payments are a month each;
+# Coffee carries no code. m1 is the one-month pool that scripts/code-admin.py mints and uploads.
+POOLS = '{"tiers":{"Backer":"m1","Builder":"m1"},"tipFrom":1,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
 MAIL_FROM = "Folio <folio@example.com>"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
 #   KOFI_TOKEN   the verification token from Ko-fi's Webhooks page
 #   RESEND_KEY   optional; without it codes are still claimed and recorded, just not emailed
+#   ADMIN_TOKEN  a long random string shared with scripts/code-admin.py (and Folio Dev); /admin/ is off without it
 
 # Supporters' beta builds. The worker reads a private repository with its own token and hands Folio a short-lived
 # download link; see the README. Leave BETA_REPO empty to turn the beta broker off.

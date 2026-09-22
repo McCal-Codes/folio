@@ -20,11 +20,14 @@ discover-probe/
 pool.sql
 **/pool.sql
 tools/kofi-worker/.wrangler/
+tools/kofi-worker/.dev.vars
 tools/kofi-worker/node_modules/
 supporter-key.pem
 supporter-codes*.txt
 # The code admin's ledger: every code with who it went to and their email (scripts/code-admin.py).
 supporter-ledger*.json
+# The worker's address and admin token, for the same page.
+supporter-worker*.json
 **/pool-*.sql
 
 # Jazzer's generated corpus (seeds live in market/src/test/resources)

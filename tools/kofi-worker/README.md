@@ -9,6 +9,32 @@ is ever broken into, the worst anyone gets is the codes already sitting in the p
 Ko-fi payment ──webhook──▶ worker ──▶ takes one unused code from D1 ──▶ emails it ──▶ Settings › Supporter
 ```
 
+## The short version (22 Sep 2026)
+
+Folio's own settings are already in `wrangler.toml`: a tip or donation of any size earns one month (`m1`), Backer and
+Builder payments earn a month each, and Coffee earns nothing. After deploying, the Mac's admin page
+(`scripts/code-admin.py`) does the rest: **Send to the Ko-fi worker** fills the pool, **Check** says whether
+everything is set, **Test payment** runs a pretend payment through and puts the code back, and **Sync** brings each
+hand-out into the ledger. The one-time steps, in order:
+
+```bash
+npx wrangler login
+npx wrangler d1 create folio-codes                      # paste the database_id into wrangler.toml
+npx wrangler d1 execute folio-codes --remote --file=schema.sql
+npx wrangler secret put KOFI_TOKEN                      # Ko-fi › Settings › API › Webhooks › Verification token
+npx wrangler secret put ADMIN_TOKEN                     # any long random string: openssl rand -base64 32
+npx wrangler secret put RESEND_KEY                      # optional, to email the codes; set MAIL_FROM too
+npx wrangler deploy                                     # prints the worker's address
+```
+
+Then paste that address into Ko-fi › Settings › API › Webhooks and press Ko-fi's Send test: the worker writes the
+test down and uses no code, and the admin page's Check shows it arrived. In the admin page's Ko-fi worker section,
+save the address and the same `ADMIN_TOKEN`, then Send to the Ko-fi worker to fill the pool and Check again.
+
+To try it all without an account: put `KOFI_TOKEN=...` and `ADMIN_TOKEN=...` in `.dev.vars` (gitignored), run
+`npx wrangler d1 execute folio-codes --local --file=schema.sql` and `npx wrangler dev --local`, and point the admin
+page at `http://127.0.0.1:8787`.
+
 ## Setting it up
 
 You need a Cloudflare account and `npx wrangler`. Everything below happens in this folder.
@@ -89,8 +115,10 @@ verified with Resend.
 
 **5. Point Ko-fi at it and test**
 
-Put the worker's URL in Ko-fi › Settings › Webhooks, then use Ko-fi's own "Send membership tier test" and "Send shop
-order test" buttons. Check what happened:
+Put the worker's URL in Ko-fi › Settings › Webhooks, then use Ko-fi's own test buttons. Ko-fi's tests carry the
+made-up transaction id `00000000-1111-2222-3333-444444444444`, which the worker writes down in `checks` and answers
+without using a code. For a test that does claim one, use the admin page's Test payment, which puts it back after.
+Check what happened:
 
 ```bash
 npx wrangler d1 execute folio-codes --remote --command "SELECT * FROM handled ORDER BY at DESC LIMIT 5"
@@ -121,10 +149,37 @@ Ko-fi retries a webhook until it gets a 200, so the worker records every `messag
 - **Folio is open source**, so anyone can build it without the check at all. Codes are a thank-you and a convenience,
   not a lock.
 
+## The admin routes
+
+Everything under `/admin/` needs `Authorization: Bearer <ADMIN_TOKEN>` and is off (503) until that secret is set.
+The Mac's admin page is the client; Folio Dev's "Hand out a code" will be the second.
+
+| Route | What it does |
+| --- | --- |
+| `GET /admin/health` | Which secrets are set, POOLS, stock per pool against the pools POOLS names, problems, the last Ko-fi test, five unused codes per pool so the Mac can check they carry its signature |
+| `GET /admin/recent` | Every hand-out, newest first: Ko-fi transaction id, name, type, amount, code, pool, emailed |
+| `POST /admin/pool` | `{pool, codes}`: add codes minted on the Mac. Anything that isn't shaped like a Folio code is refused |
+| `POST /admin/test` | A pretend payment through the real rules and claim, then the code goes back and the payment is forgotten |
+| `POST /admin/claim` | `{pool, name}`: one code by hand, recorded as `by_hand` |
+
+`handled` now keeps the Ko-fi transaction id, name, type, amount and currency next to each code, which is what lets
+the Mac match a hand-out to its CSV. The email address is still used to send the code and never stored. A worker
+created before these columns needs them added once:
+
+```bash
+for column in "transaction_id TEXT NOT NULL DEFAULT ''" "from_name TEXT NOT NULL DEFAULT ''" \
+  "type TEXT NOT NULL DEFAULT ''" "amount TEXT NOT NULL DEFAULT ''" "currency TEXT NOT NULL DEFAULT ''" \
+  "by_hand INTEGER NOT NULL DEFAULT 0"; do
+  npx wrangler d1 execute folio-codes --remote --command "ALTER TABLE handled ADD COLUMN $column"
+done
+npx wrangler d1 execute folio-codes --remote --file=schema.sql   # adds the checks table
+```
+
 ## Tests
 
 ```bash
 node worker.test.mjs
+node admin.test.mjs     # the admin routes and the webhook against real SQLite with schema.sql (Node 22+)
 ```
 
 No account and no network: the database and the mailer are stood in for.
