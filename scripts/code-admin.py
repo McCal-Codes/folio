@@ -219,8 +219,11 @@ class Worker:
             raise ValueError("Add the worker's address and admin token first")
         request = urllib.request.Request(self.settings["url"] + path, method=method,
                                          data=None if body is None else json.dumps(body).encode(),
+                                         # Cloudflare turns away Python's default user agent with a 403 (error
+                                         # 1010), so the page says who it is.
                                          headers={"Authorization": "Bearer " + self.settings["token"],
-                                                  "Content-Type": "application/json"})
+                                                  "Content-Type": "application/json",
+                                                  "User-Agent": "folio-code-admin"})
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
                 return json.load(response)
@@ -361,6 +364,9 @@ class Admin:
             else "No RESEND_KEY: codes are claimed and recorded, but you send them by hand")
         if c["resendKey"] and not c["mailFrom"]:
             add("bad", "MAIL_FROM is still the example address; Resend will refuse it")
+        if not h.get("columns", True):
+            add("bad", "The worker's database is missing the columns that record who got each code. "
+                       "The fix is in tools/kofi-worker/README.md, under The admin routes")
         stock = {row["pool"]: row for row in h["stock"]}
         low = self.worker.settings.get("low", 10)
         for pool in h["wanted"] or ["m1"]:
