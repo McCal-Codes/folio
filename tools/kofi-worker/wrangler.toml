@@ -21,13 +21,14 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 # One-offs get one month (m1): $3 buys a month wherever it is paid, and tips under $3 are a thank-you rather than a
 # purchase. The shop item goes here too once it exists.
 #
-# No "thanks" pool of codes that never run out (McCal, 23 Sep): a lasting code can only be taken back by withdrawing
-# its serial in an app update, so Builder is treated like any other tier until the Supporter badge is really built.
-# $15 or more draws from `thanks` instead: the same one month, on a code that also carries the lasting Supporter
-# badge (0.6.7). Builder is $15 a month, so it is named; every other tier falls to "*".
+# The badge is built now (#89), so $15 or more earns it again (McCal, 23 Sep). Nothing here lasts for ever: a
+# `thanks` code runs out like any other, and all it does on the way in is have Folio write down the month, which is
+# what the badge shows. So there is no serial to withdraw later, which was the worry when it was dropped.
+# Builder is $15 a month, so it draws from `m2thanks`: two months, like every other tier, on a code that carries
+# the badge. A one-off of $15 or more draws from `thanks`: one month, as one-offs are, with the badge.
 # A shop item is the simplest thing to sell: someone buys it, Ko-fi calls the worker, the worker emails a code.
 # Add it under "shop" with the item's direct_link_code (the last part of its Ko-fi link) - see the README.
-POOLS = '{"tiers":{"*":"m2"},"shop":{},"tipFrom":3,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
+POOLS = '{"tiers":{"*":"m2","Builder":"m2thanks"},"shop":{},"tipBands":[{"from":15,"pool":"thanks"}],"tipFrom":3,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
 MAIL_FROM = "Folio <folio@foliolauncher.com>"   # needs the domain verified with Resend before it will send
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):

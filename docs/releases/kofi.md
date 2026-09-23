@@ -298,8 +298,8 @@ becomes real with the first one, and *This week in Folio* is the shape suggested
 
 ### The copy for each Ko-fi field
 
-Drafted 22 Sep 2026 and re-cut on the 23rd for the one rule: every payment earns one month of the code, whatever
-the tier and whatever the amount, and $15 or more also earns the lasting Supporter badge. The only promises here
+Drafted 22 Sep 2026 and re-cut on the 23rd for the rule as it stands: a month of any tier earns two months of the
+code, a one-off of $3 or more earns one, and $15 or more also earns the lasting Supporter badge. The only promises here
 about something unbuilt are the ones marked 0.6.7 (the badge and the Supporters list, mockup
 `docs/mockups/lasting-supporter.html`). "Within a day" is honest until `RESEND_KEY` is set; when it is, those lines
 become "your code is in this message".
@@ -315,7 +315,7 @@ become "your code is in this message".
 
 **Coffee · $3 a month — description**
 
-> A coffee a month, and the work keeps going. It comes with a supporter code for that month: the Folio Market
+> A coffee a month, and the work keeps going. It comes with a supporter code good for two months: the Folio Market
 > before it opens to everyone, Keyd, and the betas. You also get supporters-only posts, design previews of screens
 > I'm still deciding on, a vote on what I build next after each update, and the supporter role in the Folio
 > Discord. Folio remains Folio whether you support development or not.
@@ -325,8 +325,8 @@ become "your code is in this message".
 > Thank you for backing Folio.
 >
 > Your supporter code is coming in a separate message within a day. To use it: Folio › Settings › Supporter ›
-> Redeem a Code. It opens the Market, adds Keyd, and turns on beta builds, for a month, and a new one comes with
-> each month's payment.
+> Redeem a Code. It opens the Market, adds Keyd, and turns on beta builds for two months, and a new code comes with
+> each month's payment, so there is always time in hand.
 >
 > You'll also get supporters-only posts here before they go public, design previews of what I'm working on, and a
 > vote on what comes next after each update. The next vote is on the order I build 0.6.7 in.
@@ -351,7 +351,7 @@ become "your code is in this message".
 > a Code. It opens the Market, adds Keyd, and turns on beta builds.
 >
 > The code is checked on your phone against a key inside Folio, so it works offline and tells me nothing about who
-> redeemed it. It lasts one month from the day you redeem it, and a new one comes with each month's payment.
+> redeemed it. It lasts two months from the day you redeem it, and a new one comes with each month's payment.
 >
 > Betas can have more bugs than releases. Settings › Software Update › Beta Updates turns them off whenever you like.
 >
@@ -373,7 +373,7 @@ become "your code is in this message".
 >
 > Your supporter code is coming in a separate message within a day. In Folio: Settings › Supporter › Redeem a Code.
 > It opens the Market, adds Keyd, and brings the betas as soon as they exist. A new code comes with each month's
-> payment, and each one lasts a month.
+> payment, and each one lasts two months and carries the lasting Folio Supporter badge.
 >
 > Your support also earns the lasting Folio Supporter badge in the app, which stays for good, not just while a code
 > is live. It arrives in 0.6.7. Want your name in Settings › Supporters? Reply here and tell me how to write it.
@@ -388,7 +388,7 @@ become "your code is in this message".
 
 **One-time support — the support box**
 
-> Not after a monthly thing? A one-off works too. Any amount earns a one-month supporter code: the Market, Keyd and
+> Not after a monthly thing? A one-off works too. $3 or more earns a one-month supporter code: the Market, Keyd and
 > the betas, and each payment counts, so two tips are two months. $15 or more also earns the lasting Folio
 > Supporter badge, and your name in Supporters if you'd like. (The badge and the list arrive in 0.6.7.) The Discord
 > role goes with the monthly tiers.
@@ -446,9 +446,11 @@ channel on, so the app can't separate "the store" from "the builds". The only sc
 difference Folio can't really express, and a $3 shop item would have undercut it regardless. One rule, one sentence:
 $3 is a month, wherever you pay it.
 
-**On top of it, the lasting badge (McCal, 22 Sep 2026):** a payment of **$15 or more**, a bigger tip or a month of
-Builder, draws its code from the `thanks` pool instead of `m1`. Same one month, on a code that also carries the
-lasting Supporter badge (0.6.7, `BetaCodes.SCOPE_THANKS`). It buys recognition, not more time.
+**On top of it, the lasting badge (McCal, 22 Sep, restored 23 Sep once it was built):** **$15 or more** earns the
+lasting Supporter badge as well. A month of Builder draws from `m2thanks` (two months, like every tier, plus the
+badge) and a one-off of $15 or more from `thanks` (one month, as one-offs are, plus the badge). It buys recognition,
+not more time, and these codes run out like any other: redeeming one only has Folio write down the month, so there
+is no lasting code to withdraw later.
 
 *Superseded (22 Sep):* Backer and Builder only, with Coffee carrying no code.
 
