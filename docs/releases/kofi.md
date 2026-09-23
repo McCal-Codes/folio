@@ -186,20 +186,20 @@ app does, or - the last line - his answer about where the money goes. Nothing he
 edit since: the code goes into Settings › Supporter, because Early access moved there when the two supporter-code
 systems became one.
 
-> Folio Launcher: a clean, iPhone-style Home Screen for Android — with the jailbreak tweaks I always wanted, and none
+> Folio Launcher: a clean, iPhone-style Home Screen for Android, with the jailbreak tweaks I always wanted, and none
 > of the lockdown.
 >
 > This gets you the **Folio Market** before it opens to everyone. It's how Folio hands out themes, tweaks and layouts: packages
 > you can get, remove and undo, from sources you choose. Every page says what a package changes and what it can't
 > reach before you get it.
 >
-> The tweaks are the ones I missed from jailbreaking — I've been in that world since iOS 7 or 8. Cabinet after Velox,
+> The tweaks are the ones I missed from jailbreaking. I've been in that world since iOS 7 or 8. Cabinet after Velox,
 > Harborline after Harbor, Roll Call after Axon, Palette after Velvet, Colored Albums after ColorFlow. All re-created
 > from scratch for Android; none of their code is in here, and everyone is credited in the app.
 >
 > You'll get a code to paste into Settings › Supporter, and the store appears.
 >
-> Everything in the Market is already in Folio's Settings — this is a head start, not a paywall. Folio is free and
+> Everything in the Market is already in Folio's Settings. This is a head start, not a paywall. Folio is free and
 > open source and stays that way, and nothing that has already shipped will ever move behind a code. There's no
 > account: the code is checked on your phone, and nothing about you is stored or sent.
 >
