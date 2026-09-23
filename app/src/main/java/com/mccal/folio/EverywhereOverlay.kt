@@ -488,7 +488,7 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
     // Full-screen apps are handled by the service, which takes the whole window away.
     val alpha by androidx.compose.animation.core.animateFloatAsState(
         if (faded) .35f else 1f, androidx.compose.animation.core.tween(350), label = "button bar")
-    val ink = if (s.light) androidx.compose.ui.graphics.Color(0xFF1C1C1E) else androidx.compose.ui.graphics.Color.White
+    val ink = if (s.light) FolioColors.SecondaryBackground else androidx.compose.ui.graphics.Color.White
     val actions = listOf(
         Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "Recent apps", Icons.Rounded.Menu),
         Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "Home", Icons.Rounded.Circle),
@@ -506,7 +506,7 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
                     onDrag = { change, drag -> change.consume(); onLift(drag.y, false) })
             }
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(s.height.dp / 2))
-            .background(if (s.light) androidx.compose.ui.graphics.Color.White.copy(alpha = .72f) else androidx.compose.ui.graphics.Color(0xFF1C1C1E).copy(alpha = .62f))
+            .background(if (s.light) androidx.compose.ui.graphics.Color.White.copy(alpha = .72f) else FolioColors.SecondaryBackground.copy(alpha = .62f))
             .border(1.dp, (if (s.light) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White).copy(alpha = if (s.light) .08f else .28f),
                 androidx.compose.foundation.shape.RoundedCornerShape(s.height.dp / 2)),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

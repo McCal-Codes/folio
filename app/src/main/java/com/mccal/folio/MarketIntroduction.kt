@@ -47,7 +47,7 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
     Box(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
         Text(
             stringResource(R.string.skip),
-            color = Color(0xFF0A84FF), fontSize = 16.sp,
+            color = FolioColors.Blue, fontSize = 16.sp,
             modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(12.dp))
                 .clickable(onClickLabel = stringResource(R.string.skip_the_introduction), onClick = onDone).padding(horizontal = 12.dp, vertical = 8.dp),
         )
@@ -91,7 +91,7 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
             Text(
                 stringResource(if (step < 2) R.string.next else R.string.start),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFF0A84FF))
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
                     .clickable(onClickLabel = if (step < 2) nextStep else openMarket) {
                         if (step < 2) step++ else onDone()
                     }
@@ -116,7 +116,7 @@ private fun StyleCard(option: FeaturedStyle, chosen: Boolean, onChoose: () -> Un
     val name = stringResource(option.label)
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF2C2C2E))
-            .border(if (chosen) 2.dp else 0.dp, if (chosen) Color(0xFF0A84FF) else Color.Transparent, RoundedCornerShape(16.dp))
+            .border(if (chosen) 2.dp else 0.dp, if (chosen) FolioColors.Blue else Color.Transparent, RoundedCornerShape(16.dp))
             .clickable(role = Role.RadioButton, onClickLabel = name, onClick = onChoose)
             .padding(14.dp),
     ) {

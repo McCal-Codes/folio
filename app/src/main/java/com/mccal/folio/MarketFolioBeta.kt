@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.sp
 /** Stands in for an address, so the Sources tab can open Folio Beta like any other source. */
 internal const val FOLIO_BETA_SOURCE_URL = "folio://beta/"
 
-private val BetaOrange = Color(0xFFFF9F0A)
+private val BetaOrange = FolioColors.Orange
 
 /** The Sources tab's Folio Beta row, marked as the supporter's, with "Update available" when there's a newer beta. */
 @Composable
@@ -101,8 +101,8 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
                 Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.back), onClick = onBack).padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = Color(0xFF0A84FF), modifier = Modifier.size(18.dp))
-                Text(backTitle, color = Color(0xFF0A84FF), fontSize = 16.sp)
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = FolioColors.Blue, modifier = Modifier.size(18.dp))
+                Text(backTitle, color = FolioColors.Blue, fontSize = 16.sp)
             }
         }
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {

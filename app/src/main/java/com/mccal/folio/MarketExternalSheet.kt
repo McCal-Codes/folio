@@ -72,7 +72,7 @@ internal fun MarketExternalSheet(
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                         .testTag("market-external-here"),
                 ) {
-                    Text(label, color = Color(0xFF0A84FF), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(label, color = FolioColors.Blue, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     Text(
                         stringResource(R.string.folio_downloads_it_and_android_asks),
                         color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
@@ -114,7 +114,7 @@ internal fun MarketExternalSheet(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
             Text(
                 stringResource(R.string.cancel),
-                color = Color(0xFF0A84FF), fontSize = 16.sp,
+                color = FolioColors.Blue, fontSize = 16.sp,
                 modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
             )

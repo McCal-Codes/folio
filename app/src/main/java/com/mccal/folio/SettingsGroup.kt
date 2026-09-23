@@ -107,6 +107,6 @@ private class FloatArrayList {
 /** A blue action row, like a button cell in iOS Settings: the text lines up with the other rows' labels. */
 @Composable
 internal fun CardAction(label: String, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
-    Text(label, color = Color(if (destructive) 0xFFFF453A else 0xFF0A84FF).copy(alpha = if (enabled) 1f else .4f), fontSize = 17.sp,
-        modifier = modifier.heightIn(min = 48.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
+    Text(label, color = Color(if (destructive) 0xFFFF453A else 0xFF0A84FF).copy(alpha = if (enabled) 1f else .4f), fontSize = FolioType.BODY.sp,
+        modifier = modifier.heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
 }

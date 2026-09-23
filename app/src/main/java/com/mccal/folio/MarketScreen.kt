@@ -512,7 +512,7 @@ internal fun MarketScreen(
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { importing = null }) {
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color(0xFF1C1C1E))
+                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
                         .clickable(enabled = false) {},
                 ) {
                     // A file can carry its author's own signature now, so say which it is rather than assuming.
@@ -555,7 +555,7 @@ internal fun MarketScreen(
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { addingSource = false }) {
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color(0xFF1C1C1E))
+                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
                         .clickable(enabled = false) {},
                 ) {
                     MarketAddSourceSheet(
@@ -584,7 +584,7 @@ internal fun MarketScreen(
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f))) {
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color(0xFF1C1C1E)),
+                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground),
                 ) {
                     MarketTrustSheet(
                         url = request.url,
@@ -610,7 +610,7 @@ internal fun MarketScreen(
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { choosing = null }) {
                     Box(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color(0xFF1C1C1E))
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
                             .clickable(enabled = false) {},
                     ) {
                         val listing = entries.first { it.listingKey == key }
@@ -642,7 +642,7 @@ internal fun MarketScreen(
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { confirming = null }) {
                     Box(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color(0xFF1C1C1E))
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
                             .clickable(enabled = false) {},
                     ) {
                         MarketInstallSheet(
@@ -667,7 +667,7 @@ internal fun MarketScreen(
 
 @Composable
 private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(Color(0xFF1C1C1E)).padding(vertical = 6.dp)) {
+    Row(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = 6.dp)) {
         for (tab in MarketTab.entries) {
             Column(
                 Modifier.weight(1f).marketTab(tab, onSelect).padding(vertical = 4.dp),
@@ -687,7 +687,7 @@ private enum class TabPlacement { BOTTOM, RAIL, SIDEBAR }
 @Composable
 private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     Column(
-        Modifier.width(76.dp).fillMaxHeight().background(Color(0xFF1C1C1E)).padding(vertical = 8.dp),
+        Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground).padding(vertical = 8.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -707,7 +707,7 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
 @Composable
 private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     Column(
-        Modifier.width(180.dp).fillMaxHeight().background(Color(0xFF1C1C1E))
+        Modifier.width(180.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)
             .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 8.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -719,7 +719,7 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
             val on = tab == selected
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (on) Color(0xFF0A84FF) else Color.Transparent)
+                    .background(if (on) FolioColors.Blue else Color.Transparent)
                     .marketTab(tab, onSelect).padding(horizontal = 12.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -746,12 +746,12 @@ private fun Modifier.marketTab(tab: MarketTab, onSelect: (MarketTab) -> Unit) =
 @Composable
 private fun MarketTabIcon(tab: MarketTab, on: Boolean) = Icon(
     tab.icon, contentDescription = null, modifier = Modifier.size(22.dp),
-    tint = if (on) Color(0xFF0A84FF) else Color.White.copy(alpha = .55f),
+    tint = if (on) FolioColors.Blue else Color.White.copy(alpha = .55f),
 )
 
 @Composable
 private fun MarketTabLabel(tab: MarketTab, on: Boolean) = Text(
-    stringResource(tab.label), color = if (on) Color(0xFF0A84FF) else Color.White.copy(alpha = .55f), fontSize = 11.sp,
+    stringResource(tab.label), color = if (on) FolioColors.Blue else Color.White.copy(alpha = .55f), fontSize = 11.sp,
     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
 )
 
@@ -933,7 +933,7 @@ private fun MarketRow(
             }
             when (entry.clash) {
                 MarketEntry.Impostor.BUILT_IN ->
-                    Text(stringResource(R.string.claims_a_folio_package_s_name), color = Color(0xFFFF453A), fontSize = 12.sp)
+                    Text(stringResource(R.string.claims_a_folio_package_s_name), color = FolioColors.Red, fontSize = 12.sp)
                 MarketEntry.Impostor.ANOTHER_SOURCE ->
                     Text(stringResource(R.string.another_source_offers_this_name_too), color = Color(0xFFFFB340), fontSize = 12.sp)
                 null -> Unit
@@ -947,7 +947,7 @@ private fun MarketRow(
             entry.revokedReason != null -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
-                Text(stringResource(R.string.refused), color = Color(0xFFFF453A), fontSize = 13.sp)
+                Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = 13.sp)
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
             update -> MarketActionButton(R.string.update, name, onGet)
             // An app of its own isn't installed by Folio, so what it offers is Get until Android has it, then Open.
@@ -1022,7 +1022,7 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
     val described = stringResource(R.string.text_1_s_2_s, stringResource(label), name)
     Text(
         stringResource(label),
-        color = Color(0xFF0A84FF),
+        color = FolioColors.Blue,
         fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
@@ -1076,9 +1076,9 @@ private fun MarketPackagePage(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = Color(0xFF0A84FF), modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = FolioColors.Blue, modifier = Modifier.size(18.dp))
                 // Where Back goes, as on iPhone ("‹ Packages"); TalkBack still hears "Back" as the action.
-                Text(backTitle ?: backLabel, color = Color(0xFF0A84FF), fontSize = 16.sp)
+                Text(backTitle ?: backLabel, color = FolioColors.Blue, fontSize = 16.sp)
             }
         }
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1107,7 +1107,7 @@ private fun MarketPackagePage(
                         // fault; Remove, below, is the other way out.
                         Text(
                             stringResource(R.string.try_again),
-                            color = Color(0xFF0A84FF), fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                            color = FolioColors.Blue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(12.dp))
                                 .clickable(onClick = onTryAgain).heightIn(min = 44.dp)
                                 .padding(vertical = 11.dp).testTag("package-try-again"),
@@ -1295,7 +1295,7 @@ private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Un
     ) {
         Text(text, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         if (undo != null) {
-            Text(stringResource(R.string.undo), color = Color(0xFF0A84FF), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
+            Text(stringResource(R.string.undo), color = FolioColors.Blue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
         }
     }
 }
@@ -1477,14 +1477,14 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
                 androidx.compose.material3.CircularProgressIndicator(
                     progress = { fraction },
                     modifier = Modifier.size(26.dp),
-                    color = Color(0xFF0A84FF),
+                    color = FolioColors.Blue,
                     trackColor = Color.White.copy(alpha = .16f),
                     strokeWidth = 3.dp,
                 )
             } else {
                 androidx.compose.material3.CircularProgressIndicator(
                     modifier = Modifier.size(26.dp),
-                    color = Color(0xFF0A84FF),
+                    color = FolioColors.Blue,
                     trackColor = Color.White.copy(alpha = .16f),
                     strokeWidth = 3.dp,
                 )
@@ -1495,12 +1495,12 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
 
 /** iOS system colours, one per section, so a package's tile says what kind of thing it is before you read it. */
 private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when (section) {
-    com.mccal.folio.market.Section.THEMES -> Color(0xFF5E5CE6)
-    com.mccal.folio.market.Section.TWEAKS -> Color(0xFF0A84FF)
-    com.mccal.folio.market.Section.LAYOUTS -> Color(0xFF30D158)
-    com.mccal.folio.market.Section.WALLPAPERS -> Color(0xFFFF9F0A)
-    com.mccal.folio.market.Section.SCRIPTS -> Color(0xFFFF375F)
-    null -> Color(0xFF8E8E93)
+    com.mccal.folio.market.Section.THEMES -> FolioColors.Indigo
+    com.mccal.folio.market.Section.TWEAKS -> FolioColors.Blue
+    com.mccal.folio.market.Section.LAYOUTS -> FolioColors.Green
+    com.mccal.folio.market.Section.WALLPAPERS -> FolioColors.Orange
+    com.mccal.folio.market.Section.SCRIPTS -> FolioColors.Pink
+    null -> FolioColors.Gray
 }
 
 /**
