@@ -191,10 +191,13 @@ install. Then press Home and pick Folio, or open Folio and tap **Set as home app
 
 <p align="center">
   <a href="https://github.com/McCal-Codes/folio/releases/latest"><img src="https://img.shields.io/badge/Download-Folio%20APK-2E5E66?style=for-the-badge&logo=android&logoColor=white" alt="Download the latest Folio APK"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522com.mccal.folio%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FMcCal-Codes%252Ffolio%2522%252C%2522author%2522%253A%2522McCal-Codes%2522%252C%2522name%2522%253A%2522Folio%2522%257D"><img src="https://img.shields.io/badge/Add%20to-Obtainium-6DB7B4?style=for-the-badge&logo=android&logoColor=white" alt="Add Folio to Obtainium"></a>
 </p>
 
-To get updates automatically, add this repo to [Obtainium](https://github.com/ImranR98/Obtainium), which installs and
-updates apps from GitHub Releases.
+**Updates on their own:** tap **Add to Obtainium** above on your phone.
+[Obtainium](https://github.com/ImranR98/Obtainium) installs and updates apps straight from GitHub Releases, so Folio
+updates like any other app without a store. The button opens Obtainium with Folio already filled in; without Obtainium
+installed it explains what it is first.
 
 Each release lists the APK's SHA-256 and the signing certificate, so you can check an update comes from the same key.
 Folio's signing certificate SHA-256 is `bad8e099557b70c690e71a3fffe13561c8662c20612047ce1e2559a1c14d8441`.
