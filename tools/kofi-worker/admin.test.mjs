@@ -126,6 +126,20 @@ test('the test payment runs the real claim and puts the code back', async () => 
   assert.equal(coffee.steps[0].detail, 'this payment earns nothing')
 })
 
+test('a database missing the newer columns is reported, and strands no code', async () => {
+  const DB = d1()
+  // The shape a worker deployed before those columns has: this really happened on the live one.
+  DB.db.exec('DROP TABLE handled')
+  DB.db.exec(`CREATE TABLE handled (message_id TEXT PRIMARY KEY, code TEXT NOT NULL, pool TEXT NOT NULL,
+    at TEXT NOT NULL, emailed INTEGER NOT NULL DEFAULT 0)`)
+  await worker.fetch(call('/admin/pool', { method: 'POST', body: { pool: 'm1', codes: [code(1)] } }), env(DB))
+  const h = await (await worker.fetch(call('/admin/health'), env(DB))).json()
+  assert.equal(h.columns, false)
+  const failed = await worker.fetch(call('/admin/test', { method: 'POST' }), env(DB))
+  assert.equal(failed.status, 400)
+  assert.equal(await stock(DB), 1, 'the code goes back when recording it fails')
+})
+
 test('a hand-out from Folio Dev is recorded as by hand', async () => {
   const DB = d1()
   await worker.fetch(call('/admin/pool', { method: 'POST', body: { pool: 'm1', codes: [code(1)] } }), env(DB))

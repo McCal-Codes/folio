@@ -54,8 +54,16 @@ async function health(env) {
   const samples = await env.DB.prepare(
     `SELECT pool, code FROM (SELECT pool, code, ROW_NUMBER() OVER (PARTITION BY pool ORDER BY code) AS n
        FROM codes WHERE used_at IS NULL) WHERE n <= 5`).all()
+  // A database made before the Mac's columns existed takes a code and then fails to write down who got it.
+  let columns = true
+  try {
+    await env.DB.prepare('SELECT transaction_id, from_name, type, amount, currency, by_hand FROM handled LIMIT 1').all()
+  } catch {
+    columns = false
+  }
   return {
     ok: true,
+    columns,
     configured: {
       kofiToken: Boolean(env.KOFI_TOKEN),
       resendKey: Boolean(env.RESEND_KEY),

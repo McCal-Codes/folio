@@ -164,13 +164,20 @@ async function claimCode(env, pool, data) {
     `UPDATE codes SET used_at = ?1 WHERE code = (SELECT code FROM codes WHERE pool = ?2 AND used_at IS NULL LIMIT 1)
      RETURNING code`).bind(new Date().toISOString(), pool).first()
   if (!taken?.code) return null
+  try {
   // Who and which Ko-fi transaction, so the Mac's ledger can match this code to the CSV. The email address is used
   // to send the code and never stored.
-  await env.DB.prepare(
-    `INSERT INTO handled (message_id, code, pool, at, emailed, transaction_id, from_name, type, amount, currency, by_hand)
-     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`)
-    .bind(data.message_id, taken.code, pool, new Date().toISOString(), data.kofi_transaction_id ?? '',
-      data.from_name ?? '', data.type ?? '', String(data.amount ?? ''), data.currency ?? '', data.by_hand ? 1 : 0).run()
+    await env.DB.prepare(
+      `INSERT INTO handled (message_id, code, pool, at, emailed, transaction_id, from_name, type, amount, currency, by_hand)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`)
+      .bind(data.message_id, taken.code, pool, new Date().toISOString(), data.kofi_transaction_id ?? '',
+        data.from_name ?? '', data.type ?? '', String(data.amount ?? ''), data.currency ?? '', data.by_hand ? 1 : 0).run()
+  } catch (problem) {
+    // Writing down who got it failed, so nobody has it: put it back rather than leaving a code used by nothing.
+    // (It happened once for real: a database made before the transaction_id column existed.)
+    await env.DB.prepare('UPDATE codes SET used_at = NULL WHERE code = ?').bind(taken.code).run()
+    throw problem
+  }
   return taken.code
 }
 
