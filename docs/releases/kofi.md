@@ -264,17 +264,24 @@ unlock, so the perks can move without the name lying, and $15 reads as funding t
 launcher. Drafts below — **the words are McCal's.** Images: `lab/walls/kofi-tiers/{coffee,backer,builder}.jpg`,
 1600 × 800, from `lab/kofi-tiers.html`.
 
+**Re-cut 23 Sep 2026**, once every tier earned the code:
+
 | | Coffee $3 | Backer $7 | Builder $15 |
 |---|---|---|---|
+| A supporter code each month: the Market, Keyd and the betas | ✓ | ✓ | ✓ |
 | Supporters-only posts, before the public ones | ✓ | ✓ | ✓ |
 | Design previews of what's being built | ✓ | ✓ | ✓ |
 | A vote on what comes after each update | ✓ | ✓ | ✓ |
-| A code for the Market, before it ships | | ✓ | ✓ |
-| Keyd, the keyboard extras | | ✓ | ✓ |
-| Preview builds when there's something to try | | ✓ | ✓ |
-| Beta builds as soon as they exist | | | ✓ |
+| Preview builds as soon as there's something to try | | ✓ | ✓ |
+| Folio updating itself from the Market, on the beta channel (0.6.8) | | ✓ | ✓ |
 | Development posts as the work happens | | | ✓ |
 | Tweak and theme requests read first | | | ✓ |
+
+**Keyd is not a tier difference** (decided 23 Sep, after checking the code). Redeeming any code adds the supporter
+source, which is where Keyd lives, so every supporter can install it. The `keys` scope only shows the KEYD card in
+Settings › Supporter. Making Keyd a Backer perk would mean gating the supporter source on that scope in the app, and
+it would take something away from codes already out; Backer's difference is the preview builds and the Folio Beta
+source instead.
 
 **Backer is the card that leads** — more benefits, the "everything in Coffee, plus" framing, and a lighter card with
 a teal ring around it. No "best value", no scarcity; the weight is in the design, not the shouting.
