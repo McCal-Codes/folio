@@ -1361,4 +1361,24 @@
     <string name="keyd_where_to_get_it">Keyd 是一个单独的 App，因为 Android 要求键盘必须是独立的输入法。你的代码已把它的源添加到 Market 中，所以可以直接获取。它不申请任何权限，连网络权限也没有。</string>
     <string name="refresh_icons">刷新图标</string>
     <string name="refresh_icons_note">如果主题应用更改了图标，而 Folio 仍显示旧图标，可在这里重新载入。</string>
+    <!-- Folio Beta, the supporters' source in the Market (0.6.7). -->
+    <string name="folio_beta_for_supporters">仅限支持者 · 用你的代码验证</string>
+    <string name="update_available">有可用更新</string>
+    <string name="you_re_on">当前版本</string>
+    <string name="newest_beta">最新测试版</string>
+    <string name="checked">检查时间</string>
+    <string name="never">从未</string>
+    <string name="folio_beta_page_note">测试版会先带来新功能，也可能有更多问题。在“设置 › 软件更新 › 测试版更新”中可以关闭，关闭后你会停留在当前测试版，直到有更新的正式版。</string>
+    <string name="beta_updates_are_off_here">测试版更新已关闭，所以 Folio 只会查找正式版。打开后即可在这里获取测试版。</string>
+    <string name="turn_on_beta_updates">打开测试版更新</string>
+    <!-- The lasting Supporter badge and the Supporters list (0.6.7). -->
+    <string name="supporters">支持者</string>
+    <string name="settings_keywords_supporters">支持者 感谢 名单 ko-fi</string>
+    <string name="folio_supporter">Folio 支持者</string>
+    <string name="since_1_s">自 %1$s 起</string>
+    <string name="thank_you_this_stays_on_your_phone_for">谢谢你。这个标记会一直留在你的手机上，即使代码到期也不会消失。</string>
+    <string name="supporter_badge">支持者标记</string>
+    <string name="people_who_backed_folio_with_15_or_more">以 15 美元及以上支持 Folio，并同意把名字放在这里的人。谢谢你们。</string>
+    <string name="no_names_yet_yours_could_be_the_first">目前还没有名字。你的可以是第一个。</string>
+    <string name="backed_folio_and_want_your_name_here">支持了 Folio，想把名字放在这里？回复你的 Ko-fi 感谢消息告诉我。想撤下名字也是一样。</string>
 </resources>

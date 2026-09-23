@@ -35,6 +35,13 @@ internal object Supporter {
      */
     private const val SEEN = "supporter_seen"
 
+    /**
+     * The month this phone first redeemed a code carrying [BetaCodes.SCOPE_THANKS], as YYYY-MM. It is a thank-you
+     * for $15 or more, so it outlives the code: it survives the months running out and [remove], and it never
+     * moves once written. Nothing is sent anywhere; Folio only knows it because the code said so, offline.
+     */
+    private const val BADGE = "supporter_badge_since"
+
     /** Public keys a code may be signed with: McCal's, plus a test key the dev build (com.mccal.folio.dev) accepts. */
     internal fun keys(context: Context): List<String> = listOfNotNull(
         BetaKeys.SUPPORTER.takeIf { it.isNotBlank() },
@@ -165,6 +172,13 @@ internal object Supporter {
             runCatching { onBetaChannel(true) }
         }
         if (first) runCatching { onSupporterSource(true) }
+        // Written once, and kept for good: a later code without the scope never takes the badge away.
+        if (BetaCodes.SCOPE_THANKS in code.scopes) {
+            val prefs = context.getSharedPreferences(PREFS, 0)
+            if (prefs.getString(BADGE, null) == null) {
+                prefs.edit().putString(BADGE, "%04d-%02d".format(judged.year, judged.monthValue)).apply()
+            }
+        }
         return result
     }
 
@@ -177,6 +191,11 @@ internal object Supporter {
     }
 
     fun storedText(context: Context): String? = stored(context)
+
+    /** The month the lasting Supporter badge was earned (YYYY-MM), or null on a phone that has not earned one. */
+    fun badgeSince(context: Context): String? =
+        context.getSharedPreferences(PREFS, 0).getString(BADGE, null)
+            ?.takeIf { it.length == 7 && it[4] == '-' && it.removeRange(4, 5).all(Char::isDigit) }
 
     /** A code unlocks a feature; beta features also need the switch, so early access can be left at any time. */
     fun has(context: Context, scope: String, keys: List<String> = keys(context)): Boolean {

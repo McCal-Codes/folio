@@ -204,7 +204,9 @@ export async function betaReleases(request, env, url, now = Date.now()) {
     rewritten.push({
       tag_name: release.tag_name,
       body: release.body ?? '',
-      html_url: release.html_url ?? '',
+      // The release page is in the private repository, so a supporter following it would only find a 404. Empty
+      // tells Folio there's no page to offer, and the notes it shows are the whole body above.
+      html_url: '',
       draft: false,
       prerelease: true,  // everything here is a beta, however it is marked in the repository
       assets,

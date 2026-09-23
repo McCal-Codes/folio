@@ -55,6 +55,8 @@ internal fun MarketSourcesTab(
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
     onAddLocalDev: () -> Unit,
+    /** Whether this supporter gets Folio Beta: a code with beta access and a broker to ask. */
+    folioBeta: Boolean = false,
 ) {
     Column {
         SheetGroupLabel(stringResource(R.string.sources))
@@ -69,6 +71,11 @@ internal fun MarketSourcesTab(
                 selected = openUrl == BUILT_IN_SOURCE_URL,
                 onOpen = { onOpen(BUILT_IN_SOURCE_URL) },
             )
+            // Right under Folio's own: it's Folio too, and it comes and goes with the code, like Keyd's source.
+            if (folioBeta) {
+                MenuDivider()
+                FolioBetaSourceRow(selected = openUrl == FOLIO_BETA_SOURCE_URL) { onOpen(FOLIO_BETA_SOURCE_URL) }
+            }
             statuses.forEach { status ->
                 MenuDivider()
                 val local = status.source.kind == Source.Kind.LOCAL_DEV

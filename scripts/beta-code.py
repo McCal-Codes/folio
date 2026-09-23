@@ -32,7 +32,7 @@ import subprocess
 import sys
 
 ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32, matching BetaCodes.kt
-SCOPES = ["beta", "look", "power", "keys", "dev"]  # bit order must match BetaCodes.SCOPE_BITS ("keys" is Keyd)
+SCOPES = ["beta", "look", "power", "keys", "dev", "thanks"]  # bit order must match BetaCodes.SCOPE_BITS
 EPOCH = datetime.date(2026, 1, 1)
 VERSION = 1           # a fixed last day, decided here
 VERSION_MONTHS = 2    # months counted from the day the code is redeemed (months and tier share one byte)

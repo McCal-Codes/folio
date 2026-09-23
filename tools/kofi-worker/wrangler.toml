@@ -1,8 +1,9 @@
 name = "folio-supporter-codes"
 main = "worker.js"
+account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"   # the McCal account
 compatibility_date = "2026-09-01"
 
-# Made with: wrangler d1 create folio-codes   (paste the id it prints)
+# Made with: wrangler d1 create folio-codes (22 Sep 2026, on the McCal account)
 [[d1_databases]]
 binding = "DB"
 database_name = "folio-codes"
@@ -13,9 +14,11 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 # McCal, 23 Sep 2026: every tier gets the code for a month, and so does a tip or donation of any size, each payment
 # counting. "*" covers every tier, including ones added later, so a new tier is never silently worth nothing.
 # m1 is the one-month pool that scripts/code-admin.py mints and uploads.
+# $15 or more draws from `thanks` instead: the same one month, on a code that also carries the lasting Supporter
+# badge (0.6.7). Builder is $15 a month, so it is named; every other tier falls to "*".
 # A shop item is the simplest thing to sell: someone buys it, Ko-fi calls the worker, the worker emails a code.
 # Add it under "shop" with the item's direct_link_code (the last part of its Ko-fi link) - see the README.
-POOLS = '{"tiers":{"*":"m1"},"shop":{},"tipFrom":1,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
+POOLS = '{"tiers":{"*":"m1","Builder":"thanks"},"shop":{},"tipBands":[{"from":15,"pool":"thanks"}],"tipFrom":1,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
 MAIL_FROM = "Folio <folio@example.com>"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
@@ -25,8 +28,8 @@ MAIL_FROM = "Folio <folio@example.com>"
 
 # Supporters' beta builds. The worker reads a private repository with its own token and hands Folio a short-lived
 # download link; see the README. Leave BETA_REPO empty to turn the beta broker off.
-BETA_REPO = ""                     # e.g. "McCal-Codes/folio-beta"
-SUPPORTER_KEYS = ""                # the public key from scripts/beta-code.py, base64, the same one the app carries
+BETA_REPO = "McCal-Codes/folio-beta"
+SUPPORTER_KEYS = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM4vVq0D/ZzqkVWlyQYMTFN3TTbdqRgKdt2a30T88NkeQhDEWnujFjfyXyKtPIVBKMSiRVXeY/OcC0+TaB6eypg=="   # BetaKeys.SUPPORTER
 
 # Secrets go in with `wrangler secret put`, never in this file:
 #   GITHUB_TOKEN   a fine-grained token with Contents: read on the beta repository, and nothing else

@@ -52,7 +52,7 @@ export default {
       // exception: somebody paid and no rule could price it, so write it down rather than drop it in silence.
       const unpriced = unpricedCurrency(data, env)
       if (unpriced) {
-        await env.DB.prepare('INSERT INTO problems (message_id, pool, at) VALUES (?, ?, ?)')
+        await env.DB.prepare('INSERT OR IGNORE INTO problems (message_id, pool, at) VALUES (?, ?, ?)')
           .bind(data.message_id, `unpriced ${unpriced}`, new Date().toISOString()).run()
       }
       return new Response('nothing to send for this payment', { status: 200 })
@@ -61,7 +61,7 @@ export default {
     const code = await claimCode(env, pool, data)
     if (!code) {
       // Out of codes is McCal's problem to fix, not Ko-fi's to retry: record it and answer 200.
-      await env.DB.prepare('INSERT INTO problems (message_id, pool, at) VALUES (?, ?, ?)')
+      await env.DB.prepare('INSERT OR IGNORE INTO problems (message_id, pool, at) VALUES (?, ?, ?)')
         .bind(data.message_id, pool, new Date().toISOString()).run()
       return new Response('pool empty', { status: 200 })
     }

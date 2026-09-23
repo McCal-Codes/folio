@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,16 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import java.time.format.DateTimeFormatter
 
 /**
@@ -46,6 +57,24 @@ internal fun SupporterPage() {
     var beta by remember { mutableStateOf(Supporter.betaOn(context)) }
     var redeeming by remember { mutableStateOf(false) }
     var problem by remember { mutableStateOf<String?>(null) }
+
+    // The thank-you for $15 or more, above the code because it outlives it: it stays when the months run out and
+    // when the code is removed.
+    Supporter.badgeSince(context)?.let { since ->
+        SheetGroup {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(54.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFFFF8FA6), Color(0xFFB3163A)))),
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+                Column(Modifier.padding(start = 14.dp)) {
+                    Text(stringResource(R.string.folio_supporter), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.since_1_s, monthYearLabel(since)), color = FolioColors.SecondaryLabel, fontSize = 14.sp)
+                }
+            }
+        }
+        CardNote(stringResource(R.string.thank_you_this_stays_on_your_phone_for))
+    }
 
     SettingsCard("CODE") {
         val current = code
@@ -108,7 +137,8 @@ private fun shortCode(code: String): String =
 
 private fun unlocksText(context: android.content.Context, scopes: Set<String>): String = listOf(
     BetaCodes.SCOPE_BETA to context.getString(R.string.beta_features_2), BetaCodes.SCOPE_LOOK to context.getString(R.string.personalization),
-    BetaCodes.SCOPE_POWER to context.getString(R.string.automation), BetaCodes.SCOPE_KEYS to context.getString(R.string.keyboard_extras))
+    BetaCodes.SCOPE_POWER to context.getString(R.string.automation), BetaCodes.SCOPE_KEYS to context.getString(R.string.keyboard_extras),
+    BetaCodes.SCOPE_THANKS to context.getString(R.string.supporter_badge))
     .filter { it.first in scopes }.joinToString(", ") { it.second }.ifEmpty { context.getString(R.string.nothing_yet) }
 
 @Composable private fun InfoRow(label: String, value: String) {
@@ -205,3 +235,10 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
         }
     })
 }
+
+/** "2026-09" written the reader's way, as a month and a year: what the badge says it has lasted since. */
+internal fun monthYearLabel(yearMonth: String): String = runCatching {
+    val (year, month) = yearMonth.split('-')
+    java.time.YearMonth.of(year.toInt(), month.toInt())
+        .format(DateTimeFormatter.ofPattern("LLLL yyyy").withLocale(java.util.Locale.getDefault()))
+}.getOrDefault(yearMonth)

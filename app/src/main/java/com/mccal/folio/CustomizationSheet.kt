@@ -60,7 +60,7 @@ internal object SettingsMemory {
     var sidebarScroll = 0
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -108,6 +108,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
         CustomizationPage.SIDE_KEY -> stringResource(R.string.side_key)
         CustomizationPage.LOCK -> stringResource(R.string.lock_cover)
         CustomizationPage.CREDITS -> stringResource(R.string.credits)
+        CustomizationPage.SUPPORTERS -> stringResource(R.string.supporters)
         CustomizationPage.TWEAKS -> stringResource(R.string.tweaks)
         CustomizationPage.MARKET -> stringResource(R.string.market)
         CustomizationPage.FOCUS -> stringResource(R.string.focus)
@@ -202,6 +203,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.Map, 0xFF5E5CE6, stringResource(R.string.roadmap), "customization-coming-soon", selected = selected == CustomizationPage.COMING_SOON, chevron = !sidebar) { onPage(CustomizationPage.COMING_SOON) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.Favorite, 0xFFFF453A, stringResource(R.string.credits), "customization-credits", selected = selected == CustomizationPage.CREDITS, chevron = !sidebar) { onPage(CustomizationPage.CREDITS) }
+                        MenuDivider()
+                        // The people who backed Folio, next to the people whose work it borrows from.
+                        TweakRow(Icons.Rounded.Star, 0xFFFF375F, stringResource(R.string.supporters), "customization-supporters", selected = selected == CustomizationPage.SUPPORTERS, chevron = !sidebar) { onPage(CustomizationPage.SUPPORTERS) }
                     }
                     SheetGroup {
                         val supportContext = androidx.compose.ui.platform.LocalContext.current
@@ -599,6 +603,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.CREDITS -> CreditsPage()
+                CustomizationPage.SUPPORTERS -> SupportersPage()
                 CustomizationPage.ISLAND_APPS -> IslandAlertApps(state.islandAlertAppsOff, state.messagesAvoidDouble, model::setIslandAlertApp)
                 CustomizationPage.HELP -> {
                     // Getting help lives here rather than as more rows in the main list (fewer choices there).
@@ -1091,6 +1096,7 @@ private val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
     Triple(R.string.help, R.string.settings_keywords_help, CustomizationPage.HELP),
     Triple(R.string.credits, R.string.settings_keywords_credits, CustomizationPage.CREDITS),
+    Triple(R.string.supporters, R.string.settings_keywords_supporters, CustomizationPage.SUPPORTERS),
 )
 
 internal fun settingsMatches(query: String, title: String, keywords: String): Boolean {
@@ -2174,7 +2180,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
 }
 
 /** The available update, like iOS's: version, size, the release notes, progress, and Update Now / Update Tonight. */
-@Composable private fun UpdateCard(release: SoftwareUpdate.Release, status: SoftwareUpdate.Status) {
+@Composable internal fun UpdateCard(release: SoftwareUpdate.Release, status: SoftwareUpdate.Status) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var expanded by remember(release.version) { mutableStateOf(false) }
     val notes = remember(release.notes) { releaseNoteLines(release.notes) }
@@ -2192,7 +2198,8 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
             }
             if (notes.isNotEmpty()) {
                 (if (expanded) notes else notes.take(6)).forEach { line -> Text(line, style = MaterialTheme.typography.bodyMedium) }
-                if (notes.size > 6 || release.notesUrl.isNotBlank()) Text(if (!expanded && notes.size > 6) stringResource(R.string.more) else stringResource(R.string.full_release_notes),
+                // A beta's notes have no page to open (its repository is private), so once they're expanded there's no link.
+                if ((!expanded && notes.size > 6) || release.notesUrl.isNotBlank()) Text(if (!expanded && notes.size > 6) stringResource(R.string.more) else stringResource(R.string.full_release_notes),
                     color = FolioColors.Blue, style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
                         if (!expanded && notes.size > 6) expanded = true

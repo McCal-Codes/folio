@@ -21,10 +21,12 @@ internal object BetaCodes {
     // mismatch would read every code's scopes wrong, silently.
     const val SCOPE_KEYS = "keys"
     const val SCOPE_DEV = "dev"      // the developer's own switches, and only in a development build
+    /** A thank-you that outlives the code: $15 or more earns the lasting Supporter badge (McCal, 22 Sep 2026). */
+    const val SCOPE_THANKS = "thanks"
 
     // Appended, never reordered: a bit that already means something has to keep meaning it, or codes already handed
     // out would unlock the wrong thing.
-    private val SCOPE_BITS = listOf(SCOPE_BETA, SCOPE_LOOK, SCOPE_POWER, SCOPE_KEYS, SCOPE_DEV)
+    private val SCOPE_BITS = listOf(SCOPE_BETA, SCOPE_LOOK, SCOPE_POWER, SCOPE_KEYS, SCOPE_DEV, SCOPE_THANKS)
 
     /** Day 0 of the expiry field, so two bytes cover well past any plan of mine. */
     private val EPOCH: Long = LocalDate.of(2026, 1, 1).toEpochDay()

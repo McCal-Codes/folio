@@ -33,7 +33,10 @@ function database(codes = [{ code: 'CODE-1', pool: 'beta' }]) {
         },
         run: async () => {
           if (sql.startsWith('INSERT INTO handled')) handled.set(args[0], { code: args[1], pool: args[2], emailed: 0 })
-          if (sql.startsWith('INSERT INTO problems')) problems.push({ message_id: args[0], pool: args[1] })
+          // OR IGNORE, like SQLite: a payment Ko-fi resends after a failure is written down once, not a 500.
+          if (sql.startsWith('INSERT OR IGNORE INTO problems') && !problems.some((p) => p.message_id === args[0])) {
+            problems.push({ message_id: args[0], pool: args[1] })
+          }
           if (sql.startsWith('UPDATE handled')) handled.get(args[1]).emailed = args[0]
           return { success: true }
         },
@@ -164,6 +167,10 @@ test('an empty pool is written down, and Ko-fi is not asked to retry', async () 
   const response = await worker.fetch(payment({ type: 'Subscription', tier_name: 'Gold' }), { DB, KOFI_TOKEN: TOKEN, POOLS })
   assert.equal(response.status, 200)
   assert.equal(DB.problems[0].pool, 'all')
+  // Ko-fi sends the same payment again: still 200, still one line, rather than a 500 on the duplicate key.
+  const again = await worker.fetch(payment({ type: 'Subscription', tier_name: 'Gold' }), { DB, KOFI_TOKEN: TOKEN, POOLS })
+  assert.equal(again.status, 200)
+  assert.equal(DB.problems.length, 1)
 })
 
 test('without a mail key the code is still claimed, to send by hand', async () => {
