@@ -11,15 +11,24 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 
 [vars]
 # Which payment earns which pool of codes. Anything not named here earns nothing.
-# McCal, 23 Sep 2026: every tier gets the code for a month, and so does a tip or donation of any size, each payment
-# counting. "*" covers every tier, including ones added later, so a new tier is never silently worth nothing.
-# m1 is the one-month pool that scripts/code-admin.py mints and uploads.
+# McCal, 23 Sep 2026: every payment earns the code. "*" covers every tier, including ones added later, so a new tier
+# is never silently worth nothing.
+#
+# Members get a TWO-month code at every payment (m2), on purpose: a code starts counting when it is redeemed, so
+# someone who pays on the 1st and redeems on the 3rd would otherwise be locked out for two days before the next
+# payment lands. Two months overlap, and a late or retried payment never shows as a lapse.
+#
+# One-offs get one month (m1): $3 buys a month wherever it is paid, and tips under $3 are a thank-you rather than a
+# purchase. The shop item goes here too once it exists.
+#
+# No "thanks" pool of codes that never run out (McCal, 23 Sep): a lasting code can only be taken back by withdrawing
+# its serial in an app update, so Builder is treated like any other tier until the Supporter badge is really built.
 # $15 or more draws from `thanks` instead: the same one month, on a code that also carries the lasting Supporter
 # badge (0.6.7). Builder is $15 a month, so it is named; every other tier falls to "*".
 # A shop item is the simplest thing to sell: someone buys it, Ko-fi calls the worker, the worker emails a code.
 # Add it under "shop" with the item's direct_link_code (the last part of its Ko-fi link) - see the README.
-POOLS = '{"tiers":{"*":"m1","Builder":"thanks"},"shop":{},"tipBands":[{"from":15,"pool":"thanks"}],"tipFrom":1,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
-MAIL_FROM = "Folio <folio@example.com>"
+POOLS = '{"tiers":{"*":"m2"},"shop":{},"tipFrom":3,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
+MAIL_FROM = "Folio <folio@foliolauncher.com>"   # needs the domain verified with Resend before it will send
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
 #   KOFI_TOKEN   the verification token from Ko-fi's Webhooks page
