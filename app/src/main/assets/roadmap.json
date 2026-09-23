@@ -306,6 +306,13 @@
           "status": "planned"
         },
         {
+          "icon": "grid",
+          "color": "#5E5CE6",
+          "title": "Cleaner widget picker",
+          "detail": "Find a widget without scrolling past one app's hundreds: a row of app icons narrows the gallery to the one you want, and each app shows a single row until you ask for more.",
+          "status": "planned"
+        },
+        {
           "icon": "dock",
           "color": "#30D158",
           "title": "More dock apps",
