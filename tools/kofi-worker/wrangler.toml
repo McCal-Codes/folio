@@ -13,8 +13,11 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 # Which payment earns which pool of codes. Anything not named here earns nothing.
 # Decided 22 Sep 2026: every code is one month. A tip of $3 or more earns one, and so does each monthly payment of
 # the Backer and Builder tiers; Coffee is posts, previews and the vote, with no code. Tier names must match Ko-fi's
-# exactly. A tip in another currency earns nothing until tipRates prices it, and is written to `problems`.
-POOLS = '{"tiers":{"Backer":"beta","Builder":"beta"},"tipFrom":3,"tipPool":"beta","tipCurrency":"USD"}'
+# exactly. $15 or more (a bigger tip, or the Builder tier) draws from `thanks` instead: the same month, on a code
+# that also carries the lasting Supporter badge. `m1` is the one-month pool, named to match the admin page's ledger.
+# The rates are approximate and only price a tip into US dollars; a currency with no rate is written to `problems`
+# rather than dropped.
+POOLS = '{"tiers":{"Backer":"m1","Builder":"thanks"},"tipBands":[{"from":15,"pool":"thanks"},{"from":3,"pool":"m1"}],"tipFrom":3,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
 MAIL_FROM = "Folio <folio@example.com>"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
