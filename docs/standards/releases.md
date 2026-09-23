@@ -23,7 +23,15 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-3 SHOULD** merge `main` into a topic branch whenever `main` moves, not once at the end. A branch that is
   both ahead and behind by double figures is a merge nobody can review.
 - **REL-4 MUST NOT** build, tag or publish anything from a topic branch. If supporters need it, it goes to `main`
-  first.
+  first. There is no stable branch and no beta branch: one trunk, and the two audiences are separated by a gate in the
+  build ([ADR 0007](../adr/0007-release-trains.md)).
+- **REL-4a MUST** gate a feature that is not ready for everyone on the `beta` scope rather than holding it on a
+  branch. A supporter sees it the day it merges; opening the gate is what shipping it means. Gate it at the entry
+  point, not only in the UI, so hidden work costs nobody battery.
+- **REL-4b** A stable release is the same tree as the beta before it, with gates open. Nothing is ported,
+  cherry-picked or rebuilt between the two.
+- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort, only when a breaking migration is mid-flight on
+  `main`. It ships and merges back the same day.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
   in branch names, commit messages, pull request text or code comments.
 - **REL-6 MUST** check the other worktrees and open pull requests before editing a file more than one change is
@@ -42,9 +50,12 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 ### Versions
 
-- **REL-11 MUST** follow semver in `folioVersion`, with `versionCode = MAJOR * 10000 + MINOR * 100 + PATCH`.
-- **REL-12 MUST NOT** invent a four-part version. `0.6.6.1` has nowhere to sort; a fix release takes the next patch
-  number.
+- **REL-11 MUST** follow semver in `folioVersion`, and derive `versionCode` from it rather than writing it by hand.
+  The formula is REL-12's. Until the release that adopts it, the code in `app/build.gradle.kts` is still the old
+  `MAJOR * 10000 + MINOR * 100 + PATCH` (gap 5 below), and every new code must be larger than the last either way.
+- **REL-12** A fix on top of a release is a four-part version, `x.y.z.n`, and `versionCode` leaves nine slots per
+  release for them: `(MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX` ([ADR 0007](../adr/0007-release-trains.md)).
+  A fix release never has to consume the number a feature release wanted, which is what went wrong on 23 Sep 2026.
 - **REL-13 MUST** make the version bump its own commit, the last one before the tag, touching only the version, the
   changelog date, the roadmap's statuses for that release and its release doc.
 - **REL-14 MUST** give every release a section in `app/src/main/assets/roadmap.json` matching its version, so
@@ -57,11 +68,14 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 ### Betas
 
 - **REL-17 MUST** cut betas from `main`, tagged `vX.Y.Z-beta.N`, published as pre-releases on the private
-  `McCal-Codes/folio-beta` repository.
+  `McCal-Codes/folio-beta` repository. A beta is a tag, never a branch.
+- **REL-17a** Betas are not on a calendar: one goes out when there is something worth testing. That means anything
+  touching how Folio updates, installs or checks a supporter code, since those paths cannot be tested any other way,
+  and any feature a supporter would want to try (McCal, 23 Sep 2026).
 - **REL-18 MUST** sign every build, beta included, with the release keystore. A different signer does not install
   over what is already on the phone, and Android's message for that says almost nothing useful.
-- **REL-19** `versionCode` is the same across `beta.1`, `beta.2` and the stable, because the patch number has not
-  changed. That is fine: Android refuses only a *lower* versionCode, and `SoftwareUpdate.isNewer` orders by the
+- **REL-19** `versionCode` is the same across `beta.1`, `beta.2` and the stable, because neither the patch number nor
+  the hotfix digit has changed. That is fine: Android refuses only a *lower* versionCode, and `SoftwareUpdate.isNewer` orders by the
   version name, so `beta.1 < beta.2 < x.y.z`.
 - **REL-20 MUST** ship a beta first for anything that changes how Folio updates, installs or checks a supporter
   code, and let it sit with supporters for at least a day. Those paths cannot be tested any other way.
@@ -113,6 +127,9 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 | 2 | Branch protection on `main` requiring the `release-rules` check, so nothing can be pushed straight to it and the check cannot be skipped by merging early | S |
 | 3 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
 | 4 | A check that a pull request touching `themes/` or a Market package carries its AI-assisted label (AI-6), the same shape as the changelog check | S |
+| 5 | The `versionCode` formula and REL-12's hotfix digit, with a test that `0.6.7.1` sorts above `0.6.7` in both `versionCode` and `isNewer` | S |
+| 6 | A `Feature` gate helper, so REL-4a is one line at a feature's entry point rather than a scope check copied around | S |
+| 7 | A check that lists every closed gate and how long it has been closed, so a finished feature cannot sit hidden and forgotten | S |
 
 ### Done
 

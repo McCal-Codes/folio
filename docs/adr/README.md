@@ -10,3 +10,4 @@ Short records of decisions that shape Folio, why they were made, and what they c
 | [0004](0004-declarative-first.md) | Packages are declarative first; no downloaded executable code | Accepted |
 | [0005](0005-org-json.md) | Keep org.json for Market parsing | Accepted |
 | [0006](0006-standards.md) | Folio Standards are the build contract; outside AI agents only test and fix bugs | Proposed |
+| [0007](0007-release-trains.md) | One trunk, two audiences: features gated by the `beta` scope, betas are tags, and `versionCode` gets hotfix headroom | Proposed |
