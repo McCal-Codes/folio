@@ -158,14 +158,18 @@ README has the setup, and the whole thing is optional — start with the shop it
 
 A draft, not copy — **the words are McCal's.** Ko-fi asks for a title, a price, a description and an image.
 
-**Three items, one per length** (McCal, 19 Sep 2026), so one price means one month wherever someone pays and the
-$3 item no longer undercuts Backer at $7/month:
+**One item** (McCal, 23 Sep 2026), now that every payment means one month:
 
-| Title | Price | Digital file holds |
+| Title | Price | Delivery |
 |---|---|---|
-| Folio early access · 1 month | $3 | a `--months 1` code |
-| Folio early access · 2 months | $6 | a `--months 2` code |
-| Folio early access · 4 months | $12 | a `--months 4` code |
+| Folio early access · 1 month | $3 | the worker sends a code of its own to each buyer |
+
+The worker is live, so the item needs **no digital file attached**: add its `direct_link_code` to `POOLS` under
+`shop` and every buyer gets their own code, which can be withdrawn on its own if it ends up posted somewhere. A file
+attached in Ko-fi would hand the same code to everyone instead. Emailing needs `RESEND_KEY` and a verified sending
+domain; without one the code is still claimed and recorded, and the admin page shows who is waiting.
+
+*(Superseded: three items at $3, $6 and $12 for one, two and four months, each with a code file attached.)*
 
 $3 stays the entry price he settled on 18 Sep ($2 first, raised once the fees were on the table): a card fee is
 roughly a fixed 30c plus a few percent, and Ko-fi's own cut applies unless the account has Gold, so about $2.20 of a
@@ -185,7 +189,7 @@ systems became one.
 > Folio Launcher: a clean, iPhone-style Home Screen for Android — with the jailbreak tweaks I always wanted, and none
 > of the lockdown.
 >
-> This gets you the **Folio Market** before it ships. It's how 0.7.0 hands out themes, tweaks and layouts: packages
+> This gets you the **Folio Market** before it opens to everyone. It's how Folio hands out themes, tweaks and layouts: packages
 > you can get, remove and undo, from sources you choose. Every page says what a package changes and what it can't
 > reach before you get it.
 >
@@ -200,7 +204,7 @@ systems became one.
 > account: the code is checked on your phone, and nothing about you is stored or sent.
 >
 > Fair warning: it's still very early. A bit rusty in places, and it settles down as more people use it. Developed and
-> tested on a Galaxy Z Fold8, and it needs Folio 0.7.0 or later from GitHub.
+> tested on a Galaxy Z Fold8, and it needs Folio 0.6.6 or later from GitHub.
 >
 > The $3 goes towards test devices and more time to build.
 
@@ -300,10 +304,17 @@ the other.
 
 ### One-off support: a month per donation
 
-**Decided (McCal, 22 Sep 2026), replacing the 19 Sep rule below:** a one-off tip or donation earns **one month**,
-whatever the amount, and each payment counts (two tips, two months). The tiers stay **Coffee $3, Backer $7, Builder
-$15**; each Backer or Builder payment is one month, and Coffee carries no code. `scripts/code-admin.py` applies this
-when it reads the Ko-fi CSV (see *The admin page* below).
+**Decided (McCal, 23 Sep 2026):** **every payment earns one month of the code.** A tip or donation of any size, each
+payment counting (two tips, two months), a month of any tier, and the shop item, all mean the same thing. The tiers
+stay **Coffee $3, Backer $7, Builder $15** and differ in what McCal gives beyond the code, not in what the code opens.
+
+Why it landed there: the Market needs a code carrying the `beta` scope (`MarketFeature.kt`), which also turns the beta
+channel on, so the app can't separate "the store" from "the builds". The only scope with a feature behind it is
+`keys`, for Keyd's card, and Keyd is in the Market anyway. A weaker Coffee code would have meant per-tier pools for a
+difference Folio can't really express, and a $3 shop item would have undercut it regardless. One rule, one sentence:
+$3 is a month, wherever you pay it.
+
+*Superseded (22 Sep):* Backer and Builder only, with Coffee carrying no code.
 
 *Earlier (19 Sep 2026):* a one-off payment earned a dated code, $3 → one month, $6 → two, $12 → four, matching the
 Coffee tier. The shop, worker and pool notes below were written for that rule; the pools become one-month pools.
@@ -357,9 +368,9 @@ now means one month everywhere:
 
 | One-off | Code |
 |---|---|
-| $3 | `--months 1` |
-| $6 | `--months 2` |
-| $12 | `--months 4` |
+| any amount | `--months 1` |
+
+*(Until 22 Sep this was $3, $6 and $12 for one, two and four months.)*
 
 and the membership promise is "supporter access stays on while your membership does". `tipBands` in the worker reads
 `[{from:3,pool:'months1'},{from:6,pool:'months2'},{from:12,pool:'months4'}]`. Mint the pools with:
