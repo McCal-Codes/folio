@@ -67,7 +67,7 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
                     // Search capsule
                     val ink = LocalHomeInk.current
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = if (ink.dark) .5f else .16f))
-                        .clickable(onClickLabel = "Search", onClick = onSearch).padding(horizontal = 14.dp, vertical = 11.dp),
+                        .clickable(onClickLabel = stringResource(R.string.search), onClick = onSearch).padding(horizontal = 14.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Search, null, tint = ink.secondary, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))

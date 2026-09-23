@@ -12,7 +12,14 @@ CREATE TABLE IF NOT EXISTS handled (
   code       TEXT NOT NULL,
   pool       TEXT NOT NULL,
   at         TEXT NOT NULL,
-  emailed    INTEGER NOT NULL DEFAULT 0
+  emailed    INTEGER NOT NULL DEFAULT 0,
+  -- What the Mac's ledger matches on. No email address: it's used to send the code, then dropped.
+  transaction_id TEXT NOT NULL DEFAULT '',   -- Ko-fi's kofi_transaction_id, the TransactionId in its CSV
+  from_name  TEXT NOT NULL DEFAULT '',
+  type       TEXT NOT NULL DEFAULT '',       -- Tip, Donation, Subscription, Shop Order, or "By hand"
+  amount     TEXT NOT NULL DEFAULT '',
+  currency   TEXT NOT NULL DEFAULT '',
+  by_hand    INTEGER NOT NULL DEFAULT 0      -- 1 when handed out from Folio Dev or the Mac, not by a payment
 );
 
 -- Payments that needed a hand: the pool was empty, or the money arrived in a currency no rate could
@@ -27,4 +34,11 @@ CREATE TABLE IF NOT EXISTS problems (
 CREATE TABLE IF NOT EXISTS beta_seen (
   serial     INTEGER PRIMARY KEY,
   first_seen TEXT NOT NULL          -- YYYY-MM-DD, UTC
+);
+
+-- The last time something proved the path works, for the health check: 'kofi-test' is Ko-fi's own Send test button.
+CREATE TABLE IF NOT EXISTS checks (
+  name  TEXT PRIMARY KEY,
+  value TEXT NOT NULL,              -- JSON
+  at    TEXT NOT NULL
 );

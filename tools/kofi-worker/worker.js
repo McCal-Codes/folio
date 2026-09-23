@@ -8,9 +8,19 @@
  * It answers 200 for anything it has already handled or deliberately ignores, so Ko-fi stops retrying, and 500 only
  * when something really failed and a retry might work.
  *
- * It also brokers the supporters' beta builds out of a private repository — see beta.js.
+ * It also brokers the supporters' beta builds out of a private repository (see beta.js), and answers McCal's Mac
+ * under /admin/ (see admin.js).
  */
+import { admin } from './admin.js'
 import { betaAsset, betaReleases, sameSecret } from './beta.js'
+
+// Ko-fi's "Send test" buttons post a made-up payment with this transaction id. It proves the webhook reaches the
+// worker, so it's written down for the health check, but it never takes a real code out of a pool.
+const KOFI_TEST_TRANSACTION = '00000000-1111-2222-3333-444444444444'
+// Ko-fi's test payload is also sent from its sample supporter, which covers a test whose id ever changes.
+const KOFI_TEST_EMAIL = 'jo.example@example.com'
+const isKofiTest = (data) => data.kofi_transaction_id === KOFI_TEST_TRANSACTION ||
+  String(data.email ?? '').toLowerCase() === KOFI_TEST_EMAIL
 
 export default {
   async fetch(request, env) {
@@ -18,11 +28,19 @@ export default {
     const url = new URL(request.url)
     if (request.method === 'GET' && url.pathname === '/beta/releases') return betaReleases(request, env, url)
     if (request.method === 'GET' && url.pathname.startsWith('/beta/asset/')) return betaAsset(request, env, url)
+    if (url.pathname.startsWith('/admin/')) return admin(request, env, url, { poolFor, claimCode, email })
     if (request.method !== 'POST') return new Response('Folio supporter codes', { status: 200 })
 
     const payment = await readPayment(request, env)
     if (!payment.ok) return new Response(payment.why, { status: payment.status })
     const { data } = payment
+
+    if (isKofiTest(data)) {
+      const seen = { type: data.type ?? '', tier: data.tier_name ?? '', wouldEarn: poolFor(data, env) }
+      await env.DB.prepare(`INSERT INTO checks (name, value, at) VALUES ('kofi-test', ?1, ?2)
+        ON CONFLICT(name) DO UPDATE SET value = ?1, at = ?2`).bind(JSON.stringify(seen), new Date().toISOString()).run()
+      return new Response('Ko-fi test received; no code used', { status: 200 })
+    }
 
     // Ko-fi retries the same message_id until it gets a 200, so every payment is handled exactly once.
     const already = await env.DB.prepare('SELECT code FROM handled WHERE message_id = ?').bind(data.message_id).first()
@@ -146,8 +164,20 @@ async function claimCode(env, pool, data) {
     `UPDATE codes SET used_at = ?1 WHERE code = (SELECT code FROM codes WHERE pool = ?2 AND used_at IS NULL LIMIT 1)
      RETURNING code`).bind(new Date().toISOString(), pool).first()
   if (!taken?.code) return null
-  await env.DB.prepare('INSERT INTO handled (message_id, code, pool, at, emailed) VALUES (?, ?, ?, ?, 0)')
-    .bind(data.message_id, taken.code, pool, new Date().toISOString()).run()
+  try {
+  // Who and which Ko-fi transaction, so the Mac's ledger can match this code to the CSV. The email address is used
+  // to send the code and never stored.
+    await env.DB.prepare(
+      `INSERT INTO handled (message_id, code, pool, at, emailed, transaction_id, from_name, type, amount, currency, by_hand)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`)
+      .bind(data.message_id, taken.code, pool, new Date().toISOString(), data.kofi_transaction_id ?? '',
+        data.from_name ?? '', data.type ?? '', String(data.amount ?? ''), data.currency ?? '', data.by_hand ? 1 : 0).run()
+  } catch (problem) {
+    // Writing down who got it failed, so nobody has it: put it back rather than leaving a code used by nothing.
+    // (It happened once for real: a database made before the transaction_id column existed.)
+    await env.DB.prepare('UPDATE codes SET used_at = NULL WHERE code = ?').bind(taken.code).run()
+    throw problem
+  }
   return taken.code
 }
 

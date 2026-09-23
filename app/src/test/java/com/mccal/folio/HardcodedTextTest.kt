@@ -56,5 +56,5 @@ class HardcodedTextTest {
         assertTrue("English in the manifest: $literal. Use @string/ so Android shows it translated.", literal.isEmpty())
     }
 
-    private companion object { const val LIMIT = 222 }
+    private companion object { const val LIMIT = 221 }
 }

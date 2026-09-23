@@ -338,6 +338,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     // Accessed only in the serialized IO refresh. Returning Home reuses existing bitmaps.
     private val iconCache = mutableMapOf<String, AppEntry>()
     private var iconConfiguration = ""
+    /** Set by [reloadIcons]; the refresh that follows drops every cached icon. */
+    @Volatile private var iconsStale = false
     internal var completedRefreshes = 0
         private set
     private val callback = object : LauncherApps.Callback() {
@@ -375,6 +377,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
 
     init { launcherApps.registerCallback(callback); refresh(); FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this) }
 
+    /** Settings › Refresh Icons: for a theme app that changes icons without telling launchers (#19). */
+    fun reloadIcons() { iconsStale = true; IconPacks.clear(); refresh() }
+
     fun refresh(invalidatedPackage: String? = null, user: UserHandle = Process.myUserHandle()) {
         invalidatedPackage?.let { invalidatedPackages += userManager.getSerialNumberForUser(user) to it }
         if (refreshing) { refreshPending = true; return }
@@ -385,11 +390,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         invalidatedPackages.clear()
         removedPackages.clear()
         val resources = getApplication<Application>().resources
-        val configuration = resources.configuration.let { "${it.densityDpi}|${it.locales.toLanguageTags()}|${it.uiMode}" }
+        val configuration = resources.configuration.let { "${it.densityDpi}|${it.locales.toLanguageTags()}|${it.uiMode}|${assetsSequence(it.toString())}" }
         viewModelScope.launch {
             try {
                 val apps = withContext(Dispatchers.IO) {
-                    if (configuration != iconConfiguration) { iconCache.clear(); iconConfiguration = configuration }
+                    if (configuration != iconConfiguration || iconsStale) { iconCache.clear(); iconConfiguration = configuration; iconsStale = false }
                     iconCache.keys.removeAll { key -> parseProfileAppId(key)?.let { identity ->
                         val serial = identity.userSerial ?: userManager.getSerialNumberForUser(Process.myUserHandle())
                         serial to (ComponentName.unflattenFromString(identity.component)?.packageName ?: "") in invalidated
@@ -1146,7 +1151,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editor.putString("state_v7_backup", legacyRaw)
         if (legacyRaw != null && sourceSchema < 9 && !prefs.contains("state_v8_backup"))
             editor.putString("state_v8_backup", legacyRaw)
-        editor.putString("state", data.toString()).putBoolean("initialized", true).apply()
+        editor.putString("state", data.toString()).putBoolean("initialized", true)
+            // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
+            .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
     }
 
     private fun load(): LauncherState = runCatching {
@@ -1428,3 +1435,11 @@ val LauncherState.glassTintAmount: Float get() = if (tintedGlass) .56f * glassTi
 /** Reduce Transparency: nearly solid widgets, Side Bar and dock, with a clearer edge (the saved values stay as they are). */
 fun LauncherState.withSolidGlass(): LauncherState =
     copy(widgetGlass = maxOf(widgetGlass, .9f), glassOutline = maxOf(glassOutline, .45f), statusStyle = statusStyle.copy(railGlass = maxOf(statusStyle.railGlass, .9f)))
+
+/**
+ * Android counts changes to installed themes and overlays (Samsung's Theme Park among them) in the configuration's
+ * assets sequence. It isn't public API, but the configuration prints it as "as.N", so a theme that swaps icons without
+ * a package change still clears the icon cache, while folding and rotating don't. 0 when it isn't there.
+ */
+internal fun assetsSequence(configuration: String): Int =
+    Regex("""\bas\.(\d+)""").find(configuration)?.groupValues?.get(1)?.toIntOrNull() ?: 0

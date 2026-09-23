@@ -158,14 +158,18 @@ README has the setup, and the whole thing is optional — start with the shop it
 
 A draft, not copy — **the words are McCal's.** Ko-fi asks for a title, a price, a description and an image.
 
-**Three items, one per length** (McCal, 19 Sep 2026), so one price means one month wherever someone pays and the
-$3 item no longer undercuts Backer at $7/month:
+**One item** (McCal, 23 Sep 2026), now that every payment means one month:
 
-| Title | Price | Digital file holds |
+| Title | Price | Delivery |
 |---|---|---|
-| Folio early access · 1 month | $3 | a `--months 1` code |
-| Folio early access · 2 months | $6 | a `--months 2` code |
-| Folio early access · 4 months | $12 | a `--months 4` code |
+| Folio early access · 1 month | $3 | the worker sends a code of its own to each buyer |
+
+The worker is live, so the item needs **no digital file attached**: add its `direct_link_code` to `POOLS` under
+`shop` and every buyer gets their own code, which can be withdrawn on its own if it ends up posted somewhere. A file
+attached in Ko-fi would hand the same code to everyone instead. Emailing needs `RESEND_KEY` and a verified sending
+domain; without one the code is still claimed and recorded, and the admin page shows who is waiting.
+
+*(Superseded: three items at $3, $6 and $12 for one, two and four months, each with a code file attached.)*
 
 $3 stays the entry price he settled on 18 Sep ($2 first, raised once the fees were on the table): a card fee is
 roughly a fixed 30c plus a few percent, and Ko-fi's own cut applies unless the account has Gold, so about $2.20 of a
@@ -185,7 +189,7 @@ systems became one.
 > Folio Launcher: a clean, iPhone-style Home Screen for Android — with the jailbreak tweaks I always wanted, and none
 > of the lockdown.
 >
-> This gets you the **Folio Market** before it ships. It's how 0.7.0 hands out themes, tweaks and layouts: packages
+> This gets you the **Folio Market** before it opens to everyone. It's how Folio hands out themes, tweaks and layouts: packages
 > you can get, remove and undo, from sources you choose. Every page says what a package changes and what it can't
 > reach before you get it.
 >
@@ -200,7 +204,7 @@ systems became one.
 > account: the code is checked on your phone, and nothing about you is stored or sent.
 >
 > Fair warning: it's still very early. A bit rusty in places, and it settles down as more people use it. Developed and
-> tested on a Galaxy Z Fold8, and it needs Folio 0.7.0 or later from GitHub.
+> tested on a Galaxy Z Fold8, and it needs Folio 0.6.6 or later from GitHub.
 >
 > The $3 goes towards test devices and more time to build.
 
@@ -260,19 +264,26 @@ unlock, so the perks can move without the name lying, and $15 reads as funding t
 launcher. **The words are McCal's**; what's written below is a draft he edits. Images:
 `lab/walls/kofi-tiers/{coffee,backer,builder,one-time}.jpg`, 1600 × 800, from `lab/kofi-tiers.html`.
 
+**Re-cut 23 Sep 2026**, once every tier earned the code:
+
 | | Coffee $3 | Backer $7 | Builder $15 |
 |---|---|---|---|
+| A supporter code each month: the Market, Keyd and the betas | ✓ | ✓ | ✓ |
 | Supporters-only posts, before the public ones | ✓ | ✓ | ✓ |
 | A supporter role in the Folio Discord | ✓ | ✓ | ✓ |
 | Design previews of what's being built | ✓ | ✓ | ✓ |
 | A vote on what comes after each update | ✓ | ✓ | ✓ |
-| A code for the Market, before it ships | | ✓ | ✓ |
-| Keyd, the keyboard extras | | ✓ | ✓ |
-| Preview builds when there's something to try | | ✓ | ✓ |
-| Beta builds as soon as they exist | | | ✓ |
+| Preview builds as soon as there's something to try | | ✓ | ✓ |
+| Folio updating itself from the Market, on the beta channel (0.6.7) | | ✓ | ✓ |
 | Development posts as the work happens | | | ✓ |
 | Tweak and theme requests read first | | | ✓ |
 | A lasting Supporter badge, and a name in Supporters (0.6.7) | | | ✓ |
+
+**Keyd is not a tier difference** (decided 23 Sep, after checking the code). Redeeming any code adds the supporter
+source, which is where Keyd lives, so every supporter can install it. The `keys` scope only shows the KEYD card in
+Settings › Supporter. Making Keyd a Backer perk would mean gating the supporter source on that scope in the app, and
+it would take something away from codes already out; Backer's difference is the preview builds and the Folio Beta
+source instead.
 
 **Backer is the card that leads** — more benefits, the "everything in Coffee, plus" framing, and a lighter card with
 a teal ring around it. No "best value", no scarcity; the weight is in the design, not the shouting.
@@ -287,8 +298,8 @@ becomes real with the first one, and *This week in Folio* is the shape suggested
 
 ### The copy for each Ko-fi field
 
-Drafted 22 Sep 2026 against what is actually live: one month per code, the Backer and Builder tiers earning one with
-each payment, Coffee earning none, and $15 or more also earning the lasting Supporter badge. The only promises here
+Drafted 22 Sep 2026 and re-cut on the 23rd for the one rule: every payment earns one month of the code, whatever
+the tier and whatever the amount, and $15 or more also earns the lasting Supporter badge. The only promises here
 about something unbuilt are the ones marked 0.6.7 (the badge and the Supporters list, mockup
 `docs/mockups/lasting-supporter.html`). "Within a day" is honest until `RESEND_KEY` is set; when it is, those lines
 become "your code is in this message".
@@ -304,30 +315,32 @@ become "your code is in this message".
 
 **Coffee · $3 a month — description**
 
-> A coffee a month, and the work keeps going. You see what I'm building before anyone else does: supporters-only
-> posts, design previews of screens I'm still deciding on, a vote on what I build next after each update, and the
-> supporter role in the Folio Discord. Folio remains Folio whether you support development or not.
+> A coffee a month, and the work keeps going. It comes with a supporter code for that month: the Folio Market
+> before it opens to everyone, Keyd, and the betas. You also get supporters-only posts, design previews of screens
+> I'm still deciding on, a vote on what I build next after each update, and the supporter role in the Folio
+> Discord. Folio remains Folio whether you support development or not.
 
 **Coffee — welcome message**
 
 > Thank you for backing Folio.
 >
-> You'll get supporters-only posts here before they go public, design previews of what I'm working on, and a vote on
-> what comes next after each update. The next vote is on the order I build 0.6.7 in.
+> Your supporter code is coming in a separate message within a day. To use it: Folio › Settings › Supporter ›
+> Redeem a Code. It opens the Market, adds Keyd, and turns on beta builds, for a month, and a new one comes with
+> each month's payment.
+>
+> You'll also get supporters-only posts here before they go public, design previews of what I'm working on, and a
+> vote on what comes next after each update. The next vote is on the order I build 0.6.7 in.
 >
 > The Folio Discord is at https://discord.gg/pxQT9Xj2Ed. Link your Discord account to Ko-fi (Ko-fi › Settings ›
 > Connections) and you'll get the supporter role there.
->
-> No code comes with this tier: everything in Folio's core is free anyway. If you ever want the Market and the betas
-> early, Backer is the one.
 >
 > McCal
 
 **Backer · $7 a month — description**
 
-> Everything in Coffee, plus the parts that aren't out yet. Each month you get a supporter code: it opens the Folio
-> Market before it's open to everyone, unlocks Keyd (the keyboard, split around the crease, no permissions at all),
-> and brings preview builds when there's something to try. The code is checked on your phone, so it works offline.
+> The same code as Coffee, and more of my time. Every month it opens the Folio Market before it's open to everyone,
+> unlocks Keyd (the keyboard, split around the crease, no permissions at all), and brings preview builds when
+> there's something to try. What $7 adds is that it keeps this going: more test devices, more hours on the fold.
 > The supporter role in the Folio Discord comes with it.
 
 **Backer — welcome message**
@@ -375,16 +388,18 @@ become "your code is in this message".
 
 **One-time support — the support box**
 
-> Not after a monthly thing? A one-off works too. $3 or more earns a one-month supporter code: the Market, Keyd and
-> the betas. $15 or more also earns the lasting Folio Supporter badge, and your name in Supporters if you'd like.
-> (The badge and the list arrive in 0.6.7.) The Discord role goes with the monthly tiers.
+> Not after a monthly thing? A one-off works too. Any amount earns a one-month supporter code: the Market, Keyd and
+> the betas, and each payment counts, so two tips are two months. $15 or more also earns the lasting Folio
+> Supporter badge, and your name in Supporters if you'd like. (The badge and the list arrive in 0.6.7.) The Discord
+> role goes with the monthly tiers.
 
 **One-time support — thank-you message**
 
 > Thank you.
 >
 > I'll send you a supporter code within a day. In Folio: Settings › Supporter › Redeem a Code. It opens the Market,
-> adds Keyd, the keyboard, and turns on beta builds, for a month from the day you redeem it.
+> adds Keyd, the keyboard, and turns on beta builds, for a month from the day you redeem it. Every payment earns
+> one, so if you come back, so does the month.
 >
 > If you gave $15 or more, it also earns the lasting Folio Supporter badge in the app, which stays after the month
 > ends. That arrives in 0.6.7. Reply if you'd like your name in Settings › Supporters.
@@ -400,10 +415,9 @@ price and description. Save publishes it. The welcome message is shown on screen
 well, and it is text only, so the Discord invite goes in as a plain link. The one-off thank-you is elsewhere:
 Ko-fi › Settings › Payment, the box called Auto "Thank You" message.
 
-**Two things to check before pasting any of it.** The tier names on Ko-fi have to be exactly `Backer` and `Builder`,
-or `POOLS` in the worker won't recognise those payments. And Backer and Builder codes currently carry the same
-scopes, so a Backer gets the betas too: either read the Backer/Builder difference as timing (Builders hear first),
-or mint Backer codes without the beta scope.
+**One thing to check before pasting any of it.** Every tier's code is the same code, by design (`"*"` in `POOLS`),
+so what a tier buys beyond it is what McCal writes above: time, attention, and for $15 the lasting badge. Only
+Builder is named in `POOLS`, so that its payments draw from the `thanks` pool; the rest fall to `"*"`.
 
 ### Positioning: two audiences, one promise each
 
@@ -420,17 +434,27 @@ or mint Backer codes without the beta scope.
 Both must keep saying the same thing about what Folio *does*; only the emphasis changes. When one is edited, check
 the other.
 
-### One-off support: one month, whatever the amount
+### One-off support: a month per donation
 
-**Decided (McCal, 22 Sep 2026): every code is one month.** A tip of $3 or more earns a one-month code, and so does
-each monthly payment of the Backer and Builder tiers; Coffee earns none. A payment of **$15 or more** also earns the
-lasting Supporter badge (0.6.7), which is what a bigger one-off buys instead of more months. This replaces the
-19 Sep bands below ($3 → one month, $6 → two, $12 → four), which were never deployed: `POOLS` in
-`tools/kofi-worker/wrangler.toml` reads `{"tiers":{"Backer":"beta","Builder":"beta"},"tipFrom":3,"tipPool":"beta",
-"tipCurrency":"USD"}`, and the 100 codes loaded into D1 are all one-month. A tip in another currency earns nothing
-until `tipRates` prices it, and is written to the `problems` table rather than dropped.
+**Decided (McCal, 23 Sep 2026):** **every payment earns one month of the code.** A tip or donation of any size, each
+payment counting (two tips, two months), a month of any tier, and the shop item, all mean the same thing. The tiers
+stay **Coffee $3, Backer $7, Builder $15** and differ in what McCal gives beyond the code, not in what the code opens.
 
-The three ways to deliver one, cheapest first:
+Why it landed there: the Market needs a code carrying the `beta` scope (`MarketFeature.kt`), which also turns the beta
+channel on, so the app can't separate "the store" from "the builds". The only scope with a feature behind it is
+`keys`, for Keyd's card, and Keyd is in the Market anyway. A weaker Coffee code would have meant per-tier pools for a
+difference Folio can't really express, and a $3 shop item would have undercut it regardless. One rule, one sentence:
+$3 is a month, wherever you pay it.
+
+**On top of it, the lasting badge (McCal, 22 Sep 2026):** a payment of **$15 or more**, a bigger tip or a month of
+Builder, draws its code from the `thanks` pool instead of `m1`. Same one month, on a code that also carries the
+lasting Supporter badge (0.6.7, `BetaCodes.SCOPE_THANKS`). It buys recognition, not more time.
+
+*Superseded (22 Sep):* Backer and Builder only, with Coffee carrying no code.
+
+*Earlier (19 Sep 2026):* a one-off payment earned a dated code, $3 → one month, $6 → two, $12 → four, matching the
+Coffee tier. The shop, worker and pool notes below were written for that rule; the pools become one-month pools.
+Three ways to do it, cheapest first.
 
 1. **Shop items, one per length.** "Folio early access · 1 month", "· 2 months", "· 4 months", each with a months
    code attached. Nothing to run, works while asleep, and the files never go stale.
@@ -480,9 +504,9 @@ now means one month everywhere:
 
 | One-off | Code |
 |---|---|
-| $3 | `--months 1` |
-| $6 | `--months 2` |
-| $12 | `--months 4` |
+| any amount | `--months 1` |
+
+*(Until 22 Sep this was $3, $6 and $12 for one, two and four months.)*
 
 and the membership promise is "supporter access stays on while your membership does". `tipBands` in the worker reads
 `[{from:3,pool:'months1'},{from:6,pool:'months2'},{from:12,pool:'months4'}]`. Mint the pools with:
@@ -496,6 +520,19 @@ done
 ```
 
 `pool.sql` holds real codes, so it never gets committed.
+
+### The admin page
+
+`./scripts/code-admin.py`, run from the checkout that holds `supporter-key.pem`, opens a page on this Mac only
+(127.0.0.1, a fresh token each launch). Drop in the Ko-fi CSV export and it lists who needs a code and for how many
+months; one click hands out a ready code of that length or mints one, with the code, the `folio://redeem` link and a
+draft message to copy. It also marks codes sent or withdrawn (and prints the serial for `BetaKeys.WITHDRAWN`), and
+makes ready codes or a `tools/kofi-worker/pool-m<N>.sql` pool. Everything it knows is in `supporter-ledger.json`
+(gitignored, 0600, real codes and emails); the first run takes in the codes already in `supporter-codes*.txt`.
+
+Ko-fi has no API for reading transactions, so the CSV covers what already happened and the worker's webhook is the
+only way codes go out on their own. The key never leaves the Mac: the worker and Folio Dev only ever hand out codes
+minted here in advance.
 
 ### Two posts, in this order
 
