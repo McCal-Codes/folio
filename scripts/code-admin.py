@@ -18,9 +18,9 @@ Everything the page knows is in supporter-ledger.json next to the key (gitignore
 email addresses, so it never gets committed, pasted or screenshotted. On first run the ledger picks up the codes
 already in supporter-codes*.txt, so nothing handed out before is handed out twice.
 
-Pricing (McCal, 22 Sep 2026): a one-off tip or donation is one month, whatever the amount, each payment counting.
-The tiers are Coffee $3, Backer $7 and Builder $15 a month. Backer and Builder include the code, so each of their
-monthly payments is one month; Coffee's perks are posts, previews and the vote, with no code.
+Pricing (McCal, 23 Sep 2026): every payment is worth one month of the code. A tip or donation of any size counts,
+each payment on its own, and so does a month of any tier: Coffee $3, Backer $7 or Builder $15. The tiers differ in
+what McCal gives beyond the code (preview builds, posts, whose requests he reads first), not in what the code opens.
 """
 import argparse
 import csv
@@ -50,7 +50,7 @@ spec.loader.exec_module(bc)
 ALL_SCOPES = ["beta", "look", "power", "keys"]  # what supporters get; "dev" is McCal's alone and never offered here
 CODE_PATTERN = re.compile(r"\b[0-9A-HJKMNP-TV-Z]{5}(?:-[0-9A-HJKMNP-TV-Z]{1,5}){10,}\b")
 ONE_OFF = {"tip", "donation"}
-CODE_TIER_FROM = 7  # Backer ($7) and Builder ($15) carry a code; Coffee ($3) doesn't
+CODE_MINIMUM = 1  # every paid month earns a month of the code, whatever the tier
 MAX_MONTHS = 15  # what a version 2 code can carry
 DEFAULT_PORT = 8770
 
@@ -60,7 +60,7 @@ def months_for(payment):
     if payment["type"].lower() in ONE_OFF:
         return 1
     # A membership payment pays for one month of its tier; a shop item is priced as one month too.
-    return 1 if payment["amount"] >= CODE_TIER_FROM else 0
+    return 1 if payment["amount"] >= CODE_MINIMUM else 0
 
 
 class Ledger:
@@ -744,7 +744,7 @@ input.field { font: inherit; font-size: 15px; width: 100%; border: 0; background
 
   <div class="header" id="needHead">Needs a code</div>
   <div class="group" id="need"></div>
-  <div class="footer">A tip or donation is one month each. Backer and Builder payments are a month each; Coffee has no code.</div>
+  <div class="footer">Every payment is one month: a tip or donation of any size, and a month of any tier.</div>
 
   <div class="header">Has a code, or needs none</div>
   <div class="group" id="have"></div>
