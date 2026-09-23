@@ -3,6 +3,53 @@
   "note": "Where Folio is headed. Plans can change with feedback, and Android doesn't allow everything iOS does.",
   "sections": [
     {
+      "release": "0.6.7",
+      "items": [
+        {
+          "icon": "tap",
+          "color": "#30D158",
+          "title": "Double tap on Home",
+          "detail": "Your Double Tap action works again on an empty spot, whatever size your grid is.",
+          "status": "done"
+        },
+        {
+          "icon": "dock",
+          "color": "#0A84FF",
+          "title": "The dock steps aside",
+          "detail": "Swipe to Today View and the dock leaves, so it can't sit over the widgets or take their taps.",
+          "status": "done"
+        },
+        {
+          "icon": "palette",
+          "color": "#FF375F",
+          "title": "Icons follow your theme",
+          "detail": "A theme that changes app icons shows straight away, and Icons & Side Bar has Refresh Icons for the rest.",
+          "status": "done"
+        },
+        {
+          "icon": "brush",
+          "color": "#BF5AF2",
+          "title": "No more smeared pages",
+          "detail": "Choosing Android's wallpaper draws cleanly instead of leaving every swipe painted over the last.",
+          "status": "done"
+        },
+        {
+          "icon": "speed",
+          "color": "#FF9F0A",
+          "title": "A cheaper background",
+          "detail": "Home's dunes are drawn once and reused, so a swipe costs the GPU about a third less.",
+          "status": "done"
+        },
+        {
+          "icon": "tune",
+          "color": "#64D2FF",
+          "title": "A way back in Settings",
+          "detail": "Every page has a way back, and the Preview bar no longer covers the App Library.",
+          "status": "done"
+        }
+      ]
+    },
+    {
       "release": "0.6.6",
       "items": [
         {
@@ -227,7 +274,7 @@
           "icon": "redeem",
           "color": "#BF5AF2",
           "title": "Supporter codes",
-          "detail": "Redeem a Ko-fi code in Settings to try new features early. Folio's core stays free, and a code is checked on your phone — offline, with no account.",
+          "detail": "Redeem a Ko-fi code in Settings to try new features early. Folio's core stays free, and a code is checked on your phone, offline, with no account.",
           "status": "building"
         },
         {

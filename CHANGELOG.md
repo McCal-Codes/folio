@@ -5,6 +5,24 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name (MAJOR × 10000 + MINOR × 100 + PATCH), so every release sorts correctly.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.7] - 2026-09-23
+
+Seven fixes, no new features. Everything from 0.6.6 stays where it is.
+
+### Fixed
+- **Double tap on an empty spot works again** (#61): every empty grid cell was taking its own taps, and 0.6.5's extra rows made those cells cover most of a page, so the page's Double Tap action never saw the second tap.
+- **The dock steps aside for Today View** (#25): unfolded and upright it sat over Today's widgets and its Edit button. Like iPhone, it now fades away as you swipe there and comes back on Home, so it can't take Today's taps.
+- **Icons follow a theme that changes them** (#19): Folio kept an app's icon until its package, density, language or dark mode changed, and a theme engine changes none of those. Icons now also follow Android's theme and overlay changes, and folding or rotating still costs nothing.
+- **No more smeared, doubled pages** (#12, #35): choosing Android's wallpaper as your background left every swipe painted over the last. The screen starts again with a window that really shows the wallpaper, and Folio draws its own background whenever it isn't.
+- **The Preview bar no longer covers the App Library**: before Folio is your Home app, the space kept for the bar was a guess. It's measured now. Once Folio is the Home app nothing moves, so no one's rows shrink.
+- **Every Settings page has a way back**: unfolded and upright, a top-level page showed only the sidebar button, which doesn't read as a way back. It now shows the sidebar button and a way back to Folio together.
+
+### Added
+- **Refresh Icons** in Settings › Icons & Side Bar, for an icon that still slips through after a theme change.
+
+### Changed
+- **Home's background costs the GPU about a third less while swiping.** The dunes never move, so they're drawn once and reused instead of being redrawn every frame. Measured on a Fold8, unfolded at 120 Hz: 7.0 ms per frame down to 4.6 ms.
+
 ## [0.6.6] - 2026-09-21
 
 ### Added
