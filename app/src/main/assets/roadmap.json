@@ -6,6 +6,13 @@
       "release": "0.6.7",
       "items": [
         {
+          "icon": "person",
+          "color": "#FF375F",
+          "title": "Supporters, and a badge that lasts",
+          "detail": "Back Folio with $15 or more for a Folio Supporter badge that stays, and your name in Settings \u203a Supporters if you want it.",
+          "status": "building"
+        },
+        {
           "icon": "update",
           "color": "#FF9F0A",
           "title": "Folio Beta in the Market",

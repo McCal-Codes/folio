@@ -270,9 +270,9 @@ expected, but it's always appreciated.
 ## Contact
 
 - **Email:** [contact@mcc-cal.com](mailto:contact@mcc-cal.com) (for serious things)
-- **Discord:** mcc_cal
+- **Discord:** [the Folio server](https://discord.gg/pxQT9Xj2Ed), or mcc_cal
 - **Reddit:** [u/wolftech029](https://www.reddit.com/user/wolftech029)
-- **X (Twitter):** [@mcc_cal_](https://x.com/mcc_cal_), where I'll post new features and sneak peeks until there's a community
+- **X (Twitter):** [@mcc_cal_](https://x.com/mcc_cal_), where I post new features and sneak peeks
 
 ## Thank you
 

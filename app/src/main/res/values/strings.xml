@@ -1412,4 +1412,14 @@
     <string name="folio_beta_page_note">Betas get new things first and can have more bugs. Settings › Software Update › Beta Updates turns them off, and you stay on your beta until a newer public release.</string>
     <string name="beta_updates_are_off_here">Beta Updates is off, so Folio only looks for public releases. Turn it on to get betas here.</string>
     <string name="turn_on_beta_updates">Turn On Beta Updates</string>
+    <!-- The lasting Supporter badge and the Supporters list (0.6.7). -->
+    <string name="supporters">Supporters</string>
+    <string name="settings_keywords_supporters">supporters thanks names ko-fi backers credits</string>
+    <string name="folio_supporter">Folio Supporter</string>
+    <string name="since_1_s">Since %1$s</string>
+    <string name="thank_you_this_stays_on_your_phone_for">Thank you. This stays on your phone for good, after your code runs out too.</string>
+    <string name="supporter_badge">Supporter badge</string>
+    <string name="people_who_backed_folio_with_15_or_more">People who backed Folio with $15 or more and said their name could be here. Thank you.</string>
+    <string name="no_names_yet_yours_could_be_the_first">No names yet. Yours could be the first.</string>
+    <string name="backed_folio_and_want_your_name_here">Backed Folio and want your name here? Reply to your Ko-fi thank-you and say so. Names come off the same way.</string>
 </resources>

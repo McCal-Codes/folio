@@ -246,7 +246,7 @@ A benefit that can't be delivered monthly turns into a debt. Measured against wh
 | Beta builds before they're public | **Yes**, once 0.6.5 is out |
 | Preview and experimental builds | **Yes**, same channel as the betas |
 | A weekly "This week in Folio" post | **Only if it's written** — the information already exists as work happens |
-| A supporter Discord role | **Yes, since 22 Sep 2026.** The Folio Discord exists, and Ko-fi hands out the role
+| A supporter Discord role | **Yes, since 22 Sep 2026.** The Folio Discord exists (discord.gg/pxQT9Xj2Ed), and Ko-fi hands out the role
   once the server is connected (Ko-fi › Settings › Integrations › Discord). Every monthly tier gets it |
 | A name in supporter acknowledgements | **No** — there's no supporters list in the app or the repository yet |
 
