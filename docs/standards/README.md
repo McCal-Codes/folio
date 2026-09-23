@@ -55,9 +55,10 @@ Nobody has to fix the whole tree before shipping a feature.
 | [Privacy and permissions](privacy-permissions.md) | `PRV` | Access, network, data, the System Bridge tier |
 | [Testing](testing.md) | `TST` | What gets tested where, and what "done" means |
 | [AI contributions](ai-contributions.md) | `AI` | What outside AI agents may do (bug testing and fixing only) and how AI-made add-ons are labelled |
+| [Releases](releases.md) | `REL` | Branches, the changelog, version numbers, betas, and what goes out beside a build |
 
 Where standards overlap, the more specific one wins: Dynamic UI over Design for motion, Accessibility over Design for
-contrast and size, Privacy over everything for what leaves the phone.
+contrast and size, Privacy over everything for what leaves the phone. Releases owns anything about how a change reaches a phone.
 
 ## What "Folio quality" means
 
