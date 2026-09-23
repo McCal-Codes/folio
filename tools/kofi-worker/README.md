@@ -35,6 +35,28 @@ To try it all without an account: put `KOFI_TOKEN=...` and `ADMIN_TOKEN=...` in 
 `npx wrangler d1 execute folio-codes --local --file=schema.sql` and `npx wrangler dev --local`, and point the admin
 page at `http://127.0.0.1:8787`.
 
+## Selling a code as a shop item
+
+The least work for the most cover: a shop item anyone can buy, with no membership and no thinking about amounts.
+
+1. **Ko-fi › Shop › Add item.** Name it what it is, for example "Folio early access, one month". Price it at $3, the
+   same as a month of Coffee, so nobody can buy access cheaper than a member gets it. No shipping, no stock limit.
+2. **Copy its link.** The last part is its `direct_link_code`, for example `ko-fi.com/s/1a2b3c4d5e` → `1a2b3c4d5e`.
+3. **Put it in `POOLS`** in `wrangler.toml`, then deploy again:
+
+   ```json
+   {"shop": {"1a2b3c4d5e": "m1"}}
+   ```
+
+4. **Buy it once yourself** to see the whole path work, then check the admin page: the hand-out shows in Sync, with
+   the Ko-fi transaction next to it.
+
+Codes are one month from the day they're **redeemed**, not from the day they're minted, so an item can sit in the shop
+for months and the code a buyer gets is still a full month. Nothing has to be re-uploaded.
+
+Say so in the item's description: what it opens (the Market, Keyd, Beta Features), that it lasts a month, that Folio
+is free and open source either way, and that the code arrives by email straight after paying.
+
 ## Setting it up
 
 You need a Cloudflare account and `npx wrangler`. Everything below happens in this folder.
