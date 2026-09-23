@@ -74,7 +74,7 @@ internal fun rememberSetupSteps(isDefaultHome: Boolean, onMakeDefault: () -> Uni
                 notifications.isNotificationPolicyAccessGranted, false, context.getString(R.string.allow)) { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
             SetupStep(Icons.Rounded.Wallpaper, context.getString(R.string.keep_your_wallpaper),
                 context.getString(R.string.coming_from_samsung_s_or_another_launche),
-                systemWallpaper, false, context.getString(R.string.use)) { onSystemWallpaper(true); context.asActivity()?.recreate() },
+                systemWallpaper, false, context.getString(R.string.use)) { onSystemWallpaper(true); context.asActivity()?.applyWallpaperWindow(true) },
             SetupStep(Icons.Rounded.Assistant, context.getString(R.string.folio_as_your_digital_assistant),
                 context.getString(R.string.holding_the_side_key_opens_folio_s_picke),
                 AssistPickerActivity.isDefaultAssistant(context), false, context.getString(R.string.choose)) { open(AssistPickerActivity.settingsIntent()) },

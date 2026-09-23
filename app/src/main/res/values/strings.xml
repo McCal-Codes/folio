@@ -1422,4 +1422,6 @@
     <string name="people_who_backed_folio_with_15_or_more">People who backed Folio with $15 or more and said their name could be here. Thank you.</string>
     <string name="no_names_yet_yours_could_be_the_first">No names yet. Yours could be the first.</string>
     <string name="backed_folio_and_want_your_name_here">Backed Folio and want your name here? Reply to your Ko-fi thank-you and say so. Names come off the same way.</string>
+    <string name="refresh_icons">Refresh Icons</string>
+    <string name="refresh_icons_note">If a theme app changed your icons and Folio still shows the old ones, this loads them again.</string>
 </resources>

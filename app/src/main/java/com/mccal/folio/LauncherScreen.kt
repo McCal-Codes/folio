@@ -152,6 +152,13 @@ fun LauncherScreen(
     var libraryQuery by rememberSaveable { mutableStateOf("") }
     var pinQuery by rememberSaveable { mutableStateOf("") }
     val launcherActivity = androidx.activity.compose.LocalActivity.current as MainActivity
+    // The setting says Android's wallpaper but the window was built without it: rebuild it once to match.
+    LaunchedEffect(state.systemWallpaper) {
+        if (state.systemWallpaper && !launcherActivity.showsWallpaper && !WallpaperWindowRepair.tried) {
+            WallpaperWindowRepair.tried = true
+            launcherActivity.applyWallpaperWindow(true)
+        }
+    }
     val launcherRootView = LocalView.current.rootView
     val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model)) }
     // Package Safe Mode: runs as Home starts, so a package that crashed Folio while it was being applied is turned off
@@ -536,7 +543,9 @@ fun LauncherScreen(
                 val panelsOn = FeatureScopes.on(state.featureScopes, "appPanels", state.appPanels, screenFor(panelWide))
                 if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); overlays.panel = app.id } else null
             }) {
-        if (!state.systemWallpaper) DuneWallpaper()
+        // Folio's background unless Android's wallpaper is really behind the window: a see-through window with
+        // nothing behind it shows every earlier frame (#12, #35), so the worst case is the dunes, never a smear.
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper()
         else if (state.wallpaperMotion) SystemWallpaperParallax(nativePager)
         // iOS "dark appearance dims wallpaper".
         val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
@@ -635,7 +644,13 @@ fun LauncherScreen(
             val pagerWidth = if (geometry.horizontalDock && !geometry.dockBesideRail) maxWidth else maxWidth - preset.dockWidth.dp - 28.dp
             val leftColumnOrigin = (maxWidth / 2f - geometry.gridWidth.dp) / 2f - 16.dp
             val homeStride = panelWidth - leftColumnOrigin
-            val bottomSpace = (if (isDefaultHome) 44.dp else 88.dp) + if (geometry.horizontalDock) (geometry.dockBarHeight + 16f).dp else 0.dp
+            // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
+            // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
+            var bottomControlsHeight by remember { mutableStateOf(0.dp) }
+            // As the Home app it stays 44dp unless the dots are taller, so no one's automatic rows shrink; the Preview
+            // bar gets a clear gap above it.
+            val controlsSpace = if (isDefaultHome) maxOf(44.dp, bottomControlsHeight) else maxOf(88.dp, bottomControlsHeight + 12.dp)
+            val bottomSpace = controlsSpace + if (geometry.horizontalDock) (geometry.dockBarHeight + 16f).dp else 0.dp
             val workspaceMotion = if (geometry.expanded) remember(firstHome, visibleHomePages, pagerWidth, homeStride, density) {
                 WorkspacePageMotion(firstHome, visibleHomePages, with(density) { pagerWidth.toPx() }, with(density) { homeStride.toPx() })
             } else null
@@ -796,7 +811,13 @@ fun LauncherScreen(
             // Portrait unfolded (iPhone Duo): a horizontal dock bar centered along the bottom, above the page controls.
             val dockPitch = geometry.dockPitch
             val dockBarWidth = (dockPitch * state.dock.size + 16f).dp
-            Box((if (geometry.horizontalDock) (if (hinge?.active == true && hinge.vertical)
+            // Like iPhone, the dock bar steps aside for Today View: it follows the swipe out, then leaves altogether so
+            // it can't sit over Today's widgets and Edit button (#25). Only the bar; the Side Bar dock is beside Today.
+            val dockStepsAsideForToday = todayMode && firstHome > 0 && geometry.horizontalDock
+            val dockAwayForToday by remember(dockStepsAsideForToday, nativePager) {
+                derivedStateOf { dockStepsAsideForToday && nativePager.currentPage + nativePager.currentPageOffsetFraction <= .02f }
+            }
+            if (!dockAwayForToday) Box((if (geometry.horizontalDock) (if (hinge?.active == true && hinge.vertical)
                     // Half folded like a book: the bar sits centered on the trailing half, off the hinge.
                     Modifier.align(Alignment.BottomEnd).padding(end = ((contentWidth / 2 - dockBarWidth) / 2).coerceAtLeast(0.dp))
                 else if (geometry.dockBesideRail)
@@ -805,10 +826,16 @@ fun LauncherScreen(
                         .padding(start = if (state.leftHanded) 0.dp else ((pagerWidth + 16.dp - dockBarWidth) / 2).coerceAtLeast(0.dp),
                             end = if (state.leftHanded) ((pagerWidth + 16.dp - dockBarWidth) / 2).coerceAtLeast(0.dp) else 0.dp)
                     else Modifier.align(Alignment.BottomCenter))
-                    .padding(bottom = (if (isDefaultHome) 44 else 88).dp + 8.dp)
+                    .padding(bottom = controlsSpace + 8.dp)
                     .width(dockBarWidth).height(geometry.dockBarHeight.dp)
                 else Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp).offset(y = dockTopShown.dp)
                     .width(preset.dockWidth.dp).height(dockHeightShown.dp)).graphicsLayer {
+                    if (dockStepsAsideForToday) {
+                        // Read here, not in composition, so following the swipe doesn't recompose the screen.
+                        val towardToday = (1f - nativePager.currentPage - nativePager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                        alpha = 1f - towardToday
+                        translationY = towardToday * size.height * .6f
+                    }
                     // Composite the stationary dock independently of the shared pager layer (not while magnifying: it would clip).
                     compositingStrategy = if (state.dockMagnify) androidx.compose.ui.graphics.CompositingStrategy.Auto
                         else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
@@ -827,6 +854,7 @@ fun LauncherScreen(
             // page's width is held out of the row, leaving it centred on Home on both screens.
             val besideHome = if (geometry.expanded) panelWidth.coerceAtLeast(0.dp) else 0.dp
             Column(Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart).width(pagerWidth)
+                .onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }
                 .padding(start = if (state.leftHanded) 0.dp else besideHome + 16.dp,
                     end = if (state.leftHanded) besideHome + 16.dp else 0.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDefaultHome && !homeEdit.active && !drag.active) PreviewBar(onUseAsHome = { sheet = ""; onMakeDefault() },
