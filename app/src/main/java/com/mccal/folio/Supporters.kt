@@ -107,7 +107,16 @@ internal fun SupportersPage() {
     CardNote(androidx.compose.ui.res.stringResource(R.string.people_who_backed_folio_with_15_or_more))
     val people = content?.people.orEmpty()
     if (people.isEmpty()) {
-        CardNote(androidx.compose.ui.res.stringResource(R.string.no_names_yet_yours_could_be_the_first))
+        // An empty list is a card of its own, so it reads as the list rather than as another note.
+        SheetGroup(androidx.compose.ui.Modifier.padding(top = 4.dp, bottom = 10.dp)) {
+            androidx.compose.material3.Text(
+                androidx.compose.ui.res.stringResource(R.string.no_names_yet_yours_could_be_the_first),
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
+                fontSize = 15.sp,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 18.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
     } else {
         for ((year, group) in Supporters.byYear(content!!)) {
             SheetGroupLabel(year ?: androidx.compose.ui.res.stringResource(R.string.supporters))

@@ -315,7 +315,8 @@ become "your code is in this message".
 > You'll get supporters-only posts here before they go public, design previews of what I'm working on, and a vote on
 > what comes next after each update. The next vote is on the order I build 0.6.7 in.
 >
-> Link your Discord to Ko-fi and you'll get the supporter role in the Folio Discord: Ko-fi › Settings › Connections.
+> The Folio Discord is at https://discord.gg/pxQT9Xj2Ed. Link your Discord account to Ko-fi (Ko-fi › Settings ›
+> Connections) and you'll get the supporter role there.
 >
 > No code comes with this tier: everything in Folio's core is free anyway. If you ever want the Market and the betas
 > early, Backer is the one.
@@ -341,7 +342,8 @@ become "your code is in this message".
 >
 > Betas can have more bugs than releases. Settings › Software Update › Beta Updates turns them off whenever you like.
 >
-> Link your Discord to Ko-fi (Ko-fi › Settings › Connections) and you'll get the supporter role in the Folio Discord.
+> The Folio Discord is at https://discord.gg/pxQT9Xj2Ed. Link your Discord account to Ko-fi (Ko-fi › Settings ›
+> Connections) and you'll get the supporter role there.
 >
 > McCal
 
@@ -366,7 +368,8 @@ become "your code is in this message".
 >
 > Got a tweak or a theme you want in Folio? Reply and tell me. Yours are the ones I read first.
 >
-> Link your Discord to Ko-fi (Ko-fi › Settings › Connections) and you'll get the supporter role in the Folio Discord.
+> The Folio Discord is at https://discord.gg/pxQT9Xj2Ed. Link your Discord account to Ko-fi (Ko-fi › Settings ›
+> Connections) and you'll get the supporter role there.
 >
 > McCal
 
@@ -390,6 +393,12 @@ become "your code is in this message".
 > keep building.
 >
 > McCal
+
+**Where each one goes on Ko-fi** (McCal, 23 Sep 2026). A tier's description and welcome message are both on the tier
+itself: Ko-fi › Settings › Memberships, then Add Tier or Edit, and the Welcome Message box sits under the name,
+price and description. Save publishes it. The welcome message is shown on screen right after payment and emailed as
+well, and it is text only, so the Discord invite goes in as a plain link. The one-off thank-you is elsewhere:
+Ko-fi › Settings › Payment, the box called Auto "Thank You" message.
 
 **Two things to check before pasting any of it.** The tier names on Ko-fi have to be exactly `Backer` and `Builder`,
 or `POOLS` in the worker won't recognise those payments. And Backer and Builder codes currently carry the same
