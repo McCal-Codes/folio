@@ -1,0 +1,32 @@
+Folio Launcher: a clean, iPhone-style Home Screen for Android, with the jailbreak tweaks I always wanted, and none of the lockdown.
+
+Status: very early. It's a bit rusty in places, and things will settle down as more people use it. Developed and tested on a Galaxy Z Fold8.
+
+Adapts to the screen, doesn't just stretch
+* Lays out by how much room there is, not what device it is: phones, flips, foldables, split-screen, tablets.
+* Open the Fold and you get two Home pages side by side. Portrait unfolded gets one centered page with a dock bar. The cover in landscape gets two columns.
+* Knows where the fold is: when the phone is half folded, sheets, menus and Home rows move off the crease.
+* Bigger screens draw everything bigger, like iPad, instead of a tiny phone layout in the middle.
+
+The iOS stuff
+* Side Bar with the status bar, a Dynamic Island that wraps the camera, and the dock.
+* Notification Center, Control Center, Spotlight, Today View, Smart Stacks and the widget gallery.
+* Jiggle mode, folders, Icon Stacks, per-page icon size and labels, and App Library search.
+* Focus modes with schedules and the Home pages you want to see.
+* Settings built like iOS: menus with checkmarks, segmented controls, switches, sheets and alerts.
+
+Tweaks (you pick which ones you get)
+* Ideas from jailbreak tweaks I liked (Velox, Activator, Velvet, Axon, ColorFlow, Harbor), rebuilt from scratch. None of their code is in here, and everyone is credited in the app.
+* Get the ones you want from the Tweak Library, Sileo-style. Only those show up in Settings, and you can remove them any time.
+* Turn a tweak on for just the cover or just the inner screen, and Safe Mode if something crashes.
+
+Themes
+* Save your look as a theme file, import one, or share a theme straight to Folio from Files or Chrome.
+* Pick an app icon, and live Clock and Calendar icons that match your other icons.
+
+Private
+* No accounts, no ads, no analytics. Folio itself doesn't send anything anywhere unless you share a crash report or check for updates, which only asks GitHub for the latest release.
+* Google search, Discover and widgets from other apps use those apps' own services.
+* Every permission is optional and explained where it's used, and listed in PERMISSIONS.md with what happens if you say no.
+
+Free and open source under the MIT licence. Based on DuoLauncher by jakesgoodapps, rebuilt for Compose.
