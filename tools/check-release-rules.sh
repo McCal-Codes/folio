@@ -70,8 +70,9 @@ new_version=$(version_at HEAD)
 version_changed=no
 [[ -n "$new_version" && "$old_version" != "$new_version" ]] && version_changed=yes
 
-# REL-7: what ships gets a line.
-ships=$(echo "$changed" | grep -E '^(app|market)/src/main/' || true)
+# REL-7: what ships gets a line. The roadmap is a list of plans rather than a change to what Folio does, and it is
+# edited whenever a plan moves, so it does not count as shipping something; REL-14 is what governs it.
+ships=$(echo "$changed" | grep -E '^(app|market)/src/main/' | grep -v '^app/src/main/assets/roadmap\.json$' || true)
 if [[ -z "$ships" ]]; then
     skip "REL-7  nothing under app/src/main or market/src/main changed"
 elif has_label no-changelog; then
