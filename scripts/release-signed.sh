@@ -12,6 +12,32 @@ if [[ -z "$version" ]]; then
 fi
 output_dir=${1:-"$repository_root/dist/Folio-$version"}
 
+# REL-10, REL-15, REL-16 (docs/standards/releases.md): a version number means one build. Refuse to make a second one
+# under a number that has already been published, and refuse to build a stable release whose notes still say they
+# are unwritten. Set FOLIO_SKIP_RELEASE_CHECKS=1 to build anyway, for a test build that will never be published.
+if [[ "${FOLIO_SKIP_RELEASE_CHECKS:-}" != 1 ]]; then
+    if git -C "$repository_root" rev-parse --verify --quiet "refs/tags/v$version" >/dev/null; then
+        echo "Tag v$version already exists, so this version has been built before." >&2
+        echo "Move folioVersion on before building again (REL-16)." >&2
+        exit 1
+    fi
+    released_version=${version%%-*}
+    if ! grep -qE "^## \\[$released_version\\]" "$repository_root/CHANGELOG.md"; then
+        echo "CHANGELOG.md has no section for $released_version. Write the notes before the build (REL-7)." >&2
+        exit 1
+    fi
+    if [[ "$version" != *-* ]] && grep -qE "^## \\[$released_version\\] - Unreleased" "$repository_root/CHANGELOG.md"; then
+        echo "CHANGELOG.md still says [$released_version] - Unreleased." >&2
+        echo "A stable release is dated in the version-bump commit (REL-10). A beta may be built with it undated." >&2
+        exit 1
+    fi
+    if [[ -n "$(git -C "$repository_root" status --porcelain)" ]]; then
+        echo "The working tree has uncommitted changes, so nobody could rebuild this APK from a commit." >&2
+        echo "Commit or stash them first, or set FOLIO_SKIP_RELEASE_CHECKS=1 for a build you will not publish." >&2
+        exit 1
+    fi
+fi
+
 for variable_name in FOLIO_RELEASE_STORE_FILE FOLIO_RELEASE_STORE_PASSWORD FOLIO_RELEASE_KEY_ALIAS FOLIO_RELEASE_KEY_PASSWORD; do
     if [[ -z "${!variable_name:-}" ]]; then
         echo "Missing required release signing variable: $variable_name" >&2

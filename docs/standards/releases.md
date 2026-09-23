@@ -99,6 +99,9 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   same version was written elsewhere. The fix was to merge the two rather than pick one ([#88](https://github.com/McCal-Codes/folio/pull/88)).
 - Release runbooks exist for 0.6.5, 0.6.6, 0.6.7-beta.2 and 0.6.7, and they are genuinely written before the build.
   Good.
+- REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
+  the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
+  useful without opening this file.
 - Several agent sessions work in parallel worktrees with no claim on shared files, which is how the same two
   strings, the same roadmap and the same changelog got edited three ways in two days.
 
@@ -106,9 +109,17 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 | | What it takes | Size |
 |---|---|---|
-| 1 | A CI check that fails a pull request touching `app/src/main/**` with no line added to the `Unreleased` changelog section (REL-7), with a label to skip it for invisible work | S |
-| 2 | A CI check that fails when `folioVersion` changes in a pull request that also changes code, enforcing REL-13 | S |
-| 3 | `scripts/release-signed.sh` refuses to build when the tag it would produce already exists, or when the changelog section for that version is still `Unreleased` (REL-10, REL-16) | S |
-| 4 | A written claim on shared files for concurrent sessions, even just a `docs/in-flight.md` listing branch, files and session (REL-6) | S |
-| 5 | Branch protection on `main` requiring the CI check, so nothing can be pushed straight to it | S |
-| 6 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
+| 1 | A written claim on shared files for concurrent sessions, even just a `docs/in-flight.md` listing branch, files and session (REL-6) | S |
+| 2 | Branch protection on `main` requiring the `release-rules` check, so nothing can be pushed straight to it and the check cannot be skipped by merging early | S |
+| 3 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
+| 4 | A check that a pull request touching `themes/` or a Market package carries its AI-assisted label (AI-6), the same shape as the changelog check | S |
+
+### Done
+
+- REL-7 and REL-13 are enforced by `tools/check-release-rules.sh`, run as the `release-rules` job on every pull
+  request. Waivable by labelling the pull request `no-changelog` or `release-exception`, so an exception is visible
+  where the change is reviewed rather than in someone's shell.
+- REL-10, REL-16 and a reproducibility check are enforced by `scripts/release-signed.sh`, which refuses to build when
+  the tag already exists, when the changelog has no section for the version, when a **stable** version's section
+  still says `Unreleased` (a beta may be built undated), or when the working tree is dirty. `FOLIO_SKIP_RELEASE_CHECKS=1`
+  is the way out for a build that will never be published.

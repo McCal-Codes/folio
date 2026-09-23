@@ -32,6 +32,21 @@ jobs:
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
 
+  # The parts of the releases standard a machine can see: a change to what ships carries its own changelog line,
+  # and a version bump comes on its own (docs/standards/releases.md, REL-7 and REL-13). Pull requests only, since
+  # both rules are about what a pull request contains.
+  release-rules:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Branch, notes and version rules
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: bash tools/check-release-rules.sh "origin/${{ github.base_ref }}"
+
   # Fuzzes every package parser for five minutes each (Jazzer). Not on every push: it's slow.
   fuzz:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
