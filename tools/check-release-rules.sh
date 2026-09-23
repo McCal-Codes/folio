@@ -104,7 +104,7 @@ else
         pass "REL-13 version bump $old_version to $new_version, and nothing else"
     else
         fail "REL-13 folioVersion moves to $new_version in a pull request that also changes:
-        $(echo "$stray" | head -5 | sed 's/^/        /' | tr -d '\n')
+$(echo "$stray" | head -5 | sed 's/^/          /')
         Land the change first, then bump the version on its own, so the release is one reviewable diff."
     fi
 fi
