@@ -3,6 +3,13 @@ main = "worker.js"
 account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"   # the McCal account
 compatibility_date = "2026-09-01"
 
+# The worker answers on Folio's own domain as well as workers.dev: Ko-fi's webhook, the admin page and Folio Dev all
+# point here, and the address doesn't give away the Cloudflare account's name.
+routes = [{ pattern = "admin.foliolauncher.com", custom_domain = true }]
+# Adding a custom domain turns the workers.dev address off, and Ko-fi's webhook still points at it. Keep both alive
+# until that setting is changed on Ko-fi, or a payment arriving in between gets a 404 and no code.
+workers_dev = true
+
 # Made with: wrangler d1 create folio-codes (22 Sep 2026, on the McCal account)
 [[d1_databases]]
 binding = "DB"
