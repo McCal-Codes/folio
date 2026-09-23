@@ -237,7 +237,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // iPad Settings / One UI on the unfolded screen: sidebar and page side by side, in either orientation.
     // Regular size class (both dimensions roomy), not a device check: the inner screen in either orientation.
     val fullWidth = maxWidth
-    val split = fitsRegularHomeLayout(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale)
+    // With only one pane to spare (inside the Market beside its sidebar), Settings is the iPhone's: the list, and a
+    // page pushed over it with Back.
+    val split = fitsRegularHomeLayout(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale) &&
+        LocalSettingsMaxColumns.current >= 2
     // Takes the page to draw rather than reading the open one, so the split view can show a list and the thing you
     // picked from it side by side. Inside, `page` means "the page this column is drawing".
     val pageContent: @Composable ColumnScope.(CustomizationPage) -> Unit = { page ->
@@ -743,7 +746,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
             maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale,
             nested = page.parent != CustomizationPage.OVERVIEW,
             onFold = onFold != null,
-        )
+        ).coerceAtMost(LocalSettingsMaxColumns.current)
         val tiled = columns >= 2
         val threeColumns = columns == 3
         // Tiled it shares the width; as an overlay it can be a little wider so rows don't wrap. With three, the list
