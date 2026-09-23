@@ -279,9 +279,8 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
                             Spacer(Modifier.height(16.dp))
                             Text(message.value ?: "Google Discover", style = MaterialTheme.typography.bodyLarge)
                             Spacer(Modifier.height(20.dp))
-                            FilledTonalButton(onClick = ::connectSafely, Modifier.testTag("discover-retry")) {
-                                Icon(Icons.Rounded.Refresh, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.retry))
-                            }
+                            FolioButton(stringResource(R.string.retry), ::connectSafely, style = FolioButtonStyle.TONAL,
+                                icon = Icons.Rounded.Refresh, tag = "discover-retry")
                             TextButton(onClick = ::openGoogle) { Text(stringResource(R.string.open_google)) }
                             TextButton(onClick = ::returnHome) { Text(stringResource(R.string.back_to_home)) }
                         }

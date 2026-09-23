@@ -157,23 +157,29 @@ private fun FolderChild(
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)
-                .testTag("folder-options-${app.id}")) { Icon(Icons.Rounded.MoreVert, "Move ${app.label}") }
-            DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                homeDestinations.distinctBy(::homeCellPage).forEach { destination ->
+                .testTag("folder-options-${app.id}")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.move_1_s, app.label)) }
+            // Folio's own menu rather than Material's: it grows from the corner it was opened at, scrolls when a
+            // layout has more pages than the window can show, and steps off the fold.
+            if (menu) FolioMenuPopup(onDismiss = { menu = false }, tag = "folder-options-${app.id}") {
+                homeDestinations.distinctBy(::homeCellPage).forEachIndexed { index, destination ->
                     val destinationPage = homeCellPage(destination)
-                    val label = if (destinationPage == -1) "Move to Unfolded-only page" else "Move to page ${destinationPage + 1}"
-                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                    val label = if (destinationPage == -1) stringResource(R.string.move_to_the_unfolded_only_page)
+                        else stringResource(R.string.move_to_page_1_d, destinationPage + 1)
+                    if (index > 0) MenuDivider()
+                    MenuRow(label, tag = "folder-move-${app.id}-page-$destinationPage") {
                         menu = false; onMoveOut(app.id, DropTarget.Home(destination))
-                    }, modifier = Modifier.testTag("folder-move-${app.id}-page-$destinationPage"))
+                    }
                 }
                 dockVacancies.firstOrNull()?.let { dock ->
-                    DropdownMenuItem(text = { Text(stringResource(R.string.move_to_dock)) }, onClick = {
+                    MenuDivider()
+                    MenuRow(stringResource(R.string.move_to_dock), tag = "folder-move-${app.id}-dock") {
                         menu = false; onMoveOut(app.id, DropTarget.Dock(dock))
-                    }, modifier = Modifier.testTag("folder-move-${app.id}-dock"))
+                    }
                 }
-                DropdownMenuItem(text = { Text(stringResource(R.string.remove_shortcut)) }, onClick = {
+                MenuDivider()
+                MenuRow(stringResource(R.string.remove_shortcut), destructive = true, tag = "folder-remove-${app.id}") {
                     menu = false; onMoveOut(app.id, DropTarget.Remove)
-                }, modifier = Modifier.testTag("folder-remove-${app.id}"))
+                }
             }
         }
     }

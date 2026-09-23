@@ -141,6 +141,10 @@
     <string name="back_to_home">Back to home</string>
     <string name="back_to_home_2">Back to Home</string>
     <string name="move_to_dock">Move to dock</string>
+    <!-- The folder panel's move menu. %1$d is a Home page number; %1$s in move_1_s is an app name. -->
+    <string name="move_to_page_1_d">Move to page %1$d</string>
+    <string name="move_to_the_unfolded_only_page">Move to the unfolded-only page</string>
+    <string name="move_1_s">Move %1$s</string>
     <string name="remove_shortcut">Remove shortcut</string>
     <string name="edit">Edit</string>
     <string name="back_to_widgets">Back to widgets</string>

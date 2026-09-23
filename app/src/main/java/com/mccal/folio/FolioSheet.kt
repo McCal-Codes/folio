@@ -253,7 +253,8 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         FolioDialogWindow(dim = .3f)
         val appear = rememberEntrance(stiffness = 900f, dampingRatio = .85f)
         val base = MaterialTheme.typography
-        val blue = FolioColors.Blue
+        // BlueOnDark, not Blue: the alert is always dark, and Blue on its grey measures 3.82:1 (A11Y-9).
+        val blue = FolioColors.BlueOnDark
         fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = FolioType.BODY.sp, fontWeight = weight))
         FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing), role = FoldRole.INFO) {
             MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = base) {

@@ -8,9 +8,18 @@ import androidx.compose.ui.graphics.Color
  */
 internal object FolioColors {
     val Blue = Color(0xFF0A84FF)
+    /**
+     * Blue deep enough for white text to clear 4.5:1 (4.93): filled buttons. iOS puts white on [Blue] itself, which
+     * measures 3.65 and fails WCAG AA for text this size, so Folio's filled buttons sit a shade deeper (A11Y-9).
+     */
+    val BlueDeep = Color(0xFF0A6FD6)
+    /** Blue for text and links on a dark surface, where [Blue] is too dark to read (6.19:1 on a sheet). */
+    val BlueOnDark = Color(0xFF6CB4FF)
     val Red = Color(0xFFFF453A)
     /** The light-appearance red (destructive text on light surfaces, badges). */
     val RedLight = Color(0xFFFF3B30)
+    /** Destructive text on dark menus and sheets: [Red] measures 3.33 on a menu's grey, this one 4.97 (A11Y-9). */
+    val RedOnDark = Color(0xFFFF8A80)
     val Green = Color(0xFF30D158)
     /** The light-appearance green (iOS systemGreen): switch tracks and confirmations on light surfaces. */
     val GreenLight = Color(0xFF34C759)

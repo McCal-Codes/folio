@@ -28,7 +28,7 @@ internal object MarketText {
     data class Para(val text: AnnotatedString, val bullet: Boolean)
 
     /** Splits on blank lines, and turns each run of `- ` lines into its own bulleted paragraphs. */
-    fun paragraphs(source: String, link: Color = Color(0xFF6CB4FF)): List<Para> = buildList {
+    fun paragraphs(source: String, link: Color = FolioColors.BlueOnDark): List<Para> = buildList {
         for (chunk in source.split(Regex("\n\\s*\n"))) {
             val lines = chunk.trim().lines().map { it.trim() }.filter { it.isNotEmpty() }
             if (lines.isEmpty()) continue
@@ -47,7 +47,7 @@ internal object MarketText {
      * `**bold**`, `*italic*` (and `_italic_`), `[words](https://…)`. A marker with nothing to close it, or a link to
      * anything but https, is left as the author typed it rather than guessed at.
      */
-    fun inline(source: String, link: Color = Color(0xFF6CB4FF)): AnnotatedString = buildAnnotatedString {
+    fun inline(source: String, link: Color = FolioColors.BlueOnDark): AnnotatedString = buildAnnotatedString {
         var i = 0
         while (i < source.length) {
             val rest = source.substring(i)

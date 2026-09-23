@@ -2218,11 +2218,11 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                 else -> Unit
             }
             if (status !is SoftwareUpdate.Status.Downloading) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = {
+                FolioButton(stringResource(R.string.update_now), {
                     if (status is SoftwareUpdate.Status.Ready) SoftwareUpdate.installReadyNow(context) else SoftwareUpdate.startInstall(context, release)
-                }, modifier = Modifier.weight(1f).testTag("update-install")) { Text(stringResource(R.string.update_now)) }
-                if (!(status is SoftwareUpdate.Status.Ready && status.tonight)) OutlinedButton(onClick = { SoftwareUpdate.startUpdateTonight(context, release) },
-                    modifier = Modifier.weight(1f).testTag("update-tonight")) { Text(stringResource(R.string.update_tonight)) }
+                }, Modifier.weight(1f), tag = "update-install")
+                if (!(status is SoftwareUpdate.Status.Ready && status.tonight)) FolioButton(stringResource(R.string.update_tonight),
+                    { SoftwareUpdate.startUpdateTonight(context, release) }, Modifier.weight(1f), style = FolioButtonStyle.TONAL, tag = "update-tonight")
             }
             CardNote(stringResource(R.string.updating_restarts_home_for_a_moment))
         }

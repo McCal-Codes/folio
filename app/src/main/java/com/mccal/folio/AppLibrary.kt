@@ -139,8 +139,8 @@ internal fun AppLibrary(
                 if (showWork && selectedProfile?.available == false) item("work-paused") {
                     Column(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(if (selectedProfile.quiet) stringResource(R.string.work_apps_are_paused) else stringResource(R.string.work_profile_is_unavailable))
-                        if (selectedProfile.quiet) Button(onClick = { onTurnOnWork(selectedProfile.userSerial) },
-                            Modifier.padding(top = 10.dp).testTag("turn-on-work")) { Text(stringResource(R.string.turn_on_work_apps)) }
+                        if (selectedProfile.quiet) FolioButton(stringResource(R.string.turn_on_work_apps), { onTurnOnWork(selectedProfile.userSerial) },
+                            Modifier.padding(top = 10.dp), tag = "turn-on-work")
                     }
                 }
                 if (!editing && query.isBlank()) item("downloading") { DownloadingApps(ink) }

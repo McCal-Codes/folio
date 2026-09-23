@@ -268,8 +268,8 @@ internal fun VisualWidgetPicker(
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (selectedProfile.quiet) "${selectedProfile.label} apps are paused"
                         else "${selectedProfile.label} profile is unavailable", color = secondary)
-                    if (selectedProfile.isWork) Button(onClick = { onTurnOnWork(selectedProfile.userSerial) },
-                        modifier = Modifier.padding(top = 12.dp)) { Text(stringResource(R.string.turn_on)) }
+                    if (selectedProfile.isWork) FolioButton(stringResource(R.string.turn_on), { onTurnOnWork(selectedProfile.userSerial) },
+                        Modifier.padding(top = 12.dp))
                 }
             }
             val catalogState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()

@@ -37,7 +37,7 @@ internal fun DiscoverContent(modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(16.dp))
                 Text(message ?: "", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(20.dp))
-                FilledTonalButton(onClick = LiveDiscover::retry, Modifier.testTag("discover-retry")) { Text(stringResource(R.string.retry)) }
+                FolioButton(stringResource(R.string.retry), LiveDiscover::retry, style = FolioButtonStyle.TONAL, tag = "discover-retry")
                 if (googleIntent != null) TextButton(onClick = {
                     runCatching { context.startActivity(googleIntent) }
                 }, Modifier.testTag("discover-open-google")) { Text(stringResource(R.string.open_google)) }

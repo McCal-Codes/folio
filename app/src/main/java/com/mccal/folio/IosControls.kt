@@ -31,6 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -165,18 +170,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                 androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.UnfoldMore, null, tint = Color.White.copy(alpha = .4f),
                     modifier = Modifier.padding(start = 2.dp).size(18.dp))
             }
-            val drop = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.roundToPx() }
-            if (open) androidx.compose.ui.window.Popup(alignment = Alignment.TopEnd, offset = androidx.compose.ui.unit.IntOffset(0, drop),
-                onDismissRequest = { open = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = true)) {
-                val appear = rememberEntrance(stiffness = 800f, dampingRatio = .82f)
-                Column(Modifier.widthIn(min = 200.dp, max = 280.dp)
-                    .graphicsLayer {
-                        val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .6f + .4f * g; scaleY = scaleX
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)
-                    }
-                    .shadow(24.dp, RoundedCornerShape(FolioRadius.CARD.dp)).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A3A3C))
-                    .border(.5.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(FolioRadius.CARD.dp))
-                    .then(if (tag != null) Modifier.testTag("$tag-menu") else Modifier)) {
+            if (open) FolioMenuPopup(onDismiss = { open = false }, tag = tag) {
                     options.forEachIndexed { index, (value, label) ->
                         if (index > 0) androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
@@ -190,9 +184,87 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                             androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.BODY.sp)
                         }
                     }
-                }
             }
         }
+    }
+}
+
+/**
+ * The shell every Folio pop-up menu shares: it grows from its top-right corner the way iOS's menus do, sizes itself
+ * to its rows between 200 and 280 dp, scrolls when there are more rows than the window has room for, and stays off
+ * the fold. Use it with [MenuRow] items for a menu of actions, as the folder panel does.
+ */
+@Composable
+internal fun FolioMenuPopup(onDismiss: () -> Unit, tag: String? = null, content: @Composable () -> Unit) {
+    val drop = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.roundToPx() }
+    androidx.compose.ui.window.Popup(alignment = Alignment.TopEnd, offset = androidx.compose.ui.unit.IntOffset(0, drop),
+        onDismissRequest = onDismiss, properties = androidx.compose.ui.window.PopupProperties(focusable = true)) {
+        val appear = rememberEntrance(stiffness = 800f, dampingRatio = .82f)
+        FoldAvoidingBox(role = FoldRole.CONTROLS) {
+            Column(Modifier.widthIn(min = 200.dp, max = 280.dp)
+                .graphicsLayer {
+                    val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .6f + .4f * g; scaleY = scaleX
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)
+                }
+                .shadow(24.dp, RoundedCornerShape(FolioRadius.CARD.dp)).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A3A3C))
+                .border(.5.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(FolioRadius.CARD.dp))
+                // A folder on a page of twelve offers a row per page, so the menu scrolls rather than running off
+                // the window on a cover screen.
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .then(if (tag != null) Modifier.testTag("$tag-menu") else Modifier)) {
+                content()
+            }
+        }
+    }
+}
+
+/** How much weight a [FolioButton] carries, the way iOS's filled, tinted and plain buttons do. */
+internal enum class FolioButtonStyle { FILLED, TONAL, PLAIN }
+
+/**
+ * Folio's button: a rounded iOS button instead of Material's. Use this rather than `Button`, `OutlinedButton` or
+ * `FilledTonalButton` (docs/standards/design.md, DES-10). [FolioButtonStyle.FILLED] is the one thing a screen most
+ * wants you to do, TONAL sits beside it, and PLAIN is a link-weight action.
+ */
+@Composable
+internal fun FolioButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: FolioButtonStyle = FolioButtonStyle.FILLED,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    tag: String? = null,
+    enabled: Boolean = true,
+) {
+    val ink = if (style == FolioButtonStyle.FILLED) Color.White else FolioColors.BlueOnDark
+    val background = when (style) {
+        FolioButtonStyle.FILLED -> FolioColors.BlueDeep
+        FolioButtonStyle.TONAL -> Color.White.copy(alpha = .12f)
+        FolioButtonStyle.PLAIN -> Color.Transparent
+    }
+    Row(
+        modifier
+            .clip(RoundedCornerShape(FolioRadius.CARD.dp))
+            .background(background)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            // 48 dp tall, so a finger has the whole button rather than just its text (A11Y-1).
+            .heightIn(min = FolioRow.ACTION.dp)
+            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .then(if (tag != null) Modifier.testTag(tag) else Modifier)
+            .androidxAlpha(if (enabled) 1f else .4f),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon?.let {
+            androidx.compose.material3.Icon(it, null, tint = ink, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(FolioSpace.SNUG.dp))
+        }
+        // No maxLines: at 200% text, or in a language with longer words, the label wraps and the button grows
+        // rather than losing its end to an ellipsis (A11Y-12).
+        androidx.compose.material3.Text(
+            text, color = ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 

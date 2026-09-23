@@ -159,7 +159,7 @@ internal fun ExpandedCard(onClick: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = 14.sp)
             Spacer(Modifier.height(20.dp))
-            FilledTonalButton(onClick = onClick) { Icon(Icons.Rounded.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.add_widget)) }
+            FolioButton(stringResource(R.string.add_widget), onClick, style = FolioButtonStyle.TONAL, icon = Icons.Rounded.Add)
         }
     }
 }
