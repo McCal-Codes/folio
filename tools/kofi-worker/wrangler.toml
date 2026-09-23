@@ -29,7 +29,9 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 # A shop item is the simplest thing to sell: someone buys it, Ko-fi calls the worker, the worker emails a code.
 # Add it under "shop" with the item's direct_link_code (the last part of its Ko-fi link) - see the README.
 POOLS = '{"tiers":{"*":"m2","Builder":"m2thanks"},"shop":{},"tipBands":[{"from":15,"pool":"thanks"}],"tipFrom":3,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
-MAIL_FROM = "Folio <folio@foliolauncher.com>"   # needs the domain verified with Resend before it will send
+# McCal, 23 Sep 2026. Replies reach him through Cloudflare Email Routing; Resend verifies send.foliolauncher.com,
+# which nobody sees, so a spam mark never touches the domain the site is on.
+MAIL_FROM = "Folio <admin@foliolauncher.com>"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
 #   KOFI_TOKEN   the verification token from Ko-fi's Webhooks page
