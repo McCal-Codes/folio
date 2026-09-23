@@ -9,7 +9,7 @@
           "icon": "person",
           "color": "#FF375F",
           "title": "Supporters, and a badge that lasts",
-          "detail": "Back Folio with $15 or more for a Folio Supporter badge that stays, and your name in Settings \u203a Supporters if you want it.",
+          "detail": "Back Folio with $15 or more for a Folio Supporter badge that stays, and your name in Settings › Supporters if you want it.",
           "status": "building"
         },
         {
@@ -24,6 +24,48 @@
           "color": "#0A84FF",
           "title": "Panes that fit the screen",
           "detail": "The Market and Settings use two panes on a Fold's inner screen, like iPad, and never leave one empty.",
+          "status": "building"
+        },
+        {
+          "icon": "tap",
+          "color": "#30D158",
+          "title": "Double tap on Home",
+          "detail": "Your Double Tap action works again on an empty spot, whatever size your grid is.",
+          "status": "building"
+        },
+        {
+          "icon": "dock",
+          "color": "#5E5CE6",
+          "title": "The dock steps aside",
+          "detail": "Swipe to Today View and the dock leaves, so it can't sit over the widgets or take their taps.",
+          "status": "building"
+        },
+        {
+          "icon": "palette",
+          "color": "#FF9F0A",
+          "title": "Icons follow your theme",
+          "detail": "A theme that changes app icons shows straight away, and Icons & Side Bar has Refresh Icons for the rest.",
+          "status": "building"
+        },
+        {
+          "icon": "brush",
+          "color": "#BF5AF2",
+          "title": "No more smeared pages",
+          "detail": "Choosing Android's wallpaper draws cleanly instead of leaving every swipe painted over the last.",
+          "status": "building"
+        },
+        {
+          "icon": "speed",
+          "color": "#64D2FF",
+          "title": "A cheaper background",
+          "detail": "Home's dunes are drawn once and reused, so a swipe costs the GPU about a third less.",
+          "status": "building"
+        },
+        {
+          "icon": "tune",
+          "color": "#FF3B30",
+          "title": "A way back in Settings",
+          "detail": "Every page has a way back, and the Preview bar no longer covers the App Library.",
           "status": "building"
         }
       ]
@@ -253,7 +295,7 @@
           "icon": "redeem",
           "color": "#BF5AF2",
           "title": "Supporter codes",
-          "detail": "Redeem a Ko-fi code in Settings to try new features early. Folio's core stays free, and a code is checked on your phone — offline, with no account.",
+          "detail": "Redeem a Ko-fi code in Settings to try new features early. Folio's core stays free, and a code is checked on your phone, offline, with no account.",
           "status": "building"
         },
         {
