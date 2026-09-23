@@ -141,4 +141,4 @@ internal fun MarketFeatured(
 
 /** Banner colours, from Folio's own palette, so a package without an image still looks like Folio. */
 private fun bannerColor(page: Int): Color =
-    listOf(Color(0xFF0A6CCC), Color(0xFF0F6E56), Color(0xFF5E5CE6), Color(0xFFB0194A))[page % 4]
+    listOf(Color(0xFF0A6CCC), Color(0xFF0F6E56), FolioColors.Indigo, Color(0xFFB0194A))[page % 4]

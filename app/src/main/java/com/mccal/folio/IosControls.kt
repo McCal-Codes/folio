@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** iOS-style controls for Folio's settings (the sheet is always dark glass). */
-private val IosGreen = Color(0xFF34C759)
 private val IosBlue = FolioColors.Blue
 private val IosTrackOff = Color(0xFF39393D)
 
@@ -46,7 +45,7 @@ private val IosTrackOff = Color(0xFF39393D)
 @Composable
 internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val haptic = LocalHapticFeedback.current
-    val track by animateColorAsState(if (checked) IosGreen else IosTrackOff, label = "switch track")
+    val track by animateColorAsState(if (checked) FolioColors.GreenLight else IosTrackOff, label = "switch track")
     val offset by animateDpAsState(if (checked) 20.dp else 0.dp, spring(dampingRatio = .7f, stiffness = Spring.StiffnessMedium), label = "switch thumb")
     Box(modifier.minimumInteractiveComponentSize()
         .toggleable(checked, role = Role.Switch, onValueChange = {
@@ -62,7 +61,7 @@ internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, mod
 @Composable
 internal fun IosChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier) {
     val background by animateColorAsState(if (selected) Color.White else Color.White.copy(alpha = .1f), label = "chip")
-    Box(modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(10.dp)).background(background)
+    Box(modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(background)
         .selectable(selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center) {
         androidx.compose.material3.ProvideTextStyle(TextStyle(color = if (selected) Color.Black else Color.White, fontSize = 14.sp,
@@ -97,9 +96,9 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) androidx.compose.material3.Text(placeholder, color = ink.copy(alpha = .55f), fontSize = 17.sp, maxLines = 1)
+            if (query.isEmpty()) androidx.compose.material3.Text(placeholder, color = ink.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
             androidx.compose.foundation.text.BasicTextField(query, onQuery, fieldModifier.fillMaxWidth(), singleLine = true,
-                textStyle = TextStyle(color = ink, fontSize = 17.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(ink),
+                textStyle = TextStyle(color = ink, fontSize = FolioType.BODY.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(ink),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
         }
@@ -114,18 +113,18 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
 @Composable
 internal fun IosActionRow(text: String, tag: String? = null, destructive: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val color = if (destructive) FolioColors.Red else FolioColors.Blue
-    androidx.compose.material3.Text(text, color = if (enabled) color else Color.White.copy(alpha = .3f), fontSize = 17.sp,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+    androidx.compose.material3.Text(text, color = if (enabled) color else Color.White.copy(alpha = .3f), fontSize = FolioType.BODY.sp,
+        modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
 }
 
 /** A row that opens another page, like iOS Settings: label, current value and a chevron. */
 @Composable
 internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: String? = null) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button, onClick = onClick)
+    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.NAV.dp).clickable(role = Role.Button, onClick = onClick)
         .then(if (tag != null) Modifier.testTag(tag) else Modifier), verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.material3.Text(text, color = Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
-        value?.let { androidx.compose.material3.Text(it, color = Color.White.copy(alpha = .55f), fontSize = 17.sp) }
+        androidx.compose.material3.Text(text, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
+        value?.let { androidx.compose.material3.Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp) }
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.ChevronRight, null, tint = Color.White.copy(alpha = .3f))
     }
 }
@@ -155,14 +154,14 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
     var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val current = options.firstOrNull { it.first == selected }?.second ?: ""
-    Row(modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(10.dp))
+    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
         .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Choose $title") { open = true }
         .then(if (tag != null) Modifier.testTag(tag) else Modifier)
         .androidxAlpha(if (enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.material3.Text(title, color = Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Text(title, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
         Box {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.Text(current, color = Color.White.copy(alpha = .55f), fontSize = 17.sp, maxLines = 1)
+                androidx.compose.material3.Text(current, color = Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
                 androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.UnfoldMore, null, tint = Color.White.copy(alpha = .4f),
                     modifier = Modifier.padding(start = 2.dp).size(18.dp))
             }
@@ -175,8 +174,8 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                         val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .6f + .4f * g; scaleY = scaleX
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)
                     }
-                    .shadow(24.dp, RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)).background(Color(0xFF3A3A3C))
-                    .border(.5.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(14.dp))
+                    .shadow(24.dp, RoundedCornerShape(FolioRadius.CARD.dp)).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A3A3C))
+                    .border(.5.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(FolioRadius.CARD.dp))
                     .then(if (tag != null) Modifier.testTag("$tag-menu") else Modifier)) {
                     options.forEachIndexed { index, (value, label) ->
                         if (index > 0) androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
@@ -188,7 +187,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                                 if (value == selected) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Check, null,
                                     tint = Color.White, modifier = Modifier.size(18.dp))
                             }
-                            androidx.compose.material3.Text(label, color = Color.White, fontSize = 17.sp)
+                            androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.BODY.sp)
                         }
                     }
                 }
@@ -214,7 +213,7 @@ internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSel
                     .selectable(value == selected, role = Role.RadioButton) {
                         if (value != selected) { haptic.performHapticFeedback(HapticFeedbackType.SegmentTick); onSelect(value) }
                     }, contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.Text(label, color = Color.White, fontSize = 13.sp, maxLines = 1,
+                    androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
                         fontWeight = if (value == selected) FontWeight.SemiBold else FontWeight.Medium)
                 }
             }

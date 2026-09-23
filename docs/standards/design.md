@@ -24,9 +24,9 @@ Folio's own identity takes over.
 - **DES-6 SHOULD** use the spacing, radius and type scales below. A value off the scale needs a reason in a comment.
 - **DES-7 MUST** add a token, not a literal, when a new value is used in more than one file.
 
-#### Scales (to be added as `FolioSpace`, `FolioRadius`, `FolioType`; see Gaps)
+#### Scales (`FolioSpace`, `FolioRadius`, `FolioType`, `FolioRow` in `FolioTokens.kt`)
 
-These are the values Folio already uses most, so adopting them changes little on screen.
+These are the values Folio already used most, so adopting them changed nothing on screen.
 
 | Scale | Values |
 |---|---|
@@ -96,11 +96,12 @@ Good:
 
 Not yet:
 
-- No spacing, radius or type scale. Outside token files there are about 1,630 `.dp` literals, 242
-  `RoundedCornerShape(N)`, 343 `fontSize` literals across 15 sizes, and 145 `Color(0x…)` literals. Worst files:
-  `CustomizationSheet.kt`, `MarketScreen.kt`, `LauncherScreen.kt`, `TopPanels.kt`, `MarketSourcesUi.kt`.
-- Token hex values are re-typed (`0xFF0A84FF` in six Market and Settings files; Red and Blue in `SettingsGroup.kt:110`).
-- `IosControls.kt:41` has its own `IosGreen 0xFF34C759`, different from `FolioColors.Green 0xFF30D158`.
+- Most sizes are still written at the call site. Outside the token files: 90 `Color(0x…)`, 238
+  `RoundedCornerShape(N.dp)` and 361 `fontSize = N.sp`, plus about 1,600 `.dp` literals. `DesignTokensTest` holds
+  those three counts so they can only go down. Worst files: `CustomizationSheet.kt`, `MarketScreen.kt`,
+  `LauncherScreen.kt`, `TopPanels.kt`.
+- The shared components (`IosControls`, `SettingsGroup`, `LauncherSheetParts`, `FolioSheet`) use the scales; the
+  screens don't yet.
 - Material used directly: `AlertDialog` for rename (`AppContextMenu.kt:238`), `Button` / `OutlinedButton` /
   `FilledTonalButton` in 6 places, `DropdownMenu` in `FolderPanel.kt:161`, `AssistChip` in `AppLibrary.kt:213`,
   Material progress indicators.
@@ -110,8 +111,8 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | Add `FolioSpace`, `FolioRadius`, `FolioType` with the scales above; migrate `CustomizationSheet.kt` first, as the largest | M |
-| 2 | Replace re-typed token hex values with the tokens; decide `IosGreen` vs `FolioColors.Green` (one green) | S |
+| 1 | ~~Add the scales~~ (done). Left: move the screens onto them, `CustomizationSheet.kt` first, as the largest | M |
+| 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
 | 3 | Move the rename dialog to Folio's `AlertDialog`; `FolderPanel`'s `DropdownMenu` to `IosMenuRow`; the direct Buttons to one `FolioButton` | S |
 | 4 | Light-surface variants and named status colours (`Success`, `Warning`) in `FolioColors` | S |
-| 5 | A lint check (or a unit test like `HardcodedTextTest`) that counts `Color(0x` and `fontSize = N.sp` outside token files and fails if the count rises | S |
+| 5 | ~~A check that counts raw colors, radii and text sizes outside the token files~~ (done: `DesignTokensTest`) | S |

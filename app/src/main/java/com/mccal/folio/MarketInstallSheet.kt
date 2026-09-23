@@ -91,7 +91,7 @@ internal fun MarketInstallSheet(
         }
 
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFF2C2C2E)).padding(14.dp)) {
-            Icon(Icons.Rounded.Shield, contentDescription = null, tint = Color(0xFF30D158), modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Shield, contentDescription = null, tint = FolioColors.Green, modifier = Modifier.size(20.dp))
             Text(safety.summary, color = Color.White.copy(alpha = .85f), fontSize = 13.sp, modifier = Modifier.padding(start = 10.dp))
         }
 
@@ -99,7 +99,7 @@ internal fun MarketInstallSheet(
         SheetGroup {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (safety.changes.isEmpty()) {
-                    Line(Icons.Rounded.Check, Color(0xFF30D158), stringResource(R.string.how_folio_looks_and_nothing_else))
+                    Line(Icons.Rounded.Check, FolioColors.Green, stringResource(R.string.how_folio_looks_and_nothing_else))
                 } else {
                     safety.changes.forEach { Line(Icons.Rounded.Check, Color(0xFFFFB340), it) }
                 }
@@ -132,14 +132,14 @@ internal fun MarketInstallSheet(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.cancel),
-                color = Color(0xFF0A84FF), fontSize = 16.sp,
+                color = FolioColors.Blue, fontSize = 16.sp,
                 modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
             )
             Text(
                 stringResource(R.string.get),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFF0A84FF))
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
                     .clickable(onClickLabel = getName, onClick = onGet)
                     .heightIn(min = 44.dp).padding(horizontal = 22.dp, vertical = 12.dp)
                     .testTag("market-install-confirm"),

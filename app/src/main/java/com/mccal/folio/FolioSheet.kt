@@ -192,11 +192,11 @@ private fun PeekCapsule(peek: PeekSlider) {
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().navigationBarsPadding()
         .padding(horizontal = 96.dp).padding(bottom = 64.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
     androidx.compose.foundation.layout.Column(Modifier
-        .size(minOf(maxWidth, 440.dp), height).clip(RoundedCornerShape(16.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
+        .size(minOf(maxWidth, 440.dp), height).clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
         .padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
         androidx.compose.foundation.layout.Row {
-            androidx.compose.material3.Text(peek.label, Modifier.weight(1f), color = Color.White, fontSize = 17.sp, maxLines = 1)
-            androidx.compose.material3.Text(peek.valueLabel, color = Color.White.copy(alpha = .6f), fontSize = 17.sp, maxLines = 1)
+            androidx.compose.material3.Text(peek.label, Modifier.weight(1f), color = Color.White, fontSize = FolioType.BODY.sp, maxLines = 1)
+            androidx.compose.material3.Text(peek.valueLabel, color = Color.White.copy(alpha = .6f), fontSize = FolioType.BODY.sp, maxLines = 1)
         }
         Box(Modifier.fillMaxWidth().height(28.dp), contentAlignment = androidx.compose.ui.Alignment.CenterStart) {
             Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .22f))) {
@@ -232,7 +232,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
                             alpha = appear.value
                             translationY = (1f - appear.value) * size.height * .12f
                         },
-                        shape = RoundedCornerShape(14.dp), color = FolioColors.SecondaryBackground, contentColor = Color.White) {
+                        shape = RoundedCornerShape(FolioRadius.CARD.dp), color = FolioColors.SecondaryBackground, contentColor = Color.White) {
                         androidx.compose.foundation.layout.Column(Modifier.padding(top = 14.dp), content = content)
                     }
                 }
@@ -254,17 +254,17 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         val appear = rememberEntrance(stiffness = 900f, dampingRatio = .85f)
         val base = MaterialTheme.typography
         val blue = FolioColors.Blue
-        fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, fontWeight = weight))
+        fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = FolioType.BODY.sp, fontWeight = weight))
         FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing), role = FoldRole.INFO) {
             MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = base) {
                 androidx.compose.foundation.layout.Column(modifier.width(270.dp)
                     .graphicsLayer { alpha = appear.value; scaleX = 1.12f - .12f * appear.value; scaleY = scaleX }
-                    .clip(RoundedCornerShape(14.dp)).background(Color(0xFF2C2C2E).copy(alpha = .98f))) {
+                    .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E).copy(alpha = .98f))) {
                     androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 19.dp, bottom = 16.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                        title?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 17.sp,
+                        title?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = FolioType.BODY.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center), it) }
-                        text?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White.copy(alpha = .85f), fontSize = 13.sp,
+                        text?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center)) { Box(Modifier.heightIn(max = 420.dp)) { it() } } }
                     }
                     androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .16f), thickness = .5.dp)

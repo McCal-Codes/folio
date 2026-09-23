@@ -66,7 +66,7 @@ internal fun MarketSourcesTab(
                 // The count is its own column now, so the line under the name doesn't say it twice.
                 detail = stringResource(R.string.built_into_the_app_no_network),
                 icon = Icons.Rounded.Home,
-                tint = Color(0xFF30D158),
+                tint = FolioColors.Green,
                 count = builtInCount,
                 selected = openUrl == BUILT_IN_SOURCE_URL,
                 onOpen = { onOpen(BUILT_IN_SOURCE_URL) },
@@ -187,8 +187,8 @@ internal fun MarketSourcePage(
                 Modifier.fillMaxWidth().clickable(onClickLabel = back, onClick = onBack).padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = Color(0xFF0A84FF), modifier = Modifier.size(18.dp))
-                Text(backTitle ?: back, color = Color(0xFF0A84FF), fontSize = 16.sp)
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = FolioColors.Blue, modifier = Modifier.size(18.dp))
+                Text(backTitle ?: back, color = FolioColors.Blue, fontSize = 16.sp)
             }
         }
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -200,7 +200,7 @@ internal fun MarketSourcePage(
                 },
                 contentDescription = null,
                 tint = when {
-                    builtIn -> Color(0xFF30D158)
+                    builtIn -> FolioColors.Green
                     source.kind == Source.Kind.LOCAL_DEV -> Color(0xFFFFB340)
                     else -> Color(0xFF6CB4FF)
                 },
@@ -278,7 +278,7 @@ internal const val BUILT_IN_SOURCE_URL = "folio://built-in/"
 private fun Pill(label: String, onClick: () -> Unit, destructive: Boolean = false) {
     Text(
         label,
-        color = if (destructive) Color(0xFFFF6961) else Color(0xFF0A84FF),
+        color = if (destructive) Color(0xFFFF6961) else FolioColors.Blue,
         fontSize = 15.sp,
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .08f))
             .clickable(onClick = onClick).heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 12.dp),
@@ -323,14 +323,14 @@ internal fun MarketTrustSheet(
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.cancel), color = Color(0xFF0A84FF), fontSize = 16.sp,
+                stringResource(R.string.cancel), color = FolioColors.Blue, fontSize = 16.sp,
                 modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
             )
             Text(
                 stringResource(if (previous == null) R.string.trust_and_add else R.string.trust_the_new_key),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFF0A84FF))
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
                     .clickable(onClick = onTrust).heightIn(min = 44.dp).padding(horizontal = 20.dp, vertical = 12.dp)
                     .testTag("market-trust-confirm"),
             )
@@ -374,14 +374,14 @@ internal fun MarketAddSourceSheet(url: String, onUrl: (String) -> Unit, onNext: 
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.cancel), color = Color(0xFF0A84FF), fontSize = 16.sp,
+                stringResource(R.string.cancel), color = FolioColors.Blue, fontSize = 16.sp,
                 modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
             )
             Text(
                 stringResource(R.string.next), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(14.dp))
-                    .background(if (url.isBlank()) Color(0xFF0A84FF).copy(alpha = .4f) else Color(0xFF0A84FF))
+                    .background(if (url.isBlank()) FolioColors.Blue.copy(alpha = .4f) else FolioColors.Blue)
                     .clickable(enabled = url.isNotBlank(), onClick = onNext)
                     .heightIn(min = 44.dp).padding(horizontal = 20.dp, vertical = 12.dp)
                     .testTag("market-add-source-next"),

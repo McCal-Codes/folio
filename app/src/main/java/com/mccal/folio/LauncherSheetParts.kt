@@ -100,7 +100,7 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) { apps.filter { it.label.contains(query.trim(), ignoreCase = true) } }
     Column(Modifier.fillMaxWidth().fillMaxHeight(.88f).padding(horizontal = 20.dp).imePadding()) {
-        Text(if (dockSlot == null) "Your Apps" else "Dock Position ${dockSlot + 1}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(if (dockSlot == null) "Your Apps" else "Dock Position ${dockSlot + 1}", color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
         IosSearchField(query, { query = it }, stringResource(R.string.search_apps), Modifier.padding(vertical = 12.dp), fieldModifier = Modifier.testTag("search-field"))
         if (dockSlot != null) SheetGroup(Modifier.padding(bottom = 8.dp)) { IosActionRow(stringResource(R.string.leave_this_position_empty), destructive = true, onClick = onClear) }
         if (blockedHint != null) Text(blockedHint, color = MaterialTheme.colorScheme.error,
@@ -127,14 +127,14 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
 /** iOS grouped-list section header inside Folio's dark sheets. */
 @Composable
 internal fun SheetGroupLabel(text: String) {
-    Text(text.uppercase(), color = Color.White.copy(alpha = .55f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+    Text(text.uppercase(), color = Color.White.copy(alpha = .55f), fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold,
         letterSpacing = .4.sp, modifier = Modifier.padding(start = 16.dp, top = 10.dp))
 }
 
 /** iOS inset grouped list: rounded dark card holding rows separated by thin dividers. */
 @Composable
 internal fun SheetGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF2C2C2E)), content = content)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2C2C2E)), content = content)
 }
 
 /** Side-rail placement; the rail sits on the right unless the left-handed layout is on. */
