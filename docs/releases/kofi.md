@@ -246,8 +246,8 @@ A benefit that can't be delivered monthly turns into a debt. Measured against wh
 | Beta builds before they're public | **Yes**, once 0.6.5 is out |
 | Preview and experimental builds | **Yes**, same channel as the betas |
 | A weekly "This week in Folio" post | **Only if it's written** — the information already exists as work happens |
-| A supporter Discord role | **No. There is no Folio Discord.** The README's Discord is McCal's own handle and
-  says "until there's a community". Don't promise a role until a server exists |
+| A supporter Discord role | **Yes, since 22 Sep 2026.** The Folio Discord exists, and Ko-fi hands out the role
+  once the server is connected (Ko-fi › Settings › Integrations › Discord). Every monthly tier gets it |
 | A name in supporter acknowledgements | **No** — there's no supporters list in the app or the repository yet |
 
 The last two are the only places the usual membership advice doesn't fit Folio yet. Build them or leave them out;
@@ -257,12 +257,13 @@ don't list them.
 
 **Decided (McCal, 19 Sep 2026): Coffee $3, Backer $7, Builder $15.** Names say what you *are* rather than what you
 unlock, so the perks can move without the name lying, and $15 reads as funding the project rather than buying a
-launcher. Drafts below — **the words are McCal's.** Images: `lab/walls/kofi-tiers/{coffee,backer,builder}.jpg`,
-1600 × 800, from `lab/kofi-tiers.html`.
+launcher. **The words are McCal's**; what's written below is a draft he edits. Images:
+`lab/walls/kofi-tiers/{coffee,backer,builder,one-time}.jpg`, 1600 × 800, from `lab/kofi-tiers.html`.
 
 | | Coffee $3 | Backer $7 | Builder $15 |
 |---|---|---|---|
 | Supporters-only posts, before the public ones | ✓ | ✓ | ✓ |
+| A supporter role in the Folio Discord | ✓ | ✓ | ✓ |
 | Design previews of what's being built | ✓ | ✓ | ✓ |
 | A vote on what comes after each update | ✓ | ✓ | ✓ |
 | A code for the Market, before it ships | | ✓ | ✓ |
@@ -271,6 +272,7 @@ launcher. Drafts below — **the words are McCal's.** Images: `lab/walls/kofi-ti
 | Beta builds as soon as they exist | | | ✓ |
 | Development posts as the work happens | | | ✓ |
 | Tweak and theme requests read first | | | ✓ |
+| A lasting Supporter badge, and a name in Supporters (0.6.7) | | | ✓ |
 
 **Backer is the card that leads** — more benefits, the "everything in Coffee, plus" framing, and a lighter card with
 a teal ring around it. No "best value", no scarcity; the weight is in the design, not the shouting.
@@ -278,10 +280,121 @@ a teal ring around it. No "best value", no scarcity; the weight is in the design
 Each tier needs a description and a welcome message on Ko-fi. The welcome message is where a code goes for the two
 paid tiers (see *Getting the code out automatically*), and every card carries the "Folio remains Folio" line.
 
-Two lines that are **not** on any tier, because they don't exist yet: a supporter Discord role (the README's Discord
-is McCal's own handle, and says "until there's a community") and a name in supporter acknowledgements (no list in the
-app or the repository). "Development posts as the work happens" is a writing commitment, not a built feature — it
+One line that is **not** on any tier, because it doesn't exist yet: a name in supporter acknowledgements in the app
+(the Supporters list is a mockup until 0.6.7). The Discord role is real: the server exists, and every monthly tier
+gets the role through Ko-fi's Discord integration. "Development posts as the work happens" is a writing commitment, not a built feature — it
 becomes real with the first one, and *This week in Folio* is the shape suggested for it.
+
+### The copy for each Ko-fi field
+
+Drafted 22 Sep 2026 against what is actually live: one month per code, the Backer and Builder tiers earning one with
+each payment, Coffee earning none, and $15 or more also earning the lasting Supporter badge. The only promises here
+about something unbuilt are the ones marked 0.6.7 (the badge and the Supporters list, mockup
+`docs/mockups/lasting-supporter.html`). "Within a day" is honest until `RESEND_KEY` is set; when it is, those lines
+become "your code is in this message".
+
+**Page intro, above the tiers**
+
+> Folio is a clean, iPhone-style Home Screen for Android, with the jailbreak tweaks I always wanted, and none of the
+> lockdown.
+>
+> Folio remains Folio whether you support development or not. The core is free and stays free: Home, the island,
+> panels, gestures and themes are never behind a code. Supporting buys me time to keep building, and the extras are
+> the thank-you.
+
+**Coffee · $3 a month — description**
+
+> A coffee a month, and the work keeps going. You see what I'm building before anyone else does: supporters-only
+> posts, design previews of screens I'm still deciding on, a vote on what I build next after each update, and the
+> supporter role in the Folio Discord. Folio remains Folio whether you support development or not.
+
+**Coffee — welcome message**
+
+> Thank you for backing Folio.
+>
+> You'll get supporters-only posts here before they go public, design previews of what I'm working on, and a vote on
+> what comes next after each update. The next vote is on the order I build 0.6.7 in.
+>
+> Link your Discord to Ko-fi and you'll get the supporter role in the Folio Discord: Ko-fi › Settings › Connections.
+>
+> No code comes with this tier: everything in Folio's core is free anyway. If you ever want the Market and the betas
+> early, Backer is the one.
+>
+> McCal
+
+**Backer · $7 a month — description**
+
+> Everything in Coffee, plus the parts that aren't out yet. Each month you get a supporter code: it opens the Folio
+> Market before it's open to everyone, unlocks Keyd (the keyboard, split around the crease, no permissions at all),
+> and brings preview builds when there's something to try. The code is checked on your phone, so it works offline.
+> The supporter role in the Folio Discord comes with it.
+
+**Backer — welcome message**
+
+> Thank you for backing Folio.
+>
+> Your supporter code is coming in a separate message within a day. To use it: Folio › Settings › Supporter › Redeem
+> a Code. It opens the Market, adds Keyd, and turns on beta builds.
+>
+> The code is checked on your phone against a key inside Folio, so it works offline and tells me nothing about who
+> redeemed it. It lasts one month from the day you redeem it, and a new one comes with each month's payment.
+>
+> Betas can have more bugs than releases. Settings › Software Update › Beta Updates turns them off whenever you like.
+>
+> Link your Discord to Ko-fi (Ko-fi › Settings › Connections) and you'll get the supporter role in the Folio Discord.
+>
+> McCal
+
+**Builder · $15 a month — description**
+
+> Everything in Backer, for the people who want to shape where Folio goes. Beta builds as soon as they exist,
+> development posts as the work happens, and your tweak and theme requests read first. It also earns the supporter
+> role in the Folio Discord, the lasting Folio Supporter badge in the app, and your name in Supporters if you'd like
+> it there. (The badge and the list arrive in 0.6.7.)
+
+**Builder — welcome message**
+
+> Thank you for building Folio with me.
+>
+> Your supporter code is coming in a separate message within a day. In Folio: Settings › Supporter › Redeem a Code.
+> It opens the Market, adds Keyd, and brings the betas as soon as they exist. A new code comes with each month's
+> payment, and each one lasts a month.
+>
+> Your support also earns the lasting Folio Supporter badge in the app, which stays for good, not just while a code
+> is live. It arrives in 0.6.7. Want your name in Settings › Supporters? Reply here and tell me how to write it.
+> Nothing goes in without your yes.
+>
+> Got a tweak or a theme you want in Folio? Reply and tell me. Yours are the ones I read first.
+>
+> Link your Discord to Ko-fi (Ko-fi › Settings › Connections) and you'll get the supporter role in the Folio Discord.
+>
+> McCal
+
+**One-time support — the support box**
+
+> Not after a monthly thing? A one-off works too. $3 or more earns a one-month supporter code: the Market, Keyd and
+> the betas. $15 or more also earns the lasting Folio Supporter badge, and your name in Supporters if you'd like.
+> (The badge and the list arrive in 0.6.7.) The Discord role goes with the monthly tiers.
+
+**One-time support — thank-you message**
+
+> Thank you.
+>
+> I'll send you a supporter code within a day. In Folio: Settings › Supporter › Redeem a Code. It opens the Market,
+> adds Keyd, the keyboard, and turns on beta builds, for a month from the day you redeem it.
+>
+> If you gave $15 or more, it also earns the lasting Folio Supporter badge in the app, which stays after the month
+> ends. That arrives in 0.6.7. Reply if you'd like your name in Settings › Supporters.
+>
+> Folio remains Folio whether you support development or not. The core is free and stays free; this buys me time to
+> keep building.
+>
+> McCal
+
+**Two things to check before pasting any of it.** The tier names on Ko-fi have to be exactly `Backer` and `Builder`,
+or `POOLS` in the worker won't recognise those payments. And Backer and Builder codes currently carry the same
+scopes, so a Backer gets the betas too: either read the Backer/Builder difference as timing (Builders hear first),
+or mint Backer codes without the beta scope.
 
 ### Positioning: two audiences, one promise each
 
@@ -298,10 +411,17 @@ becomes real with the first one, and *This week in Folio* is the shape suggested
 Both must keep saying the same thing about what Folio *does*; only the emphasis changes. When one is edited, check
 the other.
 
-### One-off support: a month per $3
+### One-off support: one month, whatever the amount
 
-**Decided (McCal, 19 Sep 2026):** a one-off payment earns a dated code — **$3 → one month, $6 → two, $12 → four** —
-matching the Coffee tier, so nobody can buy cheaper access than a member gets. Three ways to do it, cheapest first.
+**Decided (McCal, 22 Sep 2026): every code is one month.** A tip of $3 or more earns a one-month code, and so does
+each monthly payment of the Backer and Builder tiers; Coffee earns none. A payment of **$15 or more** also earns the
+lasting Supporter badge (0.6.7), which is what a bigger one-off buys instead of more months. This replaces the
+19 Sep bands below ($3 → one month, $6 → two, $12 → four), which were never deployed: `POOLS` in
+`tools/kofi-worker/wrangler.toml` reads `{"tiers":{"Backer":"beta","Builder":"beta"},"tipFrom":3,"tipPool":"beta",
+"tipCurrency":"USD"}`, and the 100 codes loaded into D1 are all one-month. A tip in another currency earns nothing
+until `tipRates` prices it, and is written to the `problems` table rather than dropped.
+
+The three ways to deliver one, cheapest first:
 
 1. **Shop items, one per length.** "Folio early access · 1 month", "· 2 months", "· 4 months", each with a months
    code attached. Nothing to run, works while asleep, and the files never go stale.
@@ -381,8 +501,8 @@ makes the message *here is something useful I shipped*, before *here is where yo
 
 ### The announcement post
 
-McCal's own draft (19 Sep 2026), with two facts corrected: there is no Folio Discord yet, and there is no supporters
-acknowledgements list, so neither is promised here.
+McCal's own draft (19 Sep 2026), with one fact corrected: there is no supporters
+acknowledgements list in the app yet, so it isn't promised here.
 
 > **Folio now has a way to support development.**
 >
