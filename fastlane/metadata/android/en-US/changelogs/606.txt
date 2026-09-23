@@ -1,0 +1,6 @@
+0.6.6: The Market, and Folio in Chinese.
+
+* The Folio Market: the app icon opens a store with Featured, Sources, Packages, Installed and Settings. For supporters first; everyone gets it in 0.7.0. Every theme and tweak it hands out is still in Settings for everyone else.
+* Add a source: any HTTPS address. Folio shows its key fingerprint before you trust it, and says plainly what a changed key looks like.
+* Nothing is applied unchecked: size, checksum and signature first, then the whole package in one go, with Undo beside it.
+* Folio speaks Simplified Chinese, and a renamed Chinese app answers to its pinyin in Spotlight and the App Library.
