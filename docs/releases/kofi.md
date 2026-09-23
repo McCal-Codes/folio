@@ -158,7 +158,7 @@ README has the setup, and the whole thing is optional — start with the shop it
 
 A draft, not copy — **the words are McCal's.** Ko-fi asks for a title, a price, a description and an image.
 
-**One item** (McCal, 23 Sep 2026), now that every payment means one month:
+**One item** (McCal, 23 Sep 2026), now that a one-off means one month:
 
 | Title | Price | Delivery |
 |---|---|---|
@@ -186,20 +186,20 @@ app does, or - the last line - his answer about where the money goes. Nothing he
 edit since: the code goes into Settings › Supporter, because Early access moved there when the two supporter-code
 systems became one.
 
-> Folio Launcher: a clean, iPhone-style Home Screen for Android — with the jailbreak tweaks I always wanted, and none
+> Folio Launcher: a clean, iPhone-style Home Screen for Android, with the jailbreak tweaks I always wanted, and none
 > of the lockdown.
 >
 > This gets you the **Folio Market** before it opens to everyone. It's how Folio hands out themes, tweaks and layouts: packages
 > you can get, remove and undo, from sources you choose. Every page says what a package changes and what it can't
 > reach before you get it.
 >
-> The tweaks are the ones I missed from jailbreaking — I've been in that world since iOS 7 or 8. Cabinet after Velox,
+> The tweaks are the ones I missed from jailbreaking. I've been in that world since iOS 7 or 8. Cabinet after Velox,
 > Harborline after Harbor, Roll Call after Axon, Palette after Velvet, Colored Albums after ColorFlow. All re-created
 > from scratch for Android; none of their code is in here, and everyone is credited in the app.
 >
 > You'll get a code to paste into Settings › Supporter, and the store appears.
 >
-> Everything in the Market is already in Folio's Settings — this is a head start, not a paywall. Folio is free and
+> Everything in the Market is already in Folio's Settings. This is a head start, not a paywall. Folio is free and
 > open source and stays that way, and nothing that has already shipped will ever move behind a code. There's no
 > account: the code is checked on your phone, and nothing about you is stored or sent.
 >
@@ -436,9 +436,17 @@ the other.
 
 ### One-off support: a month per donation
 
-**Decided (McCal, 23 Sep 2026):** **every payment earns one month of the code.** A tip or donation of any size, each
-payment counting (two tips, two months), a month of any tier, and the shop item, all mean the same thing. The tiers
-stay **Coffee $3, Backer $7, Builder $15** and differ in what McCal gives beyond the code, not in what the code opens.
+**Decided (McCal, 23 Sep 2026):** **every payment earns the code.** A tip or donation of any size, each payment
+counting (two tips, two months), a month of any tier, and the shop item all open the same thing. The tiers stay
+**Coffee $3, Backer $7, Builder $15** and differ in what McCal gives beyond the code, not in what the code opens.
+
+**How long each one lasts (McCal, 23 Sep, later the same day):** a one-off or the shop item is **one month**; a
+month of any tier is **two**. Not a better deal for members so much as a safer one: a code starts counting when it is
+redeemed, so a member who pays on the 1st and redeems on the 3rd would be locked out for two days before the next
+payment landed. Two months overlap, and a late or retried payment never reads as a lapse. The reasoning lives beside
+`POOLS` in `tools/kofi-worker/wrangler.toml`, which is the file that actually decides it.
+
+*(Superseded, from earlier the same day: one month for every payment, member or not.)*
 
 Why it landed there: the Market needs a code carrying the `beta` scope (`MarketFeature.kt`), which also turns the beta
 channel on, so the app can't separate "the store" from "the builds". The only scope with a feature behind it is
@@ -498,7 +506,8 @@ a file starts its month when the buyer redeems it, so the file never goes stale 
 
 The gap in the cheap path: a welcome message fires once, so a member's code has to outlast the join. Either mint the
 member codes with a longer window (`--months 3`) and post a fresh one to the supporters feed when it runs out — the
-posts are a benefit anyway — or deploy the worker, which mints one month per payment and needs no post at all.
+posts are a benefit anyway — or deploy the worker, which mints a code per payment, two months for a member and
+one for a one-off, and needs no post at all.
 
 **Settled (McCal, 19 Sep 2026).** The shop item was $3 for a code that *never* expired, while Backer at $7/month
 leads on that same early access — anyone who noticed would have bought the $3 item instead, and been right. One price
