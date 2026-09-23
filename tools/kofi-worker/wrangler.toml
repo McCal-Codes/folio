@@ -6,7 +6,7 @@ compatibility_date = "2026-09-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "folio-codes"
-database_id = "paste-the-id-from-wrangler-d1-create"
+database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 
 [vars]
 # Which payment earns which pool of codes. Anything not named here earns nothing.
