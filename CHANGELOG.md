@@ -11,13 +11,22 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Folio Beta in the Market:** supporters see Folio Beta under Sources, with what you're on, the newest beta and an Update button. It's the same download Settings › Software Update makes: through your supporter code, checked against Folio's own signing key before anything installs, with Update Now or Tonight.
 - **Made with AI, said plainly:** a package whose author says AI helped make it shows an AI-assisted tag beside its developer, which tools helped under Information, and the same on the Get sheet before anything installs.
 - **A lasting Supporter badge:** back Folio with $15 or more and Settings › Supporter carries a Folio Supporter badge with the month you started. It stays after the code runs out, and after you remove the code. Nothing about it leaves your phone: the code says so, and Folio reads it offline.
+- **Refresh Icons:** Settings › Icons & Side Bar loads your icons again, for one that a theme app changed and Folio still shows the old way.
 - **Supporters in Settings:** a page beside Credits listing the people who backed Folio and said their name could be there, newest first. The list is a public file Folio fetches like the Roadmap, so a name can go on or come off without an update.
 
 ### Changed
 - **Panes fit the screen:** the Market and Settings show as many panes as the window has room for, the way iPad's App Store and Settings do. On a Fold's inner screen that's two: a package, a source or a nested setting opens over the list with Back, and the Market's list uses the whole width, in two columns. Three panes are for windows 1200 dp and wider.
 
+- **Home's background costs the GPU about a third less while swiping.** The dunes never move, so they're drawn once and reused instead of being redrawn every frame. Measured on a Fold8, unfolded at 120 Hz: 7.0 ms per frame down to 4.6 ms.
+
 ### Fixed
 - A beta from the supporters' source can be downloaded. Folio asked for the list of betas with your code but downloaded the file without it, and the supporter service turns those downloads away.
+- **Double tap on an empty spot works again** (#61): every empty grid cell was taking its own taps, and 0.6.5's extra rows made those cells cover most of a page, so the page's Double Tap action never saw the second tap.
+- **The dock steps aside for Today View** (#25): unfolded and upright it sat over Today's widgets and its Edit button. Like iPhone, it now fades away as you swipe there and comes back on Home, so it can't take Today's taps.
+- **Icons follow a theme that changes them** (#19): Folio kept an app's icon until its package, density, language or dark mode changed, and a theme engine changes none of those. Icons now also follow Android's theme and overlay changes, and folding or rotating still costs nothing.
+- **No more smeared, doubled pages** (#12, #35): choosing Android's wallpaper as your background left every swipe painted over the last. The screen starts again with a window that really shows the wallpaper, and Folio draws its own background whenever it isn't.
+- **The Preview bar no longer covers the App Library**: before Folio is your Home app, the space kept for the bar was a guess. It's measured now. Once Folio is the Home app nothing moves, so no one's rows shrink.
+- **Every Settings page has a way back**: unfolded and upright, a top-level page showed only the sidebar button, which doesn't read as a way back. It now shows the sidebar button and a way back to Folio together.
 
 ## [0.6.6] - 2026-09-21
 
