@@ -1402,4 +1402,6 @@
     <string name="keyd_what_it_does">What it does</string>
     <string name="keyd_features">Splits around the crease · suggestions and autocorrect · six languages · clipboard history · shortcuts · no permissions at all</string>
     <string name="keyd_where_to_get_it">Keyd is a separate app, because Android needs a keyboard to be its own input method. Your code added its source to the Market, so it\'s there to get, and it asks for no permissions at all, not even the internet.</string>
+    <string name="refresh_icons">Refresh Icons</string>
+    <string name="refresh_icons_note">If a theme app changed your icons and Folio still shows the old ones, this loads them again.</string>
 </resources>
