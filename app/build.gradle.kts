@@ -96,10 +96,20 @@ android {
         applicationId = "com.mccal.folio"
         minSdk = 31
         targetSdk = 36
-        // Semantic version; see CHANGELOG.md. versionCode = MAJOR * 10000 + MINOR * 100 + PATCH, so a beta
-        // (0.7.0-beta.1) shares its release's code and the release installs over it.
+        // Semantic version; see CHANGELOG.md and docs/adr/0007-release-trains.md.
+        //   versionCode = (MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX
+        // The last digit is why a fix on top of a release can exist at all: 0.6.7 is 6070 and 0.6.7.1 is 6071, so a
+        // fix never has to take the number the next feature release wanted, which is what went wrong on 23 Sep 2026.
+        // A pre-release (0.7.0-beta.1) shares its release's code, and the release installs over it because
+        // SoftwareUpdate.isNewer orders by the version name. Codes only ever rise, so the older formula's 607 is
+        // still below this one's 6070.
         versionName = folioVersion
-        versionCode = folioVersion.substringBefore('-').split('.').let { (major, minor, patch) -> major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt() }
+        versionCode = folioVersion.substringBefore('-').split('.').map(String::toInt).let { parts ->
+            require(parts.size in 3..4) { "folioVersion needs MAJOR.MINOR.PATCH, and may add .HOTFIX: was $folioVersion" }
+            val hotfix = parts.getOrElse(3) { 0 }
+            require(hotfix in 1..9 || parts.size == 3) { "the hotfix digit runs 1 to 9: was $folioVersion" }
+            (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + hotfix
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

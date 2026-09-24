@@ -50,9 +50,9 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 ### Versions
 
-- **REL-11 MUST** follow semver in `folioVersion`, and derive `versionCode` from it rather than writing it by hand.
-  The formula is REL-12's. Until the release that adopts it, the code in `app/build.gradle.kts` is still the old
-  `MAJOR * 10000 + MINOR * 100 + PATCH` (gap 5 below), and every new code must be larger than the last either way.
+- **REL-11 MUST** follow semver in `folioVersion`, and derive `versionCode` from it rather than writing it by hand,
+  with REL-12's formula. Every new code must be larger than the last, whatever the formula was when the last one
+  shipped.
 - **REL-12** A fix on top of a release is a four-part version, `x.y.z.n`, and `versionCode` leaves nine slots per
   release for them: `(MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX` ([ADR 0007](../adr/0007-release-trains.md)).
   A fix release never has to consume the number a feature release wanted, which is what went wrong on 23 Sep 2026.
@@ -104,7 +104,8 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 - `main` is protected by CI (build, tests, lint) and every merge is a squash, so the history reads one change per
   line. Good.
-- `versionCode` has been derived from `folioVersion` since 0.6.0 (`app/build.gradle.kts:102`), and `RoadmapTest`
+- `versionCode` carries REL-12's hotfix digit since 0.6.7 (`app/build.gradle.kts`), checked by `VersionCodeTest`
+  against the packaged manifest rather than a copy of the arithmetic, and `RoadmapTest`
   already fails when the app's version has no roadmap section. Good.
 - `SoftwareUpdate.isNewer` (`SoftwareUpdate.kt:222`) implements semver ordering including pre-releases, with a test.
   Good.
@@ -127,15 +128,16 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 | 2 | Branch protection on `main` requiring the `release-rules` check, so nothing can be pushed straight to it and the check cannot be skipped by merging early | S |
 | 3 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
 | 4 | A check that a pull request touching `themes/` or a Market package carries its AI-assisted label (AI-6), the same shape as the changelog check | S |
-| 5 | The `versionCode` formula and REL-12's hotfix digit, with a test that `0.6.7.1` sorts above `0.6.7` in both `versionCode` and `isNewer` | S |
-| 6 | A `Feature` gate helper, so REL-4a is one line at a feature's entry point rather than a scope check copied around | S |
-| 7 | A check that lists every closed gate and how long it has been closed, so a finished feature cannot sit hidden and forgotten | S |
+| 5 | A `Feature` gate helper, so REL-4a is one line at a feature's entry point rather than a scope check copied around, with a check that lists every closed gate and fails when one should have opened by now | S |
 
 ### Done
 
 - REL-7 and REL-13 are enforced by `tools/check-release-rules.sh`, run as the `release-rules` job on every pull
   request. Waivable by labelling the pull request `no-changelog` or `release-exception`, so an exception is visible
   where the change is reviewed rather than in someone's shell.
+- REL-12's hotfix digit is in the build, and `VersionCodeTest` checks the packaged manifest against the formula, that
+  a fix sorts above its release and below the next one, that a pre-release shares its release's code, and that every
+  code already published is below this build's.
 - REL-10, REL-16 and a reproducibility check are enforced by `scripts/release-signed.sh`, which refuses to build when
   the tag already exists, when the changelog has no section for the version, when a **stable** version's section
   still says `Unreleased` (a beta may be built undated), or when the working tree is dirty. `FOLIO_SKIP_RELEASE_CHECKS=1`
