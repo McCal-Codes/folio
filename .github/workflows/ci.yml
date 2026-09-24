@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main, 'release/**']
+  # `labeled` and `unlabeled` are here for the release-rules job: its waivers are labels, and without these a pull
+  # request stays red after you label it until someone pushes a commit, which teaches people to ignore the check.
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   schedule:
     - cron: '17 4 * * 1' # weekly fuzzing
   workflow_dispatch:
