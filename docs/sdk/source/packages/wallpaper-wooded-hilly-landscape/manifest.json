@@ -1,0 +1,31 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
+  "format": 1,
+  "id": "com.mccal.folio.wallpaper.wooded-hilly-landscape",
+  "name": "Wooded Hilly Landscape",
+  "version": "1.0.0",
+  "author": {
+    "name": "Abraham Pether"
+  },
+  "minFolio": "0.6.8",
+  "section": "wallpapers",
+  "kind": [
+    "wallpaper"
+  ],
+  "permissions": [
+    "wallpaper"
+  ],
+  "screens": [
+    "cover",
+    "inner"
+  ],
+  "icon": "assets/icons/wallpaper-wooded-hilly-landscape.png",
+  "depiction": "depiction.json",
+  "license": "CC-PDDC",
+  "description": "1785. Yale Center for British Art, Paul Mellon Collection.",
+  "requires": {
+    "features": [
+      "wallpaper"
+    ]
+  }
+}
