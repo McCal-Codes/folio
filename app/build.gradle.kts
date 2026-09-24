@@ -143,9 +143,12 @@ android {
             applicationIdSuffix = ".dev"
             manifestPlaceholders["appLabel"] = "Folio Dev"
         }
+        // Same app id as "fast", so one build installs over the other and Folio Dev keeps its layout and settings.
+        // Only the name differs, because that is the one place you can tell them apart on the phone, and it matters:
+        // a debug build is far slower, so frame numbers taken on one mean nothing next to numbers from the other.
         getByName("debug") {
             applicationIdSuffix = ".dev"
-            manifestPlaceholders["appLabel"] = "Folio Dev"
+            manifestPlaceholders["appLabel"] = "Folio Debug"
         }
     }
     // "fast" uses release's no-op tracing/diagnostic sources.
