@@ -333,6 +333,14 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
+                        // Page Effects, for supporters until 0.6.8 (FeatureGate.PAGE_EFFECTS). None is the default.
+                        val gestureContext = androidx.compose.ui.platform.LocalContext.current
+                        val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(gestureContext) }
+                        if (pageEffectsOpen) {
+                            IosMenuRow(stringResource(R.string.page_effects), PageEffect.entries.map { it to stringResource(it.label) },
+                                state.pageEffect, model::setPageEffect, tag = "page-effect")
+                            if (state.pageEffect != PageEffect.NONE) CardNote(stringResource(R.string.home_pages_turn_in_3d_as_you_swipe_off_w))
+                        }
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")

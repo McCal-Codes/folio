@@ -1434,4 +1434,7 @@
     <string name="people_who_backed_folio_with_15_or_more">People who backed Folio with $15 or more and said their name could be here. Thank you.</string>
     <string name="no_names_yet_yours_could_be_the_first">No names yet. Yours could be the first.</string>
     <string name="backed_folio_and_want_your_name_here">Backed Folio and want your name here? Reply to your Ko-fi thank-you and say so. Names come off the same way.</string>
+    <string name="page_effects">Page Effects</string>
+    <string name="cube">Cube</string>
+    <string name="home_pages_turn_in_3d_as_you_swipe_off_w">Home pages turn in 3D as you swipe. Off while Home shows two pages side by side, off with Reduce Motion on, and worth watching for dropped frames before you keep it.</string>
 </resources>

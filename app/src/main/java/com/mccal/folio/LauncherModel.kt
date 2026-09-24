@@ -217,6 +217,8 @@ data class LauncherState(
     val folderBackground: FolderBackground = FolderBackground.GLASS,
     val labelSize: LabelSize = LabelSize.STANDARD,
     val motionSpeed: MotionSpeed = MotionSpeed.STANDARD,
+    /** How Home pages move as you swipe between them. [PageEffect.NONE] is the default and the flat swipe. */
+    val pageEffect: PageEffect = PageEffect.NONE,
     /** Strength of the thin light outline around widgets and Side Bar capsules (0 = none). */
     val glassOutline: Float = .16f,
     /** Darken the wallpaper while Folio's dark appearance is on. */
@@ -835,6 +837,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
+    fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.copy(pageEffect = value) }
     fun setGlassOutline(value: Float) = updateSettings(soon = true) { it.copy(glassOutline = value.coerceIn(0f, 1f)) }
     /** One tap for the whole glass look: widgets and Side Bar together. */
     fun setGlassPreset(frost: Float) = updateSettings(soon = false) {
@@ -1131,7 +1134,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
             .put("installedTweaks", JSONArray(s.installedTweaks.toList()))
             .put("folderColumns", s.folderColumns).put("folderBackground", s.folderBackground.name)
-            .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name)
+            .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("pageEffect", s.pageEffect.name)
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
             .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
@@ -1382,6 +1385,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folderBackground = runCatching { FolderBackground.valueOf(j.optString("folderBackground")) }.getOrDefault(FolderBackground.GLASS),
         labelSize = runCatching { LabelSize.valueOf(j.optString("labelSize")) }.getOrDefault(LabelSize.STANDARD),
         motionSpeed = runCatching { MotionSpeed.valueOf(j.optString("motionSpeed")) }.getOrDefault(MotionSpeed.STANDARD),
+        // A save from before Page Effects, and anything unrecognised, reads as the flat swipe.
+        pageEffect = PageEffect.of(j.optString("pageEffect")),
         widgetGlass = j.optDouble("widgetGlass", .26).toFloat().coerceIn(0f, 1f), glassOutline = j.optDouble("glassOutline", .16).toFloat().coerceIn(0f, 1f),
         focusModes = focusModesFromJson(j.optJSONArray("focusModes")),
         activeFocus = j.optString("activeFocus").takeIf { it.isNotEmpty() },

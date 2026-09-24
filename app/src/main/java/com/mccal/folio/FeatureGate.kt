@@ -46,7 +46,15 @@ internal enum class FeatureGate(
      * StandBy while the phone charges, rather than only when it is stood up half folded. Charging behaviour is the
      * kind of thing that needs real phones overnight, which is what the beta is for.
      */
-    STANDBY_CHARGING("standbyCharging", closedSince = "2026-09-23", opensIn = "0.6.8", { OPEN_IN_0_6_8 });
+    STANDBY_CHARGING("standbyCharging", closedSince = "2026-09-23", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
+
+    /**
+     * Page Effects: 3D turns on the Home page swipe ([PageEffect]). Off by default and gated on top of that, because
+     * Home's swipe is the one journey Folio already loses on at 120 Hz, and no amount of care in a layer block
+     * changes the fact that this asks the GPU for more on exactly that frame. The beta is what decides whether both
+     * effects are smooth enough to keep, and on which screens.
+     */
+    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

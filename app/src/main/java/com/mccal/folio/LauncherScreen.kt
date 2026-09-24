@@ -231,6 +231,13 @@ fun LauncherScreen(
     SideEffect { pageGestures.editing = drag.active || widgetSession != null || resize.active; LiveDiscover.allowNativeOpen = pager.currentPage == 0 && !drag.active && widgetSession == null && !resize.active }
     val pageFling = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(nativePager, pagerSnapDistance = pageGestures,
         snapAnimationSpec = MotionSpeed.spring(1f, androidx.compose.animation.core.Spring.StiffnessMediumLow * 1.2f))
+    // Page Effects, resolved once here so nothing about the feature is consulted where it doesn't apply (REL-4a):
+    // NONE adds no layer, no pager read and no per-frame work at all. Gated until 0.6.8, off with Reduce Motion
+    // (DYN-11, A11Y-14), and off while an icon or widget is being moved, because a drop lands by coordinates and a
+    // layer transform would move the coordinates under the finger.
+    val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(launcherActivity) }
+    val pageEffect = if (pageEffectsOpen && !LocalReduceMotion.current && !drag.active && !resize.active && widgetSession == null)
+        state.pageEffect else PageEffect.NONE
     var nativeMotion by remember { mutableStateOf(false) }
     DisposableEffect(nativePager) {
         val callback: (Float) -> Unit = { progress ->
@@ -784,7 +791,11 @@ fun LauncherScreen(
                             drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = { model.turnOnWork(it) })
                     } else {
                         // Centered beside the rail when the grid is narrower than the space (short, wide windows).
-                        Row(Modifier.fillMaxSize().testTag("home-surface"), horizontalArrangement = Arrangement.Center) {
+                        // Page Effects turn the page as it goes by: only Home, and only here, where one page fills the
+                        // window. Unfolded, Home pans two pages at once past the window (ExpandedWorkspace) and there
+                        // is no single page turning to speak of; Discover is a separate window Folio cannot transform.
+                        Row(Modifier.fillMaxSize().pageEffect(pageEffect, nativePager, physicalPage).testTag("home-surface"),
+                            horizontalArrangement = Arrangement.Center) {
                             HomePagePane(page, state, previewLayout.slots, previewLayout.leadingSlots, previewLayout.widgetPlacements, appsById, geometry, contentHeight,
                                 bottomSpace, widgets, drag, target, insertionTarget, showLargeWidget = false,
                                 onLaunch = onLaunchFrom, onActions = { overlays.menu = it.id },
