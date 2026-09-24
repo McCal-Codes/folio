@@ -557,8 +557,11 @@ fun LauncherScreen(
             }) {
         // Folio's background unless Android's wallpaper is really behind the window: a see-through window with
         // nothing behind it shows every earlier frame (#12, #35), so the worst case is the dunes, never a smear.
-        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper()
-        else if (state.wallpaperMotion) SystemWallpaperParallax(nativePager)
+        // One switch behind both backgrounds (DYN-11: Reduce Motion leaves both still). Android's wallpaper is moved
+        // by the system; Folio's own is a translation on the layer its background is already cached in.
+        val backgroundMoves = state.wallpaperMotion && !LocalReduceMotion.current
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(drift = nativePager.takeIf { backgroundMoves })
+        else if (backgroundMoves) SystemWallpaperParallax(nativePager)
         // iOS "dark appearance dims wallpaper".
         val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
         if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))

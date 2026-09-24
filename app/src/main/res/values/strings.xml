@@ -29,7 +29,7 @@
     <string name="labels_status_page_dots_and_widget_text">Labels, status, page dots and widget text on the wallpaper. Automatic uses dark text over light wallpapers, like iPhone.</string>
     <string name="tint_glass_with_wallpaper_color">Tint glass with wallpaper color</string>
     <string name="dark_appearance_dims_wallpaper">Dark appearance dims wallpaper</string>
-    <string name="wallpaper_moves_with_pages">Wallpaper moves with pages</string>
+    <string name="background_moves_with_pages">Background moves with pages</string>
     <string name="launcher_background">Launcher background</string>
     <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens. </string>
     <string name="cancel">Cancel</string>
