@@ -105,8 +105,9 @@ Not yet:
   In Settings, 166 values moved onto tokens with no pixel changed. What stayed: icon and thumbnail radii, which
   follow their size (DES-8a), and the preview dock's pill radii.
 - Material used directly: `AlertDialog` for rename (`AppContextMenu.kt:238`), `Button` / `OutlinedButton` /
-  `FilledTonalButton` in 6 places, `DropdownMenu` in `FolderPanel.kt:161`, `AssistChip` in `AppLibrary.kt:213`,
-  Material progress indicators.
+  `FilledTonalButton` in 6 places, `AssistChip` in `AppLibrary.kt:213`, Material progress indicators.
+- Material underneath a Folio component, the `IosSlider` pattern: `FolioMenuPopup` is Material's `DropdownMenu`
+  wearing Folio's surface, for the anchoring and outside dismissal that the hand-placed `Popup` got wrong (#117).
 - `FolioColors` is dark-appearance only; there are no named status colours or light variants besides `RedLight`.
 
 ## Gaps
@@ -115,6 +116,6 @@ Not yet:
 |---|---|---|
 | 1 | ~~Add the scales~~, ~~`CustomizationSheet.kt`~~ (done). Left: `MarketScreen.kt`, `LauncherScreen.kt`, `TopPanels.kt` | M |
 | 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
-| 3 | Move the rename dialog to Folio's `AlertDialog`; `FolderPanel`'s `DropdownMenu` to `IosMenuRow`; the direct Buttons to one `FolioButton` | S |
+| 3 | Move the rename dialog to Folio's `AlertDialog`; the direct Buttons to one `FolioButton` (the folder's menu is `FolioMenuPopup` now) | S |
 | 4 | Light-surface variants and named status colours (`Success`, `Warning`) in `FolioColors` | S |
 | 5 | ~~A check that counts raw colors, radii and text sizes outside the token files~~ (done: `DesignTokensTest`) | S |

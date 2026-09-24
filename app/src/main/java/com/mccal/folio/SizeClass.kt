@@ -34,11 +34,27 @@ internal fun settingsColumns(
     classScale: Float = 1f,
     nested: Boolean = false,
     onFold: Boolean = false,
+    keyboardDp: Float = 0f,
 ): Int = when {
-    !fitsRegularHomeLayout(widthDp, heightDp, classScale) || widthDp < 700f -> 1
+    !fitsRegularHomeLayout(widthDp, sizeClassHeightDp(heightDp, keyboardDp), classScale) || widthDp < 700f -> 1
     nested && !onFold && widthDp >= THREE_PANES_DP -> 3
     else -> 2
 }
+
+/**
+ * The height a size class is judged by while the keyboard is up. A keyboard covers a window; it doesn't make it a
+ * smaller one, so [heightDp] (what's left to draw in) plus [keyboardDp] (what the keyboard covers) is the window
+ * the layout is owed. Judged on what's left instead, the unfolded screen looks like a phone's the moment you tap a
+ * text field, and the pane holding that field is taken away with the layout it belonged to (#117).
+ */
+internal fun sizeClassHeightDp(heightDp: Float, keyboardDp: Float): Float = heightDp + keyboardDp
+
+/**
+ * Whether Settings keeps its list beside the page rather than pushing pages over it, given the columns the host
+ * allows it ([maxColumns], one pane inside the Market). The keyboard is measured out, as in [settingsColumns].
+ */
+internal fun settingsSplits(widthDp: Float, heightDp: Float, classScale: Float = 1f, keyboardDp: Float = 0f, maxColumns: Int = 3): Boolean =
+    maxColumns >= 2 && fitsRegularHomeLayout(widthDp, sizeClassHeightDp(heightDp, keyboardDp), classScale)
 
 /**
  * The narrowest window that shows three panes at once: a sidebar, a list and the page opened from it. Material's

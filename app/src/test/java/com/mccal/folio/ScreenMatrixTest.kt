@@ -51,6 +51,30 @@ class ScreenMatrixTest {
         }
     }
 
+    /**
+     * #117: tapping the search field in Settings opened the keyboard, the keyboard took 300 dp off the window, the
+     * window stopped counting as a regular one, and the sidebar the field lived in was torn down mid-tap, which took
+     * the focus and put the keyboard away again.
+     */
+    @Test fun `the keyboard never changes which Settings layout a window gets`() {
+        // Galaxy Z Fold8 inner with a keyboard up: 300 dp of its 704 covered, 404 left to draw in.
+        assertTrue(settingsSplits(932f, 404f, keyboardDp = 300f))
+        assertEquals(2, settingsColumns(932f, 404f, keyboardDp = 300f))
+        // Without measuring the keyboard out, the same window reads as a phone's.
+        assertFalse(settingsSplits(932f, 404f))
+        assertEquals(1, settingsColumns(932f, 404f))
+        // A phone window doesn't gain a sidebar because a keyboard opened, either.
+        assertFalse(settingsSplits(411f, 500f, keyboardDp = 391f))
+        assertEquals(1, settingsColumns(411f, 500f, keyboardDp = 391f))
+        // Every screen in the matrix, with a keyboard of any usual size over it.
+        for (s in screens) for (keyboard in listOf(0f, 120f, 240f, 360f)) {
+            val left = (s.height - keyboard).coerceAtLeast(0f)
+            val tag = "${s.name} under ${keyboard.toInt()} dp of keyboard"
+            assertEquals(tag, settingsSplits(s.width, s.height), settingsSplits(s.width, left, keyboardDp = keyboard))
+            assertEquals(tag, settingsColumns(s.width, s.height), settingsColumns(s.width, left, keyboardDp = keyboard))
+        }
+    }
+
     @Test fun `Home fits every window without cropping or overlapping`() {
         for (s in screens) for (labels in listOf(true, false)) {
             val scale = uiScale(s.width, s.height)
