@@ -55,9 +55,11 @@ Nobody has to fix the whole tree before shipping a feature.
 | [Privacy and permissions](privacy-permissions.md) | `PRV` | Access, network, data, the System Bridge tier |
 | [Testing](testing.md) | `TST` | What gets tested where, and what "done" means |
 | [Releases](releases.md) | `REL` | Branches, the changelog, version numbers, betas, and what goes out beside a build |
+| [Market](market.md) | `MKT` | Bridges to other repositories, what a package page may contain, editorial |
 
 Where standards overlap, the more specific one wins: Dynamic UI over Design for motion, Accessibility over Design for
-contrast and size, Privacy over everything for what leaves the phone. Releases owns anything about how a change reaches a phone.
+contrast and size, Privacy over everything for what leaves the phone, and Privacy over Market for anything a package
+or a bridge can reach. Releases owns anything about how a change reaches a phone.
 
 ## What "Folio quality" means
 
