@@ -158,9 +158,9 @@ private fun FolderChild(
             }
             IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)
                 .testTag("folder-options-${app.id}")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.move_1_s, app.label)) }
-            // Folio's own menu rather than Material's: it grows from the corner it was opened at, scrolls when a
-            // layout has more pages than the window can show, and steps off the fold.
-            if (menu) FolioMenuPopup(onDismiss = { menu = false }, tag = "folder-options-${app.id}") {
+            // Folio's menu: anchored under this button, growing from the corner it was opened at, and scrolling
+            // when a layout has more pages than the window can show.
+            FolioMenuPopup(menu, onDismiss = { menu = false }, tag = "folder-options-${app.id}") {
                 homeDestinations.distinctBy(::homeCellPage).forEachIndexed { index, destination ->
                     val destinationPage = homeCellPage(destination)
                     val label = if (destinationPage == -1) stringResource(R.string.move_to_the_unfolded_only_page)

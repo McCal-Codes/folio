@@ -241,10 +241,14 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // iPad Settings / One UI on the unfolded screen: sidebar and page side by side, in either orientation.
     // Regular size class (both dimensions roomy), not a device check: the inner screen in either orientation.
     val fullWidth = maxWidth
+    // The keyboard covers Settings; it doesn't make the window smaller (ADP-1, ADP-18). Measured out here, so that
+    // tapping the search field can't turn the unfolded screen into a phone-sized one for as long as the keyboard is
+    // up, take the sidebar away with it, and take the field you just tapped with the sidebar (#117).
+    val keyboardDp = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp().value }
     // With only one pane to spare (inside the Market beside its sidebar), Settings is the iPhone's: the list, and a
     // page pushed over it with Back.
-    val split = fitsRegularHomeLayout(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale) &&
-        LocalSettingsMaxColumns.current >= 2
+    val split = settingsSplits(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale,
+        keyboardDp, LocalSettingsMaxColumns.current)
     // Takes the page to draw rather than reading the open one, so the split view can show a list and the thing you
     // picked from it side by side. Inside, `page` means "the page this column is drawing".
     val pageContent: @Composable ColumnScope.(CustomizationPage) -> Unit = { page ->
@@ -759,6 +763,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
             maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale,
             nested = page.parent != CustomizationPage.OVERVIEW,
             onFold = onFold != null,
+            keyboardDp = keyboardDp,
         ).coerceAtMost(LocalSettingsMaxColumns.current)
         val tiled = columns >= 2
         val threeColumns = columns == 3

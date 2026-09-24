@@ -5,7 +5,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -35,7 +34,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -169,7 +167,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                 androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.UnfoldMore, null, tint = Color.White.copy(alpha = .4f),
                     modifier = Modifier.padding(start = 2.dp).size(18.dp))
             }
-            if (open) FolioMenuPopup(onDismiss = { open = false }, tag = tag) {
+            FolioMenuPopup(open, onDismiss = { open = false }, tag = tag) {
                     options.forEachIndexed { index, (value, label) ->
                         if (index > 0) androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
@@ -189,32 +187,29 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
 }
 
 /**
- * The shell every Folio pop-up menu shares: it grows from its top-right corner the way iOS's menus do, sizes itself
- * to its rows between 200 and 280 dp, scrolls when there are more rows than the window has room for, and stays off
- * the fold. Use it with [MenuRow] items for a menu of actions, as the folder panel does.
+ * The shell every Folio pop-up menu shares: Android's anchored menu doing the placing and the dismissing, wearing
+ * Folio's dark iOS surface. It hangs under the control that opened it, flips above it near the bottom of the window,
+ * stays inside the window, sizes itself to its rows between 200 and 280 dp, scrolls when there are more rows than
+ * there's room for (a folder on a page of twelve offers a row per page), grows from the corner it was opened at the
+ * way iOS's menus do, and closes on a tap outside it or on Back. Use it with [MenuRow] items for a menu of actions,
+ * as the folder panel does.
+ *
+ * It was hand-placed until 0.6.7 (#117): a `Popup` aligned to the window's top end whose content filled the window
+ * and then centered itself in it, so the menu appeared in the middle of the screen instead of on its row, and its
+ * window, as big as the screen and transparent everywhere the menu wasn't, swallowed every tap meant to close it.
+ *
+ * ADP-12: a menu anchored to its control is clear of a half-open hinge because the control is. Settings puts its
+ * divider on the crease and the folder panel steps off it, and a menu hangs from the control's edge into the panel
+ * the control is already on. Displacing the menu away from its control instead is what caused #117.
  */
 @Composable
-internal fun FolioMenuPopup(onDismiss: () -> Unit, tag: String? = null, content: @Composable () -> Unit) {
-    val drop = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.roundToPx() }
-    androidx.compose.ui.window.Popup(alignment = Alignment.TopEnd, offset = androidx.compose.ui.unit.IntOffset(0, drop),
-        onDismissRequest = onDismiss, properties = androidx.compose.ui.window.PopupProperties(focusable = true)) {
-        val appear = rememberEntrance(stiffness = 800f, dampingRatio = .82f)
-        FoldAvoidingBox(role = FoldRole.CONTROLS) {
-            Column(Modifier.widthIn(min = 200.dp, max = 280.dp)
-                .graphicsLayer {
-                    val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .6f + .4f * g; scaleY = scaleX
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)
-                }
-                .shadow(24.dp, RoundedCornerShape(FolioRadius.CARD.dp)).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A3A3C))
-                .border(.5.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(FolioRadius.CARD.dp))
-                // A folder on a page of twelve offers a row per page, so the menu scrolls rather than running off
-                // the window on a cover screen.
-                .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                .then(if (tag != null) Modifier.testTag("$tag-menu") else Modifier)) {
-                content()
-            }
-        }
-    }
+internal fun FolioMenuPopup(expanded: Boolean, onDismiss: () -> Unit, tag: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.material3.DropdownMenu(expanded, onDismiss,
+        modifier = Modifier.widthIn(min = 200.dp, max = 280.dp).then(if (tag != null) Modifier.testTag("$tag-menu") else Modifier),
+        shape = RoundedCornerShape(FolioRadius.CARD.dp), containerColor = Color(0xFF3A3A3C),
+        tonalElevation = 0.dp, shadowElevation = 24.dp,
+        border = androidx.compose.foundation.BorderStroke(.5.dp, Color.White.copy(alpha = .12f)),
+        content = content)
 }
 
 /** How much weight a [FolioButton] carries, the way iOS's filled, tinted and plain buttons do. */
