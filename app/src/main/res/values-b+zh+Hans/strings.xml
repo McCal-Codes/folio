@@ -478,6 +478,8 @@
     <string name="save_home_before_big_changes">重大更改前先保存主屏幕</string>
     <string name="restore_this_layout">要恢复此布局吗？</string>
     <string name="recent_app_dots">最近 App 圆点</string>
+    <string name="clear_badges_when_opened">打开后清除标记</string>
+    <string name="a_badge_goes_away_when_you_open_the_app">打开 App 后标记会消失，收到新通知时会再次出现。</string>
     <string name="glass">玻璃</string>
     <string name="light">浅色</string>
     <string name="frosted">磨砂</string>

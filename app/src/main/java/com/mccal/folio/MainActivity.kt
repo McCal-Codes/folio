@@ -79,6 +79,11 @@ class MainActivity : ComponentActivity() {
     private var returningFromShadeSettings = false
     private var shadeSetupOwnsExternalUi = false
     private var recreatingShadeSetup = false
+    /**
+     * Whether this phone sees Clear Badges When Opened ([FeatureGate.BADGES_WHEN_OPENED]). Read once in `onCreate`,
+     * since asking the gate reads preferences and a redeemed supporter code restarts Folio anyway (CMP-9).
+     */
+    private var badgesGateOpen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The wallpaper theme must be chosen before the window exists (switching to it starts the screen again).
@@ -86,6 +91,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
+        badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
         FocusScheduler.run(this)
         // USER_PRESENT is a protected system broadcast delivered to runtime receivers.
         androidx.core.content.ContextCompat.registerReceiver(this, unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT),
@@ -217,7 +223,13 @@ class MainActivity : ComponentActivity() {
                     iconsMostlyDark(state.apps.filter { LiveIcons.kind(this@MainActivity, it.packageName) == null && it.shortcutId == null }.map { it.icon })
                 }
             }
-            val badgeCounts = androidx.compose.runtime.remember(notificationItems, clearedBadges) { BadgeClears.counts(notificationItems, clearedBadges) }
+            val postedBadges = androidx.compose.runtime.remember(notificationItems, clearedBadges) { BadgeClears.counts(notificationItems, clearedBadges) }
+            // Clear Badges When Opened: the counts already seen are hidden, and a seen count follows its app down when
+            // notifications go away elsewhere. Nothing of this runs while the switch is off or the gate is shut.
+            val clearsBadgesWhenOpened = clearsBadgesWhenOpened(state.badgesWhenOpened)
+            val seenBadges = if (clearsBadgesWhenOpened) state.badgesSeen else emptyMap()
+            val badgeCounts = androidx.compose.runtime.remember(postedBadges, seenBadges) { BadgesWhenOpened.visible(postedBadges, seenBadges) }
+            if (clearsBadgesWhenOpened) androidx.compose.runtime.LaunchedEffect(postedBadges) { model.trimBadgesSeen(postedBadges) }
             androidx.compose.runtime.SideEffect { latestNotifications = notificationItems }
             val wallpaperTone = rememberWallpaperTone(state.systemWallpaper)
             // Re-read on every resume so turning Remove animations on/off applies without restarting.
@@ -524,9 +536,22 @@ class MainActivity : ComponentActivity() {
         if (!widgets.onActivityResult(requestCode, resultCode)) super.onActivityResult(requestCode, resultCode, data)
     }
 
+    /**
+     * Whether Clear Badges When Opened is doing anything here: the switch on, and the gate open for this phone. Asked
+     * at both entry points, so a phone the gate is shut for hides no badge and remembers no counts (REL-4a).
+     */
+    private fun clearsBadgesWhenOpened(switchOn: Boolean): Boolean = switchOn && badgesGateOpen
+
+    /** The badge showing on [packageName] now counts as seen, so it goes away until a new notification arrives. */
+    private fun noteBadgeSeen(packageName: String) {
+        if (!clearsBadgesWhenOpened(model.state.value.badgesWhenOpened)) return
+        model.noteBadgeSeen(packageName, BadgeClears.counts(latestNotifications, BadgeClears.cleared.value)[packageName] ?: 0)
+    }
+
     private fun launchApp(app: AppEntry, bounds: android.graphics.Rect? = null) {
         RecentApps.record(this, app.id)
         NewApps.opened(this, app.packageName)
+        noteBadgeSeen(app.packageName)
         try {
             val user = getSystemService(UserManager::class.java).getUserForSerialNumber(app.userSerial)
                 ?: throw IllegalStateException(getString(R.string.profile_is_unavailable))

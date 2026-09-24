@@ -472,6 +472,8 @@
     <string name="save_home_before_big_changes">Save Home Before Big Changes</string>
     <string name="restore_this_layout">Restore This Layout?</string>
     <string name="recent_app_dots">Recent App Dots</string>
+    <string name="clear_badges_when_opened">Clear Badges When Opened</string>
+    <string name="a_badge_goes_away_when_you_open_the_app">A badge goes away when you open the app. A new notification brings it back.</string>
     <string name="glass">Glass</string>
     <string name="light">Light</string>
     <string name="frosted">Frosted</string>
