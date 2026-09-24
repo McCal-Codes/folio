@@ -477,6 +477,8 @@
     <string name="layout_history">布局历史</string>
     <string name="save_home_before_big_changes">重大更改前先保存主屏幕</string>
     <string name="restore_this_layout">要恢复此布局吗？</string>
+    <string name="show_standby_while_charging">充电时显示待机显示</string>
+    <string name="comes_on_half_a_minute_after_you_plug_th">插上充电器并停止触碰半分钟后出现，任何姿态都适用。屏幕会保持亮起，直到你拔掉充电器或轻点屏幕。</string>
     <string name="recent_app_dots">最近 App 圆点</string>
     <string name="glass">玻璃</string>
     <string name="light">浅色</string>
@@ -1110,7 +1112,7 @@
     <string name="settings_keywords_side_key">侧边按键 助理 钱包 按两下 按住 side key assistant chatgpt claude wallet double press hold</string>
     <string name="settings_keywords_lock_cover">锁定屏幕 解锁 封面 时钟 lock screen unlock cover clock</string>
     <string name="settings_keywords_fold_animation">折叠 展开 动画 模糊 淡入淡出 节奏 fold unfold animation blur fade duo timing</string>
-    <string name="settings_keywords_standby">待机显示 半开 时钟 standby tent half open clock</string>
+    <string name="settings_keywords_standby">待机显示 半开 时钟 充电 充电器 屏保 standby tent half open clock charging charger screen saver</string>
     <string name="settings_keywords_themes">主题 外观 图标 样式 着色 形状 标记 玻璃 导入 导出 theme look snowboard icon style tint shape badges glass import export</string>
     <string name="settings_keywords_focus">专注模式 勿扰 睡眠 工作 个人 静音 灰度 focus do not disturb dnd sleep work personal silence quiet grayscale</string>
     <string name="settings_keywords_tweaks">插件 越狱 面板 放大 着色 专辑 tweak jailbreak velox harbor axon velvet colorflow panels magnification tint album cabinet harborline roll call palette colored albums app row</string>

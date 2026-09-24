@@ -48,6 +48,11 @@ class MainActivity : ComponentActivity() {
     internal lateinit var backgrounds: LauncherBackgroundController
         private set
     private val homeRequests = mutableIntStateOf(0)
+    /**
+     * Every touch and key press Home receives, counted. StandBy while charging waits for the phone to be left alone,
+     * and this is the only signal that says it wasn't: Android calls [onUserInteraction] for each one.
+     */
+    private val interactions = mutableIntStateOf(0)
     private val searchRequests = mutableIntStateOf(0)
     /** Opened from Android Settings (Home app gear / "Additional settings in the app"). */
     private val settingsRequests = mutableIntStateOf(0)
@@ -276,7 +281,8 @@ class MainActivity : ComponentActivity() {
                     onFinishFirstRun = ::finishFirstRun,
                     onShadeSetup = ::showShadeSetup, onShowWelcome = { showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
                 }
-                StandByOverlay(rememberHalfOpenPose(this@MainActivity), state.standBy, blocked = overlayOpen, status = deviceStatus)
+                StandByOverlay(rememberHalfOpenPose(this@MainActivity), state.standBy, state.standByCharging,
+                    blocked = overlayOpen, status = deviceStatus, interactions = interactions)
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
                 AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen)
                 SetupReminderCard(defaultHome.value, blocked = overlayOpen || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
@@ -313,6 +319,11 @@ class MainActivity : ComponentActivity() {
         // in-memory owner set is empty) before any external UI can uncover Discover.
         if (returningFromShadeSettings || restoreShadeDialog) ownShadeSetupExternally()
         if (restoreShadeDialog) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        interactions.intValue++
     }
 
     override fun onStart() {

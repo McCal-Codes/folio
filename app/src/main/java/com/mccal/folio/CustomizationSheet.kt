@@ -568,6 +568,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     SettingsCard(stringResource(R.string.standby)) {
                         SettingsSwitch(stringResource(R.string.show_standby_when_set_down_half_open), state.standBy, model::setStandBy, "standby-switch")
+                        // The second way in is a supporter's until 0.6.8; the switch is hidden and, more to the point,
+                        // StandBy doesn't look at the charger either while the gate is shut (REL-4a).
+                        if (remember(sheetContext) { FeatureGate.STANDBY_CHARGING.isOpen(sheetContext) }) {
+                            SettingsSwitch(stringResource(R.string.show_standby_while_charging), state.standByCharging,
+                                model::setStandByCharging, "standby-charging-switch")
+                            CardNote(stringResource(R.string.comes_on_half_a_minute_after_you_plug_th))
+                        }
                         CardNote(stringResource(R.string.big_clock_date_next_alarm_battery_and_mu))
                     }
                     SettingsCard(stringResource(R.string.closing_from_home)) {

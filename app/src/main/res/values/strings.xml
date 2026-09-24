@@ -471,6 +471,8 @@
     <string name="layout_history">Layout History</string>
     <string name="save_home_before_big_changes">Save Home Before Big Changes</string>
     <string name="restore_this_layout">Restore This Layout?</string>
+    <string name="show_standby_while_charging">Show StandBy while charging</string>
+    <string name="comes_on_half_a_minute_after_you_plug_th">Comes on half a minute after you plug the phone in and stop touching it, on any pose. The screen stays on until you unplug it or tap.</string>
     <string name="recent_app_dots">Recent App Dots</string>
     <string name="glass">Glass</string>
     <string name="light">Light</string>
@@ -1162,7 +1164,7 @@
     <string name="settings_keywords_side_key">side key assistant chatgpt claude wallet double press hold</string>
     <string name="settings_keywords_lock_cover">lock screen unlock cover clock</string>
     <string name="settings_keywords_fold_animation">fold unfold animation blur fade duo timing</string>
-    <string name="settings_keywords_standby">standby tent half open clock</string>
+    <string name="settings_keywords_standby">standby tent half open clock charging charger screen saver</string>
     <string name="settings_keywords_themes">theme look snowboard icon style tint shape badges glass import export</string>
     <string name="settings_keywords_focus">focus do not disturb dnd sleep work personal silence quiet grayscale</string>
     <string name="settings_keywords_tweaks">tweak jailbreak velox harbor axon velvet colorflow panels magnification tint album cabinet harborline roll call palette colored albums app row</string>
