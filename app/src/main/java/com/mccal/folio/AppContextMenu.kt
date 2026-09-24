@@ -171,8 +171,8 @@ internal fun AppContextMenu(
                     else MenuDivider()
                 }
                 if (lockedBy != null) {
-                    Text(stringResource(R.string.home_editing_is_off_while_1_is_on, lockedBy), color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+                    Text(stringResource(R.string.home_editing_is_off_while_1_is_on, lockedBy), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
+                        modifier = Modifier.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp))
                     MenuDivider()
                 } else {
                 MenuRow(stringResource(R.string.edit_home_screen), Icons.Rounded.AppRegistration) { onMove() }
@@ -213,7 +213,7 @@ internal fun MenuRow(label: String, icon: ImageVector? = null, bitmap: Bitmap? =
     tag: String? = null, onClick: () -> Unit) {
     val tint = if (destructive) FolioColors.RedOnDark else Color.White
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
-        .then(if (tag != null) Modifier.testTag(tag) else Modifier).padding(horizontal = 16.dp, vertical = 12.dp),
+        .then(if (tag != null) Modifier.testTag(tag) else Modifier).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = tint, fontSize = 16.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f))
@@ -240,17 +240,17 @@ internal fun RenameAppAlert(app: AppEntry, onDismiss: () -> Unit, onRename: (Str
         title = { Text(stringResource(R.string.rename_app)) },
         text = {
             Column {
-                Text(stringResource(R.string.leave_it_empty_to_use_s_again, app.systemLabel), fontSize = 13.sp)
+                Text(stringResource(R.string.leave_it_empty_to_use_s_again, app.systemLabel), fontSize = FolioType.FOOTNOTE.sp)
                 androidx.compose.foundation.text.BasicTextField(name, { name = it.takeAppName() },
-                    Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                        .background(ink.copy(alpha = .08f)).padding(horizontal = 10.dp, vertical = 10.dp)
+                    Modifier.padding(top = FolioSpace.MEDIUM.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        .background(ink.copy(alpha = .08f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.COMPACT.dp)
                         .focusRequester(focus).testTag("app-name"),
-                    singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = ink, fontSize = 17.sp),
+                    singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = ink, fontSize = FolioType.BODY.sp),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(ink),
                     decorationBox = { field ->
                         Box {
                             // The app's own name as a hint, so an empty field doesn't look like a blank row.
-                            if (name.isEmpty()) Text(app.systemLabel, color = ink.copy(alpha = .4f), fontSize = 17.sp)
+                            if (name.isEmpty()) Text(app.systemLabel, color = ink.copy(alpha = .4f), fontSize = FolioType.BODY.sp)
                             field()
                         }
                     },

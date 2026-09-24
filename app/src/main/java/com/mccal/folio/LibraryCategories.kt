@@ -73,8 +73,8 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
 @Composable
 internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifier, labelColor: Color = Color.White, onLaunch: (AppEntry) -> Unit, onOpen: () -> Unit) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(FolioGlass.card)
-            .border(FolioGlass.edge, RoundedCornerShape(24.dp)).padding(12.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioGlass.card)
+            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp)).padding(FolioSpace.MEDIUM.dp)) {
             val gap = 10.dp
             val cell = (maxWidth - gap) / 2
             val big = if (apps.size > 4) apps.take(3) else apps.take(4)
@@ -89,9 +89,9 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                             index == 3 && rest.isNotEmpty() -> Box(Modifier.size(cell).clip(RoundedCornerShape(cell * .24f))
                                 .clickable(onClick = onOpen).semantics { contentDescription = "Show all ${apps.size} $title apps" }) {
                                 val mini = (cell - 4.dp) / 2
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                                     rest.take(4).chunked(2).forEach { pair ->
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                                             pair.forEach { AppIcon(it, null, Modifier.size(mini).clip(RoundedCornerShape(mini * .24f))) }
                                         }
                                     }
@@ -103,8 +103,8 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                 }
             }
         }
-        Text(title, color = labelColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp).clickable(onClick = onOpen))
+        Text(title, color = labelColor, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = FolioSpace.SNUG.dp).clickable(onClick = onOpen))
     }
 }
 
@@ -118,7 +118,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
         val appear = rememberEntrance(stiffness = 600f, dampingRatio = .82f)
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
             .testTag("category-folder-scrim"))
-        FoldAvoidingBox(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(24.dp)) {
+        FoldAvoidingBox(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val width = minOf(maxWidth, 560.dp)
                 val availableHeight = maxHeight
@@ -128,7 +128,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                     alpha = appear.value; scaleX = .9f + .1f * appear.value; scaleY = scaleX
                 }) {
                     Text(title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 8.dp, bottom = 12.dp))
+                        modifier = Modifier.padding(start = FolioSpace.SMALL.dp, bottom = FolioSpace.MEDIUM.dp))
                     // Lazy, so a category with dozens of apps only builds the rows on screen as it opens.
                     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
                     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
@@ -138,15 +138,15 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                             .pointerInput(Unit) { detectTapGestures() }
                             .edgeFade(gridState).testTag("category-folder"),
                         state = gridState, contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
                         items(apps.size, key = { apps[it].id }) { index ->
                             val app = apps[index]
-                            Column(Modifier.clip(RoundedCornerShape(14.dp))
-                                .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = 4.dp),
+                            Column(Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
+                                .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
                                 Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
+                                    modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                             }
                         }
                     }

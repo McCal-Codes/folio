@@ -235,11 +235,11 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     // re-layout a single time instead of on each frame of the keyboard sliding in.
     // Half folded, Spotlight moves off the hinge like iPhone Duo's system panels.
     FoldAvoidingBox(contentAlignment = Alignment.TopCenter) {
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(horizontal = 16.dp).padding(top = 18.dp),
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(horizontal = FolioSpace.LARGE.dp).padding(top = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // A readable column on big screens (iPad Spotlight floats at about this width) rather than stretching edge to edge.
         Column(Modifier.widthIn(max = 680.dp).fillMaxWidth().testTag("spotlight"),
-            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
             // Search field
             val fieldScope = rememberCoroutineScope()
             // iOS: the search capsule with Cancel beside it.
@@ -249,7 +249,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                 // The whole capsule is the tap target, not just the text line.
                 .clickable(remember { MutableInteractionSource() }, null) { fieldScope.launch { raiseKeyboard() } }
                 // Fixed height: the capsule doesn't grow or jump when the clear button appears.
-                .height(52.dp).padding(start = 14.dp, end = 4.dp),
+                .height(52.dp).padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = Color.White.copy(alpha = .75f), modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(10.dp))
@@ -270,14 +270,14 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                     Icon(Icons.Rounded.Cancel, "Clear", tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 }
             }
-            Text(stringResource(R.string.cancel), color = Color.White, fontSize = 17.sp,
-                modifier = Modifier.padding(start = 2.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(10.dp))
+            Text(stringResource(R.string.cancel), color = Color.White, fontSize = FolioType.BODY.sp,
+                modifier = Modifier.padding(start = FolioSpace.HAIR.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                     .clickable { focusManager.clearFocus(force = true); keyboard?.hide(); onClose() }
-                    .padding(horizontal = 12.dp, vertical = 14.dp).testTag("spotlight-cancel"))
+                    .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMFY.dp).testTag("spotlight-cancel"))
             }
 
             val resultsState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(14.dp),
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (q.isEmpty()) {
                     if (shows(SpotlightSection.SUGGESTIONS) && recent.isNotEmpty()) item("suggestions") {
@@ -318,11 +318,11 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                     }
                     if (shows(SpotlightSection.WEB)) item("web") {
                         Section(stringResource(R.string.search_the_web_ask_ai)) {
-                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                                 WebSearchTarget.entries.forEach { target ->
                                     Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
                                         .clickable { onClose(); openWebSearch(context, target, q) }
-                                        .padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Icon(if (target.label.startsWith("Ask")) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
                                             tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
@@ -333,7 +333,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         }
                     }
                     if (math == null && appHits.isEmpty() && contacts.isEmpty() && settingHits.isEmpty()) item("none") {
-                        Text(stringResource(R.string.no_results_on_this_phone), color = Color.White.copy(alpha = .6f), fontSize = 13.sp,
+                        Text(stringResource(R.string.no_results_on_this_phone), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp,
                             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     }
                 }
@@ -345,12 +345,12 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
 
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, color = FolioGlass.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 4.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(SpotGlass)
-            .border(FolioGlass.edge, RoundedCornerShape(20.dp)).padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+        Text(title, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = FolioSpace.TINY.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(SpotGlass)
+            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).padding(FolioSpace.COMPACT.dp),
+            verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp), content = content)
     }
 }
 
@@ -361,21 +361,21 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
         val columns = evenColumnsOnHinge((maxWidth / 84.dp).toInt().coerceIn(4, 8), 4)
         // Suggestions show whole rows only, like iOS, so a wide column doesn't end in a lonely pair.
         val shown = if (fullRows && apps.size > columns) apps.take(apps.size / columns * columns) else apps
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             shown.chunked(columns).forEach { row ->
                 Row(Modifier.fillMaxWidth()) {
                     row.forEach { app ->
                         val view = androidx.compose.ui.platform.LocalView.current
                         val ctx = LocalContext.current
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(FolioRadius.CARD.dp))
                             .combinedClickable(onClick = { onLaunch(app) }, onLongClick = {
                                 // Long-press to drag into split screen beside the app that's open.
                                 startSplitDrag(view, ctx, app.component, app.user, app.label, app.icon)
-                            }).padding(vertical = 6.dp),
+                            }).padding(vertical = FolioSpace.SNUG.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             AppIcon(app, app.label, Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)))
                             Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
+                                modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                         }
                     }
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
@@ -387,32 +387,32 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
 
 @Composable
 private fun TopHit(app: AppEntry, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(8.dp),
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onClick).padding(FolioSpace.SMALL.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        AppIcon(app, null, Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)))
+        AppIcon(app, null, Modifier.size(56.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(app.label, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else "${app.profileLabel} app", color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
+            Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else "${app.profileLabel} app", color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
         }
-        Text(stringResource(R.string.open), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = 14.dp, vertical = 6.dp))
+        Text(stringResource(R.string.open), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
     }
 }
 
 @Composable
 private fun ResultRow(icon: ImageVector, title: String, subtitle: String?, trailing: (@Composable RowScope.() -> Unit)? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 10.dp),
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        trailing?.let { Row(horizontalArrangement = Arrangement.spacedBy(8.dp), content = it) }
+        trailing?.let { Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), content = it) }
     }
 }
 

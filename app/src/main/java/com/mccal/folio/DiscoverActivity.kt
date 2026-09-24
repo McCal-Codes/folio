@@ -266,14 +266,14 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
                 Box(Modifier.fillMaxSize()) {
                     if (!DiscoverBounds.available) DuneWallpaper()
                     Surface(if (DiscoverBounds.available) Modifier.fillMaxSize()
-                        else Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp),
+                        else Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.MEDIUM.dp),
                         shape = RoundedCornerShape(if (DiscoverBounds.available) 16.dp else 26.dp),
                         color = Glass, border = BorderStroke(1.dp, Color.White.copy(alpha = .4f))) {
                         // Recovery is only shown while connecting or after a real error. A native
                         // swipe must never reveal the old loading controls behind a loaded feed.
                         if (showMessage) Column(Modifier.fillMaxSize().graphicsLayer {
                             translationX = -(1f - progress) * DiscoverMotion.pageWidth
-                        }.padding(24.dp).verticalScroll(rememberScrollState()),
+                        }.padding(FolioSpace.XXL.dp).verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium)
                             Spacer(Modifier.height(16.dp))
@@ -372,7 +372,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
         }
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             if (DiscoverBounds.available) Box(Modifier.fillMaxHeight().width((fullWidth - preset.dockWidth - 28).dp)
-                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp).onGloballyPositioned {
+                .padding(start = FolioSpace.LARGE.dp, top = FolioSpace.LARGE.dp, bottom = FolioSpace.LARGE.dp).onGloballyPositioned {
                     val outer = it.boundsInWindow()
                     val padding = 16 * density.density
                     DiscoverBounds.updateViewport(context, android.graphics.Rect(
@@ -396,17 +396,17 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = true,
                 homeBottomSpace = if (context.getSystemService(android.app.role.RoleManager::class.java)
                     .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale, appRows = state.homeAppRows)
-            if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = 12.dp)
+            if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp)
                 .offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp)
                 .onSizeChanged {
                     // The whole rail, location slot included: the dock goes below all of it.
                     statusHeight = it.height / density.density
                 },
                 compact = maxHeight < 500.dp, iconSize = dockIconSize(geometry.iconSize).dp)
-            Surface(Modifier.align(Alignment.TopEnd).padding(end = 12.dp).offset(y = geometry.dockTop.dp)
+            Surface(Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp).offset(y = geometry.dockTop.dp)
                 .width(preset.dockWidth.dp).height(geometry.dockHeight.dp).testTag("discover-dock"),
                 shape = RoundedCornerShape(30.dp), color = Glass.copy(alpha = .32f), border = BorderStroke(1.dp, Color.White.copy(alpha = .3f))) {
-                Column(Modifier.padding(vertical = 8.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
                     state.dock.forEachIndexed { index, id ->
                         val app = apps[id]
                         Box(Modifier.fillMaxWidth().height(geometry.dockRowHeight.dp).testTag("discover-dock-slot-$index")
@@ -419,7 +419,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                     }
                 }
             }
-            Column(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 12.dp).width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.align(Alignment.BottomEnd).padding(end = FolioSpace.MEDIUM.dp, bottom = FolioSpace.MEDIUM.dp).width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 // Home is physically to the right of Discover, matching our fixed page order.
                 FilledTonalIconButton(onClick = onHome, Modifier.testTag("discover-home")) { Icon(Icons.Rounded.ArrowForward, "Back to home") }
                 Spacer(Modifier.height(8.dp))

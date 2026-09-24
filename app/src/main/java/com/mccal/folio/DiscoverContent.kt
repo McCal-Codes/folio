@@ -31,7 +31,7 @@ internal fun DiscoverContent(modifier: Modifier = Modifier) {
         if (showMessage && message != null) Surface(Modifier.fillMaxSize().testTag("discover-recovery-surface"),
             shape = RoundedCornerShape(30.dp), color = Glass.copy(alpha = .92f),
             border = BorderStroke(1.dp, Color.White.copy(alpha = .5f))) {
-            Column(Modifier.fillMaxSize().padding(32.dp),
+            Column(Modifier.fillMaxSize().padding(FolioSpace.HUGE.dp),
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(16.dp))

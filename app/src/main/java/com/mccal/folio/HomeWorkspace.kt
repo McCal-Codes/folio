@@ -235,7 +235,7 @@ internal fun ExpandedWorkspace(
                         onActions = onActions,
                         modifier = Modifier.fillMaxSize()
                             .graphicsLayer { val b = libraryBack(); scaleX = 1f - .14f * b; scaleY = scaleX; alpha = 1f - .35f * b; translationX = size.width * .08f * b }
-                            .padding(start = 16.dp, top = 16.dp, bottom = bottomSpace)
+                            .padding(start = FolioSpace.LARGE.dp, top = FolioSpace.LARGE.dp, bottom = bottomSpace)
                             .testTag("library-page"),
                         drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = onTurnOnWork)
                 }
@@ -331,16 +331,16 @@ internal fun HomePagePane(
         // Unfolded, the bar sits in the space above the widget row, so the grid doesn't move at all (like iPad).
         val editRoom by animateDpAsState(if (roomWanted && !geometry.expanded) (JIGGLE_BAR_BOTTOM - geometry.contentTop.dp).coerceAtLeast(0.dp) else 0.dp, label = "jiggle room")
         Column(Modifier.offset(x = 16.dp).width(geometry.gridWidth.dp).fillMaxHeight()
-            .verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = 8.dp)) {
+            .verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = FolioSpace.SMALL.dp)) {
             val (pageIcon, pageLabels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
             SharedHomeGrid(page, state.homeSlots, state.leadingSlots, previewSlots, previewLeadingSlots, previewWidgetPlacements,
                 appsById, geometry.copy(iconSize = pageIcon), pageLabels, widgets, drag, target,
                 folders = state.folders, onLaunch = onLaunch, onActions = onActions, onWidget = onWidget,
                 onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove,
                 onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }))
-            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(16.dp))
+            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp))
             if (state.error != null) Text(state.error, color = Color.White,
-                modifier = Modifier.clickable(onClick = onRefresh).padding(12.dp))
+                modifier = Modifier.clickable(onClick = onRefresh).padding(FolioSpace.MEDIUM.dp))
         }
     }
 }
@@ -449,9 +449,9 @@ internal fun SharedHomeGrid(
                     // Only on an empty cell outside jiggle mode, so a tap on an app or folder isn't held back waiting
                     // for a second one.
                     onDoubleClick = onEmptyDoubleTap?.takeIf { savedId == null && !edit.active && !drag.active })
-                .background(if (highlighted) Glass.copy(alpha = .25f) else Color.Transparent, RoundedCornerShape(16.dp))
+                .background(if (highlighted) Glass.copy(alpha = .25f) else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp))
                 .border(if (highlighted) 2.dp else 0.dp,
-                    if (highlighted) Color.White.copy(alpha = .8f) else Color.Transparent, RoundedCornerShape(16.dp)),
+                    if (highlighted) Color.White.copy(alpha = .8f) else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp)),
                 contentAlignment = Alignment.TopCenter) {
                 if (drag.active && drag.source?.appId != null && (gap || previewId == null)) Box(
                     Modifier.size(iconSize.dp).testTag(if (gap) "drag-gap-home-$globalIndex" else "empty-home-slot-$globalIndex")
@@ -513,8 +513,8 @@ internal fun SharedHomeGrid(
                     .testTag("widget-pending-${placement.slot}").semantics(mergeDescendants = true) {
                         contentDescription = "Pending ${widgets.pendingProvider?.shortClassName ?: "widget"}"
                     }, color = Glass.copy(alpha = .72f),
-                    shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.Center,
+                    shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)) {
+                    Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                         Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.finish_widget_setup), color = Ink)

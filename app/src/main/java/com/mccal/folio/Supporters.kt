@@ -108,19 +108,19 @@ internal fun SupportersPage() {
     val people = content?.people.orEmpty()
     if (people.isEmpty()) {
         // An empty list is a card of its own, so it reads as the list rather than as another note.
-        SheetGroup(androidx.compose.ui.Modifier.padding(top = 4.dp, bottom = 10.dp)) {
+        SheetGroup(androidx.compose.ui.Modifier.padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.COMPACT.dp)) {
             androidx.compose.material3.Text(
                 androidx.compose.ui.res.stringResource(R.string.no_names_yet_yours_could_be_the_first),
                 color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
-                fontSize = 15.sp,
-                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 18.dp),
+                fontSize = FolioType.SUBHEAD.sp,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = 18.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
     } else {
         for ((year, group) in Supporters.byYear(content!!)) {
             SheetGroupLabel(year ?: androidx.compose.ui.res.stringResource(R.string.supporters))
-            SheetGroup(androidx.compose.ui.Modifier.padding(bottom = 10.dp)) {
+            SheetGroup(androidx.compose.ui.Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                 group.forEachIndexed { index, person ->
                     if (index > 0) MenuDivider()
                     SupporterNameRow(person)
@@ -134,7 +134,7 @@ internal fun SupportersPage() {
 @androidx.compose.runtime.Composable
 private fun SupporterNameRow(person: Supporters.Person) {
     androidx.compose.foundation.layout.Row(
-        androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
         androidx.compose.material3.Text(person.name, color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,

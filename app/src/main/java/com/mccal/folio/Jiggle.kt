@@ -111,10 +111,10 @@ internal fun JigglePill(label: String, icon: ImageVector? = null, description: S
         Row(Modifier.heightIn(min = 34.dp).clip(CircleShape)
             .background(if (emphasized) Color.White.copy(alpha = .92f) else Color.White.copy(alpha = .22f))
             .clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = description }
-            .padding(horizontal = if (label.isEmpty()) 7.dp else 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            .padding(horizontal = if (label.isEmpty()) 7.dp else FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
             val ink = if (emphasized) Color.Black else Color.White
             icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(20.dp)) }
-            if (label.isNotEmpty()) Text(label, color = ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            if (label.isNotEmpty()) Text(label, color = ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -125,10 +125,10 @@ internal fun HomeSearchPill(onClick: () -> Unit) {
     val ink = LocalHomeInk.current
     Row(Modifier.height(30.dp).clip(CircleShape).background(if (ink.dark) Color.White.copy(alpha = .45f) else Color.White.copy(alpha = .2f))
         .clickable(role = Role.Button, onClickLabel = "Search", onClick = onClick)
-        .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        .padding(horizontal = FolioSpace.COMFY.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Rounded.Search, null, tint = ink.primary, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(5.dp))
-        Text(stringResource(R.string.search), color = ink.primary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.search), color = ink.primary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium)
     }
 }
 

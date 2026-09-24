@@ -233,7 +233,7 @@ fun StatusRail(
                 .then(if (style.background) Modifier.background(Glass.copy(alpha = style.railGlass), capsule)
                     .border(1.dp, LocalGlassLook.current.outlineColor, capsule) else Modifier)
                 // Standard (4) and Compact (0) keep their old padding; the slider moves between and past them.
-                .padding(vertical = if (compact) 8.dp else (8f + style.spacing).coerceAtMost(12f).dp),
+                .padding(vertical = if (compact) FolioSpace.SMALL.dp else (8f + style.spacing).coerceAtMost(12f).dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(style.spacing.dp)) {
                 focus?.let { Icon(it.icon(), "${it.name} on", tint = androidx.compose.ui.graphics.Color(it.color).let { c ->
                     if (LocalHomeInk.current.dark) c else androidx.compose.ui.graphics.lerp(c, androidx.compose.ui.graphics.Color.White, .35f) },
@@ -248,7 +248,7 @@ fun StatusRail(
                     lineHeight = if (tight) detailSize * 1.1f else androidx.compose.ui.unit.TextUnit.Unspecified,
                     fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
                 when (style.glyph) {
-                    StatusGlyph.RINGS -> Box(Modifier.padding(top = 2.dp).size(visualSize), contentAlignment = Alignment.Center) {
+                    StatusGlyph.RINGS -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         val colorful = style.colorfulBattery
                         val batteryRing = if (!colorful) ink else if (status.charging || (status.battery ?: 100) > 20) (if (onLight) RingGreenOnLight else RingGreen) else low
                         val wifiRing = if (colorful) (if (onLight) RingBlueOnLight else RingBlue) else ink
@@ -272,7 +272,7 @@ fun StatusRail(
                         }
                         if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, "Airplane Mode", tint = ink, modifier = Modifier.size(visualSize * .2f))
                     }
-                    StatusGlyph.PERCENT -> Box(Modifier.padding(top = 2.dp).size(visualSize), contentAlignment = Alignment.Center) {
+                    StatusGlyph.PERCENT -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val radius = w * .44f
@@ -285,7 +285,7 @@ fun StatusRail(
                         Text(status.battery?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
                             fontSize = (visualSize.value * .34f / fontScale).sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                     }
-                    StatusGlyph.RING, StatusGlyph.MINIMAL -> Box(Modifier.padding(top = 2.dp).size(visualSize), contentAlignment = Alignment.Center) {
+                    StatusGlyph.RING, StatusGlyph.MINIMAL -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         // Inside the battery ring, like iPhone's status bar: Wi-Fi when joined; otherwise cellular bars,
                         // an airplane in Airplane Mode, or a slowly sweeping fan while there's no connection at all.
                         val offline = !status.wifiConnected && cellularVisual !is CellularSignalVisual.Available && !status.airplane
@@ -334,7 +334,7 @@ fun StatusRail(
                         val ring = gaugeRing(reading.length, showsReading)
                         val dotsY = ringCenter + GAUGE_RADIUS + GAUGE_DOT_GAP
                         val markHeight = if (showsDots) dotsY + GAUGE_DOT_RADIUS + .04f else ringCenter + GAUGE_RADIUS + .06f
-                        Box(Modifier.padding(top = 2.dp).width(visualSize).height(visualSize * markHeight),
+                        Box(Modifier.padding(top = FolioSpace.HAIR.dp).width(visualSize).height(visualSize * markHeight),
                         contentAlignment = Alignment.TopCenter) {
                         // The mark McCal asked for: a ring broken at top and bottom, the reading overlapping the top
                         // break, the connection filling the ring, and the cellular dots in a row underneath it.
@@ -393,8 +393,8 @@ fun StatusRail(
                                 modifier = Modifier.padding(top = visualSize * (ringCenter - .15f)).size(visualSize * .3f))
                         }
                     }
-                    StatusGlyph.ICONS -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(top = 2.dp)) {
+                    StatusGlyph.ICONS -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp),
+                        modifier = Modifier.padding(top = FolioSpace.HAIR.dp)) {
                         // Wi-Fi when joined (in Home's text color, so it reads on light wallpapers), an airplane in Airplane Mode;
                         // otherwise nothing, and the cellular bars below say how you're connected.
                         if (wifiVisual is WifiSignalVisual.Connected) Canvas(Modifier.size(width = 22.dp, height = 16.dp)) { drawWifiFan(size.width, wifiVisual, centered = true, ink = ink, onLight = onLight) }

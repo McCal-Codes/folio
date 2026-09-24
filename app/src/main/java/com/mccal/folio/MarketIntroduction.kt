@@ -44,12 +44,12 @@ import com.mccal.folio.market.FeaturedStyle
 @Composable
 internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -> Unit, onDone: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
-    Box(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
+    Box(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
         Text(
             stringResource(R.string.skip),
             color = LocalAccent.current.ink, fontSize = 16.sp,
             modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(12.dp))
-                .clickable(onClickLabel = stringResource(R.string.skip_the_introduction), onClick = onDone).padding(horizontal = 12.dp, vertical = 8.dp),
+                .clickable(onClickLabel = stringResource(R.string.skip_the_introduction), onClick = onDone).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp),
         )
         Column(Modifier.align(Alignment.Center).fillMaxWidth()) {
             when (step) {
@@ -80,7 +80,7 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Start) {
                 repeat(3) { index ->
                     Box(
-                        Modifier.padding(end = 6.dp).width(7.dp).height(7.dp).clip(RoundedCornerShape(4.dp))
+                        Modifier.padding(end = FolioSpace.SNUG.dp).width(7.dp).height(7.dp).clip(RoundedCornerShape(4.dp))
                             .background(Color.White.copy(alpha = if (index == step) 1f else .3f)),
                     )
                 }
@@ -91,11 +91,11 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
             Text(
                 stringResource(if (step < 2) R.string.next else R.string.start),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                     .clickable(onClickLabel = if (step < 2) nextStep else openMarket) {
                         if (step < 2) step++ else onDone()
                     }
-                    .padding(horizontal = 20.dp, vertical = 11.dp),
+                    .padding(horizontal = FolioSpace.XL.dp, vertical = 11.dp),
             )
         }
     }
@@ -103,7 +103,7 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
 
 @Composable
 private fun Title(text: String) {
-    Text(text, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
+    Text(text, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = FolioSpace.COMPACT.dp))
 }
 
 @Composable
@@ -115,12 +115,12 @@ private fun Body(text: String) {
 private fun StyleCard(option: FeaturedStyle, chosen: Boolean, onChoose: () -> Unit) {
     val name = stringResource(option.label)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF2C2C2E))
-            .border(if (chosen) 2.dp else 0.dp, if (chosen) LocalAccent.current.ink else Color.Transparent, RoundedCornerShape(16.dp))
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2C2C2E))
+            .border(if (chosen) 2.dp else 0.dp, if (chosen) LocalAccent.current.ink else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp))
             .clickable(role = Role.RadioButton, onClickLabel = name, onClick = onChoose)
-            .padding(14.dp),
+            .padding(FolioSpace.COMFY.dp),
     ) {
-        Text(name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+        Text(name, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.Medium)
         Text(stringResource(option.description), color = Color.White.copy(alpha = .7f), fontSize = 14.sp)
     }
 }

@@ -165,12 +165,12 @@ internal fun DockAppColumn(
             val highlighted = drag.active && target == cell
             val gap = hiddenIndex == index
             Box(Modifier.slot(index)
-                .background(if (highlighted) Color.White.copy(alpha = .3f) else Color.Transparent, RoundedCornerShape(16.dp)),
+                .background(if (highlighted) Color.White.copy(alpha = .3f) else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp)),
                 contentAlignment = Alignment.Center) {
                 when {
                     gap -> Box(Modifier.size(iconSize.dp).testTag("drag-gap-dock-$index")
-                        .background(Glass.copy(alpha = .16f), RoundedCornerShape(14.dp))
-                        .border(2.dp, Color.White.copy(alpha = .55f), RoundedCornerShape(14.dp)))
+                        .background(Glass.copy(alpha = .16f), RoundedCornerShape(FolioRadius.CARD.dp))
+                        .border(2.dp, Color.White.copy(alpha = .55f), RoundedCornerShape(FolioRadius.CARD.dp)))
                     previewId == null -> Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
@@ -265,7 +265,7 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale)
         }
         if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = LocalLabelSize.current.sp.sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
 
@@ -285,7 +285,7 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         .iconSwipes(openPanel?.let { { it(app) } }, if (app.id in LocalStackedApps.current) LocalIconStack.current?.let { { it(app) } } else null)
         .clickable(interactionSource = interaction, indication = null,
             role = Role.Button, onClick = { onClick(bounds) })
-        .semantics { onLongClick(appOptionsLabel) { onLongClick(); true } }.padding(horizontal = 2.dp),
+        .semantics { onLongClick(appOptionsLabel) { onLongClick(); true } }.padding(horizontal = FolioSpace.HAIR.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
         Box(Modifier.size(iconSize).onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(app.id, bounds) }
@@ -296,7 +296,7 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
             if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = onRemove)
         }
         val ink = LocalHomeInk.current
-        if (labels) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (labels) Row(Modifier.padding(top = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
             NewAppDot(app.packageName)
             Text(app.label, color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, lineHeight = LocalLabelSize.current.lineSp.sp, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, style = TextStyle(shadow = ink.labelShadow))

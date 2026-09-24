@@ -53,7 +53,7 @@ internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, mod
         .toggleable(checked, role = Role.Switch, onValueChange = {
             haptic.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff); onCheckedChange(it)
         }), contentAlignment = Alignment.Center) {
-        Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).padding(2.dp)) {
+        Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).padding(FolioSpace.HAIR.dp)) {
             Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.size(27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
         }
     }
@@ -64,7 +64,7 @@ internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, mod
 internal fun IosChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier) {
     val background by animateColorAsState(if (selected) Color.White else Color.White.copy(alpha = .1f), label = "chip")
     Box(modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(background)
-        .selectable(selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+        .selectable(selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
         contentAlignment = Alignment.Center) {
         androidx.compose.material3.ProvideTextStyle(TextStyle(color = if (selected) Color.Black else Color.White, fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)) { label() }
@@ -94,7 +94,7 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
     fieldModifier: Modifier = Modifier, ink: Color = Color.White, onSearch: (() -> Unit)? = null) {
     // Fixed height, so the field doesn't grow when the clear button appears.
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = .12f))
-        .height(40.dp).padding(start = 10.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        .height(40.dp).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
@@ -117,7 +117,7 @@ internal fun IosActionRow(text: String, tag: String? = null, destructive: Boolea
     val color = if (destructive) FolioColors.RedOnDark else LocalAccent.current.ink
     androidx.compose.material3.Text(text, color = if (enabled) color else Color.White.copy(alpha = .3f), fontSize = FolioType.BODY.sp,
         modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
+            .padding(horizontal = FolioSpace.LARGE.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
 }
 
 /** A row that opens another page, like iOS Settings: label, current value and a chevron. */
@@ -165,14 +165,14 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.material3.Text(current, color = Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
                 androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.UnfoldMore, null, tint = Color.White.copy(alpha = .4f),
-                    modifier = Modifier.padding(start = 2.dp).size(18.dp))
+                    modifier = Modifier.padding(start = FolioSpace.HAIR.dp).size(18.dp))
             }
             FolioMenuPopup(open, onDismiss = { open = false }, tag = tag) {
                     options.forEachIndexed { index, (value, label) ->
                         if (index > 0) androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
                             haptic.performHapticFeedback(HapticFeedbackType.SegmentTick); open = false; if (value != selected) onSelect(value)
-                        }.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        }.padding(horizontal = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                             // iOS menus mark the choice with a leading checkmark and keep the labels lined up.
                             Box(Modifier.size(24.dp), contentAlignment = Alignment.CenterStart) {
                                 if (value == selected) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Check, null,
@@ -244,7 +244,7 @@ internal fun FolioButton(
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             // 48 dp tall, so a finger has the whole button rather than just its text (A11Y-1).
             .heightIn(min = FolioRow.ACTION.dp)
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .padding(horizontal = 18.dp, vertical = FolioSpace.MEDIUM.dp)
             .then(if (tag != null) Modifier.testTag(tag) else Modifier)
             .androidxAlpha(if (enabled) 1f else .4f),
         horizontalArrangement = Arrangement.Center,
@@ -269,7 +269,7 @@ internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSel
     val haptic = LocalHapticFeedback.current
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(9.dp))
-        .background(Color.White.copy(alpha = .12f)).padding(2.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier)) {
+        .background(Color.White.copy(alpha = .12f)).padding(FolioSpace.HAIR.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier)) {
         val segment = maxWidth / options.size
         val x by animateDpAsState(segment * index, spring(dampingRatio = .85f, stiffness = Spring.StiffnessMedium), label = "segment")
         Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).fillMaxHeight()

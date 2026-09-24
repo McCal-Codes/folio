@@ -311,9 +311,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     contentAlignment = if (s.leftHanded) Alignment.CenterStart else Alignment.CenterEnd) {
                     AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(spring(dampingRatio = .8f, stiffness = Spring.StiffnessMediumLow)) { if (s.leftHanded) -it else it },
                         exit = fadeOut() + slideOutHorizontally { if (s.leftHanded) -it else it }) {
-                        Column(Modifier.padding(horizontal = 12.dp).width(72.dp).clip(RoundedCornerShape(30.dp))
+                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(30.dp))
                             .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(30.dp))
-                            .padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            .padding(vertical = FolioSpace.MEDIUM.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                             apps.forEach { app ->
                                 val hostView = androidx.compose.ui.platform.LocalView.current
                                 Image(app.icon.asImageBitmap(), null, Modifier.size(50.dp).clip(RoundedCornerShape(13.dp))
@@ -495,7 +495,7 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
         Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "Back", Icons.Rounded.ChevronLeft),
     ).let { if (s.androidOrder) it.reversed() else it }
     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
-        .padding(bottom = 10.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+        .padding(bottom = FolioSpace.COMPACT.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
         androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().height(s.height.dp)
             .alpha(alpha)
             .pointerInput(Unit) {

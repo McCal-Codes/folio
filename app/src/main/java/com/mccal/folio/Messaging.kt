@@ -108,12 +108,12 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
         }
     }
     Row(modifier.fillMaxWidth().heightIn(min = 40.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f))
-        .padding(start = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        .padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).padding(vertical = 9.dp)) {
             if (text.isEmpty()) Text(if (sent) "Sent" else to?.let { "Reply to $it" } ?: "Reply", color = Color.White.copy(alpha = .5f),
-                fontSize = 15.sp, maxLines = 1)
+                fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
             BasicTextField(text, { if (!sent) text = it }, Modifier.fillMaxWidth().focusRequester(focus),
-                textStyle = TextStyle(color = Color.White, fontSize = 15.sp), cursorBrush = SolidColor(Color.White), maxLines = 4,
+                textStyle = TextStyle(color = Color.White, fontSize = FolioType.SUBHEAD.sp), cursorBrush = SolidColor(Color.White), maxLines = 4,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { submit() }))
         }
@@ -131,7 +131,7 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
 @Composable
 internal fun MessageActionPill(label: String, onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).clickable(onClick = onClick)
-        .padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+        .padding(horizontal = FolioSpace.COMFY.dp), contentAlignment = Alignment.Center) {
         Text(label, color = Color.White, fontSize = 14.sp)
     }
 }

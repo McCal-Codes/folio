@@ -62,12 +62,12 @@ internal fun SupporterPage() {
     // when the code is removed.
     Supporter.badgeSince(context)?.let { since ->
         SheetGroup {
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(54.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFFFF8FA6), Color(0xFFB3163A)))),
                     contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
                 }
-                Column(Modifier.padding(start = 14.dp)) {
+                Column(Modifier.padding(start = FolioSpace.COMFY.dp)) {
                     Text(stringResource(R.string.folio_supporter), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.since_1_s, monthYearLabel(since)), color = FolioColors.SecondaryLabel, fontSize = 14.sp)
                 }
@@ -142,11 +142,11 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
     .filter { it.first in scopes }.joinToString(", ") { it.second }.ifEmpty { context.getString(R.string.nothing_yet) }
 
 @Composable private fun InfoRow(label: String, value: String) {
-    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Color.White, fontSize = 17.sp)
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(horizontal = 6.dp))
-        Text(value, color = FolioColors.SecondaryLabel, fontSize = 15.sp, textAlign = TextAlign.End,
+        Text(label, color = Color.White, fontSize = FolioType.BODY.sp)
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(horizontal = FolioSpace.SNUG.dp))
+        Text(value, color = FolioColors.SecondaryLabel, fontSize = FolioType.SUBHEAD.sp, textAlign = TextAlign.End,
             modifier = Modifier.fillMaxWidth())
     }
 }
@@ -160,12 +160,12 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
         title = { Text(stringResource(R.string.redeem_a_code)) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.paste_the_code_from_your_ko_fi_thank_you), fontSize = 13.sp)
+                Text(stringResource(R.string.paste_the_code_from_your_ko_fi_thank_you), fontSize = FolioType.FOOTNOTE.sp)
                 BasicTextField(typed, { typed = it.take(160) },
-                    Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = .1f)).padding(horizontal = 10.dp, vertical = 8.dp)
+                    Modifier.padding(top = FolioSpace.MEDIUM.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = .1f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.SMALL.dp)
                         .focusRequester(focus).testTag("redeem-code"),
-                    textStyle = TextStyle(color = Color.White, fontSize = 15.sp),
+                    textStyle = TextStyle(color = Color.White, fontSize = FolioType.SUBHEAD.sp),
                     cursorBrush = SolidColor(Color.White),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onRedeem(typed) }))

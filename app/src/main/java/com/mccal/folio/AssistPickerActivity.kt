@@ -78,34 +78,34 @@ class AssistPickerActivity : ComponentActivity() {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .35f))
                 .clickable(remember { MutableInteractionSource() }, null) { finish() }, contentAlignment = Alignment.BottomCenter) {
                 AnimatedVisibility(shown, enter = fadeIn() + slideInVertically(spring(dampingRatio = .82f, stiffness = Spring.StiffnessMediumLow)) { it / 3 }) {
-                    Column(Modifier.navigationBarsPadding().windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(16.dp).widthIn(max = 520.dp).fillMaxWidth()
+                    Column(Modifier.navigationBarsPadding().windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(FolioSpace.LARGE.dp).widthIn(max = 520.dp).fillMaxWidth()
                         .clip(RoundedCornerShape(30.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
                         .clickable(remember { MutableInteractionSource() }, null) {}.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        verticalArrangement = Arrangement.spacedBy(FolioSpace.LARGE.dp)) {
                         if (!searchOnly) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             targets.forEach { (target, launch, icon) ->
-                                Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable { start(launch) }.padding(8.dp),
+                                Column(Modifier.clip(RoundedCornerShape(FolioRadius.GROUP.dp)).clickable { start(launch) }.padding(FolioSpace.SMALL.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally) {
-                                    icon?.let { Image(it.asImageBitmap(), target.label, Modifier.size(56.dp).clip(RoundedCornerShape(14.dp))) }
-                                    Text(target.label, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                                    icon?.let { Image(it.asImageBitmap(), target.label, Modifier.size(56.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp))) }
+                                    Text(target.label, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, modifier = Modifier.padding(top = FolioSpace.SNUG.dp))
                                 }
                             }
                         }
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .1f))
-                            .padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Search, null, tint = Color.White.copy(alpha = .7f))
                             Spacer(Modifier.width(10.dp))
                             Box(Modifier.weight(1f)) {
-                                if (query.isEmpty()) Text(stringResource(R.string.search_google_without_ai), color = Color.White.copy(alpha = .5f), fontSize = 17.sp)
+                                if (query.isEmpty()) Text(stringResource(R.string.search_google_without_ai), color = Color.White.copy(alpha = .5f), fontSize = FolioType.BODY.sp)
                                 BasicTextField(query, { query = it }, Modifier.fillMaxWidth().focusRequester(focus), singleLine = true,
-                                    textStyle = TextStyle(color = Color.White, fontSize = 17.sp), cursorBrush = SolidColor(Color.White),
+                                    textStyle = TextStyle(color = Color.White, fontSize = FolioType.BODY.sp), cursorBrush = SolidColor(Color.White),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                     keyboardActions = KeyboardActions(onSearch = {
                                         if (query.isNotBlank()) { openWebSearch(this@AssistPickerActivity, WebSearchTarget.GOOGLE, query); finish() }
                                     }))
                             }
                         }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                             PickerPill(stringResource(R.string.spotlight), Modifier.weight(1f)) {
                                 SpotlightRequest.request()
                                 startActivity(Intent(this@AssistPickerActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

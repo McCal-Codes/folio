@@ -118,25 +118,25 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     val s = .85f + .15f * appear.value; scaleX = s; scaleY = s
                     transformOrigin = TransformOrigin(((iconCenterX - left) / panelW).coerceIn(0f, 1f), if (above) 1f else 0f)
                 }
-                .clip(RoundedCornerShape(24.dp)).background(Color(0xFF232326).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(24.dp))
-                .clickable(remember { MutableInteractionSource() }, null) {}.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(0xFF232326).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp))
+                .clickable(remember { MutableInteractionSource() }, null) {}.padding(FolioSpace.COMFY.dp),
+                verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(app, null, Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), badge = false)
                     Spacer(Modifier.width(10.dp))
-                    Text(app.label, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(stringResource(R.string.open), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clip(CircleShape).background(Color.White).clickable(onClick = onOpen).padding(horizontal = 14.dp, vertical = 6.dp))
+                        modifier = Modifier.clip(CircleShape).background(Color.White).clickable(onClick = onOpen).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
                 }
                 media?.let { m ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .08f)).padding(10.dp),
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f)).padding(FolioSpace.COMPACT.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         (m.art ?: m.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))) }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(m.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                         val t = runCatching { m.controller.transportControls }.getOrNull()
                         Icon(Icons.Rounded.FastRewind, "Previous", tint = Color.White, modifier = Modifier.size(30.dp).clip(CircleShape).clickable { t?.skipToPrevious() })
@@ -145,17 +145,17 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         Icon(Icons.Rounded.FastForward, "Next", tint = Color.White, modifier = Modifier.size(30.dp).clip(CircleShape).clickable { t?.skipToNext() })
                     }
                 }
-                if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .08f))) {
+                if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
                     notifications.forEachIndexed { index, item ->
                         if (index > 0) MenuDivider()
                         Column(Modifier.fillMaxWidth().clickable { onDismiss(); IslandListenerService.openNotification(context, item) }
-                            .padding(horizontal = 12.dp, vertical = 9.dp)) {
+                            .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 9.dp)) {
                             Text(item.title ?: item.appLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            item.text?.let { Text(it, color = Color.White.copy(alpha = .7f), fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                            item.text?.let { Text(it, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                         }
                     }
                 }
-                if (actions.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .08f))) {
+                if (actions.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
                     actions.forEachIndexed { index, action ->
                         if (index > 0) MenuDivider()
                         MenuRow(action.label, bitmap = action.icon) {
@@ -165,7 +165,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     }
                 }
                 if (media == null && notifications.isEmpty() && actions.isEmpty())
-                    Text(stringResource(R.string.no_shortcuts_or_notifications_for_1, app.label), color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
+                    Text(stringResource(R.string.no_shortcuts_or_notifications_for_1, app.label), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
             }
         }
     }

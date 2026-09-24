@@ -52,7 +52,7 @@ internal fun MarketFeatured(
     val banners = featured.mapNotNull { item -> packages.firstOrNull { it.id == item.packageId }?.let { item to it } }
     if (banners.isEmpty()) return
     if (calm) {
-        SheetGroup(Modifier.padding(bottom = 10.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
             banners.forEachIndexed { index, (item, entry) ->
                 if (index > 0) MenuDivider()
                 val name = entry.manifest?.name?.english ?: entry.id
@@ -60,12 +60,12 @@ internal fun MarketFeatured(
                 Column(
                     Modifier.fillMaxWidth()
                         .clickable(onClickLabel = openLabel) { onOpen(entry.id) }
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
                 ) {
-                    item.label?.english?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = 12.sp) }
-                    Text(name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                    item.label?.english?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.GROUP_LABEL.sp) }
+                    Text(name, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.Medium)
                     entry.manifest?.description?.english?.let {
-                        Text(it, color = Color.White.copy(alpha = .7f), fontSize = 13.sp, maxLines = 2)
+                        Text(it, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2)
                     }
                 }
             }
@@ -106,16 +106,16 @@ internal fun MarketFeatured(
         val name = entry.manifest?.name?.english ?: entry.id
         val openLabel = stringResource(R.string.open_1_s, name)
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp))
                 .background(bannerColor(page))
                 .clickable(onClickLabel = openLabel) { onOpen(entry.id) }
-                .padding(16.dp),
+                .padding(FolioSpace.LARGE.dp),
             verticalArrangement = Arrangement.Bottom,
         ) {
-            item.label?.english?.let { Text(it, color = Color.White.copy(alpha = .95f), fontSize = 12.sp) }
+            item.label?.english?.let { Text(it, color = Color.White.copy(alpha = .95f), fontSize = FolioType.GROUP_LABEL.sp) }
             Text(name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Medium)
             entry.manifest?.description?.english?.let {
-                Text(it, color = Color.White.copy(alpha = .9f), fontSize = 13.sp, maxLines = 2)
+                Text(it, color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2)
             }
         }
     }
@@ -124,7 +124,7 @@ internal fun MarketFeatured(
         // before the semantics block, which isn't a composable scope.
         val dots = stringResource(R.string.featured_page_1_d_of_2_d, pager.currentPage + 1, banners.size)
         Row(
-            Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)
                 .semantics { contentDescription = dots },
             horizontalArrangement = Arrangement.Center,
         ) {
