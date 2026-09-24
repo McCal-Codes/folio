@@ -275,4 +275,11 @@ private object ReadOnlyMarketLauncher : MarketLauncher {
     override fun removeTweak(feature: TweakFeature) = Unit
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
     override fun applyTheme(theme: FolioTheme) = Unit
+
+    // Not silently ignored like the rest: applying is supposed to return what it replaced, and a snapshot invented
+    // by a launcher that changed nothing would tell Undo to put back something that was never taken away.
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray): String =
+        error("this launcher only adds and forgets sources")
+
+    override fun restoreArtBackground(artId: String, snapshot: String) = Unit
 }

@@ -20,6 +20,10 @@ class MarketHostTest {
             private set
         val themes = mutableListOf<FolioTheme>()
 
+        /** What is behind Home, as [BackgroundChoice.save] writes it, plus the art that has been installed. */
+        var background = BackgroundChoice.None.save()
+        val artwork = mutableMapOf<String, Artwork>()
+
         override fun installTweak(feature: TweakFeature) {
             state = state.copy(installedTweaks = state.installedTweaks + feature.id)
         }
@@ -33,6 +37,18 @@ class MarketHostTest {
 
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) {
             state = state.copy(featureScopes = FeatureScopes.set(state.featureScopes, id, screen, value))
+        }
+
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray): String {
+            val was = background
+            artwork[art.id] = art
+            background = BackgroundChoice.Art(art.id).save()
+            return was
+        }
+
+        override fun restoreArtBackground(artId: String, snapshot: String) {
+            artwork -= artId
+            background = snapshot
         }
 
         override fun applyTheme(theme: FolioTheme) {
@@ -102,7 +118,7 @@ class MarketHostTest {
         val host = MarketHost(FakeLauncher())
         assertEquals(
             setOf(
-                Capability.THEME, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
+                Capability.THEME, Capability.WALLPAPER, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
                 Capability.NOTIFICATION_APP_ROW, Capability.TINT_NOTIFICATIONS, Capability.TINT_MEDIA,
             ),
             host.capabilities,
@@ -110,6 +126,40 @@ class MarketHostTest {
         // Every built-in tweak has a capability, and every tweak capability has a built-in tweak.
         assertEquals(TweakFeatures.map { it.id }.toSet(), TweakId.entries.map { it.id }.toSet())
         assertTrue(TweakId.entries.all { it.capability in host.capabilities })
+    }
+
+    @Test fun `a wallpaper is shown, and removing it puts back what was there`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val change = com.mccal.folio.market.PackageChange.Wallpaper(
+            path = "assets/hills.webp", bytes = byteArrayOf(1, 2, 3), id = "dev.example.hills",
+            title = "Green Hills", artist = "A Painter", license = "CC0-1.0",
+        )
+
+        val snapshot = host.apply(change)
+
+        assertEquals("nothing was behind Home before", BackgroundChoice.None.save(), snapshot)
+        assertEquals(BackgroundChoice.Art("dev.example.hills").save(), launcher.background)
+        assertEquals("A Painter", launcher.artwork.getValue("dev.example.hills").artist)
+
+        host.restore(change, snapshot)
+
+        assertEquals("removing it puts Home back", BackgroundChoice.None.save(), launcher.background)
+        assertTrue("and forgets the art", launcher.artwork.isEmpty())
+    }
+
+    @Test fun `a wallpaper with no artist or no license is refused`() {
+        val host = MarketHost(FakeLauncher())
+        val noArtist = com.mccal.folio.market.PackageChange.Wallpaper(
+            path = "assets/x.webp", bytes = byteArrayOf(1), id = "dev.example.x",
+            title = "X", artist = "", license = "CC0-1.0",
+        )
+        val noLicense = noArtist.copy(artist = "Someone", license = "")
+
+        for (change in listOf(noArtist, noLicense)) {
+            val failed = runCatching { host.apply(change) }.exceptionOrNull()
+            assertTrue("$change should not be applied", failed is IllegalStateException)
+        }
     }
 
     @Test fun `every package Folio ships can be applied by this host`() {

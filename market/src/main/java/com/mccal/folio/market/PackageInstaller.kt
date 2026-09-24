@@ -418,11 +418,26 @@ class PackageInstaller(
                     ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a layout but has no layout.json")
                 // A picture, named as one: the archive allows other file types under assets/, and handing one of
                 // those to the wallpaper as image bytes is a guess about a name an author chose.
-                PackageKind.WALLPAPER -> files.entries.firstOrNull {
-                    it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES
+                PackageKind.WALLPAPER -> {
+                    val image = files.entries.firstOrNull {
+                        it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES
+                    } ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image")
+                    // The credit is read here because here is where the manifest is open. A host applying this
+                    // change is handed the change and nothing else, so an artist and a license that are not
+                    // carried along cannot be shown beside the picture later.
+                    val artist = manifest.author.name.english
+                    val license = manifest.license.orEmpty()
+                    if (artist.isBlank() || license.isBlank()) return ReadResult.Failed(
+                        InstallResult.Reason.MANIFEST,
+                        "a wallpaper has to say who made it and what it is licensed under",
+                    )
+                    PackageChange.Wallpaper(
+                        path = image.key, bytes = image.value, id = manifest.id,
+                        title = manifest.name.english, artist = artist, license = license,
+                        detail = manifest.description?.english.orEmpty(),
+                        source = manifest.author.url.orEmpty(),
+                    )
                 }
-                    ?.let { PackageChange.Wallpaper(it.key, it.value) }
-                    ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image")
                 PackageKind.ICON_PACK_LINK -> {
                     val json = files["iconpack.json"]?.decodeToString()
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it links an icon pack but has no iconpack.json")
@@ -647,6 +662,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 is PackageChange.IconPack -> json.put("kind", "iconPack").put("package", change.packageName)
                 is PackageChange.Wallpaper -> json.put("kind", "wallpaper").put("path", change.path)
                     .put("bytes", java.util.Base64.getEncoder().encodeToString(change.bytes))
+                    .put("id", change.id).put("title", change.title).put("artist", change.artist)
+                    .put("license", change.license).put("detail", change.detail).put("source", change.source)
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
                     "tweaks",
                     JSONArray().apply {
@@ -669,9 +686,15 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 "theme" -> PackageChange.Theme(json.optString("json"))
                 "layout" -> PackageChange.Layout(json.optString("json"))
                 "iconPack" -> PackageChange.IconPack(json.optString("package"))
+                // A record written before wallpapers carried their credit decodes with blank fields, which
+                // PackageChange.Wallpaper.credited reads as "do not show", so an old record cannot smuggle an
+                // uncredited picture back in through a restore.
                 "wallpaper" -> PackageChange.Wallpaper(
                     json.optString("path"),
                     runCatching { java.util.Base64.getDecoder().decode(json.optString("bytes")) }.getOrDefault(ByteArray(0)),
+                    id = json.optString("id"), title = json.optString("title"), artist = json.optString("artist"),
+                    license = json.optString("license"), detail = json.optString("detail"),
+                    source = json.optString("source"),
                 )
                 "tweaks" -> {
                     val list = json.optJSONArray("tweaks") ?: return@mapNotNull null

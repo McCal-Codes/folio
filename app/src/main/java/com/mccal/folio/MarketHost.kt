@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import android.content.Context
 import com.mccal.folio.market.Capability
 import com.mccal.folio.market.PackageChange
 import com.mccal.folio.market.PackageHost
@@ -19,15 +20,48 @@ internal interface MarketLauncher {
     fun removeTweak(feature: TweakFeature)
     fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue)
     fun applyTheme(theme: FolioTheme)
+
+    /**
+     * Installs a piece of art, shows it, and returns what was behind Home before so Undo can put it back.
+     *
+     * The bytes are written under Folio's own files rather than kept in the package record, because a picture is a
+     * file and the library lists files. Throwing means nothing changed.
+     */
+    fun applyArtBackground(art: Artwork, bytes: ByteArray): String
+
+    /** Puts back what [applyArtBackground] replaced, and forgets the art it installed. */
+    fun restoreArtBackground(artId: String, snapshot: String)
 }
 
 /** The real launcher behind [MarketLauncher]. */
-internal class ModelLauncher(private val model: LauncherModel) : MarketLauncher {
+internal class ModelLauncher(private val model: LauncherModel, private val context: Context) : MarketLauncher {
     override val state get() = model.state.value
     override fun installTweak(feature: TweakFeature) = model.installTweak(feature)
     override fun removeTweak(feature: TweakFeature) = model.removeTweak(feature)
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = model.setFeatureScope(id, screen, value)
     override fun applyTheme(theme: FolioTheme) = model.applyTheme(theme)
+
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray): String {
+        val was = backgroundChoice(context).save()
+        val file = BackgroundLibrary.artFile(context, art.id)
+        file.parentFile?.mkdirs()
+        file.writeBytes(bytes)
+        if (!BackgroundLibrary.record(context, art)) {
+            file.delete()
+            error("that wallpaper doesn't say who made it")
+        }
+        setBackgroundChoice(context, BackgroundChoice.Art(art.id))
+        LauncherBackgroundCache.changed(null)
+        return was
+    }
+
+    override fun restoreArtBackground(artId: String, snapshot: String) {
+        setBackgroundChoice(context, BackgroundChoice.parse(snapshot) { id ->
+            id != artId && BackgroundLibrary.artFile(context, id).isFile
+        })
+        BackgroundLibrary.forget(context, artId)
+        LauncherBackgroundCache.changed(null)
+    }
 }
 
 /**
@@ -39,6 +73,7 @@ internal class ModelLauncher(private val model: LauncherModel) : MarketLauncher 
 internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
     override val capabilities = setOf(
         Capability.THEME,
+        Capability.WALLPAPER,
         Capability.APP_PANELS,
         Capability.DOCK_MAGNIFY,
         Capability.NOTIFICATION_APP_ROW,
@@ -58,6 +93,18 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
             change.bundle.tweaks.forEach(::applyTweak)
             before
         }
+        // Refused here as well as when the package was read, because a change can also arrive from a restored
+        // backup record, and a record written before wallpapers carried a credit decodes without one (DES-2b).
+        is PackageChange.Wallpaper -> {
+            if (!change.credited) error("that wallpaper doesn't say who made it and what it's licensed under")
+            launcher.applyArtBackground(
+                Artwork(
+                    id = change.id, title = change.title, artist = change.artist,
+                    license = change.license, detail = change.detail, source = change.source,
+                ),
+                change.bytes,
+            )
+        }
         // Reading a package already refuses kinds this Folio can't apply; this is the belt to that's braces.
         else -> error("Folio can't apply that yet")
     }
@@ -66,6 +113,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         when (change) {
             is PackageChange.Theme -> FolioTheme.fromJson(snapshot)?.let(launcher::applyTheme)
             is PackageChange.Tweaks -> restoreTweaks(snapshot)
+            is PackageChange.Wallpaper -> launcher.restoreArtBackground(change.id, snapshot)
             else -> Unit
         }
     }

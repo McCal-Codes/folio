@@ -46,6 +46,8 @@ class MarketScreenRenderTest {
         override fun removeTweak(feature: TweakFeature) { state = state.copy(installedTweaks = state.installedTweaks - feature.id) }
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
         override fun applyTheme(theme: FolioTheme) = Unit
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray): String = ""
+        override fun restoreArtBackground(artId: String, snapshot: String) = Unit
     }
 
     @Test fun `the introduction comes first, then Featured lists Folio's packages`() {

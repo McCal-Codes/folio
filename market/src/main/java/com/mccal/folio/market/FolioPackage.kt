@@ -82,10 +82,48 @@ sealed interface PackageChange {
         override val capabilities get() = setOf(Capability.HOME_LAYOUT)
     }
 
-    data class Wallpaper(val path: String, val bytes: ByteArray) : PackageChange {
+    /**
+     * A picture, and the credit that lets Folio show it.
+     *
+     * The credit travels with the change rather than being looked up later, because the only moment it is reachable
+     * is while the manifest is open: by the time a host is asked to apply this, it has the change and nothing else.
+     * Folio's design standard requires an artist and a license for every image it shows, so a wallpaper that arrived
+     * without them has to be refusable at the point of applying, and that needs them here.
+     *
+     * The fields are the package's own, not a new format: [artist] is the package author, [license] is the package
+     * license, [title] is its name. See `docs/sdk/format-v1.md`, "Wallpapers".
+     */
+    data class Wallpaper(
+        val path: String,
+        val bytes: ByteArray,
+        val id: String = "",
+        val title: String = "",
+        val artist: String = "",
+        val license: String = "",
+        val detail: String = "",
+        val source: String = "",
+    ) : PackageChange {
         override val capabilities get() = setOf(Capability.WALLPAPER)
-        override fun equals(other: Any?) = other is Wallpaper && other.path == path && other.bytes.contentEquals(bytes)
-        override fun hashCode() = 31 * path.hashCode() + bytes.contentHashCode()
+
+        /** True when this may be shown at all: an image with no author has no license to give. */
+        val credited: Boolean get() = artist.isNotBlank() && license.isNotBlank()
+
+        // Written out because ByteArray compares by identity, which would make two equal pictures unequal.
+        override fun equals(other: Any?) = other is Wallpaper && other.path == path &&
+            other.bytes.contentEquals(bytes) && other.id == id && other.title == title &&
+            other.artist == artist && other.license == license && other.detail == detail && other.source == source
+
+        override fun hashCode(): Int {
+            var result = path.hashCode()
+            result = 31 * result + bytes.contentHashCode()
+            result = 31 * result + id.hashCode()
+            result = 31 * result + title.hashCode()
+            result = 31 * result + artist.hashCode()
+            result = 31 * result + license.hashCode()
+            result = 31 * result + detail.hashCode()
+            result = 31 * result + source.hashCode()
+            return result
+        }
     }
 
     /** Points at an icon pack app that's already installed; Folio only reads it through the usual intents. */

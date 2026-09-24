@@ -1312,6 +1312,10 @@ private object NoLauncher : MarketLauncher {
     override fun removeTweak(feature: TweakFeature) = Unit
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
     override fun applyTheme(theme: FolioTheme) = Unit
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray): String =
+        error("this launcher applies nothing")
+
+    override fun restoreArtBackground(artId: String, snapshot: String) = Unit
 }
 
 /**
