@@ -1209,7 +1209,7 @@ private fun MarketPackagePage(
                 val sourceLine = stringResource(R.string.source_1_s, source.label)
                 Text(
                     sourceLine,
-                    color = Color(0xFF6CB4FF), fontSize = 14.sp,
+                    color = FolioColors.BlueOnDark, fontSize = 14.sp,
                     modifier = Modifier.clickable(onClickLabel = sourceLine, onClick = onShowSource)
                         .heightIn(min = 44.dp).padding(vertical = 12.dp).testTag("package-show-source"),
                 )

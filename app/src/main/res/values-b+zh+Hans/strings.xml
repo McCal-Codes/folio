@@ -149,6 +149,9 @@
     <string name="back_to_home">返回主屏幕</string>
     <string name="back_to_home_2">返回主屏幕</string>
     <string name="move_to_dock">移到程序坞</string>
+    <string name="move_to_page_1_d">移到第 %1$d 页</string>
+    <string name="move_to_the_unfolded_only_page">移到仅展开页</string>
+    <string name="move_1_s">移动%1$s</string>
     <string name="remove_shortcut">移除快捷方式</string>
     <string name="edit">编辑</string>
     <string name="back_to_widgets">返回小组件</string>

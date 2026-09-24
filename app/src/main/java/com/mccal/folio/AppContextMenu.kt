@@ -209,9 +209,11 @@ internal fun AppContextMenu(
 }
 
 @Composable
-internal fun MenuRow(label: String, icon: ImageVector? = null, bitmap: Bitmap? = null, destructive: Boolean = false, onClick: () -> Unit) {
-    val tint = if (destructive) FolioColors.Red else Color.White
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+internal fun MenuRow(label: String, icon: ImageVector? = null, bitmap: Bitmap? = null, destructive: Boolean = false,
+    tag: String? = null, onClick: () -> Unit) {
+    val tint = if (destructive) FolioColors.RedOnDark else Color.White
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
+        .then(if (tag != null) Modifier.testTag(tag) else Modifier).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = tint, fontSize = 16.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f))
@@ -232,10 +234,9 @@ internal fun RenameAppAlert(app: AppEntry, onDismiss: () -> Unit, onRename: (Str
     var name by remember(app.id) { mutableStateOf(if (app.label == app.systemLabel) "" else app.label) }
     val focus = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(app.id) { runCatching { focus.requestFocus() } }
-    // The alert follows the system's light or dark theme, so the field takes its colors from the dialog
-    // rather than assuming white on dark.
-    val ink = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-    androidx.compose.material3.AlertDialog(onDismissRequest = onDismiss,
+    // Folio's alert is always dark, like its sheets, so the field's ink is white rather than the system's.
+    val ink = Color.White
+    AlertDialog(onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.rename_app)) },
         text = {
             Column {
@@ -259,4 +260,5 @@ internal fun RenameAppAlert(app: AppEntry, onDismiss: () -> Unit, onRename: (Str
         },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { onRename(name) }) { Text(stringResource(R.string.done)) } },
         dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })
+// The buttons stay Material's TextButton: Folio's AlertDialog restyles them itself, the way its other alerts do.
 }
