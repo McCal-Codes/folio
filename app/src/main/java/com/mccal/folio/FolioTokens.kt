@@ -68,7 +68,11 @@ internal object FolioSpace {
     const val TINY = 4
     const val SNUG = 6
     const val SMALL = 8
+    /** A list row's vertical inset, and the gap either side of a chevron. */
+    const val COMPACT = 10
     const val MEDIUM = 12
+    /** A sidebar or library row's horizontal inset: 16 crowds a 44 dp icon beside it. */
+    const val COMFY = 14
     const val LARGE = 16
     const val XL = 20
     const val XXL = 24
