@@ -98,12 +98,10 @@ Good:
 
 Not yet:
 
-- Every screen except `LauncherScreen.kt` uses the scales: 959 values moved onto tokens across 47 files without a
-  pixel changing, checked by expanding the tokens again and diffing against what was there.
+- Every screen uses the scales: 1,018 values moved onto tokens across 48 files without a pixel changing, checked by
+  expanding the tokens again and diffing against what was there.
 - What stays a literal on purpose: icon and thumbnail radii, which follow their size (DES-8a); pill shapes; and the
   sizes of things (an icon, a sheet's width), which are dimensions rather than spacing.
-- Left: `LauncherScreen.kt`, held back while the page-effects work is open in it, and the files in flight with it
-  (`MainActivity.kt`, `LauncherModel.kt`, `StandBy.kt`, `PageEffects.kt`).
 - Outside the token files there are still 87 `Color(0x…)`, 146 `RoundedCornerShape(N.dp)` and 148 `fontSize = N.sp`,
   most of them in the files above or genuinely one-off. `DesignTokensTest` holds those counts so they can only go
   down.
@@ -117,7 +115,7 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | ~~Add the scales~~, ~~every screen but one~~ (done). Left: `LauncherScreen.kt`, once the page-effects work in it lands | S |
+| 1 | ~~Add the scales and move every screen onto them~~ (done) | M |
 | 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
 | 3 | Move the rename dialog to Folio's `AlertDialog`; the direct Buttons to one `FolioButton` (the folder's menu is `FolioMenuPopup` now) | S |
 | 4 | Light-surface variants and named status colours (`Success`, `Warning`) in `FolioColors` | S |
