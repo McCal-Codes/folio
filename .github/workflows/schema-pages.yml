@@ -1,0 +1,105 @@
+name: Schemas
+
+# Publishes the Folio SDK schemas to https://folio.mccal.dev/schema/v1/.
+#
+# Every source Folio reads declares `"$schema": "https://folio.mccal.dev/schema/v1/index.schema.json"`,
+# and each schema's own `$id` says the same. Those URLs are already in published sources, so they
+# have to resolve: an author's editor cannot offer autocomplete against a 404, and a validator
+# cannot follow a `$ref` to one. Folio itself never fetches them. This is for the people writing
+# packages, not for the app.
+#
+# Only `docs/sdk/schema/` is published. `docs/sdk/source/` is the worked example from the SDK
+# docs and is unsigned. Folio refuses an unsigned source, so serving it from a host that looks
+# authoritative would only invite someone to try adding it and get an error they cannot explain.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/sdk/schema/**'
+      - '.github/workflows/schema-pages.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Shared with any other Pages workflow in this repository: GitHub allows one deployment at a time.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # A schema whose $id does not match where it is about to be served is worse than a missing
+      # one: a validator resolves $ref against the $id, so it would quietly fetch the wrong file
+      # or nothing at all. json.load also fails the step on malformed JSON.
+      - name: Check each schema parses and claims its published $id
+        run: |
+          bad=0
+          for file in docs/sdk/schema/v1/*.json; do
+            name="$(basename "$file")"
+            want="https://folio.mccal.dev/schema/v1/$name"
+            got="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("$id",""))' "$file")"
+            if [ "$got" != "$want" ]; then
+              echo "::error file=$file::\$id is \"$got\", expected \"$want\""
+              bad=1
+            fi
+          done
+          exit "$bad"
+
+      - name: Assemble the site
+        run: |
+          mkdir -p out/schema
+          cp -R docs/sdk/schema/v1 out/schema/v1
+
+          # The custom domain travels in the artifact. Without it a deploy can clear the domain
+          # from the repository's Pages settings and take these URLs down.
+          printf 'folio.mccal.dev\n' > out/CNAME
+
+          # Nothing here is worth indexing on its own, and the schemas are reached by URL.
+          printf 'User-agent: *\nDisallow:\n' > out/robots.txt
+
+          # The index is generated from the files that are actually present, so it cannot list a
+          # schema that was removed or miss one that was added.
+          {
+            echo '<!doctype html>'
+            echo '<html lang="en"><head><meta charset="utf-8">'
+            echo '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            echo '<title>Folio SDK schemas</title>'
+            echo '<style>body{margin:0;min-height:100svh;padding:2rem;background:#0b0b10;color:#f4f3f8;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:44rem;margin:0 auto}h1{font-size:1.25rem}code,a{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}a{color:#cfc8f5}li{margin:.25rem 0}p{color:#8f8ca6}</style>'
+            echo '</head><body><main>'
+            echo '<h1>Folio SDK schemas</h1>'
+            echo '<p>JSON Schema for the files a Folio source is made of. Reference one from a package with <code>$schema</code> and your editor will complete and check it as you type.</p>'
+            echo '<ul>'
+            for file in out/schema/v1/*.json; do
+              name="$(basename "$file")"
+              echo "<li><a href=\"/schema/v1/$name\">$name</a></li>"
+            done
+            echo '</ul>'
+            echo '<p>Written in <a href="https://github.com/McCal-Codes/folio/tree/main/docs/sdk">docs/sdk</a>. The format is described in <a href="https://github.com/McCal-Codes/folio/blob/main/docs/sdk/format-v1.md">format-v1.md</a>.</p>'
+            echo '</main></body></html>'
+          } > out/index.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: out
+
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v5
