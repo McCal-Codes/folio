@@ -525,8 +525,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
 
     fun remove(id: String) {
         val all = read().toMutableMap()
-        // What that version changed goes with it. Kept, these pile up for ever, and a wallpaper's record holds a
-        // whole image; the only reader is Undo, which runs before the record is dropped.
+        // What that version changed goes with it. Kept, these pile up for ever; the only reader is Undo, which
+        // runs before the record is dropped.
         all.remove(id)?.let { keyValue.set(changesKey(it.id, it.version), null) }
         write(all)
     }
@@ -660,8 +660,11 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 is PackageChange.Theme -> json.put("kind", "theme").put("json", change.json)
                 is PackageChange.Layout -> json.put("kind", "layout").put("json", change.json)
                 is PackageChange.IconPack -> json.put("kind", "iconPack").put("package", change.packageName)
+                // Deliberately without the image. A record is a description of what a package changed, not a
+                // second copy of it (STA-11). Base64 of a picture is 1.33x the picture, and the picture is already
+                // on disk where the host put it, so writing it here again cost a wallpaper 2.33x its own size for
+                // nothing. What the host needs to put it back is the id and the credit, which are here.
                 is PackageChange.Wallpaper -> json.put("kind", "wallpaper").put("path", change.path)
-                    .put("bytes", java.util.Base64.getEncoder().encodeToString(change.bytes))
                     .put("id", change.id).put("title", change.title).put("artist", change.artist)
                     .put("license", change.license).put("detail", change.detail).put("source", change.source)
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
@@ -691,7 +694,10 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 // uncredited picture back in through a restore.
                 "wallpaper" -> PackageChange.Wallpaper(
                     json.optString("path"),
-                    runCatching { java.util.Base64.getDecoder().decode(json.optString("bytes")) }.getOrDefault(ByteArray(0)),
+                    // No bytes in a record, by design. An empty array means "the picture is wherever it was put",
+                    // which is true on the phone that installed it and false on a phone restoring someone else's
+                    // backup; the host is what tells those two apart.
+                    ByteArray(0),
                     id = json.optString("id"), title = json.optString("title"), artist = json.optString("artist"),
                     license = json.optString("license"), detail = json.optString("detail"),
                     source = json.optString("source"),

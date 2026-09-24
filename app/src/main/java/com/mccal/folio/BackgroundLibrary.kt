@@ -158,6 +158,18 @@ internal object BackgroundLibrary {
         return runCatching { recordFile(context).writeText(json.toString()) }.isSuccess
     }
 
+    /**
+     * Drops art whose package is no longer installed.
+     *
+     * Nothing deletes a picture at the moment its package is removed, on purpose: removing and Safe Mode turning a
+     * package off both go through the same restore, and only one of them means gone. So the installed list is the
+     * authority, and this is run against it. Art that never came from a package, which today means nothing and
+     * later means the pieces that ship inside the app, is not in [installed] and so is never considered.
+     */
+    fun prune(context: Context, installedIds: Set<String>) {
+        installed(context).map { it.id }.filterNot { it in installedIds }.forEach { forget(context, it) }
+    }
+
     /** Forgets a piece of art and deletes its file. Used when its package is removed. */
     fun forget(context: Context, id: String) {
         artFile(context, id).delete()

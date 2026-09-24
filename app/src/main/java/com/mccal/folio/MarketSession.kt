@@ -158,7 +158,18 @@ internal class MarketSession(
         installer.install(bytes, origin = InstalledPackage.Origin.FILE)
     }
 
-    fun remove(id: String): Boolean = installer.remove(id)
+    fun remove(id: String): Boolean = installer.remove(id).also { if (it) pruneArt() }
+
+    /**
+     * Clears wallpaper art whose package has gone.
+     *
+     * The host deliberately leaves a picture on disk when a package's changes are put back, because Undo, Safe Mode
+     * and Remove all go through that one path and only the last means gone. The installed list is what tells them
+     * apart, and it is known here rather than there.
+     */
+    private fun pruneArt() {
+        BackgroundLibrary.prune(appContext, store.installed().map { it.id }.toSet())
+    }
 
     fun undo(result: InstallResult.Installed): Boolean = installer.undo(result)
 

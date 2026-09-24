@@ -41,13 +41,24 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = model.setFeatureScope(id, screen, value)
     override fun applyTheme(theme: FolioTheme) = model.applyTheme(theme)
 
+    /**
+     * [bytes] is empty when this change came from a record rather than from a package file, because a record does
+     * not carry the picture. On the phone that installed it the file is still there and is used as it stands, which
+     * is what makes Undo, Safe Mode and Try Again work with no network. On a phone restoring someone else's backup
+     * it is not there, and there is nothing honest to do but say so: the package lands in the restore's failed list,
+     * turned off, and getting it again from its source is what brings the picture with it.
+     */
     override fun applyArtBackground(art: Artwork, bytes: ByteArray): String {
         val was = backgroundChoice(context).save()
         val file = BackgroundLibrary.artFile(context, art.id)
-        file.parentFile?.mkdirs()
-        file.writeBytes(bytes)
+        if (bytes.isEmpty()) {
+            if (!file.isFile) error("that wallpaper's picture isn't on this phone. Get it again to put it back")
+        } else {
+            file.parentFile?.mkdirs()
+            file.writeBytes(bytes)
+        }
         if (!BackgroundLibrary.record(context, art)) {
-            file.delete()
+            if (bytes.isNotEmpty()) file.delete()
             error("that wallpaper doesn't say who made it")
         }
         setBackgroundChoice(context, BackgroundChoice.Art(art.id))
@@ -55,11 +66,16 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
         return was
     }
 
+    /**
+     * The picture is left on disk. Restoring runs for Undo and for Safe Mode turning a package off as well as for
+     * Remove, and only the last of those means "gone": deleting here would make a package that Safe Mode switched
+     * off need downloading again to switch back on. [BackgroundLibrary.prune] is what actually clears art whose
+     * package is no longer installed.
+     */
     override fun restoreArtBackground(artId: String, snapshot: String) {
         setBackgroundChoice(context, BackgroundChoice.parse(snapshot) { id ->
             id != artId && BackgroundLibrary.artFile(context, id).isFile
         })
-        BackgroundLibrary.forget(context, artId)
         LauncherBackgroundCache.changed(null)
     }
 }
