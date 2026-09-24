@@ -132,14 +132,14 @@ internal fun MarketInstallSheet(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.cancel),
-                color = FolioColors.Blue, fontSize = 16.sp,
+                color = LocalAccent.current.ink, fontSize = 16.sp,
                 modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
             )
             Text(
                 stringResource(R.string.get),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
                     .clickable(onClickLabel = getName, onClick = onGet)
                     .heightIn(min = 44.dp).padding(horizontal = 22.dp, vertical = 12.dp)
                     .testTag("market-install-confirm"),

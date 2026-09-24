@@ -108,7 +108,7 @@ internal object NewApps {
 internal fun NewAppDot(packageName: String, size: androidx.compose.ui.unit.Dp = 6.dp) {
     if (packageName !in LocalNewApps.current) return
     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(end = 3.dp).size(size)
-        .background(FolioColors.Blue, androidx.compose.foundation.shape.CircleShape)
+        .background(LocalAccent.current.fill, androidx.compose.foundation.shape.CircleShape)
         .semantics { contentDescription = "New" })
 }
 

@@ -719,7 +719,7 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
             val on = tab == selected
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (on) FolioColors.Blue else Color.Transparent)
+                    .background(if (on) LocalAccent.current.fill else Color.Transparent)
                     .marketTab(tab, onSelect).padding(horizontal = 12.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -746,12 +746,12 @@ private fun Modifier.marketTab(tab: MarketTab, onSelect: (MarketTab) -> Unit) =
 @Composable
 private fun MarketTabIcon(tab: MarketTab, on: Boolean) = Icon(
     tab.icon, contentDescription = null, modifier = Modifier.size(22.dp),
-    tint = if (on) FolioColors.Blue else Color.White.copy(alpha = .55f),
+    tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .55f),
 )
 
 @Composable
 private fun MarketTabLabel(tab: MarketTab, on: Boolean) = Text(
-    stringResource(tab.label), color = if (on) FolioColors.Blue else Color.White.copy(alpha = .55f), fontSize = 11.sp,
+    stringResource(tab.label), color = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .55f), fontSize = 11.sp,
     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
 )
 
@@ -1022,7 +1022,7 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
     val described = stringResource(R.string.text_1_s_2_s, stringResource(label), name)
     Text(
         stringResource(label),
-        color = FolioColors.Blue,
+        color = LocalAccent.current.ink,
         fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
@@ -1076,9 +1076,9 @@ private fun MarketPackagePage(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = FolioColors.Blue, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
                 // Where Back goes, as on iPhone ("‹ Packages"); TalkBack still hears "Back" as the action.
-                Text(backTitle ?: backLabel, color = FolioColors.Blue, fontSize = 16.sp)
+                Text(backTitle ?: backLabel, color = LocalAccent.current.ink, fontSize = 16.sp)
             }
         }
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1107,7 +1107,7 @@ private fun MarketPackagePage(
                         // fault; Remove, below, is the other way out.
                         Text(
                             stringResource(R.string.try_again),
-                            color = FolioColors.Blue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                            color = LocalAccent.current.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(12.dp))
                                 .clickable(onClick = onTryAgain).heightIn(min = 44.dp)
                                 .padding(vertical = 11.dp).testTag("package-try-again"),
@@ -1209,7 +1209,7 @@ private fun MarketPackagePage(
                 val sourceLine = stringResource(R.string.source_1_s, source.label)
                 Text(
                     sourceLine,
-                    color = FolioColors.BlueOnDark, fontSize = 14.sp,
+                    color = LocalAccent.current.ink, fontSize = 14.sp,
                     modifier = Modifier.clickable(onClickLabel = sourceLine, onClick = onShowSource)
                         .heightIn(min = 44.dp).padding(vertical = 12.dp).testTag("package-show-source"),
                 )
@@ -1295,7 +1295,7 @@ private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Un
     ) {
         Text(text, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         if (undo != null) {
-            Text(stringResource(R.string.undo), color = FolioColors.Blue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
+            Text(stringResource(R.string.undo), color = LocalAccent.current.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
         }
     }
 }
@@ -1477,14 +1477,14 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
                 androidx.compose.material3.CircularProgressIndicator(
                     progress = { fraction },
                     modifier = Modifier.size(26.dp),
-                    color = FolioColors.Blue,
+                    color = LocalAccent.current.ink,
                     trackColor = Color.White.copy(alpha = .16f),
                     strokeWidth = 3.dp,
                 )
             } else {
                 androidx.compose.material3.CircularProgressIndicator(
                     modifier = Modifier.size(26.dp),
-                    color = FolioColors.Blue,
+                    color = LocalAccent.current.ink,
                     trackColor = Color.White.copy(alpha = .16f),
                     strokeWidth = 3.dp,
                 )

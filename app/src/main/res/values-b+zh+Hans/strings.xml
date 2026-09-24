@@ -15,6 +15,9 @@
     <string name="turn_on_work_apps">开启工作 App</string>
     <string name="open">打开</string>
     <string name="appearance">外观</string>
+    <string name="accent">强调色</string>
+    <string name="folio_teal">Folio 青色</string>
+    <string name="classic_blue">经典蓝</string>
     <string name="place_name">地点名称</string>
     <string name="use_this_place">使用此地点</string>
     <string name="use_device_location">使用设备位置</string>

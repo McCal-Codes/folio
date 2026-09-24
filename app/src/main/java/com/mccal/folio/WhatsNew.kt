@@ -206,7 +206,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                 }
             }
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = 16.dp).heightIn(min = 52.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(FolioColors.Blue)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
                 .clickable(onClick = onDismiss).testTag("whats-new-continue"), contentAlignment = androidx.compose.ui.Alignment.Center) {
                 androidx.compose.material3.Text(stringResource(R.string.continue_choice), color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)

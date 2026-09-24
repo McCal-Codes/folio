@@ -108,7 +108,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
                 val begin = LocalDateTime.ofInstant(Instant.ofEpochMilli(e.begin), ZoneId.systemDefault())
                 Row(Modifier.padding(top = 6.dp).clip(RoundedCornerShape(12.dp)).clickable { onDismiss(); UpNext.openEvent(context, e) }
                     .padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(width = 3.dp, height = 16.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: FolioColors.Blue))
+                    Box(Modifier.size(width = 3.dp, height = 16.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: LocalAccent.current.fill))
                     Spacer(Modifier.width(6.dp))
                     Text("${e.title} · ${if (e.allDay) stringResource(R.string.all_day) else begin.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))}",
                         color = Color.White.copy(alpha = .85f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -108,7 +108,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
             }
         }
         Spacer(Modifier.height(14.dp))
-        Box(Modifier.size(112.dp).clip(CircleShape).background(Brush.linearGradient(listOf(FolioColors.Cyan, FolioColors.Blue))),
+        Box(Modifier.size(112.dp).clip(CircleShape).background(Brush.linearGradient(listOf(FolioColors.Cyan, LocalAccent.current.fill))),
             contentAlignment = Alignment.Center) {
             Icon(if (device.speaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones, null, tint = Color.White, modifier = Modifier.size(60.dp))
         }
@@ -118,7 +118,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
             Text(stringResource(R.string.connected), color = secondary, fontSize = 15.sp)
         }
         Spacer(Modifier.height(18.dp))
-        Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
+        Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
             .clickable(role = Role.Button, onClick = onDone), contentAlignment = Alignment.Center) {
             Text(stringResource(R.string.done), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         }

@@ -34,8 +34,8 @@ internal object FolioGlass {
 
 /** Dark, iOS-like colors for Folio's sheets (settings, app options, setup). */
 internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
-    primary = FolioColors.Blue, onPrimary = Color.White,
-    primaryContainer = FolioColors.Blue, onPrimaryContainer = Color.White,
+    primary = FolioColors.BlueOnDark, onPrimary = Color.White,
+    primaryContainer = FolioColors.BlueOnDark, onPrimaryContainer = Color.White,
     secondary = FolioColors.Cyan, onSecondary = Color.Black,
     secondaryContainer = Color(0xFF3A3A3C), onSecondaryContainer = Color.White,
     surface = FolioColors.SecondaryBackground, onSurface = Color.White, onSurfaceVariant = Color(0xFFA1A1A6),

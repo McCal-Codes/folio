@@ -113,11 +113,11 @@ private fun PinCard(onCancel: () -> Unit, error: String?, addLabel: String, tag:
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             content()
             error?.let { Text(it, color = FolioColors.Red, fontSize = 14.sp, textAlign = TextAlign.Center) }
-            Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(14.dp)).background(FolioColors.Blue)
+            Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
                 .clickable(onClick = onAdd).testTag("$tag-add"), contentAlignment = Alignment.Center) {
                 Text(addLabel, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             }
-            Text(stringResource(R.string.cancel), color = FolioColors.Blue, fontSize = 17.sp, modifier = Modifier.clickable(onClick = onCancel).padding(8.dp))
+            Text(stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = 17.sp, modifier = Modifier.clickable(onClick = onCancel).padding(8.dp))
         }
     }
 }

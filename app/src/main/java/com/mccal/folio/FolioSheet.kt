@@ -200,7 +200,7 @@ private fun PeekCapsule(peek: PeekSlider) {
         }
         Box(Modifier.fillMaxWidth().height(28.dp), contentAlignment = androidx.compose.ui.Alignment.CenterStart) {
             Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .22f))) {
-                Box(Modifier.fillMaxWidth(peek.fraction).height(4.dp).background(FolioColors.Blue))
+                Box(Modifier.fillMaxWidth(peek.fraction).height(4.dp).background(LocalAccent.current.fill))
             }
             // The thumb, where the finger is.
             androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -253,8 +253,9 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         FolioDialogWindow(dim = .3f)
         val appear = rememberEntrance(stiffness = 900f, dampingRatio = .85f)
         val base = MaterialTheme.typography
-        // BlueOnDark, not Blue: the alert is always dark, and Blue on its grey measures 3.82:1 (A11Y-9).
-        val blue = FolioColors.BlueOnDark
+        // The accent's ink, not its fill: the alert is always dark, and a fill-weight colour on its grey fails
+        // contrast (iOS blue measures 3.82:1 there).
+        val blue = LocalAccent.current.ink
         fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = FolioType.BODY.sp, fontWeight = weight))
         FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing), role = FoldRole.INFO) {
             MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = base) {

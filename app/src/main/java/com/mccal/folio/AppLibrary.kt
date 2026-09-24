@@ -191,7 +191,7 @@ internal fun AppLibrary(
                                 // iOS selection: filled blue check when on Home, empty ring when not.
                                 Icon(if (isPinned) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                                     if (isPinned) stringResource(R.string.remove_from_home_3, app.label) else stringResource(R.string.pin_to_home, app.label),
-                                    tint = if (isPinned) FolioColors.Blue else ink.copy(alpha = .35f),
+                                    tint = if (isPinned) LocalAccent.current.ink else ink.copy(alpha = .35f),
                                     modifier = Modifier.size(24.dp))
                             }
                         }

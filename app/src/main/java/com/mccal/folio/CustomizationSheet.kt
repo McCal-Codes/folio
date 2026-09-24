@@ -81,7 +81,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     onMakeDefault: () -> Unit, onClose: () -> Unit, onEditPins: () -> Unit, onWidget: (Int) -> Unit,
     onAddWidget: (Int) -> Unit, onRemoveWidget: (Int) -> Unit, onWallpaperPreview: () -> Unit,
     onExportLayout: () -> Unit, onImportLayout: () -> Unit, onSaveLayoutToFolder: (String) -> Unit = {},
-    appearance: AppearanceState, onAppearanceMode: (AppearanceMode) -> Unit,
+    appearance: AppearanceState, onAppearanceMode: (AppearanceMode) -> Unit, onAppearanceAccent: (AccentChoice) -> Unit = {},
     onAppearanceManual: (String, Double, Double) -> Unit, onAppearanceDeviceLocation: () -> Unit,
     onAppearanceClear: () -> Unit, backgrounds: LauncherBackgroundController, homePage: Int = 0,
     onShadeSetup: () -> Unit = {},
@@ -319,7 +319,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TextButton(onClick = backgrounds::clearMessage, Modifier.fillMaxWidth().testTag("background-message")) { Text(message) }
                     }
                     }
-                    AppearanceSettings(appearance, onAppearanceMode, onAppearanceManual, onAppearanceDeviceLocation, onAppearanceClear)
+                    AppearanceSettings(appearance, onAppearanceMode, onAppearanceManual, onAppearanceDeviceLocation,
+                        onAppearanceClear, onAppearanceAccent)
                 }
                 CustomizationPage.HOME -> {
                     HomeLayoutSettings(state, wide, { wide = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
@@ -838,7 +839,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 @Composable private fun SidebarButton(onClick: () -> Unit) {
     Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).clickable(onClickLabel = stringResource(R.string.show_or_hide_the_settings_list), onClick = onClick)
         .testTag("settings-sidebar-toggle"), contentAlignment = Alignment.Center) {
-        Icon(Icons.Rounded.ViewSidebar, null, tint = IosBlue, modifier = Modifier.size(26.dp))
+        Icon(Icons.Rounded.ViewSidebar, null, tint = LocalAccent.current.ink, modifier = Modifier.size(26.dp))
     }
 }
 
@@ -863,11 +864,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
             if (backLabel != null) Row(Modifier.clip(RoundedCornerShape(10.dp))
                 .clickable(onClick = onBack).padding(vertical = 8.dp, horizontal = 2.dp).testTag("customization-back"),
                 verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.ChevronLeft, null, tint = IosBlue, modifier = Modifier.size(28.dp))
-                Text(backLabel, color = IosBlue, fontSize = 17.sp)
+                Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(28.dp))
+                Text(backLabel, color = LocalAccent.current.ink, fontSize = 17.sp)
             }
         }
-        Text(stringResource(R.string.done), color = IosBlue, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.CenterEnd).clip(RoundedCornerShape(10.dp)).clickable(onClick = onClose)
                 .padding(horizontal = 8.dp, vertical = 8.dp).description(R.string.close_customization))
     }
@@ -881,7 +882,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     val context = androidx.compose.ui.platform.LocalContext.current
     val icon = remember { folioIconBitmap(context) }
     // iPad Settings: the selection is a rounded highlight inset from the group's edges, not a square band.
-    Row(Modifier.fillMaxWidth().padding(4.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) IosBlue else androidx.compose.ui.graphics.Color.Transparent).clickable(onClick = onClick)
+    Row(Modifier.fillMaxWidth().padding(4.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) LocalAccent.current.fill else androidx.compose.ui.graphics.Color.Transparent).clickable(onClick = onClick)
         .padding(horizontal = 14.dp, vertical = 10.dp).testTag("settings-sidebar-folio"), verticalAlignment = Alignment.CenterVertically) {
         icon?.let { Image(it, null, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp))) }
         Spacer(Modifier.width(12.dp))
@@ -940,7 +941,6 @@ private fun HelpTip(icon: ImageVector, color: Long, title: String, detail: Strin
 
 
 
-private val IosBlue = FolioColors.Blue
 
 /** Tweak-style header: Folio's icon, name and version, like a jailbreak tweak's preference banner. */
 @Composable private fun TweakBanner() {
@@ -959,7 +959,7 @@ private val IosBlue = FolioColors.Blue
 @Composable private fun TweakRow(icon: ImageVector, color: Long, title: String, tag: String, value: String? = null,
     selected: Boolean = false, chevron: Boolean = true, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-        .then(if (selected) Modifier.padding(horizontal = 5.dp, vertical = 2.dp).clip(RoundedCornerShape(10.dp)).background(IosBlue) else Modifier)
+        .then(if (selected) Modifier.padding(horizontal = 5.dp, vertical = 2.dp).clip(RoundedCornerShape(10.dp)).background(LocalAccent.current.fill) else Modifier)
         // The inset is taken back from the content padding, so the icon and title don't shift when selected.
         .clickable(onClick = onClick).padding(horizontal = if (selected) 9.dp else 14.dp, vertical = if (selected) 6.dp else 8.dp).testTag(tag).semantics { this.selected = selected },
         verticalAlignment = Alignment.CenterVertically) {
@@ -1226,7 +1226,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
             Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { model.applyTheme(theme); undo = true; message = null }
                 .padding(horizontal = 16.dp).testTag("theme-${theme.name.lowercase()}"), verticalAlignment = Alignment.CenterVertically) {
                 Text(theme.name, color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
-                if (current) Icon(Icons.Rounded.Check, null, tint = IosBlue, modifier = Modifier.size(20.dp))
+                if (current) Icon(Icons.Rounded.Check, null, tint = LocalAccent.current.ink, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -1303,7 +1303,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
                     pick(minute) { picked -> model.updateFocusMode(mode.copy(schedule = if (key == "from") schedule.copy(startMinute = picked) else schedule.copy(endMinute = picked))) }
                 }.testTag("focus-schedule-$key"), verticalAlignment = Alignment.CenterVertically) {
                     Text(name, Modifier.weight(1f))
-                    Text(label(minute), color = IosBlue, fontSize = 17.sp)
+                    Text(label(minute), color = LocalAccent.current.ink, fontSize = 17.sp)
                 }
             }
             // iOS day picker: one letter per day, filled when the schedule runs that day.
@@ -1938,10 +1938,10 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                     if (!selected) { AppIconChoice.set(context, choice); current = choice; onChanged() }
                 }.padding(6.dp).semantics { this.selected = selected; contentDescription = choiceName + " app icon" }.testTag("app-icon-${choice.name.lowercase()}"),
                     horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(64.dp).then(if (selected) Modifier.border(2.5.dp, IosBlue, RoundedCornerShape(18.dp)).padding(4.dp) else Modifier.padding(4.dp))) {
+                    Box(Modifier.size(64.dp).then(if (selected) Modifier.border(2.5.dp, LocalAccent.current.ink, RoundedCornerShape(18.dp)).padding(4.dp) else Modifier.padding(4.dp))) {
                         bitmap?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp))) }
                     }
-                    Text(stringResource(choice.label), color = if (selected) IosBlue else androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                    Text(stringResource(choice.label), color = if (selected) LocalAccent.current.ink else androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         }
@@ -2102,8 +2102,8 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                 // Sileo's pill: Get in blue; once installed it reads Open and goes to the tweak's settings.
                 val actionLabel = stringResource(if (installed) R.string.open_tweak else R.string.get_tweak, tweak.name)
                 Text(stringResource(if (installed) R.string.open else R.string.get), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
-                    color = if (installed) IosBlue else androidx.compose.ui.graphics.Color.White,
-                    modifier = Modifier.minimumInteractiveComponentSize().clip(RoundedCornerShape(50)).background(if (installed) androidx.compose.ui.graphics.Color.White.copy(alpha = .12f) else IosBlue)
+                    color = if (installed) LocalAccent.current.ink else androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.minimumInteractiveComponentSize().clip(RoundedCornerShape(50)).background(if (installed) androidx.compose.ui.graphics.Color.White.copy(alpha = .12f) else LocalAccent.current.fill)
                         .clickable(role = androidx.compose.ui.semantics.Role.Button) { if (installed) onOpen(tweak) else model.installTweak(tweak) }.padding(horizontal = 16.dp, vertical = 6.dp)
                         .semantics { contentDescription = actionLabel })
             }
@@ -2200,7 +2200,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                 (if (expanded) notes else notes.take(6)).forEach { line -> Text(line, style = MaterialTheme.typography.bodyMedium) }
                 // A beta's notes have no page to open (its repository is private), so once they're expanded there's no link.
                 if ((!expanded && notes.size > 6) || release.notesUrl.isNotBlank()) Text(if (!expanded && notes.size > 6) stringResource(R.string.more) else stringResource(R.string.full_release_notes),
-                    color = FolioColors.Blue, style = MaterialTheme.typography.bodyMedium,
+                    color = LocalAccent.current.ink, style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
                         if (!expanded && notes.size > 6) expanded = true
                         else runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(release.notesUrl))) }

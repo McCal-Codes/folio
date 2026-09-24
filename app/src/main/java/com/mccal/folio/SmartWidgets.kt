@@ -63,12 +63,12 @@ internal fun UpNextCard(onEdit: () -> Unit) {
             !allowed -> Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { ask.launch(Manifest.permission.READ_CALENDAR) }) {
                 Icon(Icons.Rounded.CalendarToday, null, tint = ink.secondary, modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.show_up_next), color = ink.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.allow_calendar_access), color = FolioColors.Blue, fontSize = 12.sp)
+                Text(stringResource(R.string.allow_calendar_access), color = LocalAccent.current.ink, fontSize = 12.sp)
             }
             events.isNotEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 events.take(2).forEach { e ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { UpNext.openEvent(context, e) }, verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.width(3.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: FolioColors.Blue))
+                        Box(Modifier.width(3.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: LocalAccent.current.fill))
                         Spacer(Modifier.width(6.dp))
                         Column {
                             Text(e.title, color = ink.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
