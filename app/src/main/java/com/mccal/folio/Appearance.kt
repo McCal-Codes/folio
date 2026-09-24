@@ -13,7 +13,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
 enum class AppearanceMode { LIGHT, DARK, SYSTEM, SUNRISE_SUNSET }
-data class AppearanceState(val mode: AppearanceMode = AppearanceMode.LIGHT, val place: String = "",
+data class AppearanceState(val mode: AppearanceMode = AppearanceMode.LIGHT, val accent: AccentChoice = AccentChoice.FOLIO_TEAL, val place: String = "",
     val latitude: Double? = null, val longitude: Double? = null, val locationTime: Long = 0,
     val deviceLocation: Boolean = false, val dark: Boolean = false, val fallback: String? = null,
     val locationStatus: String? = null)
@@ -23,16 +23,18 @@ class AppearanceStore(private val context: Context) {
     private fun currentSystemDark() = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
         android.content.res.Configuration.UI_MODE_NIGHT_YES
     var state by mutableStateOf(load(currentSystemDark())); private set
-    init { DuoAppearanceRuntime.dark = state.dark }
+    init { DuoAppearanceRuntime.dark = state.dark; DuoAppearanceRuntime.accent = state.accent }
     private fun load(systemDark: Boolean): AppearanceState {
         val mode = runCatching { AppearanceMode.valueOf(prefs.getString("mode", "LIGHT")!!) }.getOrDefault(AppearanceMode.LIGHT)
+        val accent = runCatching { AccentChoice.valueOf(prefs.getString("accent", "FOLIO_TEAL")!!) }.getOrDefault(AccentChoice.FOLIO_TEAL)
         val lat = runCatching { prefs.getString("lat", null)?.toDoubleOrNull() }.getOrNull()
         val lon = runCatching { prefs.getString("lon", null)?.toDoubleOrNull() }.getOrNull()
-        return resolve(AppearanceState(mode, runCatching { prefs.getString("place", "") ?: "" }.getOrDefault(""), lat, lon,
+        return resolve(AppearanceState(mode, accent, runCatching { prefs.getString("place", "") ?: "" }.getOrDefault(""), lat, lon,
             runCatching { prefs.getLong("locationTime", 0) }.getOrDefault(0),
             runCatching { prefs.getBoolean("deviceLocation", false) }.getOrDefault(false)), systemDark)
     }
     fun setMode(mode: AppearanceMode, systemDark: Boolean) { save(state.copy(mode = mode), systemDark) }
+    fun setAccent(accent: AccentChoice, systemDark: Boolean) { save(state.copy(accent = accent), systemDark) }
     fun setManual(place: String, latitude: Double, longitude: Double, systemDark: Boolean) {
         require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
         save(state.copy(place = place.trim(), latitude = latitude, longitude = longitude,
@@ -51,11 +53,12 @@ class AppearanceStore(private val context: Context) {
         DuoAppearanceRuntime.dark = state.dark
     }
     private fun save(value: AppearanceState, systemDark: Boolean) {
-        prefs.edit().putString("mode", value.mode.name).putString("place", value.place)
+        prefs.edit().putString("mode", value.mode.name).putString("accent", value.accent.name).putString("place", value.place)
             .putString("lat", value.latitude?.toString()).putString("lon", value.longitude?.toString())
             .putLong("locationTime", value.locationTime).putBoolean("deviceLocation", value.deviceLocation).apply()
         state = resolve(value, systemDark)
         DuoAppearanceRuntime.dark = state.dark
+        DuoAppearanceRuntime.accent = state.accent
     }
     private fun resolve(value: AppearanceState, systemDark: Boolean): AppearanceState = when (value.mode) {
         AppearanceMode.LIGHT -> value.copy(dark = false, fallback = null)
@@ -72,7 +75,11 @@ class AppearanceStore(private val context: Context) {
     }
 }
 
-object DuoAppearanceRuntime { @Volatile var dark: Boolean = false }
+object DuoAppearanceRuntime {
+    @Volatile var dark: Boolean = false
+    /** Mirrors the saved accent, so a service or an overlay outside the theme can draw with it too. */
+    @Volatile var accent: AccentChoice = AccentChoice.FOLIO_TEAL
+}
 
 data class DuoPalette(val ink: androidx.compose.ui.graphics.Color, val glass: androidx.compose.ui.graphics.Color,
     val backgroundTop: androidx.compose.ui.graphics.Color, val backgroundBottom: androidx.compose.ui.graphics.Color, val dark: Boolean)

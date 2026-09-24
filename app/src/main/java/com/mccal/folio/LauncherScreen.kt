@@ -103,9 +103,11 @@ internal val Glass: Color
     @Composable get() = LocalDuoPalette.current.glass
 
 @Composable
-fun DuoTheme(dark: Boolean = false, content: @Composable () -> Unit) {
+fun DuoTheme(dark: Boolean = false, accent: AccentChoice = DuoAppearanceRuntime.accent, content: @Composable () -> Unit) {
     val palette = if (dark) DarkDuoPalette else LightDuoPalette
-    CompositionLocalProvider(LocalDuoPalette provides palette) {
+    // Every Folio surface reads its accent from here, so Settings › Accent reaches Home, the sheets and the Market
+    // in one place rather than each screen naming a colour.
+    CompositionLocalProvider(LocalDuoPalette provides palette, LocalAccent provides FolioAccents.of(accent)) {
         MaterialTheme(colorScheme = if (dark) darkColorScheme(primary = Color(0xFF9BC5D7), onPrimary = Color(0xFF12303D),
             surface = Color(0xFF17272E), onSurface = palette.ink, secondary = Color(0xFFD1BE98),
             secondaryContainer = Color(0xFF314852), onSecondaryContainer = palette.ink)
@@ -126,6 +128,7 @@ fun LauncherScreen(
     onGoogleSearch: (android.graphics.Rect?) -> Boolean = { false },
     appearance: AppearanceState = AppearanceState(),
     onAppearanceMode: (AppearanceMode) -> Unit = {},
+    onAppearanceAccent: (AccentChoice) -> Unit = {},
     onAppearanceManual: (String, Double, Double) -> Unit = { _, _, _ -> },
     onAppearanceDeviceLocation: () -> Unit = {},
     onAppearanceClear: () -> Unit = {},
@@ -995,7 +998,7 @@ fun LauncherScreen(
                             onExportLayout = { sheet = ""; launcherActivity.backups.startExport() },
                             onSaveLayoutToFolder = { launcherActivity.backups.saveToFolioFolder(it) },
                             onImportLayout = { sheet = ""; launcherActivity.backups.startImport() },
-                            appearance = appearance, onAppearanceMode = onAppearanceMode,
+                            appearance = appearance, onAppearanceMode = onAppearanceMode, onAppearanceAccent = onAppearanceAccent,
                             onAppearanceManual = onAppearanceManual, onAppearanceDeviceLocation = onAppearanceDeviceLocation,
                             onAppearanceClear = onAppearanceClear,
                             onShadeSetup = { sheet = ""; onShadeSetup() },
@@ -1614,7 +1617,7 @@ private fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
         .padding(start = 16.dp, end = 4.dp).testTag("home-setup"), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.preview), color = ink.secondary, fontSize = 15.sp, modifier = Modifier.semantics { heading() })
         Spacer(Modifier.width(12.dp))
-        Text(stringResource(R.string.use_as_home), color = FolioColors.Blue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+        Text(stringResource(R.string.use_as_home), color = LocalAccent.current.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onUseAsHome)
                 .heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = 8.dp).testTag("preview-use-as-home"))
         IconButton(onClick = onExit, Modifier.size(48.dp).testTag("preview-exit")) {

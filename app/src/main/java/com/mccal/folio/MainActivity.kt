@@ -268,6 +268,7 @@ class MainActivity : ComponentActivity() {
                     onLaunchFrom = ::launchApp, onGoogleSearch = ::openGoogleSearch,
                     appearance = appearance.state,
                     onAppearanceMode = { cancelAppearanceLocation(); appearance.setMode(it, systemDark()) },
+                    onAppearanceAccent = { appearance.setAccent(it, systemDark()) },
                     onAppearanceManual = { place, lat, lon -> cancelAppearanceLocation(); appearance.setManual(place, lat, lon, systemDark()) },
                     onAppearanceDeviceLocation = ::useAppearanceLocation,
                     onAppearanceClear = { cancelAppearanceLocation(); appearance.clearLocation(systemDark()) },

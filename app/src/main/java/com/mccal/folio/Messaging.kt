@@ -118,7 +118,7 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
                 keyboardActions = KeyboardActions(onSend = { submit() }))
         }
         val ready = text.isNotBlank() || sent
-        Box(Modifier.size(32.dp).clip(CircleShape).background(if (sent) FolioColors.Green else if (ready) FolioColors.Blue else Color.White.copy(alpha = .18f))
+        Box(Modifier.size(32.dp).clip(CircleShape).background(if (sent) FolioColors.Green else if (ready) LocalAccent.current.fill else Color.White.copy(alpha = .18f))
             .clickable(enabled = ready && !sent) { submit() }.semantics { contentDescription = if (sent) "Sent" else "Send" },
             contentAlignment = Alignment.Center) {
             Icon(if (sent) Icons.Rounded.Check else Icons.Rounded.ArrowUpward, null, tint = Color.White, modifier = Modifier.size(18.dp))

@@ -7,6 +7,10 @@
     <string name="turn_on_work_apps">Turn on work apps</string>
     <string name="open">Open</string>
     <string name="appearance">Appearance</string>
+    <!-- Settings > Wallpaper & Appearance > Accent: the colour Folio uses for buttons, switches and selection. -->
+    <string name="accent">Accent</string>
+    <string name="folio_teal">Folio Teal</string>
+    <string name="classic_blue">Classic Blue</string>
     <string name="place_name">Place name</string>
     <string name="use_this_place">Use this place</string>
     <string name="use_device_location">Use device location</string>

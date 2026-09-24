@@ -114,12 +114,12 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (index > 0) Row(Modifier.clip(RoundedCornerShape(10.dp)).clickable { go(index - 1) }.padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.ChevronLeft, null, tint = IosBlue, modifier = Modifier.size(26.dp))
-                    Text(stringResource(R.string.back), color = IosBlue, fontSize = 17.sp)
+                    Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(26.dp))
+                    Text(stringResource(R.string.back), color = LocalAccent.current.ink, fontSize = 17.sp)
                 }
                 Spacer(Modifier.weight(1f))
                 // Setup is optional: Home works without it, and everything is in Settings.
-                if (page.key != "done") Text(stringResource(R.string.skip), color = IosBlue, fontSize = 17.sp,
+                if (page.key != "done") Text(stringResource(R.string.skip), color = LocalAccent.current.ink, fontSize = 17.sp,
                     modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { finish() }.padding(10.dp).testTag("onboarding-skip"))
             }
             AnimatedContent(index, Modifier.weight(1f), label = "onboarding page",
@@ -164,7 +164,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                             tips.forEachIndexed { n, (icon, tip) ->
                                 if (n > 0) MenuDivider()
                                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(icon, null, tint = IosBlue, modifier = Modifier.size(22.dp))
+                                    Icon(icon, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
                                     Spacer(Modifier.width(12.dp))
                                     Text(tip, color = Color.White, fontSize = 15.sp)
                                 }
@@ -188,7 +188,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 page.key == "done" -> page.action ?: context.getString(R.string.get_started)
                 else -> context.getString(R.string.continue_button)
             }
-            Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(14.dp)).background(IosBlue)
+            Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
                 .clickable {
                     when {
                         page.key == "done" -> finish()
@@ -199,7 +199,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 Text(primary, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = IosBlue, fontSize = 17.sp,
+                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = 17.sp,
                     modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { go(index + 1) }.padding(10.dp).testTag("onboarding-not-now"))
             }
             Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.Center,
@@ -213,6 +213,5 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     }
 }
 
-private val IosBlue = FolioColors.Blue
 private const val STEP = "onboardingStep"
 private const val STEP_KEY = "onboardingPage"

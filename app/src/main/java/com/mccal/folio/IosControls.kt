@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** iOS-style controls for Folio's settings (the sheet is always dark glass). */
-private val IosBlue = FolioColors.Blue
 private val IosTrackOff = Color(0xFF39393D)
 
 /** iOS switch: 51×31 green track with a white thumb that springs across. */
@@ -86,7 +85,7 @@ internal fun IosSlider(value: Float, onValueChange: (Float) -> Unit, valueRange:
             val span = state.valueRange.endInclusive - state.valueRange.start
             val fraction = if (span > 0f) ((state.value - state.valueRange.start) / span).coerceIn(0f, 1f) else 0f
             Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
-                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(IosBlue))
+                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(LocalAccent.current.fill))
             }
         })
 }
@@ -117,7 +116,7 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
 /** iOS blue (or red) text action row inside a grouped list. */
 @Composable
 internal fun IosActionRow(text: String, tag: String? = null, destructive: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    val color = if (destructive) FolioColors.Red else FolioColors.Blue
+    val color = if (destructive) FolioColors.RedOnDark else LocalAccent.current.ink
     androidx.compose.material3.Text(text, color = if (enabled) color else Color.White.copy(alpha = .3f), fontSize = FolioType.BODY.sp,
         modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
@@ -236,9 +235,10 @@ internal fun FolioButton(
     tag: String? = null,
     enabled: Boolean = true,
 ) {
-    val ink = if (style == FolioButtonStyle.FILLED) Color.White else FolioColors.BlueOnDark
+    val accent = LocalAccent.current
+    val ink = if (style == FolioButtonStyle.FILLED) Color.White else accent.ink
     val background = when (style) {
-        FolioButtonStyle.FILLED -> FolioColors.BlueDeep
+        FolioButtonStyle.FILLED -> accent.fill
         FolioButtonStyle.TONAL -> Color.White.copy(alpha = .12f)
         FolioButtonStyle.PLAIN -> Color.Transparent
     }

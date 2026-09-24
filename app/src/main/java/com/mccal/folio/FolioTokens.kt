@@ -37,6 +37,29 @@ internal object FolioColors {
 }
 
 /**
+ * The colour Folio uses for the thing you can act on: buttons, switches, selection, links. Two roles, because one
+ * colour can't do both jobs on a dark surface: [fill] sits behind white text, [ink] is the accent as text.
+ */
+internal data class FolioAccent(val fill: Color, val ink: Color)
+
+/** What Settings offers under Accent. Folio's own teal is the default; Apple's blue is there for whoever wants it. */
+enum class AccentChoice(val id: String) { FOLIO_TEAL("teal"), APPLE_BLUE("blue") }
+
+internal object FolioAccents {
+    /** Folio's app icon, which ships in teal (#173D43 to #2E5E66), and the soft icon's mint for text. */
+    val Teal = FolioAccent(fill = Color(0xFF2A6A70), ink = Color(0xFF6DB7B4))
+    /** iOS's blue, deep enough for white text to pass AA. */
+    val Blue = FolioAccent(fill = FolioColors.BlueDeep, ink = FolioColors.BlueOnDark)
+    fun of(choice: AccentChoice) = when (choice) {
+        AccentChoice.FOLIO_TEAL -> Teal
+        AccentChoice.APPLE_BLUE -> Blue
+    }
+}
+
+/** The accent in force, from Settings › Wallpaper & Appearance › Accent. */
+internal val LocalAccent = androidx.compose.runtime.staticCompositionLocalOf { FolioAccents.Teal }
+
+/**
  * Folio's spacing scale, in dp. These are the gaps Folio already uses; a size off the scale needs a reason in a
  * comment beside it. See docs/standards/design.md (DES-6).
  */

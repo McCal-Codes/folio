@@ -117,7 +117,7 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
                     ReminderButton("Not Now", secondary.copy(alpha = .18f), primary, Modifier.weight(1f)) {
                         show = false; SetupReminder.snooze(context, SetupReminder.NOT_NOW_MS)
                     }
-                    ReminderButton("Continue", FolioColors.Blue, Color.White, Modifier.weight(1f)) {
+                    ReminderButton("Continue", LocalAccent.current.ink, Color.White, Modifier.weight(1f)) {
                         show = false; SetupReminder.snooze(context, SetupReminder.CONTINUE_MS); onContinue()
                     }
                 }
