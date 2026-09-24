@@ -13,6 +13,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Made with AI, said plainly:** a package whose author says AI helped make it shows an AI-assisted tag beside its developer, which tools helped under Information, and the same on the Get sheet before anything installs.
 - **A lasting Supporter badge:** back Folio with $15 or more and Settings › Supporter carries a Folio Supporter badge with the month you started. It stays after the code runs out, and after you remove the code. Nothing about it leaves your phone: the code says so, and Folio reads it offline.
 - **Refresh Icons:** Settings › Icons & Side Bar loads your icons again, for one that a theme app changed and Folio still shows the old way.
+- **White text reads on a pale wallpaper:** Home darkens a little at the top and bottom, the way iPhone does, so the clock, app names, page dots and the buttons beside them stay legible over a dawn beach or a cream painting. The middle of your wallpaper is left as it is, and it steps aside where Folio is already using dark text on Home or already dimming the wallpaper for dark appearance. Settings > Wallpaper & Appearance > Text on Home > Darken behind text turns it off. It is drawn once with the background rather than over it, so a swipe costs the same as before.
 - **Supporters in Settings:** a page beside Credits listing the people who backed Folio and said their name could be there, newest first. The list is a public file Folio fetches like the Roadmap, so a name can go on or come off without an update.
 
 ### Changed

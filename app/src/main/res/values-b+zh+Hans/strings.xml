@@ -33,9 +33,10 @@
     <string name="folio_background">Folio 背景</string>
     <string name="change_android_wallpaper">更改 Android 墙纸</string>
     <string name="text_on_home">主屏幕上的文字</string>
-    <string name="labels_status_page_dots_and_widget_text">墙纸上的标签、状态、页面圆点和小组件文字。“自动”会像 iPhone 一样在浅色墙纸上使用深色文字。</string>
+    <string name="labels_status_page_dots_and_widget_text">墙纸上的标签、状态、页面圆点和小组件文字。“自动”会像 iPhone 一样在浅色墙纸上使用深色文字。“文字后方加深”会像 iPhone 那样在主屏幕顶部和底部加上柔和的暗影，让浅色墙纸上的白色文字依然清晰；墙纸中间保持原样。</string>
     <string name="tint_glass_with_wallpaper_color">用墙纸颜色为玻璃着色</string>
     <string name="dark_appearance_dims_wallpaper">深色外观下调暗墙纸</string>
+    <string name="darken_behind_text">文字后方加深</string>
     <string name="background_moves_with_pages">背景随页面移动</string>
     <string name="launcher_background">启动器背景</string>
     <string name="changes_the_image_behind_folio_s_home_sc">更改 Folio 主屏幕背后的图片。</string>
@@ -1073,6 +1074,7 @@
     <string name="settings_keywords_app_name_size">标签 名称 文字 大小 label name text size small large</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">玻璃 着色 磨砂 模糊 glass tint frost blur</string>
     <string name="settings_keywords_dark_appearance_dims_wallpaper">调暗 深色 夜间 dim dark mode night</string>
+    <string name="settings_keywords_darken_behind_text">加深 暗影 渐变 可读性 对比 浅色 墙纸 scrim gradient shade legibility contrast light wallpaper</string>
     <string name="settings_appearance_light_dark_sunset">外观（浅色、深色、日落）</string>
     <string name="settings_keywords_appearance_light_dark_sunset">主题 深色 浅色 日出 日落 theme dark light sunrise sunset</string>
     <string name="settings_grid_icon_size_dock">网格、图标大小与程序坞</string>

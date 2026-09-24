@@ -102,10 +102,12 @@ internal fun Modifier.driftRoom(pages: Int): Modifier =
  * Folio's own background: the dunes, or the photo chosen in Settings.
  *
  * Pass [drift] the Home pager to have it slide with the pages (Settings > Wallpaper > Background moves with pages),
- * or null to leave it still.
+ * or null to leave it still. Pass [scrim] to darken the top and bottom for the text above (Settings > Wallpaper >
+ * Darken behind text): it is drawn into the same cached layer as the background, so it costs nothing per frame.
  */
 @Composable
-internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compose.foundation.pager.PagerState? = null) {
+internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compose.foundation.pager.PagerState? = null,
+    scrim: HomeScrim = HomeScrim.None) {
     val palette = LocalDuoPalette.current
     val context = LocalContext.current.applicationContext
     val revision = LauncherBackgroundCache.revision.intValue
@@ -127,7 +129,10 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compos
             // layer's matrix, so the drawn dunes stay cached and nothing is rasterised again while a page moves.
             if (drift != null) translationX = BackgroundDrift.slide(
                 drift.currentPage + drift.currentPageOffsetFraction, drift.pageCount, size.width)
-        }) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
+        }
+        // After the layer, so the scrim is rasterised into it with the background rather than composited over it every
+        // frame. A vertical gradient is the same at every x, so the drift sliding it sideways cannot show.
+        .homeScrim(scrim)) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
 }
 
 internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false) {

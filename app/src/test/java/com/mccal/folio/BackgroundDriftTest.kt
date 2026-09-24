@@ -107,9 +107,9 @@ class BackgroundDriftTest {
         assertTrue("Reduce Motion must leave both backgrounds still",
             "state.wallpaperMotion && !LocalReduceMotion.current" in screen)
         assertTrue("Folio's own background has to be given the pager",
-            "DuneWallpaper(drift = nativePager.takeIf { backgroundMoves })" in screen)
+            "DuneWallpaper(drift = nativePager.takeIf { backgroundMoves }" in screen)
         assertTrue("Android's wallpaper still moves through the system",
-            "else if (backgroundMoves) SystemWallpaperParallax(nativePager)" in screen)
+            "if (backgroundMoves) SystemWallpaperParallax(nativePager)" in screen)
     }
 
     @Test fun `the setting people already chose is the one that is read`() {

@@ -560,10 +560,20 @@ fun LauncherScreen(
         // One switch behind both backgrounds (DYN-11: Reduce Motion leaves both still). Android's wallpaper is moved
         // by the system; Folio's own is a translation on the layer its background is already cached in.
         val backgroundMoves = state.wallpaperMotion && !LocalReduceMotion.current
-        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(drift = nativePager.takeIf { backgroundMoves })
-        else if (backgroundMoves) SystemWallpaperParallax(nativePager)
         // iOS "dark appearance dims wallpaper".
         val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
+        // iOS's legibility gradient over the background and under everything Folio draws, so white text reads on a
+        // pale wallpaper (A11Y-9, DES-16). It gives way to the dim above rather than darkening the same pixels twice,
+        // and stands down where Home's text is dark ink and a dark scrim would take contrast away. See HomeScrim.
+        val scrim = HomeScrim.of(state.homeScrim, homeInk.dark, dim)
+        // The scrim rides inside the layer the background is already cached in, so it costs nothing per frame.
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(drift = nativePager.takeIf { backgroundMoves }, scrim = scrim)
+        else {
+            if (backgroundMoves) SystemWallpaperParallax(nativePager)
+            // Android's wallpaper is the system's to draw, so there is no cached layer of Folio's to bake the scrim
+            // into: here it is two gradient bands of fill a frame, in the window's own render node, with no new layer.
+            if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))
+        }
         if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
         // Home never moves for the keyboard: including IME insets here re-measured the whole grid on every
         // frame of the keyboard animation (Spotlight/search jank). Sheets that need it use imePadding themselves.

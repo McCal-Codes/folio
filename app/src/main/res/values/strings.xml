@@ -26,9 +26,10 @@
     <string name="folio_background">Folio background</string>
     <string name="change_android_wallpaper">Change Android wallpaper</string>
     <string name="text_on_home">Text on Home</string>
-    <string name="labels_status_page_dots_and_widget_text">Labels, status, page dots and widget text on the wallpaper. Automatic uses dark text over light wallpapers, like iPhone.</string>
+    <string name="labels_status_page_dots_and_widget_text">Labels, status, page dots and widget text on the wallpaper. Automatic uses dark text over light wallpapers, like iPhone. Darken behind text adds a soft shade at the top and bottom of Home, the way iPhone does, so white text reads over a pale wallpaper; the middle of your wallpaper is left as it is.</string>
     <string name="tint_glass_with_wallpaper_color">Tint glass with wallpaper color</string>
     <string name="dark_appearance_dims_wallpaper">Dark appearance dims wallpaper</string>
+    <string name="darken_behind_text">Darken behind text</string>
     <string name="background_moves_with_pages">Background moves with pages</string>
     <string name="launcher_background">Launcher background</string>
     <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens. </string>
@@ -1125,6 +1126,7 @@
     <string name="settings_keywords_app_name_size">label name text size small large</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">glass tint frost blur</string>
     <string name="settings_keywords_dark_appearance_dims_wallpaper">dim dark mode night</string>
+    <string name="settings_keywords_darken_behind_text">scrim gradient shade legibility readable contrast pale light wallpaper</string>
     <string name="settings_appearance_light_dark_sunset">Appearance (light, dark, sunset)</string>
     <string name="settings_keywords_appearance_light_dark_sunset">theme dark light sunrise</string>
     <string name="settings_grid_icon_size_dock">Grid, icon size &amp; dock</string>
