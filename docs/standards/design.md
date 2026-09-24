@@ -30,12 +30,14 @@ These are the values Folio already used most, so adopting them changed nothing o
 
 | Scale | Values |
 |---|---|
-| Spacing (dp) | 2, 4, 6, 8, 12, 16, 20, 24, 32 |
+| Spacing (dp) | 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 32 |
 | Corner radius (dp) | 10 (small controls), 14 (menus, alerts, form sheets, cards), 16 (sheet groups), 20 (grouped cards), 24 (panels), 28 (sheet top) |
 | Type (sp) | 28 Bold title, 17 body, 15 subheadline, 13 footnote, 12 SemiBold caps group label (+.4 tracking); Home labels via `LabelSize` |
 | Row height (dp) | 48 action and menu rows, 52 navigation rows |
 
 - **DES-8 SHOULD** make corners concentric: an inner radius is the outer radius minus the padding between them.
+- **DES-8a** An app icon's or thumbnail's corner radius follows its size (roughly a quarter of it), so it keeps the
+  squircle's proportions. Those radii are written beside the size they belong to, not taken from the scale.
 
 ### Components
 
@@ -96,12 +98,12 @@ Good:
 
 Not yet:
 
-- Most sizes are still written at the call site. Outside the token files: 90 `Color(0x…)`, 238
-  `RoundedCornerShape(N.dp)` and 361 `fontSize = N.sp`, plus about 1,600 `.dp` literals. `DesignTokensTest` holds
-  those three counts so they can only go down. Worst files: `CustomizationSheet.kt`, `MarketScreen.kt`,
-  `LauncherScreen.kt`, `TopPanels.kt`.
-- The shared components (`IosControls`, `SettingsGroup`, `LauncherSheetParts`, `FolioSheet`) use the scales; the
-  screens don't yet.
+- Most sizes are still written at the call site. Outside the token files: 87 `Color(0x…)`, 227
+  `RoundedCornerShape(N.dp)` and 334 `fontSize = N.sp`. `DesignTokensTest` holds those three counts so they can only
+  go down. Worst files now: `MarketScreen.kt`, `LauncherScreen.kt`, `TopPanels.kt`.
+- The shared components and `CustomizationSheet.kt` (the largest screen) use the scales; the other screens don't yet.
+  In Settings, 166 values moved onto tokens with no pixel changed. What stayed: icon and thumbnail radii, which
+  follow their size (DES-8a), and the preview dock's pill radii.
 - Material used directly: `AlertDialog` for rename (`AppContextMenu.kt:238`), `Button` / `OutlinedButton` /
   `FilledTonalButton` in 6 places, `DropdownMenu` in `FolderPanel.kt:161`, `AssistChip` in `AppLibrary.kt:213`,
   Material progress indicators.
@@ -111,7 +113,7 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | ~~Add the scales~~ (done). Left: move the screens onto them, `CustomizationSheet.kt` first, as the largest | M |
+| 1 | ~~Add the scales~~, ~~`CustomizationSheet.kt`~~ (done). Left: `MarketScreen.kt`, `LauncherScreen.kt`, `TopPanels.kt` | M |
 | 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
 | 3 | Move the rename dialog to Folio's `AlertDialog`; `FolderPanel`'s `DropdownMenu` to `IosMenuRow`; the direct Buttons to one `FolioButton` | S |
 | 4 | Light-surface variants and named status colours (`Success`, `Warning`) in `FolioColors` | S |

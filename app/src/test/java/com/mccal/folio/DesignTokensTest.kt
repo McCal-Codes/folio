@@ -29,7 +29,7 @@ class DesignTokensTest {
     )
 
     /** What each kind is allowed to have left. Lower these as code moves onto the tokens; never raise them. */
-    private val limits = mapOf("hex color" to 90, "corner radius" to 238, "text size" to 361)
+    private val limits = mapOf("hex color" to 87, "corner radius" to 227, "text size" to 334)
 
     private fun hits(kind: String): List<String> {
         val pattern = patterns.getValue(kind)
@@ -60,7 +60,10 @@ class DesignTokensTest {
         assertEquals(listOf(10, 14, 16, 20, 24, 28), listOf(FolioRadius.CONTROL, FolioRadius.CARD, FolioRadius.GROUP, FolioRadius.GROUPED_CARD, FolioRadius.PANEL, FolioRadius.SHEET_TOP))
         assertEquals(listOf(28, 17, 15, 13, 12), listOf(FolioType.TITLE, FolioType.BODY, FolioType.SUBHEAD, FolioType.FOOTNOTE, FolioType.GROUP_LABEL))
         assertEquals(listOf(48, 52), listOf(FolioRow.ACTION, FolioRow.NAV))
-        assertEquals(listOf(2, 4, 6, 8, 12, 16, 20, 24, 32), listOf(FolioSpace.HAIR, FolioSpace.TINY, FolioSpace.SNUG, FolioSpace.SMALL, FolioSpace.MEDIUM, FolioSpace.LARGE, FolioSpace.XL, FolioSpace.XXL, FolioSpace.HUGE))
+        assertEquals(
+            listOf(2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 32),
+            listOf(FolioSpace.HAIR, FolioSpace.TINY, FolioSpace.SNUG, FolioSpace.SMALL, FolioSpace.COMPACT, FolioSpace.MEDIUM, FolioSpace.COMFY, FolioSpace.LARGE, FolioSpace.XL, FolioSpace.XXL, FolioSpace.HUGE),
+        )
         // Every row a finger touches clears Android's 48dp minimum (A11Y-1).
         assertTrue(FolioRow.ACTION >= 48 && FolioRow.NAV >= 48)
     }
