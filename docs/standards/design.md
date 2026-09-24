@@ -98,12 +98,13 @@ Good:
 
 Not yet:
 
-- Most sizes are still written at the call site. Outside the token files: 87 `Color(0x…)`, 227
-  `RoundedCornerShape(N.dp)` and 334 `fontSize = N.sp`. `DesignTokensTest` holds those three counts so they can only
-  go down. Worst files now: `MarketScreen.kt`, `LauncherScreen.kt`, `TopPanels.kt`.
-- The shared components and `CustomizationSheet.kt` (the largest screen) use the scales; the other screens don't yet.
-  In Settings, 166 values moved onto tokens with no pixel changed. What stayed: icon and thumbnail radii, which
-  follow their size (DES-8a), and the preview dock's pill radii.
+- Most sizes are still written at the call site. Outside the token files: 87 `Color(0x…)`, 221
+  `RoundedCornerShape(N.dp)` and 288 `fontSize = N.sp`. `DesignTokensTest` holds those three counts so they can only
+  go down.
+- The shared components, `CustomizationSheet.kt`, `MarketScreen.kt` and `TopPanels.kt` use the scales: 323 values
+  moved onto tokens without a pixel changing. What stayed: icon and thumbnail radii, which follow their size
+  (DES-8a), and pill shapes. `LauncherScreen.kt` is the last of the big screens, left until the page-effects work
+  in flight there lands.
 - Material used directly: `AlertDialog` for rename (`AppContextMenu.kt:238`), `Button` / `OutlinedButton` /
   `FilledTonalButton` in 6 places, `AssistChip` in `AppLibrary.kt:213`, Material progress indicators.
 - Material underneath a Folio component, the `IosSlider` pattern: `FolioMenuPopup` is Material's `DropdownMenu`
@@ -114,7 +115,7 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | ~~Add the scales~~, ~~`CustomizationSheet.kt`~~ (done). Left: `MarketScreen.kt`, `LauncherScreen.kt`, `TopPanels.kt` | M |
+| 1 | ~~Add the scales~~, ~~Settings, the Market and the panels~~ (done). Left: `LauncherScreen.kt`, then the smaller screens | M |
 | 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
 | 3 | Move the rename dialog to Folio's `AlertDialog`; the direct Buttons to one `FolioButton` (the folder's menu is `FolioMenuPopup` now) | S |
 | 4 | Light-surface variants and named status colours (`Success`, `Warning`) in `FolioColors` | S |
