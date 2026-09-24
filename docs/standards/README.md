@@ -54,7 +54,6 @@ Nobody has to fix the whole tree before shipping a feature.
 | [Accessibility](accessibility.md) | `A11Y` | TalkBack, targets, contrast, text size, Reduce Motion, RTL |
 | [Privacy and permissions](privacy-permissions.md) | `PRV` | Access, network, data, the System Bridge tier |
 | [Testing](testing.md) | `TST` | What gets tested where, and what "done" means |
-| [AI contributions](ai-contributions.md) | `AI` | What outside AI agents may do (bug testing and fixing only) and how AI-made add-ons are labelled |
 | [Releases](releases.md) | `REL` | Branches, the changelog, version numbers, betas, and what goes out beside a build |
 
 Where standards overlap, the more specific one wins: Dynamic UI over Design for motion, Accessibility over Design for
@@ -89,11 +88,6 @@ narrow, versioned, and they fall back to normal behaviour.
 
 Standards change by PR like code. A change that loosens a MUST, or adds a new one, also gets an ADR. Keep "Where
 Folio is today" current when a Gap item lands, the same way the update map is kept current.
-
-## For AI coding agents
-
-If you're working for a contributor outside the maintainer, read [AI contributions](ai-contributions.md) first: you
-may only test for and fix bugs, and the pull request must say an agent was used.
 
 Read this file, then only the standards your change touches. Cite rule IDs in commit messages and PR descriptions when
 a rule shaped the change ("keeps ADP-1: branches on window width, not model"). Don't mark work done until the

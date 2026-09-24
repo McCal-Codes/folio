@@ -38,8 +38,8 @@ Make themes, tweaks and layouts for the Folio Market.
 - **Data only:** JSON and images, plus an optional sandboxed script. No DEX, JAR or native code.
 - **Declare everything:** list every permission your package uses. The privacy label is built from that list.
 - **Credit and licensing:** credit anything that inspired you, and don't include GPL code.
-- **Made with AI:** set `aiAssisted` in the manifest, also start `description` with "AI-assisted (tool name).", and keep
-  both on updates and forks ([AI-6](../standards/ai-contributions.md)).
+- **Made with AI:** if something helped make your package, set `aiAssisted` in the manifest and keep it on updates and
+  forks, so the page can say so beside your name.
 - **Look, read and fit like Folio:** contrast, screens, real screenshots and testing are in the template's
   [STANDARDS.md](https://github.com/McCal-Codes/folio-source-template/blob/main/STANDARDS.md), drawn from Folio's
   [standards](../standards/README.md).
