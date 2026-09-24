@@ -34,7 +34,19 @@ internal enum class FeatureGate(
      * [MarketFeature.RELEASED] becomes true. Every theme and tweak it hands out is already in Settings, so nobody on
      * the stable release is missing a feature while this is shut.
      */
-    MARKET("market", closedSince = "2026-09-19", opensIn = "0.7.0", { MarketFeature.RELEASED });
+    MARKET("market", closedSince = "2026-09-19", opensIn = "0.7.0", { MarketFeature.RELEASED }),
+
+    /**
+     * Clearing an app's badge when you open it. Built for 0.6.7 so supporters can say whether it reads as helpful or
+     * as Folio hiding something; everyone gets it in 0.6.8. Flip [OPEN_IN_0_6_8] to true to open it.
+     */
+    BADGES_WHEN_OPENED("badgesWhenOpened", closedSince = "2026-09-23", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
+
+    /**
+     * StandBy while the phone charges, rather than only when it is stood up half folded. Charging behaviour is the
+     * kind of thing that needs real phones overnight, which is what the beta is for.
+     */
+    STANDBY_CHARGING("standbyCharging", closedSince = "2026-09-23", opensIn = "0.6.8", { OPEN_IN_0_6_8 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -49,6 +61,12 @@ internal enum class FeatureGate(
             runCatching { Supporter.has(context, BetaCodes.SCOPE_BETA) }.getOrDefault(false)
 
     companion object {
+        /**
+         * The features built during 0.6.7 for supporters to try, which open to everyone in 0.6.8. One flag rather than
+         * one per feature, because they open together: `FeatureGateTest` fails at 0.6.8 while this is still false.
+         */
+        private const val OPEN_IN_0_6_8 = false
+
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
     }

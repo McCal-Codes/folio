@@ -13,6 +13,28 @@ be reproduced without installing that older Folio.
 A release build refuses the development key outright: the check is on the package name, so `com.mccal.folio` will not
 open these switches whatever code is pasted into it.
 
+## Which Folio is on the phone
+
+Three builds, and the phone should never leave you guessing which one you are looking at.
+
+| Build | App id | Name on the phone | Icon |
+|---|---|---|---|
+| `release` | `com.mccal.folio` | Folio | teal |
+| `fast` | `com.mccal.folio.dev` | Folio Dev | amber |
+| `debug` | `com.mccal.folio.dev` | Folio Debug | amber |
+
+`fast` and `debug` share the app id on purpose, so installing one over the other keeps the layout and settings you
+have been testing with. Only the name differs, and it has to: a debug build is far slower than `fast`, so a frame
+measurement taken on one means nothing beside a number from the other.
+
+**One id for dev builds, always.** Never mint a new package for a one-off test build. On 23 Sep 2026 the phone had
+five Folios on it (`com.mccal.folio`, `.dev`, `.fix067`, `.profile`, `.baselineprofile`), the `.dev` one was running
+`0.7.0-beta.1` from a line that had been abandoned, and that number read as *newer* than the real Folio's 0.6.6. The
+throwaway ids were deleted and the rule is this table.
+
+The baseline profile is the one exception: `:baselineprofile` needs its own id to drive the app under test. Uninstall
+it when a run is finished, since it is rebuilt whenever the next run needs it.
+
 ## Making the key, once
 
 ```bash
