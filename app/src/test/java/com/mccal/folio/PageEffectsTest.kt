@@ -132,6 +132,26 @@ class PageEffectsTest {
         assertTrue("no alpha: it would cost an offscreen buffer per page", "alpha" !in effects.substringAfter("internal fun Modifier.pageEffect"))
     }
 
+    @Test fun `every page in the pager turns, including the two either side of Home`() {
+        // A cube whose neighbour slides in flat is not a cube, and the swipe from the last Home page to the App
+        // Library is the commonest one there is. So all three branches of the pager's page lambda carry the effect.
+        val screen = source("LauncherScreen.kt")
+        val calls = Regex("""\.pageEffect\(pageEffect, nativePager, physicalPage\)""").findAll(screen).count()
+        assertEquals("Discover, the App Library and Home should each turn", 3, calls)
+        assertTrue("the page on Home's left should turn",
+            ".fillMaxSize().pageEffect(pageEffect, nativePager, physicalPage))" in screen)
+        // Outside the library's own layer, so the page turns as a whole and the two stack rather than fight.
+        assertTrue("the library's effect belongs outside its libraryBack layer",
+            screen.substringAfter("onActions = { overlays.menu = it.id }, modifier = Modifier.fillMaxSize()")
+                .substringBefore("libraryBack").contains(".pageEffect("))
+        // The layer wraps the pane, not the full-width Row: a cube pivoting on the Row would hinge on the window
+        // edge whenever the grid is centred and narrower than the window.
+        assertTrue("Home's effect should wrap the pane, not the Row",
+            "Box(Modifier.pageEffect(pageEffect, nativePager, physicalPage))" in screen)
+        assertTrue("the Row should carry no layer of its own",
+            """Row(Modifier.fillMaxSize().testTag("home-surface")""" in screen)
+    }
+
     @Test fun `the setting is only offered where the gate is open, and None is one of the choices`() {
         val sheet = source("CustomizationSheet.kt")
         assertTrue("Settings should ask the gate", "FeatureGate.PAGE_EFFECTS.isOpen(gestureContext)" in sheet)
