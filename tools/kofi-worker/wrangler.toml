@@ -38,7 +38,10 @@ database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
 POOLS = '{"tiers":{"*":"m2","Builder":"m2thanks"},"shop":{},"tipBands":[{"from":15,"pool":"thanks"}],"tipFrom":3,"tipPool":"m1","tipCurrency":"USD","tipRates":{"EUR":1.08,"GBP":1.27,"CAD":0.73,"AUD":0.66,"CHF":1.1}}'
 # McCal, 23 Sep 2026. Replies reach him through Cloudflare Email Routing; Resend verifies send.foliolauncher.com,
 # which nobody sees, so a spam mark never touches the domain the site is on.
-MAIL_FROM = "Folio <admin@foliolauncher.com>"
+# The address has to be on the domain verified with Resend, and that is the subdomain (McCal, 23 Sep): a From on
+# foliolauncher.com is refused outright. Sending from a subdomain is also Resend's own advice, so a spam complaint
+# lands there rather than on the domain the site is served from.
+MAIL_FROM = "Folio <admin@send.foliolauncher.com>"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
 #   KOFI_TOKEN   the verification token from Ko-fi's Webhooks page
