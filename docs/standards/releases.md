@@ -92,6 +92,13 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-25 MUST** use McCal's own words for anything supporters or users read: release notes, Ko-fi posts, replies
   to whoever reported the bug.
 - **REL-26 SHOULD** keep a runbook per release in `docs/releases/`, written before the build, not after.
+- **REL-29 MUST** treat a layout change as invalidating published pictures. When a change alters something visible
+  in a screenshot that is already out (the site, `~/dev/folio-marketing`, a Ko-fi post, a store listing), list those
+  pictures in the release's runbook and re-take them **when that release ships**, not when the change merges.
+  Published pictures document what people can download, and the repository runs ahead of that.
+- **REL-30 MUST** take a published screenshot from the build being released, or from the Mockup Lab matching it.
+  The lab follows `main`, so a lab render is only fit to publish once `main`'s behaviour is the behaviour people have.
+
 
 ### Dependencies
 
@@ -114,6 +121,10 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   same version was written elsewhere. The fix was to merge the two rather than pick one ([#88](https://github.com/McCal-Codes/folio/pull/88)).
 - Release runbooks exist for 0.6.5, 0.6.6, 0.6.7-beta.2 and 0.6.7, and they are genuinely written before the build.
   Good.
+- Nothing yet connects a layout change to the pictures it makes wrong, which is why REL-29 exists. The Market's pane
+  rule (#72, `THREE_PANES_DP`) is on `main` and in no tag, so 0.6.6, which is what the site documents and what people
+  download, still draws three panes on a Fold's inner screen. The site's Fold screenshot is a real capture from
+  22 Sep and is correct until 0.6.7 ships, at which point it has to be re-taken.
 - REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
   the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
   useful without opening this file.
