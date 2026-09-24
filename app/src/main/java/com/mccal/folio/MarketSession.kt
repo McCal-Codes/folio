@@ -237,10 +237,7 @@ internal object MarketAccess {
      * Beta Updates on its own no longer opens it. That switch is about which builds you get, and the store is what
      * a supporter gets for supporting.
      */
-    fun isOpen(context: Context): Boolean = MarketFeature.isEnabled(
-        packageName = context.packageName,
-        hasEarlyCode = runCatching { Supporter.has(context, BetaCodes.SCOPE_BETA) }.getOrDefault(false),
-    )
+    fun isOpen(context: Context): Boolean = FeatureGate.MARKET.isOpen(context)
 
     /**
      * Adds the supporter source, once, when a code is redeemed. Nothing happens without a key built in, and

@@ -117,6 +117,7 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
   the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
   useful without opening this file.
+- One feature is gated today: the Market, shut since 19 Sep 2026, due to open in 0.7.0.
 - Several agent sessions work in parallel worktrees with no claim on shared files, which is how the same two
   strings, the same roadmap and the same changelog got edited three ways in two days.
 
@@ -128,7 +129,6 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 | 2 | Branch protection on `main` requiring the `release-rules` check, so nothing can be pushed straight to it and the check cannot be skipped by merging early | S |
 | 3 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
 | 4 | A check that a pull request touching `themes/` or a Market package carries its AI-assisted label (AI-6), the same shape as the changelog check | S |
-| 5 | A `Feature` gate helper, so REL-4a is one line at a feature's entry point rather than a scope check copied around, with a check that lists every closed gate and fails when one should have opened by now | S |
 
 ### Done
 
@@ -138,6 +138,10 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - REL-12's hotfix digit is in the build, and `VersionCodeTest` checks the packaged manifest against the formula, that
   a fix sorts above its release and below the next one, that a pre-release shares its release's code, and that every
   code already published is below this build's.
+- REL-4a's gates are `FeatureGate` (`FeatureGate.kt`), one entry per feature held back, each naming the day it was
+  gated and the release it should open in. `FeatureGateTest` fails once that release arrives and the gate is still
+  shut, so a finished feature cannot sit hidden and forgotten. The Market is the first entry, and
+  `MarketAccess.isOpen` asks the gate now.
 - REL-10, REL-16 and a reproducibility check are enforced by `scripts/release-signed.sh`, which refuses to build when
   the tag already exists, when the changelog has no section for the version, when a **stable** version's section
   still says `Unreleased` (a beta may be built undated), or when the working tree is dirty. `FOLIO_SKIP_RELEASE_CHECKS=1`
