@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -329,16 +331,14 @@ internal fun MarketScreen(
     // comes back to the front.
     CompositionLocalProvider(LocalAppsChanged provides returns) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val regular = fitsRegularHomeLayout(maxWidth.value, maxHeight.value, LocalConfiguration.current.classScale)
-        val split = regular && maxWidth.value >= 700f
-        // Where the tabs go, the same rule the Mockup Lab draws: a sidebar once the window is as wide as the Fold8
-        // inner screen (iPad), a rail on the long edge when the window is too short for a bar under it (the cover
-        // screen rotated), and the bar itself everywhere else.
-        val tabs = when {
-            !regular && maxWidth > maxHeight -> TabPlacement.RAIL
-            split && maxWidth.value >= 920f -> TabPlacement.SIDEBAR
-            else -> TabPlacement.BOTTOM
-        }
+        val classScale = LocalConfiguration.current.classScale
+        // The keyboard covers the Market; it doesn't make the window smaller (ADP-18a). Measured out here, so
+        // that typing a source's address, or searching the Settings tab, can't take the sidebar and the pane beside
+        // the list away for as long as the keyboard is up and hand them back when it goes (#117).
+        val keyboardDp = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp().value }
+        val split = marketSplits(maxWidth.value, maxHeight.value, classScale, keyboardDp)
+        // Where the tabs go: a sidebar, a rail along the long edge, or the bar under the content. See [marketTabs].
+        val tabs = marketTabs(maxWidth.value, maxHeight.value, classScale, keyboardDp)
         // The list stays beside what it opened only when both still get a readable width; otherwise the package or
         // source pushes over the list with Back, as the App Store does on an iPad. Nothing open, the list has it all.
         val beside = split && marketListBeside(maxWidth.value, sidebar = tabs == TabPlacement.SIDEBAR)
@@ -676,9 +676,6 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
         }
     }
 }
-
-/** Where the tabs sit: under the content, up the trailing edge, or as a labelled sidebar on a big screen. */
-private enum class TabPlacement { BOTTOM, RAIL, SIDEBAR }
 
 /**
  * The tabs on the long edge, for a window too short for a bar underneath (the Fold8 cover screen rotated). The

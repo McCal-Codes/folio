@@ -69,6 +69,34 @@ internal const val THREE_PANES_DP = 1200f
  */
 internal fun marketListBeside(widthDp: Float, sidebar: Boolean): Boolean = !sidebar || widthDp >= THREE_PANES_DP
 
+/** Where the Market's tabs sit: a bar under the content, a rail along the long edge, or a sidebar beside it. */
+internal enum class TabPlacement { BOTTOM, RAIL, SIDEBAR }
+
+/**
+ * Whether the Market splits its window into panes at all: a regular window with room for two readable columns. The
+ * keyboard is measured out, as in [settingsSplits], so typing a source's address, or searching the Settings tab
+ * inside the Market, can't turn the unfolded screen into a phone-sized one for as long as the keyboard is up (#117).
+ */
+internal fun marketSplits(widthDp: Float, heightDp: Float, classScale: Float = 1f, keyboardDp: Float = 0f): Boolean =
+    fitsRegularHomeLayout(widthDp, sizeClassHeightDp(heightDp, keyboardDp), classScale) && widthDp >= 700f
+
+/**
+ * Where the Market puts its tabs, the same rule the Mockup Lab draws: a sidebar once the window is as wide as the
+ * Fold8 inner screen (iPad), a rail on the long edge when the window is too short for a bar under it (the cover
+ * screen rotated), and the bar itself everywhere else. The keyboard is measured out of both questions: judged on
+ * what's left to draw in, a portrait window would read as a landscape one the moment a field took focus, and the
+ * tabs would leave the bottom for the rail until the keyboard went away.
+ */
+internal fun marketTabs(widthDp: Float, heightDp: Float, classScale: Float = 1f, keyboardDp: Float = 0f): TabPlacement {
+    val height = sizeClassHeightDp(heightDp, keyboardDp)
+    val regular = fitsRegularHomeLayout(widthDp, height, classScale)
+    return when {
+        !regular && widthDp > height -> TabPlacement.RAIL
+        regular && widthDp >= 920f -> TabPlacement.SIDEBAR
+        else -> TabPlacement.BOTTOM
+    }
+}
+
 /**
  * How many columns Settings may use where something else already takes part of the window: the Market's sidebar,
  * when Settings is its Settings tab. Settings measures only its own box, so without this it would add its list and
