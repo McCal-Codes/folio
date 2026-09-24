@@ -110,23 +110,23 @@ internal fun AppLibrary(
         CategoryFolder(stringResource(category.title), categorized[category].orEmpty(), onDismiss = { openCategory = null },
             onLaunch = { openCategory = null; onLaunchFrom(it, null) }, onActions = { openCategory = null; onActions(it) })
     }
-    Surface(modifier, shape = RoundedCornerShape(24.dp),
+    Surface(modifier, shape = RoundedCornerShape(FolioRadius.PANEL.dp),
         color = if (glass) Glass.copy(alpha = .48f) else MaterialTheme.colorScheme.surface,
         contentColor = ink,
         border = if (glass) BorderStroke(1.dp, Color.White.copy(alpha = .38f)) else null) {
         Column(Modifier.background(Brush.verticalGradient(if (glass)
             listOf(Color.White.copy(alpha = .09f), Color.Transparent) else listOf(Color.Transparent, Color.Transparent)))
-            .padding(horizontal = 16.dp).padding(top = 18.dp)) {
+            .padding(horizontal = FolioSpace.LARGE.dp).padding(top = 18.dp)) {
             // iOS App Library has no title bar, just its search field; choosing Home apps keeps a title and count.
             if (editing) Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.choose_home_apps_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(pluralStringResource(R.plurals.pinned, pinned.size, pinned.size), color = ink, fontSize = 12.sp)
+                Text(pluralStringResource(R.plurals.pinned, pinned.size, pinned.size), color = ink, fontSize = FolioType.GROUP_LABEL.sp)
             }
-            if (workSwitch) Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (workSwitch) Row(Modifier.fillMaxWidth().padding(top = FolioSpace.COMPACT.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 IosChip(selected = !showWork, onClick = { showWork = false }, label = { Text(stringResource(R.string.personal)) })
                 IosChip(selected = showWork, onClick = { showWork = true }, label = { Text(stringResource(R.string.work)) })
             }
-            IosSearchField(query, onQuery, if (editing) stringResource(R.string.search_apps) else stringResource(R.string.app_library), Modifier.padding(vertical = 12.dp),
+            IosSearchField(query, onQuery, if (editing) stringResource(R.string.search_apps) else stringResource(R.string.app_library), Modifier.padding(vertical = FolioSpace.MEDIUM.dp),
                 fieldModifier = (if (editing) Modifier else Modifier.focusRequester(searchFocus)).testTag(if (editing) "pin-search" else "library-search"),
                 ink = ink, onSearch = {
                     if (!editing && query.isNotBlank()) openWebSearch(context,
@@ -137,10 +137,10 @@ internal fun AppLibrary(
             LazyColumn(Modifier.weight(1f).edgeFade(listState).onSizeChanged { libraryWidth = with(density) { it.width.toDp() } }.testTag("all-apps-list"), state = listState,
                 contentPadding = PaddingValues(bottom = 12.dp)) {
                 if (showWork && selectedProfile?.available == false) item("work-paused") {
-                    Column(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.XL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(if (selectedProfile.quiet) stringResource(R.string.work_apps_are_paused) else stringResource(R.string.work_profile_is_unavailable))
                         if (selectedProfile.quiet) FolioButton(stringResource(R.string.turn_on_work_apps), { onTurnOnWork(selectedProfile.userSerial) },
-                            Modifier.padding(top = 10.dp), tag = "turn-on-work")
+                            Modifier.padding(top = FolioSpace.COMPACT.dp), tag = "turn-on-work")
                     }
                 }
                 if (!editing && query.isBlank()) item("downloading") { DownloadingApps(ink) }
@@ -151,25 +151,25 @@ internal fun AppLibrary(
                     // Tiles stay iPhone-sized: more columns on the wide inner screen instead of giant tiles.
                     val columns = libraryColumns(libraryWidth.value)
                     items(categorized.entries.toList().chunked(columns), key = { row -> "cat-" + row.first().key.name }) { row ->
-                        Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.COMFY.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
                             row.forEach { (cat, apps) ->
                                 CategoryCard(stringResource(cat.title), apps, Modifier.weight(1f), labelColor = ink, onLaunch = { onLaunchFrom(it, null) }) { openCategory = cat }
                             }
                             repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
-                } else if (groups.isEmpty()) item { Text(if (state.loading) stringResource(R.string.loading_apps) else stringResource(R.string.no_apps_found), Modifier.padding(vertical = 20.dp)) }
+                } else if (groups.isEmpty()) item { Text(if (state.loading) stringResource(R.string.loading_apps) else stringResource(R.string.no_apps_found), Modifier.padding(vertical = FolioSpace.XL.dp)) }
                 if (!(browsing && categorized.isNotEmpty())) groups.forEach { (letter, entries) ->
                     stickyHeader(key = "heading-$letter") {
-                        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp, bottom = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                             // An opaque small chip prevents text from showing through the sticky letter.
                             Box(Modifier.size(width = 32.dp, height = 28.dp).background(
                                 if (glass) (if (palette.dark) Color(0xFF314852) else Color(0xFFB7CBD3))
                                 else MaterialTheme.colorScheme.surfaceContainer,
-                                RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                                Text(letter, color = ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                RoundedCornerShape(FolioRadius.CONTROL.dp)), contentAlignment = Alignment.Center) {
+                                Text(letter, color = ink, fontWeight = FontWeight.SemiBold, fontSize = FolioType.GROUP_LABEL.sp)
                             }
-                            if (glass) HorizontalDivider(Modifier.weight(1f).padding(start = 10.dp), color = Color.White.copy(alpha = .24f))
+                            if (glass) HorizontalDivider(Modifier.weight(1f).padding(start = FolioSpace.COMPACT.dp), color = Color.White.copy(alpha = .24f))
                         }
                     }
                     items(entries, key = { it.id }) { app ->
@@ -177,13 +177,13 @@ internal fun AppLibrary(
                         val launchBounds = remember { android.graphics.Rect() }
                         val dragModifier = if (drag != null) Modifier.dropRegion(drag, DropTarget.Library(app.id), app.id, page) else Modifier
                         val click = { if (editing) onPin(app.id, !isPinned) else onLaunchFrom(app, launchBounds) }
-                        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(dragModifier).clip(RoundedCornerShape(14.dp)).testTag("library-app-${app.id}")
+                        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(dragModifier).clip(RoundedCornerShape(FolioRadius.CARD.dp)).testTag("library-app-${app.id}")
                             .then(if (drag == null) Modifier.combinedClickable(onClick = click, onLongClick = { onActions(app) })
                                 else Modifier.clickable(onClick = click).semantics { onLongClick(appOptionsLabel) { onActions(app); true } })
-                            .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            .padding(vertical = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                             AppIcon(app, null, Modifier.size(40.dp)
-                                .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(10.dp)))
-                            Row(Modifier.weight(1f).padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
+                            Row(Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                                 NewAppDot(app.packageName, 7.dp)
                                 Text(app.label, maxLines = 2, fontSize = 14.sp)
                             }
@@ -204,11 +204,11 @@ internal fun AppLibrary(
 
 @Composable
 private fun WebSearchRow(query: String, onSearch: (WebSearchTarget) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Text(stringResource(R.string.search_1_with, query.trim()), fontSize = 12.sp, color = Ink.copy(alpha = .75f),
-            modifier = Modifier.padding(bottom = 6.dp))
+    Column(Modifier.fillMaxWidth().padding(bottom = FolioSpace.SMALL.dp)) {
+        Text(stringResource(R.string.search_1_with, query.trim()), fontSize = FolioType.GROUP_LABEL.sp, color = Ink.copy(alpha = .75f),
+            modifier = Modifier.padding(bottom = FolioSpace.SNUG.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             WebSearchTarget.entries.forEach { target ->
                 AssistChip(onClick = { onSearch(target) }, label = { Text(target.label) },
                     leadingIcon = { Icon(if (target.label.startsWith("Ask")) Icons.Rounded.AutoAwesome else Icons.Rounded.Public,

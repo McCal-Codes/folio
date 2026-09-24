@@ -73,31 +73,31 @@ internal fun MarketInstallSheet(
 ) {
     val safety = PackageSafety.of(manifest)
     val name = manifest.name.english
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).testTag("market-install-sheet")) {
-        Text(stringResource(R.string.get_1_s, name), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XL.dp).testTag("market-install-sheet")) {
+        Text(stringResource(R.string.get_1_s, name), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
         Text(
             stringResource(R.string.text_1_s_version_2_s, manifest.author.name.english, manifest.version.toString()),
-            color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
+            color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp),
         )
         // Said before Get, because it's part of deciding: the author declared AI helped make this.
         manifest.aiAssisted?.let { ai ->
-            Row(Modifier.padding(bottom = 12.dp).testTag("install-ai-assisted"), verticalAlignment = Alignment.Top) {
-                Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = Color.White.copy(alpha = .55f), modifier = Modifier.size(16.dp).padding(top = 2.dp))
-                Column(Modifier.padding(start = 8.dp)) {
+            Row(Modifier.padding(bottom = FolioSpace.MEDIUM.dp).testTag("install-ai-assisted"), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = Color.White.copy(alpha = .55f), modifier = Modifier.size(16.dp).padding(top = FolioSpace.HAIR.dp))
+                Column(Modifier.padding(start = FolioSpace.SMALL.dp)) {
                     Text(stringResource(R.string.made_with_help_from_ai_1_s, ai.tools.joinToString()), color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
-                    ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                    ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }
                 }
             }
         }
 
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFF2C2C2E)).padding(14.dp)) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E)).padding(FolioSpace.COMFY.dp)) {
             Icon(Icons.Rounded.Shield, contentDescription = null, tint = FolioColors.Green, modifier = Modifier.size(20.dp))
-            Text(safety.summary, color = Color.White.copy(alpha = .85f), fontSize = 13.sp, modifier = Modifier.padding(start = 10.dp))
+            Text(safety.summary, color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(start = FolioSpace.COMPACT.dp))
         }
 
         SheetGroupLabel(stringResource(if (safety.changes.isEmpty()) R.string.changes else R.string.what_it_changes))
         SheetGroup {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
                 if (safety.changes.isEmpty()) {
                     Line(Icons.Rounded.Check, FolioColors.Green, stringResource(R.string.how_folio_looks_and_nothing_else))
                 } else {
@@ -108,21 +108,21 @@ internal fun MarketInstallSheet(
 
         SheetGroupLabel(stringResource(R.string.what_it_can_t_reach))
         SheetGroup {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
                 safety.cannotAccess.forEach { Line(Icons.Rounded.Close, Color.White.copy(alpha = .45f), it) }
             }
         }
 
         SheetGroupLabel(stringResource(R.string.where_it_came_from))
         SheetGroup {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                 origin.warning?.let {
                     Text(it, color = Color(0xFFFFB340), fontSize = 14.sp)
                 }
                 Text(origin.line, color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
-                origin.provenance?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                origin.provenance?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }
                 origin.checksum?.let {
-                    Text(stringResource(R.string.checksum_1_s, it.take(16)), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+                    Text(stringResource(R.string.checksum_1_s, it.take(16)), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
             }
         }
@@ -133,15 +133,15 @@ internal fun MarketInstallSheet(
             Text(
                 stringResource(R.string.cancel),
                 color = LocalAccent.current.ink, fontSize = 16.sp,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
-                    .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
+                    .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
             Text(
                 stringResource(R.string.get),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                     .clickable(onClickLabel = getName, onClick = onGet)
-                    .heightIn(min = 44.dp).padding(horizontal = 22.dp, vertical = 12.dp)
+                    .heightIn(min = 44.dp).padding(horizontal = 22.dp, vertical = FolioSpace.MEDIUM.dp)
                     .testTag("market-install-confirm"),
             )
         }
@@ -152,7 +152,7 @@ internal fun MarketInstallSheet(
 @Composable
 private fun Line(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, text: String) {
     Row(verticalAlignment = Alignment.Top) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp).padding(top = 2.dp))
-        Text(text, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp).padding(top = FolioSpace.HAIR.dp))
+        Text(text, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(start = FolioSpace.SMALL.dp))
     }
 }

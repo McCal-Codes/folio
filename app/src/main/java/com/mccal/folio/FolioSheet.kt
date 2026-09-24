@@ -111,7 +111,7 @@ internal fun ModalBottomSheet(
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             containerColor = FolioColors.SecondaryBackground.copy(alpha = .97f), contentColor = Color.White,
             scrimColor = Color.Black.copy(alpha = .35f),
-            dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 6.dp).size(width = 36.dp, height = 5.dp)
+            dragHandle = { Box(Modifier.padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.SNUG.dp).size(width = 36.dp, height = 5.dp)
                 .background(Color.White.copy(alpha = .3f), RoundedCornerShape(3.dp))) },
             properties = properties, content = {
                 // The sheet is its own window; hide the status bar there too so Home stays edge to edge.
@@ -193,7 +193,7 @@ private fun PeekCapsule(peek: PeekSlider) {
         .padding(horizontal = 96.dp).padding(bottom = 64.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
     androidx.compose.foundation.layout.Column(Modifier
         .size(minOf(maxWidth, 440.dp), height).clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
-        .padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
+        .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
         androidx.compose.foundation.layout.Row {
             androidx.compose.material3.Text(peek.label, Modifier.weight(1f), color = Color.White, fontSize = FolioType.BODY.sp, maxLines = 1)
             androidx.compose.material3.Text(peek.valueLabel, color = Color.White.copy(alpha = .6f), fontSize = FolioType.BODY.sp, maxLines = 1)
@@ -223,7 +223,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .35f))
                 .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismissRequest))
-            FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
+            FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
                 androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                     val maxSheetHeight = minOf(maxHeight, 760.dp)
                     androidx.compose.material3.Surface(modifier.widthIn(max = width).fillMaxWidth().heightIn(max = maxSheetHeight)
@@ -233,7 +233,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
                             translationY = (1f - appear.value) * size.height * .12f
                         },
                         shape = RoundedCornerShape(FolioRadius.CARD.dp), color = FolioColors.SecondaryBackground, contentColor = Color.White) {
-                        androidx.compose.foundation.layout.Column(Modifier.padding(top = 14.dp), content = content)
+                        androidx.compose.foundation.layout.Column(Modifier.padding(top = FolioSpace.COMFY.dp), content = content)
                     }
                 }
             }
@@ -262,8 +262,8 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
                 androidx.compose.foundation.layout.Column(modifier.width(270.dp)
                     .graphicsLayer { alpha = appear.value; scaleX = 1.12f - .12f * appear.value; scaleY = scaleX }
                     .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E).copy(alpha = .98f))) {
-                    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 19.dp, bottom = 16.dp),
-                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = 19.dp, bottom = FolioSpace.LARGE.dp),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                         title?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = FolioType.BODY.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center), it) }
                         text?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp,

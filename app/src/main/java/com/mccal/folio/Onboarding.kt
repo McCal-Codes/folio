@@ -109,18 +109,18 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     }
 
     Box(Modifier.fillMaxSize().testTag("onboarding")) {
-        Column(Modifier.align(Alignment.TopCenter).widthIn(max = 560.dp).fillMaxSize().padding(horizontal = 24.dp)) {
+        Column(Modifier.align(Alignment.TopCenter).widthIn(max = 560.dp).fillMaxSize().padding(horizontal = FolioSpace.XXL.dp)) {
             // Top bar: back and skip
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (index > 0) Row(Modifier.clip(RoundedCornerShape(10.dp)).clickable { go(index - 1) }.padding(8.dp),
+                if (index > 0) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index - 1) }.padding(FolioSpace.SMALL.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(26.dp))
-                    Text(stringResource(R.string.back), color = LocalAccent.current.ink, fontSize = 17.sp)
+                    Text(stringResource(R.string.back), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
                 }
                 Spacer(Modifier.weight(1f))
                 // Setup is optional: Home works without it, and everything is in Settings.
-                if (page.key != "done") Text(stringResource(R.string.skip), color = LocalAccent.current.ink, fontSize = 17.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { finish() }.padding(10.dp).testTag("onboarding-skip"))
+                if (page.key != "done") Text(stringResource(R.string.skip), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { finish() }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-skip"))
             }
             AnimatedContent(index, Modifier.weight(1f), label = "onboarding page",
                 transitionSpec = {
@@ -130,24 +130,24 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                         (slideOutHorizontally { if (forward) -it / 4 else it / 4 } + fadeOut())
                 }) { i ->
                 val p = all[i]
-                Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = 32.dp),
+                Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = FolioSpace.HUGE.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     val appIcon = if (p.appIcon) remember { folioIconBitmap(context) } else null
                     if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)))
-                    else Box(Modifier.size(96.dp).clip(RoundedCornerShape(24.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
+                    else Box(Modifier.size(96.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
                         Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(56.dp))
                     }
                     Text(p.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                        lineHeight = 40.sp, modifier = Modifier.padding(top = 24.dp))
-                    Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = 17.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
-                        modifier = Modifier.padding(top = 12.dp))
-                    if (p.uses.isNotEmpty()) SheetGroup(Modifier.padding(top = 24.dp)) {
+                        lineHeight = 40.sp, modifier = Modifier.padding(top = FolioSpace.XXL.dp))
+                    Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
+                        modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
+                    if (p.uses.isNotEmpty()) SheetGroup(Modifier.padding(top = FolioSpace.XXL.dp)) {
                         p.uses.forEachIndexed { n, use ->
                             if (n > 0) MenuDivider()
-                            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Rounded.Check, null, tint = Color(p.color), modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(10.dp))
-                                Text(use, color = Color.White, fontSize = 15.sp)
+                                Text(use, color = Color.White, fontSize = FolioType.SUBHEAD.sp)
                             }
                         }
                     }
@@ -160,22 +160,22 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                                 else context.getString(R.string.onboarding_tip_turn_on_gestures),
                             Icons.Rounded.Settings to context.getString(R.string.onboarding_tip_settings),
                         )
-                        SheetGroup(Modifier.padding(top = 20.dp)) {
+                        SheetGroup(Modifier.padding(top = FolioSpace.XL.dp)) {
                             tips.forEachIndexed { n, (icon, tip) ->
                                 if (n > 0) MenuDivider()
-                                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(icon, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
                                     Spacer(Modifier.width(12.dp))
-                                    Text(tip, color = Color.White, fontSize = 15.sp)
+                                    Text(tip, color = Color.White, fontSize = FolioType.SUBHEAD.sp)
                                 }
                             }
                         }
                     }
-                    if (p.key == "look") Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (p.key == "look") Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XXL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                         IosChip(selected = systemWallpaper, onClick = { onWallpaper(true) }, label = { Text(stringResource(R.string.my_wallpaper)) }, modifier = Modifier.weight(1f))
                         IosChip(selected = !systemWallpaper, onClick = { onWallpaper(false) }, label = { Text(stringResource(R.string.folio_dunes)) }, modifier = Modifier.weight(1f))
                     }
-                    if (done && p.onAction != null) Row(Modifier.padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (done && p.onAction != null) Row(Modifier.padding(top = FolioSpace.XL.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green)
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.all_set), color = FolioColors.Green, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -188,7 +188,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 page.key == "done" -> page.action ?: context.getString(R.string.get_started)
                 else -> context.getString(R.string.continue_button)
             }
-            Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
+            Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                 .clickable {
                     when {
                         page.key == "done" -> finish()
@@ -196,13 +196,13 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                         else -> go(index + 1)
                     }
                 }.semantics { contentDescription = primary }.testTag("onboarding-primary"), contentAlignment = Alignment.Center) {
-                Text(primary, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(primary, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = 17.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { go(index + 1) }.padding(10.dp).testTag("onboarding-not-now"))
+                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index + 1) }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-not-now"))
             }
-            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.Center,
+            Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {
                 all.indices.forEach { n ->
                     Box(Modifier.padding(3.dp).size(if (n == index) 8.dp else 6.dp).clip(CircleShape)

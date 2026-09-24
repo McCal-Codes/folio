@@ -48,9 +48,9 @@ class PinWidgetActivity : ComponentActivity() {
         setContent {
             var error by remember { mutableStateOf<String?>(null) }
             PinCard(onCancel = ::finish, error = error, addLabel = stringResource(R.string.add_to_home_screen), tag = "pin-widget", onAdd = { error = add(request, provider) ?: run { finish(); null } }) {
-                preview?.let { Image(it.asImageBitmap(), null, Modifier.heightIn(max = 180.dp).clip(RoundedCornerShape(20.dp))) }
+                preview?.let { Image(it.asImageBitmap(), null, Modifier.heightIn(max = 180.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp))) }
                 Text(label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                Text(if (label != app) app else stringResource(R.string.widget), color = Color.White.copy(alpha = .6f), fontSize = 15.sp)
+                Text(if (label != app) app else stringResource(R.string.widget), color = Color.White.copy(alpha = .6f), fontSize = FolioType.SUBHEAD.sp)
             }
         }
     }
@@ -73,7 +73,7 @@ class PinWidgetActivity : ComponentActivity() {
             }) {
                 icon?.let { Image(it.asImageBitmap(), null, Modifier.size(72.dp).clip(RoundedCornerShape(18.dp))) }
                 Text(label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                if (app.isNotEmpty()) Text(app, color = Color.White.copy(alpha = .6f), fontSize = 15.sp)
+                if (app.isNotEmpty()) Text(app, color = Color.White.copy(alpha = .6f), fontSize = FolioType.SUBHEAD.sp)
             }
         }
     }
@@ -108,16 +108,16 @@ class PinWidgetActivity : ComponentActivity() {
 @Composable
 private fun PinCard(onCancel: () -> Unit, error: String?, addLabel: String, tag: String, onAdd: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .45f)).clickable(onClick = onCancel), contentAlignment = Alignment.BottomCenter) {
-        Column(Modifier.padding(16.dp).widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(FolioColors.SecondaryBackground)
-            .pointerInput(Unit) { detectTapGestures() }.padding(20.dp).testTag("$tag-card"),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(FolioSpace.LARGE.dp).widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.SHEET_TOP.dp)).background(FolioColors.SecondaryBackground)
+            .pointerInput(Unit) { detectTapGestures() }.padding(FolioSpace.XL.dp).testTag("$tag-card"),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
             content()
             error?.let { Text(it, color = FolioColors.Red, fontSize = 14.sp, textAlign = TextAlign.Center) }
-            Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
+            Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                 .clickable(onClick = onAdd).testTag("$tag-add"), contentAlignment = Alignment.Center) {
-                Text(addLabel, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(addLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
             }
-            Text(stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = 17.sp, modifier = Modifier.clickable(onClick = onCancel).padding(8.dp))
+            Text(stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, modifier = Modifier.clickable(onClick = onCancel).padding(FolioSpace.SMALL.dp))
         }
     }
 }

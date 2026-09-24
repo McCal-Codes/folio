@@ -312,18 +312,18 @@ internal fun LeadingGlyph(content: IslandContent, size: Dp) {
         is IslandContent.Event -> when (val e = content.event) {
             is IslandEvent.Charging -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Bolt, null, tint = IslandGreen, modifier = Modifier.size(size * .8f))
-                Text(stringResource(R.string.charging), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.charging), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
             is IslandEvent.Silent -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (e.on) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive, null,
                     tint = if (e.on) Red else Color.White, modifier = Modifier.size(size * .75f))
                 Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.silent), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.silent), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
             is IslandEvent.Focus -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.DarkMode, null, tint = Purple, modifier = Modifier.size(size * .75f))
                 Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.focus), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.focus), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
             is IslandEvent.Bluetooth -> Icon(if (e.speaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones, null, tint = IslandBlue, modifier = Modifier.size(size * .8f))
             is IslandEvent.Message -> MessageAvatar(e, size)
@@ -348,10 +348,10 @@ internal fun LeadingGlyph(content: IslandContent, size: Dp) {
 internal fun TrailingGlyph(content: IslandContent, size: Dp) {
     when (content) {
         is IslandContent.Event -> when (val e = content.event) {
-            is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The app's icon beside the sender's photo; without a photo the icon is already on the left.
             is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { Image(it.asImageBitmap(), null, Modifier.size(size * .8f).clip(RoundedCornerShape(size * .22f))) }
             is IslandEvent.Notice -> Unit
@@ -361,7 +361,7 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
             is IslandActivity.Progress -> Ring(a.fraction, size)
             is IslandActivity.Call -> Bars(playing = !a.incoming)
             is IslandActivity.Timer -> Chronometer(a.base, a.countDown, IslandOrange)
-            is IslandActivity.Navigation -> Text(a.subtitle ?: a.title, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            is IslandActivity.Navigation -> Text(a.subtitle ?: a.title, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -393,11 +393,11 @@ private fun Modifier.swipeUpToHide(enabled: Boolean, onHide: () -> Unit): Modifi
 @Composable
 private fun NoticeCardContent(notice: IslandEvent.Notice, onHide: () -> Unit) {
     Row(Modifier.fillMaxWidth().swipeUpToHide(true, onHide).clickable(onClick = onHide)
-        .padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
         notice.appIcon?.let { Image(it.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))) }
             ?: Icon(Icons.Rounded.Info, null, tint = IslandBlue, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(12.dp))
-        Text(notice.text, color = Color.White, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp)
+        Text(notice.text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp)
     }
 }
 
@@ -419,8 +419,8 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
     onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     Column(Modifier.fillMaxWidth().swipeUpToHide(!replying, onDismiss)
-        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        .padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.COMFY.dp, bottom = FolioSpace.COMFY.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
         Row(verticalAlignment = Alignment.Top, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen)) {
             Box {
                 MessageAvatar(message, 44.dp)
@@ -431,16 +431,16 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(message.sender, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    Text(message.sender, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Text(message.appLabel, color = Color.White.copy(alpha = .5f), fontSize = 12.sp, maxLines = 1)
+                    Text(message.appLabel, color = Color.White.copy(alpha = .5f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
                 }
                 message.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, maxLines = if (replying) 2 else 3,
                     overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
             }
         }
         if (replying) QuickReplyField(message.sender.substringBefore(" · "), onSend = { IslandListenerService.reply(context, message.key, it) }, onDone = onDone)
-        else if (message.canReply) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        else if (message.canReply) Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             MessageActionPill(stringResource(R.string.reply), onReply)
         }
     }
@@ -448,8 +448,8 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
 
 @Composable
 internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = FolioSpace.LARGE.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen)) {
             if (activity is IslandActivity.Call) CallAvatar(activity, 44.dp)
             else ((activity as? IslandActivity.Media)?.art ?: activity.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)),
@@ -464,7 +464,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
                     is IslandActivity.Call -> if (activity.incoming) stringResource(R.string.incoming_call) else null
                     else -> null
                 }
-                subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
             }
             when (activity) {
                 is IslandActivity.Call -> if (!activity.incoming) Chronometer(remember(activity.key) { activity.since ?: System.currentTimeMillis() }, false, IslandGreen, 20.sp)
@@ -505,7 +505,7 @@ private fun CallButtons(call: IslandActivity.Call) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     fun act(kind: CallControls.Kind) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm); IslandListenerService.callAction(context, call.key, kind) }
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         if (call.incoming) {
             if (call.canDecline) CallButton(Icons.Rounded.CallEnd, stringResource(R.string.decline), Red) { act(CallControls.Kind.DECLINE) }
             if (call.canAnswer) CallButton(Icons.Rounded.Call, stringResource(R.string.accept), IslandGreen) { act(CallControls.Kind.ANSWER) }
@@ -513,7 +513,7 @@ private fun CallButtons(call: IslandActivity.Call) {
             if (call.canMute) CallButton(Icons.Rounded.MicOff, stringResource(R.string.mute), Color.White.copy(alpha = .22f)) { act(CallControls.Kind.MUTE) }
             if (call.canHangUp) CallButton(Icons.Rounded.CallEnd, "End", Red) { act(CallControls.Kind.HANG_UP) }
             if (call.canSpeaker) CallButton(Icons.AutoMirrored.Rounded.VolumeUp, stringResource(R.string.speaker), Color.White.copy(alpha = .22f)) { act(CallControls.Kind.SPEAKER) }
-            if (!call.canHangUp && !call.canMute && !call.canSpeaker) Text(stringResource(R.string.tap_to_return_to_the_call), color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
+            if (!call.canHangUp && !call.canMute && !call.canSpeaker) Text(stringResource(R.string.tap_to_return_to_the_call), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
         }
     }
 }
@@ -524,7 +524,7 @@ private fun CallButton(icon: ImageVector, label: String, color: Color, onClick: 
         Box(Modifier.size(52.dp).clip(CircleShape).background(color).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
         }
-        Text(label, color = Color.White.copy(alpha = .7f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+        Text(label, color = Color.White.copy(alpha = .7f), fontSize = 11.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
 

@@ -129,27 +129,27 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
     var showAllFeatures by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var fixesOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().fillMaxHeight(.9f).padding(horizontal = 24.dp).testTag("whats-new")) {
+        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().fillMaxHeight(.9f).padding(horizontal = FolioSpace.XXL.dp).testTag("whats-new")) {
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-            androidx.compose.foundation.lazy.LazyColumn(androidx.compose.ui.Modifier.weight(1f).edgeFade(listState), state = listState, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+            androidx.compose.foundation.lazy.LazyColumn(androidx.compose.ui.Modifier.weight(1f).edgeFade(listState), state = listState, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 item {
-                    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+                    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.SMALL.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
                         folioIconBitmap(context)?.let { androidx.compose.foundation.Image(it, null, androidx.compose.ui.Modifier.size(72.dp)
                             .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))) }
                         androidx.compose.material3.Text(stringResource(R.string.what_s_new_in_folio), color = androidx.compose.ui.graphics.Color.White, fontSize = 30.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = androidx.compose.ui.Modifier.padding(top = 14.dp))
+                            modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.COMFY.dp))
                         release?.let {
-                            androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.padding(top = 8.dp),
+                            androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.padding(top = FolioSpace.SMALL.dp),
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 androidx.compose.material3.Text(stringResource(R.string.version_1, it.version), color = FolioColors.Cyan,
-                                    fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                    modifier = androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
-                                        .background(FolioColors.Cyan.copy(alpha = .16f)).padding(horizontal = 10.dp, vertical = 4.dp))
+                                    fontSize = FolioType.FOOTNOTE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                    modifier = androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
+                                        .background(FolioColors.Cyan.copy(alpha = .16f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp))
                                 it.date?.takeIf { d -> !d.equals("Unreleased", true) }?.let { d -> androidx.compose.material3.Text(d,
                                     color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 14.sp,
-                                    modifier = androidx.compose.ui.Modifier.padding(start = 8.dp)) }
+                                    modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.SMALL.dp)) }
                             }
                         }
                     }
@@ -172,43 +172,43 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                         if (fixesOpen) others.forEach { note ->
                             MenuDivider()
                             androidx.compose.material3.Text(note.title?.let { "$it: ${note.detail}" } ?: note.detail,
-                                color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = 15.sp,
-                                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp))
+                                color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
+                                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp))
                         }
                     }
                 }
                 // Version History: every earlier release, collapsed like iOS disclosure rows.
-                if (older.isNotEmpty()) item { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(top = 12.dp)) { SheetGroupLabel("Version History") } }
+                if (older.isNotEmpty()) item { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp)) { SheetGroupLabel("Version History") } }
                 older.forEach { notes ->
                     item(key = "history-${notes.version}") {
                         val open = notes.version in expanded
                         SheetGroup {
                             androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 .clickable { expanded = if (open) expanded - notes.version else expanded + notes.version }
-                                .padding(horizontal = 16.dp).testTag("history-${notes.version}"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                .padding(horizontal = FolioSpace.LARGE.dp).testTag("history-${notes.version}"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 androidx.compose.material3.Text(stringResource(R.string.version_1, notes.version), color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
                                     modifier = androidx.compose.ui.Modifier.weight(1f))
-                                notes.date?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 15.sp) }
+                                notes.date?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp) }
                                 androidx.compose.material3.Icon(if (open) androidx.compose.material.icons.Icons.Rounded.ExpandLess else androidx.compose.material.icons.Icons.Rounded.ExpandMore,
-                                    null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .4f), modifier = androidx.compose.ui.Modifier.padding(start = 8.dp).size(20.dp))
+                                    null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .4f), modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.SMALL.dp).size(20.dp))
                             }
                             if (open) notes.sections.forEach { (heading, items) ->
                                 MenuDivider()
                                 if (heading.isNotEmpty()) androidx.compose.material3.Text(heading.uppercase(), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .5f),
-                                    fontSize = 12.sp, modifier = androidx.compose.ui.Modifier.padding(start = 16.dp, top = 10.dp))
+                                    fontSize = FolioType.GROUP_LABEL.sp, modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.LARGE.dp, top = FolioSpace.COMPACT.dp))
                                 items.forEach { text ->
-                                    androidx.compose.material3.Text("• $text", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = 15.sp,
-                                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
+                                    androidx.compose.material3.Text("• $text", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
+                                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SNUG.dp))
                                 }
                             }
                         }
                     }
                 }
             }
-            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = 16.dp).heightIn(min = 52.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = FolioSpace.LARGE.dp).heightIn(min = 52.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                 .clickable(onClick = onDismiss).testTag("whats-new-continue"), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                androidx.compose.material3.Text(stringResource(R.string.continue_choice), color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp,
+                androidx.compose.material3.Text(stringResource(R.string.continue_choice), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
             }
         }
@@ -222,17 +222,17 @@ private const val FEATURES_SHOWN = 6
 private fun FeatureRow(note: NoteItem) {
     val (symbol, color) = WhatsNew.symbol(note.title ?: note.detail)
     val tint = androidx.compose.ui.graphics.Color(color)
-    androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = 6.dp)
+    androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp)
         .semantics(mergeDescendants = true) {}, verticalAlignment = androidx.compose.ui.Alignment.Top) {
         androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
             .background(tint.copy(alpha = .18f)), contentAlignment = androidx.compose.ui.Alignment.Center) {
             androidx.compose.material3.Icon(symbol, null, tint = tint, modifier = androidx.compose.ui.Modifier.size(24.dp))
         }
-        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(start = 14.dp).weight(1f)) {
-            note.title?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp,
+        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(start = FolioSpace.COMFY.dp).weight(1f)) {
+            note.title?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
-            androidx.compose.material3.Text(note.detail, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = 15.sp,
-                modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
+            androidx.compose.material3.Text(note.detail, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = FolioType.SUBHEAD.sp,
+                modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.HAIR.dp))
         }
     }
 }
@@ -241,11 +241,11 @@ private fun FeatureRow(note: NoteItem) {
 @androidx.compose.runtime.Composable
 private fun DisclosureRow(label: String, open: Boolean, count: Int? = null, tag: String, onClick: () -> Unit) {
     androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
-        .padding(horizontal = 16.dp).testTag(tag), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        .padding(horizontal = FolioSpace.LARGE.dp).testTag(tag), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
         androidx.compose.material3.Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
             modifier = androidx.compose.ui.Modifier.weight(1f))
-        count?.let { androidx.compose.material3.Text("$it", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 15.sp) }
+        count?.let { androidx.compose.material3.Text("$it", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp) }
         androidx.compose.material3.Icon(if (open) androidx.compose.material.icons.Icons.Rounded.ExpandLess else androidx.compose.material.icons.Icons.Rounded.ExpandMore,
-            null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .4f), modifier = androidx.compose.ui.Modifier.padding(start = 8.dp).size(20.dp))
+            null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .4f), modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.SMALL.dp).size(20.dp))
     }
 }

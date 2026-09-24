@@ -60,19 +60,19 @@ internal fun UpNextCard(onEdit: () -> Unit) {
             Text(today.dayOfMonth.toString(), color = ink.primary, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 32.sp)
         }
         when {
-            !allowed -> Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { ask.launch(Manifest.permission.READ_CALENDAR) }) {
+            !allowed -> Column(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { ask.launch(Manifest.permission.READ_CALENDAR) }) {
                 Icon(Icons.Rounded.CalendarToday, null, tint = ink.secondary, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.show_up_next), color = ink.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.allow_calendar_access), color = LocalAccent.current.ink, fontSize = 12.sp)
+                Text(stringResource(R.string.show_up_next), color = ink.primary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.allow_calendar_access), color = LocalAccent.current.ink, fontSize = FolioType.GROUP_LABEL.sp)
             }
-            events.isNotEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            events.isNotEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
                 events.take(2).forEach { e ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { UpNext.openEvent(context, e) }, verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.width(3.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: LocalAccent.current.fill))
                         Spacer(Modifier.width(6.dp))
                         Column {
-                            Text(e.title, color = ink.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(if (e.allDay) stringResource(R.string.all_day) else time(e.begin), color = ink.secondary, fontSize = 12.sp, maxLines = 1)
+                            Text(e.title, color = ink.primary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(if (e.allDay) stringResource(R.string.all_day) else time(e.begin), color = ink.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
                         }
                     }
                 }
@@ -80,9 +80,9 @@ internal fun UpNextCard(onEdit: () -> Unit) {
             alarm != null -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Alarm, null, tint = FolioColors.Orange, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text(time(alarm), color = ink.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(time(alarm), color = ink.primary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
-            else -> Text(stringResource(R.string.no_more_events_today), color = ink.secondary, fontSize = 13.sp)
+            else -> Text(stringResource(R.string.no_more_events_today), color = ink.secondary, fontSize = FolioType.FOOTNOTE.sp)
         }
     }
 }
@@ -109,7 +109,7 @@ internal fun BigClockCard(onEdit: () -> Unit) {
         (if (t.toLocalDate() != today) t.format(DateTimeFormatter.ofPattern("EEE ")) else "") + t.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
     }
     val shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = if (ink.dark) 0f else .25f), blurRadius = 8f)
-    BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).clickable(onClick = onEdit)
+    BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).clickable(onClick = onEdit)
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
         val big = (maxHeight.value * .46f).coerceAtMost(maxWidth.value * .3f).sp
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -145,7 +145,7 @@ internal fun SuggestionsCard(onEdit: () -> Unit) {
             val columns = if (maxWidth > maxHeight * 1.5f) 4 else 2
             val rows = if (maxHeight > 140.dp) 2 else if (columns == 4) 1 else 2
             val icon = minOf(maxWidth / columns - 12.dp, maxHeight / rows - 12.dp).coerceAtLeast(28.dp)
-            if (apps.isEmpty()) Text(stringResource(R.string.suggestions_appear_as_you_use_your_apps), color = LocalHomeInk.current.secondary, fontSize = 13.sp,
+            if (apps.isEmpty()) Text(stringResource(R.string.suggestions_appear_as_you_use_your_apps), color = LocalHomeInk.current.secondary, fontSize = FolioType.FOOTNOTE.sp,
                 modifier = Modifier.align(Alignment.Center))
             else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
                 apps.take(columns * rows).chunked(columns).forEach { row ->

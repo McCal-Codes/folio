@@ -77,16 +77,16 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
     val date = android.text.format.DateFormat.format("EEE, MMM d", now).toString() +
         (status.battery?.let { " · $it%" } ?: "")
     val shown = apps.take(microAppCount(width.value))
-    Column(Modifier.fillMaxSize().padding(horizontal = MICRO_SIDE.dp, vertical = 14.dp).testTagMicro(),
+    Column(Modifier.fillMaxSize().padding(horizontal = MICRO_SIDE.dp, vertical = FolioSpace.COMFY.dp).testTagMicro(),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
         // Tap the time for Notification Center; hold it for Folio's settings.
-        Column(Modifier.clip(RoundedCornerShape(16.dp))
+        Column(Modifier.clip(RoundedCornerShape(FolioRadius.GROUP.dp))
             .combinedClickable(onClickLabel = "Notification Center", onLongClickLabel = "Folio Settings",
                 onLongClick = onSettings, onClick = onNotifications)
-            .padding(horizontal = 10.dp, vertical = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            .padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.HAIR.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(time, color = Color.White, fontSize = timeSize.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, softWrap = false, modifier = Modifier.semantics { heading() })
-            Text(date, color = Color.White.copy(alpha = .75f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(date, color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (shown.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(MICRO_GAP.dp)) {
             shown.forEach { app ->
@@ -107,15 +107,15 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
 private fun MicroNowPlaying(media: IslandActivity.Media) {
     val controls = runCatching { media.controller.transportControls }.getOrNull()
     val open = runCatching { media.controller.sessionActivity }.getOrNull()
-    Row(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(Color.White.copy(alpha = .14f))
+    Row(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .14f))
         .clickable(enabled = open != null, onClickLabel = "Open ${media.title}") { runCatching { open?.send() } }
-        .padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        .padding(start = FolioSpace.SMALL.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         val art = media.art ?: media.icon
         if (art != null) Image(art.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
         Spacer(Modifier.size(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(media.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .65f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(media.title, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .65f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = .9f))
             .clickable(onClickLabel = if (media.playing) "Pause" else "Play") { if (media.playing) controls?.pause() else controls?.play() },
@@ -127,12 +127,12 @@ private fun MicroNowPlaying(media: IslandActivity.Media) {
 
 @Composable
 private fun MicroChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, onClick: () -> Unit) {
-    Row(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onClick)
-        .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .14f)).padding(horizontal = 10.dp, vertical = 5.dp),
+    Row(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).clickable(onClick = onClick)
+        .padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .14f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically) {
             icon?.let { Icon(it, null, tint = Color.White, modifier = Modifier.size(14.dp)); Spacer(Modifier.size(4.dp)) }
-            Text(label, color = Color.White, fontSize = 12.sp, maxLines = 1)
+            Text(label, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
         }
     }
 }

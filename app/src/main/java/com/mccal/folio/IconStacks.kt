@@ -126,13 +126,13 @@ internal fun IconStackFan(anchor: AppEntry, apps: List<AppEntry>, onDismiss: () 
                 Row(Modifier.offset { IntOffset((if (labelsRight) left else left - with(density) { 180.dp.toPx() } ).roundToInt(),
                         (top + (targetY - top) * p.value).roundToInt()) }
                     .graphicsLayer { alpha = p.value.coerceIn(0f, 1f); val s = .6f + .4f * p.value; scaleX = s; scaleY = s }
-                    .clip(RoundedCornerShape(16.dp)).clickable { onLaunch(app) }.testTag("icon-stack-app-${app.id}"),
+                    .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).clickable { onLaunch(app) }.testTag("icon-stack-app-${app.id}"),
                     verticalAlignment = Alignment.CenterVertically) {
                     val iconSize = with(density) { size.toDp() }
                     val label: @Composable () -> Unit = {
-                        Box(Modifier.width(168.dp).padding(horizontal = 10.dp), contentAlignment = if (labelsRight) Alignment.CenterStart else Alignment.CenterEnd) {
-                            Text(app.label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.clip(RoundedCornerShape(50)).background(FolioColors.SecondaryBackground.copy(alpha = .9f)).padding(horizontal = 12.dp, vertical = 6.dp))
+                        Box(Modifier.width(168.dp).padding(horizontal = FolioSpace.COMPACT.dp), contentAlignment = if (labelsRight) Alignment.CenterStart else Alignment.CenterEnd) {
+                            Text(app.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(FolioColors.SecondaryBackground.copy(alpha = .9f)).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SNUG.dp))
                         }
                     }
                     if (!labelsRight) label()
@@ -149,27 +149,27 @@ internal fun IconStackFan(anchor: AppEntry, apps: List<AppEntry>, onDismiss: () 
 internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: List<String>, onToggle: (String) -> Unit, onDone: () -> Unit) {
     var query by remember { mutableStateOf("") }
     val shown = remember(apps, query) { apps.filter { it.id != anchor.id && !it.isWork && it.label.contains(query.trim(), true) } }
-    Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).padding(horizontal = 16.dp).testTag("icon-stack-editor")) {
+    Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).padding(horizontal = FolioSpace.LARGE.dp).testTag("icon-stack-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppIcon(anchor, null, Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), badge = false)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.stack_1, anchor.label), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.swipe_down_on_1_to_open_these_2_of_3, anchor.label, chosen.size, IconStacks.MAX), color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
+                Text(stringResource(R.string.swipe_down_on_1_to_open_these_2_of_3, anchor.label, chosen.size, IconStacks.MAX), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
             }
-            Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onDone).padding(8.dp))
+            Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onDone).padding(FolioSpace.SMALL.dp))
         }
-        IosSearchField(query, { query = it }, "Search apps", Modifier.padding(vertical = 12.dp))
+        IosSearchField(query, { query = it }, "Search apps", Modifier.padding(vertical = FolioSpace.MEDIUM.dp))
         val listState = androidx.compose.foundation.lazy.rememberLazyListState()
         LazyColumn(Modifier.weight(1f).edgeFade(listState), state = listState) {
             items(shown, key = { it.id }) { app ->
                 val on = app.id in chosen
                 val full = !on && chosen.size >= IconStacks.MAX
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(enabled = !full) { onToggle(app.id) }
-                    .graphicsLayer { alpha = if (full) .4f else 1f }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AppIcon(app, null, Modifier.size(40.dp), shape = RoundedCornerShape(10.dp), badge = false)
-                    Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                    .graphicsLayer { alpha = if (full) .4f else 1f }.padding(vertical = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+                    AppIcon(app, null, Modifier.size(40.dp), shape = RoundedCornerShape(FolioRadius.CONTROL.dp), badge = false)
+                    Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp))
                     Icon(if (on) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, if (on) "In stack" else "Not in stack",
                         tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .35f), modifier = Modifier.size(24.dp))
                 }

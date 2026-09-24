@@ -89,7 +89,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
             }
             .padding(inset).testTag("rail-live-activity")
             .semantics { contentDescription = current.title },
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             when (current) {
                 is IslandActivity.Media -> {
                     val accent = rememberAccent(current.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen
@@ -100,7 +100,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
                                 .then(if (expanded) Modifier.clickable(onClickLabel = "Open ${current.title}", onClick = open) else Modifier),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                     }
-                    if (!expanded) Box(Modifier.padding(bottom = 2.dp).graphicsLayer { scaleX = 1.25f; scaleY = 1.25f }) { Bars(current.playing, accent) }
+                    if (!expanded) Box(Modifier.padding(bottom = FolioSpace.HAIR.dp).graphicsLayer { scaleX = 1.25f; scaleY = 1.25f }) { Bars(current.playing, accent) }
                     else RailNowPlaying(current, accent, glyph)
                 }
                 // The island's row layout (icon + timer) is too wide for the rail: stack it.
@@ -141,9 +141,9 @@ internal fun RailNowPlaying(media: IslandActivity.Media, accent: Color, width: a
         val elapsed = if (p.state == android.media.session.PlaybackState.STATE_PLAYING) ((now - p.lastPositionUpdateTime) * p.playbackSpeed).toLong() else 0L
         (p.position + elapsed).coerceIn(0L, duration ?: Long.MAX_VALUE)
     }
-    Column(Modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
         // Too narrow for a full title: it scrolls, like a marquee on the island.
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp)) {
             Text(media.title, color = Color.White, fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, maxLines = 1,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 900))
             media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = 10.sp, maxLines = 1,
@@ -241,7 +241,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
         }
         val leading: @Composable () -> Unit = {
             Column(Modifier.animateContentSize(if (reduceMotion) androidx.compose.animation.core.snap() else bouncy),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 if (growUp) expandedStack()
                 when {
                     media != null -> (media.art ?: media.icon)?.let {
@@ -266,7 +266,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
         }
         val trailing: @Composable () -> Unit = {
             Column(Modifier.animateContentSize(if (reduceMotion) androidx.compose.animation.core.snap() else bouncy),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 when (live) {
                     is IslandActivity.Media -> Bars(live.playing, accent)
                     is IslandActivity.Call -> if (!live.incoming) Chronometer(remember(live.key) { live.since ?: System.currentTimeMillis() }, false, IslandGreen, 10.sp)
@@ -352,7 +352,7 @@ private fun RailCallButtons(call: IslandActivity.Call) {
     fun act(kind: CallControls.Kind) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm); IslandListenerService.callAction(context, call.key, kind) }
     val red = FolioColors.Red
     val grey = Color.White.copy(alpha = .22f)
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
         if (call.incoming) {
             if (call.canAnswer) RailCallButton(Icons.Rounded.Call, "Accept", IslandGreen) { act(CallControls.Kind.ANSWER) }
             if (call.canDecline) RailCallButton(Icons.Rounded.CallEnd, "Decline", red) { act(CallControls.Kind.DECLINE) }

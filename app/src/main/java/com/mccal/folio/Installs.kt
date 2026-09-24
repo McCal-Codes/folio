@@ -117,19 +117,19 @@ internal fun NewAppDot(packageName: String, size: androidx.compose.ui.unit.Dp = 
 internal fun DownloadingApps(labelColor: androidx.compose.ui.graphics.Color) {
     val downloads = Installs.active.collectAsState().value.values.filter { it.newApp }.distinctBy { it.packageName }
     if (downloads.isEmpty()) return
-    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(bottom = 14.dp).testTag("library-downloading")) {
-        androidx.compose.material3.Text(stringResource(R.string.downloading), color = labelColor.copy(alpha = .7f), fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-            modifier = androidx.compose.ui.Modifier.padding(start = 4.dp, bottom = 8.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp)) {
+    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(bottom = FolioSpace.COMFY.dp).testTag("library-downloading")) {
+        androidx.compose.material3.Text(stringResource(R.string.downloading), color = labelColor.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
             items(downloads, key = { it.packageName }) { d ->
                 androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.width(72.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
                         .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .16f))) {
                         d.icon?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, androidx.compose.ui.Modifier.fillMaxSize()) }
                         InstallRing(d.progress, androidx.compose.ui.Modifier.fillMaxSize())
                     }
                     androidx.compose.material3.Text(d.label ?: "Waiting…", color = labelColor, fontSize = 11.sp, maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = androidx.compose.ui.Modifier.padding(top = 4.dp))
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.TINY.dp))
                 }
             }
         }

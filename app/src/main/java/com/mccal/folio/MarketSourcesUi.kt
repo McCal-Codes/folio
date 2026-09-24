@@ -60,7 +60,7 @@ internal fun MarketSourcesTab(
 ) {
     Column {
         SheetGroupLabel(stringResource(R.string.sources))
-        SheetGroup(Modifier.padding(bottom = 10.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
             SourceRow(
                 name = builtInName,
                 // The count is its own column now, so the line under the name doesn't say it twice.
@@ -91,7 +91,7 @@ internal fun MarketSourcesTab(
                 )
             }
         }
-        SheetGroup(Modifier.padding(bottom = 10.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
             IosActionRow(stringResource(R.string.add_a_source)) { onAdd() }
             if (localDevAllowed) {
                 MenuDivider()
@@ -100,7 +100,7 @@ internal fun MarketSourcesTab(
         }
         Text(
             stringResource(R.string.folio_shows_a_source_s_key_fingerprint),
-            color = Color.White.copy(alpha = .55f), fontSize = 13.sp, modifier = Modifier.padding(bottom = 16.dp),
+            color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(bottom = FolioSpace.LARGE.dp),
         )
     }
 }
@@ -133,21 +133,21 @@ private fun SourceRow(
         Modifier.fillMaxWidth().heightIn(min = 44.dp)
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
             .clickable(onClickLabel = name, onClick = onOpen)
-            .padding(14.dp)
+            .padding(FolioSpace.COMFY.dp)
             .testTag("market-source-row"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
-        Column(Modifier.padding(start = 10.dp).weight(1f)) {
+        Column(Modifier.padding(start = FolioSpace.COMPACT.dp).weight(1f)) {
             Text(name, color = Color.White, fontSize = 16.sp)
             Text(
                 detail,
                 color = if (failed) Color(0xFFFF6961) else Color.White.copy(alpha = .55f),
-                fontSize = 13.sp,
+                fontSize = FolioType.FOOTNOTE.sp,
             )
         }
         count?.let {
-            Text("$it", color = Color.White.copy(alpha = .55f), fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp))
+            Text("$it", color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(start = FolioSpace.SMALL.dp))
         }
         Icon(
             androidx.compose.material.icons.Icons.Rounded.ChevronRight,
@@ -178,20 +178,20 @@ internal fun MarketSourcePage(
 ) {
     val builtIn = source.kind == Source.Kind.BUILT_IN
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)
             .testTag("market-source-page"),
     ) {
         if (showBack) {
             val back = stringResource(R.string.back)
             Row(
-                Modifier.fillMaxWidth().clickable(onClickLabel = back, onClick = onBack).padding(vertical = 10.dp),
+                Modifier.fillMaxWidth().clickable(onClickLabel = back, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
                 Text(backTitle ?: back, color = LocalAccent.current.ink, fontSize = 16.sp)
             }
         }
-        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 when {
                     builtIn -> Icons.Rounded.Home
@@ -206,7 +206,7 @@ internal fun MarketSourcePage(
                 },
                 modifier = Modifier.size(34.dp),
             )
-            Column(Modifier.padding(start = 12.dp)) {
+            Column(Modifier.padding(start = FolioSpace.MEDIUM.dp)) {
                 Text(name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 // The address, not a tidied version of it: this is the thing to compare with what a publisher says.
                 Text(
@@ -216,19 +216,19 @@ internal fun MarketSourcePage(
             }
         }
         status?.failure?.let { failure ->
-            SheetGroup(Modifier.padding(top = 14.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Text(stringResource(R.string.folio_couldn_t_reach_this_source), color = Color.White, fontSize = 15.sp)
-                    Text(failure.message, color = Color(0xFFFF6961), fontSize = 13.sp)
+            SheetGroup(Modifier.padding(top = FolioSpace.COMFY.dp)) {
+                Column(Modifier.padding(FolioSpace.COMFY.dp)) {
+                    Text(stringResource(R.string.folio_couldn_t_reach_this_source), color = Color.White, fontSize = FolioType.SUBHEAD.sp)
+                    Text(failure.message, color = Color(0xFFFF6961), fontSize = FolioType.FOOTNOTE.sp)
                     if (status.snapshot != null) {
-                        Text(stringResource(R.string.showing_the_list_it_had_before), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+                        Text(stringResource(R.string.showing_the_list_it_had_before), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                     }
                 }
             }
         }
         SheetGroupLabel(stringResource(R.string.information))
-        SheetGroup(Modifier.padding(bottom = 12.dp)) {
-            Column(Modifier.padding(14.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
+            Column(Modifier.padding(FolioSpace.COMFY.dp)) {
                 Text(pluralStringResource(R.plurals.n_packages, packageCount, packageCount), color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
                 Text(
                     when {
@@ -244,12 +244,12 @@ internal fun MarketSourcePage(
                         )
                         else -> stringResource(R.string.not_read_yet)
                     },
-                    color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                 )
             }
         }
         if (!builtIn) {
-            Row(Modifier.padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 Pill(
                     stringResource(if (status?.refreshing == true) R.string.refreshing else R.string.refresh),
                     onRefresh,
@@ -262,7 +262,7 @@ internal fun MarketSourcePage(
             Text(
                 stringResource(R.string.nothing_from_this_source_yet),
                 color = Color.White.copy(alpha = .55f), fontSize = 14.sp,
-                modifier = Modifier.padding(vertical = 16.dp),
+                modifier = Modifier.padding(vertical = FolioSpace.LARGE.dp),
             )
         } else {
             rows()
@@ -279,9 +279,9 @@ private fun Pill(label: String, onClick: () -> Unit, destructive: Boolean = fals
     Text(
         label,
         color = if (destructive) Color(0xFFFF6961) else LocalAccent.current.ink,
-        fontSize = 15.sp,
+        fontSize = FolioType.SUBHEAD.sp,
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .08f))
-            .clickable(onClick = onClick).heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 12.dp),
+            .clickable(onClick = onClick).heightIn(min = 44.dp).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
     )
 }
 
@@ -297,18 +297,18 @@ internal fun MarketTrustSheet(
     onTrust: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(20.dp).testTag("market-trust-sheet")) {
+    Column(Modifier.fillMaxWidth().padding(FolioSpace.XL.dp).testTag("market-trust-sheet")) {
         Text(
             stringResource(if (previous == null) R.string.add_this_source else R.string.this_source_changed_its_key),
             color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
         )
-        Text(url, color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp))
+        Text(url, color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
         if (previous != null) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFF3A2A16)).padding(14.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A2A16)).padding(FolioSpace.COMFY.dp)) {
                 Icon(Icons.Rounded.Warning, contentDescription = null, tint = Color(0xFFFFB340), modifier = Modifier.size(20.dp))
                 Text(
                     stringResource(R.string.a_source_s_key_normally_never_changes_if),
-                    color = Color.White.copy(alpha = .9f), fontSize = 13.sp, modifier = Modifier.padding(start = 10.dp),
+                    color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(start = FolioSpace.COMPACT.dp),
                 )
             }
             SheetGroupLabel(stringResource(R.string.key_folio_has))
@@ -318,20 +318,20 @@ internal fun MarketTrustSheet(
         Fingerprint(key)
         Text(
             stringResource(R.string.compare_this_with_the_fingerprint_the),
-            color = Color.White.copy(alpha = .55f), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp),
+            color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.SMALL.dp),
         )
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = 16.sp,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
-                    .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
+                    .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
             Text(
                 stringResource(if (previous == null) R.string.trust_and_add else R.string.trust_the_new_key),
                 color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
-                    .clickable(onClick = onTrust).heightIn(min = 44.dp).padding(horizontal = 20.dp, vertical = 12.dp)
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
+                    .clickable(onClick = onTrust).heightIn(min = 44.dp).padding(horizontal = FolioSpace.XL.dp, vertical = FolioSpace.MEDIUM.dp)
                     .testTag("market-trust-confirm"),
             )
         }
@@ -342,8 +342,8 @@ internal fun MarketTrustSheet(
 private fun Fingerprint(key: SourceKey) {
     Text(
         key.fingerprintGroups,
-        color = Color.White, fontSize = 15.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF2C2C2E)).padding(12.dp),
+        color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF2C2C2E)).padding(FolioSpace.MEDIUM.dp),
     )
 }
 
@@ -358,32 +358,32 @@ internal fun refreshMessage(context: android.content.Context, source: Source, re
 /** Typing in a source's address. Folio checks it's https and reads its key before anything else happens. */
 @Composable
 internal fun MarketAddSourceSheet(url: String, onUrl: (String) -> Unit, onNext: () -> Unit, onCancel: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(20.dp).testTag("market-add-source")) {
+    Column(Modifier.fillMaxWidth().padding(FolioSpace.XL.dp).testTag("market-add-source")) {
         Text(stringResource(R.string.add_a_source), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Text(
             stringResource(R.string.paste_the_address_the_publisher_gave_you),
-            color = Color.White.copy(alpha = .55f), fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp),
+            color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp),
         )
         IosSearchField(
             query = url,
             onQuery = onUrl,
             placeholder = "https://…",
-            modifier = Modifier.padding(vertical = 4.dp),
+            modifier = Modifier.padding(vertical = FolioSpace.TINY.dp),
             onSearch = onNext,
         )
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = 16.sp,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onCancel)
-                    .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
+                    .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
             Text(
                 stringResource(R.string.next), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp))
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
                     .background(if (url.isBlank()) LocalAccent.current.fill.copy(alpha = .4f) else LocalAccent.current.fill)
                     .clickable(enabled = url.isNotBlank(), onClick = onNext)
-                    .heightIn(min = 44.dp).padding(horizontal = 20.dp, vertical = 12.dp)
+                    .heightIn(min = 44.dp).padding(horizontal = FolioSpace.XL.dp, vertical = FolioSpace.MEDIUM.dp)
                     .testTag("market-add-source-next"),
             )
         }

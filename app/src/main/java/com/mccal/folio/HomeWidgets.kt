@@ -98,8 +98,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val look = LocalGlassLook.current
-    Surface(modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).clickable(onClick = onClick),
-        color = Glass.copy(alpha = look.widget), shape = RoundedCornerShape(24.dp),
+    Surface(modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).clickable(onClick = onClick),
+        color = Glass.copy(alpha = look.widget), shape = RoundedCornerShape(FolioRadius.PANEL.dp),
         border = if (look.outline > 0f) androidx.compose.foundation.BorderStroke(1.dp, look.outlineColor) else null) {
         // Like iOS widgets, the whole card scales with its size, so a narrower column (the Today View beside
         // Home in portrait) shrinks the text instead of clipping it.
@@ -107,7 +107,7 @@ internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, conte
             val scale = (minOf(maxWidth, maxHeight) / 150.dp).coerceIn(.6f, 1f)
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, density.fontScale)) {
-                Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween, content = content)
+                Column(Modifier.fillMaxSize().padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.SpaceBetween, content = content)
             }
         }
     }
@@ -129,7 +129,7 @@ internal fun ClockCard(onClick: () -> Unit) {
             modifier = Modifier.semantics { contentDescription = clockWidgetTapToReplaceLabel })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
-        Text(time.format(DateTimeFormatter.ofPattern(if (format == "HH:mm") "EEE" else "a · EEE")), color = LocalHomeInk.current.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(time.format(DateTimeFormatter.ofPattern(if (format == "HH:mm") "EEE" else "a · EEE")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -140,7 +140,7 @@ internal fun DateCard(onClick: () -> Unit) {
         Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = 11.sp,
             fontWeight = FontWeight.Bold, letterSpacing = .6.sp, maxLines = 1)
         Text(date.dayOfMonth.toString(), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 44.sp, lineHeight = 46.sp)
-        Text(date.format(DateTimeFormatter.ofPattern("MMMM")), color = LocalHomeInk.current.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(date.format(DateTimeFormatter.ofPattern("MMMM")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -155,7 +155,7 @@ internal fun ExpandedCard(onClick: () -> Unit) {
         Column {
             Icon(Icons.Rounded.Widgets, null, tint = LocalHomeInk.current.primary, modifier = Modifier.size(32.dp))
             Spacer(Modifier.height(16.dp))
-            Text(stringResource(R.string.a_little_more_room), color = LocalHomeInk.current.primary, fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Light)
+            Text(stringResource(R.string.a_little_more_room), color = LocalHomeInk.current.primary, fontSize = FolioType.TITLE.sp, lineHeight = 32.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = 14.sp)
             Spacer(Modifier.height(20.dp))
@@ -168,13 +168,13 @@ internal fun ExpandedCard(onClick: () -> Unit) {
 internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifier: Modifier, onAdd: () -> Unit, fallback: @Composable () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var restoreMessage by remember(slot) { mutableStateOf<String?>(null) }
-    BoxWithConstraints(modifier.clip(RoundedCornerShape(24.dp)).testTag("widget-slot-$slot")) {
+    BoxWithConstraints(modifier.clip(RoundedCornerShape(FolioRadius.PANEL.dp)).testTag("widget-slot-$slot")) {
         val displayedContentSize = WidgetContentSize(maxWidth.value, maxHeight.value)
         if (id == NEEDS_BINDING_WIDGET) {
             val restore = controller.restoreDescriptor(slot)
             Surface(Modifier.fillMaxSize().testTag("widget-restore-$slot"), color = Glass.copy(alpha = .88f),
-                shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White.copy(alpha = .7f))) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.Center,
+                shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White.copy(alpha = .7f))) {
+                Column(Modifier.padding(FolioSpace.MEDIUM.dp), verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(restore?.title ?: stringResource(R.string.saved_widget), color = Ink, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                     Text(restore?.profileLabel ?: stringResource(R.string.unavailable_profile), color = Ink.copy(alpha = .72f),
@@ -228,7 +228,7 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
         val chrome = Modifier.fillMaxSize().then(if (id < 0) Modifier.jiggle("widget-$slot", .35f) else Modifier)
             .alpha(if (drag.source?.target == cell) .3f else 1f)
             .border(if (drag.active && target == cell) 2.dp else 0.dp,
-                if (drag.active && target == cell) Color.White else Color.Transparent, RoundedCornerShape(24.dp))
+                if (drag.active && target == cell) Color.White else Color.Transparent, RoundedCornerShape(FolioRadius.PANEL.dp))
             .semantics { onLongClick(context.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
         if (cards.size > 1) SmartStack(cards, slot, controller, chrome, onAdd)
         else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, onAdd) }
@@ -246,14 +246,14 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, onAdd: () -> Unit) {
         BIG_CLOCK_WIDGET -> BigClockCard(onAdd)
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
-            Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = 15.sp, maxLines = 1)
-            Text(stringResource(R.string.tap_to_choose), color = Color.White.copy(alpha = .8f), fontSize = 12.sp)
+            Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
+            Text(stringResource(R.string.tap_to_choose), color = Color.White.copy(alpha = .8f), fontSize = FolioType.GROUP_LABEL.sp)
         }
         else -> Surface(Modifier.fillMaxSize().clickable(onClick = onAdd), color = Glass.copy(alpha = .18f),
-            shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .25f))) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .25f))) {
+            Column(Modifier.padding(FolioSpace.MEDIUM.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Rounded.Add, null, tint = Color.White)
-                Text(if (id >= 0) stringResource(R.string.widget_unavailable) else stringResource(R.string.add_widget), color = Color.White, fontSize = 12.sp)
+                Text(if (id >= 0) stringResource(R.string.widget_unavailable) else stringResource(R.string.add_widget), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
             }
         }
     }
@@ -296,7 +296,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     var dotsVisible by remember { mutableStateOf(false) }
     LaunchedEffect(pager.isScrollInProgress) { if (pager.isScrollInProgress) dotsVisible = true else { delay(1_200); dotsVisible = false } }
     Box(modifier) {
-        androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)),
+        androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)),
             key = { cards[it] }, beyondViewportPageCount = 0) { page ->
             val card = cards[page]
             WidgetSlot(card, slot, controller, Modifier.fillMaxSize(), onAdd) { BuiltinWidgetCard(card, slot, onAdd) }
@@ -304,7 +304,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
         val dotsAlpha by animateFloatAsState(if (dotsVisible) 1f else 0f, label = "stack dots")
         Column(Modifier.align(Alignment.CenterEnd).padding(end = 5.dp).alpha(dotsAlpha)
             .background(Color.Black.copy(alpha = .28f), RoundedCornerShape(50)).padding(horizontal = 3.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
             repeat(cards.size) { index ->
                 Box(Modifier.size(5.dp).background(Color.White.copy(alpha = if (index == pager.currentPage) 1f else .4f), CircleShape))
             }
@@ -355,8 +355,8 @@ internal fun WidgetActions(
 
     // iOS-style widget menu: quick sizes, widget actions, Smart Stack, and a red Remove at the bottom.
     Column(Modifier.fillMaxWidth().heightIn(max = sheetMaxHeight).verticalScroll(rememberScrollState())
-        .padding(horizontal = 20.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        .padding(horizontal = FolioSpace.XL.dp, vertical = FolioSpace.TINY.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (stackCards.size > 1) stringResource(R.string.smart_stack) else stringResource(R.string.widget), Modifier.weight(1f), color = Color.White,
                 fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -366,7 +366,7 @@ internal fun WidgetActions(
 
         SheetGroupLabel(stringResource(R.string.size))
         SheetGroup {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 listOf(Triple(stringResource(R.string.small), 2, 2), Triple(stringResource(R.string.medium), 4, 2), Triple(stringResource(R.string.large), 4, 4)).forEach { (label, w, h) ->
                     val ok = fits(w, h) || (placement.spanX == w && placement.spanY == h)
                     IosChip(selected = placement.spanX == w && placement.spanY == h,
@@ -379,8 +379,8 @@ internal fun WidgetActions(
             MenuRow(stringResource(R.string.resize_on_home), Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
             MenuDivider()
             MenuRow(if (customSize) stringResource(R.string.hide_custom_size) else stringResource(R.string.custom_size), Icons.Rounded.Tune) { customSize = !customSize }
-            if (customSize) Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (!feasible) Text(stringResource(R.string.move_this_widget_into_the_six_row_grid_b), color = FolioColors.Red, fontSize = 13.sp)
+            if (customSize) Column(Modifier.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
+                if (!feasible) Text(stringResource(R.string.move_this_widget_into_the_six_row_grid_b), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.width), Modifier.weight(1f), color = Color.White)
                     IconButton(enabled = constraints?.canResizeHorizontally != false,
@@ -397,7 +397,7 @@ internal fun WidgetActions(
                     IconButton(enabled = constraints?.canResizeVertically != false,
                         onClick = { if (feasible) height = (height + 1).coerceAtMost(maxHeight) }) { Icon(Icons.Rounded.Add, stringResource(R.string.increase_widget_height), tint = Color.White) }
                 }
-                if (!valid) Text(stringResource(R.string.that_size_overlaps_another_item_or_exten), color = secondary, fontSize = 13.sp)
+                if (!valid) Text(stringResource(R.string.that_size_overlaps_another_item_or_exten), color = secondary, fontSize = FolioType.FOOTNOTE.sp)
                 IosChip(selected = valid, onClick = { if (valid) { onResize(width, height); onClose() } }, label = { Text(stringResource(R.string.apply_size)) },
                     modifier = Modifier.fillMaxWidth())
             }
@@ -409,7 +409,7 @@ internal fun WidgetActions(
             MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
             if (homePages > 1) {
                 MenuDivider()
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                     repeat(homePages) { page ->
                         IosChip(selected = placement.page == page, onClick = { onMoveToPage(page) },
                             label = { Text(stringResource(R.string.page_1, page + 1)) }, modifier = Modifier.testTag("widget-move-${placement.slot}-page-$page"))
@@ -424,7 +424,7 @@ internal fun WidgetActions(
             if (stackCards.size > 1) {
                 stackCards.forEachIndexed { index, card ->
                     MenuDivider()
-                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
                         val cardName = stackLabel(card) ?: stringResource(R.string.widget)
                         Text("${index + 1}. $cardName", Modifier.weight(1f), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (index > 0) TextButton(onClick = { onShowFirstInStack(card) }) { Text(stringResource(R.string.show_first)) }
@@ -434,19 +434,19 @@ internal fun WidgetActions(
                     }
                 }
                 MenuDivider()
-                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = FolioSpace.LARGE.dp, end = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.smart_rotate), color = Color.White)
-                        Text(stringResource(R.string.show_the_next_widget_every_30_minutes), color = secondary, fontSize = 13.sp)
+                        Text(stringResource(R.string.show_the_next_widget_every_30_minutes), color = secondary, fontSize = FolioType.FOOTNOTE.sp)
                     }
                     IosSwitch(stackRotate, onStackRotate)
                 }
             }
         }
-        if (stackCards.size > 1) Text(stringResource(R.string.swipe_up_or_down_on_the_stack_to_flip_be), color = secondary, fontSize = 13.sp,
-            modifier = Modifier.padding(start = 4.dp))
+        if (stackCards.size > 1) Text(stringResource(R.string.swipe_up_or_down_on_the_stack_to_flip_be), color = secondary, fontSize = FolioType.FOOTNOTE.sp,
+            modifier = Modifier.padding(start = FolioSpace.TINY.dp))
 
-        SheetGroup(Modifier.padding(top = 8.dp)) {
+        SheetGroup(Modifier.padding(top = FolioSpace.SMALL.dp)) {
             MenuRow(if (stackCards.size > 1) stringResource(R.string.remove_stack) else stringResource(R.string.remove_widget_2), Icons.Rounded.RemoveCircleOutline, destructive = true) { onRemove() }
         }
         Spacer(Modifier.height(16.dp))

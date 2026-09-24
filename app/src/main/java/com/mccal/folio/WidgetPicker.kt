@@ -183,8 +183,8 @@ internal fun WidgetProviderPreview(entry: WidgetCatalogEntry, span: WidgetSpan, 
                     runCatching { addView(value.views.apply(previewContext, this)) }
                         .onFailure { addView(android.widget.TextView(previewContext).apply { text = entry.providerLabel }) }
                 }
-            }, modifier = Modifier.fillMaxSize().padding(6.dp))
-            is CatalogPreview.Picture -> Image(value.bitmap.asImageBitmap(), null, Modifier.fillMaxSize().padding(8.dp),
+            }, modifier = Modifier.fillMaxSize().padding(FolioSpace.SNUG.dp))
+            is CatalogPreview.Picture -> Image(value.bitmap.asImageBitmap(), null, Modifier.fillMaxSize().padding(FolioSpace.SMALL.dp),
                 contentScale = ContentScale.Fit)
             CatalogPreview.Missing -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(entry.providerLabel, style = MaterialTheme.typography.bodySmall, color = Color.White)
@@ -239,45 +239,45 @@ internal fun VisualWidgetPicker(
         .testTag("visual-widget-picker"),
         color = Color(0xFF111114).copy(alpha = .97f), contentColor = ink) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(horizontal = 18.dp)) {
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.widgets), color = ink, fontSize = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).clickable(onClickLabel = stringResource(R.string.close), onClick = onBack),
                     contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Close, stringResource(R.string.back), tint = ink, modifier = Modifier.size(20.dp)) }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .12f))
-                .padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .12f))
+                .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) Text(stringResource(R.string.search_widgets), color = secondary, fontSize = 17.sp)
+                    if (query.isEmpty()) Text(stringResource(R.string.search_widgets), color = secondary, fontSize = FolioType.BODY.sp)
                     androidx.compose.foundation.text.BasicTextField(query, { query = it }, Modifier.fillMaxWidth().testTag("widget-catalog-search"),
-                        singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = ink, fontSize = 17.sp),
+                        singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = ink, fontSize = FolioType.BODY.sp),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(ink))
                 }
             }
-            if (profiles.any { it.isWork }) Row(Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (profiles.any { it.isWork }) Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.COMPACT.dp),
+                horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 profiles.forEach { profile ->
                     val selected = profile.userSerial == selectedProfile.userSerial
                     Text(profile.label, color = if (selected) Color.Black else ink, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .14f))
-                            .clickable { onSelectProfile(profile) }.padding(horizontal = 14.dp, vertical = 8.dp))
+                            .clickable { onSelectProfile(profile) }.padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp))
                 }
             }
             if (!selectedProfile.available || !selectedProfile.unlocked || selectedProfile.quiet) {
-                Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.fillMaxWidth().padding(FolioSpace.XXL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (selectedProfile.quiet) "${selectedProfile.label} apps are paused"
                         else "${selectedProfile.label} profile is unavailable", color = secondary)
                     if (selectedProfile.isWork) FolioButton(stringResource(R.string.turn_on), { onTurnOnWork(selectedProfile.userSerial) },
-                        Modifier.padding(top = 12.dp))
+                        Modifier.padding(top = FolioSpace.MEDIUM.dp))
                 }
             }
             val catalogState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
             LazyVerticalGrid(GridCells.Adaptive(168.dp), Modifier.fillMaxSize().edgeFade(catalogState).testTag("widget-catalog-list"), state = catalogState,
-                horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
                 fun header(key: String, title: String) = item(key, span = { GridItemSpan(maxLineSpan) }) {
-                    Text(title, color = ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp, start = 2.dp))
+                    Text(title, color = ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp, start = FolioSpace.HAIR.dp))
                 }
                 if (entries == null) item("catalog-loading", span = { GridItemSpan(maxLineSpan) }) {
                     Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.TopCenter) { CircularProgressIndicator(color = ink) }
@@ -327,7 +327,7 @@ internal fun VisualWidgetPicker(
                     }
                 }
                 if (entries != null && filtered.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(stringResource(R.string.no_widgets_found), color = secondary, modifier = Modifier.padding(20.dp))
+                    Text(stringResource(R.string.no_widgets_found), color = secondary, modifier = Modifier.padding(FolioSpace.XL.dp))
                 }
             }
         }
@@ -338,12 +338,12 @@ internal fun VisualWidgetPicker(
 @Composable
 private fun GalleryCard(title: String, subtitle: String, detail: String, modifier: Modifier, dimmed: Boolean = false,
     preview: @Composable () -> Unit) {
-    Column(modifier.alpha(if (dimmed) .45f else 1f).clip(RoundedCornerShape(24.dp)).background(Color.White.copy(alpha = .06f)).padding(10.dp)) {
+    Column(modifier.alpha(if (dimmed) .45f else 1f).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .06f)).padding(FolioSpace.COMPACT.dp)) {
         preview()
-        Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp, start = 2.dp))
-        Text(subtitle, color = Color.White.copy(alpha = .6f), fontSize = 13.sp, maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(start = 2.dp))
-        Text(detail, color = Color.White.copy(alpha = .45f), fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(start = 2.dp, bottom = 2.dp))
+        Text(title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.COMPACT.dp, start = FolioSpace.HAIR.dp))
+        Text(subtitle, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(start = FolioSpace.HAIR.dp))
+        Text(detail, color = Color.White.copy(alpha = .45f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, modifier = Modifier.padding(start = FolioSpace.HAIR.dp, bottom = FolioSpace.HAIR.dp))
     }
 }

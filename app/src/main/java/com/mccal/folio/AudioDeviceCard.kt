@@ -92,7 +92,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
     val primary = if (dark) Color.White else Color.Black
     val secondary = if (dark) Color(0xFF98989F) else Color(0xFF6C6C70)
     val title = device.name ?: if (device.speaker) "Speaker" else "Headphones"
-    Column(Modifier.navigationBarsPadding().padding(12.dp).widthIn(max = 400.dp).fillMaxWidth()
+    Column(Modifier.navigationBarsPadding().padding(FolioSpace.MEDIUM.dp).widthIn(max = 400.dp).fillMaxWidth()
         .clip(RoundedCornerShape(36.dp)).background(background).padding(horizontal = 22.dp, vertical = 18.dp)
         .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -113,14 +113,14 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
             Icon(if (device.speaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones, null, tint = Color.White, modifier = Modifier.size(60.dp))
         }
         Spacer(Modifier.height(14.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
             Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green, modifier = Modifier.size(18.dp))
-            Text(stringResource(R.string.connected), color = secondary, fontSize = 15.sp)
+            Text(stringResource(R.string.connected), color = secondary, fontSize = FolioType.SUBHEAD.sp)
         }
         Spacer(Modifier.height(18.dp))
-        Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(14.dp)).background(LocalAccent.current.fill)
+        Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
             .clickable(role = Role.Button, onClick = onDone), contentAlignment = Alignment.Center) {
-            Text(stringResource(R.string.done), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.done), color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

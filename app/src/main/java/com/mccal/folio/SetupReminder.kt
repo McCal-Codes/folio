@@ -100,20 +100,20 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
         AnimatedVisibility(visible,
             enter = if (reduceMotion) fadeIn() else slideInVertically(FolioMotion.spring(FolioMotion.Settle)) { it } + fadeIn(),
             exit = if (reduceMotion) fadeOut() else slideOutVertically { it } + fadeOut()) {
-            Column(Modifier.navigationBarsPadding().padding(12.dp).widthIn(max = 400.dp).fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp)).background(background).padding(18.dp)
+            Column(Modifier.navigationBarsPadding().padding(FolioSpace.MEDIUM.dp).widthIn(max = 400.dp).fillMaxWidth()
+                .clip(RoundedCornerShape(FolioRadius.SHEET_TOP.dp)).background(background).padding(18.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite }.testTag("setup-reminder"),
-                verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SetupRing(required.size - left, required.size, 52.dp, secondary.copy(alpha = .25f))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.finish_setting_up_folio), color = primary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.finish_setting_up_folio), color = primary, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
                         Text(required.filterNot { it.done }.joinToString(", ") { it.title }, color = secondary, fontSize = 14.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                     ReminderButton("Not Now", secondary.copy(alpha = .18f), primary, Modifier.weight(1f)) {
                         show = false; SetupReminder.snooze(context, SetupReminder.NOT_NOW_MS)
                     }
@@ -128,7 +128,7 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
 
 @Composable
 private fun ReminderButton(text: String, background: Color, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Box(modifier.height(46.dp).clip(RoundedCornerShape(14.dp)).background(background).clickable(role = Role.Button, onClick = onClick),
+    Box(modifier.height(46.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(background).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center) {
         Text(text, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }

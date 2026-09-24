@@ -90,7 +90,7 @@ internal fun FolderPanel(
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { if (title.isNotBlank()) onRename(title) }))
         // Folder tint: none + a few iOS-like colors.
-        androidx.compose.foundation.layout.Row(Modifier.padding(bottom = 14.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+        androidx.compose.foundation.layout.Row(Modifier.padding(bottom = FolioSpace.COMFY.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
             (listOf<Long?>(null) + FolderSwatches).forEach { swatch ->
                 val selected = swatch == color
                 Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
@@ -112,11 +112,11 @@ internal fun FolderPanel(
                 FolderBackground.CLEAR -> Color.Transparent
             }, contentColor = Color.White, shape = RoundedCornerShape(38.dp),
             border = if (folderLook.background == FolderBackground.CLEAR) null else FolioGlass.edge) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.padding(FolioSpace.XL.dp)) {
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
                 LazyVerticalGrid(if (folderLook.columns > 0) FolderColumns(folderLook.columns) else GridCells.Adaptive(84.dp), Modifier.fillMaxWidth().weight(1f).edgeFade(gridState), state = gridState,
-                    contentPadding = PaddingValues(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    contentPadding = PaddingValues(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
+                    verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                     items(folder.appIds, key = { it }) { appId ->
                         apps[appId]?.let { app -> FolderChild(app, folder.id, drag, page, homeDestinations, dockVacancies,
                             onLaunch = onLaunch, onMoveOut = onMoveOut) }
@@ -149,9 +149,9 @@ private fun FolderChild(
         Box {
             Column(Modifier.fillMaxWidth().dropRegion(drag, DropTarget.Library(app.id), app.id, page,
                 folderId = folderId, scope = folderId).clickable(enabled = app.available) { onLaunch(app, null) }
-                .padding(horizontal = 6.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(14.dp))
-                Text(app.label, Modifier.padding(top = 6.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
+                .padding(horizontal = FolioSpace.SNUG.dp, vertical = FolioSpace.COMPACT.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp))
+                Text(app.label, Modifier.padding(top = FolioSpace.SNUG.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium)
                 if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else "${app.profileLabel} unavailable",
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)

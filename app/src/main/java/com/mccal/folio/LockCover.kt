@@ -89,7 +89,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
         val wide = maxWidth > maxHeight
         val clockSize = minOf(if (wide) maxHeight.value * .3f else maxWidth.value * .26f, 120f)
         val room = ((maxHeight.value - clockSize * 1.6f - 150f) / 76f).toInt().coerceIn(0, 4)
-        Column(Modifier.align(Alignment.TopCenter).widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = if (wide) 84.dp else 16.dp).padding(top = if (wide) 8.dp else 28.dp),
+        Column(Modifier.align(Alignment.TopCenter).widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = if (wide) 84.dp else FolioSpace.LARGE.dp).padding(top = if (wide) FolioSpace.SMALL.dp else 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             Text(now.format(DateTimeFormatter.ofPattern(if (wide) "EEE MMM d" else "EEEE, MMMM d")), color = Color.White,
                 fontSize = if (wide) 17.sp else 20.sp, fontWeight = FontWeight.SemiBold)
@@ -99,30 +99,30 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Alarm, null, tint = Color.White.copy(alpha = .8f), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(it, color = Color.White.copy(alpha = .8f), fontSize = 15.sp)
+                    Text(it, color = Color.White.copy(alpha = .8f), fontSize = FolioType.SUBHEAD.sp)
                 }
             }
             // Up Next, like the Calendar widget iPhone puts under the Lock Screen clock.
             val next by produceState<UpNextEvent?>(null, tick) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { UpNext.events(context, limit = 1).firstOrNull() } }
             next?.let { e ->
                 val begin = LocalDateTime.ofInstant(Instant.ofEpochMilli(e.begin), ZoneId.systemDefault())
-                Row(Modifier.padding(top = 6.dp).clip(RoundedCornerShape(12.dp)).clickable { onDismiss(); UpNext.openEvent(context, e) }
-                    .padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(top = FolioSpace.SNUG.dp).clip(RoundedCornerShape(12.dp)).clickable { onDismiss(); UpNext.openEvent(context, e) }
+                    .padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(width = 3.dp, height = 16.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: LocalAccent.current.fill))
                     Spacer(Modifier.width(6.dp))
                     Text("${e.title} · ${if (e.allDay) stringResource(R.string.all_day) else begin.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))}",
-                        color = Color.White.copy(alpha = .85f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        color = Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Spacer(Modifier.height(24.dp))
             notifications.take(room).forEach { item ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF2A2A2E).copy(alpha = .8f))
-                    .clickable { onDismiss(); IslandListenerService.openNotification(context, item) }.padding(12.dp),
+                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(Color(0xFF2A2A2E).copy(alpha = .8f))
+                    .clickable { onDismiss(); IslandListenerService.openNotification(context, item) }.padding(FolioSpace.MEDIUM.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(34.dp).clip(RoundedCornerShape(8.dp))) }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(item.title ?: item.appLabel, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(item.title ?: item.appLabel, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         item.text?.let { Text(it, color = Color.White.copy(alpha = .8f), fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                     }
                 }
@@ -133,13 +133,13 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
             onDismiss(); runCatching { context.startActivity(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         } }
         // Flashlight and camera: bottom corners as on iPhone, or stacked on the side edge when wide, as on iPhone Duo.
-        if (wide) Column(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (wide) Column(Modifier.align(Alignment.BottomEnd).padding(end = FolioSpace.XL.dp, bottom = FolioSpace.HUGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
             flashlight(); camera()
         } else Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 44.dp, vertical = 36.dp),
             horizontalArrangement = Arrangement.SpaceBetween) { flashlight(); camera() }
-        Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(R.string.swipe_up_to_open), color = Color.White.copy(alpha = .6f), fontSize = 13.sp)
-            Box(Modifier.padding(top = 6.dp).size(width = 134.dp, height = 5.dp).clip(CircleShape).background(Color.White))
+        Column(Modifier.align(Alignment.BottomCenter).padding(bottom = FolioSpace.COMPACT.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(stringResource(R.string.swipe_up_to_open), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            Box(Modifier.padding(top = FolioSpace.SNUG.dp).size(width = 134.dp, height = 5.dp).clip(CircleShape).background(Color.White))
         }
       }
     }

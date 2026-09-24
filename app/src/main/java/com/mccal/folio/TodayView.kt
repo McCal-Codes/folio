@@ -61,20 +61,20 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
             val columnsWidth = minOf(maxWidth - 32.dp, 390.dp)
             val gap = 14.dp
             val cell = (columnsWidth - gap) / 2
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 96.dp), // clear of Home's page dots
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = 96.dp), // clear of Home's page dots
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
                 Column(Modifier.width(columnsWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // Search capsule
                     val ink = LocalHomeInk.current
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = if (ink.dark) .5f else .16f))
-                        .clickable(onClickLabel = stringResource(R.string.search), onClick = onSearch).padding(horizontal = 14.dp, vertical = 11.dp),
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = if (ink.dark) .5f else .16f))
+                        .clickable(onClickLabel = stringResource(R.string.search), onClick = onSearch).padding(horizontal = FolioSpace.COMFY.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Search, null, tint = ink.secondary, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.search), color = ink.secondary, fontSize = 17.sp)
+                        Text(stringResource(R.string.search), color = ink.secondary, fontSize = FolioType.BODY.sp)
                     }
-                    Column(Modifier.padding(start = 4.dp, top = 6.dp)) {
-                        Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = 13.sp,
+                    Column(Modifier.padding(start = FolioSpace.TINY.dp, top = FolioSpace.SNUG.dp)) {
+                        Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp,
                             fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp)
                         Text(today.format(DateTimeFormatter.ofPattern("MMMM d")), color = LocalHomeInk.current.primary, fontSize = if (wide) 40.sp else 34.sp,
                             fontWeight = FontWeight.Bold)
@@ -94,10 +94,10 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
                         }
                     }
                     if (state.todayWidgets.isEmpty()) Text(stringResource(R.string.add_widgets_for_the_things_you_check_mos), color = LocalHomeInk.current.secondary,
-                        fontSize = 15.sp, modifier = Modifier.padding(4.dp))
+                        fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(FolioSpace.TINY.dp))
 
                     // Edit / Add / Done, like the bottom of iOS's Today View
-                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SNUG.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) {
                             JigglePill(stringResource(R.string.add_widget_2), Icons.Rounded.Add, description = "Add widget") { onAddWidget() }
                             Spacer(Modifier.width(12.dp))
@@ -126,16 +126,16 @@ internal fun todayRows(list: List<TodayWidget>): List<List<TodayWidget>> {
 private fun TodaySuggestions(apps: List<AppEntry>, columns: Int, onLaunch: (AppEntry) -> Unit) {
     val ink = LocalHomeInk.current
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = if (ink.dark) .45f else .14f))
-        .border(FolioGlass.edge, RoundedCornerShape(22.dp)).padding(horizontal = 10.dp, vertical = 12.dp)) {
-        Text(stringResource(R.string.suggestions), color = ink.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 6.dp, bottom = 8.dp))
+        .border(FolioGlass.edge, RoundedCornerShape(22.dp)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.MEDIUM.dp)) {
+        Text(stringResource(R.string.suggestions), color = ink.secondary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = FolioSpace.SNUG.dp, bottom = FolioSpace.SMALL.dp))
         Row(Modifier.fillMaxWidth()) {
             apps.take(columns).forEach { app ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { onLaunch(app) }.padding(vertical = 4.dp),
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     AppIcon(app, app.label, Modifier.size(52.dp), shape = RoundedCornerShape(13.dp), badge = false)
                     Text(app.label, color = ink.primary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp))
+                        modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                 }
             }
             repeat((columns - apps.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
@@ -147,12 +147,12 @@ private fun TodaySuggestions(apps: List<AppEntry>, columns: Int, onLaunch: (AppE
 private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, width: Dp, height: Dp, edit: HomeEditMode,
     canMoveUp: Boolean, canMoveDown: Boolean, onRemove: () -> Unit, onMove: (Int) -> Unit) {
     Box(Modifier.size(width, height).then(if (widget.id < 0) Modifier.jiggle("today-${widget.id}", .5f) else Modifier)) {
-        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))) {
+        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp))) {
             if (widget.id < 0) BuiltinWidgetCard(widget.id, -1) { if (!edit.active) edit.start() }
             else {
                 val info = remember(widget.id) { runCatching { widgets.manager.getAppWidgetInfo(widget.id) }.getOrNull() }
                 if (info == null) Box(Modifier.fillMaxSize().background(Glass.copy(alpha = .2f)), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.widget_unavailable), color = Color.White.copy(alpha = .8f), fontSize = 13.sp)
+                    Text(stringResource(R.string.widget_unavailable), color = Color.White.copy(alpha = .8f), fontSize = FolioType.FOOTNOTE.sp)
                 } else key(widget.id) {
                     AndroidView(factory = { widgets.host.createView(it, widget.id, info) }, modifier = Modifier.fillMaxSize())
                 }
@@ -160,7 +160,7 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
         }
         if (edit.active) {
             JiggleRemoveButton("Remove widget", onRemove = onRemove)
-            Row(Modifier.align(Alignment.BottomEnd).padding(8.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f))) {
+            Row(Modifier.align(Alignment.BottomEnd).padding(FolioSpace.SMALL.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f))) {
                 if (canMoveUp) TodayArrow(Icons.Rounded.KeyboardArrowUp, "Move up") { onMove(-1) }
                 if (canMoveDown) TodayArrow(Icons.Rounded.KeyboardArrowDown, "Move down") { onMove(1) }
             }

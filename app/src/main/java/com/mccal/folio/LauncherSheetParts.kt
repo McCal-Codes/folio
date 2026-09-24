@@ -99,23 +99,23 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
     onLongClick: (AppEntry) -> Unit, canSelect: (AppEntry) -> Boolean = { true }, blockedHint: String? = null) {
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) { apps.filter { it.label.contains(query.trim(), ignoreCase = true) } }
-    Column(Modifier.fillMaxWidth().fillMaxHeight(.88f).padding(horizontal = 20.dp).imePadding()) {
+    Column(Modifier.fillMaxWidth().fillMaxHeight(.88f).padding(horizontal = FolioSpace.XL.dp).imePadding()) {
         Text(if (dockSlot == null) "Your Apps" else "Dock Position ${dockSlot + 1}", color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
-        IosSearchField(query, { query = it }, stringResource(R.string.search_apps), Modifier.padding(vertical = 12.dp), fieldModifier = Modifier.testTag("search-field"))
-        if (dockSlot != null) SheetGroup(Modifier.padding(bottom = 8.dp)) { IosActionRow(stringResource(R.string.leave_this_position_empty), destructive = true, onClick = onClear) }
+        IosSearchField(query, { query = it }, stringResource(R.string.search_apps), Modifier.padding(vertical = FolioSpace.MEDIUM.dp), fieldModifier = Modifier.testTag("search-field"))
+        if (dockSlot != null) SheetGroup(Modifier.padding(bottom = FolioSpace.SMALL.dp)) { IosActionRow(stringResource(R.string.leave_this_position_empty), destructive = true, onClick = onClear) }
         if (blockedHint != null) Text(blockedHint, color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp).testTag("dock-full-guidance"))
+            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = FolioSpace.SMALL.dp).testTag("dock-full-guidance"))
         val listState = androidx.compose.foundation.lazy.rememberLazyListState()
         LazyColumn(Modifier.weight(1f).edgeFade(listState), state = listState) {
-            if (filtered.isEmpty()) item { Text(stringResource(R.string.no_apps_found), Modifier.padding(vertical = 24.dp)) }
+            if (filtered.isEmpty()) item { Text(stringResource(R.string.no_apps_found), Modifier.padding(vertical = FolioSpace.XXL.dp)) }
             items(filtered, key = { it.id }) { app ->
                 val enabled = canSelect(app)
                 Row(Modifier.fillMaxWidth().testTag("picker-app-${app.id}")
                     .combinedClickable(enabled = enabled, onClick = { onSelect(app) }, onLongClick = { onLongClick(app) })
                     .alpha(if (enabled) 1f else .45f)
-                    .padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    .padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(app, null, Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
-                    Text(app.label, Modifier.padding(start = 16.dp).weight(1f), maxLines = 2)
+                    Text(app.label, Modifier.padding(start = FolioSpace.LARGE.dp).weight(1f), maxLines = 2)
                     if (dockSlot != null && enabled) Icon(Icons.Rounded.AddCircle, "Choose ${app.label}", tint = LocalAccent.current.ink)
                 }
             }
@@ -128,7 +128,7 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
 @Composable
 internal fun SheetGroupLabel(text: String) {
     Text(text.uppercase(), color = Color.White.copy(alpha = .55f), fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold,
-        letterSpacing = .4.sp, modifier = Modifier.padding(start = 16.dp, top = 10.dp))
+        letterSpacing = .4.sp, modifier = Modifier.padding(start = FolioSpace.LARGE.dp, top = FolioSpace.COMPACT.dp))
 }
 
 /** iOS inset grouped list: rounded dark card holding rows separated by thin dividers. */

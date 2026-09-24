@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 internal fun LayoutRestorePreview(preview: LayoutImportPreview, onRestore: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(onDismissRequest = onCancel, modifier = Modifier.testTag("layout-restore-preview"),
         title = { Text(stringResource(R.string.review_restored_layout)) }, text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 Text(listOf(
                     pluralStringResource(R.plurals.restore_apps, preview.appCount, preview.appCount),
                     pluralStringResource(R.plurals.restore_folders, preview.folderCount, preview.folderCount),

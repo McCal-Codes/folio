@@ -61,16 +61,16 @@ internal fun FolioBetaSourceRow(selected: Boolean, onOpen: () -> Unit) {
         Modifier.fillMaxWidth().heightIn(min = 44.dp)
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
             .clickable(onClickLabel = name, onClick = onOpen)
-            .padding(14.dp)
+            .padding(FolioSpace.COMFY.dp)
             .testTag("market-folio-beta-row"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Rounded.Science, contentDescription = null, tint = BetaOrange, modifier = Modifier.size(20.dp))
-        Column(Modifier.padding(start = 10.dp).weight(1f)) {
+        Column(Modifier.padding(start = FolioSpace.COMPACT.dp).weight(1f)) {
             Text(name, color = Color.White, fontSize = 16.sp)
             Text(
                 stringResource(if (waiting) R.string.update_available else R.string.supporter),
-                color = if (waiting) Color(0xFF6CB4FF) else Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                color = if (waiting) Color(0xFF6CB4FF) else Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
         Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .3f), modifier = Modifier.size(18.dp))
@@ -94,26 +94,26 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
         else -> null
     }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).testTag("market-folio-beta-page"),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp).testTag("market-folio-beta-page"),
     ) {
         if (showBack) {
             Row(
-                Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.back), onClick = onBack).padding(vertical = 10.dp),
+                Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.back), onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
                 Text(backTitle, color = LocalAccent.current.ink, fontSize = 16.sp)
             }
         }
-        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Science, contentDescription = null, tint = BetaOrange, modifier = Modifier.size(34.dp))
-            Column(Modifier.padding(start = 12.dp)) {
+            Column(Modifier.padding(start = FolioSpace.MEDIUM.dp)) {
                 Text(stringResource(R.string.folio_beta), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text(stringResource(R.string.folio_beta_for_supporters), color = Color.White.copy(alpha = .55f), fontSize = 14.sp)
             }
         }
         SheetGroupLabel(stringResource(R.string.information))
-        SheetGroup(Modifier.padding(bottom = 12.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
             BetaInfoRow(stringResource(R.string.you_re_on), installed)
             MenuDivider()
             BetaInfoRow(stringResource(R.string.newest_beta), when {
@@ -135,7 +135,7 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
             !supported -> CardNote(stringResource(R.string.folio_dev_a_test_build_it_updates_from_n))
             !betaOn -> {
                 CardNote(stringResource(R.string.beta_updates_are_off_here))
-                SheetGroup(Modifier.padding(top = 8.dp)) {
+                SheetGroup(Modifier.padding(top = FolioSpace.SMALL.dp)) {
                     IosActionRow(stringResource(R.string.turn_on_beta_updates), "market-folio-beta-on") {
                         SoftwareUpdate.setBeta(context, true); betaOn = true
                     }
@@ -145,7 +145,7 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
             else -> {
                 if (status is SoftwareUpdate.Status.Failed) CardNote((status as SoftwareUpdate.Status.Failed).message)
                 else if (status == SoftwareUpdate.Status.UpToDate) CardNote(stringResource(R.string.folio_is_up_to_date))
-                SheetGroup(Modifier.padding(top = 8.dp)) {
+                SheetGroup(Modifier.padding(top = FolioSpace.SMALL.dp)) {
                     IosActionRow(stringResource(R.string.check_for_updates), "market-folio-beta-check",
                         enabled = status != SoftwareUpdate.Status.Checking && status != SoftwareUpdate.Status.Installing) {
                         SoftwareUpdate.startCheck(context)
@@ -153,16 +153,16 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
                 }
             }
         }
-        CardNote(stringResource(R.string.folio_beta_page_note), Modifier.padding(top = 12.dp))
+        CardNote(stringResource(R.string.folio_beta_page_note), Modifier.padding(top = FolioSpace.MEDIUM.dp))
         Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
 private fun BetaInfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = Color.White, fontSize = 16.sp)
-        Text(value, color = Color.White.copy(alpha = .55f), fontSize = 15.sp, textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f).padding(start = 12.dp))
+        Text(value, color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp, textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp))
     }
 }
