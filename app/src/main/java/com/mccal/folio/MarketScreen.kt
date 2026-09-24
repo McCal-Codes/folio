@@ -658,7 +658,7 @@ internal fun MarketScreen(
         if (index == null) {
             Text(
                 stringResource(R.string.folio_couldn_t_read_its_own_packages),
-                color = Color.White, modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                color = Color.White, modifier = Modifier.align(Alignment.Center).padding(FolioSpace.HUGE.dp),
             )
         }
     }
@@ -667,10 +667,10 @@ internal fun MarketScreen(
 
 @Composable
 private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = 6.dp)) {
+    Row(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SNUG.dp)) {
         for (tab in MarketTab.entries) {
             Column(
-                Modifier.weight(1f).marketTab(tab, onSelect).padding(vertical = 4.dp),
+                Modifier.weight(1f).marketTab(tab, onSelect).padding(vertical = FolioSpace.TINY.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
         }
@@ -687,13 +687,13 @@ private enum class TabPlacement { BOTTOM, RAIL, SIDEBAR }
 @Composable
 private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     Column(
-        Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground).padding(vertical = 8.dp),
+        Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SMALL.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         for (tab in MarketTab.entries) {
             Column(
-                Modifier.fillMaxWidth().marketTab(tab, onSelect).padding(vertical = 10.dp),
+                Modifier.fillMaxWidth().marketTab(tab, onSelect).padding(vertical = FolioSpace.COMPACT.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
         }
@@ -708,19 +708,19 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
 private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     Column(
         Modifier.width(180.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)
-            .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 8.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.MEDIUM.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp),
     ) {
         Text(
             stringResource(R.string.market), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 10.dp),
+            modifier = Modifier.padding(start = FolioSpace.MEDIUM.dp, top = FolioSpace.TINY.dp, bottom = FolioSpace.COMPACT.dp),
         )
         for (tab in MarketTab.entries) {
             val on = tab == selected
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                     .background(if (on) LocalAccent.current.fill else Color.Transparent)
-                    .marketTab(tab, onSelect).padding(horizontal = 12.dp, vertical = 11.dp),
+                    .marketTab(tab, onSelect).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -729,7 +729,7 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    stringResource(tab.label), color = if (on) Color.White else Color.White.copy(alpha = .85f), fontSize = 15.sp,
+                    stringResource(tab.label), color = if (on) Color.White else Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
                     fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
@@ -789,10 +789,10 @@ private fun MarketList(
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), state = state, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = FolioSpace.LARGE.dp), state = state, verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp)) {
         item {
-            Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
-                if (tab == MarketTab.FEATURED) Text(stringResource(R.string.welcome_to_folio), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+            Column(Modifier.padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.TINY.dp)) {
+                if (tab == MarketTab.FEATURED) Text(stringResource(R.string.welcome_to_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 Text(stringResource(tab.label), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             }
         }
@@ -829,7 +829,7 @@ private fun MarketList(
         if (tab == MarketTab.INSTALLED && updates.isNotEmpty()) {
             item(key = "updates-label") { SheetGroupLabel("Updates") }
             item(key = "updates") {
-                SheetGroup(Modifier.padding(bottom = 10.dp)) {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     for (entry in updates) {
                         MarketRow(
                             session = session,
@@ -850,7 +850,7 @@ private fun MarketList(
             item {
                 Text(
                     stringResource(R.string.nothing_yet_themes_and_tweaks_you_get),
-                    color = Color.White.copy(alpha = .55f), modifier = Modifier.padding(vertical = 24.dp),
+                    color = Color.White.copy(alpha = .55f), modifier = Modifier.padding(vertical = FolioSpace.XXL.dp),
                 )
             }
         }
@@ -859,7 +859,7 @@ private fun MarketList(
             if (inSection.isEmpty()) continue
             item(key = "label-${section.id}") { SheetGroupLabel(section.id.replaceFirstChar(Char::uppercase)) }
             item(key = "group-${section.id}") {
-                SheetGroup(Modifier.padding(bottom = 10.dp)) {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     // Row by row, left to right, so reading order and TalkBack's order stay the list's order.
                     for (pair in inSection.chunked(columns)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -906,7 +906,7 @@ private fun MarketRow(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
             .clickable(onClickLabel = openLabel, onClick = onOpen)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PackageIcon(session, entry, 44.dp)
@@ -926,16 +926,16 @@ private fun MarketRow(
                     installed?.enabled == false || entry.revokedReason != null -> Color(0xFFFFB340)
                     else -> Color.White.copy(alpha = .55f)
                 },
-                fontSize = 13.sp,
+                fontSize = FolioType.FOOTNOTE.sp,
             )
             if (entry.unsigned) {
-                Text(stringResource(R.string.unsigned), color = Color(0xFFFFB340), fontSize = 12.sp)
+                Text(stringResource(R.string.unsigned), color = Color(0xFFFFB340), fontSize = FolioType.GROUP_LABEL.sp)
             }
             when (entry.clash) {
                 MarketEntry.Impostor.BUILT_IN ->
-                    Text(stringResource(R.string.claims_a_folio_package_s_name), color = FolioColors.Red, fontSize = 12.sp)
+                    Text(stringResource(R.string.claims_a_folio_package_s_name), color = FolioColors.Red, fontSize = FolioType.GROUP_LABEL.sp)
                 MarketEntry.Impostor.ANOTHER_SOURCE ->
-                    Text(stringResource(R.string.another_source_offers_this_name_too), color = Color(0xFFFFB340), fontSize = 12.sp)
+                    Text(stringResource(R.string.another_source_offers_this_name_too), color = Color(0xFFFFB340), fontSize = FolioType.GROUP_LABEL.sp)
                 null -> Unit
             }
         }
@@ -944,11 +944,11 @@ private fun MarketRow(
             // A revoked package can be removed but never installed again - including as an update, which is how a
             // pulled package used to slip back in.
             entry.revokedReason != null && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-            entry.revokedReason != null -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+            entry.revokedReason != null -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
-                Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = 13.sp)
-            entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+                Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
+            entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
             update -> MarketActionButton(R.string.update, name, onGet)
             // An app of its own isn't installed by Folio, so what it offers is Get until Android has it, then Open.
             MarketExternalApp.isExternal(entry.entry.manifest) ->
@@ -990,18 +990,18 @@ private fun MarketOwnSettings(style: FeaturedStyle, onStyle: (FeaturedStyle) -> 
             options = FeaturedStyle.entries.map { it to stringResource(it.label) },
             selected = style,
             onSelect = onStyle,
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp),
             tag = "market-featured-style",
         )
         Text(
             stringResource(style.description),
-            color = Color.White.copy(alpha = .55f), fontSize = 13.sp, modifier = Modifier.padding(bottom = 12.dp),
+            color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp),
         )
-        SheetGroup(Modifier.padding(bottom = 10.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
             IosActionRow(stringResource(R.string.show_the_introduction_again), onClick = onIntroduce)
         }
         val context = androidx.compose.ui.platform.LocalContext.current
-        SheetGroup(Modifier.padding(bottom = 16.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.LARGE.dp)) {
             IosActionRow(stringResource(R.string.open_folio_settings)) {
                 runCatching {
                     context.startActivity(
@@ -1023,14 +1023,14 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
     Text(
         stringResource(label),
         color = LocalAccent.current.ink,
-        fontSize = 15.sp,
+        fontSize = FolioType.SUBHEAD.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(FolioRadius.CARD.dp))
             .clickable(onClick = onClick)
             // 44 dp tall, so it's a comfortable target rather than just big enough to see.
             .heightIn(min = 44.dp)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp)
             .semantics { contentDescription = described },
     )
 }
@@ -1073,15 +1073,15 @@ private fun MarketPackagePage(
     val backLabel = stringResource(R.string.back)
     val external = MarketExternalApp.isExternal(entry.manifest)
     val onPhone = if (external) externalAppId(entry.manifest) else null
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
-            Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
                 // Where Back goes, as on iPhone ("‹ Packages"); TalkBack still hears "Back" as the action.
                 Text(backTitle ?: backLabel, color = LocalAccent.current.ink, fontSize = 16.sp)
             }
         }
-        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
             PackageIcon(session, MarketEntry(entry, source), 64.dp)
             Spacer(Modifier.width(14.dp))
             Column {
@@ -1089,26 +1089,26 @@ private fun MarketPackagePage(
                 entry.manifest?.author?.name?.english?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = 14.sp) }
                 // The author said AI helped make it (the manifest's aiAssisted). A plain tag, not a warning: it's
                 // how the package was made, the way the author line says who made it.
-                if (entry.manifest?.aiAssisted != null) AiAssistedTag(Modifier.padding(top = 4.dp))
+                if (entry.manifest?.aiAssisted != null) AiAssistedTag(Modifier.padding(top = FolioSpace.TINY.dp))
             }
         }
 
         if (installed?.enabled == false) {
-            SheetGroup(Modifier.padding(top = 12.dp)) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
+            SheetGroup(Modifier.padding(top = FolioSpace.MEDIUM.dp)) {
+                Row(Modifier.padding(FolioSpace.COMFY.dp), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = Color(0xFFFFB340), modifier = Modifier.size(20.dp))
-                    Column(Modifier.padding(start = 10.dp)) {
-                        Text(stringResource(R.string.turned_off_after_a_crash), color = Color.White, fontSize = 15.sp)
+                    Column(Modifier.padding(start = FolioSpace.COMPACT.dp)) {
+                        Text(stringResource(R.string.turned_off_after_a_crash), color = Color.White, fontSize = FolioType.SUBHEAD.sp)
                         Text(
                             installed.disabledReason ?: stringResource(R.string.your_settings_are_kept),
-                            color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                            color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                         )
                         // Safe Mode took its changes off Home. This puts them back, for a crash that wasn't its
                         // fault; Remove, below, is the other way out.
                         Text(
                             stringResource(R.string.try_again),
-                            color = LocalAccent.current.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(12.dp))
+                            color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(12.dp))
                                 .clickable(onClick = onTryAgain).heightIn(min = 44.dp)
                                 .padding(vertical = 11.dp).testTag("package-try-again"),
                         )
@@ -1117,12 +1117,12 @@ private fun MarketPackagePage(
             }
         }
 
-        Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
                 // Pulled by its source. Removing what's already on is still allowed; getting it is not.
                 revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
-                    Text(stringResource(R.string.unavailable), color = Color(0xFFFFB340), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+                    Text(stringResource(R.string.unavailable), color = Color(0xFFFFB340), fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
@@ -1138,12 +1138,12 @@ private fun MarketPackagePage(
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
                 },
-                color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
 
         entry.manifest?.description?.english?.let {
-            Text(it, color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(bottom = 12.dp))
+            Text(it, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
         }
 
         // The page the author wrote: Folio draws each block itself, and skips any it doesn't know.
@@ -1153,25 +1153,25 @@ private fun MarketPackagePage(
             when (block) {
                 is DepictionBlock.Hero -> MarketImage(session, source, block.image, Modifier.fillMaxWidth().height(160.dp))
                 is DepictionBlock.Screenshots -> Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = FolioSpace.COMPACT.dp),
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
                 ) {
                     block.images.forEach { MarketScreenshot(session, source, it, height = 260.dp) }
                 }
                 // The subset format-v1 promises authors: paragraphs, bold, italic, lists and links, nothing else.
-                is DepictionBlock.Markdown -> Column(Modifier.padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                is DepictionBlock.Markdown -> Column(Modifier.padding(bottom = FolioSpace.COMPACT.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                     MarketText.paragraphs(block.text.english).forEach { para ->
                         Text(
                             if (para.bullet) buildAnnotatedString { append("·  "); append(para.text) } else para.text,
-                            color = Color.White.copy(alpha = .85f), fontSize = 15.sp, lineHeight = 21.sp,
-                            modifier = if (para.bullet) Modifier.padding(start = 4.dp) else Modifier,
+                            color = Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp, lineHeight = 21.sp,
+                            modifier = if (para.bullet) Modifier.padding(start = FolioSpace.TINY.dp) else Modifier,
                         )
                     }
                 }
-                is DepictionBlock.FeatureList -> Column(Modifier.padding(bottom = 10.dp)) {
-                    block.items.forEach { Text("· ${it.english}", color = Color.White.copy(alpha = .85f), fontSize = 15.sp) }
+                is DepictionBlock.FeatureList -> Column(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    block.items.forEach { Text("· ${it.english}", color = Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp) }
                 }
-                is DepictionBlock.Changelog -> Column(Modifier.padding(bottom = 10.dp)) {
+                is DepictionBlock.Changelog -> Column(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     SheetGroupLabel(stringResource(R.string.what_s_new))
                     block.entries.forEach { Text("${it.version} — ${it.notes.english}", color = Color.White.copy(alpha = .7f), fontSize = 14.sp) }
                 }
@@ -1184,26 +1184,26 @@ private fun MarketPackagePage(
         // would be a promise Folio has no way to keep. It says what is true instead.
         if (external) {
             SheetGroupLabel(stringResource(R.string.an_app_of_its_own))
-            SheetGroup(Modifier.padding(bottom = 12.dp)) {
+            SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
                 Text(
                     stringResource(R.string.folio_can_t_see_inside_an_app),
-                    color = Color.White.copy(alpha = .7f), fontSize = 14.sp, modifier = Modifier.padding(14.dp),
+                    color = Color.White.copy(alpha = .7f), fontSize = 14.sp, modifier = Modifier.padding(FolioSpace.COMFY.dp),
                 )
             }
         }
         val safety = entry.manifest?.takeUnless { external }?.let { PackageSafety.of(it) }
         safety?.let {
             SheetGroupLabel(stringResource(R.string.what_it_can_t_reach))
-            SheetGroup(Modifier.padding(bottom = 12.dp)) {
-                Column(Modifier.padding(14.dp)) {
+            SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
+                Column(Modifier.padding(FolioSpace.COMFY.dp)) {
                     it.cannotAccess.forEach { line -> Text(line, color = Color.White.copy(alpha = .7f), fontSize = 14.sp) }
                 }
             }
         }
 
         SheetGroupLabel(stringResource(R.string.information))
-        SheetGroup(Modifier.padding(bottom = 12.dp)) {
-            Column(Modifier.padding(14.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
+            Column(Modifier.padding(FolioSpace.COMFY.dp)) {
                 // The source's name leads to the source, the way it does in Cydia and Sileo: a package is listed
                 // somewhere, and that somewhere has the rest of what it offers.
                 val sourceLine = stringResource(R.string.source_1_s, source.label)
@@ -1211,7 +1211,7 @@ private fun MarketPackagePage(
                     sourceLine,
                     color = LocalAccent.current.ink, fontSize = 14.sp,
                     modifier = Modifier.clickable(onClickLabel = sourceLine, onClick = onShowSource)
-                        .heightIn(min = 44.dp).padding(vertical = 12.dp).testTag("package-show-source"),
+                        .heightIn(min = 44.dp).padding(vertical = FolioSpace.MEDIUM.dp).testTag("package-show-source"),
                 )
                 // Provenance, or the honest absence of it. A package from a source with no provenance was being
                 // called "Built into Folio", which said the opposite of where it actually came from.
@@ -1222,15 +1222,15 @@ private fun MarketPackagePage(
                         source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_into_folio)
                         else -> stringResource(R.string.its_source_didn_t_say_how_it_was_built)
                     },
-                    color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                 )
-                installed?.let { Text(stringResource(R.string.installed_1_s, it.version), color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                installed?.let { Text(stringResource(R.string.installed_1_s, it.version), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }
                 entry.manifest?.aiAssisted?.let { ai ->
                     Text(
                         stringResource(R.string.made_with_ai_1_s, ai.tools.joinToString()),
-                        color = Color.White.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp),
+                        color = Color.White.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp),
                     )
-                    ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = 13.sp) }
+                    ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }
                 }
                 if (external) {
                     // Where it comes from, and whether Android has it - the two things the store can honestly say
@@ -1243,12 +1243,12 @@ private fun MarketPackagePage(
                     )
                     Text(
                         stringResource(R.string.on_this_phone_1_s, onPhone ?: stringResource(R.string.not_yet)),
-                        color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                        color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                     )
                 }
             }
         }
-        SheetGroup(Modifier.padding(bottom = 24.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.XXL.dp)) {
             IosActionRow(stringResource(R.string.share)) { onShare(entry) }
             MenuDivider()
             IosActionRow(stringResource(R.string.report_a_package), destructive = true) { onReport(entry) }
@@ -1259,12 +1259,12 @@ private fun MarketPackagePage(
         // keyboard would be Folio vouching for something it can't see.
         if (external) return@Column
         SheetGroupLabel(stringResource(if (entry.manifest?.permissions.isNullOrEmpty()) R.string.no_data_collected else R.string.what_this_package_changes))
-        SheetGroup(Modifier.padding(bottom = 24.dp)) {
+        SheetGroup(Modifier.padding(bottom = FolioSpace.XXL.dp)) {
             val lines = entry.manifest?.permissions.orEmpty().mapNotNull(PackagePermission::label)
             if (lines.isEmpty()) {
-                Text(stringResource(R.string.changes_appearance_only), color = Color.White.copy(alpha = .7f), fontSize = 14.sp, modifier = Modifier.padding(14.dp))
+                Text(stringResource(R.string.changes_appearance_only), color = Color.White.copy(alpha = .7f), fontSize = 14.sp, modifier = Modifier.padding(FolioSpace.COMFY.dp))
             } else {
-                Column(Modifier.padding(14.dp)) {
+                Column(Modifier.padding(FolioSpace.COMFY.dp)) {
                     lines.forEach { Text(it, color = Color.White.copy(alpha = .85f), fontSize = 14.sp) }
                 }
             }
@@ -1287,15 +1287,15 @@ internal fun AiAssistedTag(modifier: Modifier = Modifier) {
 @Composable
 private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(14.dp)).background(Color(0xFF2C2C2E))
+        Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
+            .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E))
             .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = onDismiss)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f))
         if (undo != null) {
-            Text(stringResource(R.string.undo), color = LocalAccent.current.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
+            Text(stringResource(R.string.undo), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
         }
     }
 }
@@ -1333,7 +1333,7 @@ private fun MarketImage(session: MarketSession, source: Source, path: String, mo
     val bundled = remember(path, url) {
         if (url != null) null else MarketImages.bundled(session.source::asset, path)
     }
-    Box(modifier.padding(bottom = 10.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f))) {
+    Box(modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f))) {
         when {
             bundled != null -> androidx.compose.foundation.Image(
                 bitmap = bundled,
@@ -1371,7 +1371,7 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
     // Until the picture arrives there is no shape to follow, so it holds a phone-shaped space rather than none.
     val ratio = if (size != null && size != androidx.compose.ui.geometry.Size.Unspecified && size.width > 0f && size.height > 0f) size.width / size.height else 150f / 260f
     Box(
-        Modifier.padding(bottom = 10.dp).height(height).then(Modifier.width(height * ratio))
+        Modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).then(Modifier.width(height * ratio))
             .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
     ) {
         painter?.let {
@@ -1453,7 +1453,7 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
         if (progress?.phase == MarketProgress.Phase.APPLYING) R.string.applying_1_s else R.string.installing_1_s, name,
     )
     Row(
-        Modifier.padding(horizontal = 10.dp).semantics {
+        Modifier.padding(horizontal = FolioSpace.COMPACT.dp).semantics {
             // A list can have a ring in it with nothing else to read, so the ring says which package it belongs to.
             contentDescription = doing
         },
@@ -1466,7 +1466,7 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
                 // It wraps rather than being cut short: at 200% text "About 20 seconds left" is wider than the
                 // column, and half a sentence about how long is left is worse than two lines of it.
                 Text(
-                    it, color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                    it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -1510,17 +1510,17 @@ private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when
 @Composable
 private fun NoScreenshots() {
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = .05f)).padding(16.dp).testTag("package-no-screenshots"),
+        Modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp))
+            .background(Color.White.copy(alpha = .05f)).padding(FolioSpace.LARGE.dp).testTag("package-no-screenshots"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SadFolio(46.dp)
         Spacer(Modifier.width(14.dp))
         Column {
-            Text(stringResource(R.string.no_screenshots), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.no_screenshots), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 stringResource(R.string.its_publisher_hasn_t_shown_what_it_looks),
-                color = Color.White.copy(alpha = .55f), fontSize = 13.sp,
+                color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
     }
