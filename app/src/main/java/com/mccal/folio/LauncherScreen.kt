@@ -231,6 +231,13 @@ fun LauncherScreen(
     SideEffect { pageGestures.editing = drag.active || widgetSession != null || resize.active; LiveDiscover.allowNativeOpen = pager.currentPage == 0 && !drag.active && widgetSession == null && !resize.active }
     val pageFling = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(nativePager, pagerSnapDistance = pageGestures,
         snapAnimationSpec = MotionSpeed.spring(1f, androidx.compose.animation.core.Spring.StiffnessMediumLow * 1.2f))
+    // Page Effects, resolved once here so nothing about the feature is consulted where it doesn't apply (REL-4a):
+    // NONE adds no layer, no pager read and no per-frame work at all. Gated until 0.6.8, off with Reduce Motion
+    // (DYN-11, A11Y-14), and off while an icon or widget is being moved, because a drop lands by coordinates and a
+    // layer transform would move the coordinates under the finger.
+    val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(launcherActivity) }
+    val pageEffect = if (pageEffectsOpen && !LocalReduceMotion.current && !drag.active && !resize.active && widgetSession == null)
+        state.pageEffect else PageEffect.NONE
     var nativeMotion by remember { mutableStateOf(false) }
     DisposableEffect(nativePager) {
         val callback: (Float) -> Unit = { progress ->
@@ -772,27 +779,41 @@ fun LauncherScreen(
                     key = { if (it < firstHome) "discover" else if (it - firstHome == visibleHomePages) "library" else "home-${it - firstHome}" }) { physicalPage ->
                     val page = physicalPage - firstHome
                     if (page == -1) {
-                        leftPageContent(Modifier.fillMaxSize())
+                        // Every page in this pager turns, not only Home: a cube whose neighbour slides in flat is not
+                        // a cube, and this is the page on Home's left.
+                        leftPageContent(Modifier.fillMaxSize().pageEffect(pageEffect, nativePager, physicalPage))
                     } else if (page == visibleHomePages) {
                         AppLibrary(state, libraryQuery, { libraryQuery = it }, onLaunch, model::setPinned,
                             // Unfolded portrait: the Side Bar's status capsule sits in the top corner, so the library keeps
                             // the same side margin Home does instead of running underneath it.
                             onActions = { overlays.menu = it.id }, modifier = Modifier.fillMaxSize()
+                                // The page effect turns the whole page, so it goes outside the library's own layer:
+                                // that one pushes the library back as Home returns, and the two stack rather than fight.
+                                .pageEffect(pageEffect, nativePager, physicalPage)
                                 .graphicsLayer { val b = libraryBack; scaleX = 1f - .14f * b; scaleY = scaleX; alpha = 1f - .35f * b; translationX = size.width * .08f * b }
                                 .padding(top = 16.dp, bottom = bottomSpace)
                                 .padding(libraryEdges(geometry.horizontalDock && !geometry.dockBesideRail && state.verticalStatus, preset.dockWidth, state.leftHanded)).testTag("library-page"),
                             drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = { model.turnOnWork(it) })
                     } else {
                         // Centered beside the rail when the grid is narrower than the space (short, wide windows).
+                        // Page Effects turn the page as it goes by, and only here, where one page fills the window.
+                        // Unfolded, Home pans two pages at once past the window (ExpandedWorkspace) and there is no
+                        // single page turning to speak of.
+                        //
+                        // The layer wraps the pane, not this Row: the Row fills the window and centres a narrower
+                        // grid beside the rail, so a cube pivoting on the Row would hinge on the window edge, out in
+                        // the empty margin, instead of on the seam the pane shares with its neighbour.
                         Row(Modifier.fillMaxSize().testTag("home-surface"), horizontalArrangement = Arrangement.Center) {
-                            HomePagePane(page, state, previewLayout.slots, previewLayout.leadingSlots, previewLayout.widgetPlacements, appsById, geometry, contentHeight,
-                                bottomSpace, widgets, drag, target, insertionTarget, showLargeWidget = false,
-                                onLaunch = onLaunchFrom, onActions = { overlays.menu = it.id },
-                                onWidget = { if (focusLock != null) lockNotice++ else { picker.slot = it; sheet = "widgetActions" } },
-                                onFolder = { overlays.folder = it },
-                                onEmptyWidget = onEmptyLongPress,
-                                onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
-                                onRefresh = model::refresh)
+                            Box(Modifier.pageEffect(pageEffect, nativePager, physicalPage)) {
+                                HomePagePane(page, state, previewLayout.slots, previewLayout.leadingSlots, previewLayout.widgetPlacements, appsById, geometry, contentHeight,
+                                    bottomSpace, widgets, drag, target, insertionTarget, showLargeWidget = false,
+                                    onLaunch = onLaunchFrom, onActions = { overlays.menu = it.id },
+                                    onWidget = { if (focusLock != null) lockNotice++ else { picker.slot = it; sheet = "widgetActions" } },
+                                    onFolder = { overlays.folder = it },
+                                    onEmptyWidget = onEmptyLongPress,
+                                    onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
+                                    onRefresh = model::refresh)
+                            }
                         }
                     }
                 }

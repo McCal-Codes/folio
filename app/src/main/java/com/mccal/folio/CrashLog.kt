@@ -111,5 +111,5 @@ internal object SafeMode {
     fun effective(state: LauncherState): LauncherState = if (!active) state else state.copy(
         appPanels = false, dockMagnify = false, tintNotifications = false, tintMedia = false, triggerActions = emptyMap(),
         foldEffect = false, lockCover = false, islandEverywhere = false, dockEverywhere = false, widgetStacks = state.widgetStacks,
-        stackRotate = false, notificationAppRow = false)
+        stackRotate = false, notificationAppRow = false, pageEffect = PageEffect.NONE)
 }

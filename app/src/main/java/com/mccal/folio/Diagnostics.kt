@@ -143,6 +143,7 @@ internal object Diagnostics {
             "left page ${state?.optString("leftPage", "TODAY") ?: "?"}",
             "wallpaper ${if (state?.optBoolean("systemWallpaper", false) == true) "Android" else "Folio"}",
             "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}",
+            "page effect ${state?.optString("pageEffect")?.ifBlank { PageEffect.NONE.name } ?: "?"}",
             "safe mode ${if (SafeMode.active) "on" else "off"}",
         ).joinToString(", ")
     }
