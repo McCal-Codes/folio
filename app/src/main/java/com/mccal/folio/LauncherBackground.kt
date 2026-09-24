@@ -49,16 +49,40 @@ internal object LauncherBackgroundCache {
     fun forget(listener: () -> Unit) { listeners -= listener }
 }
 
-internal fun launcherBackgroundFile(context: Context) = File(context.filesDir, BACKGROUND_FILE)
+/** The one photo the user picked. Written by [LauncherBackgroundController] and nothing else. */
+internal fun launcherPhotoFile(context: Context) = File(context.filesDir, BACKGROUND_FILE)
+
+/**
+ * The file behind Home right now, whichever kind of picture it is.
+ *
+ * Callers that want "the background" want this. Callers that want the picked photo specifically, which means the
+ * picker staging a new one and the code that clears it, want [launcherPhotoFile].
+ */
+internal fun launcherBackgroundFile(context: Context): File = when (val choice = backgroundChoice(context)) {
+    BackgroundChoice.None -> launcherPhotoFile(context)
+    BackgroundChoice.Photo -> launcherPhotoFile(context)
+    is BackgroundChoice.Art -> BackgroundLibrary.artFile(context, choice.id)
+}
 internal fun launcherBackgroundPreferences(context: Context) =
     context.getSharedPreferences(BACKGROUND_PREFS, Context.MODE_PRIVATE)
 internal fun launcherBackgroundEnabled(context: Context) =
-    launcherBackgroundPreferences(context).getBoolean(BACKGROUND_ENABLED, false) &&
-        launcherBackgroundFile(context).isFile
+    backgroundChoice(context) != BackgroundChoice.None && launcherBackgroundFile(context).isFile
+/**
+ * What the cached bitmap is a picture of, so a stale copy is never mistaken for the current one.
+ *
+ * A photo's identity is the id written when it was committed, which changes every time one is picked, even if the
+ * new photo happens to be the same size as the old. A piece of art is identified by itself: the id names the file
+ * and the file does not change under it, so switching art and switching back reuses the decode rather than
+ * discarding it.
+ */
 internal fun launcherBackgroundIdentity(context: Context): String? {
     if (!launcherBackgroundEnabled(context)) return null
-    return launcherBackgroundPreferences(context).getString(BACKGROUND_ID, null)
-        ?: "legacy-${launcherBackgroundFile(context).lastModified()}"
+    return when (val choice = backgroundChoice(context)) {
+        BackgroundChoice.None -> null
+        is BackgroundChoice.Art -> choice.save()
+        BackgroundChoice.Photo -> launcherBackgroundPreferences(context).getString(BACKGROUND_ID, null)
+            ?: "legacy-${launcherPhotoFile(context).lastModified()}"
+    }
 }
 
 /**
@@ -187,7 +211,9 @@ class LauncherBackgroundController(
         releasePreviewGrant()
         // A Compose or wallpaper-service canvas may still be drawing the old bitmap.
         LauncherBackgroundCache.changed(null)
-        launcherBackgroundFile(activity).delete()
+        launcherPhotoFile(activity).delete()
+        // Clearing the photo clears the background: a piece of art is chosen in the picker, not fallen back to.
+        setBackgroundChoice(activity, BackgroundChoice.None)
         prefs.edit().putBoolean(BACKGROUND_ENABLED, false).remove(BACKGROUND_ID).remove(PICKER_PENDING).remove(PENDING_URI)
             .remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
         photoSelected = false; errorMessage = null; successMessage = activity.getString(R.string.using_folio_dunes)
@@ -206,9 +232,10 @@ class LauncherBackgroundController(
         val staged = preview ?: return
         if (!previewPending || pendingOperation() != staged.operation ||
             previewFile()?.absolutePath != staged.file.absolutePath) return
-        runCatching { staged.commit(launcherBackgroundFile(activity)) }
+        runCatching { staged.commit(launcherPhotoFile(activity)) }
             .onSuccess {
                 releasePreviewGrant(staged.operation)
+                setBackgroundChoice(activity, BackgroundChoice.Photo)
                 prefs.edit().putBoolean(BACKGROUND_ENABLED, true).putString(BACKGROUND_ID, staged.operation)
                     .remove(PENDING_URI).remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
                 preview = null
@@ -414,7 +441,7 @@ class LauncherBackgroundController(
     private fun previewFile(): File? {
         val name = runCatching { prefs.getString(PREVIEW_FILE, null) }.getOrNull() ?: return null
         if (File(name).name != name || !name.startsWith("$BACKGROUND_FILE.") || !name.endsWith(".tmp")) return null
-        return File(launcherBackgroundFile(activity).parentFile, name)
+        return File(launcherPhotoFile(activity).parentFile, name)
     }
 
     private fun stage(uri: Uri, operation: String): StagedBackground {
@@ -431,7 +458,7 @@ class LauncherBackgroundController(
             bitmap.recycle()
             throw IllegalArgumentException("The selected image is too large.")
         }
-        val temporary = File(launcherBackgroundFile(activity).parentFile,
+        val temporary = File(launcherPhotoFile(activity).parentFile,
             "$BACKGROUND_FILE.$operation.${UUID.randomUUID()}.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -468,7 +495,7 @@ class LauncherBackgroundController(
     }
 
     private fun cleanupStagedFiles(keep: File? = null) {
-        launcherBackgroundFile(activity).parentFile?.listFiles { file ->
+        launcherPhotoFile(activity).parentFile?.listFiles { file ->
             file.name.startsWith("$BACKGROUND_FILE.") && file.name.endsWith(".tmp")
         }?.filterNot { keep != null && it.absolutePath == keep.absolutePath }?.forEach(File::delete)
     }
