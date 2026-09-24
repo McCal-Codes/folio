@@ -2,7 +2,13 @@ package com.mccal.folio
 
 import android.content.res.Configuration
 import android.util.DisplayMetrics
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalDensity
 
 /**
  * How much to scale dp by to judge a size class at the phone's own screen density. Developer options' "Smallest
@@ -48,6 +54,21 @@ internal fun settingsColumns(
  * text field, and the pane holding that field is taken away with the layout it belonged to (#117).
  */
 internal fun sizeClassHeightDp(heightDp: Float, keyboardDp: Float): Float = heightDp + keyboardDp
+
+/**
+ * The keyboard height to give [sizeClassHeightDp] inside FolioSheet's full-screen page, which is where every sheet
+ * that measures its own box is drawn. That page pads its content column by navigationBarsPadding() and only then by
+ * WindowInsets.ime, and windowInsetsPadding subtracts what an earlier one already consumed, so the IME padding takes
+ * off just the part of the keyboard past the navigation bar.
+ *
+ * Reading the raw WindowInsets.ime here would add the navigation bar back a second time and make the reconstructed
+ * window taller than the real one. A window whose content height sits just under [HOME_REGULAR_MIN_HEIGHT_DP] would
+ * then turn regular while a field has focus: #117's bug again, pointing the other way.
+ */
+@Composable
+internal fun keyboardDpOverSheet(): Float = with(LocalDensity.current) {
+    WindowInsets.ime.exclude(WindowInsets.navigationBars).getBottom(this).toDp().value
+}
 
 /**
  * Whether Settings keeps its list beside the page rather than pushing pages over it, given the columns the host

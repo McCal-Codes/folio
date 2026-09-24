@@ -335,7 +335,7 @@ internal fun MarketScreen(
         // The keyboard covers the Market; it doesn't make the window smaller (ADP-18a). Measured out here, so
         // that typing a source's address, or searching the Settings tab, can't take the sidebar and the pane beside
         // the list away for as long as the keyboard is up and hand them back when it goes (#117).
-        val keyboardDp = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp().value }
+        val keyboardDp = keyboardDpOverSheet()
         val split = marketSplits(maxWidth.value, maxHeight.value, classScale, keyboardDp)
         // Where the tabs go: a sidebar, a rail along the long edge, or the bar under the content. See [marketTabs].
         val tabs = marketTabs(maxWidth.value, maxHeight.value, classScale, keyboardDp)
