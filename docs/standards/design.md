@@ -12,6 +12,18 @@ Folio's own identity takes over.
   jailbreak tweak, not an Android launcher convention.
 - **DES-2 MUST NOT** copy Apple assets: no SF Symbols, Apple fonts, wallpapers or screenshots. Folio borrows patterns
   and measurements, not artwork.
+- **DES-2a MUST NOT** ship a background that Folio draws in code. A wallpaper is real art: a photograph or a painting
+  a person made. A generated scene is what every launcher falls back on, so it cannot be Folio's identity, however
+  carefully it is drawn. This covers anything offered to the user as a wallpaper, bundled or through the Market. It
+  does not cover the materials a surface is made of: a sheet's glass, a card's fill, a gradient inside an icon and a
+  scrim behind text are not backgrounds, and DES-14 and DES-16 still govern those.
+- **DES-2b MUST** be able to name the artist, the work and the license for every image Folio ships, and MUST NOT ship
+  an image missing any of the three. Public domain qualifies (a museum's open access scan, a work old enough that its
+  author's rights have lapsed), and so does a license whose own text permits redistribution inside an application
+  (CC0, Unsplash, Pexels). "Found on a wallpaper board", "no watermark on it" and "we credit the artist" do not:
+  credit is not a license, and an image with no author has no license to give. Record the artist, title, date, holding
+  collection, source URL and license beside the file, show the credit in the app, and take the image from the original
+  at full resolution rather than from the copy that was passed around.
 - **DES-3 SHOULD** use Android's own behaviour where users expect it (system share sheet, permission dialogs,
   predictive back, the system notification shade when chosen) and describe it in iOS terms in the UI.
 
@@ -122,3 +134,4 @@ Not yet:
 | 3 | ~~Move the rename dialog to Folio's `AlertDialog`, the direct Buttons to one `FolioButton`, the folder's menu to `FolioMenuPopup`~~ (done, #106) | S |
 | 4 | ~~Light-surface variants and named status colors~~ (done: `Warning`, `RedSoft`, `CyanLight`, `Teal`, `SheetSurface`, `MenuSurface`, `LightBackground`, plus `FolioColors.Value` for colors held as numbers) | S |
 | 5 | ~~A check that counts raw colors, radii and text sizes outside the token files~~ (done: `DesignTokensTest`) | S |
+| 6 | Remove the drawn backgrounds (`DuneWallpaper`'s dunes, `MoonColumnWallpaper`) and replace them with licensed art under DES-2a and DES-2b, keeping the picker, the drift and the scrim | M |
