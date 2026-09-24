@@ -61,6 +61,21 @@ internal fun launcherBackgroundIdentity(context: Context): String? {
         ?: "legacy-${launcherBackgroundFile(context).lastModified()}"
 }
 
+/**
+ * The background image, decoded once and shared.
+ *
+ * **Why the decode publishes what it decoded.** Three places want this picture on a cold start: Home, the wallpaper
+ * preview in Settings, and [DuneWallpaperService] drawing the live wallpaper. They are one process, so they should
+ * be looking at one bitmap. This used to return the cached copy on a hit but hand back a private copy on a miss
+ * without ever filling the cache, so a cold start decoded the same file two or three times over and held every
+ * copy. At the size a background is stored today that is roughly 12 MiB each, and it is the reason the stored
+ * resolution cannot go up until this is fixed.
+ *
+ * The publish is guarded rather than unconditional: a decode takes long enough that the user may have picked a new
+ * photo, or cleared it, while this one was running. [LauncherBackgroundCache.revision] moving, or the saved
+ * identity no longer matching the one this decode was for, both mean the result is already stale, so it is returned
+ * to the caller that asked for it but not installed as the shared copy.
+ */
 internal fun loadLauncherBackground(context: Context): Bitmap? {
     if (!launcherBackgroundEnabled(context)) return null
     val file = launcherBackgroundFile(context)
@@ -68,7 +83,12 @@ internal fun loadLauncherBackground(context: Context): Bitmap? {
     LauncherBackgroundCache.bitmap?.let {
         if (!it.isRecycled && LauncherBackgroundCache.identity == identity) return it
     }
-    return BitmapFactory.decodeFile(file.absolutePath)
+    val startingRevision = LauncherBackgroundCache.revision.intValue
+    val decoded = BitmapFactory.decodeFile(file.absolutePath) ?: return null
+    if (LauncherBackgroundCache.revision.intValue == startingRevision &&
+        launcherBackgroundIdentity(context) == identity
+    ) LauncherBackgroundCache.changed(decoded, identity)
+    return decoded
 }
 
 internal fun cachedLauncherBackground(context: Context): Bitmap? {
