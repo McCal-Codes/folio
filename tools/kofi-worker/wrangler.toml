@@ -42,6 +42,8 @@ POOLS = '{"tiers":{"*":"m2","Builder":"m2thanks"},"shop":{},"tipBands":[{"from":
 # foliolauncher.com is refused outright. Sending from a subdomain is also Resend's own advice, so a spam complaint
 # lands there rather than on the domain the site is served from.
 MAIL_FROM = "Folio <admin@send.foliolauncher.com>"
+# Replies go to a mailbox that exists. Without this a supporter's answer would bounce off a send-only address.
+REPLY_TO = "contact@mcc-cal.com"
 
 # Secrets, set with `wrangler secret put NAME` (never in this file):
 #   KOFI_TOKEN   the verification token from Ko-fi's Webhooks page

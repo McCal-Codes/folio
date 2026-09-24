@@ -190,6 +190,9 @@ async function email(env, data, code, pool) {
   const body = {
     from: env.MAIL_FROM,
     to: data.email,
+    // Where a reply lands. The From address is on the domain Resend verified, which nobody reads mail at; this is a
+    // mailbox McCal actually opens, so a supporter who answers isn't talking into the void.
+    ...(env.REPLY_TO ? { reply_to: env.REPLY_TO } : {}),
     subject: 'Your Folio supporter code',
     text: [
       `Thank you${data.from_name ? `, ${data.from_name}` : ''}.`,
