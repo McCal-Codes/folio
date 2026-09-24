@@ -65,8 +65,11 @@ internal fun launcherBackgroundFile(context: Context): File = when (val choice =
 }
 internal fun launcherBackgroundPreferences(context: Context) =
     context.getSharedPreferences(BACKGROUND_PREFS, Context.MODE_PRIVATE)
-internal fun launcherBackgroundEnabled(context: Context) =
-    backgroundChoice(context) != BackgroundChoice.None && launcherBackgroundFile(context).isFile
+internal fun launcherBackgroundEnabled(context: Context) = when (val choice = backgroundChoice(context)) {
+    BackgroundChoice.None -> false
+    BackgroundChoice.Photo -> launcherPhotoFile(context).isFile
+    is BackgroundChoice.Art -> BackgroundLibrary.exists(context, choice.id)
+}
 /**
  * What the cached bitmap is a picture of, so a stale copy is never mistaken for the current one.
  *
@@ -108,11 +111,28 @@ internal fun loadLauncherBackground(context: Context): Bitmap? {
         if (!it.isRecycled && LauncherBackgroundCache.identity == identity) return it
     }
     val startingRevision = LauncherBackgroundCache.revision.intValue
-    val decoded = BitmapFactory.decodeFile(file.absolutePath) ?: return null
+    val decoded = decodeBackground(context, file) ?: return null
     if (LauncherBackgroundCache.revision.intValue == startingRevision &&
         launcherBackgroundIdentity(context) == identity
     ) LauncherBackgroundCache.changed(decoded, identity)
     return decoded
+}
+
+/**
+ * Reads the picture, from wherever this one lives.
+ *
+ * Art that shipped with Folio is an asset inside the APK and has no path on the filesystem, so it cannot go through
+ * [BitmapFactory.decodeFile] the way a photo or an installed piece does. Everything after this point is the same
+ * bitmap either way, which is the whole reason art and photos share one path.
+ */
+private fun decodeBackground(context: Context, file: File): Bitmap? {
+    val choice = backgroundChoice(context)
+    if (choice is BackgroundChoice.Art && BackgroundLibrary.isBuiltIn(choice.id)) {
+        return runCatching {
+            context.assets.open(BackgroundLibrary.assetPath(choice.id)).use(BitmapFactory::decodeStream)
+        }.getOrNull()
+    }
+    return BitmapFactory.decodeFile(file.absolutePath)
 }
 
 internal fun cachedLauncherBackground(context: Context): Bitmap? {

@@ -119,10 +119,56 @@ internal object BackgroundLibrary {
     fun all(context: Context): List<Artwork> = (builtIn() + installed(context)).filter { it.credited }
 
     /**
-     * Art that shipped inside the app. Empty for now: the first pieces land with the art itself, and the shape of
-     * this list is what `docs/sdk/examples/wallpaper-wooded-hilly-landscape` is written against.
+     * Art that shipped inside the app.
+     *
+     * Two woodblock prints, both by an artist who died in 1858, both from a library that publishes its scans with no
+     * restriction. They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
+     * them and the file is the same one on every phone, and they are cropped off their paper mounts and sized to
+     * 2448 px wide, which is the widest window Folio runs in. That width is the point: a center crop never has to
+     * scale them up.
+     *
+     * The credit is written out here rather than read from a file because these ship with the app, so there is no
+     * later moment at which it could be missing, and a constant is the one form of it that cannot go stale or fail
+     * to parse.
+     *
+     * Each credit line is marked `// english-only`, which is why it is not in `strings.xml`. A painting's title, its
+     * painter's name and the museum holding it are the same in every language, and "Public domain" translated into a
+     * language nobody checked would be Folio making a legal claim it has not verified. The words around them in the
+     * picker are translated as usual; these four fields are the work's own name for itself.
      */
-    private fun builtIn(): List<Artwork> = emptyList()
+    private fun builtIn(): List<Artwork> = BUILT_IN
+
+    private val BUILT_IN = listOf(
+        Artwork(
+            id = "night-view-of-saruwaka-machi",
+            title = "Night View of Saruwaka-machi", // english-only
+            artist = "Utagawa Hiroshige", // english-only
+            license = "Public domain", // english-only
+            detail = "1856. Library of Congress.", // english-only
+            source = "https://www.loc.gov/pictures/item/2008660961/",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "naruto-whirlpools",
+            title = "Naruto Whirlpools", // english-only
+            artist = "Utagawa Hiroshige", // english-only
+            license = "Public domain", // english-only
+            detail = "1855. National Library of New Zealand.", // english-only
+            source = "https://natlib.govt.nz/records/22811404",
+            builtIn = true,
+        ),
+    )
+
+    /** The art inside the app, by id. Read by the test that holds each piece to its credit and its picture. */
+    val builtInIds: List<String> get() = BUILT_IN.map { it.id }
+
+    fun isBuiltIn(id: String) = BUILT_IN.any { it.id == id }
+
+    /** Where a built-in piece lives inside the app. */
+    fun assetPath(id: String) = "wallpapers/$id.webp"
+
+    /** Whether the picture for [id] is actually here, wherever it lives. */
+    fun exists(context: Context, id: String) = isBuiltIn(id) || artFile(context, id).isFile
 
     fun installed(context: Context): List<Artwork> {
         val text = runCatching { recordFile(context).takeIf { it.isFile }?.readText() }.getOrNull() ?: return emptyList()
@@ -149,6 +195,9 @@ internal object BackgroundLibrary {
      */
     fun record(context: Context, art: Artwork): Boolean {
         if (!art.credited) return false
+        // A package claiming a name that belongs to art inside Folio is claiming to be that art, the same refusal
+        // the Market already makes for package ids.
+        if (isBuiltIn(art.id)) return false
         val dir = installedDir(context)
         if (!dir.isDirectory && !dir.mkdirs()) return false
         val json = runCatching { JSONObject(recordFile(context).readText()) }.getOrNull() ?: JSONObject()
