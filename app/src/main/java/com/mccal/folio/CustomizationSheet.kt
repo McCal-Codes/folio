@@ -428,6 +428,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             IosMenuRow(stringResource(R.string.badge_look), BadgeLook.entries.map { it to stringResource(it.label) }, state.badgeLook, model::setBadgeLook, tag = "badge-look")
                             IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to stringResource(it.label) }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
                             BadgePreviewRow(state)
+                            // Clear Badges When Opened, for supporters until 0.6.8 (FeatureGate.BADGES_WHEN_OPENED).
+                            val badgesWhenOpenedOpen = remember { FeatureGate.BADGES_WHEN_OPENED.isOpen(iconContext) }
+                            if (badgesWhenOpenedOpen) {
+                                SettingsSwitch(stringResource(R.string.clear_badges_when_opened), state.badgesWhenOpened,
+                                    model::setBadgesWhenOpened, "badges-when-opened-switch")
+                                CardNote(stringResource(R.string.a_badge_goes_away_when_you_open_the_app))
+                            }
                         }
                         // iOS Home Screen customization: Default, Dark and Tinted side by side.
                         Text(stringResource(R.string.style), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))

@@ -559,6 +559,34 @@ internal object BadgeClears {
         items.filter { it.key !in cleared }.groupingBy { it.packageName }.eachCount()
 }
 
+/**
+ * Clear Badges When Opened (Settings › App Icons): an app's badge goes quiet the moment you open the app, instead of
+ * waiting for the app itself to clear it. Opening an app remembers the count that was showing as seen, and the badge
+ * stays away while the app is still showing that many notifications or fewer. A new notification takes the count past
+ * the seen one, so the badge comes straight back.
+ *
+ * The seen counts live in [LauncherState.badgesSeen], so they survive a restart; nothing is dismissed, and Folio's
+ * notification list is left exactly as the phone reports it.
+ *
+ * Both functions take the seen counts rather than reading a setting, so the caller can gate them
+ * ([FeatureGate.BADGES_WHEN_OPENED]) by passing an empty map: a phone the feature is shut for hides no badge, writes
+ * nothing, and pays nothing for it.
+ */
+internal object BadgesWhenOpened {
+    /** [counts] with the apps whose badge has already been seen left out. */
+    fun visible(counts: Map<String, Int>, seen: Map<String, Int>): Map<String, Int> =
+        if (seen.isEmpty()) counts else counts.filterNot { (packageName, count) -> count <= (seen[packageName] ?: 0) }
+
+    /**
+     * The seen counts brought down to what each app is showing now, dropping apps with nothing left. Without this, an
+     * app whose notifications are swiped away elsewhere (five seen, two left) would hide its next three as well.
+     */
+    fun trimmed(counts: Map<String, Int>, seen: Map<String, Int>): Map<String, Int> =
+        seen.mapNotNull { (packageName, wasSeen) ->
+            (counts[packageName] ?: 0).takeIf { it > 0 }?.let { packageName to minOf(wasSeen, it) }
+        }.toMap()
+}
+
 /** Most icons dark? Samples up to 40 app icons (skipping Clock and Calendar themselves); null if there aren't enough. */
 internal fun iconsMostlyDark(icons: List<android.graphics.Bitmap>): Boolean? {
     val sample = icons.take(40)
