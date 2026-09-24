@@ -68,6 +68,11 @@ makes that enforceable, and it's why Folio can be ready for tri-folds and flip c
   `safeDrawing` (plus the cutout and hidden-camera insets through `folioSafeTop`).
 - **ADP-17 MUST** handle each inset side independently. A bar may be on the left in split view or landscape.
 - **ADP-18 MUST** respect the IME inset in anything with a text field.
+- **ADP-18a MUST** add the keyboard back before reading a breakpoint. A size class describes the window; the IME
+  covers a window rather than resizing it, so a layout judged on an IME-padded height changes shape while a field has
+  focus and changes back when it loses focus. Measure with `sizeClassHeightDp(heightDp, keyboardDp)`
+  (`SizeClass.kt:50`), never a `BoxWithConstraints` that something above it has already padded by
+  `WindowInsets.ime`.
 
 ### Windows and input
 
@@ -101,6 +106,9 @@ Good:
 
 Not yet:
 
+- The keyboard has now been measured as a smaller window twice: Settings (#117) and the Market's panes, where
+  `FullScreenPage` padded the `BoxWithConstraints` the size class was read from, so a focused field could drop a
+  pane. `sizeClassHeightDp` exists because of the first; ADP-18a is written because of the second.
 - The only device branch: `CameraArea.kt:22-33` (SM-F971 hidden camera). It's a real hardware fact the platform
   doesn't report, so it's a recorded exception, but `DisplayCutout` and `getDisplayShape()` should be read first.
 - Bare breakpoints: 650 in four files, 700 / 920 in Settings and `MarketScreen.kt:331-337`, 560 in `TodayView.kt:59`,
