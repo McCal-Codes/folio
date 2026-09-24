@@ -128,7 +128,6 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 | 1 | A written claim on shared files for concurrent sessions, even just a `docs/in-flight.md` listing branch, files and session (REL-6) | S |
 | 2 | Branch protection on `main` requiring the `release-rules` check, so nothing can be pushed straight to it and the check cannot be skipped by merging early | S |
 | 3 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
-| 4 | A check that a pull request touching `themes/` or a Market package carries its AI-assisted label (AI-6), the same shape as the changelog check | S |
 
 ### Done
 

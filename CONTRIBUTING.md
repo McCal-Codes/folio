@@ -50,13 +50,6 @@ Preserve one-page-per-swipe behavior, native widget scrolling and long-press pic
 Home-page retention. Keep access optional and explain it where it's used. Layouts follow screen size, not device
 checks. Tests should reproduce failures or protect meaningful behavior.
 
-## Using AI tools
-
-If an AI agent helps with your contribution, it may only **test for and fix bugs**: reproduce a problem, write a test
-that shows it, and make the smallest fix. New features, UI changes, refactors and translations need a person. Say in the
-pull request which tool you used and what it did. Themes, tweaks and Market packages made with AI are welcome,
-labelled "AI-assisted". The full rules are in [AI contributions](docs/standards/ai-contributions.md).
-
 ## Translating Folio
 
 Folio's text lives in `app/src/main/res/values/strings.xml`. Everything in that file can be translated; text still
