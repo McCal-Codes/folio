@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -96,7 +97,7 @@ internal fun BigClockCard(onEdit: () -> Unit) {
     val context = LocalContext.current
     val ink = LocalHomeInk.current
     val tick by rememberMinuteTick()
-    val screenshot by ScreenshotMode.on.collectAsState()
+    val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
     val now = displayNow(tick)
     val is24 = android.text.format.DateFormat.is24HourFormat(context)
     val allowed = remember(tick) { UpNext.hasCalendar(context) }

@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -277,8 +278,11 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     // within the hour for Up Next, or an app you usually open around this time for its widget.
     val context = androidx.compose.ui.platform.LocalContext.current
     val homeApps = LocalHomeApps.current
-    LaunchedEffect(rotate, cards) {
-        if (rotate) while (true) {
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(rotate, cards, lifecycleOwner) {
+        // Only while Home is in front: a stack that rotates behind another app burns a read of usage stats and the
+        // calendar for a screen nobody is looking at (DYN-15).
+        if (rotate) lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) {
             delay(15 * 60_000L)
             val relevance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val apps = Suggestions.packageRelevance(context, homeApps.apps)
@@ -292,7 +296,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
             val pick = Suggestions.smartStackPick(relevance, pager.currentPage)
             if (pick != null && !pager.isScrollInProgress) pager.animateScrollToPage(pick)
         }
-    }
+    } }
     var dotsVisible by remember { mutableStateOf(false) }
     LaunchedEffect(pager.isScrollInProgress) { if (pager.isScrollInProgress) dotsVisible = true else { delay(1_200); dotsVisible = false } }
     Box(modifier) {

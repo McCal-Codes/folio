@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,6 +53,6 @@ object ScreenshotMode {
 /** The time a Folio clock shows, refreshed with [tick] and right away when Screenshot Mode changes. */
 @Composable
 internal fun displayNow(tick: Any?): LocalDateTime {
-    val screenshot by ScreenshotMode.on.collectAsState()
+    val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
     return remember(tick, screenshot) { ScreenshotMode.now(screenshot) }
 }

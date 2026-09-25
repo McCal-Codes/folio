@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.pm.LauncherApps
 import android.content.pm.PackageInstaller
@@ -115,7 +116,7 @@ internal fun NewAppDot(packageName: String, size: androidx.compose.ui.unit.Dp = 
 /** New apps still downloading, as waiting icons with their progress, at the top of the App Library. */
 @androidx.compose.runtime.Composable
 internal fun DownloadingApps(labelColor: androidx.compose.ui.graphics.Color) {
-    val downloads = Installs.active.collectAsState().value.values.filter { it.newApp }.distinctBy { it.packageName }
+    val downloads = Installs.active.collectAsStateWithLifecycle().value.values.filter { it.newApp }.distinctBy { it.packageName }
     if (downloads.isEmpty()) return
     androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(bottom = FolioSpace.COMFY.dp).testTag("library-downloading")) {
         androidx.compose.material3.Text(stringResource(R.string.downloading), color = labelColor.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,

@@ -182,13 +182,8 @@ fun StatusRail(
     fun faint(alpha: Float) = if (onLight) (alpha * 1.6f).coerceAtMost(.6f) else alpha
     val charging = if (onLight) BatteryChargingOnLight else BatteryCharging
     val low = if (onLight) BatteryLowOnLight else BatteryLow
-    val screenshot by ScreenshotMode.on.collectAsState()
-    val now by produceState(ScreenshotMode.now(screenshot), screenshot) {
-        while (true) {
-            value = ScreenshotMode.now(screenshot)
-            delay(60_050L - (System.currentTimeMillis() % 60_000L))
-        }
-    }
+    // Ticker, not a loop of its own: one clock for the whole app, stopped while nothing is watching (DYN-14).
+    val now = displayNow(rememberMinuteTick().value)
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     val timeFormatter = remember(format) { DateTimeFormatter.ofPattern(format) }
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d") }

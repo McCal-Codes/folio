@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -65,11 +66,11 @@ private const val MICRO_SIDE = 18f
 internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, height: Dp,
     onLaunch: (AppEntry) -> Unit, onNotifications: () -> Unit, onSearch: () -> Unit, onSettings: () -> Unit) {
     val context = LocalContext.current
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(60_000 - now % 60_000) } }
+    // The shared minute tick rather than a loop of its own (DYN-14).
+    val now by rememberMinuteTick()
     val roomy = minOf(width, height) >= 300.dp
-    val media = IslandListenerService.activity.collectAsState().value as? IslandActivity.Media
-    val notifications = IslandListenerService.notifications.collectAsState().value.size
+    val media = IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media
+    val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.size
     // Like the iOS Lock Screen: no AM/PM, so the time always fits one line.
     val time = android.text.format.DateFormat.format(
         if (android.text.format.DateFormat.is24HourFormat(context)) "H:mm" else "h:mm", now).toString()

@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import android.app.NotificationManager
@@ -154,7 +155,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 @Composable
 private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, tall: Boolean = false, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
-    val items by IslandListenerService.notifications.collectAsState()
+    val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
     val tick by rememberMinuteTick()
     val now = displayNow(tick)
@@ -502,7 +503,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
-    val media = (IslandListenerService.activity.collectAsState().value as? IslandActivity.Media)
+    val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)
     val open = { intent: Intent -> onClose(); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
     fun launchFirst(packages: List<String>) = packages.firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
     fun available(control: CcControl) = when (control) {
