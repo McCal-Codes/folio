@@ -57,7 +57,8 @@ internal data class HomeScrim(
          * controls beside them have no shadow and no glass behind them.
          *
          * Both were then settled by the numbers: over #D8CEB6, the palest colour Folio itself ships (the sand at the
-         * foot of the dunes), they take white to 3.1:1 at the top edge and 3.3:1 at the bottom, so A11Y-9's 3:1 for
+         * lit paper at the top of Saruwaka-machi), they take white to 3.1:1 at the top edge and 3.3:1 at the
+         * bottom, so A11Y-9's 3:1 for
          * large text, icons and control boundaries is met. 4.5:1 for body-size white text over that same sand would
          * take about .43, which is a filter and not a scrim; that case belongs to Automatic dark text instead, and
          * [HomeScrimTest] holds both facts.
@@ -114,7 +115,7 @@ internal data class HomeScrim(
  * Draws [scrim] over whatever this modifier's content drew.
  *
  * Put it after the `graphicsLayer` that caches the background and the scrim goes into that same layer, so it is
- * rasterised once with the dunes or the photo and costs nothing per frame (PRF-7). Used on its own, over Android's
+ * rasterised once with the picture and costs nothing per frame (PRF-7). Used on its own, over Android's
  * wallpaper, it is two alpha-blended gradient bands of fill a frame and no new layer: no blur, no `RenderEffect`, no
  * offscreen buffer.
  *

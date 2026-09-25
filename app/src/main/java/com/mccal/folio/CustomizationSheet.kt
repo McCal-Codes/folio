@@ -1491,7 +1491,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
                 val previewDim = if (state.dimWallpaperDark && basePalette.dark) .3f else 0f
                 if (previewDim > 0f) Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = previewDim)))
                 // Drawn over the background rather than inside it, because the preview lays the chosen photo over the
-                // dunes; on Home the same scrim is baked into the background's cached layer.
+                // background; on Home the same scrim is baked into the background's cached layer.
                 HomeScrim.of(state.homeScrim, ink.dark, previewDim).let { if (it.draws) Box(Modifier.matchParentSize().homeScrim(it)) }
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass)) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
