@@ -2,6 +2,9 @@
 #
 # Mod My Android's #app-updates takes an automated post per release rather than a person pasting one, and offered
 # Folio a ping role. Nothing is sent until MMD_WEBHOOK_URL exists as a secret, so this is inert until it does.
+#
+# That secret can hold several webhooks separated by commas: Folio's own server should not hear about a release
+# after everyone else does.
 name: Announce
 
 on:

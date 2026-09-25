@@ -9,7 +9,9 @@
  * download link. No embed cards, so this does not either.
  *
  * Environment:
- *   DISCORD_WEBHOOK_URL   required to actually send. Without it this prints and exits 0, so a fork never fails.
+ *   DISCORD_WEBHOOK_URL   required to actually send. One webhook, or several separated by commas: Folio's own
+ *                         server should not hear about a release after everyone else. Without it this prints and
+ *                         exits 0, so a fork never fails.
  *   DISCORD_ROLE_ID       optional. The role the channel made for Folio, pinged on the first line.
  *   ANNOUNCE_PRERELEASES  "true" to post betas as well. Off by default: a beta a week is how a channel gets muted.
  *
@@ -151,6 +153,17 @@ export function wallOf(release) {
   )
 }
 
+/**
+ * One webhook or a comma-separated list of them, so a release can reach Folio's own server and MMD's channel in the
+ * same job. Blanks and stray whitespace are dropped, because a list edited in a settings box usually has both.
+ */
+export function splitWebhooks(value = '') {
+  return String(value ?? '')
+    .split(',')
+    .map((one) => one.trim())
+    .filter(Boolean)
+}
+
 /** Discord takes 10 MB on a server with no boosts. Eight is the line where a slow connection still gets the post. */
 const UPLOAD_LIMIT = 8 * 1024 * 1024
 
@@ -202,8 +215,8 @@ async function main() {
 
   const message = buildMessage({ release, roleId: process.env.DISCORD_ROLE_ID?.trim() })
   const wall = wallOf(release)
-  const webhook = process.env.DISCORD_WEBHOOK_URL?.trim()
-  if (dryRun || !webhook) {
+  const webhooks = splitWebhooks(process.env.DISCORD_WEBHOOK_URL)
+  if (dryRun || !webhooks.length) {
     console.log(dryRun ? 'Dry run. This is the message:' : 'No DISCORD_WEBHOOK_URL set, so nothing is sent:')
     console.log('-'.repeat(60))
     console.log(message.content)
@@ -212,8 +225,20 @@ async function main() {
     return console.log(wall ? `With ${wall.name} attached.` : 'No feature wall on this release, so text only.')
   }
 
-  const sent = await post(webhook, message, wall)
-  console.log(`Posted ${release.tag_name}, message ${sent?.id ?? 'sent'}.`)
+  // Each webhook gets its own attempt. One channel refusing a post is not a reason for the others to miss it, so
+  // a failure is reported at the end rather than thrown in the middle.
+  const failures = []
+  for (const [index, one] of webhooks.entries()) {
+    const label = webhooks.length > 1 ? `webhook ${index + 1} of ${webhooks.length}` : 'the webhook'
+    try {
+      const sent = await post(one, message, wall)
+      console.log(`Posted ${release.tag_name} to ${label}, message ${sent?.id ?? 'sent'}.`)
+    } catch (error) {
+      console.error(`Could not post to ${label}: ${error.message}`)
+      failures.push(label)
+    }
+  }
+  if (failures.length) throw new Error(`${failures.length} of ${webhooks.length} webhooks did not take the post.`)
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main()

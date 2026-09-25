@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMessage, kindOf, sections, shorten, tagline, wallOf } from './announce-release.mjs'
+import { buildMessage, kindOf, sections, shorten, splitWebhooks, tagline, wallOf } from './announce-release.mjs'
 
 const release = {
   tag_name: 'v0.6.6',
@@ -111,4 +111,12 @@ test('a release with no APK points at the release page instead', () => {
   const { content } = buildMessage({ release: { ...release, assets: [] } })
   assert.match(content, /\[The release\]\(https:\/\/github\.com/)
   assert.doesNotMatch(content, /Download the APK/)
+})
+
+test('one webhook or several, and a list edited by hand still parses', () => {
+  assert.deepEqual(splitWebhooks('https://a'), ['https://a'])
+  assert.deepEqual(splitWebhooks(' https://a , https://b '), ['https://a', 'https://b'])
+  assert.deepEqual(splitWebhooks('https://a,,https://b,'), ['https://a', 'https://b'])
+  assert.deepEqual(splitWebhooks(''), [])
+  assert.deepEqual(splitWebhooks(undefined), [])
 })
