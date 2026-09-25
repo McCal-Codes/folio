@@ -46,6 +46,8 @@ class WhatsNewTest {
         assertEquals(NoteItem("More rows", "Home adds rows."), WhatsNew.split("**More rows:** home adds rows."))
         assertEquals(NoteItem("Big Clock", "A clock."), WhatsNew.split("**Big Clock**: A clock."))
         assertEquals(NoteItem(null, "Folders can be moved again."), WhatsNew.split("Folders can be moved again."))
+        // Markers survive: What's New draws them with MarketText rather than showing them as typed.
+        assertEquals(NoteItem(null, "A folder holds **twelve** apps."), WhatsNew.split("A folder holds **twelve** apps."))
     }
 
     @Test fun `every new feature in the current release has a short bold title`() {
@@ -55,4 +57,24 @@ class WhatsNewTest {
         assertTrue(added.isNotEmpty())
         added.forEach { assertTrue("Needs a title: ${it.detail}", it.title != null && it.title!!.length <= 40) }
     }
+    @Test fun `a release note's own emphasis and links survive into what Folio draws`() {
+        // What's New hands the detail to MarketText, so an entry can stress a word or point at a page. The same
+        // subset the Market's package pages use: bold, italic, https links, and nothing that escapes into markup.
+        val note = WhatsNew.split("**Folders:** hold **twelve** apps now, see [the guide](https://foliolauncher.com/guide).")
+        assertEquals("Folders", note.title)
+        val drawn = MarketText.inline(note.detail)
+        assertEquals("Hold twelve apps now, see the guide.", drawn.text)
+        val bold = drawn.spanStyles.single { it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.SemiBold }
+        assertEquals("twelve", drawn.text.substring(bold.start, bold.end))
+        val link = drawn.getLinkAnnotations(0, drawn.text.length).single()
+        assertEquals("the guide", drawn.text.substring(link.start, link.end))
+        assertEquals("https://foliolauncher.com/guide", (link.item as androidx.compose.ui.text.LinkAnnotation.Url).url)
+    }
+
+    @Test fun `a link that is not https is left as the author typed it`() {
+        val drawn = MarketText.inline("see [here](http://example.com)")
+        assertEquals("see [here](http://example.com)", drawn.text)
+        assertEquals(0, drawn.getLinkAnnotations(0, drawn.text.length).size)
+    }
+
 }

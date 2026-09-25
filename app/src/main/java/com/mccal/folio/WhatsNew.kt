@@ -26,10 +26,13 @@ data class ReleaseNotes(val version: String, val date: String?, val sections: Li
 data class NoteItem(val title: String?, val detail: String)
 
 internal object WhatsNew {
-    /** "**Title:** detail" → title and detail; other lines keep their text (with any stray bold markers removed). */
+    /**
+     * "**Title:** detail" → title and detail; other lines keep their text, markers and all, because What's New
+     * renders them with [MarketText] now rather than showing them as typed.
+     */
     fun split(item: String): NoteItem {
         val m = Regex("""^\*\*(.+?):?\*\*:?\s*(.*)$""").find(item.trim())
-            ?: return NoteItem(null, item.replace("**", "").trim())
+            ?: return NoteItem(null, item.trim())
         val detail = m.groupValues[2].trim().replaceFirstChar { it.uppercase() }
         return NoteItem(m.groupValues[1].trim().removeSuffix(":"), detail)
     }
@@ -171,7 +174,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                         DisclosureRow("Fixes and Improvements", open = fixesOpen, count = others.size, tag = "whats-new-fixes") { fixesOpen = !fixesOpen }
                         if (fixesOpen) others.forEach { note ->
                             MenuDivider()
-                            androidx.compose.material3.Text(note.title?.let { "$it: ${note.detail}" } ?: note.detail,
+                            androidx.compose.material3.Text(MarketText.inline(note.title?.let { "**$it:** ${note.detail}" } ?: note.detail, LocalAccent.current.ink),
                                 color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
                                 modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp))
                         }
@@ -197,7 +200,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                                 if (heading.isNotEmpty()) androidx.compose.material3.Text(heading.uppercase(), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .5f),
                                     fontSize = FolioType.GROUP_LABEL.sp, modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.LARGE.dp, top = FolioSpace.COMPACT.dp))
                                 items.forEach { text ->
-                                    androidx.compose.material3.Text("• $text", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
+                                    androidx.compose.material3.Text(MarketText.inline("• $text", LocalAccent.current.ink), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
                                         modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SNUG.dp))
                                 }
                             }
@@ -231,7 +234,7 @@ private fun FeatureRow(note: NoteItem) {
         androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(start = FolioSpace.COMFY.dp).weight(1f)) {
             note.title?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
-            androidx.compose.material3.Text(note.detail, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = FolioType.SUBHEAD.sp,
+            androidx.compose.material3.Text(MarketText.inline(note.detail, LocalAccent.current.ink), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = FolioType.SUBHEAD.sp,
                 modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.HAIR.dp))
         }
     }
