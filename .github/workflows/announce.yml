@@ -1,10 +1,12 @@
-# Tells a Discord channel about a release, once, when it is published.
+# Tells Discord about a release, once, when it is published.
 #
-# Mod My Android's #app-updates takes an automated post per release rather than a person pasting one, and offered
-# Folio a ping role. Nothing is sent until MMD_WEBHOOK_URL exists as a secret, so this is inert until it does.
+# Posts to every webhook in the secret DISCORD_WEBHOOK_URLS, comma-separated: Folio's own #announcements and Mod My
+# Android's #app-updates. Nothing is sent until that secret exists, so this is inert until it does.
 #
-# That secret can hold several webhooks separated by commas: Folio's own server should not hear about a release
-# after everyone else does.
+# The variable DISCORD_ROLE_IDS holds the role to ping in each of those servers, in the same order, since a role only
+# exists in its own server. Leave a position empty for no ping there.
+#
+# The old names, MMD_WEBHOOK_URL and MMD_ROLE_ID, still work, so nothing breaks if they were set first.
 name: Announce
 
 on:
@@ -43,7 +45,7 @@ jobs:
 
       - name: Post it
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.MMD_WEBHOOK_URL }}
-          DISCORD_ROLE_ID: ${{ vars.MMD_ROLE_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URLS || secrets.MMD_WEBHOOK_URL }}
+          DISCORD_ROLE_ID: ${{ vars.DISCORD_ROLE_IDS || vars.MMD_ROLE_ID }}
           ANNOUNCE_PRERELEASES: ${{ vars.ANNOUNCE_PRERELEASES }}
         run: node tools/announce-release.mjs

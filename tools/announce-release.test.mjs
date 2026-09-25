@@ -120,3 +120,81 @@ test('one webhook or several, and a list edited by hand still parses', () => {
   assert.deepEqual(splitWebhooks(''), [])
   assert.deepEqual(splitWebhooks(undefined), [])
 })
+
+test('each webhook gets its own role, by position, and a blank means no ping there', async () => {
+  const { rolesFor } = await import('./announce-release.mjs')
+  assert.deepEqual(rolesFor(['a', 'b'], '111,222'), ['111', '222'])
+  assert.deepEqual(rolesFor(['a', 'b'], ',222'), ['', '222'])
+  assert.deepEqual(rolesFor(['a', 'b'], '111'), ['111', ''])
+  assert.deepEqual(rolesFor(['a', 'b'], ''), ['', ''])
+  assert.deepEqual(rolesFor(['a', 'b'], undefined), ['', ''])
+})
+
+test('two servers each receive their own ping, and the wall is downloaded once', async () => {
+  const { createServer } = await import('node:http')
+  const { spawn } = await import('node:child_process')
+  const { mkdtempSync, writeFileSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+
+  const received = {}
+  let wallFetches = 0
+  const server = createServer((request, response) => {
+    const chunks = []
+    request.on('data', (chunk) => chunks.push(chunk))
+    request.on('end', () => {
+      const path = request.url.split('?')[0]
+      if (path === '/wall.png') {
+        wallFetches += 1
+        response.writeHead(200, { 'content-type': 'image/png' })
+        return response.end(Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+      }
+      const body = Buffer.concat(chunks).toString('latin1')
+      const json = body.match(/name="payload_json"\r\n\r\n([\s\S]*?)\r\n--/)?.[1] ?? body
+      received[path] = { message: JSON.parse(json), hasFile: body.includes('filename="Folio-0.6.6-wall.png"') }
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({ id: path }))
+    })
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const base = `http://127.0.0.1:${server.address().port}`
+
+  const dir = mkdtempSync(join(tmpdir(), 'announce-'))
+  const event = join(dir, 'event.json')
+  writeFileSync(event, JSON.stringify({
+    release: {
+      ...release,
+      assets: [...release.assets, {
+        name: 'Folio-0.6.6-wall.png', size: 4, content_type: 'image/png', browser_download_url: `${base}/wall.png`,
+      }],
+    },
+  }))
+
+  const code = await new Promise((resolve) => {
+    const child = spawn(process.execPath, [new URL('./announce-release.mjs', import.meta.url).pathname], {
+      env: {
+        ...process.env,
+        GITHUB_EVENT_PATH: event,
+        DISCORD_WEBHOOK_URL: `${base}/folio,${base}/mmd`,
+        DISCORD_ROLE_ID: '1553093586705449062,999',
+      },
+      stdio: 'ignore',
+    })
+    child.on('exit', resolve)
+  })
+  server.close()
+
+  assert.equal(code, 0)
+  assert.equal(wallFetches, 1, 'the wall should be read once, not once per server')
+
+  const folio = received['/folio']
+  assert.match(folio.message.content, /^<@&1553093586705449062>\n/)
+  assert.deepEqual(folio.message.allowed_mentions.roles, ['1553093586705449062'])
+  assert.ok(folio.hasFile)
+
+  const mmd = received['/mmd']
+  assert.match(mmd.message.content, /^<@&999>\n/)
+  assert.deepEqual(mmd.message.allowed_mentions.roles, ['999'])
+  assert.doesNotMatch(mmd.message.content, /1553093586705449062/)
+  assert.ok(mmd.hasFile)
+})

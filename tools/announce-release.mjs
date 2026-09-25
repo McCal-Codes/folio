@@ -12,7 +12,9 @@
  *   DISCORD_WEBHOOK_URL   required to actually send. One webhook, or several separated by commas: Folio's own
  *                         server should not hear about a release after everyone else. Without it this prints and
  *                         exits 0, so a fork never fails.
- *   DISCORD_ROLE_ID       optional. The role the channel made for Folio, pinged on the first line.
+ *   DISCORD_ROLE_ID       optional. The role to ping on the first line, one per webhook in the same order, since a
+ *                         role only exists in its own server. Leave a position empty for no ping there:
+ *                         ",1553093586705449062" pings nobody in the first server and that role in the second.
  *   ANNOUNCE_PRERELEASES  "true" to post betas as well. Off by default: a beta a week is how a channel gets muted.
  *
  * No APK is attached. Discord's upload limit is below a release build, and the file should come from GitHub, where
@@ -164,30 +166,45 @@ export function splitWebhooks(value = '') {
     .filter(Boolean)
 }
 
+/**
+ * The role for each webhook, by position. Unlike the webhooks, blanks are kept: an empty position is a deliberate
+ * "no ping in that server", and dropping it would shift every later role onto the wrong server.
+ */
+export function rolesFor(webhooks, value = '') {
+  const roles = String(value ?? '').split(',').map((one) => one.trim())
+  return webhooks.map((_, index) => roles[index] ?? '')
+}
+
 /** Discord takes 10 MB on a server with no boosts. Eight is the line where a slow connection still gets the post. */
 const UPLOAD_LIMIT = 8 * 1024 * 1024
 
-async function attach(message, wall) {
-  if (!wall) return { body: JSON.stringify(message), headers: { 'content-type': 'application/json' } }
+/** The wall's bytes, read once however many servers the post goes to. Null means the post goes out as text. */
+async function loadWall(wall) {
+  if (!wall) return null
   if (wall.size > UPLOAD_LIMIT) {
     console.log(`${wall.name} is ${(wall.size / 1048576).toFixed(1)} MB, past the upload limit. Posting without it.`)
-    return { body: JSON.stringify(message), headers: { 'content-type': 'application/json' } }
+    return null
   }
   const response = await fetch(wall.browser_download_url)
   if (!response.ok) {
     console.log(`Could not read ${wall.name} (${response.status}). Posting without it.`)
-    return { body: JSON.stringify(message), headers: { 'content-type': 'application/json' } }
+    return null
   }
+  return { bytes: await response.arrayBuffer(), type: wall.content_type, name: wall.name }
+}
+
+function bodyFor(message, loaded) {
+  if (!loaded) return { body: JSON.stringify(message), headers: { 'content-type': 'application/json' } }
   const form = new FormData()
   form.append('payload_json', JSON.stringify(message))
-  form.append('files[0]', new Blob([await response.arrayBuffer()], { type: wall.content_type }), wall.name)
+  form.append('files[0]', new Blob([loaded.bytes], { type: loaded.type }), loaded.name)
   // No content-type header: fetch sets it with the multipart boundary, and setting it by hand breaks the upload.
   return { body: form, headers: {} }
 }
 
 /** One retry, and only on what Discord says is worth retrying. A release post is not worth a retry loop. */
-async function post(webhook, message, wall) {
-  const { body, headers } = await attach(message, wall)
+async function post(webhook, message, loaded) {
+  const { body, headers } = bodyFor(message, loaded)
   for (const attempt of [1, 2]) {
     const response = await fetch(`${webhook}?wait=true`, { method: 'POST', headers, body })
     if (response.ok) return response.json()
@@ -213,10 +230,11 @@ async function main() {
     return console.log(`${release.tag_name} is a pre-release and ANNOUNCE_PRERELEASES is not true. Nothing posted.`)
   }
 
-  const message = buildMessage({ release, roleId: process.env.DISCORD_ROLE_ID?.trim() })
   const wall = wallOf(release)
   const webhooks = splitWebhooks(process.env.DISCORD_WEBHOOK_URL)
+  const roles = rolesFor(webhooks, process.env.DISCORD_ROLE_ID)
   if (dryRun || !webhooks.length) {
+    const message = buildMessage({ release, roleId: roles[0] || process.env.DISCORD_ROLE_ID?.split(',')[0]?.trim() })
     console.log(dryRun ? 'Dry run. This is the message:' : 'No DISCORD_WEBHOOK_URL set, so nothing is sent:')
     console.log('-'.repeat(60))
     console.log(message.content)
@@ -227,11 +245,14 @@ async function main() {
 
   // Each webhook gets its own attempt. One channel refusing a post is not a reason for the others to miss it, so
   // a failure is reported at the end rather than thrown in the middle.
+  const loaded = await loadWall(wall)
   const failures = []
   for (const [index, one] of webhooks.entries()) {
     const label = webhooks.length > 1 ? `webhook ${index + 1} of ${webhooks.length}` : 'the webhook'
+    // Each server gets its own message, because each server has its own role or none.
+    const message = buildMessage({ release, roleId: roles[index] })
     try {
-      const sent = await post(one, message, wall)
+      const sent = await post(one, message, loaded)
       console.log(`Posted ${release.tag_name} to ${label}, message ${sent?.id ?? 'sent'}.`)
     } catch (error) {
       console.error(`Could not post to ${label}: ${error.message}`)
