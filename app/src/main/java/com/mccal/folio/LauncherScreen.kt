@@ -556,9 +556,9 @@ fun LauncherScreen(
                 if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.perform(FolioHaptic.Open); overlays.panel = app.id } else null
             }) {
         // Folio's background unless Android's wallpaper is really behind the window: a see-through window with
-        // nothing behind it shows every earlier frame (#12, #35), so the worst case is the dunes, never a smear.
-        // One switch behind both backgrounds (DYN-11: Reduce Motion leaves both still). Android's wallpaper is moved
-        // by the system; Folio's own is a translation on the layer its background is already cached in.
+        // nothing behind it shows every earlier frame (#12, #35), so the worst case is a plain surface, never a
+        // smear. Only Android's wallpaper drifts now, and the system is what moves it (DYN-11: Reduce Motion leaves
+        // it still); a picture of Folio's has no spare width to slide, so it stays where it is.
         val backgroundMoves = state.wallpaperMotion && !LocalReduceMotion.current
         // iOS "dark appearance dims wallpaper".
         val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
@@ -567,7 +567,7 @@ fun LauncherScreen(
         // and stands down where Home's text is dark ink and a dark scrim would take contrast away. See HomeScrim.
         val scrim = HomeScrim.of(state.homeScrim, homeInk.dark, dim)
         // The scrim rides inside the layer the background is already cached in, so it costs nothing per frame.
-        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(drift = nativePager.takeIf { backgroundMoves }, scrim = scrim)
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(scrim = scrim)
         else {
             if (backgroundMoves) SystemWallpaperParallax(nativePager)
             // Android's wallpaper is the system's to draw, so there is no cached layer of Folio's to bake the scrim

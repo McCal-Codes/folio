@@ -283,7 +283,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                         }, modifier = Modifier.testTag("background-change-system"))
                         CardNote(if (state.systemWallpaper) stringResource(R.string.uses_the_same_wallpaper_as_your_phone_s)
-                            else stringResource(R.string.folio_s_dunes_or_a_photo_you_choose_only))
+                            else stringResource(R.string.a_picture_you_choose_in_folio_only_behind))
                     }
                     GlassCardSettings(state, model)
                     SettingsCard(stringResource(R.string.screen_corners)) {
@@ -299,7 +299,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.darken_behind_text), state.homeScrim, model::setHomeScrim, "home-scrim-switch")
                         SettingsSwitch(stringResource(R.string.dark_appearance_dims_wallpaper), state.dimWallpaperDark, model::setDimWallpaperDark, "dim-wallpaper-switch")
                         // Both backgrounds, one switch: Android's wallpaper and Folio's own each drift as pages move.
-                        SettingsSwitch(stringResource(R.string.background_moves_with_pages), state.wallpaperMotion, model::setWallpaperMotion, "wallpaper-motion-switch")
                         CardNote(stringResource(R.string.labels_status_page_dots_and_widget_text))
                     }
                     if (!state.systemWallpaper) {

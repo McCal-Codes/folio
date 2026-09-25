@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="dune_wallpaper_description">Folio dunes, the launcher’s landscape, sized for your display.</string>
+    <string name="dune_wallpaper_description">The background you chose in Folio, sized for your display.</string>
     <string name="shade_service_label">Folio gestures &amp; overlays</string>
     <string name="shade_service_description">Lets Folio open the system notifications and Quick Settings panels from Home gestures, and, only if you turn them on, show Folio’s dock handle and Dynamic Island over other apps, launch your dock apps and go Home. It does not read screen content or observe what you do in other apps.</string>
     <string name="personal">Personal</string>
@@ -30,12 +30,10 @@
     <string name="tint_glass_with_wallpaper_color">Tint glass with wallpaper color</string>
     <string name="dark_appearance_dims_wallpaper">Dark appearance dims wallpaper</string>
     <string name="darken_behind_text">Darken behind text</string>
-    <string name="background_moves_with_pages">Background moves with pages</string>
     <string name="launcher_background">Launcher background</string>
     <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens. </string>
     <string name="cancel">Cancel</string>
     <string name="apply">Apply</string>
-    <string name="reset_to_default_dunes">Reset to default dunes</string>
     <string name="opens_android_s_preview_to_use_folio_s_b">Opens Android’s preview to use Folio’s background as your phone’s wallpaper too (a live wallpaper), so it matches outside Folio.</string>
     <string name="preview_as_phone_wallpaper">Preview as phone wallpaper</string>
     <string name="gestures">Gestures</string>
@@ -201,7 +199,7 @@
     <string name="swipe_up_to_open">Swipe up to open</string>
     <string name="back">Back</string>
     <string name="my_wallpaper">My Wallpaper</string>
-    <string name="folio_dunes">Folio Dunes</string>
+    <string name="folio_dunes">Folio background</string>
     <string name="all_set">All set</string>
     <string name="no_results_on_this_phone">No results on this phone</string>
     <string name="add_widgets_for_the_things_you_check_mos">Add widgets for the things you check most.</string>
@@ -234,7 +232,7 @@
     <string name="onboarding_use_everywhere">Dynamic Island and dock in other apps</string>
     <string name="turn_on_button">Turn On</string>
     <string name="choose_a_look">Choose a Look</string>
-    <string name="onboarding_look_detail">Keep the wallpaper you already use, or try Folio\'s dunes. Text on Home adjusts to light and dark wallpapers.</string>
+    <string name="onboarding_look_detail">Keep the wallpaper you already use, or pick a picture in Folio. Text on Home adjusts to light and dark backgrounds.</string>
     <string name="youre_all_set">You\'re All Set</string>
     <string name="a_few_things_to_try">A few things to try:</string>
     <string name="get_started">Get Started</string>
@@ -270,7 +268,6 @@
     <string name="custom">Custom</string>
     <string name="code_added">Code added</string>
     <string name="folio_is_free_and_always_will_be_if_it_m">Folio is free and always will be. If it made your phone feel like yours, you can buy me a coffee (or a beer) on Ko-fi.</string>
-    <string name="folio_s_dunes_or_a_photo_you_choose_only">Folio’s dunes or a photo you choose, only behind Folio.</string>
     <string name="screen_corners">Screen Corners</string>
     <string name="rounded_corners">Rounded corners</string>
     <string name="draws_iphone_style_rounded_corners_over">Draws iPhone-style rounded corners over Home on both screens, like the iPhone Duo. Other apps aren’t changed.</string>
@@ -1108,7 +1105,7 @@
     <string name="mccal_codes" translatable="false">McCal-Codes</string>
     <!-- Settings search: each settings_keywords_* is words people might type, separated by spaces. Translate them, and keep English words people may still search for (dock, widget). -->
     <string name="settings_background_wallpaper">Background &amp; wallpaper</string>
-    <string name="settings_keywords_background_wallpaper">wallpaper photo dunes android image</string>
+    <string name="settings_keywords_background_wallpaper">wallpaper photo art android image</string>
     <string name="settings_keywords_text_on_home">light dark ink labels legibility</string>
     <string name="settings_big_buttons_in_every_app">Big Buttons in every app</string>
     <string name="settings_keywords_big_buttons_in_every_app">navigation buttons back home recents big large accessibility bar</string>
@@ -1289,7 +1286,7 @@
     <string name="search_your_contacts_from_spotlight">Search your contacts from Spotlight.</string>
     <string name="imessage_with_openbubbles">iMessage with OpenBubbles</string>
     <!-- Name of Folio's live wallpaper in Android's wallpaper picker. -->
-    <string name="label_dune_wallpaper">Folio dunes</string>
+    <string name="label_dune_wallpaper">Folio background</string>
     <!-- Shown in Android Settings, Notification access, where people allow the Dynamic Island. -->
     <string name="label_island_listener">Folio island</string>
     <!-- Shown when opening a Folio theme file. -->
@@ -1314,7 +1311,6 @@
     <string name="the_pending_photo_selection_could_not_be">The pending photo selection could not be restored.</string>
     <string name="the_pending_photo_preview_could_not_be_r">The pending photo preview could not be restored.</string>
     <string name="the_photo_picker_is_unavailable">The photo picker is unavailable.</string>
-    <string name="using_folio_dunes">Using Folio dunes.</string>
     <string name="launcher_background_updated">Launcher background updated.</string>
     <string name="that_photo_could_not_be_saved">That photo could not be saved.</string>
     <string name="that_photo_could_not_be_used">That photo could not be used.</string>
@@ -1447,4 +1443,6 @@
     <string name="from_folio">From Folio</string>
     <string name="wallpaper_by_artist">%1$s by %2$s</string>
     <string name="wallpapers_you_install_from_the_market">Wallpapers you install from the Market appear here, with the artist and the license they came with. Folio only shows art it can name.</string>
+    <string name="a_picture_you_choose_in_folio_only_behind">A picture you choose in Folio, only behind Folio.</string>
+    <string name="no_background_behind_home">No background behind Home.</string>
 </resources>

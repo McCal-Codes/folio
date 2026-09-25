@@ -26,8 +26,16 @@ class HomeScrimTest {
         return 1.05 / (luminance(channel(16), channel(8), channel(0)) + .05)
     }
 
-    /** The palest colour Folio itself ships: the sand at the foot of the dunes, [drawDunes]. */
-    private val paleSand = 0xD8CEB6
+    /**
+     * The palest colour Folio itself ships: the lit paper at the top of Night View of Saruwaka-machi, measured off
+     * the file in `assets/wallpapers` by reducing it to 48x48 so one pixel is a whole region and taking the
+     * brightest. Naruto Whirlpools is a shade darker at #D7C4A7, so this is the harder of the two.
+     *
+     * It used to be the sand at the foot of the dunes, which were removed with the rest of the drawn backgrounds.
+     * The number moved by a hair, which is the point: real art is about as pale as the scene that stood in for it,
+     * so the scrim still has to do the same work.
+     */
+    private val paleSand = 0xDFC69B
 
     @Test fun `turning it off draws nothing at all`() {
         assertTrue(!HomeScrim.of(on = false, darkText = false, dim = 0f).draws)
@@ -113,7 +121,7 @@ class HomeScrimTest {
 
     @Test fun `white icons, dots and large text reach 3 to 1 over a pale wallpaper (A11Y-9)`() {
         // Without the scrim white text on Folio's own palest sand is hopeless, which is why this exists.
-        assertTrue("white on bare pale sand: ${whiteOver(paleSand, 0f)}", whiteOver(paleSand, 0f) < 2.0)
+        assertTrue("white on bare lit paper: ${whiteOver(paleSand, 0f)}", whiteOver(paleSand, 0f) < 2.0)
         assertTrue("top edge: ${whiteOver(paleSand, HomeScrim.TOP)}", whiteOver(paleSand, HomeScrim.TOP) >= 3.0)
         assertTrue("bottom edge: ${whiteOver(paleSand, HomeScrim.BOTTOM)}", whiteOver(paleSand, HomeScrim.BOTTOM) >= 3.0)
     }
@@ -158,7 +166,7 @@ class HomeScrimTest {
         assertTrue("the scrim has to take both the resolved ink and the dim already being drawn",
             "HomeScrim.of(state.homeScrim, homeInk.dark, dim)" in screen)
         assertTrue("Folio's own background gets it inside its cached layer",
-            "DuneWallpaper(drift = nativePager.takeIf { backgroundMoves }, scrim = scrim)" in screen)
+            "DuneWallpaper(scrim = scrim)" in screen)
         assertTrue("Android's wallpaper is the system's to draw, so Home draws the bands over it",
             "if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))" in screen)
         // The dim has to be worked out before the scrim, or the scrim cannot give way to it.

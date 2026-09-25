@@ -40,74 +40,19 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
 /**
- * How far Folio's own background slides as Home pages move, so it drifts behind them the way Android's wallpaper
- * drifts when the system is moving it.
+ * Folio's own background: the picture chosen in Settings, or a plain surface when there is none.
  *
- * The background is measured wider than the window by exactly as much as it can ever slide, half hanging off each
- * side, so no end of a swipe can show a strip of nothing. One page can't move, so it gets no spare width at all and
- * costs nothing.
- */
-internal object BackgroundDrift {
-    /** Fraction of a page width the background slides for each page swiped. */
-    const val PER_PAGE = .3f
-    /** The most it slides from the first page to the last, in page widths, so the spare width stays bounded. */
-    const val MOST = .6f
-
-    /** Spare width the background needs, as a fraction of the window. */
-    fun spare(pages: Int): Float = (PER_PAGE * (pages - 1).coerceAtLeast(0)).coerceAtMost(MOST)
-
-    /** The same spare width in whole pixels, always even so the two halves match exactly. */
-    fun spareWidth(windowWidth: Int, pages: Int): Int {
-        val spare = spare(pages)
-        if (spare <= 0f || windowWidth <= 0) return 0
-        // Rounded up, so there is never less room than the slide needs, but not up over a thousandth of a pixel that
-        // only exists because .6f isn't exactly six tenths.
-        val extra = kotlin.math.ceil(windowWidth * spare.toDouble() - .001).toInt()
-        return if (extra % 2 == 0) extra else extra + 1
-    }
-
-    /**
-     * How far to slide a background [backgroundWidth] pixels wide when the pager sits at [position] (its page plus
-     * its offset fraction). Never more than half the spare width, so both ends stay covered.
-     */
-    fun slide(position: Float, pages: Int, backgroundWidth: Float): Float {
-        val steps = (pages - 1).coerceAtLeast(0)
-        if (steps == 0 || backgroundWidth <= 0f) return 0f
-        val spare = spare(pages)
-        val travel = backgroundWidth * spare / (1f + spare)
-        return (.5f - (position / steps).coerceIn(0f, 1f)) * travel
-    }
-}
-
-/**
- * Room for [BackgroundDrift] to slide into: measures the background wider than the window by the whole travel, half
- * of it hanging off each side, and still reports the window's width to whatever laid it out. Without it the far end
- * of a swipe would show a strip of nothing.
+ * Pass [scrim] to darken the top and bottom for the text above (Settings > Wallpaper > Darken behind text): it is
+ * drawn into the same cached layer as the background, so it costs nothing per frame.
  *
- * It goes outside the layer that slides, so the layer itself is the wide one: `CompositingStrategy.Offscreen` clips
- * to its own bounds.
- */
-internal fun Modifier.driftRoom(pages: Int): Modifier =
-    if (BackgroundDrift.spare(pages) <= 0f) this else this.layout { measurable, constraints ->
-        val window = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
-        val extra = BackgroundDrift.spareWidth(window, pages)
-        val wide = window + extra
-        val placeable = measurable.measure(
-            if (extra == 0) constraints else constraints.copy(minWidth = wide, maxWidth = wide))
-        val width = if (extra == 0) placeable.width else window
-        layout(width, placeable.height) { placeable.place(-extra / 2, 0) }
-    }
-
-/**
- * Folio's own background: the dunes, or the photo chosen in Settings.
- *
- * Pass [drift] the Home pager to have it slide with the pages (Settings > Wallpaper > Background moves with pages),
- * or null to leave it still. Pass [scrim] to darken the top and bottom for the text above (Settings > Wallpaper >
- * Darken behind text): it is drawn into the same cached layer as the background, so it costs nothing per frame.
+ * **There is no drift here any more.** Folio used to slide its own background a little as pages moved, which was
+ * free while the background was a scene drawn in code: it could be drawn at any width. A picture cannot, so the
+ * extra width had to come out of the picture's own pixels, and on the Fold8's inner screen that scaled the print
+ * Folio ships up by 1.60x and showed less than a third of it. Android's own wallpaper still drifts, because the
+ * system moves that one and can size it accordingly. See [SystemWallpaperParallax].
  */
 @Composable
-internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compose.foundation.pager.PagerState? = null,
-    scrim: HomeScrim = HomeScrim.None) {
+internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = HomeScrim.None) {
     val palette = LocalDuoPalette.current
     val context = LocalContext.current.applicationContext
     val revision = LauncherBackgroundCache.revision.intValue
@@ -115,28 +60,11 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compos
     val photo = produceState(initialValue = initial, key1 = context, key2 = revision) {
         value = withContext(Dispatchers.IO) { loadLauncherBackground(context) }
     }.value
-    // The page count is read in composition on purpose: it changes when a page is added or removed, never while a
-    // finger is down, and the width to measure at has to be settled before anything draws. The position isn't: it
-    // changes every frame, so it is read in the layer block below instead (PRF-7, DYN-16).
-    // A picture gets no drift, and this is the same rule AOSP applies to the system wallpaper: a drawn scene can be
-    // drawn at any width for nothing, so it can afford to be measured wider than the window and slid; a photograph
-    // or a print cannot, because the extra width has to come from somewhere and the only place is the picture's own
-    // pixels. Measured on the Fold8's inner screen with the print Folio ships, 2448 x 3749 into a 2448 wide window:
-    // still, it draws 1:1 and uses the middle half of the print. Drifting across three pages it is scaled up 1.60x
-    // and shows 31% of it. Sizing the art to the widest screen was exactly so it would never be scaled up, so
-    // drifting it would undo the thing it was sized for.
-    val pages = if (photo != null) 0 else drift?.pageCount ?: 0
     // Drawn once into its own layer and reused: the background never redraws itself, but during a swipe everything
     // above it does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU
     // missed frames. A cached layer is one texture copy a frame instead.
-    Canvas(Modifier.fillMaxSize().then(modifier).driftRoom(pages)
-        .graphicsLayer {
-            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-            // Translation only, and read here rather than in composition: a translation stays an offset on the
-            // layer's matrix, so the drawn dunes stay cached and nothing is rasterised again while a page moves.
-            if (drift != null && pages > 0) translationX = BackgroundDrift.slide(
-                drift.currentPage + drift.currentPageOffsetFraction, pages, size.width)
-        }
+    Canvas(Modifier.fillMaxSize().then(modifier)
+        .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
         // After the layer, so the scrim is rasterised into it with the background rather than composited over it every
         // frame. A vertical gradient is the same at every x, so the drift sliding it sideways cannot show.
         .homeScrim(scrim)) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
@@ -144,7 +72,10 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compos
 
 internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false) {
     if (photo == null || photo.width <= 0 || photo.height <= 0) {
-        drawDunes(dark)
+        // No picture chosen. A flat surface rather than a scene: DES-2a says Folio does not draw backgrounds, and
+        // this is the absence of one. It still has to be opaque, because Home's window is see-through and a window
+        // with nothing behind it keeps showing the frame before (#12, #35).
+        drawRect(if (dark) Color(0xFF0B0B0C) else Color(0xFFE9E9EC))
         return
     }
     val destinationWidth = size.width.toInt().coerceAtLeast(1)
@@ -168,32 +99,7 @@ internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean
     )
 }
 
-internal fun DrawScope.drawDunes(dark: Boolean = false) {
-        val w = size.width; val h = size.height
-        drawRect(Brush.verticalGradient(if (dark) listOf(Color(0xFF132832), Color(0xFF263E49), Color(0xFF463F35))
-            else listOf(Color(0xFF41687E), Color(0xFF94ADB5), Color(0xFFD8CEB6))))
-        fun dune(y: Float, crest: Float, color: Color) {
-            val path = Path().apply {
-                moveTo(0f, h * y)
-                cubicTo(w * .3f, h * (y - crest), w * .6f, h * (y + crest), w, h * (y - crest * .35f))
-                lineTo(w, h); lineTo(0f, h); close()
-            }
-            drawPath(path, color)
-        }
-        dune(.57f, .17f, if (dark) Color(0xFF5B5040) else Color(0xFFC9B38E))
-        dune(.72f, .12f, if (dark) Color(0xFF453D32) else Color(0xFFA49373))
-        dune(.85f, .19f, if (dark) Color(0xFF302C26) else Color(0xFF84775F))
-        for (n in 0..28) {
-            val y = h * (.84f + n * .011f)
-            val path = Path().apply {
-                moveTo(0f, y)
-                cubicTo(w * .35f, y - h * .17f, w * .65f, y + h * .05f, w, y - h * .06f)
-            }
-            drawPath(path, Color.White.copy(alpha = .045f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.3f))
-        }
-}
-
-/** A static scene rendered on surface changes: no animation loop or background polling. */
+/** Folio's chosen background as the phone's wallpaper. Rendered on surface changes: no animation loop. */
 class DuneWallpaperService : WallpaperService() {
     override fun onCreateEngine(): Engine = DuneEngine()
 

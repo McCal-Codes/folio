@@ -236,7 +236,7 @@ class LauncherBackgroundController(
         setBackgroundChoice(activity, BackgroundChoice.None)
         prefs.edit().putBoolean(BACKGROUND_ENABLED, false).remove(BACKGROUND_ID).remove(PICKER_PENDING).remove(PENDING_URI)
             .remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
-        photoSelected = false; errorMessage = null; successMessage = activity.getString(R.string.using_folio_dunes)
+        photoSelected = false; errorMessage = null; successMessage = activity.getString(R.string.no_background_behind_home)
         onExternalResultChanged(false)
         cleanupStagedFiles()
     }
