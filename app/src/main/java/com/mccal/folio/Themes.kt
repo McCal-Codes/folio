@@ -9,7 +9,7 @@ import org.json.JSONObject
 data class FolioTheme(
     val name: String,
     val iconStyle: IconStyle = IconStyle.DEFAULT,
-    val iconTint: Long = 0xFFFFB340,
+    val iconTint: Long = FolioColors.Value.Warning,
     val iconTintFromWallpaper: Boolean = false,
     val iconShape: IconShape = IconShape.DEFAULT,
     val iconPack: String? = null,
@@ -43,7 +43,7 @@ data class FolioTheme(
             FolioTheme(
                 name = j.optString("name").trim().take(40).ifBlank { "Imported Theme" },
                 iconStyle = enum(IconStyle.entries.toTypedArray(), "iconStyle", IconStyle.DEFAULT),
-                iconTint = j.optLong("iconTint", 0xFFFFB340) or 0xFF000000,
+                iconTint = j.optLong("iconTint", FolioColors.Value.Warning) or 0xFF000000,
                 iconTintFromWallpaper = j.optBoolean("iconTintFromWallpaper", false),
                 iconShape = enum(IconShape.entries.toTypedArray(), "iconShape", IconShape.DEFAULT),
                 iconPack = j.optString("iconPack").takeIf { it.isNotBlank() && it != "null" },

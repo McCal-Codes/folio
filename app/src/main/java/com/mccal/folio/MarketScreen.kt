@@ -923,19 +923,19 @@ private fun MarketRow(
                     else -> author
                 },
                 color = when {
-                    installed?.enabled == false || entry.revokedReason != null -> Color(0xFFFFB340)
+                    installed?.enabled == false || entry.revokedReason != null -> FolioColors.Warning
                     else -> Color.White.copy(alpha = .55f)
                 },
                 fontSize = FolioType.FOOTNOTE.sp,
             )
             if (entry.unsigned) {
-                Text(stringResource(R.string.unsigned), color = Color(0xFFFFB340), fontSize = FolioType.GROUP_LABEL.sp)
+                Text(stringResource(R.string.unsigned), color = FolioColors.Warning, fontSize = FolioType.GROUP_LABEL.sp)
             }
             when (entry.clash) {
                 MarketEntry.Impostor.BUILT_IN ->
                     Text(stringResource(R.string.claims_a_folio_package_s_name), color = FolioColors.Red, fontSize = FolioType.GROUP_LABEL.sp)
                 MarketEntry.Impostor.ANOTHER_SOURCE ->
-                    Text(stringResource(R.string.another_source_offers_this_name_too), color = Color(0xFFFFB340), fontSize = FolioType.GROUP_LABEL.sp)
+                    Text(stringResource(R.string.another_source_offers_this_name_too), color = FolioColors.Warning, fontSize = FolioType.GROUP_LABEL.sp)
                 null -> Unit
             }
         }
@@ -1096,7 +1096,7 @@ private fun MarketPackagePage(
         if (installed?.enabled == false) {
             SheetGroup(Modifier.padding(top = FolioSpace.MEDIUM.dp)) {
                 Row(Modifier.padding(FolioSpace.COMFY.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = Color(0xFFFFB340), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = FolioColors.Warning, modifier = Modifier.size(20.dp))
                     Column(Modifier.padding(start = FolioSpace.COMPACT.dp)) {
                         Text(stringResource(R.string.turned_off_after_a_crash), color = Color.White, fontSize = FolioType.SUBHEAD.sp)
                         Text(
@@ -1121,7 +1121,7 @@ private fun MarketPackagePage(
             when {
                 // Pulled by its source. Removing what's already on is still allowed; getting it is not.
                 revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
-                    Text(stringResource(R.string.unavailable), color = Color(0xFFFFB340), fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
@@ -1288,7 +1288,7 @@ internal fun AiAssistedTag(modifier: Modifier = Modifier) {
 private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
-            .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E))
+            .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface)
             .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = onDismiss)
             .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically,

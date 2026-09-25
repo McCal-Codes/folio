@@ -88,7 +88,7 @@ internal fun AudioDeviceCard(enabled: Boolean, blocked: Boolean) {
 @Composable
 private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
     val dark = LocalDuoPalette.current.dark
-    val background = if (dark) FolioColors.SecondaryBackground else Color(0xFFF2F2F7)
+    val background = if (dark) FolioColors.SecondaryBackground else FolioColors.LightBackground
     val primary = if (dark) Color.White else Color.Black
     val secondary = if (dark) Color(0xFF98989F) else Color(0xFF6C6C70)
     val title = device.name ?: if (device.speaker) "Speaker" else "Headphones"

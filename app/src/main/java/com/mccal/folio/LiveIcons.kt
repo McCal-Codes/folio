@@ -81,14 +81,14 @@ enum class IconShape(@androidx.annotation.StringRes val label: Int) { DEFAULT(R.
 enum class BadgeStyle(@androidx.annotation.StringRes val label: Int) { OFF(R.string.off), DOT(R.string.dot), COUNT(R.string.count) }
 enum class BadgeColor(@androidx.annotation.StringRes val label: Int, val fixed: Long? = null) {
     RED(R.string.red), APP(R.string.match_icon), SOFT(R.string.soft),
-    BLUE(R.string.blue, 0xFF0A84FF), GREEN(R.string.green, 0xFF30D158), ORANGE(R.string.orange, 0xFFFF9F0A), PURPLE(R.string.purple, 0xFFBF5AF2)
+    BLUE(R.string.blue, FolioColors.Value.Blue), GREEN(R.string.green, FolioColors.Value.Green), ORANGE(R.string.orange, FolioColors.Value.Orange), PURPLE(R.string.purple, FolioColors.Value.Purple)
 }
 /** iOS: today's flat pill. Classic: the older white-outlined, glossy badge. Glass: frosted dark with a light count. */
 enum class BadgeLook(@androidx.annotation.StringRes val label: Int) { IOS(R.string.ios), CLASSIC(R.string.classic), GLASS(R.string.glass) }
 enum class BadgeSize(@androidx.annotation.StringRes val label: Int, val scale: Float) { SMALL(R.string.small, .82f), STANDARD(R.string.standard, 1f), LARGE(R.string.large, 1.2f) }
 
 /** Icon look for the whole launcher, provided from the saved settings. */
-internal data class IconLook(val style: IconStyle = IconStyle.DEFAULT, val tint: Color = Color(0xFFFFB340),
+internal data class IconLook(val style: IconStyle = IconStyle.DEFAULT, val tint: Color = FolioColors.Warning,
     val shape: IconShape = IconShape.DEFAULT, val pack: String? = null, val badges: BadgeStyle = BadgeStyle.DOT,
     val badgeColor: BadgeColor = BadgeColor.RED, val liveIcons: Boolean = true, val liveLook: String = "AUTO",
     val badgeLook: BadgeLook = BadgeLook.IOS, val badgeSize: BadgeSize = BadgeSize.STANDARD)
@@ -366,7 +366,7 @@ private val IconRedLight = FolioColors.RedLight
 /** The frosted tile behind Clear icons. */
 internal val ClearTile = Color.White.copy(alpha = .2f)
 private val IconDark = FolioColors.SecondaryBackground
-private val IconFace = Color(0xFF2C2C2E)
+private val IconFace = FolioColors.SheetSurface
 private val IconRed = FolioColors.Red
 private val IconOrange = FolioColors.Orange
 

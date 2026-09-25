@@ -41,21 +41,21 @@ internal object WhatsNew {
     fun symbol(title: String): Pair<androidx.compose.ui.graphics.vector.ImageVector, Long> {
         val t = title.lowercase(java.util.Locale.ROOT)
         return when {
-            "row" in t || "grid" in t -> Icons.Rounded.GridView to 0xFF0A84FF
-            "slider" in t || "spacing" in t -> Icons.Rounded.Tune to 0xFF5E5CE6
-            "position" in t || "dock" in t -> Icons.Rounded.Dock to 0xFF30D158
-            "update" in t -> Icons.Rounded.SystemUpdate to 0xFFFF9F0A
-            "clock" in t -> Icons.Rounded.Schedule to 0xFFFF375F
-            "try" in t || "preview" in t -> Icons.Rounded.Home to 0xFF64D2FF
-            "icon" in t -> Icons.Rounded.Apps to 0xFFBF5AF2
-            "cover" in t || "fold" in t -> Icons.Rounded.Devices to 0xFF30B0C7
-            "pull" in t || "library" in t || "notification" in t -> Icons.Rounded.SwipeDown to 0xFF32ADE6
-            "badge" in t || "folder" in t -> Icons.Rounded.Folder to 0xFFFF453A
-            "bug" in t || "report" in t -> Icons.Rounded.BugReport to 0xFFFF9F0A
-            "roadmap" in t -> Icons.Rounded.Map to 0xFF5E5CE6
-            "island" in t -> Icons.Rounded.Circle to 0xFF8E8E93
-            "theme" in t || "look" in t -> Icons.Rounded.Palette to 0xFFFF375F
-            else -> Icons.Rounded.AutoAwesome to 0xFFFFD60A
+            "row" in t || "grid" in t -> Icons.Rounded.GridView to FolioColors.Value.Blue
+            "slider" in t || "spacing" in t -> Icons.Rounded.Tune to FolioColors.Value.Indigo
+            "position" in t || "dock" in t -> Icons.Rounded.Dock to FolioColors.Value.Green
+            "update" in t -> Icons.Rounded.SystemUpdate to FolioColors.Value.Orange
+            "clock" in t -> Icons.Rounded.Schedule to FolioColors.Value.Pink
+            "try" in t || "preview" in t -> Icons.Rounded.Home to FolioColors.Value.Cyan
+            "icon" in t -> Icons.Rounded.Apps to FolioColors.Value.Purple
+            "cover" in t || "fold" in t -> Icons.Rounded.Devices to FolioColors.Value.Teal
+            "pull" in t || "library" in t || "notification" in t -> Icons.Rounded.SwipeDown to FolioColors.Value.CyanLight
+            "badge" in t || "folder" in t -> Icons.Rounded.Folder to FolioColors.Value.Red
+            "bug" in t || "report" in t -> Icons.Rounded.BugReport to FolioColors.Value.Orange
+            "roadmap" in t -> Icons.Rounded.Map to FolioColors.Value.Indigo
+            "island" in t -> Icons.Rounded.Circle to FolioColors.Value.Gray
+            "theme" in t || "look" in t -> Icons.Rounded.Palette to FolioColors.Value.Pink
+            else -> Icons.Rounded.AutoAwesome to FolioColors.Value.Yellow
         }
     }
 

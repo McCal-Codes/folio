@@ -206,7 +206,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
 internal fun FolioMenuPopup(expanded: Boolean, onDismiss: () -> Unit, tag: String? = null, content: @Composable ColumnScope.() -> Unit) {
     androidx.compose.material3.DropdownMenu(expanded, onDismiss,
         modifier = Modifier.widthIn(min = 200.dp, max = 280.dp).then(if (tag != null) Modifier.testTag("$tag-menu") else Modifier),
-        shape = RoundedCornerShape(FolioRadius.CARD.dp), containerColor = Color(0xFF3A3A3C),
+        shape = RoundedCornerShape(FolioRadius.CARD.dp), containerColor = FolioColors.MenuSurface,
         tonalElevation = 0.dp, shadowElevation = 24.dp,
         border = androidx.compose.foundation.BorderStroke(.5.dp, Color.White.copy(alpha = .12f)),
         content = content)

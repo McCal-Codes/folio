@@ -60,10 +60,10 @@ data class FocusSchedule(val startMinute: Int, val endMinute: Int, val days: Set
 }
 
 internal val DEFAULT_FOCUS_MODES = listOf(
-    FocusMode("dnd", "Do Not Disturb", 0xFF5E5CE6),
-    FocusMode("sleep", "Sleep", 0xFF30B0C7, dimWallpaper = true, darkTheme = true),
-    FocusMode("personal", "Personal", 0xFFBF5AF2, silence = false),
-    FocusMode("work", "Work", 0xFF32ADE6),
+    FocusMode("dnd", "Do Not Disturb", FolioColors.Value.Indigo),
+    FocusMode("sleep", "Sleep", FolioColors.Value.Teal, dimWallpaper = true, darkTheme = true),
+    FocusMode("personal", "Personal", FolioColors.Value.Purple, silence = false),
+    FocusMode("work", "Work", FolioColors.Value.CyanLight),
 )
 
 internal fun FocusMode.icon(): ImageVector = when (id) {

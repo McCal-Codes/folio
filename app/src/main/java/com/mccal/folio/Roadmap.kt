@@ -48,7 +48,7 @@ internal object Roadmap {
     }.getOrNull()
 
     private fun color(hex: String): Long =
-        hex.removePrefix("#").takeIf { it.length == 6 }?.toLongOrNull(16)?.let { 0xFF000000 or it } ?: 0xFF8E8E93
+        hex.removePrefix("#").takeIf { it.length == 6 }?.toLongOrNull(16)?.let { 0xFF000000 or it } ?: FolioColors.Value.Gray
 
     /** The newest copy on the phone: the last good download, else the one shipped with Folio. */
     fun local(context: Context): Content? =

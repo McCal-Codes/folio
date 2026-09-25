@@ -7,31 +7,78 @@ import androidx.compose.ui.graphics.Color
  * point at the same values. Use these instead of writing hex colors in a screen.
  */
 internal object FolioColors {
-    val Blue = Color(0xFF0A84FF)
+    /**
+     * The palette as ARGB numbers, for the places that hold a colour as a value rather than a `Color`: a tweak's
+     * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a colour can't drift.
+     */
+    object Value {
+        const val Blue = 0xFF0A84FFL
+        const val BlueDeep = 0xFF0A6FD6L
+        const val BlueOnDark = 0xFF6CB4FFL
+        const val Red = 0xFFFF453AL
+        const val RedLight = 0xFFFF3B30L
+        const val RedOnDark = 0xFFFF8A80L
+        const val RedSoft = 0xFFFF6961L
+        const val Green = 0xFF30D158L
+        const val GreenLight = 0xFF34C759L
+        const val Orange = 0xFFFF9F0AL
+        const val Yellow = 0xFFFFD60AL
+        const val Indigo = 0xFF5E5CE6L
+        const val Purple = 0xFFBF5AF2L
+        const val Pink = 0xFFFF375FL
+        const val Cyan = 0xFF64D2FFL
+        const val CyanLight = 0xFF32ADE6L
+        const val Teal = 0xFF30B0C7L
+        const val Gray = 0xFF8E8E93L
+        const val Warning = 0xFFFFB340L
+        const val SecondaryBackground = 0xFF1C1C1EL
+        const val SheetSurface = 0xFF2C2C2EL
+        const val MenuSurface = 0xFF3A3A3CL
+        const val LightBackground = 0xFFF2F2F7L
+    }
+
+    val Blue = Color(Value.Blue)
     /**
      * Blue deep enough for white text to clear 4.5:1 (4.93): filled buttons. iOS puts white on [Blue] itself, which
      * measures 3.65 and fails WCAG AA for text this size, so Folio's filled buttons sit a shade deeper (A11Y-9).
      */
-    val BlueDeep = Color(0xFF0A6FD6)
+    val BlueDeep = Color(Value.BlueDeep)
     /** Blue for text and links on a dark surface, where [Blue] is too dark to read (6.19:1 on a sheet). */
-    val BlueOnDark = Color(0xFF6CB4FF)
-    val Red = Color(0xFFFF453A)
+    val BlueOnDark = Color(Value.BlueOnDark)
+    val Red = Color(Value.Red)
     /** The light-appearance red (destructive text on light surfaces, badges). */
-    val RedLight = Color(0xFFFF3B30)
+    val RedLight = Color(Value.RedLight)
     /** Destructive text on dark menus and sheets: [Red] measures 3.33 on a menu's grey, this one 4.97 (A11Y-9). */
-    val RedOnDark = Color(0xFFFF8A80)
-    val Green = Color(0xFF30D158)
+    val RedOnDark = Color(Value.RedOnDark)
+    /** A softer red, for a state that is wrong rather than destructive: a source that failed, a paused profile. */
+    val RedSoft = Color(Value.RedSoft)
+    val Green = Color(Value.Green)
     /** The light-appearance green (iOS systemGreen): switch tracks and confirmations on light surfaces. */
-    val GreenLight = Color(0xFF34C759)
-    val Orange = Color(0xFFFF9F0A)
-    val Yellow = Color(0xFFFFD60A)
-    val Indigo = Color(0xFF5E5CE6)
-    val Purple = Color(0xFFBF5AF2)
-    val Pink = Color(0xFFFF375F)
-    val Cyan = Color(0xFF64D2FF)
-    val Gray = Color(0xFF8E8E93)
+    val GreenLight = Color(Value.GreenLight)
+    val Orange = Color(Value.Orange)
+    val Yellow = Color(Value.Yellow)
+    val Indigo = Color(Value.Indigo)
+    val Purple = Color(Value.Purple)
+    val Pink = Color(Value.Pink)
+    val Cyan = Color(Value.Cyan)
+    /** The light-appearance cyan (iOS systemCyan). */
+    val CyanLight = Color(Value.CyanLight)
+    /** iOS systemTeal. Folio's accent teal is its own colour ([FolioAccents.Teal]); this is the system one. */
+    val Teal = Color(Value.Teal)
+    val Gray = Color(Value.Gray)
+    /**
+     * Amber for something that needs attention but isn't destructive: a package Safe Mode turned off, an unsigned
+     * file, a setting that is about to change. Status colours never follow the accent (see [LocalAccent]).
+     */
+    val Warning = Color(Value.Warning)
     /** Grouped background and cards in dark appearance. */
-    val SecondaryBackground = Color(0xFF1C1C1E)
+    val SecondaryBackground = Color(Value.SecondaryBackground)
+    /** The grey a sheet, an alert and a grouped card sit on. */
+    val SheetSurface = Color(Value.SheetSurface)
+    /** The grey a pop-up menu sits on, a step lighter than a sheet. */
+    val MenuSurface = Color(Value.MenuSurface)
+    /** iOS's grouped background in light appearance, for the few Folio surfaces that follow the system theme. */
+    val LightBackground = Color(Value.LightBackground)
     /** Supporting text on dark glass and sheets. */
     val SecondaryLabel = Color.White.copy(alpha = .6f)
 }

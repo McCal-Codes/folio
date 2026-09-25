@@ -540,7 +540,7 @@ fun LauncherScreen(
         // Reduce Transparency: nearly solid glass must still contrast with the text on it, so it's dark under white text
         // and light under dark text (whatever the appearance), keeping a little of the wallpaper tint.
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
-            if (homeInk.dark) Color(0xFFF2F2F7) else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
+            if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
         CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,

@@ -261,7 +261,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
             MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = base) {
                 androidx.compose.foundation.layout.Column(modifier.width(270.dp)
                     .graphicsLayer { alpha = appear.value; scaleX = 1.12f - .12f * appear.value; scaleY = scaleX }
-                    .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E).copy(alpha = .98f))) {
+                    .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface.copy(alpha = .98f))) {
                     androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = 19.dp, bottom = FolioSpace.LARGE.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                         title?.let { androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = FolioType.BODY.sp,

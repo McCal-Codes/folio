@@ -146,7 +146,7 @@ data class LauncherState(
     val libraryCategories: Boolean = true,
     /** The Personal and Work switch in the App Library (only shown with a work profile); off shows personal apps only. */
     val libraryWork: Boolean = true,
-    val iconTint: Long = 0xFFFFB340,
+    val iconTint: Long = FolioColors.Value.Warning,
     val iconShape: IconShape = IconShape.DEFAULT,
     /** Package of the selected third-party icon pack, or null for app icons. */
     val iconPack: String? = null,
@@ -1353,7 +1353,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         libraryCategories = j.optBoolean("libraryCategories", true),
         libraryWork = j.optBoolean("libraryWork", true),
         iconStyle = runCatching { IconStyle.valueOf(j.optString("iconStyle")) }.getOrDefault(IconStyle.DEFAULT),
-        iconTint = j.optLong("iconTint", 0xFFFFB340),
+        iconTint = j.optLong("iconTint", FolioColors.Value.Warning),
         iconShape = runCatching { IconShape.valueOf(j.optString("iconShape")) }.getOrDefault(IconShape.DEFAULT),
         iconPack = j.optString("iconPack").takeIf { it.isNotBlank() && it != "null" },
         badgeStyle = runCatching { BadgeStyle.valueOf(j.optString("badgeStyle")) }.getOrDefault(BadgeStyle.DOT),

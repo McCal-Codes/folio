@@ -83,7 +83,7 @@ internal fun MarketSourcesTab(
                     name = status.source.label,
                     detail = sourceDetail(status),
                     icon = if (local) Icons.Rounded.Warning else Icons.Rounded.Public,
-                    tint = if (local) Color(0xFFFFB340) else Color(0xFF6CB4FF),
+                    tint = if (local) FolioColors.Warning else FolioColors.BlueOnDark,
                     failed = status.failure != null,
                     count = status.packages.size.takeIf { status.snapshot != null },
                     selected = openUrl == status.source.url,
@@ -142,7 +142,7 @@ private fun SourceRow(
             Text(name, color = Color.White, fontSize = 16.sp)
             Text(
                 detail,
-                color = if (failed) Color(0xFFFF6961) else Color.White.copy(alpha = .55f),
+                color = if (failed) FolioColors.RedSoft else Color.White.copy(alpha = .55f),
                 fontSize = FolioType.FOOTNOTE.sp,
             )
         }
@@ -201,8 +201,8 @@ internal fun MarketSourcePage(
                 contentDescription = null,
                 tint = when {
                     builtIn -> FolioColors.Green
-                    source.kind == Source.Kind.LOCAL_DEV -> Color(0xFFFFB340)
-                    else -> Color(0xFF6CB4FF)
+                    source.kind == Source.Kind.LOCAL_DEV -> FolioColors.Warning
+                    else -> FolioColors.BlueOnDark
                 },
                 modifier = Modifier.size(34.dp),
             )
@@ -219,7 +219,7 @@ internal fun MarketSourcePage(
             SheetGroup(Modifier.padding(top = FolioSpace.COMFY.dp)) {
                 Column(Modifier.padding(FolioSpace.COMFY.dp)) {
                     Text(stringResource(R.string.folio_couldn_t_reach_this_source), color = Color.White, fontSize = FolioType.SUBHEAD.sp)
-                    Text(failure.message, color = Color(0xFFFF6961), fontSize = FolioType.FOOTNOTE.sp)
+                    Text(failure.message, color = FolioColors.RedSoft, fontSize = FolioType.FOOTNOTE.sp)
                     if (status.snapshot != null) {
                         Text(stringResource(R.string.showing_the_list_it_had_before), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                     }
@@ -278,7 +278,7 @@ internal const val BUILT_IN_SOURCE_URL = "folio://built-in/"
 private fun Pill(label: String, onClick: () -> Unit, destructive: Boolean = false) {
     Text(
         label,
-        color = if (destructive) Color(0xFFFF6961) else LocalAccent.current.ink,
+        color = if (destructive) FolioColors.RedSoft else LocalAccent.current.ink,
         fontSize = FolioType.SUBHEAD.sp,
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .08f))
             .clickable(onClick = onClick).heightIn(min = 44.dp).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
@@ -305,7 +305,7 @@ internal fun MarketTrustSheet(
         Text(url, color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
         if (previous != null) {
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A2A16)).padding(FolioSpace.COMFY.dp)) {
-                Icon(Icons.Rounded.Warning, contentDescription = null, tint = Color(0xFFFFB340), modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.Warning, contentDescription = null, tint = FolioColors.Warning, modifier = Modifier.size(20.dp))
                 Text(
                     stringResource(R.string.a_source_s_key_normally_never_changes_if),
                     color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(start = FolioSpace.COMPACT.dp),
@@ -343,7 +343,7 @@ private fun Fingerprint(key: SourceKey) {
     Text(
         key.fingerprintGroups,
         color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF2C2C2E)).padding(FolioSpace.MEDIUM.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(FolioColors.SheetSurface).padding(FolioSpace.MEDIUM.dp),
     )
 }
 

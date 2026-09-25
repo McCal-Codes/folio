@@ -115,7 +115,7 @@ private fun Body(text: String) {
 private fun StyleCard(option: FeaturedStyle, chosen: Boolean, onChoose: () -> Unit) {
     val name = stringResource(option.label)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2C2C2E))
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.SheetSurface)
             .border(if (chosen) 2.dp else 0.dp, if (chosen) LocalAccent.current.ink else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp))
             .clickable(role = Role.RadioButton, onClickLabel = name, onClick = onChoose)
             .padding(FolioSpace.COMFY.dp),
