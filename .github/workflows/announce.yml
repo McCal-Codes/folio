@@ -27,9 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Both triggers end up with the same file: the release, plus the tag before it, which is what decides whether
-      # the post says minor, feature or major. The release event does not carry the previous tag, so it is looked up
-      # either way rather than only on a manual run.
+      # Both triggers end up with the same file, so the manual run and the automatic one cannot drift apart.
       - name: Gather the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -37,10 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > release.json
-          previous=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=30" \
-            --jq "[.[] | select(.draft | not) | .tag_name] | map(select(. != \"${TAG}\")) | .[0] // \"\"")
-          echo "Posting ${TAG}, the one before it was ${previous:-unknown}."
-          jq --arg previous "$previous" '{release: ., previous_tag: $previous}' release.json > event.json
+          jq '{release: .}' release.json > event.json
           echo "GITHUB_EVENT_PATH=$PWD/event.json" >> "$GITHUB_ENV"
 
       - name: Post it
