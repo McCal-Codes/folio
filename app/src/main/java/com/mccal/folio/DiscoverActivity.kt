@@ -350,7 +350,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
     val context = LocalContext.current
     val fullWidth = fullSize.width / density.density
     val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
-    val preset = if (fullWidth * classScale >= 650f && fullSize.height / density.density * classScale >= HOME_REGULAR_MIN_HEIGHT_DP) state.expanded else state.compact
+    val preset = if (fullWidth * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && fullSize.height / density.density * classScale >= HOME_REGULAR_MIN_HEIGHT_DP) state.expanded else state.compact
     val apps = remember(state.apps) { state.apps.associateBy { it.id } }
     val progress = DiscoverMotion.progress.floatValue
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
@@ -402,7 +402,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                     // The whole rail, location slot included: the dock goes below all of it.
                     statusHeight = it.height / density.density
                 },
-                compact = maxHeight < 500.dp, iconSize = dockIconSize(geometry.iconSize).dp)
+                compact = maxHeight < COMPACT_DOCK_MAX_HEIGHT_DP.dp, iconSize = dockIconSize(geometry.iconSize).dp)
             Surface(Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp).offset(y = geometry.dockTop.dp)
                 .width(preset.dockWidth.dp).height(geometry.dockHeight.dp).testTag("discover-dock"),
                 shape = RoundedCornerShape(30.dp), color = Glass.copy(alpha = .32f), border = BorderStroke(1.dp, Color.White.copy(alpha = .3f))) {

@@ -37,7 +37,7 @@ internal object DiscoverBounds {
 
     fun dockWidth(context: Context, widthDp: Float): Float = runCatching {
         JSONObject(context.getSharedPreferences("launcher", 0).getString("state", "{}") ?: "{}")
-            .optJSONObject(if (widthDp * context.resources.configuration.classScale >= 650f) "expanded" else "compact")?.optDouble("dockWidth", 68.0)?.toFloat()
+            .optJSONObject(if (widthDp * context.resources.configuration.classScale >= EXPANDED_HOME_MIN_WIDTH_DP) "expanded" else "compact")?.optDouble("dockWidth", 68.0)?.toFloat()
     }.getOrNull()?.coerceIn(56f, 84f) ?: 68f
 
     fun initialize(context: Context) {

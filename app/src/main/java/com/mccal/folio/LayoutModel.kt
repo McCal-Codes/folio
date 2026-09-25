@@ -132,6 +132,17 @@ fun upgradePreset(preset: LayoutPreset, schema: Int, expanded: Boolean): LayoutP
 const val ANDROID_MEDIUM_WIDTH_DP = 600f
 
 /**
+ * Folio's own fit rules beside Android's classes (ADP-3): each is the number a layout was measured against, named
+ * so a change is made once. Compared after multiplying by `classScale` where the call site already does.
+ */
+/** Wide enough for two Home panels side by side: the expanded Home, Discover's expanded dock. */
+const val EXPANDED_HOME_MIN_WIDTH_DP = 650f
+/** Below this height the dock and status rail draw their compact form. */
+const val COMPACT_DOCK_MAX_HEIGHT_DP = 500f
+/** Today View puts its widgets in two columns from this width. */
+const val TODAY_TWO_COLUMN_MIN_WIDTH_DP = 560f
+
+/**
  * Folio's own height for the regular Home layout, not an Android size class (Android's medium height starts at
  * 480 dp): Home's widget row, four app rows, status and dock need about this much. The unfolded screen clears it in
  * either rotation; the cover in landscape (~475 dp) doesn't.

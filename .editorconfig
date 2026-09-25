@@ -1,0 +1,21 @@
+# Folio's editor settings. Kotlin follows the official style (gradle.properties: kotlin.code.style=official).
+# No max_line_length here on purpose: the code runs to about 160 columns, and a limit nothing enforces would only
+# make every editor complain. A formatter that enforces one is a separate decision (compose.md, gap 5).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kts,kt}]
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

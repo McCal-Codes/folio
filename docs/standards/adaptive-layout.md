@@ -128,8 +128,8 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | One `FolioBreakpoints` / size-class helper with the table above; replace the bare numbers | S |
-| 2 | `CameraArea`: try `DisplayCutout` and `getDisplayShape()` before the model table | S |
+| 1 | ~~Name the bare breakpoints~~ (done: `EXPANDED_HOME_MIN_WIDTH_DP`, `COMPACT_DOCK_MAX_HEIGHT_DP`, `TODAY_TWO_COLUMN_MIN_WIDTH_DP` in `LayoutModel.kt`, beside `ANDROID_MEDIUM_WIDTH_DP`). The 560 dp and 520 dp values left are maximum widths for content, not breakpoints | S |
+| 2 | ~~`CameraArea` after the reported cutout~~ (already so: `CutoutIsland` reads `displayCutout` first and falls back to `CameraArea` only when the platform reports nothing, and Home unions the two, so a camera the platform does report is never inset twice) | S |
 | 3 | Multi-hinge everywhere (drop `firstOrNull`), and posture variants in `ScreenCoverageTest` | M |
 | 4 | Geometry fuzz (Screen Coverage v2 step 5): assert icon ≥ 32dp, rows ≥ 48dp, no negative sizes | M |
 | 5 | Keyboard, pointer and focus support (shared with INT gaps 2 and 3) | M |
