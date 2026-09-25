@@ -140,10 +140,11 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                             m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                         val t = runCatching { m.controller.transportControls }.getOrNull()
-                        Icon(Icons.Rounded.FastRewind, "Previous", tint = Color.White, modifier = Modifier.size(30.dp).clip(CircleShape).clickable { t?.skipToPrevious() })
-                        Icon(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play or pause", tint = Color.White,
-                            modifier = Modifier.size(34.dp).clip(CircleShape).clickable { if (m.playing) t?.pause() else t?.play() })
-                        Icon(Icons.Rounded.FastForward, "Next", tint = Color.White, modifier = Modifier.size(30.dp).clip(CircleShape).clickable { t?.skipToNext() })
+                        TransportButton(Icons.Rounded.FastRewind, "Previous", 30.dp) { t?.skipToPrevious() }
+                        TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play or pause", 34.dp) {
+                            if (m.playing) t?.pause() else t?.play()
+                        }
+                        TransportButton(Icons.Rounded.FastForward, "Next", 30.dp) { t?.skipToNext() }
                     }
                 }
                 if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
@@ -169,5 +170,13 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     Text(stringResource(R.string.no_shortcuts_or_notifications_for_1, app.label), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
             }
         }
+    }
+}
+
+/** A media button: the glyph stays [size], the tap is [FolioTouch.MIN] (A11Y-1). */
+@Composable
+private fun TransportButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, size: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+    Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, label, tint = Color.White, modifier = Modifier.size(size))
     }
 }
