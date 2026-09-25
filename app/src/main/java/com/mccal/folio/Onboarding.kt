@@ -114,7 +114,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (index > 0) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index - 1) }.padding(FolioSpace.SMALL.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(26.dp))
+                    Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(26.dp).mirroredForRtl())
                     Text(stringResource(R.string.back), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
                 }
                 Spacer(Modifier.weight(1f))

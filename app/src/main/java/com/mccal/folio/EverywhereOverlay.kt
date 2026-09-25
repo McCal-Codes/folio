@@ -518,7 +518,8 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.ContextClick)
                         onAction(action)
                     }, contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    androidx.compose.material3.Icon(icon, label, tint = ink, modifier = androidx.compose.ui.Modifier.size((s.height * .46f).dp))
+                    androidx.compose.material3.Icon(icon, label, tint = ink, modifier = androidx.compose.ui.Modifier.size((s.height * .46f).dp)
+                        .then(if (action == android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK) androidx.compose.ui.Modifier.mirroredForRtl() else androidx.compose.ui.Modifier))
                 }
             }
         }

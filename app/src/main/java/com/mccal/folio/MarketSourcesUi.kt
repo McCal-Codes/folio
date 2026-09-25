@@ -152,7 +152,7 @@ private fun SourceRow(
         Icon(
             androidx.compose.material.icons.Icons.Rounded.ChevronRight,
             contentDescription = null, tint = Color.White.copy(alpha = .3f),
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(18.dp).mirroredForRtl(),
         )
     }
 }
@@ -187,7 +187,7 @@ internal fun MarketSourcePage(
                 Modifier.fillMaxWidth().clickable(onClickLabel = back, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp).mirroredForRtl())
                 Text(backTitle ?: back, color = LocalAccent.current.ink, fontSize = 16.sp)
             }
         }

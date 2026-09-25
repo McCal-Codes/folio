@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,9 +93,10 @@ internal fun IosSlider(value: Float, onValueChange: (Float) -> Unit, valueRange:
 @Composable
 internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier,
     fieldModifier: Modifier = Modifier, ink: Color = Color.White, onSearch: (() -> Unit)? = null) {
-    // Fixed height, so the field doesn't grow when the clear button appears.
+    // 40 dp at the normal text size, taller only when larger text needs it (A11Y-12). The clear button fills
+    // the height rather than setting it, so it never makes the field grow when it appears.
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = .12f))
-        .height(40.dp).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
+        .heightIn(min = 40.dp).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
@@ -105,7 +107,7 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
         }
         // The row's height is fixed at 40 dp, so this only widens the target: nothing drawn moves (A11Y-1).
-        if (query.isNotEmpty()) Box(Modifier.size(FolioTouch.MIN.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
+        if (query.isNotEmpty()) Box(Modifier.width(FolioTouch.MIN.dp).fillMaxHeight().clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
             contentAlignment = Alignment.Center) {
             androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, "Clear search", tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))
         }
@@ -128,7 +130,7 @@ internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: S
         .then(if (tag != null) Modifier.testTag(tag) else Modifier), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Text(text, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
         value?.let { androidx.compose.material3.Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp) }
-        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.ChevronRight, null, tint = Color.White.copy(alpha = .3f))
+        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.ChevronRight, null, tint = Color.White.copy(alpha = .3f), modifier = Modifier.mirroredForRtl())
     }
 }
 
@@ -211,6 +213,16 @@ internal fun FolioMenuPopup(expanded: Boolean, onDismiss: () -> Unit, tag: Strin
         tonalElevation = 0.dp, shadowElevation = 24.dp,
         border = androidx.compose.foundation.BorderStroke(.5.dp, Color.White.copy(alpha = .12f)),
         content = content)
+}
+
+/**
+ * Flips a directional glyph (a back chevron, a row's disclosure chevron) in a right-to-left layout, the way iOS
+ * mirrors its own. Only for glyphs that mean "back" or "into": an arrow tied to a physical edge or to Folio's fixed
+ * page order stays as it is (A11Y-17).
+ */
+internal fun Modifier.mirroredForRtl(): Modifier = composed {
+    if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl)
+        graphicsLayer { scaleX = -1f } else this
 }
 
 /** How much weight a [FolioButton] carries, the way iOS's filled, tinted and plain buttons do. */

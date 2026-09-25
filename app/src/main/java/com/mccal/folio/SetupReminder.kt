@@ -128,7 +128,7 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
 
 @Composable
 private fun ReminderButton(text: String, background: Color, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Box(modifier.height(46.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(background).clickable(role = Role.Button, onClick = onClick),
+    Box(modifier.heightIn(min = 46.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(background).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center) {
         Text(text, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }

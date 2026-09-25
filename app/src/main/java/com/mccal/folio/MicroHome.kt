@@ -108,7 +108,7 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
 private fun MicroNowPlaying(media: IslandActivity.Media) {
     val controls = runCatching { media.controller.transportControls }.getOrNull()
     val open = runCatching { media.controller.sessionActivity }.getOrNull()
-    Row(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .14f))
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .14f))
         .clickable(enabled = open != null, onClickLabel = "Open ${media.title}") { runCatching { open?.send() } }
         .padding(start = FolioSpace.SMALL.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         val art = media.art ?: media.icon

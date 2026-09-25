@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -118,7 +119,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
             Text(stringResource(R.string.connected), color = secondary, fontSize = FolioType.SUBHEAD.sp)
         }
         Spacer(Modifier.height(18.dp))
-        Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
+        Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
             .clickable(role = Role.Button, onClick = onDone), contentAlignment = Alignment.Center) {
             Text(stringResource(R.string.done), color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
         }
