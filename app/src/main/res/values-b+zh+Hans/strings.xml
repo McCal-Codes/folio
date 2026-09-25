@@ -1406,4 +1406,6 @@
     <string name="tweak_palette_detail">通知卡片会呈现所属应用颜色的柔和版本。</string>
     <string name="tweak_colored_albums_detail">音乐卡片和灵动岛的声音条会呈现专辑封面的颜色。</string>
     <string name="tweak_flipbook_detail">滑动时主屏幕页面以 3D 方式翻转，而不是平移。</string>
+    <string name="follow_system">跟随系统</string>
+    <string name="sunset_to_sunrise">日落到日出</string>
 </resources>

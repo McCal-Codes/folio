@@ -1451,4 +1451,6 @@
     <string name="tweak_palette_detail">Notification cards take on a soft version of their app’s color.</string>
     <string name="tweak_colored_albums_detail">The music card and the island’s sound bars take on the album art’s color.</string>
     <string name="tweak_flipbook_detail">Home pages turn in 3D as you swipe, instead of sliding flat.</string>
+    <string name="follow_system">Follow System</string>
+    <string name="sunset_to_sunrise">Sunset to Sunrise</string>
 </resources>
