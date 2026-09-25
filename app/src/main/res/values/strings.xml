@@ -1441,4 +1441,8 @@
     <string name="page_effects">Page Effects</string>
     <string name="cube">Cube</string>
     <string name="home_pages_turn_in_3d_as_you_swipe_off_w">Home pages turn in 3D as you swipe. Off while Home shows two pages side by side, off with Reduce Motion on, and worth watching for dropped frames before you keep it.</string>
+    <string name="your_photo">Your Photo</string>
+    <string name="from_folio">From Folio</string>
+    <string name="wallpaper_by_artist">%1$s by %2$s</string>
+    <string name="wallpapers_you_install_from_the_market">Wallpapers you install from the Market appear here, with the artist and the license they came with. Folio only shows art it can name.</string>
 </resources>

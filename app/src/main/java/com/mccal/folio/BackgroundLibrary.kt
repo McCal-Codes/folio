@@ -248,7 +248,10 @@ internal fun backgroundChoice(context: Context): BackgroundChoice {
         prefs.edit { putString(BACKGROUND_CHOICE, migrated.save()) }
         return migrated
     }
-    return BackgroundChoice.parse(saved) { id -> BackgroundLibrary.artFile(context, id).isFile }
+    // exists(), not artFile().isFile: art that ships with Folio is an asset inside the APK and has no file on
+    // disk, so testing for a file read every built-in choice straight back as "none" and Home fell through to the
+    // default. Caught by picking one on a phone, which is the only place it showed.
+    return BackgroundChoice.parse(saved) { id -> BackgroundLibrary.exists(context, id) }
 }
 
 internal fun setBackgroundChoice(context: Context, choice: BackgroundChoice) {

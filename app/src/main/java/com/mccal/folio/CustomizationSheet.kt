@@ -300,21 +300,15 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     if (!state.systemWallpaper) {
                     MiniHomePreview(backgrounds.previewBitmap, state, 228.dp)
-                    SheetGroupLabel(stringResource(R.string.launcher_background))
-                    SheetGroup {
-                        IosActionRow(if (backgrounds.previewPending) stringResource(R.string.choose_a_different_photo) else stringResource(R.string.choose_a_photo), "background-choose",
-                            enabled = !backgrounds.loading, onClick = backgrounds::choosePhoto)
-                        if (backgrounds.previewPending) {
-                            MenuDivider()
-                            IosActionRow(stringResource(R.string.apply), "background-preview-apply", enabled = backgrounds.previewBitmap != null, onClick = backgrounds::applyPreview)
-                            MenuDivider()
-                            IosActionRow(stringResource(R.string.cancel), "background-preview-cancel", onClick = backgrounds::cancelPreview)
-                        }
-                        if (backgrounds.photoSelected && !backgrounds.previewPending) {
-                            MenuDivider()
-                            IosActionRow(stringResource(R.string.reset_to_default_dunes), "background-reset", destructive = true, onClick = backgrounds::reset)
-                        }
+                    // The picker is the list of pictures. A photo being previewed is the one thing it cannot show,
+                    // because that photo is not chosen yet, so Apply and Cancel stay as rows above it.
+                    if (backgrounds.previewPending) SheetGroup {
+                        IosActionRow(stringResource(R.string.apply), "background-preview-apply", enabled = backgrounds.previewBitmap != null, onClick = backgrounds::applyPreview)
                         MenuDivider()
+                        IosActionRow(stringResource(R.string.cancel), "background-preview-cancel", onClick = backgrounds::cancelPreview)
+                    }
+                    BackgroundPicker(backgrounds)
+                    SheetGroup {
                         IosActionRow(stringResource(R.string.preview_as_phone_wallpaper), "wallpaper-preview", onClick = onWallpaperPreview)
                     }
                     if (backgrounds.loading) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("background-loading"))
