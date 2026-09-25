@@ -39,8 +39,9 @@ const sources = {
 
 test('every registered command has a handler, and every handler is registered', async () => {
   const names = COMMANDS.map((command) => command.name).sort()
-  assert.deepEqual(names, ['changelog', 'help', 'roadmap', 'screens', 'tweak', 'version'])
-  for (const name of names) {
+  assert.deepEqual(names, ['changelog', 'help', 'redeem', 'roadmap', 'screens', 'tweak', 'version'])
+  // /redeem needs the database and the bot token, so the worker routes it to redeem.mjs rather than these handlers.
+  for (const name of names.filter((one) => one !== 'redeem')) {
     const answer = await run(name, name === 'screens' ? { width: 932 } : {}, sources)
     assert.ok(answer.length > 0, `${name} said nothing`)
     assert.ok(answer.length <= LIMIT, `${name} was ${answer.length} characters`)

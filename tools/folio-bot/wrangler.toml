@@ -14,3 +14,25 @@ account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"
 
 # The bot answers on its workers.dev address. It needs no custom domain: only Discord ever calls it.
 workers_dev = true
+
+# The same database as the Ko-fi worker. /redeem records one code to one person in discord_roles, and a months-code's
+# window runs from the same first-seen day in beta_seen, so a role ends when the code ends everywhere else.
+[[d1_databases]]
+binding = "DB"
+database_name = "folio-codes"
+database_id = "a878ea66-ca8b-426a-8ed9-ecdcf0c5e9ed"
+
+[vars]
+# The public half of the supporter key: BetaKeys.SUPPORTER in the app, and the same line as the Ko-fi worker's.
+SUPPORTER_KEYS = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM4vVq0D/ZzqkVWlyQYMTFN3TTbdqRgKdt2a30T88NkeQhDEWnujFjfyXyKtPIVBKMSiRVXeY/OcC0+TaB6eypg=="
+# Keep in step with BetaKeys.WITHDRAWN and the Ko-fi worker: serials that no longer work, separated by commas.
+WITHDRAWN = ""
+GUILD_ID = "1551382087985266838"
+# McCal's three supporter roles. The bot never creates one; it only hands these out and takes them back.
+ROLE_COFFEE = "1552857170033508472"
+ROLE_BACKER = "1552857199267545178"
+ROLE_BUILDER = "1552857224194560141"
+
+# The daily sweep that takes back roles whose codes have ended. 06:17 UTC, clear of the hour everyone else picks.
+[triggers]
+crons = ["17 6 * * *"]
