@@ -57,6 +57,12 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
             file.parentFile?.mkdirs()
             file.writeBytes(bytes)
         }
+        if (BackgroundLibrary.isBuiltIn(art.id)) {
+            if (bytes.isNotEmpty()) file.delete()
+            // Not the credit's fault: this package is using a name that belongs to art inside Folio, which is the
+            // same refusal the Market makes for a source claiming a built-in package's id.
+            error("that wallpaper uses a name that belongs to art inside Folio")
+        }
         if (!BackgroundLibrary.record(context, art)) {
             if (bytes.isNotEmpty()) file.delete()
             error("that wallpaper doesn't say who made it")

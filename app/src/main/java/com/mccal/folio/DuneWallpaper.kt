@@ -118,7 +118,14 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compos
     // The page count is read in composition on purpose: it changes when a page is added or removed, never while a
     // finger is down, and the width to measure at has to be settled before anything draws. The position isn't: it
     // changes every frame, so it is read in the layer block below instead (PRF-7, DYN-16).
-    val pages = drift?.pageCount ?: 0
+    // A picture gets no drift, and this is the same rule AOSP applies to the system wallpaper: a drawn scene can be
+    // drawn at any width for nothing, so it can afford to be measured wider than the window and slid; a photograph
+    // or a print cannot, because the extra width has to come from somewhere and the only place is the picture's own
+    // pixels. Measured on the Fold8's inner screen with the print Folio ships, 2448 x 3749 into a 2448 wide window:
+    // still, it draws 1:1 and uses the middle half of the print. Drifting across three pages it is scaled up 1.60x
+    // and shows 31% of it. Sizing the art to the widest screen was exactly so it would never be scaled up, so
+    // drifting it would undo the thing it was sized for.
+    val pages = if (photo != null) 0 else drift?.pageCount ?: 0
     // Drawn once into its own layer and reused: the background never redraws itself, but during a swipe everything
     // above it does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU
     // missed frames. A cached layer is one texture copy a frame instead.
@@ -127,8 +134,8 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, drift: androidx.compos
             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
             // Translation only, and read here rather than in composition: a translation stays an offset on the
             // layer's matrix, so the drawn dunes stay cached and nothing is rasterised again while a page moves.
-            if (drift != null) translationX = BackgroundDrift.slide(
-                drift.currentPage + drift.currentPageOffsetFraction, drift.pageCount, size.width)
+            if (drift != null && pages > 0) translationX = BackgroundDrift.slide(
+                drift.currentPage + drift.currentPageOffsetFraction, pages, size.width)
         }
         // After the layer, so the scrim is rasterised into it with the background rather than composited over it every
         // frame. A vertical gradient is the same at every x, so the drift sliding it sideways cannot show.

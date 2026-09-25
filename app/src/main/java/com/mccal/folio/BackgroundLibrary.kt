@@ -136,7 +136,7 @@ internal object BackgroundLibrary {
      * language nobody checked would be Folio making a legal claim it has not verified. The words around them in the
      * picker are translated as usual; these four fields are the work's own name for itself.
      */
-    private fun builtIn(): List<Artwork> = BUILT_IN
+    fun builtIn(): List<Artwork> = BUILT_IN
 
     private val BUILT_IN = listOf(
         Artwork(

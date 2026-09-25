@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -105,9 +106,13 @@ internal fun BackgroundPicker(
     // reading the choice against it keeps the ticks honest without this owning any state of its own (STA-1).
     val revision = LauncherBackgroundCache.revision.intValue
     val choice = remember(revision, controller.photoSelected) { backgroundChoice(context) }
-    val art = remember(revision) { BackgroundLibrary.all(context) }
-    val builtIn = art.filter { it.builtIn }
-    val installed = art.filterNot { it.builtIn }
+    val builtIn = BackgroundLibrary.builtIn()
+    // Installed art is a file on disk, so it is read off the main thread (STA-8). The art Folio ships is a constant
+    // and needs no such thing, which is why the two are not loaded together: the grid should not wait on a disk read
+    // to show the pieces it already knows about.
+    val installed = produceState(emptyList(), revision) {
+        value = withContext(Dispatchers.IO) { BackgroundLibrary.installed(context).filter { it.credited } }
+    }.value
 
     fun choose(next: BackgroundChoice) {
         setBackgroundChoice(context, next)
