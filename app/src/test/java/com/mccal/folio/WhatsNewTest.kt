@@ -60,7 +60,7 @@ class WhatsNewTest {
     @Test fun `a release note's own emphasis and links survive into what Folio draws`() {
         // What's New hands the detail to MarketText, so an entry can stress a word or point at a page. The same
         // subset the Market's package pages use: bold, italic, https links, and nothing that escapes into markup.
-        val note = WhatsNew.split("**Folders:** hold **twelve** apps now, see [the guide](https://foliolauncher.com/guide).")
+        val note = WhatsNew.split("**Folders:** hold **twelve** apps now, see [the guide](https://github.com/McCal-Codes/folio/blob/main/docs/user-guide.md).")
         assertEquals("Folders", note.title)
         val drawn = MarketText.inline(note.detail)
         assertEquals("Hold twelve apps now, see the guide.", drawn.text)
@@ -68,7 +68,7 @@ class WhatsNewTest {
         assertEquals("twelve", drawn.text.substring(bold.start, bold.end))
         val link = drawn.getLinkAnnotations(0, drawn.text.length).single()
         assertEquals("the guide", drawn.text.substring(link.start, link.end))
-        assertEquals("https://foliolauncher.com/guide", (link.item as androidx.compose.ui.text.LinkAnnotation.Url).url)
+        assertEquals("https://github.com/McCal-Codes/folio/blob/main/docs/user-guide.md", (link.item as androidx.compose.ui.text.LinkAnnotation.Url).url)
     }
 
     @Test fun `a link that is not https is left as the author typed it`() {
