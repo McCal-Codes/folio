@@ -36,7 +36,9 @@ get in the way of helping:
 Keep changes focused. In the PR, describe what's different for someone using Folio, and how you checked it.
 
 Read the [code map](docs/architecture.md) for ownership, persistence and gesture constraints, and the
-[Folio Standards](docs/standards/README.md) for the rules a change follows (cite rule IDs like `ADP-1` in the PR). The [user guide](docs/user-guide.md)
+[Folio Standards](docs/standards/README.md) for the rules a change follows (cite rule IDs like `ADP-1` in the PR).
+Several people and sessions work on Folio at once, so [docs/in-flight.md](docs/in-flight.md) says which files are
+already being changed. Add a row when you start on one, and delete it in the pull request that finishes. The [user guide](docs/user-guide.md)
 and [troubleshooting guide](docs/troubleshooting.md) describe the behavior changes should preserve.
 
 Folio builds with Java 17:

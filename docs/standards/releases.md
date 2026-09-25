@@ -34,8 +34,8 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   `main`. It ships and merges back the same day.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
   in branch names, commit messages, pull request text or code comments.
-- **REL-6 MUST** check the other worktrees and open pull requests before editing a file more than one change is
-  likely to touch: `CHANGELOG.md`, `app/src/main/assets/roadmap.json`, `strings.xml`, `app/build.gradle.kts`.
+- **REL-6 MUST** check [docs/in-flight.md](../in-flight.md), the other worktrees and the open pull requests before
+  editing a file more than one change is likely to touch, and add a row there when starting on one: `CHANGELOG.md`, `app/src/main/assets/roadmap.json`, `strings.xml`, `app/build.gradle.kts`.
   Several sessions work on Folio at once.
 
 ### The changelog
@@ -129,14 +129,14 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
   useful without opening this file.
 - One feature is gated today: the Market, shut since 19 Sep 2026, due to open in 0.7.0.
-- Several agent sessions work in parallel worktrees with no claim on shared files, which is how the same two
-  strings, the same roadmap and the same changelog got edited three ways in two days.
+- `docs/in-flight.md` lists what each open branch is holding. It is a courtesy rather than a lock, and it only works
+  if a row is deleted in the pull request that finishes the work.
 
 ## Gaps
 
 | | What it takes | Size |
 |---|---|---|
-| 1 | A written claim on shared files for concurrent sessions, even just a `docs/in-flight.md` listing branch, files and session (REL-6) | S |
+| 1 | ~~A written claim on shared files for concurrent sessions~~ (done: [docs/in-flight.md](../in-flight.md), named in REL-6) | S |
 | 2 | Branch protection on `main` requiring the `release-rules` check, so nothing can be pushed straight to it and the check cannot be skipped by merging early | S |
 | 3 | Betas published by CI from a tag, rather than by hand on the Mac, so REL-17 and REL-18 cannot be got wrong | M |
 
