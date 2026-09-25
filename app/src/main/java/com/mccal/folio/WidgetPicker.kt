@@ -241,8 +241,12 @@ internal fun VisualWidgetPicker(
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(horizontal = 18.dp)) {
             Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.widgets), color = ink, fontSize = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).clickable(onClickLabel = stringResource(R.string.close), onClick = onBack),
-                    contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Close, stringResource(R.string.back), tint = ink, modifier = Modifier.size(20.dp)) }
+                Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClickLabel = stringResource(R.string.close), onClick = onBack),
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Close, stringResource(R.string.back), tint = ink, modifier = Modifier.size(20.dp))
+                    }
+                }
             }
             Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .12f))
                 .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {

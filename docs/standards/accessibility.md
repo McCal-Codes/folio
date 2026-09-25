@@ -81,10 +81,12 @@ Not yet:
 
 - Two targets are fixed: the widget options close draws a 32 dp circle inside a 48 dp tap, and the search field's
   clear is as wide as the row is tall (40 x 48), since that row's height is fixed by design. `FolioTouch.MIN` names the minimum.
-- Four are left, and each costs something visible: page dots 28dp (`LauncherScreen.kt`), folder swatches 30dp
-  (`FolderPanel.kt:96`), the media transport 30 and 34dp (`AppPanel.kt`), the picker's close 36dp
-  (`WidgetPicker.kt`). iOS has the same sizes and leans on the strip or the row taking the tap, which is the shape
-  worth copying rather than growing each one.
+- All six are fixed, in two shapes. Where a row of small things would space apart, the strip takes the tap and the
+  things keep their size and spacing: the page dots (a 48 dp strip, one 28 dp slice per dot) and the folder swatches
+  (40 x 48 each, the gap counted in). Where one control stands alone, it draws the same circle inside a 48 dp box:
+  the widget options close, the picker's close and the media transport.
+- What it cost in layout: Home's page-indicator row grew from 32 to 48 dp, the folder panel's swatch row from 30 to
+  48, the widget picker's header by 8, and an app panel's media row by 14. Nothing changed size on screen.
 - Widget picker secondary text scores 2.59:1 (`WidgetPicker.kt:228`).
 - 51 ellipses and 68 `maxLines = 1`; no 200% pass yet.
 - 3 live regions; no focus rings; no RTL check; `Role.Switch` used once.
@@ -93,7 +95,7 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | Grow the six small hit areas. Two are done (the widget options close, the search field's clear). The other four cannot reach 48 dp without changing what is drawn, and each needs a decision: page dots (28 dp, and 48 dp each would space them apart, so the strip should take the tap), folder swatches (30 dp in a grid), the picker's close (36 dp, its header grows 8 dp), the media transport (30 and 34 dp, its row grows 14 dp) | M |
+| 1 | ~~Grow the six small hit areas~~ (done). The page dots and the folder swatches keep their size and let the strip around them take the tap; the widget options close, the picker's close and the media transport draw the same circle inside a 48 dp box | M |
 | 2 | A `secondaryLabel` token that meets 4.5:1 over bright wallpapers | S |
 | 3 | 200% font scale pass (cover and inner) | M |
 | 4 | Live regions for island notices and page changes | S |

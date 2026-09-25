@@ -90,13 +90,18 @@ internal fun FolderPanel(
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { if (title.isNotBlank()) onRename(title) }))
         // Folder tint: none + a few iOS-like colors.
-        androidx.compose.foundation.layout.Row(Modifier.padding(bottom = FolioSpace.COMFY.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
+        androidx.compose.foundation.layout.Row(Modifier.padding(bottom = FolioSpace.COMFY.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
             (listOf<Long?>(null) + FolderSwatches).forEach { swatch ->
                 val selected = swatch == color
-                Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(swatch?.let { Color(it) } ?: Color.White.copy(alpha = .18f))
-                    .then(if (selected) Modifier.border(2.5.dp, Color.White, androidx.compose.foundation.shape.CircleShape) else Modifier)
-                    .clickable(onClickLabel = if (swatch == null) "No folder color" else "Folder color") { onColor(swatch) })
+                // The swatch still draws at 30 dp with a 10 dp gap; the tap is 40 x 48, made of the circle and the
+                // gap around it. Eight 48 dp-wide targets would not fit a cover screen's folder panel (A11Y-1).
+                Box(Modifier.width(40.dp).height(FolioTouch.MIN.dp)
+                    .clickable(onClickLabel = if (swatch == null) "No folder color" else "Folder color") { onColor(swatch) },
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(swatch?.let { Color(it) } ?: Color.White.copy(alpha = .18f))
+                        .then(if (selected) Modifier.border(2.5.dp, Color.White, androidx.compose.foundation.shape.CircleShape) else Modifier))
+                }
             }
         }
         Surface(Modifier.fillMaxWidth(.86f).widthIn(max = 520.dp).fillMaxHeight(.7f).heightIn(min = 240.dp, max = 560.dp)

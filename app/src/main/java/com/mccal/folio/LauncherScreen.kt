@@ -918,16 +918,29 @@ fun LauncherScreen(
                             androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)) },
                         contentAlignment = Alignment.Center) { pill ->
                         if (pill) HomeSearchPill { if (!state.googleSearch || !onGoogleSearch(null)) launcherActivity.openSpotlight() }
-                        else Row(Modifier.height(30.dp).background(if (scrubbing) Color.White.copy(alpha = .18f) else Color.Transparent, CircleShape)
-                            .padding(horizontal = if (scrubbing) FolioSpace.SNUG.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (visibleHomePages <= 6) repeat(visibleHomePages) { index ->
-                            val dotLabel = if (index == homePages) stringResource(R.string.new_home_page) else stringResource(R.string.home_page, index + 1)
-                            Box(Modifier.size(28.dp).clip(CircleShape).clickable { scope.launch { pager.animateScrollToPage(index) } }
-                                .semantics { contentDescription = dotLabel }, contentAlignment = Alignment.Center) {
-                                if (index == homePages) Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                                else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
+                        // iOS's page control: the dots stay small and the strip around them takes the tap, so a
+                        // finger has 48 dp of height without the dots spacing apart (A11Y-1).
+                        else Box(Modifier.height(FolioTouch.MIN.dp), contentAlignment = Alignment.Center) {
+                            Row(Modifier.height(30.dp).background(if (scrubbing) Color.White.copy(alpha = .18f) else Color.Transparent, CircleShape)
+                                .padding(horizontal = if (scrubbing) FolioSpace.SNUG.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (visibleHomePages <= 6) repeat(visibleHomePages) { index ->
+                                Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                                    if (index == homePages) Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
+                                }
+                            } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
                             }
-                        } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                            // The taps live here, a slice per dot, the full height of the strip. Each slice keeps its
+                            // own name, so TalkBack still reads and activates one page at a time.
+                            if (visibleHomePages <= 6) Row(Modifier.matchParentSize()
+                                .padding(horizontal = if (scrubbing) FolioSpace.SNUG.dp else 0.dp)) {
+                                repeat(visibleHomePages) { index ->
+                                    val dotLabel = if (index == homePages) stringResource(R.string.new_home_page) else stringResource(R.string.home_page, index + 1)
+                                    Box(Modifier.width(28.dp).fillMaxHeight()
+                                        .clickable(role = Role.Button, onClickLabel = dotLabel) { scope.launch { pager.animateScrollToPage(index) } }
+                                        .semantics { contentDescription = dotLabel }.testTag("home-page-dot-$index"))
+                                }
+                            }
                         }
                     }
                     IconButton(onClick = openLibrary, Modifier.size(32.dp).testTag("library-page-link")) {
