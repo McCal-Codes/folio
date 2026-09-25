@@ -1,13 +1,13 @@
 # Tells a Discord channel about a release, once, when it is published.
 #
 # Mod My Android's #app-updates takes an automated post per release rather than a person pasting one, and offered
-# Folio a ping role. Nothing is sent until MMD_WEBHOOK_URL exists as a secret, so this is inert until McCal adds it.
+# Folio a ping role. Nothing is sent until MMD_WEBHOOK_URL exists as a secret, so this is inert until it does.
 name: Announce
 
 on:
   release:
     types: [published]
-  # For re-posting one by hand: run it against the tag and the release payload is read from the API.
+  # For re-posting one by hand, and for the first test against a release that is already out.
   workflow_dispatch:
     inputs:
       tag:
@@ -27,16 +27,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # workflow_dispatch has no release in its payload, so fetch the one being re-posted and write it in the shape
-      # the release event uses.
-      - name: Build the event payload for a manual run
-        if: github.event_name == 'workflow_dispatch'
+      # Both triggers end up with the same file: the release, plus the tag before it, which is what decides whether
+      # the post says minor, feature or major. The release event does not carry the previous tag, so it is looked up
+      # either way rather than only on a manual run.
+      - name: Gather the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
+          set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > release.json
-          jq '{release: .}' release.json > event.json
+          previous=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=30" \
+            --jq "[.[] | select(.draft | not) | .tag_name] | map(select(. != \"${TAG}\")) | .[0] // \"\"")
+          echo "Posting ${TAG}, the one before it was ${previous:-unknown}."
+          jq --arg previous "$previous" '{release: ., previous_tag: $previous}' release.json > event.json
           echo "GITHUB_EVENT_PATH=$PWD/event.json" >> "$GITHUB_ENV"
 
       - name: Post it
