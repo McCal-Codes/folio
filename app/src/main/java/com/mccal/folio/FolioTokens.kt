@@ -155,6 +155,14 @@ internal object FolioType {
     const val GROUP_LABEL = 12
 }
 
+/**
+ * The smallest a finger's target may be, in dp (A11Y-1). What a control *draws* can be smaller: put the drawn thing
+ * inside a box this size rather than growing the thing itself, so a 32 dp circle still takes a 48 dp tap.
+ */
+internal object FolioTouch {
+    const val MIN = 48
+}
+
 /** Row heights, in dp: iOS's list metrics, and never below the 48dp touch target (A11Y-1). */
 internal object FolioRow {
     const val ACTION = 48

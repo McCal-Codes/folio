@@ -364,8 +364,13 @@ internal fun WidgetActions(
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (stackCards.size > 1) stringResource(R.string.smart_stack) else stringResource(R.string.widget), Modifier.weight(1f), color = Color.White,
                 fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Box(Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).clickable(onClickLabel = stringResource(R.string.close_widget_options), onClick = onClose),
-                contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Close, stringResource(R.string.close_widget_options), tint = Color.White, modifier = Modifier.size(18.dp)) }
+            // The circle is still 32 dp; the tap is 48 (A11Y-1). The target is the box around it, not the circle.
+            Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClickLabel = stringResource(R.string.close_widget_options), onClick = onClose),
+                contentAlignment = Alignment.Center) {
+                Box(Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Close, stringResource(R.string.close_widget_options), tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
         }
 
         SheetGroupLabel(stringResource(R.string.size))

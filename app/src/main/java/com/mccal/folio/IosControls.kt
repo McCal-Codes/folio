@@ -104,7 +104,8 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
         }
-        if (query.isNotEmpty()) Box(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
+        // The row's height is fixed at 40 dp, so this only widens the target: nothing drawn moves (A11Y-1).
+        if (query.isNotEmpty()) Box(Modifier.size(FolioTouch.MIN.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
             contentAlignment = Alignment.Center) {
             androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, "Clear search", tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))
         }
