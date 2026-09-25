@@ -24,6 +24,17 @@ say no. You can check this list against `app/src/main/AndroidManifest.xml`; noth
 Island, Notification Center, badges, Cabinet and Lock Cover show notifications. Without it those features are empty;
 Folio keeps working.
 
+**Folio's accessibility service** (`SystemShadeAccessibilityService`, off until you turn it on) is how Android lets any
+app open the system notifications and Quick Settings panels: there is no other way for an app to do it. It also shows
+Folio's dock handle and Dynamic Island over other apps, if you turn those on. It observes no events, cannot read what
+is on screen, and cannot tap or type for you (`SystemShadeController.kt`). Without it, Home's swipe-down gestures use
+Folio's own Notification Center and Control Center.
+
+**Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
+any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a
+service that reads nothing from one that reads everything. If a bank app does it, turning Folio's service off in
+Android Settings › Accessibility is safe: Folio keeps working, and you can turn it back on afterwards.
+
 ## What Folio never does
 
 - **No ads, no analytics, no tracking, no accounts.** Nothing about you leaves the phone.

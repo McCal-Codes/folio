@@ -190,9 +190,9 @@ fun LauncherScreen(
     LaunchedEffect(focusLock) { if (focusLock != null) homeEdit.stop() }
     // Long-press on empty Home starts jiggle mode (iPhone); a second long-press opens the Home options.
     val onEmptyLongPress: (Int) -> Unit = { index ->
-        if (focusLock != null) { haptic.performHapticFeedback(HapticFeedbackType.Reject); lockNotice++ }
+        if (focusLock != null) { haptic.perform(FolioHaptic.Refuse); lockNotice++ }
         else if (homeEdit.active) overlays.emptyCell = index
-        else { homeEdit.lastEmptyIndex = index; haptic.performHapticFeedback(HapticFeedbackType.LongPress); homeEdit.start() }
+        else { homeEdit.lastEmptyIndex = index; haptic.perform(FolioHaptic.PickedUp); homeEdit.start() }
     }
     val homePages = state.homePages
     val pendingNewPage = widgets.pendingPlacement?.page == homePages
@@ -417,7 +417,7 @@ fun LauncherScreen(
         }
     }
     // A light tick each time the dragged item snaps to a new spot.
-    LaunchedEffect(insertionTarget) { if (insertionTarget != null && drag.moved) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick) }
+    LaunchedEffect(insertionTarget) { if (insertionTarget != null && drag.moved) haptic.perform(FolioHaptic.Step) }
     val widgetRawTarget = widgetSession?.let { session -> drag.regions.values.firstOrNull {
         it.target is DropTarget.Home && it.page in eligibleDragPages && it.bounds.contains(session.pointer)
     }?.target as? DropTarget.Home }
@@ -478,7 +478,7 @@ fun LauncherScreen(
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
-        if (moved && !cancelled && changed) haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+        if (moved && !cancelled && changed) haptic.perform(FolioHaptic.GestureDone)
         // Like iPhone, dragging something on Home leaves Home in jiggle mode.
         if (moved && !cancelled && source.target !is DropTarget.Library && source.folderId == null) homeEdit.start()
         val returnToLibrary = source.target is DropTarget.Library && source.folderId == null && !changed
@@ -521,7 +521,7 @@ fun LauncherScreen(
     }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").homeDragInput(drag,
         enabled = sheet.isEmpty() && !showFirstRun && overlays.menu == null && !resize.active && pager.currentPage >= 0,
         page = pager.currentPage, eligiblePages = eligibleDragPages, onStart = {
-            focus.clearFocus(); keyboard?.hide(); haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            focus.clearFocus(); keyboard?.hide(); haptic.perform(FolioHaptic.PickedUp)
             // iPhone: holding an app shows its menu right away (no Android-style pick-up). Moving while still
             // holding dismisses the menu, picks the app up and starts jiggle mode (see the effect below).
             drag.source?.let { src ->
@@ -549,11 +549,11 @@ fun LauncherScreen(
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
             LocalIconStack provides remember(homeEdit.active, haptic) {
-                if (homeEdit.active) null else { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); overlays.stackFan = app.id }
+                if (homeEdit.active) null else { app: AppEntry -> haptic.perform(FolioHaptic.Open); overlays.stackFan = app.id }
             },
             LocalAppPanel provides remember(state.appPanels, state.featureScopes, homeEdit.active, haptic, panelWide) {
                 val panelsOn = FeatureScopes.on(state.featureScopes, "appPanels", state.appPanels, screenFor(panelWide))
-                if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.performHapticFeedback(HapticFeedbackType.ContextClick); overlays.panel = app.id } else null
+                if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.perform(FolioHaptic.Open); overlays.panel = app.id } else null
             }) {
         // Folio's background unless Android's wallpaper is really behind the window: a see-through window with
         // nothing behind it shows every earlier frame (#12, #35), so the worst case is the dunes, never a smear.
@@ -912,7 +912,7 @@ fun LauncherScreen(
                                 travel += amount
                                 val page = (startPage + (travel / scrubStep).roundToInt()).coerceIn(0, homePages - 1)
                                 if (page != pager.currentPage) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    haptic.perform(FolioHaptic.Step)
                                     scope.launch { pager.scrollToPage(page) }
                                 }
                             }
@@ -974,7 +974,7 @@ fun LauncherScreen(
                     }
                     // Unfolded, keep all three together at the top right instead of spread across two pages.
                     if (!geometry.expanded) Spacer(Modifier.weight(1f))
-                    JigglePill(stringResource(R.string.done), emphasized = true) { haptic.performHapticFeedback(HapticFeedbackType.Confirm); homeEdit.stop() }
+                    JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
                 }
             }
             if (!inLibrary && !drag.active) Column(Modifier.align(railBottom(state.leftHanded)).railEdge(state.leftHanded, 12.dp).padding(bottom = FolioSpace.SNUG.dp)

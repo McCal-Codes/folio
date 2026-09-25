@@ -153,7 +153,7 @@ internal fun DockAppColumn(
                 if (!change.pressed) break
                 touchY = along(change.position)
                 val row = (along(change.position) / rowHeightPx).toInt()
-                if (row != lastRow) { lastRow = row; haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick) }
+                if (row != lastRow) { lastRow = row; haptic.perform(FolioHaptic.Scrub) }
             }
             touchY = null
         }

@@ -79,6 +79,6 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | Fuzz `ThemeImportActivity`'s parser | S |
-| 2 | `PinWidgetActivity`: reject requests that don't come from the system | S |
-| 3 | A plain note about banking apps and the accessibility service in PERMISSIONS.md | S |
+| 1 | ~~Fuzz `ThemeImportActivity`'s parser~~ (done: `ThemeImportFuzzTest`, 5,000 damaged files plus hostile ones; every answer is a drawable theme or nothing) | S |
+| 2 | `PinWidgetActivity`: it already takes only a request `LauncherApps.getPinItemRequest` returns and that reports itself valid. What is left is a forged request from another app carrying its own binder; the fix is to re-check the widget provider or shortcut against `AppWidgetManager` / `LauncherApps` before placing it. Security work, so not rushed into a small batch | M |
+| 3 | ~~A plain note about banking apps and the accessibility service~~ (done, in PERMISSIONS.md) | S |
