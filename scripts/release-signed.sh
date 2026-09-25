@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds a signed Folio release: dist/Folio-<version>/ with the APK, SHA256SUMS.txt and the signing certificate.
+# Builds a signed Folio release: dist/Folio-<version>/ with the APK, SHA256SUMS.txt, the signing certificate and
+# the release's feature wall if there is one (FOLIO_WALL, or folio-marketing/walls/<version>/).
 # Needs FOLIO_RELEASE_STORE_FILE (outside the repo), FOLIO_RELEASE_STORE_PASSWORD, FOLIO_RELEASE_KEY_ALIAS and
 # FOLIO_RELEASE_KEY_PASSWORD in the environment. GitHub attaches the source code to every release on its own.
 set -euo pipefail
@@ -100,6 +101,30 @@ if command -v sha256sum >/dev/null 2>&1; then
     (cd "$package_dir" && sha256sum "$apk_name" > SHA256SUMS.txt)
 else
     (cd "$package_dir" && shasum -a 256 "$apk_name" > SHA256SUMS.txt)
+fi
+
+# The release's feature wall, if one has been made. It travels with the build because REL-30 says a published
+# picture comes from the release it describes, and because tools/announce-release.mjs uploads whatever asset here
+# has "wall" in its name. Set FOLIO_WALL to point at one directly, or keep them in folio-marketing/walls/<version>/.
+wall_source=${FOLIO_WALL:-}
+if [[ -z "$wall_source" ]]; then
+    walls_dir=${FOLIO_MARKETING_DIR:-"$repository_root/../folio-marketing"}/walls/$version
+    if [[ -d "$walls_dir" ]]; then
+        wall_source=$(find "$walls_dir" -maxdepth 1 -type f \
+            \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) | sort | head -1)
+    fi
+fi
+if [[ -n "$wall_source" && -f "$wall_source" ]]; then
+    wall_name="Folio-$version-wall.${wall_source##*.}"
+    cp -p "$wall_source" "$package_dir/$wall_name"
+    wall_bytes=$(wc -c < "$package_dir/$wall_name" | tr -d ' ')
+    echo "Feature wall: $wall_name ($((wall_bytes / 1024)) KB), from $wall_source"
+    # Discord takes 10 MB on an unboosted server, so a wall past 8 is one the release post will leave behind.
+    if (( wall_bytes > 8 * 1024 * 1024 )); then
+        echo "  Warning: over 8 MB, so the Discord announcement will post without it." >&2
+    fi
+else
+    echo "No feature wall for $version, so the release will carry none (looked in ${FOLIO_WALL:-$walls_dir})."
 fi
 
 mv "$package_dir" "$output_dir"
