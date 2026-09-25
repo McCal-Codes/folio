@@ -17,7 +17,7 @@ source state            (one owner, see state-data.md)
         ↓
 derived UI state        (semantic, finite)
         ↓
-visual state            (sizes, colours, text, semantics)
+visual state            (sizes, colors, text, semantics)
         ↓
 animation / transition  (optional; can be skipped entirely)
 ```
@@ -33,7 +33,7 @@ Every dynamic feature declares one class in its KDoc or PR. The class sets which
 
 | Class | What changes it | Folio examples |
 |---|---|---|
-| **D1 Reactive** | A value changes; little or no spatial motion | Battery and signal, badge counts, calendar date, theme colours |
+| **D1 Reactive** | A value changes; little or no spatial motion | Battery and signal, badge counts, calendar date, theme colors |
 | **D2 Transitional** | One UI state becomes another | Folder open, sheets, island expand, Control Center, context menus |
 | **D3 Interactive** | Motion follows a finger or pointer | Page swipe, drag and drop, dock magnification, widget resize, predictive back |
 | **D4 Adaptive** | The window or posture changes | Fold and unfold, rotation, resize, multi-window, half-open hinge |
@@ -70,7 +70,7 @@ Animation owner: HomeTiles dock row
   Decoration alone isn't a reason.
 - **DYN-6 MUST** take springs from `FolioMotion` and apply `MotionSpeed` (new code). A new motion need gets a new named
   spring in `FolioTokens.kt` with a one-line comment on what it's for; call sites don't pick numbers.
-- **DYN-7 SHOULD** prefer springs over `tween` for anything spatial. `tween` is for opacity, colour, and fixed-length
+- **DYN-7 SHOULD** prefer springs over `tween` for anything spatial. `tween` is for opacity, color, and fixed-length
   loops (jiggle, the offline sweep).
 - **DYN-8 MUST** be interruptible: a new target retargets the running animation. Nothing waits for an animation to
   finish before accepting a valid state change. Use `animate*AsState`, `Animatable.animateTo` or
@@ -158,6 +158,6 @@ Not yet:
 | 3 | ~~Smart Stack rotation behind `repeatOnLifecycle`; `StatusRail` and `MicroHome` clocks onto `Ticker`~~ (done) | S |
 | 4 | ~~`collectAsState` → `collectAsStateWithLifecycle`~~ (done for the island, the cover, installs, notifications and the update status). Left: `CustomizationSheet.kt`, `StandBy.kt` (open in other pull requests) and `EverywhereOverlay.kt`, whose window has no lifecycle to follow | S |
 | 5 | `DiscoverFrame` onto `LocalReduceMotion` rather than reading the setting itself. **Not** "a scale below 1 counts as Reduce Motion", as this row used to say: a scale of 0.5 means the person wants animations *faster*, not gone. Honouring the scale as a speed, alongside Animation Speed, is the right shape and is its own decision | S |
-| 6 | Live regions for island notices and page changes | S |
+| 6 | ~~Live regions for island notices and page changes~~ (done) | S |
 | 7 | Carry velocity into a re-grabbed page settle (part of the 0.7.1 Home swipe work; measure first) | M |
 | 8 | Replace the 600 ms full-screen poll in `EverywhereOverlay` with a window-insets or accessibility-event signal, if one proves reliable | M |

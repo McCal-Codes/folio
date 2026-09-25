@@ -253,7 +253,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         FolioDialogWindow(dim = .3f)
         val appear = rememberEntrance(stiffness = 900f, dampingRatio = .85f)
         val base = MaterialTheme.typography
-        // The accent's ink, not its fill: the alert is always dark, and a fill-weight colour on its grey fails
+        // The accent's ink, not its fill: the alert is always dark, and a fill-weight color on its grey fails
         // contrast (iOS blue measures 3.82:1 there).
         val blue = LocalAccent.current.ink
         fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = FolioType.BODY.sp, fontWeight = weight))

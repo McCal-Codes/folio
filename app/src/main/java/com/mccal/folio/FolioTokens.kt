@@ -8,8 +8,8 @@ import androidx.compose.ui.graphics.Color
  */
 internal object FolioColors {
     /**
-     * The palette as ARGB numbers, for the places that hold a colour as a value rather than a `Color`: a tweak's
-     * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a colour can't drift.
+     * The palette as ARGB numbers, for the places that hold a color as a value rather than a `Color`: a tweak's
+     * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a color can't drift.
      */
     object Value {
         const val Blue = 0xFF0A84FFL
@@ -63,12 +63,12 @@ internal object FolioColors {
     val Cyan = Color(Value.Cyan)
     /** The light-appearance cyan (iOS systemCyan). */
     val CyanLight = Color(Value.CyanLight)
-    /** iOS systemTeal. Folio's accent teal is its own colour ([FolioAccents.Teal]); this is the system one. */
+    /** iOS systemTeal. Folio's accent teal is its own color ([FolioAccents.Teal]); this is the system one. */
     val Teal = Color(Value.Teal)
     val Gray = Color(Value.Gray)
     /**
      * Amber for something that needs attention but isn't destructive: a package Safe Mode turned off, an unsigned
-     * file, a setting that is about to change. Status colours never follow the accent (see [LocalAccent]).
+     * file, a setting that is about to change. Status colors never follow the accent (see [LocalAccent]).
      */
     val Warning = Color(Value.Warning)
     /** Grouped background and cards in dark appearance. */
@@ -84,8 +84,8 @@ internal object FolioColors {
 }
 
 /**
- * The colour Folio uses for the thing you can act on: buttons, switches, selection, links. Two roles, because one
- * colour can't do both jobs on a dark surface: [fill] sits behind white text, [ink] is the accent as text.
+ * The color Folio uses for the thing you can act on: buttons, switches, selection, links. Two roles, because one
+ * color can't do both jobs on a dark surface: [fill] sits behind white text, [ink] is the accent as text.
  */
 internal data class FolioAccent(val fill: Color, val ink: Color)
 

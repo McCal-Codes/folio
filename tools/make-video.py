@@ -134,8 +134,8 @@ def rounded(image: pathlib.Path, out: pathlib.Path, box: tuple[int, int]) -> Non
              "+repage", str(out)])
 
 
-def text_block(out: pathlib.Path, text: str, points: int, colour: str, bold: bool) -> None:
-    run(["magick", "-background", "none", "-fill", colour,
+def text_block(out: pathlib.Path, text: str, points: int, color: str, bold: bool) -> None:
+    run(["magick", "-background", "none", "-fill", color,
          "-font", "Helvetica-Bold" if bold else "Helvetica", "-pointsize", str(points),
          "-interline-spacing", str(int(points * 0.18)), f"label:{text}", "+repage", str(out)])
 

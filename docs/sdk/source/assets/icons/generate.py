@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draws the icon for each of Folio's own packages.
 
-One rounded tile per package, in its section's iOS colour, with a white glyph that shows what the package does. The
+One rounded tile per package, in its section's iOS color, with a white glyph that shows what the package does. The
 SVG is the source; ImageMagick rasterises it to the PNG the source publishes. Re-run after editing a glyph:
 
     python3 docs/sdk/source/assets/icons/generate.py
@@ -15,8 +15,8 @@ import subprocess
 SIZE = 192
 HERE = pathlib.Path(__file__).parent
 
-# id -> (top colour, bottom colour, glyph)
-# Colours are the iOS system set Folio uses everywhere else, one hue per package, darker at the bottom.
+# id -> (top color, bottom color, glyph)
+# Colors are the iOS system set Folio uses everywhere else, one hue per package, darker at the bottom.
 ICONS = {
     "cabinet": ("#3DA2FF", "#0A6FE0", """
         <rect x="66" y="34" width="60" height="60" rx="16" fill="#fff"/>
@@ -78,7 +78,7 @@ ICONS["palette"] = ("#FFC15E", "#E08600", """
 
 
 def svg(top: str, bottom: str, glyph: str) -> str:
-    """One flat colour, like the coloured squares in Folio Settings: at 44 dp a gradient is noise, and the
+    """One flat color, like the colored squares in Folio Settings: at 44 dp a gradient is noise, and the
     rasteriser ignores SVG gradients anyway. `bottom` is kept for the glyph shapes that sit on the tile."""
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{SIZE}" height="{SIZE}" viewBox="0 0 192 192">
   <rect width="192" height="192" rx="44" fill="{top}"/>

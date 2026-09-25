@@ -56,8 +56,8 @@ internal fun AppearanceSettings(state: AppearanceState, onMode: (AppearanceMode)
                 }
             }
         }
-        // The colour Folio uses for what you can act on. Folio's own teal by default; Apple's blue for whoever
-        // prefers it. Status colours (Wi-Fi, battery, an alert's red) don't follow it.
+        // The color Folio uses for what you can act on. Folio's own teal by default; Apple's blue for whoever
+        // prefers it. Status colors (Wi-Fi, battery, an alert's red) don't follow it.
         SheetGroupLabel(stringResource(R.string.accent))
         SheetGroup {
             AccentChoice.entries.forEachIndexed { i, choice ->
