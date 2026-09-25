@@ -1,0 +1,16 @@
+# Mr Folio, Folio's Discord bot. Application 1553079678988849294.
+#
+#   npx wrangler deploy
+#   npx wrangler secret put DISCORD_PUBLIC_KEY     # from the application's General Information page
+#
+# Then paste the Worker's URL into Interactions Endpoint URL on that same page. Discord sends two deliberately
+# invalid requests when you save it; an endpoint that answers those is rejected, which is what verify() is for.
+name = "folio-bot"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Two accounts answer to this login, so naming one keeps `wrangler deploy` from stopping to ask.
+account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"
+
+# The bot answers on its workers.dev address. It needs no custom domain: only Discord ever calls it.
+workers_dev = true
