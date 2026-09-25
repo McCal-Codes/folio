@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.7] - Unreleased
 
 ### Added
+- **Korean language support:** Folio's interface follows your phone's Korean language setting, including settings, onboarding, widget controls and accessibility labels.
 - **Folio has its own colour:** buttons, switches, selection and links use Folio Teal, the teal the app icon ships in, instead of Apple's blue. Settings › Wallpaper & Appearance › Accent keeps Classic Blue for anyone who prefers it. Status colours stay as they are, so Wi-Fi is still blue and a warning still amber.
 - **Folio Beta in the Market:** supporters see Folio Beta under Sources, with what you're on, the newest beta and an Update button. It's the same download Settings › Software Update makes: through your supporter code, checked against Folio's own signing key before anything installs, with Update Now or Tonight.
 - **Made with AI, said plainly:** a package whose author says AI helped make it shows an AI-assisted tag beside its developer, which tools helped under Information, and the same on the Get sheet before anything installs.
