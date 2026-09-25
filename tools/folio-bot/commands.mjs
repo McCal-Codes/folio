@@ -9,8 +9,15 @@ import { SITE } from './sources.mjs'
 /** Discord's limit on message content. Answers are trimmed to it rather than rejected by the API. */
 export const LIMIT = 2000
 
+/**
+ * Where every command works. Discord asks each command to say this rather than inferring it: 0 and 1 are installed
+ * to a server and installed to a person, and 0, 1 and 2 are a server channel, a DM with the bot, and a group or
+ * private DM. Everything here is read-only and public, so it can answer anywhere it is asked.
+ */
+const EVERYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] }
+
 /** What gets registered. Keep the descriptions plain: they show in the command picker as someone types. */
-export const COMMANDS = [
+const DEFINITIONS = [
   { name: 'version', description: 'The current Folio release, and where to get it' },
   {
     name: 'changelog',
@@ -46,9 +53,11 @@ export const COMMANDS = [
   {
     name: 'screens',
     description: 'Whether Folio fits a screen that size',
-    options: [{ name: 'width', description: 'Width in dp, for example 932', type: 4, required: true }],
+    options: [{ name: 'width', description: 'Width in dp, for example 932', type: 4, required: true, min_value: 1 }],
   },
 ]
+
+export const COMMANDS = DEFINITIONS.map((command) => ({ ...command, ...EVERYWHERE }))
 
 const trim = (text, limit = LIMIT) =>
   text.length <= limit ? text : `${text.slice(0, limit - 2).trimEnd()}…`
