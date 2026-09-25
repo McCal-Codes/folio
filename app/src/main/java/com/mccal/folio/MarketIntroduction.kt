@@ -14,6 +14,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,10 +48,12 @@ import androidx.compose.ui.unit.sp
 import com.mccal.folio.market.FeaturedStyle
 
 /**
- * The introduction, shown the first time the Market opens after updating (and again from its settings).
+ * The welcome, shown the first time the Market opens (and again from its settings).
  *
- * Three steps: what's in here, how Featured should look, and where packages come from. Skip is on every step, and the
- * style choice is the one McCal asked for: the carousel by default, with Calm offered up front rather than buried.
+ * Two steps, the way iOS welcomes you to an app the first time it opens: what the Market is, in three rows, then how
+ * Featured should look. Every row says something the Market already does, from the 0.6.6 release notes, so the
+ * welcome never promises what isn't there. Skip is on both steps. The style choice is the one McCal asked for: the
+ * carousel by default, with Calm offered up front rather than buried.
  */
 @Composable
 internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -> Unit, onDone: () -> Unit) {
@@ -48,55 +62,58 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
         Text(
             stringResource(R.string.skip),
             color = LocalAccent.current.ink, fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(12.dp))
-                .clickable(onClickLabel = stringResource(R.string.skip_the_introduction), onClick = onDone).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp),
+            modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+                .clickable(onClickLabel = stringResource(R.string.skip_the_introduction), onClick = onDone)
+                .heightIn(min = FolioTouch.MIN.dp).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.MEDIUM.dp),
         )
-        Column(Modifier.align(Alignment.Center).fillMaxWidth()) {
+        // Scrolls rather than clipping, for a cover screen held sideways or the largest text (A11Y-12).
+        Column(Modifier.align(Alignment.Center).widthIn(max = 520.dp).fillMaxWidth()
+            .verticalScroll(rememberScrollState()).padding(top = FolioTouch.MIN.dp, bottom = 96.dp)) {
             when (step) {
                 0 -> {
                     Title(stringResource(R.string.welcome_to_the_folio_market))
-                    Body(
-                        stringResource(R.string.folio_s_own_themes_and_tweaks_live_here),
-                    )
-                }
-                1 -> {
-                    Title(stringResource(R.string.choose_how_featured_looks))
-                    Body(stringResource(R.string.you_can_change_this_any_time_in_the))
-                    Spacer(Modifier.height(16.dp))
-                    for (option in FeaturedStyle.entries) {
-                        StyleCard(option, chosen = option == style) { onStyle(option) }
-                        Spacer(Modifier.height(10.dp))
-                    }
+                    Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
+                    FeatureRow(Icons.Rounded.Palette, R.string.market_welcome_packages_title, R.string.market_welcome_packages_body)
+                    FeatureRow(Icons.Rounded.Public, R.string.market_welcome_sources_title, R.string.market_welcome_sources_body)
+                    FeatureRow(Icons.Rounded.VerifiedUser, R.string.market_welcome_checked_title, R.string.market_welcome_checked_body)
                 }
                 else -> {
-                    Title(stringResource(R.string.where_packages_come_from))
-                    Body(
-                        stringResource(R.string.folio_s_own_packages_come_with_the_app_a),
-                    )
+                    Title(stringResource(R.string.choose_how_featured_looks))
+                    Body(stringResource(R.string.you_can_change_this_any_time_in_the))
+                    Spacer(Modifier.height(FolioSpace.LARGE.dp))
+                    for (option in FeaturedStyle.entries) {
+                        StyleCard(option, chosen = option == style) { onStyle(option) }
+                        Spacer(Modifier.height(FolioSpace.COMPACT.dp))
+                    }
                 }
             }
         }
-        Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Start) {
-                repeat(3) { index ->
-                    Box(
-                        Modifier.padding(end = FolioSpace.SNUG.dp).width(7.dp).height(7.dp).clip(RoundedCornerShape(4.dp))
-                            .background(Color.White.copy(alpha = if (index == step) 1f else .3f)),
-                    )
+        Column(Modifier.align(Alignment.BottomCenter).widthIn(max = 520.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            FolioButton(
+                stringResource(if (step == 0) R.string.continue_choice else R.string.open_the_market),
+                onClick = { if (step == 0) step++ else onDone() },
+                modifier = Modifier.fillMaxWidth(),
+                tag = "market-introduction-next",
+            )
+            Row(Modifier.padding(top = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                repeat(2) { index ->
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(Color.White.copy(alpha = if (index == step) 1f else .3f)))
                 }
             }
-            // A Modifier's click label isn't a composable scope, so both labels are read before the chain.
-            val nextStep = stringResource(R.string.next_step)
-            val openMarket = stringResource(R.string.open_the_market)
-            Text(
-                stringResource(if (step < 2) R.string.next else R.string.start),
-                color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
-                    .clickable(onClickLabel = if (step < 2) nextStep else openMarket) {
-                        if (step < 2) step++ else onDone()
-                    }
-                    .padding(horizontal = FolioSpace.XL.dp, vertical = 11.dp),
-            )
+        }
+    }
+}
+
+/** One of the welcome's three rows: a glyph in the accent, a bold line, and one sentence. */
+@Composable
+private fun FeatureRow(icon: androidx.compose.ui.graphics.vector.ImageVector, @androidx.annotation.StringRes title: Int, @androidx.annotation.StringRes body: Int) {
+    Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
+        Icon(icon, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.padding(top = FolioSpace.HAIR.dp).size(34.dp))
+        Column(Modifier.padding(start = FolioSpace.LARGE.dp).weight(1f)) {
+            Text(stringResource(title), color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(body), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp,
+                modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
         }
     }
 }
