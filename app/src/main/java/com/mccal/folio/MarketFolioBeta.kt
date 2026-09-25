@@ -74,7 +74,7 @@ internal fun FolioBetaSourceRow(selected: Boolean, onOpen: () -> Unit) {
                 color = if (waiting) FolioColors.BlueOnDark else Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
-        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .3f), modifier = Modifier.size(18.dp))
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .3f), modifier = Modifier.size(18.dp).mirroredForRtl())
     }
 }
 
@@ -102,7 +102,7 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
                 Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.back), onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp).mirroredForRtl())
                 Text(backTitle, color = LocalAccent.current.ink, fontSize = 16.sp)
             }
         }

@@ -249,7 +249,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                 // The whole capsule is the tap target, not just the text line.
                 .clickable(remember { MutableInteractionSource() }, null) { fieldScope.launch { raiseKeyboard() } }
                 // Fixed height: the capsule doesn't grow or jump when the clear button appears.
-                .height(52.dp).padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp),
+                .heightIn(min = 52.dp).padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = Color.White.copy(alpha = .75f), modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(10.dp))

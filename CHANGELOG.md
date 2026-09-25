@@ -16,6 +16,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Supporters in Settings:** a page beside Credits listing the people who backed Folio and said their name could be there, newest first. The list is a public file Folio fetches like the Roadmap, so a name can go on or come off without an update.
 
 ### Changed
+- **Large text and right-to-left languages:** rows that held text at a fixed height now grow with the text instead of cutting it off, and back and disclosure chevrons point the right way in Arabic and Hebrew.
 - **TalkBack keeps up:** it says the new Home page when a swipe lands, and reads a Dynamic Island notice when it appears.
 - **Release notes you can read:** What's New draws a release's notes properly now, so a line can stress the word that matters, put a name in italics, or link to [the page that explains it](https://github.com/McCal-Codes/folio/blob/main/docs/user-guide.md), instead of showing the markers around them.
 - **Folio's own buttons, menus and alerts:** the work-profile, update, retry and Add widget buttons, the folder's move menu and Rename app are Folio's controls now rather than Android's. Labels wrap instead of ending in "...", and the blues and reds they use were picked so the words stay readable on every background.
