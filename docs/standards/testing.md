@@ -78,4 +78,4 @@ Not yet:
 | 1 | Roborazzi screenshots at Mockup Lab window sizes, with `enableAccessibilityChecks()` | M |
 | 2 | A CI emulator job for the `androidTest` suite | M |
 | 3 | A lint baseline and a `lint {}` block (warnings as errors for new code) | S |
-| 4 | CONTRIBUTING.md's command matches CI | S |
+| 4 | ~~CONTRIBUTING.md's command matches CI~~ (done) | S |

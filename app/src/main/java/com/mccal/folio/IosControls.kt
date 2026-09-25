@@ -135,6 +135,31 @@ internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: S
 }
 
 /** Used when haptic feedback is turned off in settings. */
+/**
+ * What a haptic means rather than which buzz it is, so the same moment always feels the same (INT-14). Call
+ * `haptic.perform(FolioHaptic.Step)`; the Haptics switch still turns every one off, through [NoHaptics].
+ */
+internal enum class FolioHaptic(val type: HapticFeedbackType) {
+    /** Picked something up, or a menu opened from a long press. */
+    PickedUp(HapticFeedbackType.LongPress),
+    /** Crossed one step: a page, a drop target, a picker value. */
+    Step(HapticFeedbackType.SegmentTick),
+    /** A continuous scrub, like the dock's magnification. */
+    Scrub(HapticFeedbackType.SegmentFrequentTick),
+    /** Something light opened from a swipe, like an app's panel. */
+    Open(HapticFeedbackType.ContextClick),
+    /** Committed: dropped, sent, done. */
+    Commit(HapticFeedbackType.Confirm),
+    /** Refused, or something removed: a full dock, a locked Focus, an app taken off Home. */
+    Refuse(HapticFeedbackType.Reject),
+    /** A gesture went past its threshold and did its thing. */
+    GestureDone(HapticFeedbackType.GestureEnd),
+    ToggleOn(HapticFeedbackType.ToggleOn),
+    ToggleOff(HapticFeedbackType.ToggleOff),
+}
+
+internal fun androidx.compose.ui.hapticfeedback.HapticFeedback.perform(meaning: FolioHaptic) = performHapticFeedback(meaning.type)
+
 internal object NoHaptics : androidx.compose.ui.hapticfeedback.HapticFeedback {
     override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit
 }
@@ -174,7 +199,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                     options.forEachIndexed { index, (value, label) ->
                         if (index > 0) androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.SegmentTick); open = false; if (value != selected) onSelect(value)
+                            haptic.perform(FolioHaptic.Step); open = false; if (value != selected) onSelect(value)
                         }.padding(horizontal = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                             // iOS menus mark the choice with a leading checkmark and keep the labels lined up.
                             Box(Modifier.size(24.dp), contentAlignment = Alignment.CenterStart) {
@@ -291,7 +316,7 @@ internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSel
             options.forEach { (value, label) ->
                 Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(7.dp))
                     .selectable(value == selected, role = Role.RadioButton) {
-                        if (value != selected) { haptic.performHapticFeedback(HapticFeedbackType.SegmentTick); onSelect(value) }
+                        if (value != selected) { haptic.perform(FolioHaptic.Step); onSelect(value) }
                     }, contentAlignment = Alignment.Center) {
                     androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
                         fontWeight = if (value == selected) FontWeight.SemiBold else FontWeight.Medium)

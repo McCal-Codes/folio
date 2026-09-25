@@ -99,6 +99,6 @@ Not yet:
 | 2 | A `secondaryLabel` token that meets 4.5:1 over bright wallpapers | S |
 | 3 | 200% font scale: ~~text in fixed-height rows~~ (done: seven rows are a minimum height now, the same at the normal size). Left: the 68 `maxLines = 1` labels that end in "…", and the rows in `CustomizationSheet.kt` and `MarketScreen.kt`, open in other pull requests | M |
 | 4 | ~~Live regions for island notices and page changes~~ (done) | S |
-| 5 | TalkBack labels for the editor and page dots | S |
+| 5 | TalkBack labels for the editor. The page dots have theirs (one named tap slice per dot, #144) | S |
 | 6 | `enableAccessibilityChecks()` in Compose UI tests. Blocked: Compose BOM 2025.06.01 does not expose it on `createComposeRule()`; revisit when the BOM bump (Dependabot #5) lands | S |
 | 7 | RTL: ~~back and disclosure chevrons~~ (done: `Modifier.mirroredForRtl()`). Left: the six chevrons in `CustomizationSheet.kt` and `MarketScreen.kt` (open in other pull requests), and a product decision: whether Home's page order (Discover and Today View to the left) flips in a right-to-left language the way iOS's does. The Home page arrows and Discover's arrow follow that order, so they stay as they are until it is decided | M |

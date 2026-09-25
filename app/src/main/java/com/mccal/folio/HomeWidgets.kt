@@ -271,7 +271,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     val haptic = LocalHapticFeedback.current
     var lastSettled by remember { mutableIntStateOf(0) }
     LaunchedEffect(pager.settledPage) {
-        if (pager.settledPage != lastSettled) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        if (pager.settledPage != lastSettled) haptic.perform(FolioHaptic.Step)
         lastSettled = pager.settledPage
     }
     // Smart Rotate, like iOS: every 15 minutes the stack moves to the widget that matters now: an event starting

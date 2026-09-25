@@ -75,7 +75,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
                 onDragEnd = {
                     scope.launch {
                         if (offset.value < -size.height * .22f) {
-                            haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                            haptic.perform(FolioHaptic.GestureDone)
                             offset.animateTo(-size.height.toFloat(), spring(stiffness = 900f)); onDismiss()
                         } else offset.animateTo(0f, spring(dampingRatio = .8f))
                     }

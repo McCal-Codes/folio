@@ -119,6 +119,6 @@ Not yet:
 |---|---|---|
 | 1 | ~~Add the scales and move every screen onto them~~ (done) | M |
 | 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
-| 3 | Move the rename dialog to Folio's `AlertDialog`; the direct Buttons to one `FolioButton` (the folder's menu is `FolioMenuPopup` now) | S |
+| 3 | ~~Move the rename dialog to Folio's `AlertDialog`, the direct Buttons to one `FolioButton`, the folder's menu to `FolioMenuPopup`~~ (done, #106) | S |
 | 4 | ~~Light-surface variants and named status colors~~ (done: `Warning`, `RedSoft`, `CyanLight`, `Teal`, `SheetSurface`, `MenuSurface`, `LightBackground`, plus `FolioColors.Value` for colors held as numbers) | S |
 | 5 | ~~A check that counts raw colors, radii and text sizes outside the token files~~ (done: `DesignTokensTest`) | S |
