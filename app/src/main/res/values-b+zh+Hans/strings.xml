@@ -1400,4 +1400,10 @@
     <string name="wallpapers_you_install_from_the_market">你从商店安装的壁纸会显示在这里，并附带随附的作者与许可信息。Folio 只展示能够注明来源的作品。</string>
     <string name="a_picture_you_choose_in_folio_only_behind">你在 Folio 中选择的图片，仅显示在 Folio 后面。</string>
     <string name="no_background_behind_home">主屏幕后面没有背景。</string>
+    <string name="tweak_cabinet_detail">在应用图标上向上轻扫，打开一个小面板，显示它的快捷方式、最新通知和音乐控制。</string>
+    <string name="tweak_harborline_detail">当你沿着程序坞滑动时，图标会在手指下方放大。</string>
+    <string name="tweak_roll_call_detail">通知中心上方的一排应用图标。点按其中一个，只显示该应用的通知。</string>
+    <string name="tweak_palette_detail">通知卡片会呈现所属应用颜色的柔和版本。</string>
+    <string name="tweak_colored_albums_detail">音乐卡片和灵动岛的声音条会呈现专辑封面的颜色。</string>
+    <string name="tweak_flipbook_detail">滑动时主屏幕页面以 3D 方式翻转，而不是平移。</string>
 </resources>

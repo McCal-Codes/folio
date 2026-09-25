@@ -37,7 +37,8 @@ enum class TweakId(val id: String, val capability: Capability) {
     DOCK_MAGNIFY("dockMagnify", Capability.DOCK_MAGNIFY),
     NOTIFICATION_APP_ROW("notificationAppRow", Capability.NOTIFICATION_APP_ROW),
     TINT_NOTIFICATIONS("tintNotifications", Capability.TINT_NOTIFICATIONS),
-    TINT_MEDIA("tintMedia", Capability.TINT_MEDIA);
+    TINT_MEDIA("tintMedia", Capability.TINT_MEDIA),
+    PAGE_EFFECTS("pageEffects", Capability.PAGE_EFFECTS);
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }

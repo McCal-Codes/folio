@@ -101,6 +101,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         Capability.NOTIFICATION_APP_ROW,
         Capability.TINT_NOTIFICATIONS,
         Capability.TINT_MEDIA,
+        Capability.PAGE_EFFECTS,
     )
 
     override fun apply(change: PackageChange): String = when (change) {

@@ -120,6 +120,7 @@ class MarketHostTest {
             setOf(
                 Capability.THEME, Capability.WALLPAPER, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
                 Capability.NOTIFICATION_APP_ROW, Capability.TINT_NOTIFICATIONS, Capability.TINT_MEDIA,
+                Capability.PAGE_EFFECTS,
             ),
             host.capabilities,
         )
