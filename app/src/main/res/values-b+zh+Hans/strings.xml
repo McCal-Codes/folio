@@ -1134,6 +1134,7 @@
     <string name="rows_note_inner_only">目前已测量：内屏可容纳 %1$d 行。在另一块屏幕上打开主屏幕后，Folio 会使用两者中较小的值。</string>
     <string name="rows_note_different">外屏可容纳 %1$d 行，内屏可容纳 %2$d 行，所以 Folio 在两块屏幕上都显示 %3$d 行。图标或标签调小一些，就能再多放一行。</string>
     <string name="count_of_total">%1$d / %2$d</string>
+    <string name="home_page_1_d_of_2_d">主屏幕第 %1$d 页，共 %2$d 页</string>
     <string name="dp_value">%1$d dp</string>
     <string name="saved_to_as">已存储到 %1$s，名为 %2$s。</string>
     <string name="focus_schedule_note">%1$s 会在这些时间开启和关闭。提前关闭后，它会保持关闭，直到下次开始的时间。</string>

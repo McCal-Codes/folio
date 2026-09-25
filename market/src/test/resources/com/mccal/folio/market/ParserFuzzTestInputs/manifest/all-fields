@@ -16,7 +16,7 @@
   "depiction": "depiction.json",
   "license": "MIT",
   "description": "Parser test input: fills in every manifest field, including the ones no published package uses yet. Not a package anyone can install.",
-  "aiAssisted": { "tools": ["Claude", "Example tool"], "note": { "en": "Wrote the first draft of the theme colours.", "es": "Escribió el primer borrador de los colores." } },
+  "aiAssisted": { "tools": ["Claude", "Example tool"], "note": { "en": "Wrote the first draft of the theme colors.", "es": "Escribió el primer borrador de los colores." } },
   "via": [{ "store": "obtainium", "repoUrl": "https://github.com/McCal-Codes/folio" }],
   "provides": ["folioTheme"],
   "requires": { "features": ["icons.packs", "icons"] }

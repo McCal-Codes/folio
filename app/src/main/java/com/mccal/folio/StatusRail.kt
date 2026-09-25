@@ -338,7 +338,7 @@ fun StatusRail(
                             if (still) snap() else tween(FolioMotion.GAUGE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
                             label = "gauge level")
                         val arcColor by animateColorAsState(batteryColor,
-                            if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "gauge colour")
+                            if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "gauge color")
                         val searching = !status.wifiConnected && cellularVisual !is CellularSignalVisual.Available && !status.airplane
                         val sweep = if (searching && !still) rememberInfiniteTransition(label = "no connection")
                             .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep").value else -1f

@@ -1386,7 +1386,7 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
 }
 
 /**
- * A package's icon: the one it ships if it has one, and otherwise a tile in its section's colour with its first
+ * A package's icon: the one it ships if it has one, and otherwise a tile in its section's color with its first
  * letter. Every row has one either way, so the list doesn't change shape depending on who published what.
  */
 @Composable
@@ -1493,7 +1493,7 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
     }
 }
 
-/** iOS system colours, one per section, so a package's tile says what kind of thing it is before you read it. */
+/** iOS system colors, one per section, so a package's tile says what kind of thing it is before you read it. */
 private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when (section) {
     com.mccal.folio.market.Section.THEMES -> FolioColors.Indigo
     com.mccal.folio.market.Section.TWEAKS -> FolioColors.Blue

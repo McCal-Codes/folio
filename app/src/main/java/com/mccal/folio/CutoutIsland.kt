@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -188,7 +189,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             .animateContentSize(spring(dampingRatio = .78f, stiffness = Spring.StiffnessMediumLow))
             .clip(RoundedCornerShape(corner)).background(Color.Black)
             .clickable(remember { MutableInteractionSource() }, null) { if (message == null && live != null) expanded = !expanded }
-            .semantics { contentDescription = describe(content, islandStrings) }
+            // Polite, so a notice or a new activity is read when it appears rather than only when found (A11Y-7).
+            .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
             .testTag("cutout-island")) {
             androidx.compose.animation.AnimatedContent(open, label = "island-content",
                 transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90)) }) { showCard ->

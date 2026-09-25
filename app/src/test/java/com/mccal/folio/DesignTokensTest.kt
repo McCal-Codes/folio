@@ -25,7 +25,7 @@ class DesignTokensTest {
 
     private val patterns = mapOf(
         "hex color" to Regex("""Color\(0x[0-9A-Fa-f]{8}\)"""),
-        // A colour written as a number rather than a Color: a tweak's tint, a Focus mode, a saved layout. They drift
+        // A color written as a number rather than a Color: a tweak's tint, a Focus mode, a saved layout. They drift
         // from the palette just as easily, so they are counted too (FolioColors.Value is how they reach the tokens).
         "ARGB number" to Regex("""(?<![\w.(])0x[0-9A-Fa-f]{8}L?\b"""),
         "corner radius" to Regex("""RoundedCornerShape\(\d+\.dp\)"""),
@@ -61,7 +61,7 @@ class DesignTokensTest {
 
     @Test fun `the token values Folio's shared components use are the ones the standard names`() {
         // The scales in docs/standards/design.md. A change here is a change to every screen, so it's deliberate.
-        // Every palette number and its Color are the same colour: one source of truth for both kinds of call site.
+        // Every palette number and its Color are the same color: one source of truth for both kinds of call site.
         assertEquals(FolioColors.Blue, Color(FolioColors.Value.Blue))
         assertEquals(FolioColors.Warning, Color(FolioColors.Value.Warning))
         assertEquals(FolioColors.MenuSurface, Color(FolioColors.Value.MenuSurface))

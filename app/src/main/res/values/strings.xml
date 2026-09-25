@@ -7,7 +7,7 @@
     <string name="turn_on_work_apps">Turn on work apps</string>
     <string name="open">Open</string>
     <string name="appearance">Appearance</string>
-    <!-- Settings > Wallpaper & Appearance > Accent: the colour Folio uses for buttons, switches and selection. -->
+    <!-- Settings > Wallpaper & Appearance > Accent: the color Folio uses for buttons, switches and selection. -->
     <string name="accent">Accent</string>
     <string name="folio_teal">Folio Teal</string>
     <string name="classic_blue">Classic Blue</string>
@@ -1206,6 +1206,7 @@
         <item quantity="other">%1$d available</item>
     </plurals>
     <string name="count_of_total">%1$d of %2$d</string>
+    <string name="home_page_1_d_of_2_d">Home page %1$d of %2$d</string>
     <string name="dp_value">%1$d dp</string>
     <plurals name="setup_steps_left_full">
         <item quantity="one">%1$d step left for the full experience</item>

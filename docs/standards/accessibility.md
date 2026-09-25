@@ -17,7 +17,7 @@ guidelines, WCAG 2.2 AA and Apple's HIG.
   folder"), not what it looks like.
 - **A11Y-4 MUST** hide decorative images from TalkBack (`contentDescription = null`) and merge a row into one node
   where it reads as one thing.
-- **A11Y-5 MUST** expose state with semantics, not colour or position alone: `Role.Switch` with `toggleableState`,
+- **A11Y-5 MUST** expose state with semantics, not color or position alone: `Role.Switch` with `toggleableState`,
   `selected`, `stateDescription` for things like "Page 2 of 4", `heading()` for section titles.
 - **A11Y-6 MUST** give every drag or gesture an accessible alternative: custom actions (like `moveActions`), a menu
   item, or a button ([INT-2](interaction.md)).
@@ -30,7 +30,7 @@ guidelines, WCAG 2.2 AA and Apple's HIG.
 - **A11Y-9 MUST** meet contrast of 4.5:1 for normal text and 3:1 for large text, icons and control boundaries,
   including over a bright wallpaper. `FolioColors.SecondaryLabel` (white at .6) and white at .55 need a scrim or a
   stronger value on light backgrounds.
-- **A11Y-10 MUST NOT** use colour as the only signal (a red dot also has a shape or label; an active Focus also has
+- **A11Y-10 MUST NOT** use color as the only signal (a red dot also has a shape or label; an active Focus also has
   text).
 - **A11Y-11 MUST** support Reduce Transparency and high contrast through `LocalSolidGlass`.
 
@@ -98,7 +98,7 @@ Not yet:
 | 1 | ~~Grow the six small hit areas~~ (done). The page dots and the folder swatches keep their size and let the strip around them take the tap; the widget options close, the picker's close and the media transport draw the same circle inside a 48 dp box | M |
 | 2 | A `secondaryLabel` token that meets 4.5:1 over bright wallpapers | S |
 | 3 | 200% font scale pass (cover and inner) | M |
-| 4 | Live regions for island notices and page changes | S |
+| 4 | ~~Live regions for island notices and page changes~~ (done) | S |
 | 5 | TalkBack labels for the editor and page dots | S |
-| 6 | `enableAccessibilityChecks()` in Compose UI tests | S |
+| 6 | `enableAccessibilityChecks()` in Compose UI tests. Blocked: Compose BOM 2025.06.01 does not expose it on `createComposeRule()`; revisit when the BOM bump (Dependabot #5) lands | S |
 | 7 | An RTL pseudo-locale pass | M |
