@@ -56,7 +56,7 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
 
     ProvideJiggle(edit) {
         BoxWithConstraints(modifier.testTag("today-view")) {
-            val wide = maxWidth > 560.dp
+            val wide = maxWidth > TODAY_TWO_COLUMN_MIN_WIDTH_DP.dp
             // iPad-like column: small widgets stay about 180dp wide even on the unfolded screen.
             val columnsWidth = minOf(maxWidth - 32.dp, 390.dp)
             val gap = 14.dp
@@ -99,7 +99,7 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
                     // Edit / Add / Done, like the bottom of iOS's Today View
                     Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SNUG.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) {
-                            JigglePill(stringResource(R.string.add_widget_2), Icons.Rounded.Add, description = "Add widget") { onAddWidget() }
+                            JigglePill(stringResource(R.string.add_widget_2), Icons.Rounded.Add, description = stringResource(R.string.add_widget)) { onAddWidget() }
                             Spacer(Modifier.width(12.dp))
                             JigglePill(stringResource(R.string.done), emphasized = true) { edit.stop() }
                         } else JigglePill(stringResource(R.string.edit)) { edit.start() }

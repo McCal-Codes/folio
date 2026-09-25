@@ -77,5 +77,5 @@ Not yet:
 |---|---|---|
 | 1 | Roborazzi screenshots at Mockup Lab window sizes, with `enableAccessibilityChecks()` | M |
 | 2 | A CI emulator job for the `androidTest` suite | M |
-| 3 | A lint baseline and a `lint {}` block (warnings as errors for new code) | S |
+| 3 | A lint baseline with warnings as errors for new code. McCal's call: it changes what fails CI for every open pull request, so it wants a quiet moment rather than the middle of 0.6.7 | S |
 | 4 | ~~CONTRIBUTING.md's command matches CI~~ (done) | S |

@@ -584,7 +584,7 @@ fun LauncherScreen(
                 return@BoxWithConstraints
             }
             val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
-            val wide = maxWidth.value * classScale >= 650f && maxHeight.value * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
+            val wide = maxWidth.value * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && maxHeight.value * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
             val preset = if (wide) state.expanded else state.compact
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
@@ -828,7 +828,7 @@ fun LauncherScreen(
                         // The whole rail, location slot included: the dock goes below all of it.
                         statusHeight = with(density) { it.height.toDp().value }
                     },
-                compact = contentHeight < 500.dp, iconSize = dockIconSize(geometry.iconSize).dp, style = state.statusStyle,
+                compact = contentHeight < COMPACT_DOCK_MAX_HEIGHT_DP.dp, iconSize = dockIconSize(geometry.iconSize).dp, style = state.statusStyle,
                 focus = state.focusModes.firstOrNull { it.id == state.activeFocus },
                 // Live activities grow the rail under the status; the dock below moves with the measured height.
                 island = if (state.island && state.railActivities) ({
