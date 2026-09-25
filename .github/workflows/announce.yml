@@ -1,0 +1,47 @@
+# Tells a Discord channel about a release, once, when it is published.
+#
+# Mod My Android's #app-updates takes an automated post per release rather than a person pasting one, and offered
+# Folio a ping role. Nothing is sent until MMD_WEBHOOK_URL exists as a secret, so this is inert until McCal adds it.
+name: Announce
+
+on:
+  release:
+    types: [published]
+  # For re-posting one by hand: run it against the tag and the release payload is read from the API.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to post, for example v0.6.6
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: announce-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # workflow_dispatch has no release in its payload, so fetch the one being re-posted and write it in the shape
+      # the release event uses.
+      - name: Build the event payload for a manual run
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > release.json
+          jq '{release: .}' release.json > event.json
+          echo "GITHUB_EVENT_PATH=$PWD/event.json" >> "$GITHUB_ENV"
+
+      - name: Post it
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.MMD_WEBHOOK_URL }}
+          DISCORD_ROLE_ID: ${{ vars.MMD_ROLE_ID }}
+          ANNOUNCE_PRERELEASES: ${{ vars.ANNOUNCE_PRERELEASES }}
+        run: node tools/announce-release.mjs
