@@ -783,11 +783,14 @@
     <string name="that_file_isn_t_a_folio_package">That file isn\'t a Folio package.</string>
     <string name="skip_the_introduction">Skip the introduction</string>
     <string name="welcome_to_the_folio_market">Welcome to the Folio Market</string>
-    <string name="folio_s_own_themes_and_tweaks_live_here">Folio\'s own themes and tweaks live here, as packages you can get and remove. Later you\'ll be able to add sources other people publish.</string>
+    <string name="market_welcome_packages_title">Themes and tweaks, as packages</string>
+    <string name="market_welcome_packages_body">Folio\'s own are here to get and remove, and every change comes with Undo beside it.</string>
+    <string name="market_welcome_sources_title">Sources you choose</string>
+    <string name="market_welcome_sources_body">Add any source by its address. Folio shows its key before you trust it, and remembers it.</string>
+    <string name="market_welcome_checked_title">Checked before anything changes</string>
+    <string name="market_welcome_checked_body">Size, checksum and signature first, then the whole package in one go. Each page says exactly what it may change.</string>
     <string name="choose_how_featured_looks">Choose how Featured looks</string>
     <string name="you_can_change_this_any_time_in_the">You can change this any time in the Market\'s settings.</string>
-    <string name="where_packages_come_from">Where packages come from</string>
-    <string name="folio_s_own_packages_come_with_the_app_a">Folio\'s own packages come with the app. A source you add is signed by whoever publishes it, and Folio shows its fingerprint before you trust it. Every package\'s page lists exactly what it may change.</string>
     <string name="next">Next</string>
     <string name="start">Start</string>
     <string name="next_step">Next step</string>

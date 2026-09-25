@@ -781,11 +781,14 @@
     <string name="that_file_isn_t_a_folio_package">那个文件不是 Folio 软件包。</string>
     <string name="skip_the_introduction">跳过介绍</string>
     <string name="welcome_to_the_folio_market">欢迎来到 Folio Market</string>
-    <string name="folio_s_own_themes_and_tweaks_live_here">Folio 自己的主题和插件都在这里，以软件包的形式供你获取和移除。之后你还可以添加其他人发布的源。</string>
+    <string name="market_welcome_packages_title">以软件包提供的主题与调整</string>
+    <string name="market_welcome_packages_body">Folio 自带的内容都可以在这里获取和移除，每次更改旁边都有撤销。</string>
+    <string name="market_welcome_sources_title">由你选择的来源</string>
+    <string name="market_welcome_sources_body">输入地址即可添加任何来源。信任之前 Folio 会显示它的密钥，并记住它。</string>
+    <string name="market_welcome_checked_title">先检查，再更改</string>
+    <string name="market_welcome_checked_body">先核对大小、校验和与签名，再一次性应用整个软件包。每个页面都会写明它可以更改什么。</string>
     <string name="choose_how_featured_looks">选择“精选”的外观</string>
     <string name="you_can_change_this_any_time_in_the">你可以随时在 Market 的设置中更改。</string>
-    <string name="where_packages_come_from">软件包从哪里来</string>
-    <string name="folio_s_own_packages_come_with_the_app_a">Folio 自己的软件包随 App 一起提供。你添加的源由发布者签名，Folio 会在你信任它之前显示其指纹。每个软件包的页面都会列出它可能更改的全部内容。</string>
     <string name="next">下一步</string>
     <string name="start">开始</string>
     <string name="next_step">下一步</string>
