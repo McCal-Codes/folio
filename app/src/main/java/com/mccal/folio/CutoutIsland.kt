@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -98,7 +99,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         onDispose { view.viewTreeObserver.removeOnGlobalLayoutListener(update) }
     }
 
-    val eventPair by IslandEvents.latest.collectAsState()
+    val eventPair by IslandEvents.latest.collectAsStateWithLifecycle()
     var eventVisible by remember { mutableStateOf<IslandEvent?>(null) }
     // While typing a quick reply the message stays put; nothing new replaces it.
     var replying by remember { mutableStateOf(false) }

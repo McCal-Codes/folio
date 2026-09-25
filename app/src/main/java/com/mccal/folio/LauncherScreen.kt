@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetProviderInfo
 import android.os.UserManager
@@ -828,7 +829,7 @@ fun LauncherScreen(
                 focus = state.focusModes.firstOrNull { it.id == state.activeFocus },
                 // Live activities grow the rail under the status; the dock below moves with the measured height.
                 island = if (state.island && state.railActivities) ({
-                    RailLiveActivity(IslandListenerService.activity.collectAsState().value
+                    RailLiveActivity(IslandListenerService.activity.collectAsStateWithLifecycle().value
                         ?.takeUnless { it is IslandActivity.Call && "CALL" in state.islandEventsOff }, preset.dockWidth.dp)
                 }) else null)
             // Background and border without clipping, so Harbor-style magnified icons can grow past the rail.

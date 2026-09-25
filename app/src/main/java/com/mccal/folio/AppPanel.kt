@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import android.content.pm.LauncherApps
 import androidx.compose.animation.core.Animatable
@@ -83,8 +84,8 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
     LaunchedEffect(Unit) { appear.animateTo(1f, spring(dampingRatio = .74f, stiffness = Spring.StiffnessMediumLow)) }
     DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
     val actions by produceState(emptyList<QuickAction>(), app.id) { value = withContext(Dispatchers.IO) { loadQuickActions(context, app, 4) } }
-    val notifications = IslandListenerService.notifications.collectAsState().value.filter { it.packageName == app.component.packageName }.take(3)
-    val media = (IslandListenerService.activity.collectAsState().value as? IslandActivity.Media)?.takeIf { it.packageName == app.component.packageName }
+    val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.filter { it.packageName == app.component.packageName }.take(3)
+    val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)?.takeIf { it.packageName == app.component.packageName }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current

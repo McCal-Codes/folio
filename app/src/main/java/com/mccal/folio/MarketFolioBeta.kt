@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -54,7 +55,7 @@ private val BetaOrange = FolioColors.Orange
 /** The Sources tab's Folio Beta row, marked as the supporter's, with "Update available" when there's a newer beta. */
 @Composable
 internal fun FolioBetaSourceRow(selected: Boolean, onOpen: () -> Unit) {
-    val status by SoftwareUpdate.status.collectAsState()
+    val status by SoftwareUpdate.status.collectAsStateWithLifecycle()
     val name = stringResource(R.string.folio_beta)
     val waiting = status is SoftwareUpdate.Status.Available || status is SoftwareUpdate.Status.Ready
     Row(
@@ -81,7 +82,7 @@ internal fun FolioBetaSourceRow(selected: Boolean, onOpen: () -> Unit) {
 @Composable
 internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: () -> Unit) {
     val context = LocalContext.current
-    val status by SoftwareUpdate.status.collectAsState()
+    val status by SoftwareUpdate.status.collectAsStateWithLifecycle()
     val installed = remember { SoftwareUpdate.installedVersion(context) }
     val supported = SoftwareUpdate.supported(context)
     var betaOn by remember { mutableStateOf(SoftwareUpdate.betaChannel(context)) }

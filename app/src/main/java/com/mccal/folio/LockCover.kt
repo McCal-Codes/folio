@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import android.app.AlarmManager
 import android.content.Intent
@@ -56,14 +57,14 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
     val tick by rememberMinuteTick()
     val now = displayNow(tick)
     val is24 = android.text.format.DateFormat.is24HourFormat(context)
-    val screenshot by ScreenshotMode.on.collectAsState()
+    val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
     val alarm = remember(tick, screenshot) {
         if (screenshot) null else context.getSystemService(AlarmManager::class.java)?.nextAlarmClock?.let {
             LocalDateTime.ofInstant(Instant.ofEpochMilli(it.triggerTime), ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern(if (is24) "EEE HH:mm" else "EEE h:mm a"))
         }
     }
-    val notifications = IslandListenerService.notifications.collectAsState().value.take(4)
+    val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.take(4)
 
     Box(Modifier.fillMaxSize().graphicsLayer {
         translationY = offset.value

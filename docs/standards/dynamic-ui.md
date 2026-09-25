@@ -142,10 +142,11 @@ Not yet:
   values, plus 12 tweens.
 - `FolioSheet.kt:161` uses a tween for the sheet, so it doesn't retarget like a spring.
 - Page settle (`PageGestures.kt:212`) drops the previous settle's velocity when a new drag starts.
-- Private loops: the Smart Stack rotation (`HomeWidgets.kt:281`) isn't lifecycle-gated; `StatusRail.kt:186` and
-  `MicroHome.kt:69` run their own clocks instead of `Ticker`; `EverywhereOverlay.kt:184` polls every 600 ms.
+- Private loops: `EverywhereOverlay.kt:184` still polls every 600 ms for a full-screen app. The Smart Stack rotation
+  runs under `repeatOnLifecycle(RESUMED)` now, and `StatusRail` and `MicroHome` take the shared minute tick.
 - Reduce Motion is binary (scale exactly 0), and `DiscoverFrame.kt:44` reads the setting itself.
-- 26 `collectAsState()` against 20 `collectAsStateWithLifecycle`, including the island in `CutoutIsland.kt:101`.
+- 16 `collectAsState()` left, in `CustomizationSheet.kt`, `StandBy.kt` and `EverywhereOverlay.kt`; everything else
+  collects with the lifecycle, the island included.
 - Only 3 polite live regions; island notices and page changes are silent to TalkBack.
 
 ## Gaps
@@ -154,9 +155,9 @@ Not yet:
 |---|---|---|
 | 1 | Name the springs Folio actually needs (`Settle`, `Quick`, `Firm`, plus `Sheet`, `Menu`, `Bounce` for switches) and move call sites onto them | M |
 | 2 | Sheet motion on a spring, growing from the source, with detents | M |
-| 3 | Smart Stack rotation behind `repeatOnLifecycle`; `StatusRail` and `MicroHome` clocks onto `Ticker` | S |
-| 4 | `collectAsState` → `collectAsStateWithLifecycle` for island, status and Settings flows | S |
-| 5 | Reduce Motion from a scale below 1 as well as 0, and `DiscoverFrame` onto `LocalReduceMotion` | S |
+| 3 | ~~Smart Stack rotation behind `repeatOnLifecycle`; `StatusRail` and `MicroHome` clocks onto `Ticker`~~ (done) | S |
+| 4 | ~~`collectAsState` → `collectAsStateWithLifecycle`~~ (done for the island, the cover, installs, notifications and the update status). Left: `CustomizationSheet.kt`, `StandBy.kt` (open in other pull requests) and `EverywhereOverlay.kt`, whose window has no lifecycle to follow | S |
+| 5 | `DiscoverFrame` onto `LocalReduceMotion` rather than reading the setting itself. **Not** "a scale below 1 counts as Reduce Motion", as this row used to say: a scale of 0.5 means the person wants animations *faster*, not gone. Honouring the scale as a speed, alongside Animation Speed, is the right shape and is its own decision | S |
 | 6 | Live regions for island notices and page changes | S |
 | 7 | Carry velocity into a re-grabbed page settle (part of the 0.7.1 Home swipe work; measure first) | M |
 | 8 | Replace the 600 ms full-screen poll in `EverywhereOverlay` with a window-insets or accessibility-event signal, if one proves reliable | M |
