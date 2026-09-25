@@ -5,21 +5,13 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.8] - Unreleased
+## [0.6.7] - Unreleased
 
 ### Added
 - **White text reads on a pale wallpaper:** Home darkens a little at the top and bottom, the way iPhone does, so the clock, app names, page dots and the buttons beside them stay legible over a dawn beach or a cream painting. The middle of your wallpaper is left as it is, and it steps aside where Folio is already using dark text on Home or already dimming the wallpaper for dark appearance. Settings > Wallpaper & Appearance > Text on Home > Darken behind text turns it off. It is drawn once with the background rather than over it, so a swipe costs the same as before.
 - **Flipbook, in the Tweak Library:** Home pages turn in 3D as you swipe instead of sliding flat, after Barrel by Aaron Ash. Which turn it is lives in Settings › Gestures.
 - **Folio's backgrounds are real art:** Folio ships two woodblock prints by Utagawa Hiroshige, Night View of Saruwaka-machi from the Library of Congress and Naruto Whirlpools from the National Library of New Zealand, and Settings › Wallpaper & Appearance is now one grid of everything you can put behind Home: your photo, the art Folio ships, and the art you install. Every one names its artist and its license. The drawn dunes are gone.
-- **A wallpaper you install keeps its artist and its license:** Folio shows who made a picture and what it is licensed under wherever that picture is offered, and refuses one that cannot say. Removing it puts back whatever was behind Home before.
-
-### Fixed
-- **Your background is decoded once, not three times:** on a cold start Home, the wallpaper preview and Folio's live wallpaper each read your background picture from disk and each kept its own copy in memory, because the shared copy was only ever filled in by the photo picker. They share one now, which is roughly twice the memory back on every start.
-- **Android's wallpaper drifts the right distance:** with Android's own wallpaper behind Home, Folio asked it to slide the full width of your pages. A still picture has no spare width to slide, so it moved further than it could and the system squashed the difference. Folio now spreads the drift the way Android's own launcher does, and uses the full travel only for a live wallpaper, which can draw itself as wide as it likes.
-
-## [0.6.7] - Unreleased
-
-### Added
+- **Installed wallpapers keep their credit:** Folio shows who made a picture and what it is licensed under wherever that picture is offered, and refuses one that cannot say. Removing it puts back whatever was behind Home before.
 - **Folio has its own color:** buttons, switches, selection and links use Folio Teal, the teal the app icon ships in, instead of Apple's blue. Settings › Wallpaper & Appearance › Accent keeps Classic Blue for anyone who prefers it. Status colors stay as they are, so Wi-Fi is still blue and a warning still amber.
 - **Folio Beta in the Market:** supporters see Folio Beta under Sources, with what you're on, the newest beta and an Update button. It's the same download Settings › Software Update makes: through your supporter code, checked against Folio's own signing key before anything installs, with Update Now or Tonight.
 - **Made with AI, said plainly:** a package whose author says AI helped make it shows an AI-assisted tag beside its developer, which tools helped under Information, and the same on the Get sheet before anything installs.
@@ -37,6 +29,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Home's background costs the GPU about a third less while swiping.** The dunes never move, so they're drawn once and reused instead of being redrawn every frame. Measured on a Fold8, unfolded at 120 Hz: 7.0 ms per frame down to 4.6 ms.
 
 ### Fixed
+- **Your background is decoded once, not three times:** on a cold start Home, the wallpaper preview and Folio's live wallpaper each read your background picture from disk and each kept its own copy in memory, because the shared copy was only ever filled in by the photo picker. They share one now, which is roughly twice the memory back on every start.
+- **Android's wallpaper drifts the right distance:** with Android's own wallpaper behind Home, Folio asked it to slide the full width of your pages. A still picture has no spare width to slide, so it moved further than it could and the system squashed the difference. Folio now spreads the drift the way Android's own launcher does, and uses the full travel only for a live wallpaper, which can draw itself as wide as it likes.
 - **A menu opens on its row, and a tap anywhere closes it** (#117): every pop-up menu of choices was drawn in the middle of the screen instead of under the row you tapped, and nothing but Back would close it, because the menu's window covered the whole screen and took the taps meant for what was behind it. Menus now hang from the control that opened them, flip above it near the bottom of the screen, and close on a tap outside.
 - **The Settings search field takes the keyboard unfolded** (#117): tapping it opened the keyboard and closed it again, and nothing could be typed. Settings was reading the room the keyboard left as a smaller screen, folding its two panes back into one, and the list holding the field you had just tapped went with them. The keyboard covers Settings now instead of resizing it.
 - A beta from the supporters' source can be downloaded. Folio asked for the list of betas with your code but downloaded the file without it, and the supporter service turns those downloads away.
