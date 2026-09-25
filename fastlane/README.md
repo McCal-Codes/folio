@@ -3,6 +3,13 @@
 What app stores and repositories read: the name, the descriptions, the icon, the screenshots and the changelogs.
 IzzyOnDroid and F-Droid both look for exactly this layout, so it lives here rather than in a listing somewhere.
 
+**Folio is not being submitted to IzzyOnDroid (decided 24 Sep 2026).** Their App Inclusion Policy says they are
+"strongly opposed to apps which are fully or in part created by generative AI tools", that "vibe-coded apps will be
+rejected", and their request template asks how much AI was used and which tools. Folio is written with AI
+assistance, so an honest request is a rejection and a quiet one would be a lie. The metadata here is not wasted:
+the same layout is what Folio's own F-Droid-compatible repository would read, which is the route that does not
+depend on anyone else's policy.
+
 - `title.txt`: **Folio Launcher**, not Folio. The app's own name stays Folio; listings say Folio Launcher because
   "Folio" is already taken on F-Droid by `com.folio.reader`, and because it says what it is to someone reading a list
   of apps.
