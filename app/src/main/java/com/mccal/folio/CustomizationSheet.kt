@@ -142,70 +142,70 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // The settings list. On the phone it's the first page; in the split view it's the sidebar, with the open page highlighted.
     val overviewRows: @Composable ColumnScope.(selected: CustomizationPage?, sidebar: Boolean) -> Unit = { selected, sidebar ->
                     SheetGroup {
-                        TweakRow(Icons.Rounded.Wallpaper, 0xFF32ADE6, stringResource(R.string.wallpaper_appearance), "customization-wallpaper",
+                        TweakRow(Icons.Rounded.Wallpaper, FolioColors.Value.CyanLight, stringResource(R.string.wallpaper_appearance), "customization-wallpaper",
                             if (backgrounds.previewPending) stringResource(R.string.photo_ready) else null, selected = selected == CustomizationPage.WALLPAPER, chevron = !sidebar) { onPage(CustomizationPage.WALLPAPER) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.GridView, 0xFF0A84FF, stringResource(R.string.home_screen_dock), "customization-home", selected = selected == CustomizationPage.HOME, chevron = !sidebar) { onPage(CustomizationPage.HOME) }
+                        TweakRow(Icons.Rounded.GridView, FolioColors.Value.Blue, stringResource(R.string.home_screen_dock), "customization-home", selected = selected == CustomizationPage.HOME, chevron = !sidebar) { onPage(CustomizationPage.HOME) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Today, 0xFFFF9F0A, stringResource(R.string.today_view), "customization-today", selected = selected == CustomizationPage.TODAY, chevron = !sidebar) { onPage(CustomizationPage.TODAY) }
+                        TweakRow(Icons.Rounded.Today, FolioColors.Value.Orange, stringResource(R.string.today_view), "customization-today", selected = selected == CustomizationPage.TODAY, chevron = !sidebar) { onPage(CustomizationPage.TODAY) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Palette, 0xFFFF375F, stringResource(R.string.themes), "customization-themes",
+                        TweakRow(Icons.Rounded.Palette, FolioColors.Value.Pink, stringResource(R.string.themes), "customization-themes",
                             FolioTheme.PRESETS.firstOrNull { state.looksLike(it) }?.name ?: stringResource(R.string.custom), selected = selected == CustomizationPage.THEMES, chevron = !sidebar) { onPage(CustomizationPage.THEMES) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Apps, 0xFF5E5CE6, stringResource(R.string.icons_side_bar), "customization-status", selected = selected == CustomizationPage.STATUS, chevron = !sidebar) { onPage(CustomizationPage.STATUS) }
+                        TweakRow(Icons.Rounded.Apps, FolioColors.Value.Indigo, stringResource(R.string.icons_side_bar), "customization-status", selected = selected == CustomizationPage.STATUS, chevron = !sidebar) { onPage(CustomizationPage.STATUS) }
                     }
                     SheetGroup {
-                        TweakRow(Icons.Rounded.Circle, 0xFF1C1C1E, stringResource(R.string.dynamic_island), "customization-island", selected = selected == CustomizationPage.ISLAND, chevron = !sidebar) { onPage(CustomizationPage.ISLAND) }
+                        TweakRow(Icons.Rounded.Circle, FolioColors.Value.SecondaryBackground, stringResource(R.string.dynamic_island), "customization-island", selected = selected == CustomizationPage.ISLAND, chevron = !sidebar) { onPage(CustomizationPage.ISLAND) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Notifications, 0xFFFF3B30, stringResource(R.string.notifications_control_center), "customization-notifications", selected = selected == CustomizationPage.NOTIFICATIONS, chevron = !sidebar) { onPage(CustomizationPage.NOTIFICATIONS) }
+                        TweakRow(Icons.Rounded.Notifications, FolioColors.Value.RedLight, stringResource(R.string.notifications_control_center), "customization-notifications", selected = selected == CustomizationPage.NOTIFICATIONS, chevron = !sidebar) { onPage(CustomizationPage.NOTIFICATIONS) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.DarkMode, 0xFF5E5CE6, stringResource(R.string.focus), "customization-focus",
+                        TweakRow(Icons.Rounded.DarkMode, FolioColors.Value.Indigo, stringResource(R.string.focus), "customization-focus",
                             state.focusModes.firstOrNull { it.id == state.activeFocus }?.name, selected = selected == CustomizationPage.FOCUS, chevron = !sidebar) { onPage(CustomizationPage.FOCUS) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Search, 0xFF8E8E93, stringResource(R.string.search_app_library), "customization-search", selected = selected == CustomizationPage.SEARCH, chevron = !sidebar) { onPage(CustomizationPage.SEARCH) }
+                        TweakRow(Icons.Rounded.Search, FolioColors.Value.Gray, stringResource(R.string.search_app_library), "customization-search", selected = selected == CustomizationPage.SEARCH, chevron = !sidebar) { onPage(CustomizationPage.SEARCH) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Gesture, 0xFF30B0C7, stringResource(R.string.gestures_actions), "customization-gestures", selected = selected == CustomizationPage.GESTURES, chevron = !sidebar) { onPage(CustomizationPage.GESTURES) }
+                        TweakRow(Icons.Rounded.Gesture, FolioColors.Value.Teal, stringResource(R.string.gestures_actions), "customization-gestures", selected = selected == CustomizationPage.GESTURES, chevron = !sidebar) { onPage(CustomizationPage.GESTURES) }
                     }
                     SheetGroup {
-                        TweakRow(Icons.Rounded.TouchApp, 0xFFFF9F0A, stringResource(R.string.side_key), "customization-side-key", selected = selected == CustomizationPage.SIDE_KEY, chevron = !sidebar) { onPage(CustomizationPage.SIDE_KEY) }
+                        TweakRow(Icons.Rounded.TouchApp, FolioColors.Value.Orange, stringResource(R.string.side_key), "customization-side-key", selected = selected == CustomizationPage.SIDE_KEY, chevron = !sidebar) { onPage(CustomizationPage.SIDE_KEY) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Lock, 0xFF30D158, stringResource(R.string.lock_cover), "customization-lock",
+                        TweakRow(Icons.Rounded.Lock, FolioColors.Value.Green, stringResource(R.string.lock_cover), "customization-lock",
                             if (state.lockCover) stringResource(R.string.on) else stringResource(R.string.off), selected = selected == CustomizationPage.LOCK, chevron = !sidebar) { onPage(CustomizationPage.LOCK) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Devices, 0xFFFF375F, stringResource(R.string.fold_displays), "customization-fold", selected = selected == CustomizationPage.FOLD, chevron = !sidebar) { onPage(CustomizationPage.FOLD) }
+                        TweakRow(Icons.Rounded.Devices, FolioColors.Value.Pink, stringResource(R.string.fold_displays), "customization-fold", selected = selected == CustomizationPage.FOLD, chevron = !sidebar) { onPage(CustomizationPage.FOLD) }
                     }
                     SheetGroup {
-                        TweakRow(Icons.Rounded.AutoAwesome, 0xFFBF5AF2, stringResource(R.string.tweaks), "customization-tweaks",
+                        TweakRow(Icons.Rounded.AutoAwesome, FolioColors.Value.Purple, stringResource(R.string.tweaks), "customization-tweaks",
                             pluralStringResource(R.plurals.count_installed, state.installedTweaks.size, state.installedTweaks.size), selected = selected == CustomizationPage.TWEAKS, chevron = !sidebar) { onPage(CustomizationPage.TWEAKS) }
                         // The Market: Folio Dev shows it, and a supporter's code opens it (0.6.6).
                         if (MarketAccess.isOpen(sheetContext)) {
                             MenuDivider()
-                            TweakRow(Icons.Rounded.Storefront, 0xFF0A84FF, stringResource(R.string.market), "customization-market",
+                            TweakRow(Icons.Rounded.Storefront, FolioColors.Value.Blue, stringResource(R.string.market), "customization-market",
                                 selected = selected == CustomizationPage.MARKET, chevron = !sidebar) { onPage(CustomizationPage.MARKET) }
                         }
                     }
                     SheetGroup {
-                        TweakRow(Icons.Rounded.Save, 0xFF8E8E93, stringResource(R.string.backup), "customization-backup", selected = selected == CustomizationPage.BACKUP, chevron = !sidebar) { onPage(CustomizationPage.BACKUP) }
+                        TweakRow(Icons.Rounded.Save, FolioColors.Value.Gray, stringResource(R.string.backup), "customization-backup", selected = selected == CustomizationPage.BACKUP, chevron = !sidebar) { onPage(CustomizationPage.BACKUP) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.PanTool, 0xFF0A84FF, stringResource(R.string.privacy_permissions), "customization-permissions", selected = selected == CustomizationPage.PERMISSIONS, chevron = !sidebar) { onPage(CustomizationPage.PERMISSIONS) }
+                        TweakRow(Icons.Rounded.PanTool, FolioColors.Value.Blue, stringResource(R.string.privacy_permissions), "customization-permissions", selected = selected == CustomizationPage.PERMISSIONS, chevron = !sidebar) { onPage(CustomizationPage.PERMISSIONS) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Settings, 0xFF8E8E93, stringResource(R.string.advanced), "customization-advanced", selected = selected == CustomizationPage.ADVANCED, chevron = !sidebar) { onPage(CustomizationPage.ADVANCED) }
+                        TweakRow(Icons.Rounded.Settings, FolioColors.Value.Gray, stringResource(R.string.advanced), "customization-advanced", selected = selected == CustomizationPage.ADVANCED, chevron = !sidebar) { onPage(CustomizationPage.ADVANCED) }
                     }
                     SheetGroup {
-                        TweakRow(Icons.Rounded.HelpOutline, 0xFF0A84FF, stringResource(R.string.help), "customization-help", selected = selected == CustomizationPage.HELP, chevron = !sidebar) { onPage(CustomizationPage.HELP) }
+                        TweakRow(Icons.Rounded.HelpOutline, FolioColors.Value.Blue, stringResource(R.string.help), "customization-help", selected = selected == CustomizationPage.HELP, chevron = !sidebar) { onPage(CustomizationPage.HELP) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.NewReleases, 0xFF30D158, stringResource(R.string.what_s_new), "customization-whats-new", "v" + WhatsNew.currentVersion(androidx.compose.ui.platform.LocalContext.current), chevron = !sidebar) { onClose(); onShowWhatsNew() }
+                        TweakRow(Icons.Rounded.NewReleases, FolioColors.Value.Green, stringResource(R.string.what_s_new), "customization-whats-new", "v" + WhatsNew.currentVersion(androidx.compose.ui.platform.LocalContext.current), chevron = !sidebar) { onClose(); onShowWhatsNew() }
                         MenuDivider()
                         val updateStatus by SoftwareUpdate.status.collectAsState()
-                        TweakRow(Icons.Rounded.SystemUpdate, 0xFF8E8E93, stringResource(R.string.software_update), "customization-software-update",
+                        TweakRow(Icons.Rounded.SystemUpdate, FolioColors.Value.Gray, stringResource(R.string.software_update), "customization-software-update",
                             if (updateStatus is SoftwareUpdate.Status.Available) "1" else null, selected = selected == CustomizationPage.SOFTWARE_UPDATE, chevron = !sidebar) { onPage(CustomizationPage.SOFTWARE_UPDATE) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Map, 0xFF5E5CE6, stringResource(R.string.roadmap), "customization-coming-soon", selected = selected == CustomizationPage.COMING_SOON, chevron = !sidebar) { onPage(CustomizationPage.COMING_SOON) }
+                        TweakRow(Icons.Rounded.Map, FolioColors.Value.Indigo, stringResource(R.string.roadmap), "customization-coming-soon", selected = selected == CustomizationPage.COMING_SOON, chevron = !sidebar) { onPage(CustomizationPage.COMING_SOON) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Favorite, 0xFFFF453A, stringResource(R.string.credits), "customization-credits", selected = selected == CustomizationPage.CREDITS, chevron = !sidebar) { onPage(CustomizationPage.CREDITS) }
+                        TweakRow(Icons.Rounded.Favorite, FolioColors.Value.Red, stringResource(R.string.credits), "customization-credits", selected = selected == CustomizationPage.CREDITS, chevron = !sidebar) { onPage(CustomizationPage.CREDITS) }
                         MenuDivider()
                         // The people who backed Folio, next to the people whose work it borrows from.
-                        TweakRow(Icons.Rounded.Star, 0xFFFF375F, stringResource(R.string.supporters), "customization-supporters", selected = selected == CustomizationPage.SUPPORTERS, chevron = !sidebar) { onPage(CustomizationPage.SUPPORTERS) }
+                        TweakRow(Icons.Rounded.Star, FolioColors.Value.Pink, stringResource(R.string.supporters), "customization-supporters", selected = selected == CustomizationPage.SUPPORTERS, chevron = !sidebar) { onPage(CustomizationPage.SUPPORTERS) }
                     }
                     SheetGroup {
                         val supportContext = androidx.compose.ui.platform.LocalContext.current
@@ -213,7 +213,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             runCatching { supportContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://ko-fi.com/mccal"))) }
                         }
                         if (Supporter.available(supportContext)) MenuDivider()
-                        if (Supporter.available(supportContext)) TweakRow(Icons.Rounded.Redeem, 0xFFBF5AF2, stringResource(R.string.supporter), "customization-supporter",
+                        if (Supporter.available(supportContext)) TweakRow(Icons.Rounded.Redeem, FolioColors.Value.Purple, stringResource(R.string.supporter), "customization-supporter",
                             remember(supportContext) { Supporter.code(supportContext) }?.let { stringResource(R.string.code_added) },
                             selected = selected == CustomizationPage.SUPPORTER,
                             chevron = !sidebar) { onPage(CustomizationPage.SUPPORTER) }
@@ -462,7 +462,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.Wallpaper, null, tint = androidx.compose.ui.graphics.Color.Black.copy(alpha = .6f), modifier = Modifier.size(18.dp))
                             }
-                            listOf(0xFFFFB340, 0xFFFF6961, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
+                            listOf(0xFFFFB340, FolioColors.Value.RedSoft, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
                                 Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color(c))
                                     .then(if (!state.iconTintFromWallpaper && state.iconTint == c) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
                                     .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(false); model.setIconStyle(IconStyle.TINTED, c) }
@@ -633,7 +633,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // Outside the dialog on purpose: closing the dialog is the first thing either button does, and
                         // a scope that went with it cancelled the report before it had been written.
                         val reportScope = rememberCoroutineScope()
-                        TweakRow(Icons.Rounded.BugReport, 0xFFFF453A, stringResource(R.string.report_a_bug), "customization-report-bug") { askDiagnostics = true }
+                        TweakRow(Icons.Rounded.BugReport, FolioColors.Value.Red, stringResource(R.string.report_a_bug), "customization-report-bug") { askDiagnostics = true }
                         if (askDiagnostics) {
                             fun openForm() { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.url(helpContext)))) } }
                             AlertDialog(onDismissRequest = { askDiagnostics = false },
@@ -648,7 +648,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                     modifier = Modifier.testTag("report-copy-diagnostics")) { Text(stringResource(R.string.use_github_instead)) } })
                         }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.WavingHand, 0xFFFF9F0A, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
+                        TweakRow(Icons.Rounded.WavingHand, FolioColors.Value.Orange, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
                     }
                     CardNote(stringResource(R.string.report_a_bug_opens_github_in_your_browse), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                     LauncherHelp(
@@ -740,7 +740,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                     }
                     SheetGroup {
-                        TweakRow(Icons.Rounded.Extension, 0xFFBF5AF2, stringResource(R.string.tweak_library), "tweak-library",
+                        TweakRow(Icons.Rounded.Extension, FolioColors.Value.Purple, stringResource(R.string.tweak_library), "tweak-library",
                             (TweakFeatures.size - installed.size).let { pluralStringResource(R.plurals.count_available, it, it) }) { onPage(CustomizationPage.TWEAK_LIBRARY) }
                     }
                 }
@@ -922,15 +922,15 @@ private fun LauncherHelp(
     onShadeSetup: () -> Unit,
 ) {
     SheetGroup {
-        HelpTip(Icons.Rounded.Home, 0xFF0A84FF, stringResource(R.string.edit_home), stringResource(R.string.hold_an_app_for_its_menu_or_move_while_h))
+        HelpTip(Icons.Rounded.Home, FolioColors.Value.Blue, stringResource(R.string.edit_home), stringResource(R.string.hold_an_app_for_its_menu_or_move_while_h))
         MenuDivider()
-        HelpTip(Icons.Rounded.Widgets, 0xFF5E5CE6, stringResource(R.string.widgets_smart_stacks), stringResource(R.string.hold_a_widget_and_let_go_for_sizes_stack))
+        HelpTip(Icons.Rounded.Widgets, FolioColors.Value.Indigo, stringResource(R.string.widgets_smart_stacks), stringResource(R.string.hold_a_widget_and_let_go_for_sizes_stack))
         MenuDivider()
-        HelpTip(Icons.Rounded.SwipeDown, 0xFFFF3B30, stringResource(R.string.notifications_control_center), stringResource(R.string.pull_down_from_the_top_left_or_top_right))
+        HelpTip(Icons.Rounded.SwipeDown, FolioColors.Value.RedLight, stringResource(R.string.notifications_control_center), stringResource(R.string.pull_down_from_the_top_left_or_top_right))
         MenuDivider()
-        HelpTip(Icons.Rounded.Circle, 0xFF1C1C1E, stringResource(R.string.dynamic_island), stringResource(R.string.tap_it_for_details_hold_and_drag_to_move))
+        HelpTip(Icons.Rounded.Circle, FolioColors.Value.SecondaryBackground, stringResource(R.string.dynamic_island), stringResource(R.string.tap_it_for_details_hold_and_drag_to_move))
         MenuDivider()
-        HelpTip(Icons.Rounded.Devices, 0xFFFF375F, stringResource(R.string.folding), stringResource(R.string.folio_fades_between_screens_and_keeps_th))
+        HelpTip(Icons.Rounded.Devices, FolioColors.Value.Pink, stringResource(R.string.folding), stringResource(R.string.folio_fades_between_screens_and_keeps_th))
     }
     SheetGroup {
         IosActionRow(stringResource(R.string.add_widget_to_this_page_2), "help-add-widget", onClick = onAddWidget)
@@ -1856,8 +1856,8 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
  * Everything here comes from Folio's plan; it changes as feedback comes in.
  */
 private enum class RoadmapStatus(@androidx.annotation.StringRes val label: Int, val color: Long) {
-    DONE(R.string.in_this_update, 0xFF30D158), BUILDING(R.string.in_progress, 0xFF0A84FF),
-    PLANNED(R.string.planned, 0xFFFF9F0A), EXPLORING(R.string.exploring, 0xFFBF5AF2)
+    DONE(R.string.in_this_update, FolioColors.Value.Green), BUILDING(R.string.in_progress, FolioColors.Value.Blue),
+    PLANNED(R.string.planned, FolioColors.Value.Orange), EXPLORING(R.string.exploring, FolioColors.Value.Purple)
 }
 private data class RoadmapItem(val icon: ImageVector, val color: Long, val title: String, val detail: String, val status: RoadmapStatus,
     /** Overrides the status label, e.g. "Coming in 0.6.1" for a release that isn't installed yet. */
@@ -2067,7 +2067,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
         horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally)) {
         listOf(1, 12).forEach { count ->
             Box(Modifier.size(56.dp)) {
-                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(androidx.compose.ui.graphics.Color(0xFF3A3A3C)))
+                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.MenuSurface))
                 val color = look.badgeColor.fixed?.let { androidx.compose.ui.graphics.Color(it) }
                     ?: if (look.badgeColor == BadgeColor.SOFT) androidx.compose.ui.graphics.Color(0xFFE5E5EA) else FolioColors.RedLight
                 IconBadge(count, state.badgeStyle, color, state.badgeLook, state.badgeSize.scale)

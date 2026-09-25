@@ -90,7 +90,7 @@ internal fun MarketInstallSheet(
             }
         }
 
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF2C2C2E)).padding(FolioSpace.COMFY.dp)) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface).padding(FolioSpace.COMFY.dp)) {
             Icon(Icons.Rounded.Shield, contentDescription = null, tint = FolioColors.Green, modifier = Modifier.size(20.dp))
             Text(safety.summary, color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(start = FolioSpace.COMPACT.dp))
         }
@@ -101,7 +101,7 @@ internal fun MarketInstallSheet(
                 if (safety.changes.isEmpty()) {
                     Line(Icons.Rounded.Check, FolioColors.Green, stringResource(R.string.how_folio_looks_and_nothing_else))
                 } else {
-                    safety.changes.forEach { Line(Icons.Rounded.Check, Color(0xFFFFB340), it) }
+                    safety.changes.forEach { Line(Icons.Rounded.Check, FolioColors.Warning, it) }
                 }
             }
         }
@@ -117,7 +117,7 @@ internal fun MarketInstallSheet(
         SheetGroup {
             Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                 origin.warning?.let {
-                    Text(it, color = Color(0xFFFFB340), fontSize = 14.sp)
+                    Text(it, color = FolioColors.Warning, fontSize = 14.sp)
                 }
                 Text(origin.line, color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
                 origin.provenance?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }

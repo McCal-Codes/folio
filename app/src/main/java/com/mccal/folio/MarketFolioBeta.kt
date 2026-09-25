@@ -70,7 +70,7 @@ internal fun FolioBetaSourceRow(selected: Boolean, onOpen: () -> Unit) {
             Text(name, color = Color.White, fontSize = 16.sp)
             Text(
                 stringResource(if (waiting) R.string.update_available else R.string.supporter),
-                color = if (waiting) Color(0xFF6CB4FF) else Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
+                color = if (waiting) FolioColors.BlueOnDark else Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
         Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .3f), modifier = Modifier.size(18.dp))

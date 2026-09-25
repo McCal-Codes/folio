@@ -409,7 +409,7 @@ private fun MessageAvatar(message: IslandEvent.Message, size: Dp) {
     val person = message.avatar != null && !message.alert
     if (bitmap != null) Image(bitmap.asImageBitmap(), null, Modifier.size(size).clip(if (person) CircleShape else RoundedCornerShape(size * .24f)),
         contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-    else Box(Modifier.size(size).clip(CircleShape).background(Color(0xFF3A3A3C)), contentAlignment = Alignment.Center) {
+    else Box(Modifier.size(size).clip(CircleShape).background(FolioColors.MenuSurface), contentAlignment = Alignment.Center) {
         Text(message.sender.take(1).uppercase(), color = Color.White, fontSize = (size.value * .42f).sp, fontWeight = FontWeight.SemiBold)
     }
 }

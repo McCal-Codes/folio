@@ -134,7 +134,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                         androidx.compose.foundation.lazy.grid.GridCells.Fixed(columns),
                         Modifier.fillMaxWidth().heightIn(max = availableHeight - 64.dp).clip(RoundedCornerShape(36.dp))
-                            .background(Color(0xFF2C2C2E).copy(alpha = .96f)).border(FolioGlass.edge, RoundedCornerShape(36.dp))
+                            .background(FolioColors.SheetSurface.copy(alpha = .96f)).border(FolioGlass.edge, RoundedCornerShape(36.dp))
                             .pointerInput(Unit) { detectTapGestures() }
                             .edgeFade(gridState).testTag("category-folder"),
                         state = gridState, contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),

@@ -803,7 +803,7 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
             setProgress { target -> onStart(); onValue(target.coerceIn(0f, 1f)); true } // TalkBack can adjust it
         }) {
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(shown).background(Color.White))
-        Icon(icon, null, tint = if (shown > .18f) Color(0xFF3A3A3C) else Color.White,
+        Icon(icon, null, tint = if (shown > .18f) FolioColors.MenuSurface else Color.White,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * .22f).size(width * .36f))
     }
 }

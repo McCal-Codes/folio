@@ -134,7 +134,7 @@ internal fun SheetGroupLabel(text: String) {
 /** iOS inset grouped list: rounded dark card holding rows separated by thin dividers. */
 @Composable
 internal fun SheetGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2C2C2E)), content = content)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.SheetSurface), content = content)
 }
 
 /** Side-rail placement; the rail sits on the right unless the left-handed layout is on. */

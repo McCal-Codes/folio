@@ -37,10 +37,10 @@ internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
     primary = FolioColors.BlueOnDark, onPrimary = Color.White,
     primaryContainer = FolioColors.BlueOnDark, onPrimaryContainer = Color.White,
     secondary = FolioColors.Cyan, onSecondary = Color.Black,
-    secondaryContainer = Color(0xFF3A3A3C), onSecondaryContainer = Color.White,
+    secondaryContainer = FolioColors.MenuSurface, onSecondaryContainer = Color.White,
     surface = FolioColors.SecondaryBackground, onSurface = Color.White, onSurfaceVariant = Color(0xFFA1A1A6),
     surfaceContainerLowest = Color(0xFF141416), surfaceContainerLow = FolioColors.SecondaryBackground,
-    surfaceContainer = Color(0xFF242428), surfaceContainerHigh = Color(0xFF2C2C2E), surfaceContainerHighest = Color(0xFF3A3A3C),
+    surfaceContainer = Color(0xFF242428), surfaceContainerHigh = FolioColors.SheetSurface, surfaceContainerHighest = FolioColors.MenuSurface,
     outline = Color(0xFF545458), outlineVariant = Color(0xFF38383A), error = FolioColors.Red,
 )
 

@@ -17,7 +17,7 @@ Folio's own identity takes over.
 
 ### Tokens
 
-- **DES-4 MUST** take colours from `FolioColors`, glass fills from `FolioGlass`, springs from `FolioMotion`, and app
+- **DES-4 MUST** take colours from `FolioColors` (or `FolioColors.Value`, where a colour is held as a number), glass fills from `FolioGlass`, springs from `FolioMotion`, and app
   label sizes from `LabelSize` (new code). A hex literal is allowed only inside a token file, a theme file, or a
   deliberately fixed artwork such as `DuneWallpaper`.
 - **DES-5 MUST NOT** re-type a token's value. `Color(0xFF0A84FF)` outside `FolioTokens.kt` is a bug waiting to drift.
@@ -102,14 +102,16 @@ Not yet:
   expanding the tokens again and diffing against what was there.
 - What stays a literal on purpose: icon and thumbnail radii, which follow their size (DES-8a); pill shapes; and the
   sizes of things (an icon, a sheet's width), which are dimensions rather than spacing.
-- Outside the token files there are still 87 `Color(0x…)`, 146 `RoundedCornerShape(N.dp)` and 148 `fontSize = N.sp`,
-  most of them in the files above or genuinely one-off. `DesignTokensTest` holds those counts so they can only go
-  down.
-- Material used directly: `AlertDialog` for rename (`AppContextMenu.kt:238`), `Button` / `OutlinedButton` /
-  `FilledTonalButton` in 6 places, `AssistChip` in `AppLibrary.kt:213`, Material progress indicators.
+- Outside the token files there are 57 `Color(0x…)`, 23 colours written as numbers, 132 `RoundedCornerShape(N.dp)`
+  and 144 `fontSize = N.sp`. `DesignTokensTest` holds all four counts so they can only go down. Counting numbers as
+  well as `Color(0x…)` is what found 78 retyped palette values hiding in tweak tints, Focus modes and saved layouts.
+- Material still used directly: `AssistChip` in `AppLibrary.kt`, and Material's progress indicators. The buttons,
+  the rename alert and the folder menu are Folio's own now.
 - Material underneath a Folio component, the `IosSlider` pattern: `FolioMenuPopup` is Material's `DropdownMenu`
   wearing Folio's surface, for the anchoring and outside dismissal that the hand-placed `Popup` got wrong (#117).
-- `FolioColors` is dark-appearance only; there are no named status colours or light variants besides `RedLight`.
+- `FolioColors` now has status colours (`Warning`, `RedSoft`), the light-appearance variants (`GreenLight`,
+  `RedLight`, `CyanLight`, `LightBackground`), the surfaces a sheet and a menu sit on, and `FolioColors.Value` for
+  the places that hold a colour as a number.
 
 ## Gaps
 
@@ -118,5 +120,5 @@ Not yet:
 | 1 | ~~Add the scales and move every screen onto them~~ (done) | M |
 | 2 | ~~Replace re-typed token hex values; one green~~ (done: 51 colors moved onto tokens, `IosGreen` is now `FolioColors.GreenLight`, iOS's light-appearance green) | S |
 | 3 | Move the rename dialog to Folio's `AlertDialog`; the direct Buttons to one `FolioButton` (the folder's menu is `FolioMenuPopup` now) | S |
-| 4 | Light-surface variants and named status colours (`Success`, `Warning`) in `FolioColors` | S |
+| 4 | ~~Light-surface variants and named status colours~~ (done: `Warning`, `RedSoft`, `CyanLight`, `Teal`, `SheetSurface`, `MenuSurface`, `LightBackground`, plus `FolioColors.Value` for colours held as numbers) | S |
 | 5 | ~~A check that counts raw colors, radii and text sizes outside the token files~~ (done: `DesignTokensTest`) | S |

@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,12 +25,15 @@ class DesignTokensTest {
 
     private val patterns = mapOf(
         "hex color" to Regex("""Color\(0x[0-9A-Fa-f]{8}\)"""),
+        // A colour written as a number rather than a Color: a tweak's tint, a Focus mode, a saved layout. They drift
+        // from the palette just as easily, so they are counted too (FolioColors.Value is how they reach the tokens).
+        "ARGB number" to Regex("""(?<![\w.(])0x[0-9A-Fa-f]{8}L?\b"""),
         "corner radius" to Regex("""RoundedCornerShape\(\d+\.dp\)"""),
         "text size" to Regex("""fontSize = \d+\.sp"""),
     )
 
     /** What each kind is allowed to have left. Lower these as code moves onto the tokens; never raise them. */
-    private val limits = mapOf("hex color" to 87, "corner radius" to 132, "text size" to 144)
+    private val limits = mapOf("hex color" to 57, "ARGB number" to 23, "corner radius" to 132, "text size" to 144)
 
     private fun hits(kind: String): List<String> {
         val pattern = patterns.getValue(kind)
@@ -57,6 +61,10 @@ class DesignTokensTest {
 
     @Test fun `the token values Folio's shared components use are the ones the standard names`() {
         // The scales in docs/standards/design.md. A change here is a change to every screen, so it's deliberate.
+        // Every palette number and its Color are the same colour: one source of truth for both kinds of call site.
+        assertEquals(FolioColors.Blue, Color(FolioColors.Value.Blue))
+        assertEquals(FolioColors.Warning, Color(FolioColors.Value.Warning))
+        assertEquals(FolioColors.MenuSurface, Color(FolioColors.Value.MenuSurface))
         assertEquals(listOf(10, 14, 16, 20, 24, 28), listOf(FolioRadius.CONTROL, FolioRadius.CARD, FolioRadius.GROUP, FolioRadius.GROUPED_CARD, FolioRadius.PANEL, FolioRadius.SHEET_TOP))
         assertEquals(listOf(28, 17, 15, 13, 12), listOf(FolioType.TITLE, FolioType.BODY, FolioType.SUBHEAD, FolioType.FOOTNOTE, FolioType.GROUP_LABEL))
         assertEquals(listOf(48, 52), listOf(FolioRow.ACTION, FolioRow.NAV))
