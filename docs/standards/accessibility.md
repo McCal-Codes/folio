@@ -79,9 +79,12 @@ Good:
 
 Not yet:
 
-- Targets under 44dp without a larger hit area: page dots 28dp (`LauncherScreen.kt:882`), folder controls 30dp
-  (`FolderPanel.kt:96`), AppPanel transport 30dp (`AppPanel.kt:142`), widget options close 32dp (`HomeWidgets.kt:362`),
-  picker close 36dp (`WidgetPicker.kt:237`), search clear 36dp (`IosControls.kt:106`).
+- Two targets are fixed: the widget options close draws a 32 dp circle inside a 48 dp tap, and the search field's
+  clear is as wide as the row is tall (40 x 48), since that row's height is fixed by design. `FolioTouch.MIN` names the minimum.
+- Four are left, and each costs something visible: page dots 28dp (`LauncherScreen.kt`), folder swatches 30dp
+  (`FolderPanel.kt:96`), the media transport 30 and 34dp (`AppPanel.kt`), the picker's close 36dp
+  (`WidgetPicker.kt`). iOS has the same sizes and leans on the strip or the row taking the tap, which is the shape
+  worth copying rather than growing each one.
 - Widget picker secondary text scores 2.59:1 (`WidgetPicker.kt:228`).
 - 51 ellipses and 68 `maxLines = 1`; no 200% pass yet.
 - 3 live regions; no focus rings; no RTL check; `Role.Switch` used once.
@@ -90,7 +93,7 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | Grow the six small hit areas above | S |
+| 1 | Grow the six small hit areas. Two are done (the widget options close, the search field's clear). The other four cannot reach 48 dp without changing what is drawn, and each needs a decision: page dots (28 dp, and 48 dp each would space them apart, so the strip should take the tap), folder swatches (30 dp in a grid), the picker's close (36 dp, its header grows 8 dp), the media transport (30 and 34 dp, its row grows 14 dp) | M |
 | 2 | A `secondaryLabel` token that meets 4.5:1 over bright wallpapers | S |
 | 3 | 200% font scale pass (cover and inner) | M |
 | 4 | Live regions for island notices and page changes | S |
