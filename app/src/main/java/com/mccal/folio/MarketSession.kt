@@ -171,7 +171,8 @@ internal class MarketSession(
         BackgroundLibrary.prune(appContext, store.installed().map { it.id }.toSet())
     }
 
-    fun undo(result: InstallResult.Installed): Boolean = installer.undo(result)
+    // Undo removes through the installer directly, past remove() above, so it prunes for itself.
+    fun undo(result: InstallResult.Installed): Boolean = installer.undo(result).also { if (it) pruneArt() }
 
     /**
      * Called when Folio starts after a crash: if a package was being applied, it's turned off rather than left to

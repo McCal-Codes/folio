@@ -55,6 +55,11 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
             if (!file.isFile) error("that wallpaper's picture isn't on this phone. Get it again to put it back")
         } else {
             file.parentFile?.mkdirs()
+            // An update overwrites the one file an id has, and the record carries no picture, so undoing the update
+            // would reapply the old version's credit over the new version's picture. The picture being replaced is
+            // kept beside it until the change is put back or the package is pruned. One level deep, which is as far
+            // as the installer's own undo goes.
+            if (file.isFile) file.renameTo(BackgroundLibrary.previousArtFile(context, art.id))
             file.writeBytes(bytes)
         }
         if (BackgroundLibrary.isBuiltIn(art.id)) {
@@ -79,9 +84,14 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
      * package is no longer installed.
      */
     override fun restoreArtBackground(artId: String, snapshot: String) {
+        // exists(), not artFile().isFile: the snapshot may name art that ships inside Folio, which is an asset with
+        // no file, and testing for a file would read that snapshot as nothing and lose the background it recorded.
         setBackgroundChoice(context, BackgroundChoice.parse(snapshot) { id ->
-            id != artId && BackgroundLibrary.artFile(context, id).isFile
+            id != artId && BackgroundLibrary.exists(context, id)
         })
+        // If this change replaced an earlier picture for the same id, that picture comes back.
+        val previous = BackgroundLibrary.previousArtFile(context, artId)
+        if (previous.isFile) previous.renameTo(BackgroundLibrary.artFile(context, artId))
         LauncherBackgroundCache.changed(null)
     }
 }

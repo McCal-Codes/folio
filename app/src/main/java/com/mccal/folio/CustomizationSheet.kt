@@ -273,8 +273,36 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.COMING_SOON -> ComingSoonPage()
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
-                    AppIconCard(onChanged = { model.refresh() })
-                    SettingsCard(stringResource(R.string.background)) {
+                    // The order is the one every well-regarded product uses, sourced in docs/mockups/wallpaper-page.html:
+                    // the preview first because it is what the rest edits, then the picture, then the mode that dims it,
+                    // then the colors, then the things drawn over it. App Icon lives on the Icons page. That is the
+                    // iOS Wallpaper flow's shape rather than a Folio invention (DES-1), built from Folio's own rows,
+                    // groups and cards (DES-9), with the preview standing in for iOS's chrome-on-preview.
+                    //
+                    // The preview shows the candidate when there is one, under Home's real chrome, which is what AOSP's
+                    // small preview and iOS's Lock Screen preview both do. Art and photos apply the same way: a tap
+                    // stages, Set writes.
+                    val candidate = backgrounds.pendingArtBitmap ?: backgrounds.previewBitmap
+                    val staging = backgrounds.pendingArt != null || backgrounds.previewPending
+                    if (!state.systemWallpaper) {
+                        MiniHomePreview(candidate, state, 228.dp)
+                        if (staging) SheetGroup {
+                            IosActionRow(stringResource(R.string.set), "background-set",
+                                enabled = candidate != null || backgrounds.pendingArt != null,
+                                onClick = { if (backgrounds.previewPending) backgrounds.applyPreview() else backgrounds.setPendingArt() })
+                            MenuDivider()
+                            IosActionRow(stringResource(R.string.cancel), "background-cancel",
+                                onClick = { if (backgrounds.previewPending) backgrounds.cancelPreview() else backgrounds.cancelPendingArt() })
+                        } else if (backgrounds.justSet) SheetGroup {
+                            // Once, after a Set, and behind Android's own preview: the phone's wallpaper cannot be read
+                            // back at this targetSdk, so setting it cannot be undone from here.
+                            IosActionRow(stringResource(R.string.also_set_as_phone_wallpaper), "wallpaper-preview",
+                                onClick = { backgrounds.offerTaken(); onWallpaperPreview() })
+                            CardNote(stringResource(R.string.set_as_phone_wallpaper_note))
+                        }
+                        if (backgrounds.loading) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("background-loading"))
+                    }
+                    SettingsCard(stringResource(R.string.wallpaper)) {
                         IosSegmented(listOf(true to stringResource(R.string.android_wallpaper), false to stringResource(R.string.folio_background)),
                             state.systemWallpaper, { system -> model.setSystemWallpaper(system); wallpaperContext.asActivity()?.applyWallpaperWindow(system) },
                             Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "background-choice")
@@ -282,8 +310,31 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             runCatching { wallpaperContext.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER), wallpaperContext.getString(R.string.change_wallpaper))
                                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                         }, modifier = Modifier.testTag("background-change-system"))
+                        // Only Android's wallpaper drifts now, and the system moves it, so the switch lives with the
+                        // wallpaper it moves. Folio's own picture has no spare width to slide (see DuneWallpaper).
+                        if (state.systemWallpaper) SettingsSwitch(stringResource(R.string.wallpaper_moves_with_pages), state.wallpaperMotion, model::setWallpaperMotion, "wallpaper-motion-switch")
                         CardNote(if (state.systemWallpaper) stringResource(R.string.uses_the_same_wallpaper_as_your_phone_s)
-                            else stringResource(R.string.a_picture_you_choose_in_folio_only_behind))
+                            else stringResource(R.string.wallpaper_group_note))
+                    }
+                    if (!state.systemWallpaper) {
+                        BackgroundPicker(backgrounds)
+                        (backgrounds.errorMessage ?: backgrounds.successMessage)?.let { message ->
+                            TextButton(onClick = backgrounds::clearMessage, Modifier.fillMaxWidth().testTag("background-message")) { Text(message) }
+                        }
+                    }
+                    AppearanceSettings(appearance, onAppearanceMode, onAppearanceManual, onAppearanceDeviceLocation,
+                        onAppearanceClear, onAppearanceAccent) {
+                        // A property of the mode, not of the text: One UI files "Dim wallpaper when Dark mode is on"
+                        // right under its wallpaper and color entries, and that is where it reads correctly.
+                        MenuDivider()
+                        SettingsSwitch(stringResource(R.string.dark_appearance_dims_wallpaper), state.dimWallpaperDark, model::setDimWallpaperDark, "dim-wallpaper-switch")
+                    }
+                    SettingsCard(stringResource(R.string.text_on_home)) {
+                        IosMenuRow(stringResource(R.string.text_color), listOf("AUTO" to stringResource(R.string.automatic), "LIGHT" to stringResource(R.string.light), "DARK" to stringResource(R.string.dark)), state.homeInk, model::setHomeInk, tag = "home-ink")
+                        // Beside the text colour it exists for: the scrim is the other half of the same job, for a pale
+                        // wallpaper that white text still has to read over.
+                        SettingsSwitch(stringResource(R.string.darken_behind_text), state.homeScrim, model::setHomeScrim, "home-scrim-switch")
+                        CardNote(stringResource(R.string.labels_status_page_dots_and_widget_text))
                     }
                     GlassCardSettings(state, model)
                     SettingsCard(stringResource(R.string.screen_corners)) {
@@ -292,36 +343,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             onChange = model::setCornerRadius)
                         CardNote(stringResource(R.string.draws_iphone_style_rounded_corners_over))
                     }
-                    SettingsCard(stringResource(R.string.text_on_home)) {
-                        IosMenuRow(stringResource(R.string.text_color), listOf("AUTO" to stringResource(R.string.automatic), "LIGHT" to stringResource(R.string.light), "DARK" to stringResource(R.string.dark)), state.homeInk, model::setHomeInk, tag = "home-ink")
-                        // Beside the text colour it exists for: the scrim is the other half of the same job, for a pale
-                        // wallpaper that white text still has to read over.
-                        SettingsSwitch(stringResource(R.string.darken_behind_text), state.homeScrim, model::setHomeScrim, "home-scrim-switch")
-                        SettingsSwitch(stringResource(R.string.dark_appearance_dims_wallpaper), state.dimWallpaperDark, model::setDimWallpaperDark, "dim-wallpaper-switch")
-                        // Both backgrounds, one switch: Android's wallpaper and Folio's own each drift as pages move.
-                        CardNote(stringResource(R.string.labels_status_page_dots_and_widget_text))
-                    }
-                    if (!state.systemWallpaper) {
-                    MiniHomePreview(backgrounds.previewBitmap, state, 228.dp)
-                    // The picker is the list of pictures. A photo being previewed is the one thing it cannot show,
-                    // because that photo is not chosen yet, so Apply and Cancel stay as rows above it.
-                    if (backgrounds.previewPending) SheetGroup {
-                        IosActionRow(stringResource(R.string.apply), "background-preview-apply", enabled = backgrounds.previewBitmap != null, onClick = backgrounds::applyPreview)
-                        MenuDivider()
-                        IosActionRow(stringResource(R.string.cancel), "background-preview-cancel", onClick = backgrounds::cancelPreview)
-                    }
-                    BackgroundPicker(backgrounds)
-                    SheetGroup {
-                        IosActionRow(stringResource(R.string.preview_as_phone_wallpaper), "wallpaper-preview", onClick = onWallpaperPreview)
-                    }
-                    if (backgrounds.loading) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("background-loading"))
-                    CardNote(stringResource(R.string.changes_the_image_behind_folio_s_home_sc) + stringResource(R.string.opens_android_s_preview_to_use_folio_s_b), Modifier.padding(horizontal = FolioSpace.TINY.dp))
-                    (backgrounds.errorMessage ?: backgrounds.successMessage)?.let { message ->
-                        TextButton(onClick = backgrounds::clearMessage, Modifier.fillMaxWidth().testTag("background-message")) { Text(message) }
-                    }
-                    }
-                    AppearanceSettings(appearance, onAppearanceMode, onAppearanceManual, onAppearanceDeviceLocation,
-                        onAppearanceClear, onAppearanceAccent)
                 }
                 CustomizationPage.HOME -> {
                     HomeLayoutSettings(state, wide, { wide = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
@@ -417,6 +438,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.STATUS, CustomizationPage.ISLAND -> {
                     if (page == CustomizationPage.STATUS && !split) MiniHomePreview(backgrounds.previewBitmap, state, 210.dp)
                     val st = state.statusStyle
+                    if (page == CustomizationPage.STATUS) AppIconCard(onChanged = { model.refresh() })
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.app_icons)) {
                         val iconContext = androidx.compose.ui.platform.LocalContext.current
                         val packs = remember { IconPacks.installed(iconContext) }

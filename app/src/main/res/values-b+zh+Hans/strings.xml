@@ -1408,4 +1408,10 @@
     <string name="tweak_flipbook_detail">滑动时主屏幕页面以 3D 方式翻转，而不是平移。</string>
     <string name="follow_system">跟随系统</string>
     <string name="sunset_to_sunrise">日落到日出</string>
+    <string name="also_set_as_phone_wallpaper">同时设为手机壁纸</string>
+    <string name="set_as_phone_wallpaper_note">打开 Android 自带的预览，锁屏也会显示它。这一更改无法从 Folio 撤销，因此那里会再次确认。</string>
+    <string name="wallpaper_group_note">Folio 会把它绘制在主屏幕后面。锁屏显示的是手机自己的壁纸。</string>
+    <string name="previewing_1">正在预览 %1$s</string>
+    <string name="wallpaper">壁纸</string>
+    <string name="wallpaper_moves_with_pages">壁纸随页面移动</string>
 </resources>

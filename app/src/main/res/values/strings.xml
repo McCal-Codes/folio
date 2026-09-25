@@ -1453,4 +1453,10 @@
     <string name="tweak_flipbook_detail">Home pages turn in 3D as you swipe, instead of sliding flat.</string>
     <string name="follow_system">Follow System</string>
     <string name="sunset_to_sunrise">Sunset to Sunrise</string>
+    <string name="also_set_as_phone_wallpaper">Also set as phone wallpaper</string>
+    <string name="set_as_phone_wallpaper_note">Opens Android’s own preview, so the lock screen shows it too. That change can’t be undone from Folio, which is why it asks again there.</string>
+    <string name="wallpaper_group_note">Folio draws this behind Home. The phone’s own wallpaper is what the lock screen shows.</string>
+    <string name="previewing_1">Previewing %1$s</string>
+    <string name="wallpaper">Wallpaper</string>
+    <string name="wallpaper_moves_with_pages">Wallpaper moves with pages</string>
 </resources>

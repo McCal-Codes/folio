@@ -114,12 +114,9 @@ internal fun BackgroundPicker(
         value = withContext(Dispatchers.IO) { BackgroundLibrary.installed(context).filter { it.credited } }
     }.value
 
-    fun choose(next: BackgroundChoice) {
-        setBackgroundChoice(context, next)
-        // Drop the decoded picture rather than decoding the new one here: whatever draws next asks for it, on its
-        // own thread, through the one loader.
-        LauncherBackgroundCache.changed(null)
-    }
+    // A tap stages; the controller owns the candidate and Set is what writes it (see LauncherBackgroundController).
+    val pending = controller.pendingArt
+    fun stage(id: String) = controller.stageArt(id)
 
     Column(modifier) {
         SheetGroupLabel(stringResource(R.string.your_photo))
@@ -128,18 +125,20 @@ internal fun BackgroundPicker(
                 selected = choice == BackgroundChoice.Photo,
                 hasPhoto = launcherPhotoFile(context).isFile,
                 onPick = controller::choosePhoto,
-                onSelect = { choose(BackgroundChoice.Photo) },
+                // The photo is chosen through its own preview (choosePhoto, then Set): tapping the tile of the photo
+                // already chosen does nothing new, so the tile is only ever the way in to picking a different one.
+                onSelect = controller::choosePhoto,
             )
         }
 
         if (builtIn.isNotEmpty()) {
             SheetGroupLabel(stringResource(R.string.from_folio))
-            BackgroundGrid(builtIn) { ArtTile(it, choice == BackgroundChoice.Art(it.id)) { choose(BackgroundChoice.Art(it.id)) } }
+            BackgroundGrid(builtIn) { ArtTile(it, choice == BackgroundChoice.Art(it.id), pending?.id == it.id) { stage(it.id) } }
         }
 
         if (installed.isNotEmpty()) {
             SheetGroupLabel(stringResource(R.string.installed))
-            BackgroundGrid(installed) { ArtTile(it, choice == BackgroundChoice.Art(it.id)) { choose(BackgroundChoice.Art(it.id)) } }
+            BackgroundGrid(installed) { ArtTile(it, choice == BackgroundChoice.Art(it.id), pending?.id == it.id) { stage(it.id) } }
         }
 
         CardNote(stringResource(R.string.wallpapers_you_install_from_the_market), Modifier.padding(top = FolioSpace.SMALL.dp))
@@ -181,6 +180,10 @@ internal fun gridColumns(width: Dp): Int = maxOf(2, (width / TILE_MIN).toInt())
 private fun RowScope.Tile(
     selected: Boolean,
     tag: String,
+    /** Staged but not set: a dashed ring rather than a tick, so what is chosen and what is being tried never look alike. */
+    pending: Boolean = false,
+    /** False for a tile with no picture yet: a clock over an empty box judges nothing. */
+    chrome: Boolean = true,
     description: String,
     onClick: () -> Unit,
     image: @Composable BoxScope.() -> Unit,
@@ -195,13 +198,16 @@ private fun RowScope.Tile(
                 .clip(RoundedCornerShape(FolioRadius.CARD.dp))
                 .background(FolioColors.SecondaryBackground)
                 .then(
-                    if (selected) Modifier.border(2.dp, LocalAccent.current.fill, RoundedCornerShape(FolioRadius.CARD.dp))
-                    else Modifier,
+                    when {
+                        selected -> Modifier.border(2.dp, LocalAccent.current.fill, RoundedCornerShape(FolioRadius.CARD.dp))
+                        pending -> Modifier.border(2.dp, LocalAccent.current.ink.copy(alpha = .7f), RoundedCornerShape(FolioRadius.CARD.dp))
+                        else -> Modifier
+                    },
                 ),
         ) {
             image()
             // Home's own chrome, over the picture, so what you are judging is the thing you will get.
-            Text(
+            if (chrome) Text(
                 currentTime().format(DateTimeFormatter.ofPattern(clockPattern())),
                 color = Color.White,
                 // A share of the tile rather than a size off the scale (DES-6): this clock is a picture of Home's
@@ -233,13 +239,14 @@ private fun clockPattern() =
     if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
 
 @Composable
-private fun RowScope.ArtTile(art: Artwork, selected: Boolean, onSelect: () -> Unit) {
+private fun RowScope.ArtTile(art: Artwork, selected: Boolean, pending: Boolean, onSelect: () -> Unit) {
     val context = LocalContext.current
     var thumb by remember(art.id) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(art.id) { thumb = withContext(Dispatchers.IO) { backgroundThumbnail(context, art.id) } }
 
     Tile(
         selected = selected,
+        pending = pending,
         tag = "background-art-${art.id}",
         description = stringResource(R.string.wallpaper_by_artist, art.title, art.artist),
         onClick = onSelect,
@@ -266,6 +273,7 @@ private fun RowScope.PhotoTile(selected: Boolean, hasPhoto: Boolean, onPick: () 
 
     Tile(
         selected = selected && hasPhoto,
+        chrome = hasPhoto,
         tag = "background-photo",
         description = stringResource(if (hasPhoto) R.string.your_photo else R.string.choose_a_photo),
         // With no photo yet there is nothing to select, so the tile is the picker. With one, tapping shows it and
@@ -304,7 +312,7 @@ private const val THUMB_WIDTH = 420
  * reads the header, `inSampleSize` asks the decoder for a power-of-two fraction, which is what every launcher that
  * shows wallpaper thumbnails does (PRF).
  */
-private fun backgroundThumbnail(context: Context, id: String): Bitmap? =
+internal fun backgroundThumbnail(context: Context, id: String): Bitmap? =
     if (BackgroundLibrary.isBuiltIn(id)) {
         runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

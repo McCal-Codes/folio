@@ -106,6 +106,9 @@ internal object BackgroundLibrary {
 
     fun artFile(context: Context, id: String) = File(installedDir(context), "${safe(id)}.img")
 
+    /** The picture an update replaced, kept until the update is put back or the package is pruned. */
+    fun previousArtFile(context: Context, id: String) = File(installedDir(context), "${safe(id)}.prev.img")
+
     private fun recordFile(context: Context) = File(installedDir(context), RECORD)
 
     /**
@@ -222,6 +225,7 @@ internal object BackgroundLibrary {
     /** Forgets a piece of art and deletes its file. Used when its package is removed. */
     fun forget(context: Context, id: String) {
         artFile(context, id).delete()
+        previousArtFile(context, id).delete()
         val json = runCatching { JSONObject(recordFile(context).readText()) }.getOrNull() ?: return
         json.remove(id)
         runCatching { recordFile(context).writeText(json.toString()) }

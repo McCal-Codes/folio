@@ -160,6 +160,62 @@ class LauncherBackgroundController(
         private set
     var previewPending by mutableStateOf(false)
         private set
+
+    /**
+     * A piece of art tapped in the picker but not yet set. Art and photos apply the same way now: a tap stages, the
+     * preview at the top of the page shows the candidate under Home's real chrome, and Set is what writes the choice.
+     * Every well-regarded picker previews before it applies and none applies on tap (iOS, AOSP, One UI), and this
+     * was the outlier. Not saved: leaving the page drops it, which is what Cancel does too.
+     *
+     * The controller owns the candidate, as it already owns the staged photo, so "what is being tried" has one owner
+     * the way "what is chosen" does (STA-1, STA-2); the picker reads it and sends taps. Transient, not saveable: it
+     * describes a gesture in progress, not a setting (STA-3).
+     */
+    internal var pendingArt by mutableStateOf<BackgroundChoice.Art?>(null)
+        private set
+    var pendingArtBitmap by mutableStateOf<Bitmap?>(null)
+        private set
+
+    /**
+     * True for the moment after a Set, and only then: the page offers "Also set as phone wallpaper" once, behind
+     * Android's own preview, because that action cannot be undone and Folio's can. Cleared by the next stage, cancel,
+     * reset or offer taken.
+     */
+    var justSet by mutableStateOf(false)
+        private set
+
+    fun stageArt(id: String) {
+        // A photo mid-preview and a piece of art cannot both be the candidate.
+        if (previewPending) cancelPreview()
+        justSet = false
+        pendingArt = BackgroundChoice.Art(id)
+        pendingArtBitmap = null
+        val wanted = pendingArt
+        activity.lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) { backgroundThumbnail(activity.applicationContext, id) }
+            if (pendingArt == wanted) pendingArtBitmap = bitmap
+        }
+    }
+
+    fun setPendingArt() {
+        val art = pendingArt ?: return
+        setBackgroundChoice(activity, art)
+        // Drop the decoded picture rather than decoding the new one here: whatever draws next asks for it, on its
+        // own thread, through the one loader.
+        LauncherBackgroundCache.changed(null)
+        pendingArt = null
+        pendingArtBitmap = null
+        photoSelected = launcherBackgroundEnabled(activity)
+        errorMessage = null; successMessage = null
+        justSet = true
+    }
+
+    fun cancelPendingArt() {
+        pendingArt = null
+        pendingArtBitmap = null
+    }
+
+    fun offerTaken() { justSet = false }
     private var generation = 0
     private var preview: StagedBackground? = null
     private val prefs = launcherBackgroundPreferences(activity)
@@ -211,6 +267,8 @@ class LauncherBackgroundController(
     }
 
     fun choosePhoto() {
+        cancelPendingArt()
+        justSet = false
         discardPreview()
         releasePreviewGrant()
         cleanupStagedFiles()
@@ -264,6 +322,7 @@ class LauncherBackgroundController(
                 loading = false
                 LauncherBackgroundCache.changed(staged.bitmap, staged.operation)
                 photoSelected = true
+                justSet = true
                 errorMessage = null
                 successMessage = activity.getString(R.string.launcher_background_updated)
                 cleanupStagedFiles()
