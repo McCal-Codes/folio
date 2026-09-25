@@ -9,6 +9,8 @@ Thanks for helping with Folio! Bug reports, ideas, fixes and themes are all welc
 - **Bigger changes:** open an issue first for new features or changes to dock geometry, fold layout or Google integration.
 - **Security problems:** report privately, see [SECURITY.md](SECURITY.md).
 - **Themes:** see [themes/README.md](themes/README.md).
+- **Not sure yet?** Ask in [the Folio Discord](https://discord.gg/pxQT9Xj2Ed). An issue is the right place for a bug,
+  but not every question needs one.
 - Everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Trying the Market, without paying for it
