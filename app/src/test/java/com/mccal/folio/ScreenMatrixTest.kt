@@ -3,6 +3,7 @@ package com.mccal.folio
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.unit.dp
 import org.junit.Test
 
 /** Folio has to lay out on any Android window, not just the Galaxy Z Fold it's developed on. */
@@ -72,6 +73,32 @@ class ScreenMatrixTest {
             val tag = "${s.name} under ${keyboard.toInt()} dp of keyboard"
             assertEquals(tag, settingsSplits(s.width, s.height), settingsSplits(s.width, left, keyboardDp = keyboard))
             assertEquals(tag, settingsColumns(s.width, s.height), settingsColumns(s.width, left, keyboardDp = keyboard))
+        }
+    }
+
+    /**
+     * The wallpaper picker's grid, on every window Folio supports.
+     *
+     * A picker of wallpapers is only useful if a tile is big enough to judge a picture by, and the grid decides how
+     * many fit from the width it is given rather than from the device (ADP-1). This checks the outcome of that
+     * decision rather than the rule: on the narrowest window Folio runs in and on the widest, a tile stays inside a
+     * band where it is neither a thumbnail nor a poster.
+     */
+    @Test fun `a wallpaper tile is a usable size on every window`() {
+        val gap = FolioSpace.MEDIUM
+        val sidePadding = FolioSpace.TINY * 2
+        for (screen in screens) {
+            // Settings is a sheet inside the window, and on a wide window it shares that width with a sidebar. The
+            // narrow case is the whole window; the wide case is what is left beside the panes.
+            for (content in listOf(screen.width, screen.width / settingsColumns(screen.width, screen.height))) {
+                val available = content - sidePadding
+                if (available < 200f) continue // Smaller than any pane Settings will draw into.
+                val columns = gridColumns(available.dp)
+                assertTrue("$columns columns on ${screen.name}", columns >= 2)
+                val tile = (available - gap * (columns - 1)) / columns
+                assertTrue("a tile is ${tile}dp wide on ${screen.name}, too narrow to judge a picture", tile >= 110f)
+                assertTrue("a tile is ${tile}dp wide on ${screen.name}, wider than a phone", tile <= 300f)
+            }
         }
     }
 

@@ -44,16 +44,20 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
     /**
      * Degrees around the vertical axis at [position].
      *
-     * Negative turns the free edge away from the viewer, which is what makes the cube read as a solid seen from
-     * outside rather than as the inside of a box.
+     * Positive for a page to the right, negative for one to the left, which turns each page's free edge away from
+     * the viewer and makes the cube read as a solid seen from outside. Android puts the camera on the layer's pivot,
+     * so a face turned toward the camera is flung outward from its hinge, and one turned away pulls back toward it.
+     * This was the other way round until 2026-09-25, and a recording of a swipe on the Fold8's cover screen showed
+     * both halves of that: the leaving page swung its clock out at the viewer, huge, and the arriving page was
+     * thrown off the right edge of the screen and never seen turning in at all.
      *
      * The clamp is not cosmetic: a page two positions out would otherwise reach 180 degrees and come back into view
      * mirrored, and pages that far out are kept composed on purpose ([PRF-9]).
      */
     fun rotationY(position: Float): Float = when (this) {
         NONE -> 0f
-        CUBE -> -CUBE_DEGREES * position.coerceIn(-1f, 1f)
-        CAROUSEL -> -CAROUSEL_DEGREES * position.coerceIn(-1f, 1f)
+        CUBE -> CUBE_DEGREES * position.coerceIn(-1f, 1f)
+        CAROUSEL -> CAROUSEL_DEGREES * position.coerceIn(-1f, 1f)
     }
 
     /** Uniform scale at [position]. Always 1 for a settled page, so Home is untouched at rest ([DYN-3]). */

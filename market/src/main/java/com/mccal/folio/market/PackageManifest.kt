@@ -241,6 +241,7 @@ enum class Capability(val id: String) {
     THEME("theme"), HOME_LAYOUT("home.layout"), WALLPAPER("wallpaper"), ICONS("icons"), ICON_PACKS("icons.packs"),
     APP_PANELS("tweaks.appPanels"), DOCK_MAGNIFY("tweaks.dockMagnify"), NOTIFICATION_APP_ROW("tweaks.notificationAppRow"),
     TINT_NOTIFICATIONS("tweaks.tintNotifications"), TINT_MEDIA("tweaks.tintMedia"),
+    PAGE_EFFECTS("tweaks.pageEffects"),
     ISLAND_MESSAGES("island.messages"), FOCUS_MODES("focus.modes"), SETTINGS_PAGES("settings.pages"), SCRIPTS("scripts");
 
     companion object {

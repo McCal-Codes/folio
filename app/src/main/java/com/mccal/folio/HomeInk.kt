@@ -48,7 +48,8 @@ internal fun WallpaperColors?.tone() = WallpaperTone(prefersDarkText(), this?.pr
 
 /**
  * The wallpaper's tone. Android's wallpaper: the system's own colors and hints (no permission needed, updates
- * when the wallpaper changes). Folio's photo: the same computed from it. Folio's dunes: white text, no tint.
+ * when the wallpaper changes). A picture of Folio's, whether your photo or a piece of art: the same, computed
+ * from the picture itself. No picture at all: white text, no tint.
  */
 @Composable
 internal fun rememberWallpaperTone(systemWallpaper: Boolean): WallpaperTone {

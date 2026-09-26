@@ -55,13 +55,6 @@
           "status": "building"
         },
         {
-          "icon": "speed",
-          "color": "#64D2FF",
-          "title": "A cheaper background",
-          "detail": "Home's dunes are drawn once and reused, so a swipe costs the GPU about a third less.",
-          "status": "building"
-        },
-        {
           "icon": "tune",
           "color": "#FF3B30",
           "title": "A way back in Settings",

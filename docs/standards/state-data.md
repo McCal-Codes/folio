@@ -16,6 +16,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Home layout, dock, folders, widget placements | `LauncherModel` | `launcher/state` JSON, schema 9, with migration backups | Everything; exported by Layout Backup |
 | Widget bindings | Android (`AppWidgetHost`) + Folio's slot mapping | System + layout JSON | Reconnected on import, not copied |
 | Appearance | `AppearanceStore` | `appearance` prefs | Everything; not in Layout Backup |
+| What is behind Home | `LauncherModel` (see Gap below: three owners today) | `launcher/state` JSON, mirrored to `launcher_background` prefs for the wallpaper service | Everything; the picked photo itself stays out of Layout Backup |
 | Focus modes and rules | `FocusController` | `focus_rules` prefs | Everything |
 | Market packages | Market repository | `filesDir/market` + records in layout JSON | Backup keeps records, reapplies changes |
 | Hinge posture, window size | WindowManager (`LocalHinge`) | None | Recomputed |
@@ -84,3 +85,4 @@ Not yet:
 | 3 | Consider DataStore for new settings (not a migration of the layout JSON, which works) | M |
 | 4 | Split `LauncherState` (shared with CMP gap 1) | L |
 | 5 | Load tests for schema < 2 and the `statusTop` fallback | S |
+| 6 | One owner for what is behind Home. Today it is three: `LauncherState.systemWallpaper` in the layout JSON, `photoEnabled`/`photoId` in the separate `launcher_background` prefs owned by `LauncherBackgroundController`, and a third read path that parses the state JSON directly at `DuneWallpaper.kt:292`. Adding a library of art makes a fourth unless they become one choice (STA-1, STA-2) | M |

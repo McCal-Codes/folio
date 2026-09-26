@@ -36,7 +36,7 @@ class BackupController(
     private val userManager = activity.getSystemService(UserManager::class.java)
     private val scope = layoutBackupScope(activity)
     // Built on first use, so a phone that never opens Settings never builds it.
-    private val market by lazy { MarketSession(activity, ModelLauncher(model)) }
+    private val market by lazy { MarketSession(activity, ModelLauncher(model, activity)) }
     /** Whether this phone has the Market. A package it can't show is one nobody could turn off or remove. */
     private val marketOpen by lazy { runCatching { MarketAccess.isOpen(activity) }.getOrDefault(false) }
     private var operation: String? = null

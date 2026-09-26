@@ -33,7 +33,9 @@ import androidx.compose.material.icons.rounded.Check
 @Composable
 internal fun AppearanceSettings(state: AppearanceState, onMode: (AppearanceMode) -> Unit,
     onManual: (String, Double, Double) -> Unit, onDeviceLocation: () -> Unit, onClear: () -> Unit,
-    onAccent: (AccentChoice) -> Unit = {}) {
+    onAccent: (AccentChoice) -> Unit = {},
+    /** Drawn between Appearance and Accent: the one switch that is about the mode, dims-wallpaper, lives there. */
+    afterAppearance: @Composable () -> Unit = {}) {
     var place by remember(state.place) { mutableStateOf(state.place) }
     var latitude by remember(state.latitude) { mutableStateOf(state.latitude?.toString().orEmpty()) }
     var longitude by remember(state.longitude) { mutableStateOf(state.longitude?.toString().orEmpty()) }
@@ -48,13 +50,17 @@ internal fun AppearanceSettings(state: AppearanceState, onMode: (AppearanceMode)
                 if (i > 0) MenuDivider()
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(state.mode == mode, role = Role.RadioButton) { onMode(mode) }
                     .padding(horizontal = FolioSpace.LARGE.dp).testTag("appearance-${mode.name.lowercase()}"), verticalAlignment = Alignment.CenterVertically) {
-                    Text(when (mode) {
-                        AppearanceMode.LIGHT -> "Light"; AppearanceMode.DARK -> "Dark"; AppearanceMode.SYSTEM -> "Follow System"
-                        AppearanceMode.SUNRISE_SUNSET -> "Sunset to Sunrise"
-                    }, Modifier.weight(1f), color = Color.White, fontSize = FolioType.BODY.sp)
+                    // Resources, not literals: these sat inside a `when`, which HardcodedTextTest skips, so they were
+                    // the only four words on this page a translation could not reach.
+                    Text(stringResource(when (mode) {
+                        AppearanceMode.LIGHT -> R.string.light; AppearanceMode.DARK -> R.string.dark
+                        AppearanceMode.SYSTEM -> R.string.follow_system
+                        AppearanceMode.SUNRISE_SUNSET -> R.string.sunset_to_sunrise
+                    }), Modifier.weight(1f), color = Color.White, fontSize = FolioType.BODY.sp)
                     if (state.mode == mode) Icon(Icons.Rounded.Check, null, tint = LocalAccent.current.ink, modifier = Modifier.size(20.dp))
                 }
             }
+            afterAppearance()
         }
         // The color Folio uses for what you can act on. Folio's own teal by default; Apple's blue for whoever
         // prefers it. Status colors (Wi-Fi, battery, an alert's red) don't follow it.

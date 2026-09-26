@@ -158,9 +158,21 @@ internal class MarketSession(
         installer.install(bytes, origin = InstalledPackage.Origin.FILE)
     }
 
-    fun remove(id: String): Boolean = installer.remove(id)
+    fun remove(id: String): Boolean = installer.remove(id).also { if (it) pruneArt() }
 
-    fun undo(result: InstallResult.Installed): Boolean = installer.undo(result)
+    /**
+     * Clears wallpaper art whose package has gone.
+     *
+     * The host deliberately leaves a picture on disk when a package's changes are put back, because Undo, Safe Mode
+     * and Remove all go through that one path and only the last means gone. The installed list is what tells them
+     * apart, and it is known here rather than there.
+     */
+    private fun pruneArt() {
+        BackgroundLibrary.prune(appContext, store.installed().map { it.id }.toSet())
+    }
+
+    // Undo removes through the installer directly, past remove() above, so it prunes for itself.
+    fun undo(result: InstallResult.Installed): Boolean = installer.undo(result).also { if (it) pruneArt() }
 
     /**
      * Called when Folio starts after a crash: if a package was being applied, it's turned off rather than left to
@@ -275,4 +287,11 @@ private object ReadOnlyMarketLauncher : MarketLauncher {
     override fun removeTweak(feature: TweakFeature) = Unit
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
     override fun applyTheme(theme: FolioTheme) = Unit
+
+    // Not silently ignored like the rest: applying is supposed to return what it replaced, and a snapshot invented
+    // by a launcher that changed nothing would tell Undo to put back something that was never taken away.
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String =
+        error("this launcher only adds and forgets sources")
+
+    override fun restoreArtBackground(artId: String, snapshot: String) = Unit
 }

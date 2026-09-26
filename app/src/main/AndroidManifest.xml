@@ -34,6 +34,12 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Live wallpapers. Folio asks Android whether the wallpaper behind Home is a live one, because a live
+             wallpaper draws itself as wide as it likes and can take the full parallax travel while a still picture
+             cannot. From API 34 that question is answered with null unless the asker can see the wallpaper's
+             package, and a live wallpaper has no launcher icon, so the MAIN/LAUNCHER query above never finds one.
+             Without this, every live wallpaper but Folio's own would be mistaken for a still picture. -->
+        <intent><action android:name="android.service.wallpaper.WallpaperService" /></intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.APP_CALENDAR" />

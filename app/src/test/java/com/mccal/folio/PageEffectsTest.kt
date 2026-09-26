@@ -65,13 +65,16 @@ class PageEffectsTest {
     }
 
     @Test fun `the cube is a quarter turn at one page out, and turns the free edge away`() {
-        assertEquals(-90f, PageEffect.CUBE.rotationY(1f), 0f)
-        assertEquals(90f, PageEffect.CUBE.rotationY(-1f), 0f)
+        assertEquals(90f, PageEffect.CUBE.rotationY(1f), 0f)
+        assertEquals(-90f, PageEffect.CUBE.rotationY(-1f), 0f)
         // Half way through a swipe, half way through the turn.
-        assertEquals(-45f, PageEffect.CUBE.rotationY(.5f), 0f)
-        // Negative degrees push the free edge away from the viewer: that is what makes it a solid rather than a box
-        // seen from inside. The page to the right turns about its left edge, so its right half is the half that goes.
-        assertTrue(PageEffect.CUBE.rotationY(.5f) < 0f)
+        assertEquals(45f, PageEffect.CUBE.rotationY(.5f), 0f)
+        // Positive degrees push a right-hand page's free edge away from the viewer: that is what makes it a solid
+        // rather than a box seen from inside. The page to the right turns about its left edge, so its right half is
+        // the half that goes. Measured on a phone, not reasoned: with the sign the other way the leaving page swung
+        // out at the viewer and the arriving one was thrown off screen before it could be seen.
+        assertTrue(PageEffect.CUBE.rotationY(.5f) > 0f)
+        assertTrue("the carousel turns the same way round", PageEffect.CAROUSEL.rotationY(.5f) > 0f)
     }
 
     @Test fun `no effect ever mirrors a page that is kept composed further out`() {

@@ -223,6 +223,11 @@ data class LauncherState(
     val glassOutline: Float = .16f,
     /** Darken the wallpaper while Folio's dark appearance is on. */
     val dimWallpaperDark: Boolean = true,
+    /**
+     * iOS's legibility gradient: darken the top and bottom of the background so white text reads over a pale
+     * wallpaper (A11Y-9). See [HomeScrim] for what it draws and how it composes with [dimWallpaperDark] and [homeInk].
+     */
+    val homeScrim: Boolean = true,
     /** Tinted icons use the wallpaper's color instead of [iconTint]. */
     val iconTintFromWallpaper: Boolean = false,
     /** Velvet-style: notification cards take on their app icon's color. */
@@ -843,6 +848,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setGlassPreset(frost: Float) = updateSettings(soon = false) {
         it.copy(widgetGlass = frost, statusStyle = it.statusStyle.copy(railGlass = frost)) }
     fun setDimWallpaperDark(value: Boolean) = updateSettings(soon = false) { it.copy(dimWallpaperDark = value) }
+    fun setHomeScrim(value: Boolean) = updateSettings(soon = false) { it.copy(homeScrim = value) }
     fun setIconTintFromWallpaper(value: Boolean) = updateSettings(soon = false) { it.copy(iconTintFromWallpaper = value) }
     fun setTintNotifications(value: Boolean) = updateSettings(soon = false) { it.copy(tintNotifications = value) }
     fun setTintMedia(value: Boolean) = updateSettings(soon = false) { it.copy(tintMedia = value) }
@@ -1139,7 +1145,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("focusModes", focusModesToJson(s.focusModes))
             .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
             .put("roundedCorners", s.roundedCorners).put("cornerRadius", s.cornerRadius.toDouble())
-            .put("dimWallpaperDark", s.dimWallpaperDark).put("iconTintFromWallpaper", s.iconTintFromWallpaper)
+            .put("dimWallpaperDark", s.dimWallpaperDark).put("homeScrim", s.homeScrim).put("iconTintFromWallpaper", s.iconTintFromWallpaper)
             .put("tintNotifications", s.tintNotifications).put("tintMedia", s.tintMedia).put("dockMagnify", s.dockMagnify).put("appPanels", s.appPanels).put("haptics", s.haptics).put("lockCover", s.lockCover)
             .put("featureScopes", JSONObject().apply { s.featureScopes.forEach { (id, m) -> put(id, JSONObject(m as Map<*, *>)) } }).put("notificationAppRow", s.notificationAppRow)
             .put("pageScrub", s.pageScrub).put("wallpaperMotion", s.wallpaperMotion).put("liveIcons", s.liveIcons).put("liveIconLook", s.liveIconLook)
@@ -1398,6 +1404,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         glassTint = j.optDouble("glassTint", .5).toFloat().takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: .5f,
         reduceTransparency = j.optBoolean("reduceTransparency", false),
         roundedCorners = j.optBoolean("roundedCorners", false), cornerRadius = j.optDouble("cornerRadius", 40.0).toFloat().coerceIn(16f, 72f), dimWallpaperDark = j.optBoolean("dimWallpaperDark", true),
+        homeScrim = j.optBoolean("homeScrim", true),
         iconTintFromWallpaper = j.optBoolean("iconTintFromWallpaper", false),
         tintNotifications = j.optBoolean("tintNotifications", false), tintMedia = j.optBoolean("tintMedia", true),
         dockMagnify = j.optBoolean("dockMagnify", false), appPanels = j.optBoolean("appPanels", true), haptics = j.optBoolean("haptics", true), lockCover = j.optBoolean("lockCover", true),

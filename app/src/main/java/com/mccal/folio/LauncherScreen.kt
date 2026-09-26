@@ -165,7 +165,7 @@ fun LauncherScreen(
         }
     }
     val launcherRootView = LocalView.current.rootView
-    val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model)) }
+    val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model, launcherActivity)) }
     // Package Safe Mode: runs as Home starts, so a package that crashed Folio while it was being applied is turned off
     // on the next launch. Asked only when the Market opened, the minute-long marker had always expired by then.
     LaunchedEffect(marketSession) { marketSession.noteCrash() }
@@ -556,11 +556,24 @@ fun LauncherScreen(
                 if (panelsOn && !homeEdit.active) { app: AppEntry -> haptic.perform(FolioHaptic.Open); overlays.panel = app.id } else null
             }) {
         // Folio's background unless Android's wallpaper is really behind the window: a see-through window with
-        // nothing behind it shows every earlier frame (#12, #35), so the worst case is the dunes, never a smear.
-        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper()
-        else if (state.wallpaperMotion) SystemWallpaperParallax(nativePager)
+        // nothing behind it shows every earlier frame (#12, #35), so the worst case is a plain surface, never a
+        // smear. Only Android's wallpaper drifts now, and the system is what moves it (DYN-11: Reduce Motion leaves
+        // it still); a picture of Folio's has no spare width to slide, so it stays where it is.
+        val backgroundMoves = state.wallpaperMotion && !LocalReduceMotion.current
         // iOS "dark appearance dims wallpaper".
         val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
+        // iOS's legibility gradient over the background and under everything Folio draws, so white text reads on a
+        // pale wallpaper (A11Y-9, DES-16). It gives way to the dim above rather than darkening the same pixels twice,
+        // and stands down where Home's text is dark ink and a dark scrim would take contrast away. See HomeScrim.
+        val scrim = HomeScrim.of(state.homeScrim, homeInk.dark, dim)
+        // The scrim rides inside the layer the background is already cached in, so it costs nothing per frame.
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(scrim = scrim)
+        else {
+            if (backgroundMoves) SystemWallpaperParallax(nativePager)
+            // Android's wallpaper is the system's to draw, so there is no cached layer of Folio's to bake the scrim
+            // into: here it is two gradient bands of fill a frame, in the window's own render node, with no new layer.
+            if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))
+        }
         if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
         // Home never moves for the keyboard: including IME insets here re-measured the whole grid on every
         // frame of the keyboard animation (Spotlight/search jank). Sheets that need it use imePadding themselves.

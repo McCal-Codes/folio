@@ -7,7 +7,7 @@
   stay as they are.
 -->
 <resources>
-    <string name="dune_wallpaper_description">Folio 沙丘，启动器自带的风景，已按你的屏幕尺寸调整。</string>
+    <string name="dune_wallpaper_description">你在 Folio 中选择的背景，已按你的屏幕尺寸调整。</string>
     <string name="shade_service_label">Folio 手势与悬浮控件</string>
     <string name="shade_service_description">让 Folio 通过主屏幕手势打开系统的通知和快捷设置面板；并且仅在你开启时，在其他 App 上方显示 Folio 的程序坞把手和灵动岛、打开程序坞中的 App 以及返回主屏幕。它不会读取屏幕内容，也不会观察你在其他 App 中的操作。</string>
     <string name="personal">个人</string>
@@ -33,15 +33,14 @@
     <string name="folio_background">Folio 背景</string>
     <string name="change_android_wallpaper">更改 Android 墙纸</string>
     <string name="text_on_home">主屏幕上的文字</string>
-    <string name="labels_status_page_dots_and_widget_text">墙纸上的标签、状态、页面圆点和小组件文字。“自动”会像 iPhone 一样在浅色墙纸上使用深色文字。</string>
+    <string name="labels_status_page_dots_and_widget_text">墙纸上的标签、状态、页面圆点和小组件文字。“自动”会像 iPhone 一样在浅色墙纸上使用深色文字。“文字后方加深”会像 iPhone 那样在主屏幕顶部和底部加上柔和的暗影，让浅色墙纸上的白色文字依然清晰；墙纸中间保持原样。</string>
     <string name="tint_glass_with_wallpaper_color">用墙纸颜色为玻璃着色</string>
     <string name="dark_appearance_dims_wallpaper">深色外观下调暗墙纸</string>
-    <string name="wallpaper_moves_with_pages">墙纸随页面移动</string>
+    <string name="darken_behind_text">文字后方加深</string>
     <string name="launcher_background">启动器背景</string>
     <string name="changes_the_image_behind_folio_s_home_sc">更改 Folio 主屏幕背后的图片。</string>
     <string name="cancel">取消</string>
     <string name="apply">应用</string>
-    <string name="reset_to_default_dunes">恢复默认沙丘</string>
     <string name="opens_android_s_preview_to_use_folio_s_b">打开 Android 的预览，把 Folio 的背景也设为手机墙纸（动态墙纸），这样在 Folio 之外也保持一致。</string>
     <string name="preview_as_phone_wallpaper">预览为手机墙纸</string>
     <string name="gestures">手势</string>
@@ -206,7 +205,7 @@
     <string name="swipe_up_to_open">向上轻扫以打开</string>
     <string name="back">返回</string>
     <string name="my_wallpaper">我的墙纸</string>
-    <string name="folio_dunes">Folio 沙丘</string>
+    <string name="folio_dunes">Folio 背景</string>
     <string name="all_set">一切就绪</string>
     <string name="no_results_on_this_phone">这部手机上没有结果</string>
     <string name="add_widgets_for_the_things_you_check_mos">为你最常查看的内容添加小组件。</string>
@@ -275,7 +274,6 @@
     <string name="custom">自定义</string>
     <string name="code_added">已添加代码</string>
     <string name="folio_is_free_and_always_will_be_if_it_m">Folio 是免费的，并且永远免费。如果它让你的手机更像你自己的，你可以在 Ko-fi 上请我喝杯咖啡（或啤酒）。</string>
-    <string name="folio_s_dunes_or_a_photo_you_choose_only">Folio 的沙丘或你选择的照片，只显示在 Folio 背后。</string>
     <string name="screen_corners">屏幕圆角</string>
     <string name="rounded_corners">圆角</string>
     <string name="draws_iphone_style_rounded_corners_over">像 iPhone Duo 一样，在两块屏幕的主屏幕上绘制 iPhone 风格的圆角。其他 App 不受影响。</string>
@@ -1073,6 +1071,7 @@
     <string name="settings_keywords_app_name_size">标签 名称 文字 大小 label name text size small large</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">玻璃 着色 磨砂 模糊 glass tint frost blur</string>
     <string name="settings_keywords_dark_appearance_dims_wallpaper">调暗 深色 夜间 dim dark mode night</string>
+    <string name="settings_keywords_darken_behind_text">加深 暗影 渐变 可读性 对比 浅色 墙纸 scrim gradient shade legibility contrast light wallpaper</string>
     <string name="settings_appearance_light_dark_sunset">外观（浅色、深色、日落）</string>
     <string name="settings_keywords_appearance_light_dark_sunset">主题 深色 浅色 日出 日落 theme dark light sunrise sunset</string>
     <string name="settings_grid_icon_size_dock">网格、图标大小与程序坞</string>
@@ -1242,7 +1241,7 @@
     <string name="contacts_in_spotlight">聚焦搜索中的联系人</string>
     <string name="search_your_contacts_from_spotlight">在聚焦搜索中搜索你的联系人。</string>
     <string name="imessage_with_openbubbles">通过 OpenBubbles 使用 iMessage</string>
-    <string name="label_dune_wallpaper">Folio 沙丘</string>
+    <string name="label_dune_wallpaper">Folio 背景</string>
     <string name="label_island_listener">Folio 灵动岛</string>
     <string name="label_theme_import">Folio 主题</string>
     <string name="label_redeem">Folio 支持者代码</string>
@@ -1261,7 +1260,6 @@
     <string name="the_pending_photo_selection_could_not_be">无法恢复待处理的照片选择。</string>
     <string name="the_pending_photo_preview_could_not_be_r">无法恢复待处理的照片预览。</string>
     <string name="the_photo_picker_is_unavailable">照片选择器不可用。</string>
-    <string name="using_folio_dunes">正在使用 Folio 沙丘。</string>
     <string name="launcher_background_updated">启动器背景已更新。</string>
     <string name="that_photo_could_not_be_saved">无法存储那张照片。</string>
     <string name="that_photo_could_not_be_used">无法使用那张照片。</string>
@@ -1396,4 +1394,24 @@
     <string name="page_effects">页面效果</string>
     <string name="cube">立方体</string>
     <string name="home_pages_turn_in_3d_as_you_swipe_off_w">滑动时主屏页面会以 3D 方式翻转。主屏并排显示两页时不启用，开启「减弱动态效果」时也不启用；留用之前请先留意有没有掉帧。</string>
+    <string name="your_photo">你的照片</string>
+    <string name="from_folio">来自 Folio</string>
+    <string name="wallpaper_by_artist">%1$s，由 %2$s 创作</string>
+    <string name="wallpapers_you_install_from_the_market">你从商店安装的壁纸会显示在这里，并附带随附的作者与许可信息。Folio 只展示能够注明来源的作品。</string>
+    <string name="a_picture_you_choose_in_folio_only_behind">你在 Folio 中选择的图片，仅显示在 Folio 后面。</string>
+    <string name="no_background_behind_home">主屏幕后面没有背景。</string>
+    <string name="tweak_cabinet_detail">在应用图标上向上轻扫，打开一个小面板，显示它的快捷方式、最新通知和音乐控制。</string>
+    <string name="tweak_harborline_detail">当你沿着程序坞滑动时，图标会在手指下方放大。</string>
+    <string name="tweak_roll_call_detail">通知中心上方的一排应用图标。点按其中一个，只显示该应用的通知。</string>
+    <string name="tweak_palette_detail">通知卡片会呈现所属应用颜色的柔和版本。</string>
+    <string name="tweak_colored_albums_detail">音乐卡片和灵动岛的声音条会呈现专辑封面的颜色。</string>
+    <string name="tweak_flipbook_detail">滑动时主屏幕页面以 3D 方式翻转，而不是平移。</string>
+    <string name="follow_system">跟随系统</string>
+    <string name="sunset_to_sunrise">日落到日出</string>
+    <string name="also_set_as_phone_wallpaper">同时设为手机壁纸</string>
+    <string name="set_as_phone_wallpaper_note">打开 Android 自带的预览，锁屏也会显示它。这一更改无法从 Folio 撤销，因此那里会再次确认。</string>
+    <string name="wallpaper_group_note">Folio 会把它绘制在主屏幕后面。锁屏显示的是手机自己的壁纸。</string>
+    <string name="previewing_1">正在预览 %1$s</string>
+    <string name="wallpaper">壁纸</string>
+    <string name="wallpaper_moves_with_pages">壁纸随页面移动</string>
 </resources>

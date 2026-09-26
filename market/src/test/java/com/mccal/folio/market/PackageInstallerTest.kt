@@ -52,6 +52,43 @@ class PackageInstallerTest {
         }
     }
 
+    /** A wallpaper package built from the shipped example's manifest, with whatever images the test wants. */
+    private fun wallpaperPackage(images: Map<String, ByteArray>, depiction: String? = null): ByteArray {
+        val manifest = File(root, "docs/sdk/examples/wallpaper-wooded-hilly-landscape/manifest.json").readBytes()
+        val files = LinkedHashMap<String, ByteArray>()
+        files["manifest.json"] = manifest
+        if (depiction != null) files["depiction.json"] = depiction.toByteArray()
+        files.putAll(images)
+        return zip(files)
+    }
+
+    private fun wallpaperPath(bytes: ByteArray): String {
+        val read = installer.read(bytes)
+        assertTrue("$read", read is PackageInstaller.ReadResult.Ok)
+        return ((read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.Wallpaper).path
+    }
+
+    @Test fun `the wallpaper is the image the page does not spend, not the first one in the zip`() {
+        // The hero is listed first and is tiny; the wallpaper is second and large. Zip order used to decide.
+        val page = """{"format":1,"blocks":[{"type":"hero","image":"assets/hero.png"},{"type":"screenshots","images":["assets/shot.png"]}]}"""
+        val bytes = wallpaperPackage(
+            linkedMapOf("assets/hero.png" to ByteArray(300), "assets/shot.png" to ByteArray(200), "assets/picture.webp" to ByteArray(9000)),
+            depiction = page,
+        )
+        assertEquals("assets/picture.webp", wallpaperPath(bytes))
+    }
+
+    @Test fun `with no page to spend them, the largest image is the wallpaper`() {
+        val bytes = wallpaperPackage(linkedMapOf("assets/small.png" to ByteArray(100), "assets/big.jpg" to ByteArray(5000)))
+        assertEquals("assets/big.jpg", wallpaperPath(bytes))
+    }
+
+    @Test fun `a wallpaper package whose only images the page spends has no wallpaper`() {
+        val page = """{"format":1,"blocks":[{"type":"hero","image":"assets/hero.png"}]}"""
+        val read = installer.read(wallpaperPackage(linkedMapOf("assets/hero.png" to ByteArray(300)), depiction = page))
+        assertTrue("$read", read is PackageInstaller.ReadResult.Failed)
+    }
+
     @Before fun setUp() {
         host = FakeHost()
         store = InstalledStore(MemoryStore())

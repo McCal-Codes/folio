@@ -418,11 +418,41 @@ class PackageInstaller(
                     ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a layout but has no layout.json")
                 // A picture, named as one: the archive allows other file types under assets/, and handing one of
                 // those to the wallpaper as image bytes is a guess about a name an author chose.
-                PackageKind.WALLPAPER -> files.entries.firstOrNull {
-                    it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES
+                PackageKind.WALLPAPER -> {
+                    // Not "the first image under assets/": a depiction's hero and screenshots live there too, and a zip
+                    // lists them in whatever order the author's tool wrote. The wallpaper is the image the page does
+                    // not spend, and if there are several, the biggest, because a wallpaper is the largest picture
+                    // in its own package.
+                    val spent = buildSet {
+                        depiction?.blocks?.forEach { block ->
+                            when (block) {
+                                is DepictionBlock.Hero -> add(block.image)
+                                is DepictionBlock.Screenshots -> addAll(block.images)
+                                else -> Unit
+                            }
+                        }
+                    }
+                    val image = files.entries
+                        .filter { it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES }
+                        .filterNot { it.key in spent }
+                        .maxByOrNull { it.value.size }
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image of its own")
+                    // The credit is read here because here is where the manifest is open. A host applying this
+                    // change is handed the change and nothing else, so an artist and a license that are not
+                    // carried along cannot be shown beside the picture later.
+                    val artist = manifest.author.name.english
+                    val license = manifest.license.orEmpty()
+                    if (artist.isBlank() || license.isBlank()) return ReadResult.Failed(
+                        InstallResult.Reason.MANIFEST,
+                        "a wallpaper has to say who made it and what it is licensed under",
+                    )
+                    PackageChange.Wallpaper(
+                        path = image.key, bytes = image.value, id = manifest.id,
+                        title = manifest.name.english, artist = artist, license = license,
+                        detail = manifest.description?.english.orEmpty(),
+                        source = manifest.author.url.orEmpty(),
+                    )
                 }
-                    ?.let { PackageChange.Wallpaper(it.key, it.value) }
-                    ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image")
                 PackageKind.ICON_PACK_LINK -> {
                     val json = files["iconpack.json"]?.decodeToString()
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it links an icon pack but has no iconpack.json")
@@ -510,8 +540,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
 
     fun remove(id: String) {
         val all = read().toMutableMap()
-        // What that version changed goes with it. Kept, these pile up for ever, and a wallpaper's record holds a
-        // whole image; the only reader is Undo, which runs before the record is dropped.
+        // What that version changed goes with it. Kept, these pile up for ever; the only reader is Undo, which
+        // runs before the record is dropped.
         all.remove(id)?.let { keyValue.set(changesKey(it.id, it.version), null) }
         write(all)
     }
@@ -645,8 +675,14 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 is PackageChange.Theme -> json.put("kind", "theme").put("json", change.json)
                 is PackageChange.Layout -> json.put("kind", "layout").put("json", change.json)
                 is PackageChange.IconPack -> json.put("kind", "iconPack").put("package", change.packageName)
+                // Deliberately without the image. A record is a description of what a package changed, not a
+                // second copy of it (STA-11). Base64 of a picture is 1.33x the picture, and the picture is already
+                // on disk where the host put it, so writing it here again cost a wallpaper 2.33x its own size for
+                // nothing. What the host needs to put it back is the id and the credit, which are here.
                 is PackageChange.Wallpaper -> json.put("kind", "wallpaper").put("path", change.path)
-                    .put("bytes", java.util.Base64.getEncoder().encodeToString(change.bytes))
+                    .put("id", change.id).put("title", change.title).put("artist", change.artist)
+                    .put("license", change.license).put("detail", change.detail).put("source", change.source)
+                    .put("sha256", change.pictureSha256)
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
                     "tweaks",
                     JSONArray().apply {
@@ -669,9 +705,18 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 "theme" -> PackageChange.Theme(json.optString("json"))
                 "layout" -> PackageChange.Layout(json.optString("json"))
                 "iconPack" -> PackageChange.IconPack(json.optString("package"))
+                // A record written before wallpapers carried their credit decodes with blank fields, which
+                // PackageChange.Wallpaper.credited reads as "do not show", so an old record cannot smuggle an
+                // uncredited picture back in through a restore.
                 "wallpaper" -> PackageChange.Wallpaper(
                     json.optString("path"),
-                    runCatching { java.util.Base64.getDecoder().decode(json.optString("bytes")) }.getOrDefault(ByteArray(0)),
+                    // No bytes in a record, by design. An empty array means "the picture is wherever it was put",
+                    // which is true on the phone that installed it and false on a phone restoring someone else's
+                    // backup; the host is what tells those two apart.
+                    ByteArray(0),
+                    id = json.optString("id"), title = json.optString("title"), artist = json.optString("artist"),
+                    license = json.optString("license"), detail = json.optString("detail"),
+                    source = json.optString("source"), sha256 = json.optString("sha256"),
                 )
                 "tweaks" -> {
                     val list = json.optJSONArray("tweaks") ?: return@mapNotNull null
