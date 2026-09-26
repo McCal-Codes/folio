@@ -106,10 +106,14 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var replying by remember { mutableStateOf(false) }
     LaunchedEffect(eventPair) {
         if (replying) return@LaunchedEffect
-        val (event, at) = eventPair ?: return@LaunchedEffect
-        if (event.kind in eventsOff) return@LaunchedEffect
+        // Every way out of here that is not "show this one" clears the island, or what was showing stays up for
+        // good. Dismissing from the Everywhere overlay sets the shared event to null and nothing else, a filtered
+        // kind or an event that expired in the background used to leave the previous card on screen until the next
+        // event happened to arrive.
+        val (event, at) = eventPair ?: run { eventVisible = null; return@LaunchedEffect }
+        if (event.kind in eventsOff) { eventVisible = null; return@LaunchedEffect }
         val remaining = IslandEvents.showMs(event) - (System.currentTimeMillis() - at)
-        if (remaining <= 0) return@LaunchedEffect
+        if (remaining <= 0) { eventVisible = null; return@LaunchedEffect }
         eventVisible = event; delay(remaining)
         snapshotFlow { replying }.first { r -> !r }
         eventVisible = null
@@ -148,7 +152,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
 
     with(density) {
         val cameraGeometry = islandGeometry(cutout, windowWidth, density.density)
-        val geometry = custom?.let { islandGeometryAt(it.xFraction * windowWidth, it.topDp, windowWidth, density.density) } ?: cameraGeometry
+        val geometry = custom?.clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
+            ?.let { islandGeometryAt(it.xFraction * windowWidth, it.topDp, windowWidth, density.density) } ?: cameraGeometry
         val camW = geometry.camW.dp
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
@@ -181,6 +186,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         val nearCamera = kotlin.math.abs(newCenterX - cameraGeometry.centerXPx) < 56.dp.toPx() &&
                             kotlin.math.abs(newTopDp - cameraGeometry.top) < 40f && cutout != null
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
+                            .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
                         IslandPosition.save(context, wide, landscape, custom)
                         dragOffset = androidx.compose.ui.geometry.Offset.Zero
                     },
@@ -208,6 +214,18 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
 
 /** Where the user dragged the island on one screen: horizontal center as a fraction of width, top in dp. */
 internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
+    /**
+     * Kept inside the window, with the whole pill visible. A drag used to save whatever it ended at, and the top
+     * had no upper bound, so a pill dragged to the bottom edge was saved there and came back under the search pill
+     * or off the screen, with nothing left to grab. The saved string is also clamped on the way in, so a value from
+     * an older build or a different window size cannot place the pill where it cannot be reached.
+     */
+    fun clamped(windowWidthPx: Int, windowHeightPx: Int, density: Float, pillHDp: Float): IslandPosition {
+        val heightDp = windowHeightPx / density
+        val maxTop = (heightDp - pillHDp - ISLAND_EDGE_GAP).coerceAtLeast(ISLAND_EDGE_GAP)
+        return IslandPosition(xFraction.coerceIn(0f, 1f), topDp.coerceIn(ISLAND_EDGE_GAP, maxTop))
+    }
+
     companion object {
         // Saved per screen and orientation: a spot dragged to in landscape means nothing once the screen turns.
         // (The original keys were the natural orientations: unfolded landscape, cover portrait.)
@@ -583,7 +601,7 @@ private val Red = FolioColors.Red
 private val Purple = FolioColors.Indigo
 internal val IslandBlue = FolioColors.Blue
 
-private const val ISLAND_EDGE_GAP = 8f
+internal const val ISLAND_EDGE_GAP = 8f
 /** Smallest gap between the island and the left or right screen edge. */
 private const val ISLAND_SIDE_MARGIN = 12f
 private const val ISLAND_CAMERA_MARGIN = 5f
