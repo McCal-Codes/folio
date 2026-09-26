@@ -244,7 +244,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // The keyboard covers Settings; it doesn't make the window smaller (ADP-1, ADP-18). Measured out here, so that
     // tapping the search field can't turn the unfolded screen into a phone-sized one for as long as the keyboard is
     // up, take the sidebar away with it, and take the field you just tapped with the sidebar (#117).
-    val keyboardDp = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp().value }
+    val keyboardDp = keyboardDpOverSheet()
     // With only one pane to spare (inside the Market beside its sidebar), Settings is the iPhone's: the list, and a
     // page pushed over it with Back.
     val split = settingsSplits(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale,
