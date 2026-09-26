@@ -303,4 +303,7 @@ internal object Diagnostics {
     /** The background was bigger than Folio draws and was decoded smaller. Expected never to happen. */
     fun backgroundSampled(choice: BackgroundChoice, width: Int, height: Int, sample: Int) =
         event("Background ${choice.save()} is ${width}x$height, decoded at 1/$sample")
+
+    /** A pin request turned away. [why] is one of [PinTrust]'s reasons; the package is the one the request named. */
+    fun pinRefused(packageName: String?, why: String) = event("Pin request from ${packageName ?: "an unknown app"} refused: $why")
 }
