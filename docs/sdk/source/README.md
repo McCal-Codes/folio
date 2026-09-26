@@ -23,6 +23,7 @@ packages/<name>/
 | Roll Call | tweaks | `tweaks.notificationAppRow` |
 | Palette | tweaks | `tweaks.tintNotifications` |
 | Colored Albums | tweaks | `tweaks.tintMedia` |
+| Flipbook | tweaks | `tweaks.pageEffects` |
 | Classic, Dark, Tinted and Clear themes | themes | `theme` |
 
 These ship inside the app, so their index entries have no `url`, `sha256` or `size`: there's nothing to download.

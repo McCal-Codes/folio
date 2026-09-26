@@ -46,6 +46,13 @@ ICONS = {
         <rect x="150" y="84" width="10" height="72" rx="5" fill="#fff" opacity=".8"/>
         <rect x="118" y="120" width="10" height="36" rx="5" fill="#fff" opacity=".65"/>
     """),
+    "flipbook": ("#30B0C7", "#1A8599", """
+        <rect x="30" y="44" width="62" height="104" rx="12" fill="#fff" opacity=".6"/>
+        <path d="M100 44 L154 32 Q162 30 162 38 L162 154 Q162 162 154 160 L100 148 Z" fill="#fff"/>
+        <rect x="94" y="40" width="4" height="112" rx="2" fill="#fff" opacity=".85"/>
+        <rect x="112" y="64" width="34" height="8" rx="4" fill="#1A8599" opacity=".55"/>
+        <rect x="112" y="80" width="24" height="8" rx="4" fill="#1A8599" opacity=".4"/>
+    """),
     "theme-classic": ("#9BA0A8", "#5C626B", """
         <rect x="38" y="38" width="52" height="52" rx="14" fill="#fff"/>
         <rect x="102" y="38" width="52" height="52" rx="14" fill="#fff" opacity=".75"/>
