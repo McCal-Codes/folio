@@ -5,7 +5,7 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.7] - Unreleased
+## [0.6.7] - 2026-09-26
 
 ### Added
 - **Folio speaks Korean:** the whole interface, from a community translation by qlife1146, with the newest strings drafted alongside it. A beta translation until a native speaker reviews it; Settings › General › Language lists it, and it follows the phone's language on its own.

@@ -10,56 +10,84 @@
           "color": "#FF375F",
           "title": "Supporters, and a badge that lasts",
           "detail": "Back Folio with $15 or more for a Folio Supporter badge that stays, and your name in Settings › Supporters if you want it.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "update",
           "color": "#FF9F0A",
           "title": "Folio Beta in the Market",
           "detail": "Supporters update Folio to the newest beta from the Market, checked against Folio's signing key.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "grid",
           "color": "#0A84FF",
           "title": "Panes that fit the screen",
           "detail": "The Market and Settings use two panes on a Fold's inner screen, like iPad, and never leave one empty.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "tap",
           "color": "#30D158",
           "title": "Double tap on Home",
           "detail": "Your Double Tap action works again on an empty spot, whatever size your grid is.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "dock",
           "color": "#5E5CE6",
           "title": "The dock steps aside",
           "detail": "Swipe to Today View and the dock leaves, so it can't sit over the widgets or take their taps.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "palette",
           "color": "#FF9F0A",
           "title": "Icons follow your theme",
           "detail": "A theme that changes app icons shows straight away, and Icons & Side Bar has Refresh Icons for the rest.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "brush",
           "color": "#BF5AF2",
           "title": "No more smeared pages",
           "detail": "Choosing Android's wallpaper draws cleanly instead of leaving every swipe painted over the last.",
-          "status": "building"
+          "status": "done"
         },
         {
           "icon": "tune",
           "color": "#FF3B30",
           "title": "A way back in Settings",
           "detail": "Every page has a way back, and the Preview bar no longer covers the App Library.",
-          "status": "building"
+          "status": "done"
+        },
+        {
+          "icon": "brush",
+          "color": "#BF5AF2",
+          "title": "Real art behind Home",
+          "detail": "Two Hiroshige prints ship with Folio, and Wallpaper & Appearance is one grid of your photo, Folio's art and the art you install, each with its artist and license.",
+          "status": "done"
+        },
+        {
+          "icon": "pages",
+          "color": "#30D158",
+          "title": "Flipbook",
+          "detail": "A tweak that turns Home pages in 3D as you swipe.",
+          "status": "done"
+        },
+        {
+          "icon": "language",
+          "color": "#0A84FF",
+          "title": "Folio speaks Korean",
+          "detail": "A community translation, in beta until a native speaker reviews it.",
+          "status": "done"
+        },
+        {
+          "icon": "tune",
+          "color": "#FF9F0A",
+          "title": "White text on a pale wallpaper",
+          "detail": "Home darkens a little at the top and bottom so the clock and app names stay readable.",
+          "status": "done"
         }
       ]
     },
