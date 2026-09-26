@@ -32,6 +32,10 @@ jobs:
       # Before anything slow: a key in the repository is the one mistake that can't be taken back by deleting it.
       - name: No private keys in the repository
         run: bash tools/check-secrets.sh
+      # Folio's own packages are the SDK's worked examples, so they have to pass the validator authors are told to
+      # run. The Kotlin parser and the published schemas are separate lists, and this is what keeps them agreeing.
+      - name: Folio's own packages pass the SDK validator
+        run: python3 tools/folio-pkg.py validate docs/sdk/source
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
 
