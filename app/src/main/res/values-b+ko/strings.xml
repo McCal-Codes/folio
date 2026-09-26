@@ -4,7 +4,7 @@
   added to Folio after that branch were drafted by Claude for 0.6.7 and are marked below. A beta translation
   until a native speaker reviews the additions.
 -->
-    <string name="dune_wallpaper_description">화면 크기에 맞춘 Folio의 모래 언덕 배경입니다.</string>
+    <string name="dune_wallpaper_description">Folio에서 고른 배경을 화면 크기에 맞춰 표시합니다.</string>
     <string name="shade_service_label">Folio 제스처 및 오버레이</string>
     <string name="shade_service_description">홈 화면 제스처로 시스템 알림창과 빠른 설정창을 엽니다. 해당 기능을 켠 경우에만 다른 앱 위에 Folio의 Dock 핸들과 Dynamic Island를 표시하고, Dock의 앱을 실행하거나 홈 화면으로 이동합니다. 화면 내용을 읽거나 다른 앱에서 하는 활동을 관찰하지 않습니다.</string>
     <string name="personal">개인용</string>
@@ -31,7 +31,7 @@
     <string name="folio_background">Folio 배경</string>
     <string name="change_android_wallpaper">Android 배경화면 변경</string>
     <string name="text_on_home">홈 화면 텍스트</string>
-    <string name="labels_status_page_dots_and_widget_text">배경화면 위의 이름, 상태, 페이지 표시점 및 위젯 텍스트입니다. 자동으로 설정하면 iPhone처럼 밝은 배경화면에 어두운 텍스트를 표시합니다.</string>
+    <string name="labels_status_page_dots_and_widget_text">배경화면 위의 이름, 상태, 페이지 표시점 및 위젯 글자입니다. 자동으로 설정하면 iPhone처럼 밝은 배경화면에 어두운 글자를 표시합니다. 글자 뒤 어둡게는 iPhone처럼 홈 화면의 위아래에 부드러운 그늘을 더해, 밝은 배경화면에서도 흰 글자가 잘 읽히게 합니다.</string>
     <string name="tint_glass_with_wallpaper_color">배경화면 색상을 글래스에 적용</string>
     <string name="dark_appearance_dims_wallpaper">다크 모드에서 배경화면 어둡게</string>
     <string name="wallpaper_moves_with_pages">페이지와 함께 배경화면 이동</string>
@@ -204,7 +204,7 @@
     <string name="swipe_up_to_open">위로 쓸어올려 열기</string>
     <string name="back">뒤로</string>
     <string name="my_wallpaper">나의 배경화면</string>
-    <string name="folio_dunes">Folio 모래 언덕</string>
+    <string name="folio_dunes">Folio 배경</string>
     <string name="all_set">준비 완료</string>
     <string name="no_results_on_this_phone">이 휴대전화에 검색 결과가 없습니다</string>
     <string name="add_widgets_for_the_things_you_check_mos">자주 확인하는 항목의 위젯을 추가하세요.</string>
@@ -237,7 +237,7 @@
     <string name="onboarding_use_everywhere">다른 앱에서 Dynamic Island 및 Dock 사용</string>
     <string name="turn_on_button">켜기</string>
     <string name="choose_a_look">스타일 선택</string>
-    <string name="onboarding_look_detail">기존 배경화면을 유지하거나 Folio의 모래 언덕을 사용해 보세요. 홈 화면의 텍스트는 배경화면의 밝기에 맞춰 조절됩니다.</string>
+    <string name="onboarding_look_detail">기존 배경화면을 유지하거나 Folio에서 그림을 고르세요. 홈 화면의 글자는 배경의 밝기에 맞춰 조절됩니다.</string>
     <string name="youre_all_set">준비가 끝났습니다</string>
     <string name="a_few_things_to_try">다음 기능을 사용해 보세요:</string>
     <string name="get_started">시작하기</string>
@@ -1089,7 +1089,7 @@
     <string name="turn_on_to_try_new_features_before_they">출시 전에 새 기능을 사용하려면 켜세요. 베타 버전에서 이 설정을 끄면 더 최신 정식 버전이 나올 때까지 현재 버전을 유지합니다.</string>
     <!-- Settings search: each settings_keywords_* is words people might type, separated by spaces. Translate them, and keep English words people may still search for (dock, widget). -->
     <string name="settings_background_wallpaper">배경 및 배경화면</string>
-    <string name="settings_keywords_background_wallpaper">배경화면 사진 모래 언덕 안드로이드 Android 이미지</string>
+    <string name="settings_keywords_background_wallpaper">배경화면 사진 그림 작품 안드로이드 Android 이미지</string>
     <string name="settings_keywords_text_on_home">밝게 어둡게 글자 이름 가독성</string>
     <string name="settings_big_buttons_in_every_app">모든 앱에서 큰 버튼 사용</string>
     <string name="settings_keywords_big_buttons_in_every_app">탐색 버튼 뒤로 홈 최근 앱 크게 접근성 막대</string>
@@ -1256,7 +1256,7 @@
     <string name="search_your_contacts_from_spotlight">Spotlight에서 연락처를 검색합니다.</string>
     <string name="imessage_with_openbubbles">OpenBubbles로 iMessage 사용</string>
     <!-- Name of Folio's live wallpaper in Android's wallpaper picker. -->
-    <string name="label_dune_wallpaper">Folio 모래 언덕</string>
+    <string name="label_dune_wallpaper">Folio 배경</string>
     <!-- Shown in Android Settings, Notification access, where people allow the Dynamic Island. -->
     <string name="label_island_listener">Folio Dynamic Island</string>
     <!-- Shown when opening a Folio theme file. -->
