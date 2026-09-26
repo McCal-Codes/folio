@@ -14,6 +14,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.mccal.folio.market.InstallResult
+import com.mccal.folio.market.PackageInstaller
 
 /**
  * What happened before a problem, kept only on the phone (shared only if you choose to): Android's own record of why
@@ -249,4 +251,56 @@ internal object Diagnostics {
     fun markAsked(context: Context, report: File) {
         context.getSharedPreferences(PREFS, 0).edit().putString(ASKED, report.name).apply()
     }
+
+    // The Market and the background, in the trail. The words are here, in the one file McCal reads rather than people,
+    // so callers hand over facts and a bug report reads the same in every language. Ids, versions and sizes only:
+    // never a picture, a path, or what a package contains.
+
+    /** A package fetched and applied, or why not. [id] is null for a file that didn't install, whose id is not known. */
+    fun marketGot(id: String?, result: InstallResult) = event("Market get ${id ?: "from a file"}: ${describe(result)}")
+
+    fun marketRemoved(id: String, ok: Boolean) = event("Market remove $id: ${if (ok) "removed" else "nothing changed"}")
+
+    fun marketUndone(id: String, ok: Boolean) = event("Market undo $id: ${if (ok) "put back" else "couldn't put back"}")
+
+    fun marketTurnedOff(id: String, ok: Boolean, bySafeMode: Boolean) =
+        event("Market ${if (bySafeMode) "Safe Mode turned off" else "turn off"} $id: ${if (ok) "off" else "nothing changed"}")
+
+    fun marketTurnedOn(id: String, ok: Boolean) = event("Market Try Again $id: ${if (ok) "on" else "still off"}")
+
+    fun marketRestored(restore: PackageInstaller.Restore?) = event(
+        if (restore == null) "Market backup: no packages"
+        else "Market backup: ${restore.on.size} on, ${restore.off.size} off, ${restore.failed.size} failed" +
+            restore.failed.joinToString(prefix = " (", postfix = ")") { it.id }.takeIf { restore.failed.isNotEmpty() }.orEmpty(),
+    )
+
+    private fun describe(result: InstallResult) = when (result) {
+        is InstallResult.Installed -> "installed ${result.installed.version.text}" +
+            (result.replaced?.let { " over ${it.version.text}" } ?: "")
+        is InstallResult.NeedsNewerFolio -> "needs a newer Folio (${result.missing.joinToString()})"
+        is InstallResult.Failed -> "failed, ${result.reason.name}: ${result.message}"
+    }
+
+    /** A wallpaper package's picture went on. [shown] is whether it is behind Home now (see ArtSelection). */
+    fun artOn(id: String, fresh: Boolean, shown: Boolean) =
+        event("Wallpaper $id on (${if (fresh) "new" else "again"}), ${if (shown) "behind Home" else "user's choice kept"}")
+
+    /** A wallpaper package's picture came off. [putBack] is whether the earlier background went back behind Home. */
+    fun artOff(id: String, putBack: Boolean) =
+        event("Wallpaper $id off, ${if (putBack) "earlier background put back" else "user's choice kept"}")
+
+    /** Why a wallpaper couldn't go on. The installer shows people one general message, so the reason is kept here. */
+    fun artRefused(id: String, why: String?) = event("Wallpaper $id refused: ${why ?: "no reason given"}")
+
+    fun artPruned(ids: List<String>) { if (ids.isNotEmpty()) event("Wallpaper art cleared: ${ids.joinToString()}") }
+
+    fun backgroundSet(choice: BackgroundChoice) = event("Background set: ${choice.save()}")
+
+    /** Home asked for its background and got nothing back from the decoder. */
+    fun backgroundUnreadable(choice: BackgroundChoice, width: Int = 0, height: Int = 0) =
+        event("Background ${choice.save()} couldn't be decoded" + if (width > 0) " (${width}x$height)" else "")
+
+    /** The background was bigger than Folio draws and was decoded smaller. Expected never to happen. */
+    fun backgroundSampled(choice: BackgroundChoice, width: Int, height: Int, sample: Int) =
+        event("Background ${choice.save()} is ${width}x$height, decoded at 1/$sample")
 }
