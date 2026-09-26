@@ -98,8 +98,9 @@ rather than listed without a credit. This is [DES-2b](../standards/design.md): c
 with no author has no license to give. A package that gathers several pictures by different artists cannot state one
 artist or one license, so it is not a wallpaper package: ship one per artwork.
 
-The image itself goes under `assets/` with an image extension. Folio picks the first image it finds there, so a
-package with one picture needs no naming convention and a package with several is guessing.
+The image itself goes under `assets/` with an image extension. Folio takes the largest image there that the
+depiction does not already use as its hero or a screenshot, so a package with one picture needs no naming convention,
+and a package that also carries a hero or screenshots is still read correctly.
 
 ### `depiction.json`
 

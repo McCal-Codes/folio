@@ -133,6 +133,15 @@ internal object BackgroundLibrary {
      * Makes the picture with [sha256] the one in place for [id], from the kept copy if an update put it aside, and
      * keeps whatever was in place instead. False when this phone has no such picture.
      */
+    /**
+     * Undoes [keepCurrent] when the apply that followed it failed: the picture that was put aside is current again.
+     * There is at most one kept picture per id, because [keepCurrent] clears the older ones first.
+     */
+    fun unkeep(dir: File, id: String): Boolean {
+        val kept = keptArtFiles(dir, id).singleOrNull() ?: return false
+        return kept.renameTo(artFile(dir, id))
+    }
+
     fun bringBack(dir: File, id: String, sha256: String): Boolean {
         val file = artFile(dir, id)
         if (file.isFile && sha256Hex(file) == sha256) return true
@@ -159,6 +168,28 @@ internal object BackgroundLibrary {
     }
 
     private fun recordFile(context: Context) = File(installedDir(context), RECORD)
+
+    /** One lock for the credit record: the installer writes it on its own thread while the picker reads it on another. */
+    private val recordLock = Any()
+
+    private fun readRecord(context: Context): JSONObject? = synchronized(recordLock) {
+        val text = runCatching { recordFile(context).takeIf { it.isFile }?.readText() }.getOrNull() ?: return null
+        runCatching { JSONObject(text) }.getOrNull()
+    }
+
+    /**
+     * Written beside the record and moved into place, so a crash mid-write leaves the old record rather than half of
+     * a new one. Losing this file would not lose a picture, but it would make every installed wallpaper vanish from
+     * the picker at once, which is the same shape of failure the Market's FileStore guards against the same way.
+     */
+    private fun writeRecord(context: Context, json: JSONObject): Boolean = synchronized(recordLock) {
+        val target = recordFile(context)
+        val temp = File(target.parentFile, target.name + ".tmp")
+        runCatching {
+            temp.writeText(json.toString())
+            if (!temp.renameTo(target)) { target.delete(); check(temp.renameTo(target)) }
+        }.onFailure { temp.delete() }.isSuccess
+    }
 
     /**
      * An id becomes a file name, so it may not wander out of the directory. Package ids are already reverse-DNS and
@@ -223,8 +254,7 @@ internal object BackgroundLibrary {
     fun exists(context: Context, id: String) = isBuiltIn(id) || artFile(context, id).isFile
 
     fun installed(context: Context): List<Artwork> {
-        val text = runCatching { recordFile(context).takeIf { it.isFile }?.readText() }.getOrNull() ?: return emptyList()
-        val json = runCatching { JSONObject(text) }.getOrNull() ?: return emptyList()
+        val json = readRecord(context) ?: return emptyList()
         return json.keys().asSequence().mapNotNull { id ->
             val entry = json.optJSONObject(id) ?: return@mapNotNull null
             if (!artFile(context, id).isFile) return@mapNotNull null
@@ -252,11 +282,11 @@ internal object BackgroundLibrary {
         if (isBuiltIn(art.id)) return false
         val dir = installedDir(context)
         if (!dir.isDirectory && !dir.mkdirs()) return false
-        val json = runCatching { JSONObject(recordFile(context).readText()) }.getOrNull() ?: JSONObject()
+        val json = readRecord(context) ?: JSONObject()
         json.put(art.id, JSONObject()
             .put("title", art.title).put("artist", art.artist).put("license", art.license)
             .put("detail", art.detail).put("source", art.source))
-        return runCatching { recordFile(context).writeText(json.toString()) }.isSuccess
+        return writeRecord(context, json)
     }
 
     /**
@@ -275,9 +305,9 @@ internal object BackgroundLibrary {
     fun forget(context: Context, id: String) {
         artFile(context, id).delete()
         keptArtFiles(installedDir(context), id).forEach { it.delete() }
-        val json = runCatching { JSONObject(recordFile(context).readText()) }.getOrNull() ?: return
+        val json = readRecord(context) ?: return
         json.remove(id)
-        runCatching { recordFile(context).writeText(json.toString()) }
+        writeRecord(context, json)
     }
 }
 

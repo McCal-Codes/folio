@@ -282,6 +282,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     // The preview shows the candidate when there is one, under Home's real chrome, which is what AOSP's
                     // small preview and iOS's Lock Screen preview both do. Art and photos apply the same way: a tap
                     // stages, Set writes.
+                    // "Once" means once: leaving the page ends the offer as well as taking it.
+                    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { backgrounds.offerTaken() } }
                     val candidate = backgrounds.pendingArtBitmap ?: backgrounds.previewBitmap
                     val staging = backgrounds.pendingArt != null || backgrounds.previewPending
                     if (!state.systemWallpaper) {
@@ -749,7 +751,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 }
                 CustomizationPage.TWEAKS -> {
                     CardNote(stringResource(R.string.features_inspired_by_ios_jailbreak_tweak), Modifier.padding(horizontal = FolioSpace.TINY.dp))
-                    val offered = visibleTweaks(androidx.compose.ui.platform.LocalContext.current)
+                    val tweaksContext = androidx.compose.ui.platform.LocalContext.current
+                    val offered = remember { visibleTweaks(tweaksContext) }
                     val installed = offered.filter { it.id in state.installedTweaks }
                     if (installed.isNotEmpty()) SheetGroup {
                         installed.forEachIndexed { index, tweak ->
@@ -2130,7 +2133,8 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
 @Composable private fun TweakLibraryPage(state: LauncherState, model: LauncherModel, onOpen: (TweakFeature) -> Unit) {
     CardNote(stringResource(R.string.built_into_folio_and_off_until_you_get_t), Modifier.padding(horizontal = FolioSpace.TINY.dp))
     SheetGroup {
-        visibleTweaks(androidx.compose.ui.platform.LocalContext.current).forEachIndexed { index, tweak ->
+        val libraryContext = androidx.compose.ui.platform.LocalContext.current
+        remember { visibleTweaks(libraryContext) }.forEachIndexed { index, tweak ->
             if (index > 0) MenuDivider()
             val installed = tweak.id in state.installedTweaks
             Row(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = stringResource(R.string.show_details)) { onOpen(tweak) }

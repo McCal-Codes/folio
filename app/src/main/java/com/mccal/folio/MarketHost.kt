@@ -50,6 +50,10 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
      * turned off, and getting it again from its source is what brings the picture with it.
      */
     override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String {
+        // Every refusal comes before anything on disk changes. A refusal after the write used to leave an updated id
+        // with its old picture renamed away and its new one deleted, and a thrown apply is never restored.
+        if (BackgroundLibrary.isBuiltIn(art.id)) error("that wallpaper uses a name that belongs to art inside Folio")
+        if (!art.credited) error("that wallpaper doesn't say who made it")
         val was = backgroundChoice(context).save()
         val dir = BackgroundLibrary.installedDir(context)
         val file = BackgroundLibrary.artFile(context, art.id)
@@ -66,15 +70,13 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
             BackgroundLibrary.keepCurrent(dir, art.id)
             file.writeBytes(bytes)
         }
-        if (BackgroundLibrary.isBuiltIn(art.id)) {
-            if (bytes.isNotEmpty()) file.delete()
-            // Not the credit's fault: this package is using a name that belongs to art inside Folio, which is the
-            // same refusal the Market makes for a source claiming a built-in package's id.
-            error("that wallpaper uses a name that belongs to art inside Folio")
-        }
         if (!BackgroundLibrary.record(context, art)) {
-            if (bytes.isNotEmpty()) file.delete()
-            error("that wallpaper doesn't say who made it")
+            // The credit could not be written down, so the picture goes back to how it was before this call.
+            if (bytes.isNotEmpty()) {
+                file.delete()
+                BackgroundLibrary.unkeep(dir, art.id)
+            }
+            error("that wallpaper's credit couldn't be saved")
         }
         setBackgroundChoice(context, BackgroundChoice.Art(art.id))
         LauncherBackgroundCache.changed(null)

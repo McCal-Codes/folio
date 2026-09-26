@@ -419,9 +419,24 @@ class PackageInstaller(
                 // A picture, named as one: the archive allows other file types under assets/, and handing one of
                 // those to the wallpaper as image bytes is a guess about a name an author chose.
                 PackageKind.WALLPAPER -> {
-                    val image = files.entries.firstOrNull {
-                        it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES
-                    } ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image")
+                    // Not "the first image under assets/": a depiction's hero and screenshots live there too, and a zip
+                    // lists them in whatever order the author's tool wrote. The wallpaper is the image the page does
+                    // not spend, and if there are several, the biggest, because a wallpaper is the largest picture
+                    // in its own package.
+                    val spent = buildSet {
+                        depiction?.blocks?.forEach { block ->
+                            when (block) {
+                                is DepictionBlock.Hero -> add(block.image)
+                                is DepictionBlock.Screenshots -> addAll(block.images)
+                                else -> Unit
+                            }
+                        }
+                    }
+                    val image = files.entries
+                        .filter { it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES }
+                        .filterNot { it.key in spent }
+                        .maxByOrNull { it.value.size }
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image of its own")
                     // The credit is read here because here is where the manifest is open. A host applying this
                     // change is handed the change and nothing else, so an artist and a license that are not
                     // carried along cannot be shown beside the picture later.
