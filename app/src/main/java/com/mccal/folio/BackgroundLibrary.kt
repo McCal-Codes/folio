@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import org.json.JSONObject
 import java.io.File
+import java.security.MessageDigest
 
 /*
  * The pictures Folio can put behind Home, and which one is chosen.
@@ -104,10 +105,58 @@ internal object BackgroundLibrary {
 
     fun installedDir(context: Context) = File(context.filesDir, INSTALLED_DIR)
 
-    fun artFile(context: Context, id: String) = File(installedDir(context), "${safe(id)}.img")
+    fun artFile(context: Context, id: String) = artFile(installedDir(context), id)
 
-    /** The picture an update replaced, kept until the update is put back or the package is pruned. */
-    fun previousArtFile(context: Context, id: String) = File(installedDir(context), "${safe(id)}.prev.img")
+    fun artFile(dir: File, id: String) = File(dir, "${safe(id)}.img")
+
+    /**
+     * A picture an update replaced, named by its SHA-256 so a record, which carries the hash and not the picture, can
+     * ask for exactly that one back. One is kept per id, which is as far back as the installer's own undo goes.
+     */
+    fun keptArtFile(dir: File, id: String, sha256: String) = File(dir, "${safe(id)}.$sha256.kept.img")
+
+    private fun keptArtFiles(dir: File, id: String): List<File> {
+        val name = Regex("${Regex.escape(safe(id))}\\.[0-9a-f]{64}\\.kept\\.img")
+        return dir.listFiles().orEmpty().filter { name.matches(it.name) }
+    }
+
+    /** Moves [id]'s picture aside as its kept copy, replacing any older one. Nothing in place means nothing to do. */
+    fun keepCurrent(dir: File, id: String) {
+        val file = artFile(dir, id)
+        if (!file.isFile) return
+        val sha256 = sha256Hex(file)
+        keptArtFiles(dir, id).forEach { it.delete() }
+        file.renameTo(keptArtFile(dir, id, sha256))
+    }
+
+    /**
+     * Makes the picture with [sha256] the one in place for [id], from the kept copy if an update put it aside, and
+     * keeps whatever was in place instead. False when this phone has no such picture.
+     */
+    fun bringBack(dir: File, id: String, sha256: String): Boolean {
+        val file = artFile(dir, id)
+        if (file.isFile && sha256Hex(file) == sha256) return true
+        val kept = keptArtFile(dir, id, sha256)
+        if (!kept.isFile) return false
+        // Moved out of the way first, because keeping the current picture clears the kept copies, this one included.
+        val incoming = File(dir, "${safe(id)}.incoming")
+        if (!kept.renameTo(incoming)) return false
+        keepCurrent(dir, id)
+        return incoming.renameTo(file)
+    }
+
+    private fun sha256Hex(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     private fun recordFile(context: Context) = File(installedDir(context), RECORD)
 
@@ -225,7 +274,7 @@ internal object BackgroundLibrary {
     /** Forgets a piece of art and deletes its file. Used when its package is removed. */
     fun forget(context: Context, id: String) {
         artFile(context, id).delete()
-        previousArtFile(context, id).delete()
+        keptArtFiles(installedDir(context), id).forEach { it.delete() }
         val json = runCatching { JSONObject(recordFile(context).readText()) }.getOrNull() ?: return
         json.remove(id)
         runCatching { recordFile(context).writeText(json.toString()) }

@@ -18,7 +18,7 @@ class MarketAssetsTest {
         override fun removeTweak(feature: TweakFeature) = Unit
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
         override fun applyTheme(theme: FolioTheme) = Unit
-        override fun applyArtBackground(art: Artwork, bytes: ByteArray): String = ""
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String = ""
         override fun restoreArtBackground(artId: String, snapshot: String) = Unit
     })
 

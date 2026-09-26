@@ -39,7 +39,7 @@ class MarketHostTest {
             state = state.copy(featureScopes = FeatureScopes.set(state.featureScopes, id, screen, value))
         }
 
-        override fun applyArtBackground(art: Artwork, bytes: ByteArray): String {
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String {
             val was = background
             artwork[art.id] = art
             background = BackgroundChoice.Art(art.id).save()

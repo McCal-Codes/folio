@@ -52,6 +52,7 @@ class WallpaperRecordTest {
         assertEquals("https://example.org/hills", wallpaper.source)
         assertEquals("assets/hills.webp", wallpaper.path)
         assertTrue("and it still counts as credited", wallpaper.credited)
+        assertEquals("but it names the picture, so an older version gets its own back", sha256Hex(change.bytes), wallpaper.pictureSha256)
     }
 
     @Test fun `a record written before wallpapers carried a credit is not credited`() {

@@ -667,6 +667,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 is PackageChange.Wallpaper -> json.put("kind", "wallpaper").put("path", change.path)
                     .put("id", change.id).put("title", change.title).put("artist", change.artist)
                     .put("license", change.license).put("detail", change.detail).put("source", change.source)
+                    .put("sha256", change.pictureSha256)
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
                     "tweaks",
                     JSONArray().apply {
@@ -700,7 +701,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                     ByteArray(0),
                     id = json.optString("id"), title = json.optString("title"), artist = json.optString("artist"),
                     license = json.optString("license"), detail = json.optString("detail"),
-                    source = json.optString("source"),
+                    source = json.optString("source"), sha256 = json.optString("sha256"),
                 )
                 "tweaks" -> {
                     val list = json.optJSONArray("tweaks") ?: return@mapNotNull null

@@ -290,7 +290,7 @@ private object ReadOnlyMarketLauncher : MarketLauncher {
 
     // Not silently ignored like the rest: applying is supposed to return what it replaced, and a snapshot invented
     // by a launcher that changed nothing would tell Undo to put back something that was never taken away.
-    override fun applyArtBackground(art: Artwork, bytes: ByteArray): String =
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String =
         error("this launcher only adds and forgets sources")
 
     override fun restoreArtBackground(artId: String, snapshot: String) = Unit

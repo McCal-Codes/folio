@@ -25,9 +25,10 @@ internal interface MarketLauncher {
      * Installs a piece of art, shows it, and returns what was behind Home before so Undo can put it back.
      *
      * The bytes are written under Folio's own files rather than kept in the package record, because a picture is a
-     * file and the library lists files. Throwing means nothing changed.
+     * file and the library lists files. [sha256] names the picture a record means when [bytes] is empty. Throwing
+     * means nothing changed.
      */
-    fun applyArtBackground(art: Artwork, bytes: ByteArray): String
+    fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String
 
     /** Puts back what [applyArtBackground] replaced, and forgets the art it installed. */
     fun restoreArtBackground(artId: String, snapshot: String)
@@ -48,18 +49,21 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
      * it is not there, and there is nothing honest to do but say so: the package lands in the restore's failed list,
      * turned off, and getting it again from its source is what brings the picture with it.
      */
-    override fun applyArtBackground(art: Artwork, bytes: ByteArray): String {
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String {
         val was = backgroundChoice(context).save()
+        val dir = BackgroundLibrary.installedDir(context)
         val file = BackgroundLibrary.artFile(context, art.id)
         if (bytes.isEmpty()) {
-            if (!file.isFile) error("that wallpaper's picture isn't on this phone. Get it again to put it back")
+            // A record names its picture by hash, and an update may have put that picture aside, so it comes back
+            // here. A record written before hashes has none and uses the picture in place, which is all it had.
+            val there = if (sha256.isNotEmpty()) BackgroundLibrary.bringBack(dir, art.id, sha256) else file.isFile
+            if (!there) error("that wallpaper's picture isn't on this phone. Get it again to put it back")
         } else {
             file.parentFile?.mkdirs()
             // An update overwrites the one file an id has, and the record carries no picture, so undoing the update
             // would reapply the old version's credit over the new version's picture. The picture being replaced is
-            // kept beside it until the change is put back or the package is pruned. One level deep, which is as far
-            // as the installer's own undo goes.
-            if (file.isFile) file.renameTo(BackgroundLibrary.previousArtFile(context, art.id))
+            // kept beside it, named by its hash, until an older record asks for it or the package is pruned.
+            BackgroundLibrary.keepCurrent(dir, art.id)
             file.writeBytes(bytes)
         }
         if (BackgroundLibrary.isBuiltIn(art.id)) {
@@ -89,9 +93,9 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
         setBackgroundChoice(context, BackgroundChoice.parse(snapshot) { id ->
             id != artId && BackgroundLibrary.exists(context, id)
         })
-        // If this change replaced an earlier picture for the same id, that picture comes back.
-        val previous = BackgroundLibrary.previousArtFile(context, artId)
-        if (previous.isFile) previous.renameTo(BackgroundLibrary.artFile(context, artId))
+        // No file moves here. Safe Mode turning an update off comes through this too, and the update's picture has
+        // to be the one in place when it's turned back on. Putting an older version back is the installer applying
+        // that version's record, and the record's hash is what brings its picture back (applyArtBackground).
         LauncherBackgroundCache.changed(null)
     }
 }
@@ -136,6 +140,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
                     license = change.license, detail = change.detail, source = change.source,
                 ),
                 change.bytes,
+                change.pictureSha256,
             )
         }
         // Reading a package already refuses kinds this Folio can't apply; this is the belt to that's braces.
