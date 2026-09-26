@@ -132,7 +132,12 @@ private fun decodeBackground(context: Context, file: File): Bitmap? {
             context.assets.open(BackgroundLibrary.assetPath(choice.id)).use(BitmapFactory::decodeStream)
         }.getOrNull()
     }
-    return BitmapFactory.decodeFile(file.absolutePath)
+    // Sampled rather than trusted: an installed picture is checked for size when it goes on, and this keeps a file
+    // that got past that from being decoded at a size Android then refuses to draw.
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    val options = BitmapFactory.Options().apply { inSampleSize = BackgroundLibrary.sampleSize(bounds.outWidth, bounds.outHeight) }
+    return BitmapFactory.decodeFile(file.absolutePath, options)
 }
 
 internal fun cachedLauncherBackground(context: Context): Bitmap? {

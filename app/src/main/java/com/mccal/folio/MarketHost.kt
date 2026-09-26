@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import com.mccal.folio.market.Capability
 import com.mccal.folio.market.PackageChange
 import com.mccal.folio.market.PackageHost
@@ -54,7 +55,16 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
         // with its old picture renamed away and its new one deleted, and a thrown apply is never restored.
         if (BackgroundLibrary.isBuiltIn(art.id)) error("that wallpaper uses a name that belongs to art inside Folio")
         if (!art.credited) error("that wallpaper doesn't say who made it")
-        val was = backgroundChoice(context).save()
+        if (bytes.isNotEmpty()) {
+            // Read from the header alone. A few megabytes of WebP can decode to hundreds, and Home would then fail to
+            // draw on every start, long after Safe Mode stopped watching this install.
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            BackgroundLibrary.sizeProblem(bounds.outWidth, bounds.outHeight)?.let { error(it) }
+        }
+        // Asked before the credit is written: an id already in the library is an update or a package coming back on,
+        // and those follow what the user chose since rather than choosing for them (ArtSelection).
+        val fresh = BackgroundLibrary.installed(context).none { it.id == art.id }
         val dir = BackgroundLibrary.installedDir(context)
         val file = BackgroundLibrary.artFile(context, art.id)
         if (bytes.isEmpty()) {
@@ -78,7 +88,7 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
             }
             error("that wallpaper's credit couldn't be saved")
         }
-        setBackgroundChoice(context, BackgroundChoice.Art(art.id))
+        val was = artSelection(context).applied(art.id, fresh).save()
         LauncherBackgroundCache.changed(null)
         return was
     }
@@ -92,7 +102,7 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
     override fun restoreArtBackground(artId: String, snapshot: String) {
         // exists(), not artFile().isFile: the snapshot may name art that ships inside Folio, which is an asset with
         // no file, and testing for a file would read that snapshot as nothing and lose the background it recorded.
-        setBackgroundChoice(context, BackgroundChoice.parse(snapshot) { id ->
+        artSelection(context).restored(artId, BackgroundChoice.parse(snapshot) { id ->
             id != artId && BackgroundLibrary.exists(context, id)
         })
         // No file moves here. Safe Mode turning an update off comes through this too, and the update's picture has
