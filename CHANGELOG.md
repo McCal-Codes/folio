@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.7] - Unreleased
 
 ### Added
+- **Folio speaks Korean:** the whole interface, from a community translation by qlife1146, with the newest strings drafted alongside it. A beta translation until a native speaker reviews it; Settings › General › Language lists it, and it follows the phone's language on its own.
 - **White text reads on a pale wallpaper:** Home darkens a little at the top and bottom, the way iPhone does, so the clock, app names, page dots and the buttons beside them stay legible over a dawn beach or a cream painting. The middle of your wallpaper is left as it is, and it steps aside where Folio is already using dark text on Home or already dimming the wallpaper for dark appearance. Settings > Wallpaper & Appearance > Text on Home > Darken behind text turns it off. It is drawn once with the background rather than over it, so a swipe costs the same as before.
 - **Flipbook, in the Tweak Library:** Home pages turn in 3D as you swipe instead of sliding flat, after Barrel by Aaron Ash. Which turn it is lives in Settings › Gestures.
 - **Folio's backgrounds are real art:** Folio ships two woodblock prints by Utagawa Hiroshige, Night View of Saruwaka-machi from the Library of Congress and Naruto Whirlpools from the National Library of New Zealand, and Settings › Wallpaper & Appearance is now one grid of everything you can put behind Home: your photo, the art Folio ships, and the art you install. Every one names its artist and its license. The drawn dunes are gone.
