@@ -42,3 +42,17 @@ CREATE TABLE IF NOT EXISTS checks (
   value TEXT NOT NULL,              -- JSON
   at    TEXT NOT NULL
 );
+
+-- Supporter roles handed out in Discord by Mr Folio's /redeem. One code, one person: the serial is the key, so a code
+-- redeemed by someone else is refused rather than granted twice. The daily cron takes the role back after ends_on.
+CREATE TABLE IF NOT EXISTS discord_roles (
+  serial     INTEGER PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  guild_id   TEXT NOT NULL,
+  role_id    TEXT NOT NULL,
+  granted_at TEXT NOT NULL,        -- YYYY-MM-DD, UTC
+  ends_on    TEXT,                 -- the code's last day, YYYY-MM-DD; null for a code with no end
+  removed_at TEXT                  -- set when the cron takes the role back
+);
+CREATE INDEX IF NOT EXISTS discord_roles_due ON discord_roles (removed_at, ends_on);
+CREATE INDEX IF NOT EXISTS discord_roles_person ON discord_roles (user_id, role_id);
