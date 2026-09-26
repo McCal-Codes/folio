@@ -71,14 +71,10 @@ Good:
 - Network only for updates, the roadmap and added Market sources; cleartext blocked; `allowBackup="false"`.
 - Market packages are declarative, signed and pinned; `:market` has Jazzer fuzz targets and a weekly fuzz job.
 
-Not yet:
-
-- The theme import parser isn't fuzzed; `PinWidgetActivity` doesn't check that a request came from the system.
-
 ## Gaps
 
 | # | Work | Size |
 |---|---|---|
 | 1 | ~~Fuzz `ThemeImportActivity`'s parser~~ (done: `ThemeImportFuzzTest`, 5,000 damaged files plus hostile ones; every answer is a drawable theme or nothing) | S |
-| 2 | `PinWidgetActivity`: it already takes only a request `LauncherApps.getPinItemRequest` returns and that reports itself valid. What is left is a forged request from another app carrying its own binder; the fix is to re-check the widget provider or shortcut against `AppWidgetManager` / `LauncherApps` before placing it. Security work, so not rushed into a small batch | M |
+| 2 | ~~`PinWidgetActivity`: it already takes only a request `LauncherApps.getPinItemRequest` returns and that reports itself valid. What is left is a forged request from another app carrying its own binder; the fix is to re-check the widget provider or shortcut against `AppWidgetManager` / `LauncherApps` before placing it. Security work, so not rushed into a small batch~~ (done: a widget is placed only once `AppWidgetManager` reports the accepted id bound to the provider the request named, a shortcut only once `LauncherApps` lists it as pinned, and a provider that isn't installed is turned away first; `PinTrustTest`) | M |
 | 3 | ~~A plain note about banking apps and the accessibility service~~ (done, in PERMISSIONS.md) | S |

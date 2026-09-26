@@ -3,6 +3,7 @@ package com.mccal.folio
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +32,13 @@ import androidx.core.graphics.drawable.toBitmap
 /**
  * "Add to Home Screen" when an app asks to pin one of its widgets (Android's pin request goes to the Home app).
  * An iOS-style card over the app shows the widget's preview; Add places it in the first free spot on Home.
+ *
+ * **Trusting the request.** This activity is exported, because Android delivers pin requests through it, so any app
+ * can also start it with an intent it made itself. A request read back by `getPinItemRequest` carries the binder that
+ * answers `isValid()` and `accept()`, and a forged one answers yes to both while naming whatever widget or shortcut it
+ * likes. So nothing is placed on the request's word. A widget goes on Home only once Android reports the id it
+ * accepted as bound to that same provider, which only a real request can do; a shortcut only once `LauncherApps`
+ * lists it as pinned. A provider that isn't installed is turned away before the card is even shown.
  */
 class PinWidgetActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +48,12 @@ class PinWidgetActivity : ComponentActivity() {
         if (request == null) { finish(); return }
         if (request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) { showShortcut(request); return }
         val provider = request.getAppWidgetProviderInfo(this)
-        if (provider == null) { finish(); return }
+        if (provider == null || !PinTrust.installed(provider.provider,
+                runCatching { AppWidgetManager.getInstance(this).getInstalledProvidersForProfile(provider.profile).map { it.provider } }.getOrDefault(emptyList()))
+        ) {
+            Diagnostics.pinRefused(provider?.provider?.packageName, PinTrust.NOT_INSTALLED)
+            finish(); return
+        }
         val label = provider.loadLabel(packageManager)
         val app = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(provider.provider.packageName, 0)).toString() }.getOrDefault(label)
         val preview = runCatching { provider.loadPreviewImage(this, resources.displayMetrics.densityDpi)?.toBitmap() }.getOrNull()
@@ -67,8 +80,11 @@ class PinWidgetActivity : ComponentActivity() {
                 val model = FolioSettingsBridge.liveModel?.get()
                 when {
                     model == null -> error = this@PinWidgetActivity.getString(R.string.open_folio_once_then_try_again)
-                    runCatching { request.accept() }.getOrDefault(false) -> { model.placePinnedShortcut(info.`package`, info.id); finish() }
-                    else -> error = this@PinWidgetActivity.getString(R.string.the_shortcut_couldn_t_be_added)
+                    runCatching { request.accept() }.getOrDefault(false) && pinned(info) -> { model.placePinnedShortcut(info.`package`, info.id); finish() }
+                    else -> {
+                        Diagnostics.pinRefused(info.`package`, PinTrust.NOT_PINNED)
+                        error = this@PinWidgetActivity.getString(R.string.the_shortcut_couldn_t_be_added)
+                    }
                 }
             }) {
                 icon?.let { Image(it.asImageBitmap(), null, Modifier.size(72.dp).clip(RoundedCornerShape(18.dp))) }
@@ -77,6 +93,13 @@ class PinWidgetActivity : ComponentActivity() {
             }
         }
     }
+
+    /** Whether Android now lists [info] as pinned for Folio, which is what a real request's accept() does. */
+    private fun pinned(info: ShortcutInfo): Boolean = runCatching {
+        val query = LauncherApps.ShortcutQuery().setPackage(info.`package`).setShortcutIds(listOf(info.id))
+            .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+        getSystemService(LauncherApps::class.java).getShortcuts(query, info.userHandle).orEmpty().any { it.id == info.id && it.isPinned }
+    }.getOrDefault(false)
 
     /** Binds and places the widget; returns a message when it can't. */
     private fun add(request: LauncherApps.PinItemRequest, provider: android.appwidget.AppWidgetProviderInfo): String? {
@@ -97,11 +120,28 @@ class PinWidgetActivity : ComponentActivity() {
         val host = AppWidgetHost(this, 1024)
         val id = host.allocateAppWidgetId()
         val accepted = runCatching { request.accept(Bundle().apply { putInt(AppWidgetManager.EXTRA_APPWIDGET_ID, id) }) }.getOrDefault(false)
+        // Android's word, not the request's: only a real request leaves this id bound to the provider it named.
+        val bound = runCatching { AppWidgetManager.getInstance(this).getAppWidgetInfo(id)?.provider }.getOrNull()
+        val trusted = accepted && PinTrust.bound(provider.provider, bound)
+        if (accepted && !trusted) Diagnostics.pinRefused(provider.provider.packageName, PinTrust.NOT_BOUND)
         val local = homeCellLocal(index)
-        val placed = accepted && model.placeWidget(WidgetPlacement(model.nextWidgetSlot(), id, page, local % GRID_COLUMNS, local / GRID_COLUMNS, span.width, span.height))
+        val placed = trusted && model.placeWidget(WidgetPlacement(model.nextWidgetSlot(), id, page, local % GRID_COLUMNS, local / GRID_COLUMNS, span.width, span.height))
         if (!placed) { host.deleteAppWidgetId(id); return this@PinWidgetActivity.getString(R.string.the_widget_couldn_t_be_added) }
         return null
     }
+}
+
+/** The checks a pin request has to pass, apart from the Android calls that feed them, so they can be tested. */
+internal object PinTrust {
+    const val NOT_INSTALLED = "the widget it names isn't installed"
+    const val NOT_BOUND = "Android didn't bind the widget it accepted"
+    const val NOT_PINNED = "Android doesn't list the shortcut as pinned"
+
+    /** The widget a request names is one Android has installed for that profile. */
+    fun <T> installed(provider: T, installed: List<T>) = provider in installed
+
+    /** The id the request accepted is bound, and to the provider the request named rather than another. */
+    fun <T : Any> bound(requested: T, bound: T?) = bound != null && bound == requested
 }
 
 /** The Add to Home Screen card: what's being added, then Add and Cancel. Tapping outside cancels. */
