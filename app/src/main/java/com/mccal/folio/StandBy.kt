@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import android.app.Activity
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -50,23 +51,85 @@ internal fun rememberHalfOpenPose(activity: Activity): FoldingFeature.Orientatio
     return fold?.takeIf { it.state == FoldingFeature.State.HALF_OPENED }?.orientation
 }
 
+/** The two ways into StandBy. One screen, so a phone that is both charging and half open shows it once. */
+internal enum class StandByEntry {
+    /** Set down half open: the hinge posture Folio has always shown StandBy for. */
+    POSE,
+
+    /** Plugged in and left alone, on any pose, so a phone that does not fold has StandBy too. */
+    CHARGING,
+}
+
 /**
- * iPhone-style StandBy for a phone set down half-open: a big clock, date, next alarm, battery and
- * now playing. Dim red at night. Tap anywhere or open the phone flat to leave.
+ * The one place that decides whether StandBy should be on screen, and which way in brought it there. Pure, so the
+ * decision is a JVM test rather than a phone on a charger (TST-1).
+ *
+ * The hinge wins when the phone is both charging and half open: the posture is the more specific fact, and it is what
+ * decides how the two halves are laid out either side of the fold.
+ *
+ * [chargingEnabled] is the user's switch **and** the gate ([standByChargingOn]); when it is false the charger is not
+ * consulted at all, so a phone that cannot see the feature does no work for it (REL-4a).
+ */
+internal fun standByEntry(
+    pose: FoldingFeature.Orientation?,
+    poseEnabled: Boolean,
+    charging: Boolean,
+    chargingEnabled: Boolean,
+): StandByEntry? = when {
+    poseEnabled && pose != null -> StandByEntry.POSE
+    chargingEnabled && charging -> StandByEntry.CHARGING
+    else -> null
+}
+
+/**
+ * Whether the charger may bring StandBy up on this phone: the user's switch, and the gate that keeps the feature with
+ * supporters until 0.6.8. Asked where the work starts, not in the UI, so nothing watches the charger while it is shut.
+ */
+internal fun standByChargingOn(context: Context, setting: Boolean): Boolean =
+    setting && FeatureGate.STANDBY_CHARGING.isOpen(context)
+
+/**
+ * How long the phone has to be left alone before StandBy appears. Half open it is the moment it takes to set the phone
+ * down; on a charger it is a screen saver, so it waits long enough that plugging in while you are reading Home does
+ * not take Home away from you. Any touch starts the wait again.
+ */
+internal fun standByEnterDelayMs(entry: StandByEntry): Long = when (entry) {
+    StandByEntry.POSE -> ENTER_DELAY_MS
+    StandByEntry.CHARGING -> CHARGING_ENTER_DELAY_MS
+}
+
+/**
+ * iPhone-style StandBy: a big clock, date, next alarm, battery and now playing. Dim red at night.
+ *
+ * Two ways in ([standByEntry]): the phone set down half open, and, for supporters until 0.6.8, the phone left alone on
+ * a charger on any pose. Tap anywhere or press Back to leave; it stays gone until nothing is asking for it any more,
+ * so leaving it while plugged in doesn't fight you. Unplugging or opening the phone flat ends it on its own.
+ *
+ * Dynamic class: D5 Ambient (the charger and the hinge, no user action).
+ * Source of truth: [DeviceStatus.charging] and the WindowManager pose, both owned elsewhere and only read here.
+ * When not visible: nothing beyond the state Home already collects for its status bar.
+ *
+ * [interactions] counts touches and keys on Home, so the charger's wait restarts whenever the phone is used.
  */
 @Composable
-internal fun StandByOverlay(pose: FoldingFeature.Orientation?, enabled: Boolean, blocked: Boolean, status: DeviceStatus) {
+internal fun StandByOverlay(pose: FoldingFeature.Orientation?, enabled: Boolean, chargingEnabled: Boolean,
+    blocked: Boolean, status: DeviceStatus, interactions: androidx.compose.runtime.IntState) {
+    val context = LocalContext.current
+    val chargingOn = remember(context, chargingEnabled) { standByChargingOn(context, chargingEnabled) }
+    val entry = standByEntry(pose, poseEnabled = enabled, charging = status.charging, chargingEnabled = chargingOn)
     var active by remember { mutableStateOf(false) }
-    var dismissedForPose by remember { mutableStateOf(false) }
-    LaunchedEffect(pose, enabled, blocked) {
-        if (pose == null) { active = false; dismissedForPose = false; return@LaunchedEffect }
-        if (!enabled || blocked || dismissedForPose) return@LaunchedEffect
-        delay(ENTER_DELAY_MS) // only after the phone has been set down, not while folding through
+    var dismissed by remember { mutableStateOf(false) }
+    // Read only while the charger is the way in, so a touch on Home costs nothing the rest of the time.
+    val touches = if (entry == StandByEntry.CHARGING) interactions.intValue else 0
+    LaunchedEffect(entry, blocked, touches) {
+        if (entry == null) { active = false; dismissed = false; return@LaunchedEffect }
+        if (blocked || dismissed) return@LaunchedEffect
+        delay(standByEnterDelayMs(entry)) // only once the phone has been left alone, not while folding or plugging in
         active = true
     }
     val view = LocalView.current
     DisposableEffect(active) { view.keepScreenOn = active; onDispose { view.keepScreenOn = false } }
-    BackHandler(active) { active = false; dismissedForPose = true }
+    BackHandler(active) { active = false; dismissed = true }
 
     AnimatedVisibility(active, enter = fadeIn(tween(500)), exit = fadeOut(tween(300))) {
         val tick by rememberMinuteTick()
@@ -75,13 +138,20 @@ internal fun StandByOverlay(pose: FoldingFeature.Orientation?, enabled: Boolean,
         val ink = if (night) Color(0xFFB3261E) else Color.White
         val soft = ink.copy(alpha = if (night) .75f else .6f)
         Box(Modifier.fillMaxSize().background(Color.Black)
-            .clickable(remember { MutableInteractionSource() }, null) { active = false; dismissedForPose = true }) {
+            .clickable(remember { MutableInteractionSource() }, null) { active = false; dismissed = true }) {
             val clock: @Composable (Modifier) -> Unit = { m -> BigClock(now, ink, soft, m) }
             val info: @Composable (Modifier) -> Unit = { m -> StandByInfo(status, ink, soft, night, m) }
-            if (pose == FoldingFeature.Orientation.HORIZONTAL) Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                clock(Modifier.weight(1f).fillMaxWidth()); info(Modifier.weight(1f).fillMaxWidth())
-            } else Row(Modifier.fillMaxSize().safeDrawingPadding()) {
-                clock(Modifier.weight(1f).fillMaxHeight()); info(Modifier.weight(1f).fillMaxHeight())
+            // The hinge says which way the two halves sit when the posture brought StandBy up: clock above the fold
+            // in tabletop, beside it in a book. On a charger there may be no hinge to ask, so the window's own shape
+            // decides and a phone that does not fold still splits the right way (ADP-1, ADP-15).
+            BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+                val wide = maxWidth > maxHeight
+                val sideBySide = if (pose != null) pose == FoldingFeature.Orientation.VERTICAL else wide
+                if (sideBySide) Row(Modifier.fillMaxSize()) {
+                    clock(Modifier.weight(1f).fillMaxHeight()); info(Modifier.weight(1f).fillMaxHeight())
+                } else Column(Modifier.fillMaxSize()) {
+                    clock(Modifier.weight(1f).fillMaxWidth()); info(Modifier.weight(1f).fillMaxWidth())
+                }
             }
         }
     }
@@ -158,3 +228,9 @@ private fun InfoChip(icon: androidx.compose.ui.graphics.vector.ImageVector, text
 }
 
 private const val ENTER_DELAY_MS = 2_500L
+
+/**
+ * Half a minute of not being touched before the charger brings StandBy up. Long enough that plugging in while
+ * you are using Home doesn't take Home away, short enough to be a screen saver; Settings says the same number.
+ */
+private const val CHARGING_ENTER_DELAY_MS = 30_000L
