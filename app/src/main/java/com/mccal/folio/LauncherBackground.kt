@@ -130,14 +130,16 @@ private fun decodeBackground(context: Context, file: File): Bitmap? {
     if (choice is BackgroundChoice.Art && BackgroundLibrary.isBuiltIn(choice.id)) {
         return runCatching {
             context.assets.open(BackgroundLibrary.assetPath(choice.id)).use(BitmapFactory::decodeStream)
-        }.getOrNull()
+        }.getOrNull() ?: null.also { Diagnostics.backgroundUnreadable(choice) }
     }
     // Sampled rather than trusted: an installed picture is checked for size when it goes on, and this keeps a file
     // that got past that from being decoded at a size Android then refuses to draw.
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(file.absolutePath, bounds)
-    val options = BitmapFactory.Options().apply { inSampleSize = BackgroundLibrary.sampleSize(bounds.outWidth, bounds.outHeight) }
-    return BitmapFactory.decodeFile(file.absolutePath, options)
+    val sample = BackgroundLibrary.sampleSize(bounds.outWidth, bounds.outHeight)
+    if (sample > 1) Diagnostics.backgroundSampled(choice, bounds.outWidth, bounds.outHeight, sample)
+    return BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample })
+        ?: null.also { Diagnostics.backgroundUnreadable(choice, bounds.outWidth, bounds.outHeight) }
 }
 
 internal fun cachedLauncherBackground(context: Context): Bitmap? {
@@ -205,6 +207,7 @@ class LauncherBackgroundController(
     fun setPendingArt() {
         val art = pendingArt ?: return
         setBackgroundChoice(activity, art)
+        Diagnostics.backgroundSet(art)
         // Drop the decoded picture rather than decoding the new one here: whatever draws next asks for it, on its
         // own thread, through the one loader.
         LauncherBackgroundCache.changed(null)
@@ -297,6 +300,7 @@ class LauncherBackgroundController(
         launcherPhotoFile(activity).delete()
         // Clearing the photo clears the background: a piece of art is chosen in the picker, not fallen back to.
         setBackgroundChoice(activity, BackgroundChoice.None)
+        Diagnostics.backgroundSet(BackgroundChoice.None)
         prefs.edit().putBoolean(BACKGROUND_ENABLED, false).remove(BACKGROUND_ID).remove(PICKER_PENDING).remove(PENDING_URI)
             .remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
         photoSelected = false; errorMessage = null; successMessage = activity.getString(R.string.no_background_behind_home)
@@ -319,6 +323,7 @@ class LauncherBackgroundController(
             .onSuccess {
                 releasePreviewGrant(staged.operation)
                 setBackgroundChoice(activity, BackgroundChoice.Photo)
+                Diagnostics.backgroundSet(BackgroundChoice.Photo)
                 prefs.edit().putBoolean(BACKGROUND_ENABLED, true).putString(BACKGROUND_ID, staged.operation)
                     .remove(PENDING_URI).remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
                 preview = null

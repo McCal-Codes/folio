@@ -297,9 +297,9 @@ internal object BackgroundLibrary {
      * authority, and this is run against it. Art that never came from a package, which today means nothing and
      * later means the pieces that ship inside the app, is not in [installed] and so is never considered.
      */
-    fun prune(context: Context, installedIds: Set<String>) {
-        installed(context).map { it.id }.filterNot { it in installedIds }.forEach { forget(context, it) }
-    }
+    /** Returns the ids it cleared, for the diagnostics trail. */
+    fun prune(context: Context, installedIds: Set<String>): List<String> =
+        installed(context).map { it.id }.filterNot { it in installedIds }.onEach { forget(context, it) }
 
     /**
      * The largest picture Folio takes as art: a little over the art it ships (2448 x 3796), and well under the size

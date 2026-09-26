@@ -100,7 +100,9 @@ internal class MarketSession(
      * Downloads and installs a package. A package the source has pulled is refused here as well as in the store, so
      * there is no screen that can install one, and reading, unpacking and applying always happen off the main thread.
      */
-    suspend fun get(entry: MarketEntry): InstallResult = when {
+    suspend fun get(entry: MarketEntry): InstallResult = fetch(entry).also { Diagnostics.marketGot(entry.entry.id, it) }
+
+    private suspend fun fetch(entry: MarketEntry): InstallResult = when {
         entry.revokedReason != null ->
             InstallResult.Failed(
                 InstallResult.Reason.REVOKED,
@@ -141,7 +143,10 @@ internal class MarketSession(
     fun read(bytes: ByteArray): PackageInstaller.ReadResult = installer.read(bytes)
 
     /** Installs a file someone opened. It's recorded as coming from a file, not from a source. */
-    suspend fun installFile(bytes: ByteArray): InstallResult = withContext(io) {
+    suspend fun installFile(bytes: ByteArray): InstallResult =
+        installFromFile(bytes).also { Diagnostics.marketGot((it as? InstallResult.Installed)?.installed?.id, it) }
+
+    private suspend fun installFromFile(bytes: ByteArray): InstallResult = withContext(io) {
         // A file gets the same two refusals a source's listing does, before its signature can pin a key to the id.
         val pkg = (installer.read(bytes) as? PackageInstaller.ReadResult.Ok)?.pkg
         if (pkg != null) {
@@ -158,7 +163,10 @@ internal class MarketSession(
         installer.install(bytes, origin = InstalledPackage.Origin.FILE)
     }
 
-    fun remove(id: String): Boolean = installer.remove(id).also { if (it) pruneArt() }
+    fun remove(id: String): Boolean = installer.remove(id).also {
+        Diagnostics.marketRemoved(id, it)
+        if (it) pruneArt()
+    }
 
     /**
      * Clears wallpaper art whose package has gone.
@@ -168,11 +176,14 @@ internal class MarketSession(
      * apart, and it is known here rather than there.
      */
     private fun pruneArt() {
-        BackgroundLibrary.prune(appContext, store.installed().map { it.id }.toSet())
+        Diagnostics.artPruned(BackgroundLibrary.prune(appContext, store.installed().map { it.id }.toSet()))
     }
 
     // Undo removes through the installer directly, past remove() above, so it prunes for itself.
-    fun undo(result: InstallResult.Installed): Boolean = installer.undo(result).also { if (it) pruneArt() }
+    fun undo(result: InstallResult.Installed): Boolean = installer.undo(result).also {
+        Diagnostics.marketUndone(result.installed.id, it)
+        if (it) pruneArt()
+    }
 
     /**
      * Called when Folio starts after a crash: if a package was being applied, it's turned off rather than left to
@@ -180,15 +191,17 @@ internal class MarketSession(
      */
     fun noteCrash(): InstalledPackage? {
         val id = safeMode.noteCrash() ?: return null
-        disable(id, appContext.getString(R.string.folio_stopped_twice_just_after_this_package))
+        val off = installer.disable(id, appContext.getString(R.string.folio_stopped_twice_just_after_this_package))
+        Diagnostics.marketTurnedOff(id, off, bySafeMode = true)
         return store.find(id)
     }
 
     /** Turns a package off the way Safe Mode does: its changes come off Home and its record stays. */
-    fun disable(id: String, reason: String): Boolean = installer.disable(id, reason)
+    fun disable(id: String, reason: String): Boolean =
+        installer.disable(id, reason).also { Diagnostics.marketTurnedOff(id, it, bySafeMode = false) }
 
     /** Try Again, after Safe Mode turned a package off: its changes go back on. */
-    fun enable(id: String): Boolean = installer.enable(id)
+    fun enable(id: String): Boolean = installer.enable(id).also { Diagnostics.marketTurnedOn(id, it) }
 
     /** What a layout backup carries about packages, or null when this phone has none to carry. */
     fun exportPackages(): String? = store.installed().takeIf { it.isNotEmpty() }?.let { store.export() }
@@ -206,7 +219,7 @@ internal class MarketSession(
             putLayoutBack()
             return null
         }
-        return installer.restoreBackup(text, offReason, putLayoutBack)
+        return installer.restoreBackup(text, offReason, putLayoutBack).also(Diagnostics::marketRestored)
     }
 }
 

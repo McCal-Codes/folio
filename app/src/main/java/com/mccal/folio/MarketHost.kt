@@ -50,7 +50,11 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
      * it is not there, and there is nothing honest to do but say so: the package lands in the restore's failed list,
      * turned off, and getting it again from its source is what brings the picture with it.
      */
-    override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String {
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String =
+        // The installer turns any refusal into one general message, so the reason goes in the trail on its way out.
+        runCatching { putArt(art, bytes, sha256) }.onFailure { Diagnostics.artRefused(art.id, it.message) }.getOrThrow()
+
+    private fun putArt(art: Artwork, bytes: ByteArray, sha256: String): String {
         // Every refusal comes before anything on disk changes. A refusal after the write used to leave an updated id
         // with its old picture renamed away and its new one deleted, and a thrown apply is never restored.
         if (BackgroundLibrary.isBuiltIn(art.id)) error("that wallpaper uses a name that belongs to art inside Folio")
@@ -60,7 +64,7 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
             // draw on every start, long after Safe Mode stopped watching this install.
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            BackgroundLibrary.sizeProblem(bounds.outWidth, bounds.outHeight)?.let { error(it) }
+            BackgroundLibrary.sizeProblem(bounds.outWidth, bounds.outHeight)?.let { error("$it (${bounds.outWidth}x${bounds.outHeight})") }
         }
         // Asked before the credit is written: an id already in the library is an update or a package coming back on,
         // and those follow what the user chose since rather than choosing for them (ArtSelection).
@@ -89,6 +93,7 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
             error("that wallpaper's credit couldn't be saved")
         }
         val was = artSelection(context).applied(art.id, fresh).save()
+        Diagnostics.artOn(art.id, fresh, shown = backgroundChoice(context) == BackgroundChoice.Art(art.id))
         LauncherBackgroundCache.changed(null)
         return was
     }
@@ -102,9 +107,11 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
     override fun restoreArtBackground(artId: String, snapshot: String) {
         // exists(), not artFile().isFile: the snapshot may name art that ships inside Folio, which is an asset with
         // no file, and testing for a file would read that snapshot as nothing and lose the background it recorded.
+        val showing = backgroundChoice(context) == BackgroundChoice.Art(artId)
         artSelection(context).restored(artId, BackgroundChoice.parse(snapshot) { id ->
             id != artId && BackgroundLibrary.exists(context, id)
         })
+        Diagnostics.artOff(artId, putBack = showing)
         // No file moves here. Safe Mode turning an update off comes through this too, and the update's picture has
         // to be the one in place when it's turned back on. Putting an older version back is the installer applying
         // that version's record, and the record's hash is what brings its picture back (applyArtBackground).
