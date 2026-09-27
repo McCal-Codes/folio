@@ -1,0 +1,14 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/tweaks.schema.json",
+  "format": 1,
+  "tweaks": [
+    {
+      "id": "pageEffects",
+      "enabled": true,
+      "screens": {
+        "cover": true,
+        "inner": true
+      }
+    }
+  ]
+}

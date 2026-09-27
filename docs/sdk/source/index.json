@@ -193,6 +193,41 @@
       }
     },
     {
+      "id": "com.mccal.folio.flipbook",
+      "version": "1.0.0",
+      "manifest": {
+        "format": 1,
+        "id": "com.mccal.folio.flipbook",
+        "name": "Flipbook",
+        "version": "1.0.0",
+        "author": {
+          "name": "Folio",
+          "url": "https://github.com/McCal-Codes/folio"
+        },
+        "minFolio": "0.6.7",
+        "section": "tweaks",
+        "kind": [
+          "tweakBundle"
+        ],
+        "permissions": [
+          "tweaks"
+        ],
+        "screens": [
+          "cover",
+          "inner"
+        ],
+        "icon": "assets/icons/flipbook.png",
+        "depiction": "depiction.json",
+        "license": "MIT",
+        "description": "Home pages turn in 3D as you swipe, instead of sliding flat.",
+        "requires": {
+          "features": [
+            "tweaks.pageEffects"
+          ]
+        }
+      }
+    },
+    {
       "id": "com.mccal.folio.theme.classic",
       "version": "1.0.0",
       "manifest": {

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
+  "format": 1,
+  "tint": "#30B0C7",
+  "blocks": [
+    {
+      "type": "markdown",
+      "text": "Swipe between Home pages and they turn in 3D instead of sliding flat. Cube folds each page away around its edge, like the side of a box. Carousel turns them a little and steps them back as they leave, like cards passing a window. Settings › Gestures › Page Effects picks which one.\n\nIt stays out of the way when it should. Pages slide flat while you drag an app or resize a widget, and Reduce Motion turns it off altogether.\n\nFlipbook is for supporters first, while the beta decides whether both turns are smooth enough at 120 Hz. Everyone gets it in Folio 0.6.8.\n\nInspired by Barrel by Aaron Ash. Re-created from scratch for Folio; no tweak code is included."
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Cube or Carousel, chosen in Settings › Gestures",
+        "Flat again while you move an app or a widget",
+        "Off with Reduce Motion",
+        "Nothing at all when it's switched off"
+      ]
+    },
+    {
+      "type": "compatibility",
+      "screens": [
+        "cover",
+        "inner"
+      ]
+    },
+    {
+      "type": "changelog",
+      "entries": [
+        {
+          "version": "1.0.0",
+          "date": "2026-09-26",
+          "notes": "Flipbook arrives in the Folio Market, for supporters first. Everyone gets it in Folio 0.6.8."
+        }
+      ]
+    },
+    {
+      "type": "link",
+      "title": "Folio on GitHub",
+      "url": "https://github.com/McCal-Codes/folio"
+    },
+    {
+      "type": "donation",
+      "url": "https://ko-fi.com/mccal"
+    }
+  ]
+}

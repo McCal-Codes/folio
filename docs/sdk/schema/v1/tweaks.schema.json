@@ -33,7 +33,8 @@
               "dockMagnify",
               "notificationAppRow",
               "tintNotifications",
-              "tintMedia"
+              "tintMedia",
+              "pageEffects"
             ]
           },
           "enabled": {
