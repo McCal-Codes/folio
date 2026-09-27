@@ -60,6 +60,27 @@
           "title": "A way back in Settings",
           "detail": "Every page has a way back, and the Preview bar no longer covers the App Library.",
           "status": "building"
+        },
+        {
+          "icon": "brush",
+          "color": "#BF5AF2",
+          "title": "Real art behind Home",
+          "detail": "Two Hiroshige prints ship with Folio, and Wallpaper & Appearance is one grid of your photo, Folio's art and the art you install, each with its artist and license.",
+          "status": "building"
+        },
+        {
+          "icon": "language",
+          "color": "#0A84FF",
+          "title": "Folio speaks Korean",
+          "detail": "A community translation, in beta until a native speaker reviews it.",
+          "status": "building"
+        },
+        {
+          "icon": "tune",
+          "color": "#FF9F0A",
+          "title": "White text on a pale wallpaper",
+          "detail": "Home darkens a little at the top and bottom so the clock and app names stay readable.",
+          "status": "building"
         }
       ]
     },
@@ -364,9 +385,9 @@
         {
           "icon": "pages",
           "color": "#32ADE6",
-          "title": "Page Effects",
-          "detail": "3D effects when you swipe between Home pages. Inspired by Barrel.",
-          "status": "planned"
+          "title": "Flipbook",
+          "detail": "Home pages turn in 3D as you swipe, inspired by Barrel. Supporters have it in the Market now, and everyone gets it in 0.6.8.",
+          "status": "building"
         },
         {
           "icon": "clock",
