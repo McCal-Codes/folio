@@ -1,0 +1,37 @@
+# Tells foliolauncher.com to rebuild when something it is built from changes: a published release, or on main the
+# changelog, the roadmap, Folio's own packages or the screen matrix. The site reads those files itself; this only
+# says when (folio-site's .github/workflows/deploy.yml does the building).
+#
+# Needs the secret FOLIO_SITE_TOKEN: a fine-grained token with Contents read and write on McCal-Codes/folio-site,
+# which is what GitHub asks of a repository_dispatch. Until it exists this says so and does nothing, and the site
+# still rebuilds once a day on its own.
+name: Site
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - CHANGELOG.md
+      - app/src/main/assets/roadmap.json
+      - docs/sdk/source/**
+      - app/src/test/resources/screen-matrix.json
+
+permissions: {}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the site to rebuild
+        env:
+          GH_TOKEN: ${{ secrets.FOLIO_SITE_TOKEN }}
+          WHY: ${{ github.event_name == 'release' && format('release {0}', github.event.release.tag_name) || format('main at {0}', github.sha) }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::No FOLIO_SITE_TOKEN set, so the site rebuilds on its daily run instead."
+            exit 0
+          fi
+          gh api repos/McCal-Codes/folio-site/dispatches -f event_type=folio-updated -f "client_payload[why]=$WHY"
+          echo "Asked foliolauncher.com to rebuild for $WHY."
