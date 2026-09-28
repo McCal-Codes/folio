@@ -3,7 +3,10 @@
 #
 #   bash tools/check-release-rules.sh [base-ref]        # default base: origin/main
 #
-# Two rules, because both were broken in the week the standard was written:
+# Three rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026:
+#
+#   REL-5   No AI attribution: no co-author, credit line or robot footer in a commit or the description, and no
+#           branch named after a tool. Not waivable.
 #
 #   REL-7   A change to what ships adds its own line to the Unreleased section of CHANGELOG.md, in the same pull
 #           request. Notes written later, or on a branch of their own, are how one version ends up meaning two
@@ -37,6 +40,25 @@ if ! git rev-parse --verify --quiet "$base" >/dev/null; then
 fi
 
 merge_base=$(git merge-base "$base" HEAD)
+
+# REL-5: no AI attribution in commits, the branch name or the pull request. Narrow on purpose: Folio has an "Ask
+# Claude" search button, so the name alone is fine; a credit line, a co-author or an agent-named branch is not.
+# No label waives this one.
+ai_credit='co-authored-by:.*(anthropic|openai|claude|copilot|codex|chatgpt|gemini|cursor)|generated (with|by) \[?(claude|chatgpt|copilot|codex|cursor|gemini)|claude\.com/claude-code|claude\.ai/code|🤖'
+credited=$(git log --format='%h %B' "$merge_base..HEAD" | grep -iE "$ai_credit" || true)
+branch=${PR_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
+if [[ -n "$credited" ]]; then
+    fail "REL-5  a commit credits an AI tool:
+$(echo "$credited" | head -5 | sed 's/^/          /')
+        Reword the commit without it (git commit --amend, or rebase and reword)."
+elif grep -qiE '^(claude|codex|copilot|cursor)[/-]|(^|[/-])agent-' <<< "$branch"; then
+    fail "REL-5  the branch '$branch' is named after a tool or an agent. Name it after the change."
+elif grep -qiE "$ai_credit" <<< "${PR_BODY:-}"; then
+    fail "REL-5  the pull request description credits an AI tool. Edit it out."
+else
+    pass "REL-5  no AI credit in the commits, the branch name or the description"
+fi
+
 changed=$(git diff --name-only "$merge_base" HEAD)
 if [[ -z "$changed" ]]; then
     echo "Nothing changed against $base."

@@ -125,7 +125,7 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   rule (#72, `THREE_PANES_DP`) is on `main` and in no tag, so 0.6.6, which is what the site documents and what people
   download, still draws three panes on a Fold's inner screen. The site's Fold screenshot is a real capture from
   22 Sep and is correct until 0.6.7 ships, at which point it has to be re-taken.
-- REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
+- REL-5 (AI credit in commits, the branch name and the description), REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
   the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
   useful without opening this file.
 - One feature is gated today: the Market, shut since 19 Sep 2026, due to open in 0.7.0.
