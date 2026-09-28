@@ -914,6 +914,9 @@
     <string name="folio_checks_the_download_unsigned">Folio 会用这个源列出的校验值核对下载的文件。这个源未签名，所以没有任何东西为这份列表担保：只有当你自己就是它的提供者时，才从它安装。Android 在安装前会询问，并显示 App 本身的名称。</string>
     <string name="folio_checks_the_download_against_the">Folio 会用源签名的校验值核对下载的文件。Android 在安装前会询问，并显示 App 本身的名称。</string>
     <string name="text_1_s_is_installed">已安装 %1$s</string>
+    <string name="text_1_s_is_updated">已更新 %1$s</string>
+    <string name="that_update_is_a_different_app">那个更新与此手机上的 App 不是同一个 App，因此没有安装任何内容。</string>
+    <string name="that_update_isn_t_signed_by_the_same">那个更新的签名与此手机上的 %1$s 不是同一开发者，因此没有安装任何内容。</string>
     <string name="installing_apps">安装 App</string>
     <string name="folio_downloads_and_installs">由 Folio 下载并安装</string>
     <string name="open_play_f_droid_or_obtainium_instead">改为打开 Play、F-Droid 或 Obtainium</string>
