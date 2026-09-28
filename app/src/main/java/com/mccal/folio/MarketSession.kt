@@ -219,7 +219,9 @@ internal class MarketSession(
             putLayoutBack()
             return null
         }
-        return installer.restoreBackup(text, offReason, putLayoutBack).also(Diagnostics::marketRestored)
+        // The restore removes this phone's packages through the installer itself, past remove() above, so it prunes
+        // for itself too: a wallpaper the backup doesn't carry would otherwise stay in the Installed grid.
+        return installer.restoreBackup(text, offReason, putLayoutBack).also(Diagnostics::marketRestored).also { pruneArt() }
     }
 }
 
