@@ -210,3 +210,18 @@ dependencies {
 kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
+
+composeCompiler {
+    // What Folio promises never changes after it's made; see the file for each type and why.
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose-stability.conf"))
+}
+
+// Compose compiler reports, off unless asked for: `./gradlew :app:compileDebugKotlin -PcomposeReports --rerun-tasks`
+// writes app/build/compose-reports/, which says which composables can skip and which classes Compose treats as
+// unstable (so anything reading them redraws whenever its parent does). Nothing changes in a normal build.
+if (providers.gradleProperty("composeReports").isPresent) {
+    composeCompiler {
+        reportsDestination = layout.buildDirectory.dir("compose-reports")
+        metricsDestination = layout.buildDirectory.dir("compose-reports")
+    }
+}
