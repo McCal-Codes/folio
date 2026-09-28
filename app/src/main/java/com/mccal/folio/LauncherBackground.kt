@@ -218,6 +218,23 @@ class LauncherBackgroundController(
         justSet = true
     }
 
+    /**
+     * Puts the photo already saved back behind Home, after an artwork was chosen over it. The photo file stays when
+     * art is chosen, so this needs no picker: "Choose a different photo" is the way to replace it.
+     */
+    fun useSavedPhoto() {
+        if (!launcherPhotoFile(activity).isFile) return choosePhoto()
+        if (previewPending) cancelPreview()
+        cancelPendingArt()
+        setBackgroundChoice(activity, BackgroundChoice.Photo)
+        Diagnostics.backgroundSet(BackgroundChoice.Photo)
+        LauncherBackgroundCache.changed(null)
+        photoSelected = true
+        errorMessage = null
+        successMessage = activity.getString(R.string.launcher_background_updated)
+        justSet = true
+    }
+
     fun cancelPendingArt() {
         pendingArt = null
         pendingArtBitmap = null
