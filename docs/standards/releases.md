@@ -153,6 +153,6 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   shut, so a finished feature cannot sit hidden and forgotten. The Market is the first entry, and
   `MarketAccess.isOpen` asks the gate now.
 - REL-10, REL-16 and a reproducibility check are enforced by `scripts/release-signed.sh`, which refuses to build when
-  the tag already exists, when the changelog has no section for the version, when a **stable** version's section
+  the version's tag already exists on a different commit (building the tagged commit itself is fine), when the changelog has no section for the version, when a **stable** version's section
   still says `Unreleased` (a beta may be built undated), or when the working tree is dirty. `FOLIO_SKIP_RELEASE_CHECKS=1`
   is the way out for a build that will never be published.

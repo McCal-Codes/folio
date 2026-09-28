@@ -17,10 +17,14 @@ output_dir=${1:-"$repository_root/dist/Folio-$version"}
 # under a number that has already been published, and refuse to build a stable release whose notes still say they
 # are unwritten. Set FOLIO_SKIP_RELEASE_CHECKS=1 to build anyway, for a test build that will never be published.
 if [[ "${FOLIO_SKIP_RELEASE_CHECKS:-}" != 1 ]]; then
-    if git -C "$repository_root" rev-parse --verify --quiet "refs/tags/v$version" >/dev/null; then
-        echo "Tag v$version already exists, so this version has been built before." >&2
-        echo "Move folioVersion on before building again (REL-16)." >&2
-        exit 1
+    # A tag on this very commit is fine: the bump is tagged when it merges, and building from that tag is the build
+    # the tag names. A tag anywhere else means the number already means a different build.
+    if tagged=$(git -C "$repository_root" rev-parse --verify --quiet "refs/tags/v$version^{commit}"); then
+        if [[ "$tagged" != "$(git -C "$repository_root" rev-parse HEAD)" ]]; then
+            echo "Tag v$version already exists on ${tagged:0:7}, not on this commit, so the number means another build." >&2
+            echo "Build from that tag, or move folioVersion on (REL-16)." >&2
+            exit 1
+        fi
     fi
     released_version=${version%%-*}
     if ! grep -qE "^## \\[$released_version\\]" "$repository_root/CHANGELOG.md"; then
