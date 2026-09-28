@@ -1438,4 +1438,8 @@
     <plurals name="show_all_widgets">
         <item quantity="other">%d개 모두 보기</item>
     </plurals>
+    <string name="general">일반</string>
+    <string name="language">언어</string>
+    <string name="settings_keywords_general">일반 정보 버전 업데이트 새로운 기능 도움말 로드맵 크레딧 고급</string>
+    <string name="settings_keywords_language">언어 번역 영어 한국어 중국어</string>
 </resources>
