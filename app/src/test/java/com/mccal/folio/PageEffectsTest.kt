@@ -40,6 +40,22 @@ class PageEffectsTest {
         assertTrue("the choice has to be written back out too", "\"pageEffect\", s.pageEffect.name" in source("LauncherModel.kt"))
     }
 
+    @Test fun `Flipbook's switch brings back the effect chosen last, not always the cube`() {
+        val carousel = LauncherState().withPageEffect(PageEffect.CAROUSEL)
+        val offAndOn = carousel.withPageEffectOn(false).withPageEffectOn(true)
+        assertEquals(PageEffect.CAROUSEL, offAndOn.pageEffect)
+        // Choosing None from Settings is the same as the switch off: the carousel is still what comes back.
+        assertEquals(PageEffect.CAROUSEL, carousel.withPageEffect(PageEffect.NONE).withPageEffectOn(true).pageEffect)
+        assertEquals("the first time, the cube", PageEffect.CUBE, LauncherState().withPageEffectOn(true).pageEffect)
+    }
+
+    @Test fun `the remembered effect survives a restart, and older saves fall back sensibly`() {
+        assertEquals(PageEffect.CAROUSEL, decode(saved("pageEffect" to "NONE", "lastPageEffect" to "CAROUSEL").toString()).lastPageEffect)
+        assertEquals("a 0.6.7 save in Carousel", PageEffect.CAROUSEL, decode(saved("pageEffect" to "CAROUSEL").toString()).lastPageEffect)
+        assertEquals(PageEffect.CUBE, decode(saved().toString()).lastPageEffect)
+        assertTrue("written back out too", "\"lastPageEffect\", s.lastPageEffect.name" in source("LauncherModel.kt"))
+    }
+
     @Test fun `a settled page is untouched by every effect, so Home is the same with the swipe at rest`() {
         for (effect in PageEffect.entries) {
             assertEquals("${effect.name} turns a settled page", 0f, effect.rotationY(0f), 0f)
