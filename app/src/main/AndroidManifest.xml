@@ -30,9 +30,6 @@
              icon, so the MAIN/LAUNCHER query below never finds one, and Android would keep answering "not
              installed" even for a copy Folio installed itself. Naming it is the only way to be told. -->
         <package android:name="com.mccal.keyd" />
-        <!-- Keyd Dev, shipped from the same source. The keyboard list already shows it is installed; its version,
-             signer and installer, which an update needs, are only readable with its name here. -->
-        <package android:name="com.mccal.keyd.dev" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
