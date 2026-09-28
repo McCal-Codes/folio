@@ -33,7 +33,11 @@ class WhatsNewTest {
         val gradle = java.io.File(root, "app/build.gradle.kts").readText()
         // A beta carries its release's notes, so the section to match is the version without the suffix.
         val version = Regex("""val folioVersion = "([^"]+)"""").find(gradle)!!.groupValues[1].substringBefore('-')
-        assertEquals(version, newest.version)
+        // Notes for the next version are written under "Unreleased" before its bump (REL-7, REL-13), so until then
+        // the app is still the newest dated release.
+        val notes = WhatsNew.parse(java.io.File(root, "CHANGELOG.md").readText())
+        val shipped = if (newest.date == "Unreleased" && newest.version != version) notes[1] else newest
+        assertEquals(version, shipped.version)
     }
 
     @Test fun `a beta shows the notes for the release it belongs to`() {
