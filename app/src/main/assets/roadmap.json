@@ -3,6 +3,74 @@
   "note": "Where Folio is headed. Plans can change with feedback, and Android doesn't allow everything iOS does.",
   "sections": [
     {
+      "release": "0.6.8",
+      "items": [
+        {
+          "icon": "tune",
+          "color": "#8E8E93",
+          "title": "A shorter Settings list",
+          "detail": "Ten fewer rows on the first screen: a General page for what you open once, and one Support Folio row.",
+          "status": "building"
+        },
+        {
+          "icon": "language",
+          "color": "#0A84FF",
+          "title": "Language in Settings",
+          "detail": "Choose Folio's language in Settings › General.",
+          "status": "building"
+        },
+        {
+          "icon": "grid",
+          "color": "#5E5CE6",
+          "title": "Cleaner widget picker",
+          "detail": "Find a widget without scrolling past one app's hundreds: a row of app icons narrows the gallery to the one you want, and each app shows a single row until you ask for more.",
+          "status": "building"
+        },
+        {
+          "icon": "pages",
+          "color": "#32ADE6",
+          "title": "Flipbook",
+          "detail": "Home pages turn in 3D as you swipe, inspired by Barrel. Supporters have it in the Market now, and everyone gets it in 0.6.8.",
+          "status": "building"
+        },
+        {
+          "icon": "speed",
+          "color": "#FF9F0A",
+          "title": "Faster Folio",
+          "detail": "Quicker start, smoother swipes and less memory, on every phone.",
+          "status": "building"
+        },
+        {
+          "icon": "dock",
+          "color": "#30D158",
+          "title": "More dock apps",
+          "detail": "Up to six apps in the dock.",
+          "status": "planned"
+        },
+        {
+          "icon": "badge",
+          "color": "#FF3B30",
+          "title": "Clear badges when opened",
+          "detail": "Optionally hide an app's badge once you open it.",
+          "status": "planned"
+        },
+        {
+          "icon": "history",
+          "color": "#8E8E93",
+          "title": "Layout History",
+          "detail": "Out of beta: go back to how Home looked before a big change.",
+          "status": "planned"
+        },
+        {
+          "icon": "clock",
+          "color": "#FF9F0A",
+          "title": "StandBy without the fold",
+          "detail": "StandBy as a screen saver, so it turns on while the phone charges instead of only when it is set down half open. Chosen in Android’s Settings › Display › Screen saver.",
+          "status": "planned"
+        }
+      ]
+    },
+    {
       "release": "0.6.7",
       "items": [
         {
@@ -299,13 +367,6 @@
       "title": "Next",
       "items": [
         {
-          "icon": "language",
-          "color": "#0A84FF",
-          "title": "Language in Settings",
-          "detail": "Choose Folio's language in Settings › General.",
-          "status": "planned"
-        },
-        {
           "icon": "redeem",
           "color": "#BF5AF2",
           "title": "Supporter codes",
@@ -320,31 +381,10 @@
           "status": "planned"
         },
         {
-          "icon": "grid",
-          "color": "#5E5CE6",
-          "title": "Cleaner widget picker",
-          "detail": "Find a widget without scrolling past one app's hundreds: a row of app icons narrows the gallery to the one you want, and each app shows a single row until you ask for more.",
-          "status": "planned"
-        },
-        {
-          "icon": "dock",
-          "color": "#30D158",
-          "title": "More dock apps",
-          "detail": "Up to six apps in the dock.",
-          "status": "planned"
-        },
-        {
           "icon": "brush",
           "color": "#FF375F",
           "title": "Custom app icons",
           "detail": "Pick any app's icon from an icon pack or a photo.",
-          "status": "planned"
-        },
-        {
-          "icon": "badge",
-          "color": "#FF3B30",
-          "title": "Clear badges when opened",
-          "detail": "Optionally hide an app's badge once you open it.",
           "status": "planned"
         },
         {
@@ -369,38 +409,10 @@
           "status": "planned"
         },
         {
-          "icon": "history",
-          "color": "#8E8E93",
-          "title": "Layout History",
-          "detail": "Out of beta: go back to how Home looked before a big change.",
-          "status": "planned"
-        },
-        {
           "icon": "tap",
           "color": "#30D158",
           "title": "Back Tap",
           "detail": "Double or triple tap the back of your phone to run an action. Inspired by RegiStar.",
-          "status": "planned"
-        },
-        {
-          "icon": "pages",
-          "color": "#32ADE6",
-          "title": "Flipbook",
-          "detail": "Home pages turn in 3D as you swipe, inspired by Barrel. Supporters have it in the Market now, and everyone gets it in 0.6.8.",
-          "status": "building"
-        },
-        {
-          "icon": "clock",
-          "color": "#FF9F0A",
-          "title": "StandBy without the fold",
-          "detail": "StandBy as a screen saver, so it turns on while the phone charges instead of only when it is set down half open. Chosen in Android’s Settings › Display › Screen saver.",
-          "status": "planned"
-        },
-        {
-          "icon": "speed",
-          "color": "#FF9F0A",
-          "title": "Faster Folio",
-          "detail": "Quicker start, smoother swipes and less memory, on every phone.",
           "status": "planned"
         },
         {
