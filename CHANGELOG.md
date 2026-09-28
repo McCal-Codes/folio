@@ -9,6 +9,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Fixed
 - **Flipbook remembers your style:** turning Flipbook off and on in Tweaks always brought back Cube, so a Carousel choice was lost. It now comes back as whichever you chose last.
+- **Your photo comes back in one tap:** after choosing an artwork in Wallpaper & Appearance, tapping Your Photo opened the photo picker, so the photo you had was gone unless you found it again. It now puts your photo back; Choose a Different Photo still picks a new one.
 
 ## [0.6.7.1] - 2026-09-28
 
