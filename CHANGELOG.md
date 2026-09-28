@@ -5,7 +5,7 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.7.2] - Unreleased
+## [0.6.7.2] - 2026-09-28
 
 ### Fixed
 - **Flipbook remembers your style:** turning Flipbook off and on in Tweaks always brought back Cube, so a Carousel choice was lost. It now comes back as whichever you chose last.
