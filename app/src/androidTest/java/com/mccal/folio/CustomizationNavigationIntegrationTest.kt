@@ -75,10 +75,12 @@ class CustomizationNavigationIntegrationTest {
         assertEquals(before, model().state.value.layout)
     }
 
-    @Test fun helpIsReachableFromPackedPageEntryAndBackReturnsToCustomization() {
+    @Test fun helpIsReachableFromGeneralAndBackReturnsToGeneral() {
         ready()
         val before = model().state.value.layout
         compose.openHomeCustomization()
+        // Help lives under General since the Settings list was shortened.
+        compose.onNodeWithTag("customization-general").performScrollTo().performClick()
         compose.onNodeWithTag("customization-help").performScrollTo().performClick()
         compose.onNodeWithText("Edit Home").assertIsDisplayed()
         compose.onNodeWithTag("help-home-settings").assertExists()

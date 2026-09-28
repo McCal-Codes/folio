@@ -1417,4 +1417,8 @@
     <plurals name="show_all_widgets">
         <item quantity="other">显示全部 %d 个</item>
     </plurals>
+    <string name="general">通用</string>
+    <string name="language">语言</string>
+    <string name="settings_keywords_general">通用 关于 版本 更新 新功能 帮助 路线图 致谢 高级</string>
+    <string name="settings_keywords_language">语言 翻译 英语 韩语 中文</string>
 </resources>

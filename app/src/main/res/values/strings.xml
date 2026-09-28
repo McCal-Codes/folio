@@ -1463,4 +1463,8 @@
         <item quantity="one">Show all %d</item>
         <item quantity="other">Show all %d</item>
     </plurals>
+    <string name="general">General</string>
+    <string name="language">Language</string>
+    <string name="settings_keywords_general">general about version update what\'s new help roadmap credits advanced</string>
+    <string name="settings_keywords_language">language translation english korean chinese locale</string>
 </resources>
