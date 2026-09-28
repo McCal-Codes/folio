@@ -93,6 +93,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     var tweakId by rememberSaveable { mutableStateOf(SettingsMemory.tweakId) }
     var focusId by rememberSaveable { mutableStateOf(SettingsMemory.focusId) }
     SideEffect { SettingsMemory.tweakId = tweakId; SettingsMemory.focusId = focusId }
+    // An added tweak opens under Tweaks; one not added yet opens in the Tweak Library, where it can be got.
+    val openTweak: (TweakFeature) -> Unit = { tweak ->
+        tweakId = tweak.id
+        onPage(if (tweak.id in state.installedTweaks) CustomizationPage.TWEAK else CustomizationPage.LIBRARY_TWEAK)
+    }
     var settingsQuery by rememberSaveable { mutableStateOf("") }
     var namingBackup by remember { mutableStateOf(false) }
     val title = when (page) {
@@ -261,7 +266,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     // Like iOS Settings: the header gets out of the way while searching.
                     if (settingsQuery.isBlank()) TweakBanner()
                     SettingsSearchField(settingsQuery) { settingsQuery = it }
-                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { settingsQuery = ""; onPage(it) })
+                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { settingsQuery = ""; onPage(it) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
                     else {
                         overviewActions()
                         MiniHomePreview(backgrounds.previewBitmap, state, 176.dp)
@@ -817,7 +822,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 .padding(horizontal = FolioSpace.LARGE.dp).padding(top = 44.dp, bottom = FolioSpace.XL.dp).testTag("settings-sidebar"), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 SettingsLargeTitle(stringResource(R.string.folio))
                 SettingsSearchField(settingsQuery) { settingsQuery = it }
-                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { onPage(it) })
+                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { onPage(it) }, onOpenTweak = { openTweak(it) })
                 else {
                     // Like the account card at the top of iPad Settings: Folio's own page.
                     SheetGroup { SidebarAppRow(selected = page == CustomizationPage.OVERVIEW, setupLeft) { onPage(CustomizationPage.OVERVIEW) } }
@@ -1149,23 +1154,43 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
     return words.isNotEmpty() && words.all { it in hay }
 }
 
-@Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit) {
-    val resources = androidx.compose.ui.platform.LocalContext.current.resources
+/**
+ * What Settings search matches a tweak on: its name, what it's based on ("Barrel by Aaron Ash") and its one line.
+ * Tweaks aren't in [SettingsIndex] because each has a page of its own rather than a row on a fixed page.
+ */
+internal fun searchableTweaks(context: android.content.Context): List<Pair<TweakFeature, String>> =
+    visibleTweaks(context).map { it to "${it.inspiredBy} ${context.getString(it.description)}" }
+
+@Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit, onOpenTweak: (TweakFeature) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = context.resources
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         SettingsIndex.map { (title, keywords, page) -> Triple(resources.getString(title), resources.getString(keywords), page) }
     }
+    val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
     val results = index.filter { (title, keywords) -> settingsMatches(query, title, keywords) }
-    if (results.isEmpty()) Text(stringResource(R.string.no_results_for_1, query.trim()), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
+    val tweakResults = tweaks.filter { (tweak, keywords) -> settingsMatches(query, tweak.name, keywords) }.map { it.first }
+    if (results.isEmpty() && tweakResults.isEmpty()) Text(stringResource(R.string.no_results_for_1, query.trim()), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
         modifier = Modifier.fillMaxWidth().padding(FolioSpace.XXL.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     else SheetGroup {
         results.forEachIndexed { index, (title, _, page) ->
             if (index > 0) MenuDivider()
-            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onOpen(page) }.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
-                Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
-            }
+            SettingsSearchRow(title, null) { onOpen(page) }
         }
+        // A tweak says it's a tweak, since its name alone ("Cabinet", "Palette") doesn't say where it lives.
+        tweakResults.forEachIndexed { index, tweak ->
+            if (index > 0 || results.isNotEmpty()) MenuDivider()
+            SettingsSearchRow(tweak.name, stringResource(R.string.tweaks)) { onOpenTweak(tweak) }
+        }
+    }
+}
+
+@Composable private fun SettingsSearchRow(title: String, where: String?, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(onClick = onClick).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
+        where?.let { Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp) }
+        Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
     }
 }
 
