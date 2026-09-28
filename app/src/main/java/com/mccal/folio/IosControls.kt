@@ -93,10 +93,10 @@ internal fun IosSlider(value: Float, onValueChange: (Float) -> Unit, valueRange:
 @Composable
 internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier,
     fieldModifier: Modifier = Modifier, ink: Color = Color.White, onSearch: (() -> Unit)? = null) {
-    // 40 dp at the normal text size, taller only when larger text needs it (A11Y-12). The clear button fills
-    // the height rather than setting it, so it never makes the field grow when it appears.
+    // 40 dp at the normal text size, taller only when larger text needs it (A11Y-12). The row is as tall as its
+    // content (IntrinsicSize.Min), so the clear button's fillMaxHeight fills the field, not the space around it.
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = .12f))
-        .heightIn(min = 40.dp).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
+        .heightIn(min = 40.dp).height(IntrinsicSize.Min).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
@@ -106,7 +106,7 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
         }
-        // The row's height is fixed at 40 dp, so this only widens the target: nothing drawn moves (A11Y-1).
+        // The row's height comes from its text, so this only widens the target: nothing drawn moves (A11Y-1).
         if (query.isNotEmpty()) Box(Modifier.width(FolioTouch.MIN.dp).fillMaxHeight().clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
             contentAlignment = Alignment.Center) {
             androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, "Clear search", tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))

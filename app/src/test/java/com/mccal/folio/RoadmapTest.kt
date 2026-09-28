@@ -18,6 +18,7 @@ class RoadmapTest {
         // The app's own version has a section, so What's New and the Roadmap agree.
         val version = Regex("""val folioVersion = "([^"]+)"""")
             .find(java.io.File(root, "app/build.gradle.kts").readText())!!.groupValues[1].substringBefore('-')
+            .split('.').take(3).joinToString(".") // a hotfix (0.6.7.1) lives in its release's section
         assertTrue(content.sections.any { it.release == version })
     }
 

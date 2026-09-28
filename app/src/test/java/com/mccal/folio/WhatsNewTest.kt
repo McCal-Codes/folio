@@ -53,7 +53,10 @@ class WhatsNewTest {
     @Test fun `every new feature in the current release has a short bold title`() {
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
         val latest = WhatsNew.parse(java.io.File(root, "CHANGELOG.md").readText()).first()
-        val added = latest.sections.first { it.first == "Added" }.second.map(WhatsNew::split)
+        // A hotfix (x.y.z.n) may carry only fixes; a feature release must have something under Added.
+        val section = latest.sections.firstOrNull { it.first == "Added" }
+        if (section == null) { assertTrue("${latest.version} has no Added section", latest.version.count { it == '.' } == 3); return }
+        val added = section.second.map(WhatsNew::split)
         assertTrue(added.isNotEmpty())
         added.forEach { assertTrue("Needs a title: ${it.detail}", it.title != null && it.title!!.length <= 40) }
     }
