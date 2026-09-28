@@ -219,6 +219,8 @@ data class LauncherState(
     val motionSpeed: MotionSpeed = MotionSpeed.STANDARD,
     /** How Home pages move as you swipe between them. [PageEffect.NONE] is the default and the flat swipe. */
     val pageEffect: PageEffect = PageEffect.NONE,
+    /** The effect Flipbook's switch turns back on: the last one chosen, so Carousel survives an off and on. */
+    val lastPageEffect: PageEffect = PageEffect.CUBE,
     /** Strength of the thin light outline around widgets and Side Bar capsules (0 = none). */
     val glassOutline: Float = .16f,
     /** Darken the wallpaper while Folio's dark appearance is on. */
@@ -842,7 +844,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
-    fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.copy(pageEffect = value) }
+    fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }
+    fun setPageEffectOn(on: Boolean) = updateSettings(soon = false) { it.withPageEffectOn(on) }
     fun setGlassOutline(value: Float) = updateSettings(soon = true) { it.copy(glassOutline = value.coerceIn(0f, 1f)) }
     /** One tap for the whole glass look: widgets and Side Bar together. */
     fun setGlassPreset(frost: Float) = updateSettings(soon = false) {
@@ -1141,6 +1144,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("installedTweaks", JSONArray(s.installedTweaks.toList()))
             .put("folderColumns", s.folderColumns).put("folderBackground", s.folderBackground.name)
             .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("pageEffect", s.pageEffect.name)
+            .put("lastPageEffect", s.lastPageEffect.name)
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
             .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
@@ -1393,6 +1397,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         motionSpeed = runCatching { MotionSpeed.valueOf(j.optString("motionSpeed")) }.getOrDefault(MotionSpeed.STANDARD),
         // A save from before Page Effects, and anything unrecognised, reads as the flat swipe.
         pageEffect = PageEffect.of(j.optString("pageEffect")),
+        // Before 0.6.7.2 this wasn't saved: the effect in use, else the cube.
+        lastPageEffect = PageEffect.of(j.optString("lastPageEffect", j.optString("pageEffect"))).takeIf { it != PageEffect.NONE } ?: PageEffect.CUBE,
         widgetGlass = j.optDouble("widgetGlass", .26).toFloat().coerceIn(0f, 1f), glassOutline = j.optDouble("glassOutline", .16).toFloat().coerceIn(0f, 1f),
         focusModes = focusModesFromJson(j.optJSONArray("focusModes")),
         activeFocus = j.optString("activeFocus").takeIf { it.isNotEmpty() },
@@ -1465,6 +1471,14 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
 val LauncherState.glassTintAmount: Float get() = if (tintedGlass) .56f * glassTint else 0f
 
 /** Reduce Transparency: nearly solid widgets, Side Bar and dock, with a clearer edge (the saved values stay as they are). */
+/** Choosing an effect also remembers it, unless it's None, so Flipbook's switch has something to bring back. */
+internal fun LauncherState.withPageEffect(value: PageEffect): LauncherState =
+    copy(pageEffect = value, lastPageEffect = if (value == PageEffect.NONE) lastPageEffect else value)
+
+/** Flipbook's switch: on brings back the last effect chosen, off is the flat swipe. */
+internal fun LauncherState.withPageEffectOn(on: Boolean): LauncherState =
+    copy(pageEffect = if (on) lastPageEffect else PageEffect.NONE)
+
 fun LauncherState.withSolidGlass(): LauncherState =
     copy(widgetGlass = maxOf(widgetGlass, .9f), glassOutline = maxOf(glassOutline, .45f), statusStyle = statusStyle.copy(railGlass = maxOf(statusStyle.railGlass, .9f)))
 

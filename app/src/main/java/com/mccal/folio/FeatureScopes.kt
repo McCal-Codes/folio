@@ -66,10 +66,11 @@ internal val TweakFeatures = listOf(
         R.string.tweak_colored_albums_detail,
         androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true),
     // The switch is on or off; which effect it is lives in Settings > Gestures, because it is a choice of three
-    // rather than a second switch. Turning it on picks the cube, which is the one Barrel was known for.
+    // rather than a second switch. Turning it on brings back the last one chosen; the cube the first time, since
+    // that is the one Barrel was known for.
     TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash", // english-only
         R.string.tweak_flipbook_detail,
         androidx.compose.material.icons.Icons.Rounded.AutoStories, FolioColors.Value.Teal,
         { it.pageEffect != PageEffect.NONE },
-        { m, v -> m.setPageEffect(if (v) PageEffect.CUBE else PageEffect.NONE) }, false, FeatureGate.PAGE_EFFECTS),
+        { m, v -> m.setPageEffectOn(v) }, false, FeatureGate.PAGE_EFFECTS),
 )
