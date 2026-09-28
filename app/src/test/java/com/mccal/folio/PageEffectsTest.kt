@@ -145,7 +145,9 @@ class PageEffectsTest {
 
         // Turning it off is not a hidden identity transform: with None there is no layer and no pager read at all.
         val effects = source("PageEffects.kt")
-        assertTrue("None should add no layer", "if (effect == PageEffect.NONE) this else graphicsLayer" in effects)
+        // None has no spec, and no spec means no layer (the same rule for packaged effects).
+        assertTrue("None should add no layer", "if (effect == null) this else graphicsLayer" in effects)
+        assertTrue("None has no spec", "PageEffect.NONE -> null" in effects)
         // PRF-7 / DYN-16: the pager is read in the layer block, so a swipe recomposes nothing.
         assertTrue("the position has to be read inside the layer block", "pager.pagePosition(page)" in effects)
         assertTrue("no alpha: it would cost an offscreen buffer per page", "alpha" !in effects.substringAfter("internal fun Modifier.pageEffect"))
