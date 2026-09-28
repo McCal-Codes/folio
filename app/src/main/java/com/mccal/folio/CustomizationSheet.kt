@@ -1915,6 +1915,8 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
     LaunchedEffect(Unit) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Roadmap.refresh(context) }?.let { content = it }
     }
+    // A hotfix (0.6.7.1) belongs to its release's section, so 0.6.7's items read as this version's, not "Released".
+    val thisRelease = version.substringBefore('-').split('.').take(3).joinToString(".")
     val sections = content?.sections.orEmpty().map { section ->
         val release = section.release
         val shipped = release == null || !SoftwareUpdate.isNewer(release, version)
@@ -1924,7 +1926,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
             RoadmapItem(roadmapIcon(item.icon), item.color, item.title, item.detail, status,
                 label = when {
                     release == null || status != RoadmapStatus.DONE -> null
-                    release == version -> null
+                    release == version || release == thisRelease -> null
                     shipped -> stringResource(R.string.released)
                     else -> stringResource(R.string.coming_in, release)
                 })
