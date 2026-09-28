@@ -5,6 +5,11 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.8] - Unreleased
+
+### Added
+- **Widgets, one app at a time:** the widget picker has a row of app icons across the top; tap one to see only that app's widgets. While browsing, each app shows a single row with Show All for the rest, so an app with hundreds of widgets no longer stands in front of everything else.
+
 ## [0.6.7.3] - 2026-09-28
 
 ### Fixed
