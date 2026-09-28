@@ -76,4 +76,12 @@ class WidgetPickerAppRowTest {
         compose.onNodeWithText("Alarm").assertIsDisplayed()
         compose.onNodeWithText("World").assertIsDisplayed()
     }
+
+    @Test fun `Folio's own widgets are capped like any app's, and have their own place in the row`() {
+        show()
+        compose.onNodeWithTag("widget-show-all-folio", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("widget-app-folio", useUnmergedTree = true).performClick()
+        compose.onAllNodes(hasTestTag("widget-show-all-folio"), useUnmergedTree = true).assertCountEquals(0)
+        packCards().assertCountEquals(0)
+    }
 }

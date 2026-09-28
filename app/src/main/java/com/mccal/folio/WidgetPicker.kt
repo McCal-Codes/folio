@@ -240,6 +240,7 @@ internal fun VisualWidgetPicker(
     val latestDrag by rememberUpdatedState(onDrag)
     val latestDrop by rememberUpdatedState(onDrop)
     val latestCancelDrag by rememberUpdatedState(onCancelDrag)
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val words = query.trim().lowercase()
@@ -248,9 +249,14 @@ internal fun VisualWidgetPicker(
     var selectedApp by rememberSaveable { mutableStateOf<String?>(null) }
     // Apps whose "Show all" was tapped; the rest show one row each.
     var expandedApps by remember { mutableStateOf(emptySet<String>()) }
-    val apps = remember(entries) { entries.orEmpty().groupBy { it.appLabel }.map { (label, group) -> label to group.first().appIcon } }
+    val folioIcon = remember { runCatching { context.packageManager.getApplicationIcon(context.packageName).iconBitmap() }.getOrNull() }
+    val showFolio = selectedProfile.isPersonal
+    val apps = remember(entries, showFolio) {
+        (if (showFolio) listOf(FOLIO_WIDGETS to folioIcon) else emptyList()) +
+            entries.orEmpty().groupBy { it.appLabel }.map { (label, group) -> label to group.first().appIcon }
+    }
     val filtered = remember(entries, words, selectedApp) { entries.orEmpty().filter { entry ->
-        (selectedApp == null || entry.appLabel == selectedApp) &&
+        (selectedApp == null || (selectedApp != FOLIO_WIDGETS && entry.appLabel == selectedApp)) &&
         (words.isEmpty() || listOf(entry.appLabel, entry.providerLabel, entry.description,
             entry.provider.provider.packageName).any { it.lowercase().contains(words) })
     } }
@@ -282,7 +288,7 @@ internal fun VisualWidgetPicker(
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(ink))
                 }
             }
-            if (apps.size > 1) WidgetAppRow(apps, selectedApp) { app ->
+            if (apps.size > 1) WidgetAppRow(apps.map { (key, icon) -> key to icon }, selectedApp, labelOf = { if (it == FOLIO_WIDGETS) folioLabel else it }) { app ->
                 selectedApp = if (selectedApp == app) null else app
                 focusManager.clearFocus(); keyboard?.hide()
             }
@@ -310,6 +316,11 @@ internal fun VisualWidgetPicker(
             LazyVerticalGrid(GridCells.Adaptive(168.dp), Modifier.fillMaxSize().edgeFade(catalogState).testTag("widget-catalog-list"), state = catalogState,
                 horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
+                fun showAll(app: String, count: Int) = item("more-$app", span = { GridItemSpan(maxLineSpan) }) {
+                    Text(pluralStringResource(R.plurals.show_all_widgets, count, count), color = LocalAccent.current.fill,
+                        fontSize = FolioType.BODY.sp, modifier = Modifier.heightIn(min = FolioTouch.MIN.dp).wrapContentHeight()
+                            .clickable { expandedApps = expandedApps + app }.padding(horizontal = FolioSpace.HAIR.dp).testTag("widget-show-all-${if (app == FOLIO_WIDGETS) "folio" else app}"))
+                }
                 fun header(key: String, title: String, count: Int? = null) = item(key, span = { GridItemSpan(maxLineSpan) }) {
                     Row(Modifier.padding(top = FolioSpace.MEDIUM.dp, start = FolioSpace.HAIR.dp), verticalAlignment = Alignment.Bottom) {
                         Text(title, color = ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -319,11 +330,14 @@ internal fun VisualWidgetPicker(
                 if (entries == null) item("catalog-loading", span = { GridItemSpan(maxLineSpan) }) {
                     Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.TopCenter) { CircularProgressIndicator(color = ink) }
                 }
-                if (words.isEmpty() && selectedApp == null && selectedProfile.isPersonal) {
-                    header("duo-widgets", folioLabel)
-                    items(listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
+                if (words.isEmpty() && (selectedApp == null || selectedApp == FOLIO_WIDGETS) && selectedProfile.isPersonal) {
+                    val builtins = listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
                         Triple(UP_NEXT_WIDGET, upNextLabel, androidx.compose.material.icons.Icons.AutoMirrored.Rounded.EventNote), Triple(BIG_CLOCK_WIDGET, bigClockLabel, Icons.Rounded.LockClock), Triple(SUGGESTIONS_WIDGET, suggestionsLabel, androidx.compose.material.icons.Icons.Rounded.AutoAwesome),
-                        Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets)), key = { "builtin-${it.first}" }) { (id, label, icon) ->
+                        Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
+                    // Folio's own widgets follow the same rule as any app's: one row while browsing.
+                    val cappedFolio = selectedApp == null && FOLIO_WIDGETS !in expandedApps && builtins.size > columns
+                    header("duo-widgets", folioLabel, if (cappedFolio) builtins.size else null)
+                    items(if (cappedFolio) builtins.take(columns) else builtins, key = { "builtin-${it.first}" }) { (id, label, icon) ->
                         GalleryCard(label, stringResource(R.string.folio), stringResource(if (id == BIG_CLOCK_WIDGET) R.string.wide else R.string.small), Modifier.testTag("widget-builtin-$id")
                             .clickable { focusManager.clearFocus(); keyboard?.hide(); onBuiltin(id) }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(22.dp))
@@ -332,6 +346,7 @@ internal fun VisualWidgetPicker(
                             }
                         }
                     }
+                    if (cappedFolio) showAll(FOLIO_WIDGETS, builtins.size)
                 }
                 filtered.groupBy { it.appLabel }.forEach { (app, group) ->
                     // Browsing shows one row per app; searching, choosing the app, or Show All shows the lot.
@@ -364,11 +379,7 @@ internal fun VisualWidgetPicker(
                             }
                         }
                     }
-                    if (capped) item("more-$app", span = { GridItemSpan(maxLineSpan) }) {
-                        Text(pluralStringResource(R.plurals.show_all_widgets, group.size, group.size), color = LocalAccent.current.fill,
-                            fontSize = FolioType.BODY.sp, modifier = Modifier.heightIn(min = FolioTouch.MIN.dp).wrapContentHeight()
-                                .clickable { expandedApps = expandedApps + app }.padding(horizontal = FolioSpace.HAIR.dp).testTag("widget-show-all-$app"))
-                    }
+                    if (capped) showAll(app, group.size)
                 }
                 if (entries != null && filtered.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(stringResource(R.string.no_widgets_found), color = secondary, modifier = Modifier.padding(FolioSpace.XL.dp))
@@ -394,20 +405,24 @@ private fun GalleryCard(title: String, subtitle: String, detail: String, modifie
     }
 }
 
+/** The app row's key for Folio's own widgets: not an app label, so no installed app can be mistaken for it. */
+private const val FOLIO_WIDGETS = "\u0000folio"
+
 /**
  * A row of app icons over the gallery. Tapping one shows only that app's widgets; tapping it again shows them all.
  * Every app is one icon here however many widgets it has, which is what keeps a large widget pack from being a wall.
  */
 @Composable
-private fun WidgetAppRow(apps: List<Pair<String, Bitmap?>>, selected: String?, onSelect: (String) -> Unit) {
+private fun WidgetAppRow(apps: List<Pair<String, Bitmap?>>, selected: String?, labelOf: (String) -> String, onSelect: (String) -> Unit) {
     androidx.compose.foundation.lazy.LazyRow(Modifier.fillMaxWidth().padding(bottom = FolioSpace.COMPACT.dp).testTag("widget-app-row"),
         horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-        items(apps, key = { it.first }) { (label, icon) ->
-            val on = label == selected
+        items(apps, key = { it.first }) { (key, icon) ->
+            val on = key == selected
+            val label = labelOf(key)
             Column(Modifier.width(72.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp))
                 .background(if (on) Color.White.copy(alpha = .16f) else Color.Transparent)
-                .selectable(on, onClick = { onSelect(label) }, role = androidx.compose.ui.semantics.Role.Tab)
-                .padding(vertical = FolioSpace.SMALL.dp).testTag("widget-app-$label"),
+                .selectable(on, onClick = { onSelect(key) }, role = androidx.compose.ui.semantics.Role.Tab)
+                .padding(vertical = FolioSpace.SMALL.dp).testTag("widget-app-${if (key == FOLIO_WIDGETS) "folio" else key}"),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)).background(Color.White.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
                     icon?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize()) }
