@@ -5,7 +5,7 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.7.3] - Unreleased
+## [0.6.7.3] - 2026-09-28
 
 ### Fixed
 - **Settings search finds tweaks:** searching Settings for a tweak by name, like Flipbook or Cabinet, found nothing. Tweaks now show up by their name, by the tweak they're based on and by what they do, and open their own page.
