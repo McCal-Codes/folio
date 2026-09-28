@@ -203,7 +203,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.LocalCafe, 0xFFFF5E5B, stringResource(R.string.support_folio), "customization-support-folio",
                             selected = selected == CustomizationPage.SUPPORT, chevron = !sidebar) { onPage(CustomizationPage.SUPPORT) }
                     }
-                    CardNote(stringResource(R.string.folio_is_free_and_always_will_be_if_it_m), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
     }
     // Home-app actions and the setup reminder: above the list on the phone, on Folio's own page in the split view.
     val overviewActions: @Composable ColumnScope.() -> Unit = {
@@ -673,7 +672,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SUPPORT -> {
                     val supportContext = androidx.compose.ui.platform.LocalContext.current
                     SheetGroup {
-                        TweakRow(Icons.Rounded.LocalCafe, 0xFFFF5E5B, stringResource(R.string.support_folio), "customization-support", stringResource(R.string.ko_fi)) {
+                        // "Ko-fi", not "Support Folio" again: the page already says that.
+                        TweakRow(Icons.Rounded.LocalCafe, 0xFFFF5E5B, stringResource(R.string.ko_fi), "customization-support") {
                             runCatching { supportContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://ko-fi.com/mccal"))) }
                         }
                         if (Supporter.available(supportContext)) {
