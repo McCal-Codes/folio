@@ -305,7 +305,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             // back at this targetSdk, so setting it cannot be undone from here.
                             IosActionRow(stringResource(R.string.also_set_as_phone_wallpaper), "wallpaper-preview",
                                 onClick = { backgrounds.offerTaken(); onWallpaperPreview() })
-                            CardNote(stringResource(R.string.set_as_phone_wallpaper_note))
+                            // A bare group doesn't pad its rows the way SettingsCard does, so the note brings its own.
+                            CardNote(stringResource(R.string.set_as_phone_wallpaper_note),
+                                Modifier.padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, bottom = FolioSpace.MEDIUM.dp))
                         }
                         if (backgrounds.loading) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("background-loading"))
                     }
@@ -334,7 +336,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // A property of the mode, not of the text: One UI files "Dim wallpaper when Dark mode is on"
                         // right under its wallpaper and color entries, and that is where it reads correctly.
                         MenuDivider()
-                        SettingsSwitch(stringResource(R.string.dark_appearance_dims_wallpaper), state.dimWallpaperDark, model::setDimWallpaperDark, "dim-wallpaper-switch")
+                        // The Appearance rows pad themselves (they're a SheetGroup, not a SettingsCard), so this one matches them.
+                        Box(Modifier.padding(horizontal = FolioSpace.LARGE.dp)) {
+                            SettingsSwitch(stringResource(R.string.dark_appearance_dims_wallpaper), state.dimWallpaperDark, model::setDimWallpaperDark, "dim-wallpaper-switch")
+                        }
                     }
                     SettingsCard(stringResource(R.string.text_on_home)) {
                         IosMenuRow(stringResource(R.string.text_color), listOf("AUTO" to stringResource(R.string.automatic), "LIGHT" to stringResource(R.string.light), "DARK" to stringResource(R.string.dark)), state.homeInk, model::setHomeInk, tag = "home-ink")

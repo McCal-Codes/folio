@@ -9,6 +9,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Fixed
 - **Settings search finds tweaks:** searching Settings for a tweak by name, like Flipbook or Cabinet, found nothing. Tweaks now show up by their name, by the tweak they're based on and by what they do, and open their own page.
+- **Wallpaper & Appearance lines up again:** the Dark Appearance Dims Wallpaper switch and the note under Also Set as Phone Wallpaper were drawn against the edge of their card. They have the same margins as the rows around them now.
 
 ## [0.6.7.2] - 2026-09-28
 
