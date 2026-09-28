@@ -1414,4 +1414,7 @@
     <string name="previewing_1">正在预览 %1$s</string>
     <string name="wallpaper">壁纸</string>
     <string name="wallpaper_moves_with_pages">壁纸随页面移动</string>
+    <plurals name="show_all_widgets">
+        <item quantity="other">显示全部 %d 个</item>
+    </plurals>
 </resources>

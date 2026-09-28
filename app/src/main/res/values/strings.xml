@@ -1459,4 +1459,8 @@
     <string name="previewing_1">Previewing %1$s</string>
     <string name="wallpaper">Wallpaper</string>
     <string name="wallpaper_moves_with_pages">Wallpaper moves with pages</string>
+    <plurals name="show_all_widgets">
+        <item quantity="one">Show all %d</item>
+        <item quantity="other">Show all %d</item>
+    </plurals>
 </resources>

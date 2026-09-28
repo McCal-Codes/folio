@@ -1435,4 +1435,7 @@
     <string name="wallpaper_group_note">Folio가 홈 화면 뒤에 이 그림을 그립니다. 잠금 화면에는 휴대전화 자체의 배경화면이 표시됩니다.</string>
     <string name="wallpapers_you_install_from_the_market">마켓에서 설치한 배경화면이 여기에 함께 제공된 작가와 라이선스 정보와 함께 표시됩니다. Folio는 출처를 밝힐 수 있는 작품만 보여 줍니다.</string>
     <string name="your_photo">내 사진</string>
+    <plurals name="show_all_widgets">
+        <item quantity="other">%d개 모두 보기</item>
+    </plurals>
 </resources>
