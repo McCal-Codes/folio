@@ -52,6 +52,8 @@ jobs:
       - name: Branch, notes and version rules
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: bash tools/check-release-rules.sh "origin/${{ github.base_ref }}"
 
   # Fuzzes every package parser for five minutes each (Jazzer). Not on every push: it's slow.
