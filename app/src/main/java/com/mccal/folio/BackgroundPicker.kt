@@ -125,9 +125,9 @@ internal fun BackgroundPicker(
                 selected = choice == BackgroundChoice.Photo,
                 hasPhoto = launcherPhotoFile(context).isFile,
                 onPick = controller::choosePhoto,
-                // The photo is chosen through its own preview (choosePhoto, then Set): tapping the tile of the photo
-                // already chosen does nothing new, so the tile is only ever the way in to picking a different one.
-                onSelect = controller::choosePhoto,
+                // With art behind Home, the tile puts your saved photo back (#148 review: it used to open the picker,
+                // so the photo you had was lost). With the photo already chosen, the tile is the way to a new one.
+                onSelect = if (choice == BackgroundChoice.Photo) controller::choosePhoto else controller::useSavedPhoto,
             )
         }
 
