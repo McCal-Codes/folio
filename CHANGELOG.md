@@ -5,6 +5,11 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.7.1] - Unreleased
+
+### Fixed
+- **Searching works again** (#166): typing in the App Library's search field showed nothing, because the field grew to fill the panel and left the results no room. The same happened in Settings search, Choose Home Apps, the Market's sources and icon stacks.
+
 ## [0.6.7] - 2026-09-27
 
 ### Added
