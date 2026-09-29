@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.8] - Unreleased
 
 ### Added
+- **Updates for apps in the Market:** an app a source lists, like Keyd, shows Update with the version it goes from and to, instead of Open, when the source has a newer one. Folio checks the download is the same app signed by the same developer before it installs it over the old copy.
 - **Widgets, one app at a time:** the widget picker has a row of app icons across the top; tap one to see only that app's widgets. While browsing, each app shows a single row with Show All for the rest, so an app with hundreds of widgets no longer stands in front of everything else.
 
 ### Changed
