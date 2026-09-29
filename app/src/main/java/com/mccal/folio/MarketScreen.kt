@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -136,6 +137,8 @@ internal fun MarketScreen(
     val scope = rememberCoroutineScope()
     var undo by remember { mutableStateOf<InstallResult.Installed?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    /** An action the message offers other than Undo, such as getting the tweak an add-on needs. */
+    var offer by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     // Counts every message said, so the same words said twice still get their full time on screen: keyed on the text
     // alone, a second "Keyd updated" inherited what was left of the first one's timer.
     var said by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -150,6 +153,11 @@ internal fun MarketScreen(
     val installed by produceState(emptyMap<String, InstalledPackage>(), revision) {
         value = withContext(session.io) { session.installed().associateBy { it.id } }
     }
+    /** The listing that adds tweak [id]: a tweak bundle needing that tweak's capability, such as Flipbook's. */
+    fun hostPackageFor(id: String): String? = entries.firstOrNull { e ->
+        val manifest = e.entry.manifest ?: return@firstOrNull false
+        com.mccal.folio.market.PackageKind.TWEAK_BUNDLE in manifest.kinds && manifest.requiredFeatures.any { it.id == "tweaks.$id" }
+    }?.id
     LaunchedEffect(revision) { statuses = withContext(session.io) { session.sources.cached() } }
     // Installing outlives this screen: the work can't be stopped halfway, so it's kept where Back can't reach it.
     val busyId = MarketWork.busyId
@@ -162,13 +170,22 @@ internal fun MarketScreen(
      * Says something in the banner. Undo belongs to the install it came from, so any other message takes it away:
      * an Undo left over from an earlier install would remove a package the user is happy with.
      */
-    fun say(text: String?) { message = text; undo = null; said++ }
+    fun say(text: String?) { message = text; undo = null; offer = null; said++ }
 
     /** What the banner says about a finished install, and whether it can still be undone. */
     fun announce(name: String, result: InstallResult) {
         when (result) {
             is InstallResult.Installed -> { message = context.getString(R.string.text_1_s_is_on, result.installed.name); undo = result; said++ }
             is InstallResult.NeedsNewerFolio -> say(context.getString(R.string.text_1_s_needs_a_newer_folio, name))
+            is InstallResult.NeedsHost -> {
+                // An add-on whose tweak isn't here: say which, and offer the tweak's own page to get it from.
+                val tweak = TweakFeatures.firstOrNull { it.id == result.tweaks.first() }
+                val hostName = tweak?.name ?: result.tweaks.first()
+                say(context.getString(R.string.text_1_s_works_with_2_s_get_it_first, name, hostName))
+                hostPackageFor(result.tweaks.first())?.let { hostId ->
+                    offer = context.getString(R.string.get_tweak, hostName) to { openId = hostId; message = null; offer = null }
+                }
+            }
             is InstallResult.Failed -> say(result.message)
         }
         refresh()
@@ -497,7 +514,7 @@ internal fun MarketScreen(
             // Android's recommended one, which is longer for someone using TalkBack or a longer timeout setting.
             val a11y = remember { context.getSystemService(android.view.accessibility.AccessibilityManager::class.java) }
             LaunchedEffect(message, undo, said) {
-                if (message != null && undo == null) {
+                if (message != null && undo == null && offer == null) {
                     val wait = a11y?.getRecommendedTimeoutMillis(
                         MESSAGE_MILLIS, android.view.accessibility.AccessibilityManager.FLAG_CONTENT_TEXT,
                     ) ?: MESSAGE_MILLIS
@@ -506,20 +523,21 @@ internal fun MarketScreen(
                 }
             }
             message?.let { text ->
+                val undoAction: (() -> Unit)? = undo?.let { result ->
+                    {
+                        val undone = result
+                        undo = null
+                        message = null
+                        scope.launch {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.undo(undone) }
+                            refresh()
+                        }
+                    }
+                }
                 MarketMessage(
                     text = text,
-                    undo = undo?.let { result ->
-                        {
-                            val undone = result
-                            undo = null
-                            message = null
-                            scope.launch {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.undo(undone) }
-                                refresh()
-                            }
-                        }
-                    },
-                    onDismiss = { message = null },
+                    action = undoAction?.let { stringResource(R.string.undo) to it } ?: offer,
+                    onDismiss = { message = null; offer = null },
                 )
             }
             if (tabs == TabPlacement.BOTTOM) MarketTabs(tab) { tab = it; openId = null; openSourceUrl = null }
@@ -1347,7 +1365,7 @@ internal fun AiAssistedTag(modifier: Modifier = Modifier) {
 
 /** The "… is on · Undo" line, the same shape as Folio's other undo messages. */
 @Composable
-private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Unit) {
+private fun MarketMessage(text: String, action: Pair<String, () -> Unit>?, onDismiss: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
             .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface)
@@ -1356,8 +1374,11 @@ private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Un
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f))
-        if (undo != null) {
-            Text(stringResource(R.string.undo), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
+        if (action != null) {
+            // Undo, or another step the message offers; a real button, so TalkBack and a keyboard can reach it.
+            Text(action.first, color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = action.second)
+                    .padding(start = FolioSpace.SMALL.dp).heightIn(min = 44.dp).wrapContentHeight())
         }
     }
 }

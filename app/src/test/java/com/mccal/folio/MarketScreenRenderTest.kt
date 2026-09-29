@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 
@@ -94,14 +95,11 @@ class MarketScreenRenderTest {
         }
     }
 
-    // Found on the Fold8, 29 Sep 2026: a package installed from a file is listed by no source, and the Installed tab
-    // only showed listings, so it was on the phone with no row to remove it by.
-    @Test fun `a package installed from a file is under Installed and can be removed there`() {
-        val session = session()
-        session.prefs.introductionSeen = true
+    /** The SDK's Tilt example as a .foliopkg. The example says 0.6.9; this build may be older, and the version check
+     *  isn't what these tests are about. */
+    private fun tiltPackage(): ByteArray {
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
         val example = java.io.File(root, "docs/sdk/examples/page-effect-tilt")
-        // The example says 0.6.9; this build may be older, and the version check isn't what's being tested here.
         val manifest = org.json.JSONObject(java.io.File(example, "manifest.json").readText()).put("minFolio", "0.6.6")
         val out = java.io.ByteArrayOutputStream()
         java.util.zip.ZipOutputStream(out).use { zip ->
@@ -109,7 +107,38 @@ class MarketScreenRenderTest {
                 zip.putNextEntry(java.util.zip.ZipEntry(name)); zip.write(bytes); zip.closeEntry()
             }
         }
-        val result = kotlinx.coroutines.runBlocking { session.installFile(out.toByteArray()) }
+        return out.toByteArray()
+    }
+
+    // Like a script for jailbreak Cylinder, a page effect is an add-on to Flipbook. Getting one without Flipbook says
+    // so, and the message's action opens Flipbook's own page, where it can be got.
+    @Test fun `an effect without Flipbook offers Flipbook`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        try {
+            MarketImport.pending = tiltPackage()
+            compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("market-install-confirm").performScrollTo().performClick()
+            awaitText("Tilt works with Flipbook. Get Flipbook first.")
+            assertEquals(true, session.installed().none { it.id == "com.mccal.folio.effect.tilt" })
+            compose.onNodeWithText("Get Flipbook").performClick()
+            // Flipbook's page, with its own Get.
+            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Get Flipbook").fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            MarketImport.pending = null
+        }
+    }
+
+    // Found on the Fold8, 29 Sep 2026: a package installed from a file is listed by no source, and the Installed tab
+    // only showed listings, so it was on the phone with no row to remove it by.
+    @Test fun `a package installed from a file is under Installed and can be removed there`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        // Tilt is a Flipbook add-on, so Flipbook has to be on the phone for it to install.
+        val session = MarketSession(context, NoopLauncher().apply { state = LauncherState(installedTweaks = setOf("pageEffects")) },
+            kotlinx.coroutines.Dispatchers.Unconfined)
+        session.prefs.introductionSeen = true
+        val result = kotlinx.coroutines.runBlocking { session.installFile(tiltPackage()) }
         assertEquals(true, result is com.mccal.folio.market.InstallResult.Installed)
         compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
         compose.onNodeWithTag("market-tab-installed").performClick()

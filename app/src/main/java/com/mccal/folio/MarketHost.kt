@@ -145,6 +145,9 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         Capability.PAGE_EFFECTS,
     )
 
+    // Added from the Market or from Settings' Tweak Library: either way it's in installedTweaks.
+    override fun hasTweak(id: String): Boolean = id in launcher.state.installedTweaks
+
     override fun apply(change: PackageChange): String = when (change) {
         is PackageChange.Theme -> {
             val theme = FolioTheme.fromJson(change.json) ?: error("that theme file isn't one Folio can read")

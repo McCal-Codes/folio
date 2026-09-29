@@ -19,6 +19,12 @@ interface PackageHost {
 
     /** Puts back what [apply] replaced. Called for Undo, for Remove, and when a later step of an install fails. */
     fun restore(change: PackageChange, snapshot: String)
+
+    /**
+     * Whether the tweak [id] is on this phone, however it got there: from the Market or from Settings' Tweak Library,
+     * which records no package. An add-on ([PackageKind.hostTweak]) is only installed where its host is.
+     */
+    fun hasTweak(id: String): Boolean = true
 }
 
 /** A package Folio has installed, and what it replaced. */
@@ -50,6 +56,9 @@ sealed interface InstallResult {
 
     /** The package is fine but this Folio can't run it. */
     data class NeedsNewerFolio(val missing: List<String>) : InstallResult
+
+    /** An add-on whose host tweak isn't on this phone yet ([PackageKind.hostTweak]). Nothing was applied. */
+    data class NeedsHost(val tweaks: List<String>) : InstallResult
 
     data class Failed(val reason: Reason, val message: String) : InstallResult
 
@@ -142,6 +151,9 @@ class PackageInstaller(
         if (!builtIn && folioVersion != null && needs > folioVersion) {
             return InstallResult.NeedsNewerFolio(listOf("Folio $needs"))
         }
+        // An add-on without its host would sit on the phone doing nothing, so the host comes first.
+        val hosts = pkg.manifest.kinds.mapNotNull { it.hostTweak }.distinct().filterNot(host::hasTweak)
+        if (hosts.isNotEmpty()) return InstallResult.NeedsHost(hosts)
         val already = store.installed()
         already.firstOrNull { it.id != pkg.id && pkg.manifest.conflicts.any { c -> c.id == it.id && c.matches(it.version) } }
             ?.let { return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${it.name}") }

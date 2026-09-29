@@ -824,6 +824,7 @@
     <string name="installed">Installed</string>
     <string name="text_1_s_is_on">%1$s is on</string>
     <string name="text_1_s_needs_a_newer_folio">%1$s needs a newer Folio</string>
+    <string name="text_1_s_works_with_2_s_get_it_first">%1$s works with %2$s. Get %2$s first.</string>
     <string name="text_1_s_removed">%1$s removed</string>
     <string name="that_package_needs_a_newer_folio">That package needs a newer Folio</string>
     <string name="that_source_is_already_set_up">That source is already set up</string>

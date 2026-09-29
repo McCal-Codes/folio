@@ -190,10 +190,18 @@ enum class Section(val id: String) {
     }
 }
 
-enum class PackageKind(val id: String) {
+enum class PackageKind(
+    val id: String,
+    /**
+     * The tweak this kind plugs into, when it's an add-on rather than something that stands alone: a page effect is
+     * one more effect for Flipbook, the way a Cylinder script is one more effect for Cylinder. The kind says it, not
+     * each package, so an author can't leave it out or point it at the wrong id, and a new host is one line here.
+     */
+    val hostTweak: String? = null,
+) {
     THEME("theme"), LAYOUT_PRESET("layoutPreset"), WALLPAPER("wallpaper"), ICON_PACK_LINK("iconPackLink"),
     TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema"), SCRIPT("script"), EXTERNAL_APP("externalApp"),
-    PAGE_EFFECT("pageEffect");
+    PAGE_EFFECT("pageEffect", hostTweak = "pageEffects");
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }
