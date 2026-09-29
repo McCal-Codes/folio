@@ -54,17 +54,10 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
      * The clamp is not cosmetic: a page two positions out would otherwise reach 180 degrees and come back into view
      * mirrored, and pages that far out are kept composed on purpose ([PRF-9]).
      */
-    fun rotationY(position: Float): Float = when (this) {
-        NONE -> 0f
-        CUBE -> CUBE_DEGREES * position.coerceIn(-1f, 1f)
-        CAROUSEL -> CAROUSEL_DEGREES * position.coerceIn(-1f, 1f)
-    }
+    fun rotationY(position: Float): Float = spec?.rotationY(position) ?: 0f
 
     /** Uniform scale at [position]. Always 1 for a settled page, so Home is untouched at rest ([DYN-3]). */
-    fun scale(position: Float): Float = when (this) {
-        NONE, CUBE -> 1f
-        CAROUSEL -> 1f - CAROUSEL_SHRINK * abs(position).coerceAtMost(1f)
-    }
+    fun scale(position: Float): Float = spec?.scale(position) ?: 1f
 
     /**
      * Where the vertical axis runs through the page, 0 at its left edge and 1 at its right.
@@ -72,10 +65,7 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
      * The cube pivots on the seam: a page to the right turns about its left edge, a page to the left about its right
      * edge, so the two edges that meet stay met and the pages never cross. Everything else turns about its middle.
      */
-    fun pivotX(position: Float): Float = when (this) {
-        NONE, CAROUSEL -> .5f
-        CUBE -> if (position > 0f) 0f else 1f
-    }
+    fun pivotX(position: Float): Float = spec?.pivotX(position) ?: .5f
 
     /**
      * How far the camera sits from the page, as a multiple of the page's own width.
@@ -89,21 +79,17 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
      * cover screen and on the inner one, which are nearly two to one in width ([ADP-1]: the window decides, not the
      * model name).
      */
-    val cameraWidths: Float get() = when (this) {
-        NONE -> 1f
-        CUBE -> 2f
-        CAROUSEL -> 3f
-    }
+    val cameraWidths: Float get() = spec?.cameraWidths ?: 1f
 
     companion object {
         /** A full quarter turn, so a page is exactly edge-on when it is exactly one page out: the faces of a box. */
-        private const val CUBE_DEGREES = 90f
+        internal const val CUBE_DEGREES = 90f
 
         /** Enough turn to read as depth, little enough that icon labels stay legible all the way through a swipe. */
-        private const val CAROUSEL_DEGREES = 28f
+        internal const val CAROUSEL_DEGREES = 28f
 
         /** A leaving page ends at 80% of its size. Deeper and the gap between pages starts to look like a mistake. */
-        private const val CAROUSEL_SHRINK = .2f
+        internal const val CAROUSEL_SHRINK = .2f
 
         /** The saved value, or [NONE] for a save from before Page Effects and for anything unrecognised. */
         fun of(name: String?): PageEffect = entries.firstOrNull { it.name == name } ?: NONE
@@ -129,7 +115,11 @@ internal fun PagerState.pagePosition(page: Int): Float = page - (currentPage + c
  * coordinates and a layer transform moves the coordinates under the finger.
  */
 internal fun Modifier.pageEffect(effect: PageEffect, pager: PagerState, page: Int): Modifier =
-    if (effect == PageEffect.NONE) this else graphicsLayer {
+    pageEffect(effect.spec, pager, page)
+
+/** The same, for any spec: a built-in effect or one a package described. Null draws nothing extra. */
+internal fun Modifier.pageEffect(effect: PageEffectSpec?, pager: PagerState, page: Int): Modifier =
+    if (effect == null) this else graphicsLayer {
         val position = pager.pagePosition(page)
         transformOrigin = TransformOrigin(effect.pivotX(position), .5f)
         rotationY = effect.rotationY(position)
@@ -140,3 +130,54 @@ internal fun Modifier.pageEffect(effect: PageEffect, pager: PagerState, page: In
         // this is the page's width in inches times the multiplier the effect asked for.
         cameraDistance = effect.cameraWidths * size.width / (density * 160f)
     }
+
+/**
+ * A page effect as data: the four numbers the engine turns into a layer transform (ADR 0008: the engine lives in
+ * Folio, the effect can come from a package). Built-in effects are specs too, so a packaged one is drawn by exactly
+ * the same code.
+ *
+ * Nothing a package says is trusted: [of] clamps every number to the range the engine is known to draw well. Turning
+ * past a quarter turn would show a page's back, shrinking past a third makes Home read as a thumbnail, and a camera
+ * nearer than 1.5 page widths tears the perspective ([PageEffect.cameraWidths]).
+ */
+internal data class PageEffectSpec(
+    /** Degrees around the vertical axis at one full page out. */
+    val maxRotation: Float,
+    /** Where a turning page pivots: on the edge it shares with its neighbor, or through its middle. */
+    val pivot: Pivot,
+    /** How much smaller a page is at one full page out, 0 for not at all. */
+    val shrink: Float,
+    /** Camera distance in page widths. */
+    val cameraWidths: Float,
+) {
+    enum class Pivot { SEAM, CENTER }
+
+    fun rotationY(position: Float): Float = maxRotation * position.coerceIn(-1f, 1f)
+    fun scale(position: Float): Float = 1f - shrink * abs(position).coerceAtMost(1f)
+    fun pivotX(position: Float): Float = when (pivot) {
+        Pivot.CENTER -> .5f
+        Pivot.SEAM -> if (position > 0f) 0f else 1f
+    }
+
+    companion object {
+        const val MAX_ROTATION = 90f
+        const val MAX_SHRINK = .3f
+        const val MIN_CAMERA = 1.5f
+        const val MAX_CAMERA = 4f
+
+        /** A spec from untrusted numbers (a package's manifest), each held to what the engine draws well. */
+        fun of(maxRotation: Float, pivot: Pivot, shrink: Float, cameraWidths: Float) = PageEffectSpec(
+            maxRotation.takeIf { it.isFinite() }?.coerceIn(-MAX_ROTATION, MAX_ROTATION) ?: 0f,
+            pivot,
+            shrink.takeIf { it.isFinite() }?.coerceIn(0f, MAX_SHRINK) ?: 0f,
+            cameraWidths.takeIf { it.isFinite() }?.coerceIn(MIN_CAMERA, MAX_CAMERA) ?: 3f,
+        )
+    }
+}
+
+/** The built-in effects as specs. [PageEffect.NONE] has none: it adds no layer at all. */
+internal val PageEffect.spec: PageEffectSpec? get() = when (this) {
+    PageEffect.NONE -> null
+    PageEffect.CUBE -> PageEffectSpec(PageEffect.CUBE_DEGREES, PageEffectSpec.Pivot.SEAM, 0f, 2f)
+    PageEffect.CAROUSEL -> PageEffectSpec(PageEffect.CAROUSEL_DEGREES, PageEffectSpec.Pivot.CENTER, PageEffect.CAROUSEL_SHRINK, 3f)
+}
