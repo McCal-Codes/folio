@@ -223,6 +223,8 @@ data class LauncherState(
     val lastPageEffect: PageEffect = PageEffect.CUBE,
     /** Page effects installed from Market packages, by package id. Listed in the picker next to the built-ins. */
     val packagedEffects: List<PackagedPageEffect> = emptyList(),
+    /** The packaged effect chosen in the picker, by package id; drawn only while [pageEffect] isn't None. */
+    val packagedEffectId: String? = null,
     /** Strength of the thin light outline around widgets and Side Bar capsules (0 = none). */
     val glassOutline: Float = .16f,
     /** Darken the wallpaper while Folio's dark appearance is on. */
@@ -852,7 +854,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun addPackagedEffect(effect: PackagedPageEffect) = updateSettings(soon = false) { s ->
         s.copy(packagedEffects = s.packagedEffects.filterNot { it.id == effect.id } + effect)
     }
-    fun removePackagedEffect(id: String) = updateSettings(soon = false) { s -> s.copy(packagedEffects = s.packagedEffects.filterNot { it.id == id }) }
+    fun removePackagedEffect(id: String) = updateSettings(soon = false) { it.withoutPackagedEffect(id) }
+    fun setPackagedEffect(id: String) = updateSettings(soon = false) { it.withPackagedEffect(id) }
     fun setGlassOutline(value: Float) = updateSettings(soon = true) { it.copy(glassOutline = value.coerceIn(0f, 1f)) }
     /** One tap for the whole glass look: widgets and Side Bar together. */
     fun setGlassPreset(frost: Float) = updateSettings(soon = false) {
@@ -1153,6 +1156,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("pageEffect", s.pageEffect.name)
             .put("lastPageEffect", s.lastPageEffect.name)
             .put("packagedEffects", JSONArray().apply { s.packagedEffects.forEach { put(it.toJson()) } })
+            .put("packagedEffectId", s.packagedEffectId ?: JSONObject.NULL)
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
             .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
@@ -1408,6 +1412,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         // Before 0.6.7.2 this wasn't saved: the effect in use, else the cube.
         lastPageEffect = PageEffect.of(j.optString("lastPageEffect", j.optString("pageEffect"))).takeIf { it != PageEffect.NONE } ?: PageEffect.CUBE,
         packagedEffects = j.optJSONArray("packagedEffects")?.let { a -> (0 until a.length()).mapNotNull { PackagedPageEffect.from(a.optJSONObject(it)) } }.orEmpty(),
+        packagedEffectId = j.optString("packagedEffectId").takeIf { it.isNotBlank() && it != "null" },
         widgetGlass = j.optDouble("widgetGlass", .26).toFloat().coerceIn(0f, 1f), glassOutline = j.optDouble("glassOutline", .16).toFloat().coerceIn(0f, 1f),
         focusModes = focusModesFromJson(j.optJSONArray("focusModes")),
         activeFocus = j.optString("activeFocus").takeIf { it.isNotEmpty() },
@@ -1480,9 +1485,27 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
 val LauncherState.glassTintAmount: Float get() = if (tintedGlass) .56f * glassTint else 0f
 
 /** Reduce Transparency: nearly solid widgets, Side Bar and dock, with a clearer edge (the saved values stay as they are). */
-/** Choosing an effect also remembers it, unless it's None, so Flipbook's switch has something to bring back. */
+/**
+ * Choosing an effect also remembers it, unless it's None, so Flipbook's switch has something to bring back. Choosing a
+ * built-in one sets aside any packaged effect; choosing None keeps it, so turning Flipbook back on returns to it.
+ */
 internal fun LauncherState.withPageEffect(value: PageEffect): LauncherState =
-    copy(pageEffect = value, lastPageEffect = if (value == PageEffect.NONE) lastPageEffect else value)
+    copy(pageEffect = value, lastPageEffect = if (value == PageEffect.NONE) lastPageEffect else value,
+        packagedEffectId = if (value == PageEffect.NONE) packagedEffectId else null)
+
+/** Chooses an installed packaged effect; also turns effects on if they were off. Unknown ids change nothing. */
+internal fun LauncherState.withPackagedEffect(id: String): LauncherState =
+    if (packagedEffects.none { it.id == id }) this
+    else copy(packagedEffectId = id, pageEffect = if (pageEffect == PageEffect.NONE) lastPageEffect else pageEffect)
+
+/** A package with an effect was removed: drop it, and if it was the chosen one, fall back to the built-in choice. */
+internal fun LauncherState.withoutPackagedEffect(id: String): LauncherState =
+    copy(packagedEffects = packagedEffects.filterNot { it.id == id }, packagedEffectId = packagedEffectId?.takeIf { it != id })
+
+/** What Home draws: nothing when effects are off, else the chosen packaged effect if it's still installed, else the built-in. */
+internal fun LauncherState.pageEffectSpec(): PageEffectSpec? =
+    if (pageEffect == PageEffect.NONE) null
+    else packagedEffects.firstOrNull { it.id == packagedEffectId }?.spec ?: pageEffect.spec
 
 /** Flipbook's switch: on brings back the last effect chosen, off is the flat swipe. */
 internal fun LauncherState.withPageEffectOn(on: Boolean): LauncherState =

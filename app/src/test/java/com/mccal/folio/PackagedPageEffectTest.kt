@@ -47,4 +47,32 @@ class PackagedPageEffectTest {
         assertEquals(listOf("com.mccal.folio.effect.tilt"), removed)
         assertTrue("nothing is chosen for the user", launcher.state.pageEffect == PageEffect.NONE)
     }
+
+    private val tilt = PackagedPageEffect.of("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f)
+    private val installed = LauncherState(packagedEffects = listOf(tilt))
+
+    @Test fun `choosing a packaged effect draws it, and turns effects on if they were off`() {
+        val chosen = installed.withPackagedEffect(tilt.id)
+        assertEquals(tilt.spec, chosen.pageEffectSpec())
+        assertTrue(chosen.pageEffect != PageEffect.NONE)
+        assertEquals("an id nobody installed changes nothing", installed, installed.withPackagedEffect("dev.nobody"))
+    }
+
+    @Test fun `Flipbook's switch turns a packaged effect off and brings it back`() {
+        val chosen = installed.withPackagedEffect(tilt.id)
+        assertEquals(null, chosen.withPageEffectOn(false).pageEffectSpec())
+        assertEquals(tilt.spec, chosen.withPageEffectOn(false).withPageEffectOn(true).pageEffectSpec())
+    }
+
+    @Test fun `choosing a built-in sets the packaged one aside`() {
+        val back = installed.withPackagedEffect(tilt.id).withPageEffect(PageEffect.CAROUSEL)
+        assertEquals(PageEffect.CAROUSEL.spec, back.pageEffectSpec())
+        assertEquals(null, back.packagedEffectId)
+    }
+
+    @Test fun `removing the chosen package falls back to the built-in choice`() {
+        val gone = installed.withPageEffect(PageEffect.CUBE).withPackagedEffect(tilt.id).withoutPackagedEffect(tilt.id)
+        assertEquals(PageEffect.CUBE.spec, gone.pageEffectSpec())
+        assertTrue(gone.packagedEffects.isEmpty())
+    }
 }
