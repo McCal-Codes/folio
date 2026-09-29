@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -39,11 +40,36 @@ internal object Diagnostics {
 
     /** Adds one line to the trail (short, no personal content). */
     @Synchronized fun event(what: String) {
+        lastCaught = null // any other line ends a run of repeats
         trail.addLast("${LocalDateTime.now().format(time)}  $what")
         while (trail.size > TRAIL_SIZE) trail.removeFirst()
     }
 
     @Synchronized fun trailText(): String = trail.joinToString("\n")
+
+    private var lastCaught: String? = null
+    private var caughtRepeats = 0
+
+    /**
+     * Notes a failure Folio carried on from, in the trail: where it happened and the exception's type. Never its
+     * message, which can hold a file path, a package or a name. The same failure again straight after is counted on
+     * its line instead of pushing the rest of the trail out.
+     *
+     * Cancellation is rethrown, not noted: it's a coroutine being stopped on purpose, and swallowing it (as a bare
+     * `runCatching` does) leaves work running that was meant to stop.
+     */
+    @Synchronized fun caught(where: String, error: Throwable) {
+        if (error is CancellationException) throw error
+        val what = "$where failed: ${error.javaClass.simpleName}"
+        if (what == lastCaught && trail.isNotEmpty()) {
+            caughtRepeats++
+            trail.removeLast()
+            trail.addLast("${LocalDateTime.now().format(time)}  $what (×${caughtRepeats + 1})")
+        } else {
+            event(what)
+            lastCaught = what; caughtRepeats = 0
+        }
+    }
 
     /** Saves the trail and a heartbeat, so the next start can tell what came before a freeze or restart. */
     fun checkpoint(context: Context, visible: Boolean) {
@@ -307,3 +333,11 @@ internal object Diagnostics {
     /** A pin request turned away. [why] is one of [PinTrust]'s reasons; the package is the one the request named. */
     fun pinRefused(packageName: String?, why: String) = event("Pin request from ${packageName ?: "an unknown app"} refused: $why")
 }
+
+/**
+ * [runCatching] that leaves a note: a failure goes in the Diagnostics trail as [where] plus its type, and
+ * cancellation is rethrown rather than swallowed. For the places Folio recovers from a failure the user would
+ * otherwise never hear about; an expected miss (an optional file that isn't there) stays a plain `runCatching`.
+ */
+internal inline fun <T> caught(where: String, block: () -> T): Result<T> =
+    runCatching(block).onFailure { Diagnostics.caught(where, it) }
