@@ -818,6 +818,7 @@
     <string name="installed">已安装</string>
     <string name="text_1_s_is_on">%1$s 已开启</string>
     <string name="text_1_s_needs_a_newer_folio">%1$s 需要更新版本的 Folio</string>
+    <string name="text_1_s_works_with_2_s_get_it_first">%1$s 需要 %2$s。请先获取 %2$s。</string>
     <string name="text_1_s_removed">已移除 %1$s</string>
     <string name="that_package_needs_a_newer_folio">那个软件包需要更新版本的 Folio</string>
     <string name="that_source_is_already_set_up">那个源已经设置好了</string>

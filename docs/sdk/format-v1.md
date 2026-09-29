@@ -86,6 +86,10 @@ comments, unquoted keys, single quotes, trailing commas, trailing text and dupli
 A page effect package describes how Home's pages turn as you swipe, as four numbers. Folio's engine draws it, the
 same engine that draws the built-in Cube and Carousel, so a page effect is data and never code (ADR 0004, ADR 0008).
 
+A page effect is an add-on to the Flipbook tweak, the way a script is an add-on to jailbreak Cylinder: the kind says so,
+so a package doesn't list it. Folio installs one only where Flipbook is on the phone, whether it was added from the
+Market or from Settings › Tweaks; otherwise the Market says the effect works with Flipbook and offers Flipbook first.
+
 ```json
 { "maxRotation": 28, "pivot": "center", "shrink": 0.2, "cameraWidths": 3 }
 ```

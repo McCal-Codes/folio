@@ -306,6 +306,7 @@ internal object Diagnostics {
         is InstallResult.Installed -> "installed ${result.installed.version.text}" +
             (result.replaced?.let { " over ${it.version.text}" } ?: "")
         is InstallResult.NeedsNewerFolio -> "needs a newer Folio (${result.missing.joinToString()})"
+        is InstallResult.NeedsHost -> "needs its tweak first (${result.tweaks.joinToString()})"
         is InstallResult.Failed -> "failed, ${result.reason.name}: ${result.message}"
     }
 

@@ -6,6 +6,7 @@ import com.mccal.folio.market.ParseResult
 import com.mccal.folio.market.TweakBundle
 import com.mccal.folio.market.TweakId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -201,4 +202,17 @@ class MarketHostTest {
     }
 
     private fun parsed(result: ParseResult<*>) = result is ParseResult.Ok
+
+    // Page effects are Flipbook add-ons (PackageKind.hostTweak). Flipbook added from Settings' Tweak Library leaves no
+    // Market record, so the host answers from installedTweaks, not from the Market's list: a `depends` on Flipbook's
+    // package would refuse Tilt on a phone that plainly has Flipbook.
+    @Test fun `a tweak counts as there however it was added, and not once it's removed`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        assertFalse(host.hasTweak("pageEffects"))
+        launcher.installTweak(TweakFeatures.first { it.id == "pageEffects" }) // what Settings' Tweak Library does
+        assertTrue(host.hasTweak("pageEffects"))
+        launcher.removeTweak(TweakFeatures.first { it.id == "pageEffects" })
+        assertFalse(host.hasTweak("pageEffects"))
+    }
 }

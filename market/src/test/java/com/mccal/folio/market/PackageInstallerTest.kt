@@ -24,7 +24,12 @@ class PackageInstallerTest {
     private var now = 1_789_000_000L
 
     /** Stands in for the launcher: remembers what was applied, and can be told to fail. */
-    private class FakeHost(override val capabilities: Set<Capability> = Capability.entries.toSet()) : PackageHost {
+    private class FakeHost(
+        override val capabilities: Set<Capability> = Capability.entries.toSet(),
+        val tweaks: Set<String>? = null,
+    ) : PackageHost {
+        // Null means every tweak is here, which is what the tests that aren't about add-ons want.
+        override fun hasTweak(id: String) = tweaks?.contains(id) ?: true
         val applied = mutableListOf<PackageChange>()
         val restored = mutableListOf<PackageChange>()
         var failOn: ((PackageChange) -> Boolean)? = null
@@ -83,6 +88,16 @@ class PackageInstallerTest {
         val effect = (read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.PageEffect
         assertEquals(PackageChange.PageEffect("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f), effect)
         assertEquals(setOf(Capability.PAGE_EFFECTS), effect.capabilities)
+    }
+
+    // A page effect is an add-on to Flipbook (PackageKind.hostTweak), like a script for jailbreak Cylinder: without
+    // the tweak it would sit on the phone doing nothing, so it isn't applied and the Market offers the tweak instead.
+    @Test fun `a page effect needs Flipbook on the phone, however Flipbook got there`() {
+        val without = PackageInstaller(store, FakeHost(tweaks = emptySet()), clock = { now })
+        assertEquals(InstallResult.NeedsHost(listOf("pageEffects")), without.install(effectPackage(), origin = InstalledPackage.Origin.FILE))
+        assertTrue(store.installed().none { it.id == "com.mccal.folio.effect.tilt" })
+        val with = PackageInstaller(store, FakeHost(tweaks = setOf("pageEffects")), clock = { now })
+        assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
     }
 
     @Test fun `a page effect package without a usable effect json is refused`() {
