@@ -37,7 +37,7 @@ private typealias EarlyAuthor = AuthorTrust.Result
  */
 internal class MarketSession(
     context: Context,
-    launcher: MarketLauncher,
+    private val launcher: MarketLauncher,
     /** Where reading, unpacking and applying happen. A test replaces it so it doesn't have to wait on a thread. */
     internal val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
@@ -138,6 +138,16 @@ internal class MarketSession(
 
     /** Who signed a package that arrived as a file, for the confirm sheet. Checks nothing else. */
     fun authorOf(pkg: FolioPackage): EarlyAuthor = AuthorTrust(files).checkFiles(pkg.id, pkg.version, pkg.files)
+
+    /**
+     * Adds tweak [id] the way Settings' Tweak Library does, for an add-on whose host is missing while the host's own
+     * listing already counts as installed (its tweak was removed in Settings). False when there's no such tweak.
+     */
+    fun addTweak(id: String): Boolean {
+        val tweak = TweakFeatures.firstOrNull { it.id == id } ?: return false
+        launcher.installTweak(tweak)
+        return true
+    }
 
     /** Reads a `.foliopkg` someone opened, without applying it: the confirm sheet shows what's inside. */
     fun read(bytes: ByteArray): PackageInstaller.ReadResult = installer.read(bytes)

@@ -110,6 +110,17 @@ class MarketScreenRenderTest {
         return out.toByteArray()
     }
 
+    // When Flipbook's listing is installed but its tweak was removed in Settings, the listing offers only Remove, so
+    // the message's action adds the tweak back itself (found in review of #191).
+    @Test fun `the Market can add a tweak back without its listing`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val launcher = NoopLauncher()
+        val session = MarketSession(context, launcher, kotlinx.coroutines.Dispatchers.Unconfined)
+        assertEquals(true, session.addTweak("pageEffects"))
+        assertEquals(true, "pageEffects" in launcher.state.installedTweaks)
+        assertEquals(false, session.addTweak("no such tweak"))
+    }
+
     // Like a script for jailbreak Cylinder, a page effect is an add-on to Flipbook. Getting one without Flipbook says
     // so, and the message's action opens Flipbook's own page, where it can be got.
     @Test fun `an effect without Flipbook offers Flipbook`() {

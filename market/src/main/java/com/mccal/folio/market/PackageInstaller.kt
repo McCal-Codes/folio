@@ -22,9 +22,10 @@ interface PackageHost {
 
     /**
      * Whether the tweak [id] is on this phone, however it got there: from the Market or from Settings' Tweak Library,
-     * which records no package. An add-on ([PackageKind.hostTweak]) is only installed where its host is.
+     * which records no package. An add-on ([PackageKind.hostTweak]) is only installed where its host is. False unless
+     * a host says otherwise, so a host that forgets to answer refuses add-ons rather than installing them bare.
      */
-    fun hasTweak(id: String): Boolean = true
+    fun hasTweak(id: String): Boolean = false
 }
 
 /** A package Folio has installed, and what it replaced. */
