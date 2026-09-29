@@ -79,6 +79,28 @@ comments, unquoted keys, single quotes, trailing commas, trailing text and dupli
 | `settingsSchema` *(0.7.x)* | `settings.json` (see its schema) | Folio's settings renderer |
 | `script` *(0.7.x)* | `script.js` | the script sandbox |
 | `externalApp` *(later)* | a `via` list: `playStore`, `fdroid`, `obtainium` | Get opens the store, then Apply |
+| `pageEffect` *(0.6.9)* | `effect.json`: how Home's pages turn as you swipe (see Page effects) | Folio's page-effect engine |
+
+#### Page effects
+
+A page effect package describes how Home's pages turn as you swipe, as four numbers. Folio's engine draws it, the
+same engine that draws the built-in Cube and Carousel, so a page effect is data and never code (ADR 0004, ADR 0008).
+
+```json
+{ "maxRotation": 28, "pivot": "center", "shrink": 0.2, "cameraWidths": 3 }
+```
+
+| Field | Meaning | Folio holds it to |
+|---|---|---|
+| `maxRotation` | Degrees a page turns around its vertical axis at one full page out | -90 to 90 |
+| `pivot` | `seam`: the edge it shares with the next page (a box); `center`: its middle (cards) | one of the two |
+| `shrink` | How much smaller a page is at one full page out | 0 to 0.3 |
+| `cameraWidths` | How far the camera sits, in page widths; nearer is stronger perspective | 1.5 to 4 |
+
+Folio clamps every number to its range rather than trusting it: past 90 degrees a page shows its back, and a camera
+nearer than 1.5 widths tears the perspective. `folio-pkg validate` warns about a number outside its range. A settled
+page is always drawn as it is, and Reduce Motion and Safe Mode turn every effect off. The package needs
+`tweaks.pageEffects` in `requires.features`.
 
 #### Wallpapers
 

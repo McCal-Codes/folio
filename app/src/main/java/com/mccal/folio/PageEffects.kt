@@ -140,7 +140,7 @@ internal fun Modifier.pageEffect(effect: PageEffectSpec?, pager: PagerState, pag
  * past a quarter turn would show a page's back, shrinking past a third makes Home read as a thumbnail, and a camera
  * nearer than 1.5 page widths tears the perspective ([PageEffect.cameraWidths]).
  */
-internal data class PageEffectSpec(
+data class PageEffectSpec(
     /** Degrees around the vertical axis at one full page out. */
     val maxRotation: Float,
     /** Where a turning page pivots: on the edge it shares with its neighbor, or through its middle. */
@@ -180,4 +180,25 @@ internal val PageEffect.spec: PageEffectSpec? get() = when (this) {
     PageEffect.NONE -> null
     PageEffect.CUBE -> PageEffectSpec(PageEffect.CUBE_DEGREES, PageEffectSpec.Pivot.SEAM, 0f, 2f)
     PageEffect.CAROUSEL -> PageEffectSpec(PageEffect.CAROUSEL_DEGREES, PageEffectSpec.Pivot.CENTER, PageEffect.CAROUSEL_SHRINK, 3f)
+}
+
+/** A page effect a Market package installed: its package id, the name the picker shows, and its clamped spec. */
+data class PackagedPageEffect(val id: String, val name: String, val spec: PageEffectSpec) {
+    fun toJson(): org.json.JSONObject = org.json.JSONObject().put("id", id).put("name", name)
+        .put("maxRotation", spec.maxRotation.toDouble()).put("pivot", spec.pivot.name)
+        .put("shrink", spec.shrink.toDouble()).put("cameraWidths", spec.cameraWidths.toDouble())
+
+    companion object {
+        /** From a package's untrusted numbers: [PageEffectSpec.of] clamps them. */
+        fun of(id: String, name: String, maxRotation: Float, pivot: String, shrink: Float, cameraWidths: Float) =
+            PackagedPageEffect(id, name, PageEffectSpec.of(maxRotation, if (pivot.equals("seam", true)) PageEffectSpec.Pivot.SEAM
+                else PageEffectSpec.Pivot.CENTER, shrink, cameraWidths))
+
+        fun from(json: org.json.JSONObject?): PackagedPageEffect? {
+            json ?: return null
+            val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
+            return of(id, json.optString("name", id), json.optDouble("maxRotation", 0.0).toFloat(), json.optString("pivot"),
+                json.optDouble("shrink", 0.0).toFloat(), json.optDouble("cameraWidths", 3.0).toFloat())
+        }
+    }
 }

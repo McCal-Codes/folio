@@ -460,6 +460,13 @@ class PackageInstaller(
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "iconpack.json needs the icon pack's package name")
                     PackageChange.IconPack(name)
                 }
+                PackageKind.PAGE_EFFECT -> {
+                    val text = files["effect.json"]?.decodeToString()
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a page effect but has no effect.json")
+                    PackageChange.PageEffect.parse(manifest.id, manifest.name.english, text)
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST,
+                            "effect.json needs maxRotation, shrink and cameraWidths as numbers and a pivot of seam or center")
+                }
                 // Reserved kinds: readable, but nothing is applied until the phase that builds them.
                 PackageKind.SETTINGS_SCHEMA, PackageKind.SCRIPT, PackageKind.EXTERNAL_APP -> null
             }
@@ -683,6 +690,9 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                     .put("id", change.id).put("title", change.title).put("artist", change.artist)
                     .put("license", change.license).put("detail", change.detail).put("source", change.source)
                     .put("sha256", change.pictureSha256)
+                is PackageChange.PageEffect -> json.put("kind", "pageEffect").put("id", change.id).put("name", change.name)
+                    .put("maxRotation", change.maxRotation.toDouble()).put("pivot", change.pivot)
+                    .put("shrink", change.shrink.toDouble()).put("cameraWidths", change.cameraWidths.toDouble())
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
                     "tweaks",
                     JSONArray().apply {
@@ -705,6 +715,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 "theme" -> PackageChange.Theme(json.optString("json"))
                 "layout" -> PackageChange.Layout(json.optString("json"))
                 "iconPack" -> PackageChange.IconPack(json.optString("package"))
+                "pageEffect" -> PackageChange.PageEffect.parse(json.optString("id"), json.optString("name"), json.toString())
                 // A record written before wallpapers carried their credit decodes with blank fields, which
                 // PackageChange.Wallpaper.credited reads as "do not show", so an old record cannot smuggle an
                 // uncredited picture back in through a restore.

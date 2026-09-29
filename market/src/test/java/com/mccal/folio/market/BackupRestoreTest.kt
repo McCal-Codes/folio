@@ -17,6 +17,7 @@ private fun describe(change: PackageChange) = when (change) {
     is PackageChange.Layout -> "layout"
     is PackageChange.Wallpaper -> "wallpaper"
     is PackageChange.IconPack -> "iconpack"
+    is PackageChange.PageEffect -> "pageEffect:" + change.id
 }
 
 /**

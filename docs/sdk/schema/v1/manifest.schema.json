@@ -120,7 +120,8 @@
           "tweakBundle",
           "settingsSchema",
           "script",
-          "externalApp"
+          "externalApp",
+          "pageEffect"
         ]
       }
     },

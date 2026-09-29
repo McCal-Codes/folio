@@ -192,7 +192,8 @@ enum class Section(val id: String) {
 
 enum class PackageKind(val id: String) {
     THEME("theme"), LAYOUT_PRESET("layoutPreset"), WALLPAPER("wallpaper"), ICON_PACK_LINK("iconPackLink"),
-    TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema"), SCRIPT("script"), EXTERNAL_APP("externalApp");
+    TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema"), SCRIPT("script"), EXTERNAL_APP("externalApp"),
+    PAGE_EFFECT("pageEffect");
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }
