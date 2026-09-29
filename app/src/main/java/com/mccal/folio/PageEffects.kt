@@ -125,10 +125,7 @@ internal fun Modifier.pageEffect(effect: PageEffectSpec?, pager: PagerState, pag
         rotationY = effect.rotationY(position)
         scaleX = effect.scale(position)
         scaleY = scaleX
-        // Compose measures cameraDistance in inches: it hands the number to RenderNode, which multiplies by the
-        // display's dpi (the View path does the same division in reverse). density * 160 is densityDpi exactly, so
-        // this is the page's width in inches times the multiplier the effect asked for.
-        cameraDistance = effect.cameraWidths * size.width / (density * 160f)
+        cameraDistance = effect.cameraDistance(size.width)
     }
 
 /**
@@ -159,7 +156,19 @@ data class PageEffectSpec(
         Pivot.SEAM -> if (position > 0f) 0f else 1f
     }
 
+    /**
+     * The layer's `cameraDistance` for a page [widthPx] pixels wide: [cameraWidths] page widths.
+     *
+     * Compose hands `cameraDistance` to `RenderNode` unchanged, `RenderNode` reads it as inches, and Skia's 3D camera
+     * turns inches into pixels at 72 per inch, whatever the screen's density ([POINTS_PER_INCH]). Until 29 Sep 2026
+     * this divided by the screen's dpi instead, which put the camera 72/420 as far away as meant on the Fold8: Cube's
+     * camera sat a third of a page from the seam and a page shrank to a sliver a third of the way through a swipe.
+     */
+    fun cameraDistance(widthPx: Float): Float = cameraWidths * widthPx / POINTS_PER_INCH
+
     companion object {
+        /** Skia's `Sk3DView::setCameraLocation` works in points: an inch of camera distance is 72 pixels. */
+        const val POINTS_PER_INCH = 72f
         const val MAX_ROTATION = 90f
         const val MAX_SHRINK = .3f
         const val MIN_CAMERA = 1.5f

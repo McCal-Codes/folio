@@ -41,4 +41,14 @@ class PageEffectSpecTest {
         assertEquals(0f, spec.rotationY(0f), 0f)
         assertEquals(1f, spec.scale(0f), 0f)
     }
+
+    // Skia puts the camera at cameraDistance x 72 pixels (Sk3DView::setCameraLocation), so a camera of N page widths
+    // is N x width / 72, on any screen density. Dividing by the dpi instead put it 72/420 as far on the Fold8.
+    @Test fun `the camera sits cameraWidths page widths away on any screen`() {
+        val cube = PageEffect.CUBE.spec!!
+        for (widthPx in listOf(1248f, 2176f, 1080f)) {
+            assertEquals(cube.cameraWidths * widthPx, cube.cameraDistance(widthPx) * PageEffectSpec.POINTS_PER_INCH, .01f)
+        }
+        assertEquals(2 * 1248f / 72f, cube.cameraDistance(1248f), .001f)
+    }
 }
