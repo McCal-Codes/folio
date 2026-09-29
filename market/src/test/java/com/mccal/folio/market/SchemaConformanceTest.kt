@@ -76,7 +76,7 @@ class SchemaConformanceTest {
         files += Triple(revokedSchema, sourceDir.resolve("revoked.json").readText(), RevocationList::parse)
         files += Triple(manifestSchema, resource("manifest-all-fields.json"), PackageManifest::parse)
         files += Triple(depictionSchema, resource("depiction-all-blocks.json"), Depiction::parse)
-        assertEquals(22, files.size)
+        assertEquals(24, files.size)
         for ((schema, text, parse) in files) {
             assertEquals(emptyList<String>(), schemaErrors(schema, text))
             assertEquals(null, agree(schema, text, parse))

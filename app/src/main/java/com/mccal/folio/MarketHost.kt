@@ -33,6 +33,12 @@ internal interface MarketLauncher {
 
     /** Puts back what [applyArtBackground] replaced, and forgets the art it installed. */
     fun restoreArtBackground(artId: String, snapshot: String)
+
+    /** Adds a packaged page effect to the picker. Nothing is chosen for the user; returns nothing to restore. */
+    fun addPageEffect(effect: PackagedPageEffect) = Unit
+
+    /** Takes a packaged page effect out of the picker again (remove, Undo, Safe Mode). */
+    fun removePageEffect(id: String) = Unit
 }
 
 /** The real launcher behind [MarketLauncher]. */
@@ -41,6 +47,8 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
     override fun installTweak(feature: TweakFeature) = model.installTweak(feature)
     override fun removeTweak(feature: TweakFeature) = model.removeTweak(feature)
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = model.setFeatureScope(id, screen, value)
+    override fun addPageEffect(effect: PackagedPageEffect) = model.addPackagedEffect(effect)
+    override fun removePageEffect(id: String) = model.removePackagedEffect(id)
     override fun applyTheme(theme: FolioTheme) = model.applyTheme(theme)
 
     /**
@@ -162,6 +170,11 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
                 change.pictureSha256,
             )
         }
+        is PackageChange.PageEffect -> {
+            launcher.addPageEffect(PackagedPageEffect.of(change.id, change.name, change.maxRotation, change.pivot,
+                change.shrink, change.cameraWidths))
+            ""
+        }
         // Reading a package already refuses kinds this Folio can't apply; this is the belt to that's braces.
         else -> error("Folio can't apply that yet")
     }
@@ -171,6 +184,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
             is PackageChange.Theme -> FolioTheme.fromJson(snapshot)?.let(launcher::applyTheme)
             is PackageChange.Tweaks -> restoreTweaks(snapshot)
             is PackageChange.Wallpaper -> launcher.restoreArtBackground(change.id, snapshot)
+            is PackageChange.PageEffect -> launcher.removePageEffect(change.id)
             else -> Unit
         }
     }

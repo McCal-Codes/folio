@@ -24,7 +24,7 @@ class SdkSchemasTest {
         val schema = JSONObject(File(sdk, "schema/v1/manifest.schema.json").readText()).getJSONObject("properties")
         val allowed = { name: String -> schema.getJSONObject(name).getJSONObject("items").getJSONArray("enum").let { a -> (0 until a.length()).map(a::getString) } }
         val packages = File(sdk, "source/packages").listFiles()!!.sortedBy { it.name }
-        assertEquals(9, packages.size)
+        assertEquals(10, packages.size)
         for (dir in packages) {
             val manifest = JSONObject(File(dir, "manifest.json").readText())
             assertEquals(dir.name, 1, manifest.getInt("format"))

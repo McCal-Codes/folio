@@ -221,6 +221,8 @@ data class LauncherState(
     val pageEffect: PageEffect = PageEffect.NONE,
     /** The effect Flipbook's switch turns back on: the last one chosen, so Carousel survives an off and on. */
     val lastPageEffect: PageEffect = PageEffect.CUBE,
+    /** Page effects installed from Market packages, by package id. Listed in the picker next to the built-ins. */
+    val packagedEffects: List<PackagedPageEffect> = emptyList(),
     /** Strength of the thin light outline around widgets and Side Bar capsules (0 = none). */
     val glassOutline: Float = .16f,
     /** Darken the wallpaper while Folio's dark appearance is on. */
@@ -846,6 +848,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
     fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }
     fun setPageEffectOn(on: Boolean) = updateSettings(soon = false) { it.withPageEffectOn(on) }
+    /** A package installed an effect (or an update replaced it): one entry per package id. */
+    fun addPackagedEffect(effect: PackagedPageEffect) = updateSettings(soon = false) { s ->
+        s.copy(packagedEffects = s.packagedEffects.filterNot { it.id == effect.id } + effect)
+    }
+    fun removePackagedEffect(id: String) = updateSettings(soon = false) { s -> s.copy(packagedEffects = s.packagedEffects.filterNot { it.id == id }) }
     fun setGlassOutline(value: Float) = updateSettings(soon = true) { it.copy(glassOutline = value.coerceIn(0f, 1f)) }
     /** One tap for the whole glass look: widgets and Side Bar together. */
     fun setGlassPreset(frost: Float) = updateSettings(soon = false) {
@@ -1145,6 +1152,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("folderColumns", s.folderColumns).put("folderBackground", s.folderBackground.name)
             .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("pageEffect", s.pageEffect.name)
             .put("lastPageEffect", s.lastPageEffect.name)
+            .put("packagedEffects", JSONArray().apply { s.packagedEffects.forEach { put(it.toJson()) } })
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
             .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
@@ -1399,6 +1407,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         pageEffect = PageEffect.of(j.optString("pageEffect")),
         // Before 0.6.7.2 this wasn't saved: the effect in use, else the cube.
         lastPageEffect = PageEffect.of(j.optString("lastPageEffect", j.optString("pageEffect"))).takeIf { it != PageEffect.NONE } ?: PageEffect.CUBE,
+        packagedEffects = j.optJSONArray("packagedEffects")?.let { a -> (0 until a.length()).mapNotNull { PackagedPageEffect.from(a.optJSONObject(it)) } }.orEmpty(),
         widgetGlass = j.optDouble("widgetGlass", .26).toFloat().coerceIn(0f, 1f), glassOutline = j.optDouble("glassOutline", .16).toFloat().coerceIn(0f, 1f),
         focusModes = focusModesFromJson(j.optJSONArray("focusModes")),
         activeFocus = j.optString("activeFocus").takeIf { it.isNotEmpty() },

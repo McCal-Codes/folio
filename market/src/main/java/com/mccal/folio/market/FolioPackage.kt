@@ -84,6 +84,31 @@ sealed interface PackageChange {
     }
 
     /**
+     * How Home's pages turn as you swipe, described as numbers (ADR 0008: the engine is Folio's, the effect is the
+     * package's). The numbers are the package's own and untrusted: the app clamps them to what its engine draws well
+     * before drawing anything. [id] is the package id, [name] what the Page Effects picker shows.
+     */
+    data class PageEffect(
+        val id: String, val name: String,
+        val maxRotation: Float, val pivot: String, val shrink: Float, val cameraWidths: Float,
+    ) : PackageChange {
+        override val capabilities get() = setOf(Capability.PAGE_EFFECTS)
+
+        companion object {
+            val PIVOTS = setOf("seam", "center")
+
+            /** Reads `effect.json`; null when a number is missing or not finite, or the pivot isn't one Folio knows. */
+            fun parse(id: String, name: String, text: String): PageEffect? {
+                val json = runCatching { org.json.JSONObject(text) }.getOrNull() ?: return null
+                fun number(key: String) = json.optDouble(key, Double.NaN).toFloat().takeIf { it.isFinite() }
+                val pivot = json.optString("pivot").takeIf { it in PIVOTS } ?: return null
+                return PageEffect(id, name, number("maxRotation") ?: return null, pivot,
+                    number("shrink") ?: return null, number("cameraWidths") ?: return null)
+            }
+        }
+    }
+
+    /**
      * A picture, and the credit that lets Folio show it.
      *
      * The credit travels with the change rather than being looked up later, because the only moment it is reachable

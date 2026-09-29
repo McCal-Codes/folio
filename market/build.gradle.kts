@@ -16,6 +16,9 @@ android {
     testOptions.unitTests.all {
         it.useJUnitPlatform()
         System.getenv("JAZZER_FUZZ")?.let { value -> it.environment("JAZZER_FUZZ", value) }
+        // The tests read the published source, schemas and examples straight from docs/sdk. Without declaring them,
+        // Gradle reused a cached pass when only those files changed, and CI stayed green over failing counts.
+        it.inputs.dir(rootProject.file("docs/sdk")).withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
     }
 }
 

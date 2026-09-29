@@ -42,6 +42,7 @@ class InstallStateMachineTest {
             is PackageChange.Layout -> "layout"
             is PackageChange.Wallpaper -> "wallpaper"
             is PackageChange.IconPack -> "iconpack"
+            is PackageChange.PageEffect -> "pageEffect:" + change.id
         }
     }
 

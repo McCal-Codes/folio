@@ -49,6 +49,7 @@ class PackageInstallerTest {
             is PackageChange.Layout -> "layout"
             is PackageChange.Wallpaper -> change.path
             is PackageChange.IconPack -> change.packageName
+            is PackageChange.PageEffect -> "pageEffect:" + change.id
         }
     }
 
@@ -66,6 +67,30 @@ class PackageInstallerTest {
         val read = installer.read(bytes)
         assertTrue("$read", read is PackageInstaller.ReadResult.Ok)
         return ((read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.Wallpaper).path
+    }
+
+    /** A page effect package from the shipped example, with its effect.json replaced when a test wants. */
+    private fun effectPackage(effect: String? = File(root, "docs/sdk/examples/page-effect-tilt/effect.json").readText()): ByteArray {
+        val files = LinkedHashMap<String, ByteArray>()
+        files["manifest.json"] = File(root, "docs/sdk/examples/page-effect-tilt/manifest.json").readBytes()
+        if (effect != null) files["effect.json"] = effect.toByteArray()
+        return zip(files)
+    }
+
+    @Test fun `a page effect package reads as its four numbers, named after the package`() {
+        val read = installer.read(effectPackage())
+        assertTrue("$read", read is PackageInstaller.ReadResult.Ok)
+        val effect = (read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.PageEffect
+        assertEquals(PackageChange.PageEffect("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f), effect)
+        assertEquals(setOf(Capability.PAGE_EFFECTS), effect.capabilities)
+    }
+
+    @Test fun `a page effect package without a usable effect json is refused`() {
+        listOf(null, "not json", """{"maxRotation":18,"pivot":"sideways","shrink":0,"cameraWidths":3}""",
+            """{"maxRotation":"a lot","pivot":"center","shrink":0,"cameraWidths":3}""").forEach { effect ->
+            val read = installer.read(effectPackage(effect))
+            assertTrue("$effect -> $read", read is PackageInstaller.ReadResult.Failed)
+        }
     }
 
     @Test fun `the wallpaper is the image the page does not spend, not the first one in the zip`() {

@@ -359,6 +359,25 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
         report.error(f"{name}: there is a script.js, but kind does not include script")
     if "tweakBundle" in kinds and not (folder / "tweaks.json").is_file():
         report.error(f"{name}: kind includes tweakBundle, but there is no tweaks.json")
+    if "pageEffect" in kinds:
+        effect_file = folder / "effect.json"
+        if not effect_file.is_file():
+            report.error(f"{name}: kind includes pageEffect, but there is no effect.json")
+        else:
+            try:
+                effect = json.loads(effect_file.read_text(encoding="utf-8"))
+            except ValueError as problem:
+                report.error(f"{name}/effect.json: not JSON ({problem})")
+                effect = None
+            if isinstance(effect, dict):
+                for key, low, high in (("maxRotation", -90, 90), ("shrink", 0, 0.3), ("cameraWidths", 1.5, 4)):
+                    value = effect.get(key)
+                    if not isinstance(value, (int, float)) or isinstance(value, bool):
+                        report.error(f"{name}/effect.json: {key} must be a number")
+                    elif not low <= value <= high:
+                        report.warn(f"{name}/effect.json: {key} {value} is outside {low} to {high}; Folio will clamp it")
+                if effect.get("pivot") not in ("seam", "center"):
+                    report.error(f"{name}/effect.json: pivot must be seam or center")
 
     version = manifest.get("minFolio")
     if isinstance(version, str) and not VERSION_RE.match(version):
