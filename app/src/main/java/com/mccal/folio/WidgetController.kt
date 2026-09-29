@@ -169,7 +169,7 @@ class WidgetController(
         if (restore.isWork && (profile == Process.myUserHandle() || profile !in launcherApps.profiles ||
                 !isSupportedWorkProfile(launcherApps, profile))) return false
         val component = ComponentName.unflattenFromString(restore.providerComponent) ?: return false
-        val provider = runCatching { manager.getInstalledProvidersForProfile(profile) }
+        val provider = caught("Widgets: listing a profile's widgets") { manager.getInstalledProvidersForProfile(profile) }
             .getOrNull()?.firstOrNull { it.provider == component } ?: return false
         add(placement, provider, grid, contentSize)
         return true
@@ -229,7 +229,7 @@ class WidgetController(
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE, provider.profile)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, pendingOptions))
             }
-        } catch (_: Exception) { fail() }
+        } catch (e: Exception) { Diagnostics.caught("Widgets: binding", e); fail() }
     }
 
     fun add(slot: Int, provider: AppWidgetProviderInfo) = add(model.placement(slot)
@@ -258,7 +258,7 @@ class WidgetController(
             onExternalSetupChanged(true)
             host.startAppWidgetConfigureActivityForResult(activity, pendingId, 0, CONFIGURE, null)
         }
-        catch (_: Exception) { fail() }
+        catch (e: Exception) { Diagnostics.caught("Widgets: opening setup", e); fail() }
     }
 
     fun onActivityResult(requestCode: Int, resultCode: Int): Boolean {
@@ -321,7 +321,7 @@ class WidgetController(
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE, profile)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, pendingOptions))
-            } catch (_: Exception) { fail() }
+            } catch (e: Exception) { Diagnostics.caught("Widgets: asking to bind", e); fail() }
         }
     }
 
@@ -367,7 +367,8 @@ class WidgetController(
         return try {
             host.startAppWidgetConfigureActivityForResult(activity, id, 0, RECONFIGURE, null)
             true
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Diagnostics.caught("Widgets: reopening settings", e)
             failureMessage = activity.getString(R.string.this_widget_could_not_open_its_settings)
             clearReconfigure()
             false

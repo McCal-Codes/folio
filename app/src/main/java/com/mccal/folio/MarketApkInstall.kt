@@ -116,7 +116,8 @@ internal object MarketApkInstall {
             }
         } ?: false
         MarketWork.applying()
-        return runCatching {
+        // Runs inside MarketWork, whose scope nothing cancels: every failure here is one to tell the user about.
+        return caught("Market: writing an app for Android", rethrowCancellation = false) {
             withContext(Dispatchers.IO) { hand(context, bytes, update?.appId, silent) }
             status.value = Status.Handed(name, updating = update != null)
             true
@@ -179,7 +180,7 @@ class MarketInstallReceiver : BroadcastReceiver() {
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION") val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
-                runCatching { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                caught("Market: showing Android's install prompt") { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
             PackageInstaller.STATUS_SUCCESS -> {
                 val handed = MarketApkInstall.status.value as? MarketApkInstall.Status.Handed
