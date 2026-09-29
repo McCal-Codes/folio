@@ -50,6 +50,49 @@ class MarketScreenRenderTest {
         override fun restoreArtBackground(artId: String, snapshot: String) = Unit
     }
 
+    /** A `.foliopkg` of one of Folio's own packages, zipped the way the build does it. */
+    private fun packageFile(name: String): ByteArray {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val dir = java.io.File(root, "docs/sdk/source/packages/$name")
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            dir.walkTopDown().filter { it.isFile }.sortedBy { it.path }.forEach { file ->
+                zip.putNextEntry(java.util.zip.ZipEntry(file.relativeTo(dir).invariantSeparatorsPath))
+                zip.write(file.readBytes())
+                zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    // Found on the Fold8, 29 Sep 2026: opening a .foliopkg opened the Market and nothing else. The effect that reads
+    // the file was keyed on MarketImport.pending and cleared it before its read suspended, so the next frame cancelled
+    // the read. The other tests read on Dispatchers.Unconfined, which never suspends, so this one uses a real thread.
+    @Test fun `a package file opened from another app shows its confirm sheet`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val session = MarketSession(context, NoopLauncher(), kotlinx.coroutines.Dispatchers.IO)
+        session.prefs.introductionSeen = true
+        try {
+            MarketImport.pending = packageFile("cabinet")
+            // On the phone the Market sits in a bottom sheet with its own window, and a composition there can be
+            // thrown away and built again while the sheet opens. The sheet has to survive that.
+            val build = androidx.compose.runtime.mutableIntStateOf(0)
+            compose.setContent { androidx.compose.runtime.key(build.intValue) { MarketScreen(session, emptySet(), onClose = {}) } }
+            compose.runOnIdle { build.intValue++ }
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+            // The file waits until the user decides; Cancel is deciding.
+            compose.onNodeWithText("Cancel").performScrollTo().performClick()
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isEmpty()
+            }
+            assertEquals(null, MarketImport.pending)
+        } finally {
+            MarketImport.pending = null
+        }
+    }
+
     @Test fun `the introduction comes first, then Featured lists Folio's packages`() {
         val session = session()
         session.prefs.introductionSeen = false
