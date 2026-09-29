@@ -330,6 +330,14 @@ fun LauncherScreen(
         sheet = if (MarketLink.pending != null || MarketImport.pending != null) "market"
             else sheetForAppIcon(linked, customizationPage, MarketAccess.isOpen(launcherActivity))
     } }
+    // An opened .foliopkg waits in MarketImport.pending until it's installed or cancelled (MarketScreen). Leaving the
+    // Market is cancelling it, so it can't come back the next time Settings opens. Only a move away from the Market
+    // counts: on a cold start the import itself is what opens Folio, and the first sheet value must not clear it.
+    var sheetBefore by remember { mutableStateOf(sheet) }
+    LaunchedEffect(sheet) {
+        if (sheetBefore == "market" && sheet != "market") MarketImport.pending = null
+        sheetBefore = sheet
+    }
     // Saved layout damaged, or apps failed to load: say so instead of quietly showing an empty Home.
     var problemDismissed by rememberSaveable(state.error) { mutableStateOf(false) }
     state.error?.takeIf { !problemDismissed && sheet.isEmpty() }?.let { message ->

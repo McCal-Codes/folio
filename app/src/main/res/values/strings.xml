@@ -829,6 +829,7 @@
     <string name="that_source_is_already_set_up">That source is already set up</string>
     <string name="from_a_file_you_opened_signed_by_its">From a file you opened, signed by its developer.</string>
     <string name="from_a_file_you_opened">From a file you opened.</string>
+    <string name="opened_from_files">Opened from Files</string>
     <string name="folio_will_remember_this_developer_s_key">Folio will remember this developer\'s key for this package.</string>
     <string name="text_1_s_only_open_packages_from_someone_you">%1$s. Only open packages from someone you trust.</string>
     <string name="folio_couldn_t_read_its_own_packages">Folio couldn\'t read its own packages. Reinstalling the app puts them back.</string>

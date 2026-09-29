@@ -294,19 +294,26 @@ internal fun MarketScreen(
         if (openId != null) openId = null else openSourceUrl = null
     }
 
-    // A .foliopkg someone opened: read it once, then the same confirm sheet as anything else. Keyed on the file
-    // itself, so one shared while the Market is already open is read there and then.
-    var importing by remember { mutableStateOf<Pair<ByteArray, com.mccal.folio.market.FolioPackage>?>(null) }
-    LaunchedEffect(MarketImport.pending) {
-        val bytes = MarketImport.pending
-        MarketImport.pending = null
-        if (bytes != null) {
-            // Unzipped off the main thread, like every other read here: a big package froze Home before its sheet.
-            when (val read = withContext(session.io) { session.read(bytes) }) {
-                is com.mccal.folio.market.PackageInstaller.ReadResult.Ok -> importing = bytes to read.pkg
-                is com.mccal.folio.market.PackageInstaller.ReadResult.NeedsNewerFolio ->
-                    say(context.getString(R.string.that_package_needs_a_newer_folio))
-                is com.mccal.folio.market.PackageInstaller.ReadResult.Failed -> say(read.message)
+    // A .foliopkg someone opened, then the same confirm sheet as anything else. The file stays in MarketImport.pending
+    // until it's installed or cancelled, and the sheet is read from it, not held here: on the phone the Market sits in
+    // a bottom sheet whose composition can be built twice while it opens, and the first one used to take the file and
+    // lose it with its own state, so opening a package showed the Market and no sheet (found on the Fold8, 29 Sep 2026).
+    // Reading is side-effect free, so a Market built again simply reads it again.
+    val pendingImport = MarketImport.pending
+    val importing by produceState<Pair<ByteArray, com.mccal.folio.market.FolioPackage>?>(null, pendingImport) {
+        // produceState keeps its value across a new key, so the sheet for a file that's gone has to be put away here.
+        value = null
+        val bytes = pendingImport ?: return@produceState
+        // Unzipped off the main thread, like every other read here: a big package froze Home before its sheet.
+        when (val read = withContext(session.io) { session.read(bytes) }) {
+            is com.mccal.folio.market.PackageInstaller.ReadResult.Ok -> value = bytes to read.pkg
+            is com.mccal.folio.market.PackageInstaller.ReadResult.NeedsNewerFolio -> {
+                MarketImport.pending = null
+                say(context.getString(R.string.that_package_needs_a_newer_folio))
+            }
+            is com.mccal.folio.market.PackageInstaller.ReadResult.Failed -> {
+                MarketImport.pending = null
+                say(read.message)
             }
         }
     }
@@ -520,7 +527,7 @@ internal fun MarketScreen(
         if (tabs == TabPlacement.RAIL) MarketRail(tab) { tab = it; openId = null; openSourceUrl = null }
         }
         importing?.let { (bytes, pkg) ->
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { importing = null }) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { MarketImport.pending = null }) {
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                         .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
@@ -554,10 +561,10 @@ internal fun MarketScreen(
                             },
                         ),
                         onGet = {
-                            importing = null
+                            MarketImport.pending = null
                             MarketWork.install(pkg.manifest.id, pkg.manifest.name.english, context.getString(R.string.folio_couldn_t_finish_that_install)) { session.installFile(bytes) }
                         },
-                        onCancel = { importing = null },
+                        onCancel = { MarketImport.pending = null },
                     )
                 }
             }
@@ -802,6 +809,10 @@ private fun MarketList(
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
+    // Installed from a .foliopkg someone opened, and listed by no source: without these the package was on the phone
+    // with no row to see or remove it by (found on the Fold8, 29 Sep 2026). No listing is made up for them.
+    val fromFiles = if (tab != MarketTab.INSTALLED) emptyList()
+        else installed.values.filter { pkg -> entries.none { it.id == pkg.id } }.sortedBy { it.name.lowercase() }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = FolioSpace.LARGE.dp), state = state, verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp)) {
         item {
             Column(Modifier.padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.TINY.dp)) {
@@ -859,7 +870,7 @@ private fun MarketList(
                 }
             }
         }
-        if (shown.isEmpty() && tab == MarketTab.INSTALLED && updates.isEmpty()) {
+        if (shown.isEmpty() && tab == MarketTab.INSTALLED && updates.isEmpty() && fromFiles.isEmpty()) {
             item {
                 Text(
                     stringResource(R.string.nothing_yet_themes_and_tweaks_you_get),
@@ -892,6 +903,26 @@ private fun MarketList(
                             }
                             // An odd last row keeps its half, so rows line up down both columns.
                             repeat(columns - pair.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
+        }
+        if (fromFiles.isNotEmpty()) {
+            item(key = "label-files") { SheetGroupLabel(stringResource(R.string.opened_from_files)) }
+            item(key = "group-files") {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    for (pkg in fromFiles) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(pkg.name, color = Color.White, fontSize = 16.sp)
+                                Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
+                                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                            }
+                            MarketActionButton(R.string.remove, pkg.name) { onRemove(pkg.id, pkg.name) }
                         }
                     }
                 }
