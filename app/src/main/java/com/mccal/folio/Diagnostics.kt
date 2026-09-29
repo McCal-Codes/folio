@@ -56,10 +56,12 @@ internal object Diagnostics {
      * its line instead of pushing the rest of the trail out.
      *
      * Cancellation is rethrown, not noted: it's a coroutine being stopped on purpose, and swallowing it (as a bare
-     * `runCatching` does) leaves work running that was meant to stop.
+     * `runCatching` does) leaves work running that was meant to stop. A caller whose scope is never cancelled passes
+     * [rethrowCancellation] false: there a cancellation can only come from inside the work, and the user should
+     * still be told it failed.
      */
-    @Synchronized fun caught(where: String, error: Throwable) {
-        if (error is CancellationException) throw error
+    @Synchronized fun caught(where: String, error: Throwable, rethrowCancellation: Boolean = true) {
+        if (error is CancellationException && rethrowCancellation) throw error
         val what = "$where failed: ${error.javaClass.simpleName}"
         if (what == lastCaught && trail.isNotEmpty()) {
             caughtRepeats++
@@ -339,5 +341,5 @@ internal object Diagnostics {
  * cancellation is rethrown rather than swallowed. For the places Folio recovers from a failure the user would
  * otherwise never hear about; an expected miss (an optional file that isn't there) stays a plain `runCatching`.
  */
-internal inline fun <T> caught(where: String, block: () -> T): Result<T> =
-    runCatching(block).onFailure { Diagnostics.caught(where, it) }
+internal inline fun <T> caught(where: String, rethrowCancellation: Boolean = true, block: () -> T): Result<T> =
+    runCatching(block).onFailure { Diagnostics.caught(where, it, rethrowCancellation) }

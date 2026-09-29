@@ -43,4 +43,11 @@ class CaughtFailuresTest {
     fun `cancellation is rethrown, not swallowed`() {
         caught("Test: a coroutine being stopped") { throw CancellationException("stopped") }
     }
+
+    // MarketWork's scope is never cancelled, so there a cancellation is a failure the user must still hear about.
+    @Test fun `a caller that owns an uncancelled scope can treat cancellation as a failure`() {
+        val result = caught("Test: market work", rethrowCancellation = false) { throw CancellationException("inside the work") }
+        assertTrue(result.isFailure)
+        assertTrue(lastLine(), lastLine().endsWith("Test: market work failed: CancellationException"))
+    }
 }

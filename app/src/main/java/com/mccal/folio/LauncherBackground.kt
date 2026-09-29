@@ -303,6 +303,7 @@ class LauncherBackgroundController(
         onExternalResultChanged(true)
         try { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         catch (error: Exception) {
+            Diagnostics.caught("Wallpaper: opening the photo picker", error)
             errorMessage = error.message ?: activity.getString(R.string.the_photo_picker_is_unavailable)
             clearPickerPending()
         }
@@ -336,7 +337,7 @@ class LauncherBackgroundController(
         val staged = preview ?: return
         if (!previewPending || pendingOperation() != staged.operation ||
             previewFile()?.absolutePath != staged.file.absolutePath) return
-        runCatching { staged.commit(launcherPhotoFile(activity)) }
+        caught("Wallpaper: setting the photo") { staged.commit(launcherPhotoFile(activity)) }
             .onSuccess {
                 releasePreviewGrant(staged.operation)
                 setBackgroundChoice(activity, BackgroundChoice.Photo)
@@ -393,7 +394,7 @@ class LauncherBackgroundController(
             val ownershipRecorded = prefs.edit().putString(PREVIEW_GRANT_URI, uri.toString())
                 .putString(PREVIEW_GRANT_OPERATION, operation).commit()
             if (ownershipRecorded && pendingOperation() == operation) {
-                val granted = runCatching {
+                val granted = caught("Wallpaper: keeping access to the photo") {
                     activity.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }.isSuccess
                 if (!granted) forgetPreviewGrant(operation)
@@ -423,6 +424,7 @@ class LauncherBackgroundController(
                 // not turn lifecycle cancellation into a failure that clears that operation.
                 throw cancel
             } catch (error: Throwable) {
+                Diagnostics.caught("Wallpaper: reading the photo", error)
                 Result.failure(error)
             }
             if (token != generation || !previewPending || pendingOperation() != operation) {
@@ -461,7 +463,8 @@ class LauncherBackgroundController(
                 bitmapAcrossDispatch.getAndSet(null)
                     ?.takeUnless { it === LauncherBackgroundCache.bitmap || it.isRecycled }?.recycle()
                 throw cancel
-            } catch (_: Throwable) {
+            } catch (error: Throwable) {
+                Diagnostics.caught("Wallpaper: reopening the preview", error)
                 null
             }
             if (token != generation || !previewPending || pendingOperation() != operation ||

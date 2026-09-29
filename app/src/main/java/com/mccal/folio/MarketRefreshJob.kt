@@ -72,7 +72,7 @@ class MarketRefreshJob : JobService() {
             val network = if (prefs.refreshOnWifiOnly) JobInfo.NETWORK_TYPE_UNMETERED else JobInfo.NETWORK_TYPE_ANY
             val pending = jobs.getPendingJob(REFRESH)
             if (pending != null && pending.networkType == network) return
-            runCatching {
+            caught("Market: scheduling the daily refresh") {
                 jobs.schedule(
                     JobInfo.Builder(REFRESH, ComponentName(context, MarketRefreshJob::class.java))
                         .setRequiredNetworkType(network)

@@ -173,8 +173,9 @@ internal object BackgroundLibrary {
     private val recordLock = Any()
 
     private fun readRecord(context: Context): JSONObject? = synchronized(recordLock) {
-        val text = runCatching { recordFile(context).takeIf { it.isFile }?.readText() }.getOrNull() ?: return null
-        runCatching { JSONObject(text) }.getOrNull()
+        val text = caught("Wallpapers: reading the installed list") { recordFile(context).takeIf { it.isFile }?.readText() }.getOrNull() ?: return null
+        // A damaged list hides every installed wallpaper from the picker at once, so it's worth a note.
+        caught("Wallpapers: reading the installed list") { JSONObject(text) }.getOrNull()
     }
 
     /**
@@ -185,7 +186,7 @@ internal object BackgroundLibrary {
     private fun writeRecord(context: Context, json: JSONObject): Boolean = synchronized(recordLock) {
         val target = recordFile(context)
         val temp = File(target.parentFile, target.name + ".tmp")
-        runCatching {
+        caught("Wallpapers: saving the installed list") {
             temp.writeText(json.toString())
             if (!temp.renameTo(target)) { target.delete(); check(temp.renameTo(target)) }
         }.onFailure { temp.delete() }.isSuccess
