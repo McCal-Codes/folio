@@ -921,6 +921,9 @@
     <string name="folio_checks_the_download_unsigned">Folio checks the download against the checksum this source lists. The source is unsigned, so nothing vouches for that list: only install from it if you are the one serving it. Android asks before installing, and names the app itself.</string>
     <string name="folio_checks_the_download_against_the">Folio checks the download against the checksum its source signed. Android asks before installing, and names the app itself.</string>
     <string name="text_1_s_is_installed">%1$s is installed</string>
+    <string name="text_1_s_is_updated">%1$s is updated</string>
+    <string name="that_update_is_a_different_app">That update is a different app from the one on this phone, so nothing was installed.</string>
+    <string name="that_update_isn_t_signed_by_the_same">That update isn\'t signed by the same developer as the %1$s on this phone, so nothing was installed.</string>
     <string name="installing_apps">Installing apps</string>
     <string name="folio_downloads_and_installs">Folio downloads and installs</string>
     <string name="open_play_f_droid_or_obtainium_instead">Open Play, F-Droid or Obtainium instead</string>

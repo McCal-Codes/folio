@@ -917,6 +917,9 @@
     <string name="folio_checks_the_download_unsigned">소스에 기재된 체크섬과 다운로드 파일을 대조합니다. 서명되지 않은 소스이므로 해당 목록의 진위를 보장할 수 없습니다. 직접 운영하는 소스인 경우에만 설치하세요. Android에서 앱 이름을 표시하고 설치 전에 확인합니다.</string>
     <string name="folio_checks_the_download_against_the">소스가 서명한 체크섬과 다운로드 파일을 대조합니다. Android에서 앱 이름을 표시하고 설치 전에 확인합니다.</string>
     <string name="text_1_s_is_installed">%1$s 설치됨</string>
+    <string name="text_1_s_is_updated">%1$s 업데이트됨</string>
+    <string name="that_update_is_a_different_app">업데이트가 이 휴대폰에 있는 앱과 다른 앱이어서 설치하지 않았습니다.</string>
+    <string name="that_update_isn_t_signed_by_the_same">업데이트가 이 휴대폰에 있는 %1$s와(과) 같은 개발자의 서명이 아니어서 설치하지 않았습니다.</string>
     <string name="installing_apps">앱 설치</string>
     <string name="folio_downloads_and_installs">Folio에서 다운로드 및 설치</string>
     <string name="open_play_f_droid_or_obtainium_instead">대신 Play, F-Droid 또는 Obtainium 열기</string>

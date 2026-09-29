@@ -229,6 +229,53 @@ class MarketScreenRenderTest {
         compose.onNodeWithText("https://maya.example/folio/").assertExists()
     }
 
+    @Test fun `an app with a newer listing than the copy on the phone says Update, with both versions`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://mccal-codes.github.io/folio-keyd/", "Keyd", keydIndex())
+        keydOnThePhone("0.2.0")
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithContentDescription("Update Keyd").assertExists()
+        compose.onNodeWithText("0.2.0 → 0.3.0").assertExists()
+        // And it is listed under Updates in Installed, though Android has it rather than Folio.
+        compose.onNodeWithTag("market-tab-installed").performClick()
+        compose.onNodeWithContentDescription("Update Keyd").assertExists()
+    }
+
+    @Test fun `an app that is up to date says Open`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://mccal-codes.github.io/folio-keyd/", "Keyd", keydIndex())
+        keydOnThePhone("0.3.0")
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithContentDescription("Open Keyd").assertExists()
+        assertEquals(0, compose.onAllNodesWithText("0.2.0 → 0.3.0").fetchSemanticsNodes().size)
+    }
+
+    private fun keydOnThePhone(versionName: String) {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        org.robolectric.Shadows.shadowOf(context.packageManager).installPackage(
+            android.content.pm.PackageInfo().apply {
+                packageName = "com.mccal.keyd"
+                this.versionName = versionName
+                applicationInfo = android.content.pm.ApplicationInfo().apply { packageName = "com.mccal.keyd" }
+            },
+        )
+    }
+
+    /** Keyd's own source as it is published: one app, 0.3.0, installed from Obtainium or by Folio. */
+    private fun keydIndex(): String {
+        val manifest = """
+            {"format":1,"id":"com.mccal.keyd","name":"Keyd","version":"0.3.0","author":{"name":"McCal"},
+             "minFolio":"0.6.6","section":"tweaks","kind":["externalApp"],"permissions":[],
+             "via":[{"store":"obtainium","repoUrl":"https://github.com/McCal-Codes/folio-keyd","id":"com.mccal.keyd"}]}
+        """.trimIndent()
+        return """{"format":1,"name":"Keyd","packages":[{"id":"com.mccal.keyd","version":"0.3.0",
+            "url":"https://example.test/Keyd-0.3.0.apk","sha256":"${"a".repeat(64)}","size":1024,"manifest":$manifest}]}"""
+    }
+
     /**
      * Writes what a successful refresh leaves behind — the source, its list and the entry that pinned it — using the
      * same store the client reads, so the screen is showing a real cached source rather than a stub.

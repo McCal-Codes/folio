@@ -110,7 +110,7 @@ class MarketApkInstallTest {
         val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         // Robolectric has no package installer to hand it to, so this gets as far as trying and fails there -
         // which is one step past the checksum, and the checksum is what this is about.
-        MarketApkInstall.install(context, "Keyd", entry(sha = sha)) { _, _ -> bytes }
+        MarketApkInstall.install(context, "Keyd", entry(sha = sha, size = bytes.size)) { _, _ -> bytes }
         val status = MarketApkInstall.status.value
         val message = (status as? MarketApkInstall.Status.Failed)?.message.orEmpty()
         assertEquals("it got past the checksum", false, message.contains("didn't match"))

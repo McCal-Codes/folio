@@ -186,17 +186,6 @@ internal fun MarketScreen(
 
     val appContext = context.applicationContext
 
-    /**
-     * Get, for whichever kind of package this is: an app of its own goes to the sheet that says where it installs
-     * from, or straight to the app when Android already has it. Everything else goes to the confirm sheet.
-     */
-    fun onExternalOrConfirm(entry: MarketEntry) {
-        val manifest = entry.entry.manifest
-        if (!MarketExternalApp.isExternal(manifest)) { confirming = entry.listingKey; return }
-        val already = MarketExternalApp.installedAppId(appContext, manifest)
-        if (already != null) MarketExternalApp.open(context, already, returns) else choosing = entry.listingKey
-    }
-
     // What finished while nobody was looking. Closing the Market during a download used to lose the message and the
     // Undo that went with it; now the store picks them up when it opens.
     LaunchedEffect(MarketWork.finished) {
@@ -207,13 +196,34 @@ internal fun MarketScreen(
      * Folio's own install of an app: download, check the checksum, hand it to Android. It runs where an install
      * runs, so leaving the store doesn't stop it, and the ring in the button follows it like any other.
      */
-    fun installApp(entry: MarketEntry) {
+    fun installApp(entry: MarketEntry, update: MarketAppUpdate.OnPhone? = null) {
         if (MarketWork.busy) return
         MarketWork.run(entry.id) {
-            MarketApkInstall.install(context, entry.name, entry.entry) { url, onProgress ->
+            MarketApkInstall.install(context, entry.name, entry.entry, update) { url, onProgress ->
                 session.sources.fetch(entry.source, url, entry.entry.size ?: 0, onProgress)
             }
         }
+    }
+
+    /**
+     * Get, for whichever kind of package this is: an app of its own goes to the sheet that says where it installs
+     * from, or straight to the app when Android already has it. Everything else goes to the confirm sheet.
+     */
+    fun onExternalOrConfirm(entry: MarketEntry) {
+        val manifest = entry.entry.manifest
+        if (!MarketExternalApp.isExternal(manifest)) { confirming = entry.listingKey; return }
+        // A newer version than the one on the phone: Folio installs it over the old one when it may, and otherwise
+        // the sheet offers the places it installs from, the same as Get.
+        MarketAppUpdate.offered(appContext, entry)?.let { onPhone ->
+            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.revokedReason != null)) {
+                installApp(entry, onPhone)
+            } else {
+                choosing = entry.listingKey
+            }
+            return
+        }
+        val already = MarketExternalApp.installedAppId(appContext, manifest)
+        if (already != null) MarketExternalApp.open(context, already, returns) else choosing = entry.listingKey
     }
 
     /**
@@ -225,7 +235,7 @@ internal fun MarketScreen(
         MarketApkInstall.status.collect { status ->
             when (status) {
                 is MarketApkInstall.Status.Installed -> {
-                    say(context.getString(R.string.text_1_s_is_installed, status.name))
+                    say(context.getString(if (status.updated) R.string.text_1_s_is_updated else R.string.text_1_s_is_installed, status.name))
                     // Ask Android again whether the app is there, so the row stops saying Get.
                     returns = MarketExternalApp.appsChanged()
                     MarketApkInstall.seen()
@@ -450,6 +460,7 @@ internal fun MarketScreen(
                             entry = open.entry,
                             session = session,
                             installed = installed[open.id],
+                            appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
                             source = open.source,
                             showBack = !beside,
@@ -777,10 +788,15 @@ private fun MarketList(
     onGet: (MarketEntry) -> Unit,
     onRemove: (String, String) -> Unit,
 ) {
-    // A package is an update when a source offers a higher version than the one installed.
+    // A package is an update when a source offers a higher version than the one installed. An app of its own is
+    // never in [installed] - Android has it, not Folio - so its version is asked of Android, and only for the
+    // listings that are apps.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appsChanged = LocalAppsChanged.current
+    val appUpdates = remember(entries, appsChanged) { entries.filter { MarketAppUpdate.offered(context, it) != null } }
     val updates = entries.filter { entry ->
         installed[entry.id]?.let { entry.entry.version > it.version } == true
-    }
+    } + appUpdates
     val shown = when (tab) {
         MarketTab.FEATURED, MarketTab.PACKAGES -> entries
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
@@ -899,6 +915,8 @@ private fun MarketRow(
     val name = entry.name
     val author = entry.entry.manifest?.author?.name?.english.orEmpty()
     val openLabel = stringResource(R.string.open_1_s, name)
+    val external = MarketExternalApp.isExternal(entry.entry.manifest)
+    val appUpdate = if (external) appUpdateFor(entry) else null
     Row(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
@@ -914,6 +932,7 @@ private fun MarketRow(
                 when {
                     installed?.enabled == false -> stringResource(R.string.turned_off_after_a_crash)
                     entry.revokedReason != null -> entry.revokedReason
+                    appUpdate != null -> "${appUpdate.versionName} → ${entry.entry.version}"
                     update -> "${installed?.version} → ${entry.entry.version}"
                     // A package from somewhere other than Folio says where it came from.
                     entry.source.kind != Source.Kind.BUILT_IN -> "$author · ${entry.source.label}"
@@ -946,9 +965,9 @@ private fun MarketRow(
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
-            update -> MarketActionButton(R.string.update, name, onGet)
-            // An app of its own isn't installed by Folio, so what it offers is Get until Android has it, then Open.
-            MarketExternalApp.isExternal(entry.entry.manifest) ->
+            update || appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
+            // An app of its own is Get until Android has it, then Open, and Update when its source lists a newer one.
+            external ->
                 MarketActionButton(
                     if (externalAppId(entry.entry.manifest) != null) R.string.open else R.string.get, name, onGet,
                 )
@@ -970,6 +989,17 @@ private fun externalAppId(manifest: com.mccal.folio.market.PackageManifest?): St
     val context = androidx.compose.ui.platform.LocalContext.current
     val resumed = LocalAppsChanged.current
     return remember(manifest, resumed) { MarketExternalApp.installedAppId(context, manifest, resumed) }
+}
+
+/**
+ * The installed app this listing would update, or null. Asked again when Folio comes back to the front or has just
+ * installed something, like [externalAppId], because an update can land while the store is open.
+ */
+@Composable
+private fun appUpdateFor(entry: MarketEntry): MarketAppUpdate.OnPhone? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val resumed = LocalAppsChanged.current
+    return remember(entry, resumed) { MarketAppUpdate.offered(context, entry) }
 }
 
 /** Bumped when Folio comes back to the front, so "is it installed yet" is asked again after a trip to Play. */
@@ -1037,6 +1067,8 @@ private fun MarketPackagePage(
     entry: IndexPackage,
     session: MarketSession,
     installed: InstalledPackage?,
+    /** The app on the phone this listing would update, when it is an app of its own and newer. */
+    appUpdate: MarketAppUpdate.OnPhone? = null,
     revoked: String?,
     source: Source,
     showBack: Boolean,
@@ -1122,6 +1154,7 @@ private fun MarketPackagePage(
                     Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
+                appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 else -> MarketActionButton(R.string.get, name, onGet)
@@ -1131,6 +1164,7 @@ private fun MarketPackagePage(
             // that isn't installed yet was being called built in too, which is the one thing it certainly isn't.
             Text(
                 when {
+                    appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
