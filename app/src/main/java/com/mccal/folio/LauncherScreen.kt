@@ -239,7 +239,7 @@ fun LauncherScreen(
     // layer transform would move the coordinates under the finger.
     val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(launcherActivity) }
     val pageEffect = if (pageEffectsOpen && !LocalReduceMotion.current && !drag.active && !resize.active && widgetSession == null)
-        state.pageEffect else PageEffect.NONE
+        state.pageEffectSpec() else PageEffect.NONE.spec
     var nativeMotion by remember { mutableStateOf(false) }
     DisposableEffect(nativePager) {
         val callback: (Float) -> Unit = { progress ->
