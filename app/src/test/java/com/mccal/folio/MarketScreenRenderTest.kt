@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -91,6 +92,37 @@ class MarketScreenRenderTest {
         } finally {
             MarketImport.pending = null
         }
+    }
+
+    // Found on the Fold8, 29 Sep 2026: a package installed from a file is listed by no source, and the Installed tab
+    // only showed listings, so it was on the phone with no row to remove it by.
+    @Test fun `a package installed from a file is under Installed and can be removed there`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val example = java.io.File(root, "docs/sdk/examples/page-effect-tilt")
+        // The example says 0.6.9; this build may be older, and the version check isn't what's being tested here.
+        val manifest = org.json.JSONObject(java.io.File(example, "manifest.json").readText()).put("minFolio", "0.6.6")
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            for ((name, bytes) in listOf("manifest.json" to manifest.toString().toByteArray(), "effect.json" to java.io.File(example, "effect.json").readBytes())) {
+                zip.putNextEntry(java.util.zip.ZipEntry(name)); zip.write(bytes); zip.closeEntry()
+            }
+        }
+        val result = kotlinx.coroutines.runBlocking { session.installFile(out.toByteArray()) }
+        assertEquals(true, result is com.mccal.folio.market.InstallResult.Installed)
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-installed").performClick()
+        // A lazy list only builds what's on screen, so the list is scrolled to the section rather than the node.
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("Opened from Files", ignoreCase = true))
+        // Group labels are drawn in capitals, as iOS does.
+        compose.onNodeWithText("Opened from Files", ignoreCase = true).assertIsDisplayed()
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+            .performScrollToNode(androidx.compose.ui.test.hasContentDescription("Remove Tilt"))
+        compose.onNodeWithContentDescription("Remove Tilt").performClick()
+        compose.waitUntil(5_000) { session.installed().none { it.id == "com.mccal.folio.effect.tilt" } }
+        awaitText("Tilt removed")
     }
 
     @Test fun `the introduction comes first, then Featured lists Folio's packages`() {

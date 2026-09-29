@@ -809,6 +809,10 @@ private fun MarketList(
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
+    // Installed from a .foliopkg someone opened, and listed by no source: without these the package was on the phone
+    // with no row to see or remove it by (found on the Fold8, 29 Sep 2026). No listing is made up for them.
+    val fromFiles = if (tab != MarketTab.INSTALLED) emptyList()
+        else installed.values.filter { pkg -> entries.none { it.id == pkg.id } }.sortedBy { it.name.lowercase() }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = FolioSpace.LARGE.dp), state = state, verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp)) {
         item {
             Column(Modifier.padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.TINY.dp)) {
@@ -866,7 +870,7 @@ private fun MarketList(
                 }
             }
         }
-        if (shown.isEmpty() && tab == MarketTab.INSTALLED && updates.isEmpty()) {
+        if (shown.isEmpty() && tab == MarketTab.INSTALLED && updates.isEmpty() && fromFiles.isEmpty()) {
             item {
                 Text(
                     stringResource(R.string.nothing_yet_themes_and_tweaks_you_get),
@@ -899,6 +903,26 @@ private fun MarketList(
                             }
                             // An odd last row keeps its half, so rows line up down both columns.
                             repeat(columns - pair.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
+        }
+        if (fromFiles.isNotEmpty()) {
+            item(key = "label-files") { SheetGroupLabel(stringResource(R.string.opened_from_files)) }
+            item(key = "group-files") {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    for (pkg in fromFiles) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(pkg.name, color = Color.White, fontSize = 16.sp)
+                                Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
+                                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                            }
+                            MarketActionButton(R.string.remove, pkg.name) { onRemove(pkg.id, pkg.name) }
                         }
                     }
                 }
