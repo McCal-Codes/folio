@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -351,19 +352,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
-                        // Page Effects, for supporters until 0.6.8 (FeatureGate.PAGE_EFFECTS). None is the default.
-                        val gestureContext = androidx.compose.ui.platform.LocalContext.current
-                        val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(gestureContext) }
-                        if (pageEffectsOpen) {
-                            // The built-ins, then effects installed from the Market, each by its package's name.
-                            val chosen = state.packagedEffectId?.takeIf { id -> state.pageEffect != PageEffect.NONE && state.packagedEffects.any { it.id == id } }
-                            IosMenuRow(stringResource(R.string.page_effects),
-                                PageEffect.entries.map { it.name to stringResource(it.label) } + state.packagedEffects.map { "package:" + it.id to it.name },
-                                chosen?.let { "package:$it" } ?: state.pageEffect.name,
-                                { key -> if (key.startsWith("package:")) model.setPackagedEffect(key.removePrefix("package:")) else model.setPageEffect(PageEffect.of(key)) },
-                                tag = "page-effect")
-                            if (state.pageEffect != PageEffect.NONE) CardNote(stringResource(R.string.home_pages_turn_in_3d_as_you_swipe_off_w))
-                        }
+                        // Page effects moved to Flipbook's own page (Settings › Tweaks › Flipbook), beside the effects
+                        // packages add; Settings search still finds them by "Page Effects".
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")
@@ -1209,7 +1199,7 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
  * Tweaks aren't in [SettingsIndex] because each has a page of its own rather than a row on a fixed page.
  */
 internal fun searchableTweaks(context: android.content.Context): List<Pair<TweakFeature, String>> =
-    visibleTweaks(context).map { it to "${it.inspiredBy} ${context.getString(it.description)}" }
+    visibleTweaks(context).map { it to "${it.inspiredBy} ${context.getString(it.description)} ${it.keywords?.let(context::getString).orEmpty()}" }
 
 @Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit, onOpenTweak: (TweakFeature) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1306,6 +1296,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         SettingsSwitch(stringResource(R.string.enabled), on, { tweak.set(model, it) }, "tweak-enabled-${tweak.id}")
         CardNote(stringResource(tweak.description))
     }
+    if (tweak.id == "pageEffects") FlipbookEffects(state, model::setPageEffect, model::setPackagedEffect)
     SettingsCard(stringResource(R.string.use_on)) {
         Column(Modifier.alpha(if (on) 1f else .4f)) {
             FolioScreen.entries.forEach { screen ->
@@ -1320,6 +1311,40 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardNote(stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
     }
     SheetGroup { IosActionRow(stringResource(R.string.remove_control, tweak.name), "tweak-remove-${tweak.id}", destructive = true) { model.removeTweak(tweak) } }
+}
+
+/**
+ * Flipbook's effects, on its own page: the built-in ones, then the ones Market packages added (Flipbook is their host,
+ * the way jailbreak Cylinder is for its scripts). Choosing one turns Flipbook on, the way choosing a ringtone turns
+ * sound on; the Enabled switch above still turns it off. Mocked in the lab as `flipbook-host`.
+ */
+@Composable internal fun FlipbookEffects(state: LauncherState, onEffect: (PageEffect) -> Unit, onPackaged: (String) -> Unit) {
+    val on = state.pageEffect != PageEffect.NONE
+    val packaged = state.packagedEffectId?.takeIf { id -> on && state.packagedEffects.any { it.id == id } }
+    @Composable fun Choice(label: String, from: String?, selected: Boolean, tag: String, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
+            .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp)
+                from?.let { Text(it, color = FolioColors.SecondaryLabel, fontSize = FolioType.FOOTNOTE.sp) }
+            }
+            if (selected) Icon(Icons.Rounded.Check, null, tint = LocalAccent.current.ink, modifier = Modifier.size(20.dp))
+        }
+    }
+    SettingsCard(stringResource(R.string.page_effects)) {
+        // No dividers here: the card draws the line between its rows itself.
+        PageEffect.entries.filter { it != PageEffect.NONE }.forEach { effect ->
+            Choice(stringResource(effect.label), null, on && packaged == null && state.pageEffect == effect, "page-effect-${effect.name.lowercase()}") {
+                onEffect(effect)
+            }
+        }
+        CardNote(stringResource(R.string.home_pages_turn_in_3d_as_you_swipe_off_w))
+    }
+    if (state.packagedEffects.isNotEmpty()) SettingsCard(stringResource(R.string.from_packages)) {
+        state.packagedEffects.forEach { effect ->
+            Choice(effect.name, null, packaged == effect.id, "page-effect-package-${effect.id}") { onPackaged(effect.id) }
+        }
+    }
 }
 
 /** Themes (after SnowBoard): built-in looks with a live preview, plus saving and importing theme files. */

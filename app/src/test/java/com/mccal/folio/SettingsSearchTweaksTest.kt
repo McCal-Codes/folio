@@ -36,4 +36,9 @@ class SettingsSearchTweaksTest {
         assertTrue(offered.isNotEmpty())
         offered.forEach { assertTrue("${it.name} isn't searchable", found(it.name).contains(it.name)) }
     }
+
+    // Page Effects moved from Settings › Gestures onto Flipbook's page in 0.6.8, so searching the old name finds it.
+    @Test fun `Flipbook is found by Page Effects, the name of the row it replaced`() {
+        assertTrue(found("page effects").contains("Flipbook"))
+    }
 }

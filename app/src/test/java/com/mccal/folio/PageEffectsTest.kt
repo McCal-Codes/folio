@@ -173,10 +173,15 @@ class PageEffectsTest {
             """Row(Modifier.fillMaxSize().testTag("home-surface")""" in screen)
     }
 
+    // The choice lives on Flipbook's own page since 0.6.8 (the effects packages add sit beside the built-ins there),
+    // and that page only exists where the gate is open: Flipbook carries the gate, and visibleTweaks leaves a gated
+    // tweak out. The Gestures page no longer offers it.
     @Test fun `the setting is only offered where the gate is open, and None is one of the choices`() {
+        val flipbook = TweakFeatures.first { it.id == "pageEffects" }
+        assertEquals("Flipbook should carry the page-effects gate", FeatureGate.PAGE_EFFECTS, flipbook.gate)
         val sheet = source("CustomizationSheet.kt")
-        assertTrue("Settings should ask the gate", "FeatureGate.PAGE_EFFECTS.isOpen(gestureContext)" in sheet)
-        assertTrue("the row should be behind the gate", "if (pageEffectsOpen) {" in sheet)
+        assertTrue("Flipbook's page should list the effects", "if (tweak.id == \"pageEffects\") FlipbookEffects(" in sheet)
+        assertTrue("Gestures should no longer offer them", "IosMenuRow(stringResource(R.string.page_effects)" !in sheet)
         assertTrue(PageEffect.NONE in PageEffect.entries)
         // Every choice needs a name people can read, and no two effects share one.
         val labels = PageEffect.entries.map { it.label }
