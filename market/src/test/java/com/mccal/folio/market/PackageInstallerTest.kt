@@ -77,7 +77,7 @@ class PackageInstallerTest {
     /** A package of [kind] with nothing else in it, or with an app store listing for externalApp. */
     private fun kindPackage(kind: String): ByteArray {
         val via = if (kind == "externalApp") ""","via":[{"store":"playStore","id":"com.example.app"}]""" else ""
-        val manifest = """{"format":1,"id":"dev.example.test.$kind","name":"Example","version":"1.0","author":{"name":"Example"},
+        val manifest = """{"format":1,"id":"dev.example.test.${kind.lowercase()}","name":"Example","version":"1.0","author":{"name":"Example"},
             "minFolio":"0.6.6","section":"tweaks","kind":["$kind"],"permissions":[]$via}"""
         return zip(mapOf("manifest.json" to manifest.toByteArray()))
     }
@@ -95,8 +95,9 @@ class PackageInstallerTest {
     // An app listing is offered by its source through Android; opened as a file it would install as nothing.
     @Test fun `an app listing opened as a file is refused`() {
         val result = installer.install(kindPackage("externalApp"), origin = InstalledPackage.Origin.FILE)
-        assertTrue("$result", result is InstallResult.Failed && result.reason == InstallResult.Reason.MANIFEST)
-        assertTrue(store.installed().none { it.id == "dev.example.test.externalApp" })
+        // The manifest itself is fine; it's the channel that's wrong, and the message says so.
+        assertTrue("$result", result is InstallResult.Failed && result.reason == InstallResult.Reason.MANIFEST && "through Android" in result.message)
+        assertTrue(store.installed().none { it.id == "dev.example.test.externalapp" })
     }
 
     /** A page effect package from the shipped example, with its effect.json replaced when a test wants. */
