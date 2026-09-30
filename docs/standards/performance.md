@@ -26,12 +26,14 @@ frames, P50 9 ms, P90 16 ms, P99 25 ms; Android wallpaper 4.5%, 5 / 8 / 19 ms.
 
 Baseline, J1 on the Fold8 cover screen (`fast` build compiled with its baseline profile, Home started after an update,
 medians of 5): first frame 80 ms, fully drawn 899 ms (827 to 1,151). Uncompiled, as it is right after an update (one
-run): 114 ms and 1,501 ms. Fully drawn misses the 400 ms target because it waits for the app list: one background
-thread loads every app's icon in turn (about 250 apps and shortcuts), 587 ms compiled, mostly decoding icon images
+run): 114 ms and 1,501 ms. Fully drawn missed the 400 ms target because it waited for the app list: one background
+thread loaded every app's icon in turn (about 250 apps and shortcuts), 587 ms compiled, mostly decoding icon images
 (224, 304 ms) and making a `Resources` for each app (253, 156 ms). Reading and decoding the saved layout takes under
 half a millisecond and a save 0.3 ms, so neither is worth moving off the main thread. Method: `atrace` with Folio's
 trace sections and Android's "Displayed" and "Fully drawn" times. An update is what restarts Folio Dev between runs,
-because force-stop turns its accessibility service off.
+because force-stop turns its accessibility service off. After Home's own apps load first (same method, 30 Sep 2026):
+first frame 78 ms, fully drawn 157 ms (143 to 236). Loading Home's 23 apps takes 127 ms beside the first frame; the
+rest of the list still lands at about 0.8 s, as before.
 
 ### Targets (proposed; the maintainer confirms before they're enforced)
 
@@ -88,7 +90,7 @@ Not yet:
 - One journey in the profile; no timing benchmarks (no `FrameTimingMetric`, no startup metric).
 - No JankStats.
 - No Compose compiler reports or stability config.
-- Every start loads every app's icon again, one at a time (J1 above).
+- Every start still loads every app's icon again, one at a time; Home's own apps come first (J1 above).
 - J2 jank is mostly UI-thread spikes (recomposition), not GPU; see [STA gap 4](state-data.md).
 - Unkeyed `HorizontalPager` in `MarketFeatured.kt:99`.
 
@@ -102,4 +104,4 @@ Not yet:
 | 4 | Compose compiler reports once, to find unstable parameters on Home | S |
 | 5 | `Trace` sections around icon loading and widget inflation (the layout load has them) | S |
 | 6 | Confirm or change the targets above | S |
-| 7 | Icons on a start: Home's first page and dock before the rest, or a saved icon cache, so J1 meets its target | M |
+| 7 | A saved icon cache, so the App Library and search are ready sooner after a start (Home's apps come first) | M |

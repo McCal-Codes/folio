@@ -338,7 +338,7 @@ internal fun HomePagePane(
                 folders = state.folders, onLaunch = onLaunch, onActions = onActions, onWidget = onWidget,
                 onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove,
                 onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }))
-            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp))
+            if (!state.homeReady) LinearProgressIndicator(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp))
             if (state.error != null) Text(state.error, color = Color.White,
                 modifier = Modifier.clickable(onClick = onRefresh).padding(FolioSpace.MEDIUM.dp))
         }
