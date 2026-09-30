@@ -10,6 +10,7 @@ import android.graphics.Canvas
 import android.graphics.Path
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
@@ -375,6 +376,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     private var iconConfiguration = ""
     /** Set by [reloadIcons]; the refresh that follows drops every cached icon. */
     @Volatile private var iconsStale = false
+    /** Icons kept between starts; used in a refresh only once their fingerprint was checked. */
+    private val savedIcons = SavedIcons(java.io.File(application.cacheDir, "icons"))
+    @Volatile private var savedIconsChecked = false
+    /** Icons loaded in this refresh, saved once its list is shown. */
+    private val unsavedIcons = java.util.Collections.synchronizedList(mutableListOf<SavedIcons.Saved>())
+    private val folioVersionCode by lazy {
+        runCatching { getApplication<Application>().let { it.packageManager.getPackageInfo(it.packageName, 0).longVersionCode } }.getOrDefault(0L)
+    }
     internal var completedRefreshes = 0
         private set
     private val callback = object : LauncherApps.Callback() {
@@ -431,13 +440,19 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val home = withContext(Dispatchers.IO) {
+                    if (iconsStale) caught("Home: forgetting saved icons") { savedIcons.clear() }
                     if (configuration != iconConfiguration || iconsStale) { iconCache.clear(); iconConfiguration = configuration; iconsStale = false }
+                    savedIconsChecked = caught("Home: checking saved icons") {
+                        savedIcons.check("$configuration|${Build.FINGERPRINT}|$folioVersionCode")
+                    }.isSuccess
+                    // Only what this refresh loads is saved: an earlier one that failed may have drawn under another fingerprint.
+                    unsavedIcons.clear()
                     iconCache.keys.removeAll { key -> parseProfileAppId(key)?.let { identity ->
                         val serial = identity.userSerial ?: userManager.getSerialNumberForUser(Process.myUserHandle())
                         serial to (ComponentName.unflattenFromString(identity.component)?.packageName ?: "") in invalidated
                     } == true }
                     if (homeFirst.isEmpty()) emptyList() else caught("Home: loading its apps first") {
-                        traced("Folio.loadHomeApps") { homeEntries(homeFirst, resources.displayMetrics.densityDpi) }
+                        traced("Folio.loadHomeApps") { homeEntries(homeFirst, resources.displayMetrics.densityDpi, invalidated) }
                     }.getOrDefault(emptyList())
                 }
                 mutable.update { it.withHomeApps(home) }
@@ -456,7 +471,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                         val descriptor = profiles.first { it.userSerial == serial }
                         val activityList = if (descriptor.available) runCatching { launcherApps.getActivityList(null, profile) }.getOrNull() else null
                         if (activityList == null) emptyList() else activityList.also { authoritativeProfiles += serial }.mapNotNull { info ->
-                            activityId(info, serial, personalSerial)?.let { id -> activityEntry(info, id, profile, descriptor) }
+                            activityId(info, serial, personalSerial)?.let { id -> activityEntry(info, id, profile, descriptor, invalidated) }
                         }
                     }
                     // Pinned shortcuts (e.g. Chrome's "Add to Home screen"). Only the default Home app may read them;
@@ -541,6 +556,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                 needsMigration = false
                 persist()
                 completedRefreshes++
+                val unsaved = synchronized(unsavedIcons) { unsavedIcons.toList().also { unsavedIcons.clear() } }
+                val listed = apps.entries.mapTo(mutableSetOf(), AppEntry::id)
+                if (savedIconsChecked) viewModelScope.launch(Dispatchers.IO) {
+                    caught("Home: saving icons") { traced("Folio.saveIcons") { savedIcons.write(unsaved); savedIcons.prune(listed) } }
+                }
             } catch (_: Exception) {
                 mutable.update { it.copy(loading = false, error = getApplication<Application>().getString(R.string.apps_could_not_be_loaded_tap_to_retry)) }
             } finally {
@@ -608,13 +628,29 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return profileAppId(idComponent.flattenToString(), serial, personalSerial)
     }
 
-    /** [info]'s entry: from the icon cache while its label and component still match, else loaded and cached. */
-    private fun activityEntry(info: LauncherActivityInfo, id: String, profile: UserHandle, descriptor: AppProfile): AppEntry {
+    /**
+     * [info]'s entry: from the icon cache while its label and component still match; else from the icons saved at an
+     * earlier start, while the app is unchanged and Android hasn't just said it changed ([invalidated]); else loaded,
+     * and saved once the list is shown. A saved icon skips loading the app's label and icon, which is most of a start.
+     */
+    private fun activityEntry(info: LauncherActivityInfo, id: String, profile: UserHandle, descriptor: AppProfile,
+        invalidated: Set<Pair<Long, String>>): AppEntry {
+        val sourceDir = info.applicationInfo?.sourceDir.orEmpty()
+        val canSave = savedIconsChecked && sourceDir.isNotEmpty()
+        if (canSave && iconCache[id] == null && (descriptor.userSerial to info.componentName.packageName) !in invalidated) {
+            savedIcons.read(id, info.componentName, sourceDir)?.let { (label, icon) ->
+                return AppEntry(id, label, icon, info.componentName, profile, descriptor.userSerial, descriptor.label,
+                    descriptor.isWork, available = true).also { iconCache[id] = it }
+            }
+        }
         val label = info.label.toString()
         return iconCache[id]?.takeIf { it.label == label && it.available && it.component == info.componentName } ?: run {
             val icon = runCatching { info.getBadgedIcon(0) }.getOrElse { getApplication<Application>().packageManager.defaultActivityIcon }
             AppEntry(id, label, launcherIcon(icon), info.componentName, profile, descriptor.userSerial, descriptor.label,
-                descriptor.isWork, available = true).also { iconCache[id] = it }
+                descriptor.isWork, available = true).also {
+                iconCache[id] = it
+                if (canSave) unsavedIcons += SavedIcons.Saved(id, label, it.icon, info.componentName, sourceDir)
+            }
         }
     }
 
@@ -638,13 +674,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * Home's apps and pinned shortcuts, built into the icon cache the full list reads, so none is loaded twice. Before,
      * a start loaded every installed app's icon in turn before Home had any.
      */
-    private fun homeEntries(ids: Set<String>, densityDpi: Int): List<AppEntry> {
+    private fun homeEntries(ids: Set<String>, densityDpi: Int, invalidated: Set<Pair<Long, String>>): List<AppEntry> {
         val (_, personalSerial, _, handles, profiles) = appProfiles()
         val own = getApplication<Application>().packageName
         return handles.zip(profiles).filter { (_, descriptor) -> descriptor.available }.flatMap { (profile, descriptor) ->
             val serial = descriptor.userSerial
             val apps = runCatching { launcherApps.getActivityList(null, profile) }.getOrNull().orEmpty().mapNotNull { info ->
-                activityId(info, serial, personalSerial)?.takeIf(ids::contains)?.let { activityEntry(info, it, profile, descriptor) }
+                activityId(info, serial, personalSerial)?.takeIf(ids::contains)?.let { activityEntry(info, it, profile, descriptor, invalidated) }
             }
             val shortcuts = runCatching { launcherApps.getShortcuts(LauncherApps.ShortcutQuery()
                 .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED), profile) }.getOrNull().orEmpty()
@@ -1290,7 +1326,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-/** Render adaptive layers through our rounded-square mask, preserving original app artwork. */
+/**
+ * Render adaptive layers through our rounded-square mask, preserving original app artwork. Drawing it differently
+ * needs [SavedIcons.FORMAT] bumped, or starts keep showing icons saved the old way.
+ */
 private fun launcherIcon(drawable: Drawable): Bitmap {
     if (drawable !is AdaptiveIconDrawable) return drawable.toBitmap(144, 144)
     val bitmap = Bitmap.createBitmap(144, 144, Bitmap.Config.ARGB_8888)

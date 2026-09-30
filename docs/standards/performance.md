@@ -33,7 +33,9 @@ half a millisecond and a save 0.3 ms, so neither is worth moving off the main th
 trace sections and Android's "Displayed" and "Fully drawn" times. An update is what restarts Folio Dev between runs,
 because force-stop turns its accessibility service off. After Home's own apps load first (same method, 30 Sep 2026):
 first frame 78 ms, fully drawn 157 ms (143 to 236). Loading Home's 23 apps takes 127 ms beside the first frame; the
-rest of the list still lands at about 0.8 s, as before.
+rest of the list still lands at about 0.8 s, as before. With icons saved between starts (same method, the cache filled
+by an earlier start): Home's apps in at 53 ms (was 139), fully drawn 120 ms (was 157), the full list at 317 ms (was
+824). A start with nothing saved yet saves every icon once, 435 ms in the background after the list is shown.
 
 ### Targets (proposed; the maintainer confirms before they're enforced)
 
@@ -90,7 +92,8 @@ Not yet:
 - One journey in the profile; no timing benchmarks (no `FrameTimingMetric`, no startup metric).
 - No JankStats.
 - No Compose compiler reports or stability config.
-- Every start still loads every app's icon again, one at a time; Home's own apps come first (J1 above).
+- A refresh after a package change still loads every app's name to check it (about 0.45 s in the background on the
+  Fold8), and pinned shortcuts and quiet work apps aren't saved between starts.
 - J2 jank is mostly UI-thread spikes (recomposition), not GPU; see [STA gap 4](state-data.md).
 - Unkeyed `HorizontalPager` in `MarketFeatured.kt:99`.
 
@@ -104,4 +107,4 @@ Not yet:
 | 4 | Compose compiler reports once, to find unstable parameters on Home | S |
 | 5 | `Trace` sections around icon loading and widget inflation (the layout load has them) | S |
 | 6 | Confirm or change the targets above | S |
-| 7 | A saved icon cache, so the App Library and search are ready sooner after a start (Home's apps come first) | M |
+| 7 | Check names without loading each app's resources, and save shortcuts and quiet work apps between starts too | M |
