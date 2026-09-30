@@ -298,6 +298,12 @@ internal fun MarketScreen(
     fun tryAgain(id: String, name: String) {
         if (MarketWork.busy) return
         scope.launch {
+            // An add-on whose tweak was removed since: say so and offer the tweak, as Get does, not "couldn't".
+            val hosts = withContext(session.io) { session.missingHosts(id) }
+            if (hosts.isNotEmpty()) {
+                announce(name, InstallResult.NeedsHost(hosts))
+                return@launch
+            }
             val back = withContext(session.io) { session.enable(id) }
             say(context.getString(if (back) R.string.text_1_s_is_back_on else R.string.folio_couldn_t_put_1_s_back_on, name))
             refresh()

@@ -213,6 +213,9 @@ internal class MarketSession(
     /** Try Again, after Safe Mode turned a package off: its changes go back on. */
     fun enable(id: String): Boolean = installer.enable(id).also { Diagnostics.marketTurnedOn(id, it) }
 
+    /** The tweaks package [id] is an add-on to that this phone hasn't got, so it can't go back on yet. */
+    fun missingHosts(id: String): List<String> = installer.missingHosts(id)
+
     /** What a layout backup carries about packages, or null when this phone has none to carry. */
     fun exportPackages(): String? = store.installed().takeIf { it.isNotEmpty() }?.let { store.export() }
 
