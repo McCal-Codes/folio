@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Power
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -41,7 +43,10 @@ import com.mccal.folio.market.PackageSafety
  * applied when this is on screen; Get is the first moment anything changes.
  */
 @Composable
-internal fun MarketInstallSheet(entry: IndexPackage, builtIn: Boolean, onGet: () -> Unit, onCancel: () -> Unit) {
+internal fun MarketInstallSheet(
+    entry: IndexPackage, builtIn: Boolean, onGet: () -> Unit, onCancel: () -> Unit,
+    host: HostTweak? = null, onGetHost: () -> Unit = {},
+) {
     val manifest = entry.manifest ?: return
     MarketInstallSheet(
         manifest = manifest,
@@ -52,6 +57,8 @@ internal fun MarketInstallSheet(entry: IndexPackage, builtIn: Boolean, onGet: ()
         ),
         onGet = onGet,
         onCancel = onCancel,
+        host = host,
+        onGetHost = onGetHost,
     )
 }
 
@@ -64,21 +71,65 @@ internal data class InstallOrigin(
     val warning: String? = null,
 )
 
+/** The tweak a package is an add-on to ([com.mccal.folio.market.PackageKind.hostTweak]), and whether it's on the phone. */
+internal data class HostTweak(val id: String, val name: String, val onPhone: Boolean)
+
+/** "Works with Flipbook": the package is an add-on, and this is the tweak it adds to. */
+@Composable
+internal fun WorksWithChip(host: HostTweak, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.Teal.copy(alpha = .2f))
+            .padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.HAIR.dp).testTag("works-with"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Power, contentDescription = null, tint = FolioColors.Teal, modifier = Modifier.size(14.dp))
+        Text(stringResource(R.string.works_with_1_s, host.name), color = FolioColors.Teal, fontSize = FolioType.FOOTNOTE.sp,
+            modifier = Modifier.padding(start = FolioSpace.TINY.dp))
+    }
+}
+
+/**
+ * Said before Get rather than after it fails: the tweak this add-on needs isn't on the phone, so Get is off and this
+ * offers the tweak instead. [onGetHost] opens the tweak's own listing, or adds the tweak back.
+ */
+@Composable
+internal fun NeedsHostNote(host: HostTweak, packageName: String, onGetHost: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.Warning.copy(alpha = .14f))
+            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("needs-host"),
+    ) {
+        Text(stringResource(R.string.needs_1_s_get_1_s_first_then_2_s_adds_an, host.name, packageName),
+            color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+        Text(
+            stringResource(R.string.get_tweak, host.name),
+            color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onGetHost)
+                .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight(),
+        )
+    }
+}
+
 @Composable
 internal fun MarketInstallSheet(
     manifest: com.mccal.folio.market.PackageManifest,
     origin: InstallOrigin,
     onGet: () -> Unit,
     onCancel: () -> Unit,
+    host: HostTweak? = null,
+    onGetHost: () -> Unit = {},
 ) {
     val safety = PackageSafety.of(manifest)
     val name = manifest.name.english
+    val hostMissing = host != null && !host.onPhone
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XL.dp).testTag("market-install-sheet")) {
         Text(stringResource(R.string.get_1_s, name), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
         Text(
             stringResource(R.string.text_1_s_version_2_s, manifest.author.name.english, manifest.version.toString()),
             color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp),
         )
+        host?.let { WorksWithChip(it, Modifier.padding(bottom = FolioSpace.SMALL.dp)) }
+        if (hostMissing) NeedsHostNote(host!!, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
         // Said before Get, because it's part of deciding: the author declared AI helped make this.
         manifest.aiAssisted?.let { ai ->
             Row(Modifier.padding(bottom = FolioSpace.MEDIUM.dp).testTag("install-ai-assisted"), verticalAlignment = Alignment.Top) {
@@ -134,14 +185,16 @@ internal fun MarketInstallSheet(
                 stringResource(R.string.cancel),
                 color = LocalAccent.current.ink, fontSize = 16.sp,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
-                    .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
+                    .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
+            // Off while the tweak it adds to is missing: the note above says why, and offers the tweak.
             Text(
                 stringResource(R.string.get),
-                color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
-                    .clickable(onClickLabel = getName, onClick = onGet)
-                    .heightIn(min = 44.dp).padding(horizontal = 22.dp, vertical = FolioSpace.MEDIUM.dp)
+                color = Color.White.copy(alpha = if (hostMissing) .4f else 1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
+                    .background(if (hostMissing) Color.White.copy(alpha = .12f) else LocalAccent.current.fill)
+                    .clickable(enabled = !hostMissing, onClickLabel = getName, onClick = onGet)
+                    .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(horizontal = 22.dp, vertical = FolioSpace.MEDIUM.dp)
                     .testTag("market-install-confirm"),
             )
         }

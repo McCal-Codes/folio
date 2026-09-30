@@ -819,6 +819,8 @@
     <string name="text_1_s_is_on">%1$s 已开启</string>
     <string name="text_1_s_needs_a_newer_folio">%1$s 需要更新版本的 Folio</string>
     <string name="text_1_s_works_with_2_s_get_it_first">%1$s 需要 %2$s。请先获取 %2$s。</string>
+    <string name="works_with_1_s">适用于 %1$s</string>
+    <string name="needs_1_s_get_1_s_first_then_2_s_adds_an">需要 %1$s。先获取 %1$s，然后 %2$s 会为它添加一个效果。</string>
     <string name="text_1_s_removed">已移除 %1$s</string>
     <string name="that_package_needs_a_newer_folio">那个软件包需要更新版本的 Folio</string>
     <string name="that_source_is_already_set_up">那个源已经设置好了</string>
