@@ -12,6 +12,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Widgets, one app at a time:** the widget picker has a row of app icons across the top; tap one to see only that app's widgets. While browsing, each app shows a single row with Show All for the rest, so an app with hundreds of widgets no longer stands in front of everything else.
 
 ### Changed
+- **Home is ready sooner after Folio starts:** Folio loaded every app's icon, one after another, before Home showed any, which took most of a second on a Galaxy Z Fold8. It now loads the apps on Home, in the dock and in Home's folders first, so Home is complete in about a sixth of the time. The App Library and search fill in as the rest load.
 - **Flipbook's effects are on Flipbook's page:** Cube, Carousel and any effect you add from the Market are listed on Flipbook's own page in Settings › Tweaks, instead of a menu in Gestures & Actions. Choosing one turns Flipbook on, and Settings search finds Flipbook when you type Page Effects.
 - **A shorter Settings list:** the first screen goes from 26 rows to 16. Software Update, What's New, Help, the Roadmap, Credits and Advanced are under a new General page, which also has Language (Android's own per-app language screen). Ko-fi, your supporter code and the Supporters list are one Support Folio row. The Market opens from Tweaks, and Themes from Wallpaper & Appearance.
 

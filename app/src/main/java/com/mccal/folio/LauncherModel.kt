@@ -2,7 +2,9 @@ package com.mccal.folio
 
 import android.app.Application
 import android.content.ComponentName
+import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Path
@@ -279,6 +281,8 @@ data class LauncherState(
     val homeFitCompact: Int = 0,
     val homeFitExpanded: Int = 0,
     val loading: Boolean = true,
+    /** Home's own apps are in. At a start they come ahead of the rest, while [loading] stays true (not saved). */
+    val homeAppsLoaded: Boolean = false,
     val error: String? = null,
 ) {
     val order: List<String> get() = homeSlots.filterNotNull()
@@ -287,7 +291,21 @@ data class LauncherState(
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded)
+    /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
+    val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
+
+/** Every app id Home shows without opening an app: its pages, the dock, and the apps in its folders and icon stacks. */
+internal fun LauncherState.homeAppIds(): Set<String> =
+    ((homeSlots + leadingSlots + dock).filterNotNull().filterNot(::isFolderId) + folders.flatMap { it.appIds } +
+        iconStacks.keys + iconStacks.values.flatten()).toSet()
+
+/**
+ * Home's apps, shown ahead of the full list at a start. [LauncherState.loading] stays true, so nothing that needs
+ * every app (reconciling, restoring, the App Library) acts on the part, and a full list is never replaced by it.
+ */
+internal fun LauncherState.withHomeApps(home: List<AppEntry>): LauncherState =
+    if (!loading || apps.isNotEmpty() || home.isEmpty()) this else copy(apps = home.withAppNames(appNames), homeAppsLoaded = true)
 
 /**
  * Automatic: the fewest rows any of this device's screens has room for (screens not measured yet don't count, and
@@ -316,7 +334,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     private val launcherApps = application.getSystemService(LauncherApps::class.java)
     private val userManager = application.getSystemService(UserManager::class.java)
     private val appCatalogPrefs = application.getSharedPreferences("app_catalog", 0)
-    private val legacyRaw = prefs.getString("state", null)
+    private val legacyRaw = traced("Folio.readState") { prefs.getString("state", null) }
     private val sourceSchema = runCatching { JSONObject(legacyRaw ?: "{}").optInt("schema", 1) }.getOrDefault(1)
     private var needsMigration = sourceSchema < 2
     private var statePayloadInvalid = false
@@ -408,33 +426,25 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         removedPackages.clear()
         val resources = getApplication<Application>().resources
         val configuration = resources.configuration.let { "${it.densityDpi}|${it.locales.toLanguageTags()}|${it.uiMode}|${assetsSequence(it.toString())}" }
+        // At a start nothing is cached yet: Home's own apps come first (J1 in docs/standards/performance.md).
+        val homeFirst = mutable.value.takeIf { it.apps.isEmpty() && !needsMigration && !statePayloadInvalid }?.homeAppIds().orEmpty()
         viewModelScope.launch {
             try {
-                val apps = withContext(Dispatchers.IO) {
+                val home = withContext(Dispatchers.IO) {
                     if (configuration != iconConfiguration || iconsStale) { iconCache.clear(); iconConfiguration = configuration; iconsStale = false }
                     iconCache.keys.removeAll { key -> parseProfileAppId(key)?.let { identity ->
                         val serial = identity.userSerial ?: userManager.getSerialNumberForUser(Process.myUserHandle())
                         serial to (ComponentName.unflattenFromString(identity.component)?.packageName ?: "") in invalidated
                     } == true }
+                    if (homeFirst.isEmpty()) emptyList() else caught("Home: loading its apps first") {
+                        traced("Folio.loadHomeApps") { homeEntries(homeFirst, resources.displayMetrics.densityDpi) }
+                    }.getOrDefault(emptyList())
+                }
+                mutable.update { it.withHomeApps(home) }
+                val apps = withContext(Dispatchers.IO) {
                     val collator = Collator.getInstance()
                     val application = getApplication<Application>()
-                    val personal = Process.myUserHandle()
-                    val personalSerial = userManager.getSerialNumberForUser(personal)
-                    val associatedSerials = userManager.userProfiles.mapTo(mutableSetOf(), userManager::getSerialNumberForUser)
-                    val handles = launcherApps.profiles
-                        .filter { profile ->
-                            val serial = userManager.getSerialNumberForUser(profile)
-                            serial in associatedSerials && (serial == personalSerial || isSupportedWorkProfile(launcherApps, profile))
-                        }
-                        .distinctBy(userManager::getSerialNumberForUser)
-                    val profiles = handles.map { profile ->
-                        val serial = userManager.getSerialNumberForUser(profile)
-                        val isPersonal = serial == personalSerial
-                        val quiet = !isPersonal && runCatching { userManager.isQuietModeEnabled(profile) }.getOrDefault(false)
-                        val unlocked = runCatching { userManager.isUserUnlocked(profile) }.getOrDefault(isPersonal)
-                        AppProfile(serial, if (isPersonal) "Personal" else "Work", isPersonal, !isPersonal,
-                            quiet, unlocked, !quiet && unlocked)
-                    }
+                    val (personal, personalSerial, associatedSerials, handles, profiles) = appProfiles()
                     val cachedBeforeProfiles = loadCachedApps().filterNot { entry -> entry.userSerial to entry.packageName in removed }
                     val removedProfileSerials = removedAssociatedProfileSerials(
                         cachedBeforeProfiles.filter(AppEntry::isWork).mapTo(mutableSetOf(), AppEntry::userSerial), associatedSerials)
@@ -446,20 +456,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                         val descriptor = profiles.first { it.userSerial == serial }
                         val activityList = if (descriptor.available) runCatching { launcherApps.getActivityList(null, profile) }.getOrNull() else null
                         if (activityList == null) emptyList() else activityList.also { authoritativeProfiles += serial }.mapNotNull { info ->
-                            // Folio lists itself only as its Settings app, like iOS Settings in the App Library.
-                            if (info.componentName.packageName == application.packageName && !info.componentName.className.startsWith("$FOLIO_CLASSES.${AppIconChoice.ALIAS_PREFIX}")) return@mapNotNull null
-                            val component = info.componentName
-                            // Every alternate icon is its own component; they share one id so switching icons keeps
-                            // Folio's place on Home, in the dock and in folders.
-                            val idComponent = if (component.packageName == application.packageName)
-                                ComponentName(application.packageName, "$FOLIO_CLASSES.${AppIconChoice.TEAL.alias}") else component
-                            val id = profileAppId(idComponent.flattenToString(), serial, personalSerial)
-                            val label = info.label.toString()
-                            iconCache[id]?.takeIf { it.label == label && it.available && it.component == component } ?: run {
-                                val icon = runCatching { info.getBadgedIcon(0) }.getOrElse { application.packageManager.defaultActivityIcon }
-                                AppEntry(id, label, launcherIcon(icon), component, profile, serial, descriptor.label,
-                                    descriptor.isWork, available = true).also { iconCache[id] = it }
-                            }
+                            activityId(info, serial, personalSerial)?.let { id -> activityEntry(info, id, profile, descriptor) }
                         }
                     }
                     // Pinned shortcuts (e.g. Chrome's "Add to Home screen"). Only the default Home app may read them;
@@ -472,15 +469,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                             .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED), profile) }.getOrNull()
                             ?: return@flatMap cached.filter { it.isShortcut && it.userSerial == serial }.map { it.copy(available = true) }
                         pinned.filter { it.isEnabled && it.`package` != application.packageName }.map { info ->
-                            val component = ComponentName(info.`package`, SHORTCUT_CLASS_PREFIX + info.id)
-                            val id = profileAppId(component.flattenToString(), serial, personalSerial)
-                            val label = (info.shortLabel ?: info.longLabel ?: "Shortcut").toString()
-                            iconCache[id]?.takeIf { it.label == label && it.available } ?: run {
-                                val icon = runCatching { launcherApps.getShortcutBadgedIconDrawable(info, resources.displayMetrics.densityDpi) }.getOrNull()
-                                    ?: application.packageManager.defaultActivityIcon
-                                AppEntry(id, label, launcherIcon(icon), component, profile, serial, descriptor.label, descriptor.isWork, available = true)
-                                    .also { iconCache[id] = it }
-                            }
+                            shortcutEntry(info, profile, descriptor, personalSerial, resources.displayMetrics.densityDpi)
                         }
                     }
                     val live = liveApps + shortcuts
@@ -544,7 +533,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                         dock = reconciled.dock, folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
                         appNames = old.appNames - removedIds,
-                        canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false,
+                        canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
                         error = if (statePayloadInvalid) old.error else null)
                 }
                 if (needsMigration && legacyRaw != null && !prefs.contains("state_v1_backup"))
@@ -579,6 +568,91 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                 item.optString("profile", if (isWork) "Work" else "Personal"), isWork, available = false)
         }
     }.getOrDefault(emptyList())
+
+    private data class AppProfiles(val personal: UserHandle, val personalSerial: Long, val associatedSerials: Set<Long>,
+        val handles: List<UserHandle>, val profiles: List<AppProfile>)
+
+    /** The profiles Folio lists apps from (personal, and a supported work profile), and whether each can list them now. */
+    private fun appProfiles(): AppProfiles {
+        val personal = Process.myUserHandle()
+        val personalSerial = userManager.getSerialNumberForUser(personal)
+        val associatedSerials = userManager.userProfiles.mapTo(mutableSetOf(), userManager::getSerialNumberForUser)
+        val handles = launcherApps.profiles
+            .filter { profile ->
+                val serial = userManager.getSerialNumberForUser(profile)
+                serial in associatedSerials && (serial == personalSerial || isSupportedWorkProfile(launcherApps, profile))
+            }
+            .distinctBy(userManager::getSerialNumberForUser)
+        val profiles = handles.map { profile ->
+            val serial = userManager.getSerialNumberForUser(profile)
+            val isPersonal = serial == personalSerial
+            val quiet = !isPersonal && runCatching { userManager.isQuietModeEnabled(profile) }.getOrDefault(false)
+            val unlocked = runCatching { userManager.isUserUnlocked(profile) }.getOrDefault(isPersonal)
+            AppProfile(serial, if (isPersonal) "Personal" else "Work", isPersonal, !isPersonal,
+                quiet, unlocked, !quiet && unlocked)
+        }
+        return AppProfiles(personal, personalSerial, associatedSerials, handles, profiles)
+    }
+
+    /**
+     * The id Home and the App Library know [info] by, or null for Folio's own components: Folio lists itself only as
+     * its Settings app, like iOS Settings in the App Library.
+     */
+    private fun activityId(info: LauncherActivityInfo, serial: Long, personalSerial: Long): String? {
+        val own = getApplication<Application>().packageName
+        val component = info.componentName
+        if (component.packageName == own && !component.className.startsWith("$FOLIO_CLASSES.${AppIconChoice.ALIAS_PREFIX}")) return null
+        // Every alternate icon is its own component; they share one id so switching icons keeps
+        // Folio's place on Home, in the dock and in folders.
+        val idComponent = if (component.packageName == own) ComponentName(own, "$FOLIO_CLASSES.${AppIconChoice.TEAL.alias}") else component
+        return profileAppId(idComponent.flattenToString(), serial, personalSerial)
+    }
+
+    /** [info]'s entry: from the icon cache while its label and component still match, else loaded and cached. */
+    private fun activityEntry(info: LauncherActivityInfo, id: String, profile: UserHandle, descriptor: AppProfile): AppEntry {
+        val label = info.label.toString()
+        return iconCache[id]?.takeIf { it.label == label && it.available && it.component == info.componentName } ?: run {
+            val icon = runCatching { info.getBadgedIcon(0) }.getOrElse { getApplication<Application>().packageManager.defaultActivityIcon }
+            AppEntry(id, label, launcherIcon(icon), info.componentName, profile, descriptor.userSerial, descriptor.label,
+                descriptor.isWork, available = true).also { iconCache[id] = it }
+        }
+    }
+
+    /** A pinned shortcut's id on Home: its app's package, and "#shortcut:" plus the shortcut's own id. */
+    private fun shortcutAppId(info: ShortcutInfo, serial: Long, personalSerial: Long): String =
+        profileAppId(ComponentName(info.`package`, SHORTCUT_CLASS_PREFIX + info.id).flattenToString(), serial, personalSerial)
+
+    /** A pinned shortcut's entry: from the icon cache while its label still matches, else loaded and cached. */
+    private fun shortcutEntry(info: ShortcutInfo, profile: UserHandle, descriptor: AppProfile, personalSerial: Long, densityDpi: Int): AppEntry {
+        val id = shortcutAppId(info, descriptor.userSerial, personalSerial)
+        val label = (info.shortLabel ?: info.longLabel ?: "Shortcut").toString()
+        return iconCache[id]?.takeIf { it.label == label && it.available } ?: run {
+            val icon = runCatching { launcherApps.getShortcutBadgedIconDrawable(info, densityDpi) }.getOrNull()
+                ?: getApplication<Application>().packageManager.defaultActivityIcon
+            AppEntry(id, label, launcherIcon(icon), ComponentName(info.`package`, SHORTCUT_CLASS_PREFIX + info.id), profile,
+                descriptor.userSerial, descriptor.label, descriptor.isWork, available = true).also { iconCache[id] = it }
+        }
+    }
+
+    /**
+     * Home's apps and pinned shortcuts, built into the icon cache the full list reads, so none is loaded twice. Before,
+     * a start loaded every installed app's icon in turn before Home had any.
+     */
+    private fun homeEntries(ids: Set<String>, densityDpi: Int): List<AppEntry> {
+        val (_, personalSerial, _, handles, profiles) = appProfiles()
+        val own = getApplication<Application>().packageName
+        return handles.zip(profiles).filter { (_, descriptor) -> descriptor.available }.flatMap { (profile, descriptor) ->
+            val serial = descriptor.userSerial
+            val apps = runCatching { launcherApps.getActivityList(null, profile) }.getOrNull().orEmpty().mapNotNull { info ->
+                activityId(info, serial, personalSerial)?.takeIf(ids::contains)?.let { activityEntry(info, it, profile, descriptor) }
+            }
+            val shortcuts = runCatching { launcherApps.getShortcuts(LauncherApps.ShortcutQuery()
+                .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED), profile) }.getOrNull().orEmpty()
+                .filter { it.isEnabled && it.`package` != own && shortcutAppId(it, serial, personalSerial) in ids }
+                .map { shortcutEntry(it, profile, descriptor, personalSerial, densityDpi) }
+            apps + shortcuts
+        }
+    }
 
     private fun saveCachedApps(apps: List<AppEntry>) {
         val array = JSONArray().also { result -> apps.forEach { app -> result.put(JSONObject()
@@ -1113,6 +1187,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
 
     private fun persist() {
         if (needsMigration || statePayloadInvalid) return
+        traced("Folio.persist", ::writeState)
+    }
+
+    private fun writeState() {
         val s = mutable.value
         fun preset(p: LayoutPreset) = JSONObject().put("iconSize", p.iconSize).put("rowGap", p.rowGap)
             .put("dockWidth", p.dockWidth).put("dockPosition", p.dockPosition).put("dockAlignToGrid", p.dockAlignToGrid)
@@ -1199,12 +1277,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
     }
 
-    private fun load(): LauncherState = runCatching {
+    private fun load(): LauncherState = traced("Folio.decodeState") { runCatching {
         decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
         LauncherState(loading = false, error = "Saved Home layout could not be read; it was left unchanged.")
-    }
+    } }
 
     override fun onCleared() {
         launcherApps.unregisterCallback(callback)

@@ -344,3 +344,13 @@ internal object Diagnostics {
  */
 internal inline fun <T> caught(where: String, rethrowCancellation: Boolean = true, block: () -> T): Result<T> =
     runCatching(block).onFailure { Diagnostics.caught(where, it, rethrowCancellation) }
+
+/**
+ * A named section in a system trace, for Perfetto and Macrobenchmark's TraceSectionMetric. When nothing is tracing
+ * it costs a flag check. Android records an app's own sections from a debuggable or profileable build, which is why
+ * the fast build is profileable.
+ */
+internal inline fun <T> traced(section: String, block: () -> T): T {
+    androidx.tracing.Trace.beginSection(section)
+    try { return block() } finally { androidx.tracing.Trace.endSection() }
+}
