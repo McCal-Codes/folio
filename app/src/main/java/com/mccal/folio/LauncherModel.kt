@@ -1502,10 +1502,13 @@ internal fun LauncherState.withPackagedEffect(id: String): LauncherState =
 internal fun LauncherState.withoutPackagedEffect(id: String): LauncherState =
     copy(packagedEffects = packagedEffects.filterNot { it.id == id }, packagedEffectId = packagedEffectId?.takeIf { it != id })
 
+/** The packaged effect Home is drawing: none while effects are off, and none once its package has gone. */
+internal val LauncherState.activePackagedEffect: PackagedPageEffect?
+    get() = if (pageEffect == PageEffect.NONE) null else packagedEffects.firstOrNull { it.id == packagedEffectId }
+
 /** What Home draws: nothing when effects are off, else the chosen packaged effect if it's still installed, else the built-in. */
 internal fun LauncherState.pageEffectSpec(): PageEffectSpec? =
-    if (pageEffect == PageEffect.NONE) null
-    else packagedEffects.firstOrNull { it.id == packagedEffectId }?.spec ?: pageEffect.spec
+    if (pageEffect == PageEffect.NONE) null else activePackagedEffect?.spec ?: pageEffect.spec
 
 /** Flipbook's switch: on brings back the last effect chosen, off is the flat swipe. */
 internal fun LauncherState.withPageEffectOn(on: Boolean): LauncherState =

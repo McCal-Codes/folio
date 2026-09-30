@@ -12,7 +12,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Widgets, one app at a time:** the widget picker has a row of app icons across the top; tap one to see only that app's widgets. While browsing, each app shows a single row with Show All for the rest, so an app with hundreds of widgets no longer stands in front of everything else.
 
 ### Changed
-- **Flipbook's effects are on Flipbook's page:** Cube, Carousel and any effect you add from the Market are listed on Flipbook's own page in Settings › Tweaks, instead of a menu in Gestures & Actions. Choosing one turns Flipbook on, and Settings search still finds them under Page Effects.
+- **Flipbook's effects are on Flipbook's page:** Cube, Carousel and any effect you add from the Market are listed on Flipbook's own page in Settings › Tweaks, instead of a menu in Gestures & Actions. Choosing one turns Flipbook on, and Settings search finds Flipbook when you type Page Effects.
 - **A shorter Settings list:** the first screen goes from 26 rows to 16. Software Update, What's New, Help, the Roadmap, Credits and Advanced are under a new General page, which also has Language (Android's own per-app language screen). Ko-fi, your supporter code and the Supporters list are one Support Folio row. The Market opens from Tweaks, and Themes from Wallpaper & Appearance.
 
 ### Fixed

@@ -1,6 +1,5 @@
 package com.mccal.folio
 
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -352,8 +351,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
-                        // Page effects moved to Flipbook's own page (Settings › Tweaks › Flipbook), beside the effects
-                        // packages add; Settings search still finds them by "Page Effects".
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")
@@ -1195,11 +1192,14 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
 }
 
 /**
- * What Settings search matches a tweak on: its name, what it's based on ("Barrel by Aaron Ash") and its one line.
+ * What Settings search matches a tweak on: its name, what it's based on ("Barrel by Aaron Ash"), its one line, and any
+ * [TweakFeature.keywords] (Flipbook is found by "Page Effects").
  * Tweaks aren't in [SettingsIndex] because each has a page of its own rather than a row on a fixed page.
  */
 internal fun searchableTweaks(context: android.content.Context): List<Pair<TweakFeature, String>> =
-    visibleTweaks(context).map { it to "${it.inspiredBy} ${context.getString(it.description)} ${it.keywords?.let(context::getString).orEmpty()}" }
+    visibleTweaks(context).map { tweak ->
+        tweak to listOfNotNull(tweak.inspiredBy, context.getString(tweak.description), tweak.keywords?.let(context::getString)).joinToString(" ")
+    }
 
 @Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit, onOpenTweak: (TweakFeature) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1311,40 +1311,6 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardNote(stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
     }
     SheetGroup { IosActionRow(stringResource(R.string.remove_control, tweak.name), "tweak-remove-${tweak.id}", destructive = true) { model.removeTweak(tweak) } }
-}
-
-/**
- * Flipbook's effects, on its own page: the built-in ones, then the ones Market packages added (Flipbook is their host,
- * the way jailbreak Cylinder is for its scripts). Choosing one turns Flipbook on, the way choosing a ringtone turns
- * sound on; the Enabled switch above still turns it off. Mocked in the lab as `flipbook-host`.
- */
-@Composable internal fun FlipbookEffects(state: LauncherState, onEffect: (PageEffect) -> Unit, onPackaged: (String) -> Unit) {
-    val on = state.pageEffect != PageEffect.NONE
-    val packaged = state.packagedEffectId?.takeIf { id -> on && state.packagedEffects.any { it.id == id } }
-    @Composable fun Choice(label: String, from: String?, selected: Boolean, tag: String, onClick: () -> Unit) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
-            .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp)
-                from?.let { Text(it, color = FolioColors.SecondaryLabel, fontSize = FolioType.FOOTNOTE.sp) }
-            }
-            if (selected) Icon(Icons.Rounded.Check, null, tint = LocalAccent.current.ink, modifier = Modifier.size(20.dp))
-        }
-    }
-    SettingsCard(stringResource(R.string.page_effects)) {
-        // No dividers here: the card draws the line between its rows itself.
-        PageEffect.entries.filter { it != PageEffect.NONE }.forEach { effect ->
-            Choice(stringResource(effect.label), null, on && packaged == null && state.pageEffect == effect, "page-effect-${effect.name.lowercase()}") {
-                onEffect(effect)
-            }
-        }
-        CardNote(stringResource(R.string.home_pages_turn_in_3d_as_you_swipe_off_w))
-    }
-    if (state.packagedEffects.isNotEmpty()) SettingsCard(stringResource(R.string.from_packages)) {
-        state.packagedEffects.forEach { effect ->
-            Choice(effect.name, null, packaged == effect.id, "page-effect-package-${effect.id}") { onPackaged(effect.id) }
-        }
-    }
 }
 
 /** Themes (after SnowBoard): built-in looks with a live preview, plus saving and importing theme files. */

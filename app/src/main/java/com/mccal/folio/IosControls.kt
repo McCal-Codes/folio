@@ -123,6 +123,21 @@ internal fun IosActionRow(text: String, tag: String? = null, destructive: Boolea
             .padding(horizontal = FolioSpace.LARGE.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
 }
 
+/**
+ * One choice in an iOS selection list: its label, and a checkmark on the one in use. A radio button to TalkBack.
+ * Tapping the chosen row does nothing, so a repeat tap doesn't rewrite what's saved (as [IosMenuRow] guards too).
+ * No inset of its own: the card it sits in provides it.
+ */
+@Composable
+internal fun IosCheckRow(text: String, selected: Boolean, onClick: () -> Unit, tag: String? = null) {
+    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).selectable(selected, role = Role.RadioButton) { if (!selected) onClick() }
+        .then(if (tag != null) Modifier.testTag(tag) else Modifier), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.Text(text, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
+        if (selected) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Check, null,
+            tint = LocalAccent.current.ink, modifier = Modifier.size(20.dp))
+    }
+}
+
 /** A row that opens another page, like iOS Settings: label, current value and a chevron. */
 @Composable
 internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: String? = null) {
