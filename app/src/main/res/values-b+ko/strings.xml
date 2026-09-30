@@ -1409,6 +1409,7 @@
     <string name="no_names_yet_yours_could_be_the_first">아직 등록된 이름이 없습니다. 첫 번째 주인공이 되어 주세요.</string>
     <string name="backed_folio_and_want_your_name_here">Folio를 후원하셨고 여기에 이름을 올리고 싶으신가요? Ko-fi 감사 메시지에 답장으로 알려주세요. 같은 방법으로 이름을 삭제할 수도 있습니다.</string>
     <string name="page_effects">페이지 효과</string>
+    <string name="from_packages">패키지에서 추가됨</string>
     <string name="cube">큐브</string>
     <string name="home_pages_turn_in_3d_as_you_swipe_off_w">쓸어넘길 때 홈 페이지가 3D로 회전합니다. 홈 화면에 두 페이지를 나란히 표시하거나 동작 줄이기가 켜져 있으면 효과가 꺼집니다. 계속 사용하기 전에 화면이 끊기지 않는지 확인해 보세요.</string>
     <!-- Added after #143, drafted for 0.6.7; please review. -->

@@ -93,6 +93,9 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
 
         /** The saved value, or [NONE] for a save from before Page Effects and for anything unrecognised. */
         fun of(name: String?): PageEffect = entries.firstOrNull { it.name == name } ?: NONE
+
+        /** What Flipbook's page offers: every effect but [NONE], which is Flipbook switched off. */
+        internal val CHOICES: List<PageEffect> = entries.filter { it != NONE }
     }
 }
 

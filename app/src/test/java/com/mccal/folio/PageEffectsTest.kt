@@ -173,11 +173,15 @@ class PageEffectsTest {
             """Row(Modifier.fillMaxSize().testTag("home-surface")""" in screen)
     }
 
-    @Test fun `the setting is only offered where the gate is open, and None is one of the choices`() {
+    // The choice is on Flipbook's own page, which exists only where the gate is open: Flipbook carries the gate and
+    // visibleTweaks leaves a gated tweak out. None isn't offered there; it is Flipbook switched off.
+    @Test fun `the effects are offered only where the gate is open, and every effect has its own name`() {
+        val flipbook = TweakFeatures.first { it.id == "pageEffects" }
+        assertEquals("Flipbook should carry the page-effects gate", FeatureGate.PAGE_EFFECTS, flipbook.gate)
         val sheet = source("CustomizationSheet.kt")
-        assertTrue("Settings should ask the gate", "FeatureGate.PAGE_EFFECTS.isOpen(gestureContext)" in sheet)
-        assertTrue("the row should be behind the gate", "if (pageEffectsOpen) {" in sheet)
-        assertTrue(PageEffect.NONE in PageEffect.entries)
+        assertTrue("Flipbook's page should list the effects",
+            Regex("""tweak\.id\s*==\s*"pageEffects"\s*\)\s*FlipbookEffects\(""").containsMatchIn(sheet))
+        assertEquals(PageEffect.entries - PageEffect.NONE, PageEffect.CHOICES)
         // Every choice needs a name people can read, and no two effects share one.
         val labels = PageEffect.entries.map { it.label }
         assertEquals("two effects share a label", labels.size, labels.toSet().size)

@@ -75,4 +75,15 @@ class PackagedPageEffectTest {
         assertEquals(PageEffect.CUBE.spec, gone.pageEffectSpec())
         assertTrue(gone.packagedEffects.isEmpty())
     }
+
+    // One rule for the checkmark on Flipbook's page and for what Home draws (pageEffectSpec).
+    @Test fun `the packaged effect in use is none while effects are off or its package is gone`() {
+        val tilt = PackagedPageEffect.of("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f)
+        val on = LauncherState(pageEffect = PageEffect.CUBE, packagedEffects = listOf(tilt), packagedEffectId = tilt.id)
+        assertEquals(tilt, on.activePackagedEffect)
+        assertEquals(tilt.spec, on.pageEffectSpec())
+        assertEquals(null, on.copy(pageEffect = PageEffect.NONE).activePackagedEffect)
+        assertEquals(null, on.copy(packagedEffects = emptyList()).activePackagedEffect)
+        assertEquals(PageEffect.CUBE.spec, on.copy(packagedEffects = emptyList()).pageEffectSpec())
+    }
 }

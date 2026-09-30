@@ -35,6 +35,8 @@ internal data class TweakFeature(
     val get: (LauncherState) -> Boolean, val set: (LauncherModel, Boolean) -> Unit, val default: Boolean,
     /** The gate that has to be open before this is offered, or null for a tweak everyone has. */
     val gate: FeatureGate? = null,
+    /** More words Settings search finds it by, for a tweak people know by what it does ("Page Effects"). */
+    @androidx.annotation.StringRes val keywords: Int? = null,
 )
 
 /**
@@ -65,12 +67,12 @@ internal val TweakFeatures = listOf(
     TweakFeature("tintMedia", "Colored Albums", "ColorFlow by David Goldman", // english-only
         R.string.tweak_colored_albums_detail,
         androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true),
-    // The switch is on or off; which effect it is lives in Settings > Gestures, because it is a choice of three
-    // rather than a second switch. Turning it on brings back the last one chosen; the cube the first time, since
-    // that is the one Barrel was known for.
+    // The switch is on or off, and which effect it is lives on Flipbook's own page, beside the effects packages add
+    // (Flipbook is their host, as Cylinder is for its scripts). Turning it on brings back the last one chosen; the
+    // cube the first time, since that is the one Barrel was known for.
     TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash", // english-only
         R.string.tweak_flipbook_detail,
         androidx.compose.material.icons.Icons.Rounded.AutoStories, FolioColors.Value.Teal,
         { it.pageEffect != PageEffect.NONE },
-        { m, v -> m.setPageEffectOn(v) }, false, FeatureGate.PAGE_EFFECTS),
+        { m, v -> m.setPageEffectOn(v) }, false, FeatureGate.PAGE_EFFECTS, keywords = R.string.page_effects),
 )

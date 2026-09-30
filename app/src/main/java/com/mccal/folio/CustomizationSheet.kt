@@ -351,19 +351,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
-                        // Page Effects, for supporters until 0.6.8 (FeatureGate.PAGE_EFFECTS). None is the default.
-                        val gestureContext = androidx.compose.ui.platform.LocalContext.current
-                        val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(gestureContext) }
-                        if (pageEffectsOpen) {
-                            // The built-ins, then effects installed from the Market, each by its package's name.
-                            val chosen = state.packagedEffectId?.takeIf { id -> state.pageEffect != PageEffect.NONE && state.packagedEffects.any { it.id == id } }
-                            IosMenuRow(stringResource(R.string.page_effects),
-                                PageEffect.entries.map { it.name to stringResource(it.label) } + state.packagedEffects.map { "package:" + it.id to it.name },
-                                chosen?.let { "package:$it" } ?: state.pageEffect.name,
-                                { key -> if (key.startsWith("package:")) model.setPackagedEffect(key.removePrefix("package:")) else model.setPageEffect(PageEffect.of(key)) },
-                                tag = "page-effect")
-                            if (state.pageEffect != PageEffect.NONE) CardNote(stringResource(R.string.home_pages_turn_in_3d_as_you_swipe_off_w))
-                        }
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")
@@ -1205,11 +1192,14 @@ internal fun settingsMatches(query: String, title: String, keywords: String): Bo
 }
 
 /**
- * What Settings search matches a tweak on: its name, what it's based on ("Barrel by Aaron Ash") and its one line.
+ * What Settings search matches a tweak on: its name, what it's based on ("Barrel by Aaron Ash"), its one line, and any
+ * [TweakFeature.keywords] (Flipbook is found by "Page Effects").
  * Tweaks aren't in [SettingsIndex] because each has a page of its own rather than a row on a fixed page.
  */
 internal fun searchableTweaks(context: android.content.Context): List<Pair<TweakFeature, String>> =
-    visibleTweaks(context).map { it to "${it.inspiredBy} ${context.getString(it.description)}" }
+    visibleTweaks(context).map { tweak ->
+        tweak to listOfNotNull(tweak.inspiredBy, context.getString(tweak.description), tweak.keywords?.let(context::getString)).joinToString(" ")
+    }
 
 @Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit, onOpenTweak: (TweakFeature) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1306,6 +1296,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         SettingsSwitch(stringResource(R.string.enabled), on, { tweak.set(model, it) }, "tweak-enabled-${tweak.id}")
         CardNote(stringResource(tweak.description))
     }
+    if (tweak.id == "pageEffects") FlipbookEffects(state, model::setPageEffect, model::setPackagedEffect)
     SettingsCard(stringResource(R.string.use_on)) {
         Column(Modifier.alpha(if (on) 1f else .4f)) {
             FolioScreen.entries.forEach { screen ->
