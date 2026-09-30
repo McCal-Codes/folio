@@ -53,6 +53,8 @@ SCHEMA_DIR = _schema_dir()
 PACKAGE_SUFFIXES = {".json", ".png", ".webp", ".jpg", ".jpeg", ".js"}
 SOURCE_SUFFIXES = PACKAGE_SUFFIXES | {".sig", ".pub", ".foliopkg"}
 PICTURE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
+# Read but refused (format-v1): no Folio installs a package of one. The app's list is PackageKind.reserved.
+RESERVED_KINDS = ("settingsSchema", "script")
 
 MAX_ZIP_COMPRESSED = 20 * 1024 * 1024
 MAX_ZIP_UNCOMPRESSED = 50 * 1024 * 1024
@@ -353,8 +355,9 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
         report.error(problem)
 
     kinds = manifest.get("kind", [])
-    if "script" in kinds and not (folder / "script.js").is_file():
-        report.error(f"{name}: kind includes script, but there is no script.js")
+    for kind in RESERVED_KINDS:
+        if kind in kinds:
+            report.error(f"{name}: kind {kind} is reserved; Folio refuses a package of it and won't install it")
     if "script" not in kinds and (folder / "script.js").is_file():
         report.error(f"{name}: there is a script.js, but kind does not include script")
     if "tweakBundle" in kinds and not (folder / "tweaks.json").is_file():
