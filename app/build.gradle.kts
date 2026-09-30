@@ -177,6 +177,8 @@ dependencies {
     implementation("androidx.window:window:1.5.1")
     // Installs the baseline profiles that Compose and AndroidX ship, so hot paths are compiled ahead of time.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // Named trace sections (PRF-13). Other AndroidX libraries already bring it; declared because Folio calls it.
+    implementation("androidx.tracing:tracing:1.2.0")
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")

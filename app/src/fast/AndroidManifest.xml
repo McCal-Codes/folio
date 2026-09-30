@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The fast build exists to measure Folio on a phone: profileable lets Perfetto and Macrobenchmark read its
+         trace sections and startup. The release stays unprofileable. -->
+    <application>
+        <profileable android:shell="true" tools:targetApi="29" />
+    </application>
+</manifest>

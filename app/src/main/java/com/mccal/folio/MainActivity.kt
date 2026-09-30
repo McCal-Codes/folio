@@ -125,6 +125,8 @@ class MainActivity : ComponentActivity() {
         else sharedTheme.value = savedInstanceState.getString(PENDING_THEME)?.let(FolioTheme::fromJson)
         setContent {
             val savedState = model.state.collectAsStateWithLifecycle().value
+            // Home is fully drawn once the first app list is in: until then its icons aren't there.
+            androidx.activity.compose.ReportDrawnWhen { !savedState.loading }
             val safeMode = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(SafeMode.active) }
             val solidGlass = savedState.reduceTransparency || rememberSystemHighContrast()
             val state = FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)

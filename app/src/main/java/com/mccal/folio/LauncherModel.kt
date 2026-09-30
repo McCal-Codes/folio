@@ -316,7 +316,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     private val launcherApps = application.getSystemService(LauncherApps::class.java)
     private val userManager = application.getSystemService(UserManager::class.java)
     private val appCatalogPrefs = application.getSharedPreferences("app_catalog", 0)
-    private val legacyRaw = prefs.getString("state", null)
+    private val legacyRaw = traced("Folio.readState") { prefs.getString("state", null) }
     private val sourceSchema = runCatching { JSONObject(legacyRaw ?: "{}").optInt("schema", 1) }.getOrDefault(1)
     private var needsMigration = sourceSchema < 2
     private var statePayloadInvalid = false
@@ -1113,6 +1113,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
 
     private fun persist() {
         if (needsMigration || statePayloadInvalid) return
+        traced("Folio.persist", ::writeState)
+    }
+
+    private fun writeState() {
         val s = mutable.value
         fun preset(p: LayoutPreset) = JSONObject().put("iconSize", p.iconSize).put("rowGap", p.rowGap)
             .put("dockWidth", p.dockWidth).put("dockPosition", p.dockPosition).put("dockAlignToGrid", p.dockAlignToGrid)
@@ -1199,12 +1203,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
     }
 
-    private fun load(): LauncherState = runCatching {
+    private fun load(): LauncherState = traced("Folio.decodeState") { runCatching {
         decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
         LauncherState(loading = false, error = "Saved Home layout could not be read; it was left unchanged.")
-    }
+    } }
 
     override fun onCleared() {
         launcherApps.unregisterCallback(callback)
