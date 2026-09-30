@@ -140,4 +140,15 @@ class AuthorSignatureTest {
         val entry = (parsed as ParseResult.Ok).value.packages.single()
         assertEquals(signature, entry.signedBy)
     }
+
+    // A listing for a kind Folio won't install says so, instead of offering Get for a package that is then refused.
+    @Test fun `an index listing of a reserved kind needs a newer Folio`() {
+        val manifest = """{"format":1,"id":"dev.example.test.script","name":"Script","version":"1.0","author":{"name":"Example"},
+            "minFolio":"0.6.6","section":"tweaks","kind":["script"],"permissions":[]}"""
+        val index = """{"format":1,"name":"Example","packages":[{"id":"dev.example.test.script","version":"1.0",
+            "url":"packages/script.foliopkg","manifest":$manifest}]}"""
+        val parsed = RepoIndex.parse(index)
+        assertTrue("$parsed", parsed is ParseResult.Ok)
+        assertEquals(listOf("script"), (parsed as ParseResult.Ok).value.packages.single().needs)
+    }
 }

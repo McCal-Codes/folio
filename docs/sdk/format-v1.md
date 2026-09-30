@@ -1,13 +1,13 @@
 # Folio Package Format v1
 
-Status: **draft**, first shipped in Folio 0.6.6. Fields marked *(0.7.x)* are reserved: parsers accept them, but Folio doesn't act on them yet.
+Status: **draft**, first shipped in Folio 0.6.6. Fields marked *(0.7.x)* are reserved: parsers accept them, but Folio doesn't act on them yet. Kinds marked *(reserved)* are read but refused: the Market shows a package of one as needing a newer Folio and won't install it.
 
 This page is the reference for packages and sources. The machine-readable versions are the JSON Schemas in
 [`schema/v1/`](schema/v1/). Folio's parser and the `folio-pkg` tool are both tested against these schemas.
 
 ## Principles
 
-- **Declarative first.** A package is data: JSON, images, and (optionally) a sandboxed script. Folio never downloads or loads DEX, JAR or native code. See [ADR 0004](../adr/0004-declarative-first.md).
+- **Declarative first.** A package is data: JSON and images. No package runs code: Folio never downloads or loads DEX, JAR or native code, and the `script` kind is reserved and refused. A script is code, a higher trust class than data, and would need process isolation and its own store label before it could ship. See [ADR 0004](../adr/0004-declarative-first.md).
 - **Signed sources, verified files.** A source signs its entry file, the entry file pins the index's hash, and the index pins every package's hash. See [ADR 0001](../adr/0001-repo-format.md).
 - **Permissions are the source of truth.** Everything a package can do maps to a permission it declares. Folio shows those permissions before install, builds the privacy label from them, and enforces them at runtime.
 - **Local-first.** Folio only goes online for sources the user adds.
@@ -20,7 +20,7 @@ A `.foliopkg` file is a zip archive:
 manifest.json      required
 depiction.json     optional, the package page
 assets/            optional, png, webp or jpg
-script.js          optional, only when kind includes "script"
+script.js          reserved: a package whose kind includes "script" is refused
 ```
 
 Limits:
@@ -76,10 +76,10 @@ comments, unquoted keys, single quotes, trailing commas, trailing text and dupli
 | `wallpaper` | images in `assets/` | the wallpaper picker |
 | `iconPackLink` | `iconpack.json`: `{ "format": 1, "package": "com.example.icons" }` | the ADW/Nova icon-pack lookup |
 | `tweakBundle` | `tweaks.json`: built-in tweak ids and their options | `installTweak` and feature scopes |
-| `settingsSchema` *(0.7.x)* | `settings.json` (see its schema) | Folio's settings renderer |
-| `script` *(0.7.x)* | `script.js` | the script sandbox |
+| `settingsSchema` *(reserved)* | `settings.json` (see its schema) | none yet: refused |
+| `script` *(reserved)* | `script.js` | none: refused (see Declarative first) |
 | `externalApp` *(later)* | a `via` list: `playStore`, `fdroid`, `obtainium` | Get opens the store, then Apply |
-| `pageEffect` *(0.6.9)* | `effect.json`: how Home's pages turn as you swipe (see Page effects) | Folio's page-effect engine |
+| `pageEffect` *(0.6.8)* | `effect.json`: how Home's pages turn as you swipe (see Page effects) | Folio's page-effect engine |
 
 #### Page effects
 
@@ -188,7 +188,7 @@ kept. The store offers Try Again, Remove and Details, and everything else keeps 
 
 All of it comes from the manifest, never from anything the author wrote:
 
-- **A one-line summary:** code (only a `script` package runs any, in the sandbox), network (never), personal data
+- **A one-line summary:** code (none: no package runs any), network (never), personal data
   (never), and how many things it changes.
 - **What it changes:** one line per permission, in Folio's words, from the table in [Permissions](#permissions). A
   package with no permissions says "How Folio looks, and nothing else".
@@ -429,7 +429,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |
 | `focus.modes` | Switching Home Modes / Focus | 0.7.x |
 | `settings.pages` | Settings pages drawn from `settings.json` | 0.7.x |
-| `scripts` | The script sandbox | 0.7.x |
+| `scripts` | Reserved: Folio doesn't run scripts, and a `script` package is refused | Not planned |
 
 "Since" comes from CHANGELOG.md. "Before 0.7.0" means the feature exists today but the changelog doesn't record when it arrived. The 0.1.0 entry is inherited from DuoLauncher, and 0.7.x means planned.
 
@@ -450,7 +450,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `time` | Running on a schedule | Runs on a schedule |
 | `apps.open` | Opening an app the user picked | Opens apps |
 
-Scripts can only use actions whose permission they declare. New permissions come with a new format version.
+New permissions come with a new format version.
 
 ## Versioning this format
 

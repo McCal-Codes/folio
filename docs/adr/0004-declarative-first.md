@@ -15,6 +15,9 @@ Users still want community themes, layouts, tweak settings and some automation.
 
 - **Packages are data:** themes, layout presets, wallpapers, icon-pack links, tweak bundles and settings pages. Folio applies them through its own model APIs.
 - **Automation uses a sandboxed interpreter** (QuickJS or LuaJ; see ADR 0003). The script has no network, file or reflection access, can only return actions it declared permissions for, and runs under CPU and memory caps.
+  *30 Sep 2026: not built. The `script` kind is reserved and refused; a script is code, a higher trust class than data,
+  and would need process isolation and its own store label before it could ship. (ADR 0003, cited above, was never
+  written.)*
 - **Folio never loads downloaded DEX, JAR or native code.**
 - **Separate-APK extensions over IPC are left for a later decision.**
 

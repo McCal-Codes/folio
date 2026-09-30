@@ -1,6 +1,6 @@
 # Folio Market threat model
 
-**Scope:** the Market, sources, packages, the installer and the script sandbox (Folio 0.7.0).
+**Scope:** the Market, sources, packages and the installer (Folio 0.7.0). There is no script sandbox: the `script` kind is reserved and refused (T10).
 
 **Method:** STRIDE (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege). Each threat lists its mitigation and the test that proves it.
 
@@ -18,7 +18,7 @@
 3. A package's author, who is not always its publisher: a mirror can carry someone else's package, so the author
    signs the package and the source signs the list.
 4. The package's contents, which are parsed and applied on the phone.
-5. A script's code, which runs in the sandbox.
+5. A script's code, which Folio refuses to install (T10).
 6. Files the user shares with Folio: `.foliopkg` files and launcher backups.
 
 ## Threats and mitigations
@@ -34,7 +34,7 @@
 | T7 | Zip-slip, zip bomb or symlink in a package | T/D | The package is read in memory and never extracted, so no name in it reaches the file system; names must be relative with no `..`; caps on packed size, unpacked size and file count; only a closed set of file types, which also refuses an entry claiming to be a link | `PackageInstallerTest` T7, and the `archive` fuzz target |
 | T8 | A malformed manifest or depiction crashes Folio | D | Strict parsers with size caps, where unknown values fall back to safe defaults; Jazzer fuzzing | `ParserFuzzTest`, 5 minutes per parser |
 | T9 | A package or script misbehaves and makes Home unusable | D | Safe Mode: two crashes within 60 s of a package change start Folio with that package's changes taken off Home and its record and settings kept, so Try Again puts it back and Remove takes it away; everything else keeps working | `PackageInstallerTest` T9, `InstallStateMachineTest` |
-| T10 | A script escapes the sandbox or does too much | E | QuickJS or LuaJ with no network, file or reflection access; memory and CPU caps; actions only through declared permissions; auto-disable after 3 failures | Over-budget and undeclared-action scripts are stopped |
+| T10 | A package runs code | E | No package runs code: the `script` kind is reserved and refused when a package is read and when its listing is parsed (`PackageKind.reserved`), and nothing loads DEX, JAR or native code | `PackageInstallerTest` refuses script and settings-page packages; `AuthorSignatureTest` marks a script listing as needing a newer Folio |
 | T11 | A package hides what it does | I | The privacy label is generated from `permissions`, never from the author's text; permissions are checked when the package runs | A permission missing from the manifest is denied |
 | T12 | A depiction leaks data or phishes | I/S | Closed set of block types; Markdown subset with no HTML or remote images; links must be https and show their domain | HTML and http depictions are rejected by the schema |
 | T13 | A source tracks users | I | Only static files; no accounts; no cookies; Folio sends only a plain `User-Agent: Folio`; refresh is opt-in and can be Wi-Fi only | `RepoClientTest` counts every request |

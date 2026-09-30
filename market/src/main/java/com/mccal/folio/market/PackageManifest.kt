@@ -198,9 +198,16 @@ enum class PackageKind(
      * each package, so an author can't leave it out or point it at the wrong id, and a new host is one line here.
      */
     val hostTweak: String? = null,
+    /**
+     * Folio reads the kind but doesn't install it yet, so a package of it is refused ("needs a newer Folio") rather
+     * than installed as a record that does nothing. `script` stays reserved on purpose: a script is code, a higher
+     * trust class than JSON and images, and ADR 0004's sandbox has never been built.
+     */
+    val reserved: Boolean = false,
 ) {
     THEME("theme"), LAYOUT_PRESET("layoutPreset"), WALLPAPER("wallpaper"), ICON_PACK_LINK("iconPackLink"),
-    TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema"), SCRIPT("script"), EXTERNAL_APP("externalApp"),
+    TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema", reserved = true), SCRIPT("script", reserved = true),
+    EXTERNAL_APP("externalApp"),
     PAGE_EFFECT("pageEffect", hostTweak = "pageEffects");
 
     companion object {
