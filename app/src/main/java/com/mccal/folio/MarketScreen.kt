@@ -298,7 +298,7 @@ internal fun MarketScreen(
     fun tryAgain(id: String, name: String) {
         if (MarketWork.busy) return
         scope.launch {
-            val back = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.enable(id) }
+            val back = withContext(session.io) { session.enable(id) }
             say(context.getString(if (back) R.string.text_1_s_is_back_on else R.string.folio_couldn_t_put_1_s_back_on, name))
             refresh()
         }
@@ -307,7 +307,7 @@ internal fun MarketScreen(
     fun remove(id: String, name: String) {
         if (MarketWork.busy) return
         scope.launch {
-            val removed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.remove(id) }
+            val removed = withContext(session.io) { session.remove(id) }
             if (removed) say(context.getString(R.string.text_1_s_removed, name))
             refresh()
         }
@@ -537,7 +537,7 @@ internal fun MarketScreen(
                         undo = null
                         message = null
                         scope.launch {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.undo(undone) }
+                            withContext(session.io) { session.undo(undone) }
                             refresh()
                         }
                     }

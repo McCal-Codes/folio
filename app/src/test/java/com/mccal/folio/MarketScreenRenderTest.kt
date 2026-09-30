@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -32,9 +33,17 @@ import org.robolectric.annotation.Config
 class MarketScreenRenderTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Installing reads and writes files, so it happens off the main thread: the banner arrives a moment later. */
-    private fun awaitText(text: String) = compose.waitUntil(5_000) {
-        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    /**
+     * Installing reads and writes files, so it happens off the main thread: the banner arrives a moment later. If it
+     * never does, the failure says what the screen showed instead, so a CI run explains itself.
+     */
+    private fun awaitText(text: String) = try {
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+        val shown = compose.onAllNodesWithText("", substring = true).fetchSemanticsNodes().flatMap { node ->
+            node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text).orEmpty().map { it.text }
+        }
+        throw AssertionError("\"$text\" never showed (Market work: ${MarketWork.busyId ?: "idle"}); the screen showed $shown", timeout)
     }
 
     private fun session(): MarketSession {
