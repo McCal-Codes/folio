@@ -404,6 +404,15 @@ class PackageInstaller(
             is ParseResult.Unsupported -> return ReadResult.NeedsNewerFolio(parsed.needs)
             is ParseResult.Invalid -> return ReadResult.Failed(InstallResult.Reason.MANIFEST, parsed.errors.first())
         }
+        // Refused, not installed as nothing: before 0.6.8 a reserved kind installed a record with no changes under a
+        // label saying it ran a script (found 30 Sep 2026).
+        manifest.kinds.filter { it.reserved }.takeIf { it.isNotEmpty() }?.let { reserved ->
+            return ReadResult.NeedsNewerFolio(reserved.map(PackageKind::id))
+        }
+        // An app listing is something its source offers through Android (MarketExternalApp), never a Folio package.
+        if (PackageKind.EXTERNAL_APP in manifest.kinds) {
+            return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that's an app, which the source that lists it offers through Android")
+        }
         val depiction = manifest.depiction?.let { path ->
             files[path]?.let { bytes ->
                 when (val parsed = Depiction.parse(bytes.decodeToString())) {
@@ -480,7 +489,7 @@ class PackageInstaller(
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST,
                             "effect.json needs maxRotation, shrink and cameraWidths as numbers and a pivot of seam or center")
                 }
-                // Reserved kinds: readable, but nothing is applied until the phase that builds them.
+                // Refused above: never reaches here.
                 PackageKind.SETTINGS_SCHEMA, PackageKind.SCRIPT, PackageKind.EXTERNAL_APP -> null
             }
             change?.let(changes::add)

@@ -74,6 +74,32 @@ class PackageInstallerTest {
         return ((read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.Wallpaper).path
     }
 
+    /** A package of [kind] with nothing else in it, or with an app store listing for externalApp. */
+    private fun kindPackage(kind: String): ByteArray {
+        val via = if (kind == "externalApp") ""","via":[{"store":"playStore","id":"com.example.app"}]""" else ""
+        val manifest = """{"format":1,"id":"dev.example.test.${kind.lowercase()}","name":"Example","version":"1.0","author":{"name":"Example"},
+            "minFolio":"0.6.6","section":"tweaks","kind":["$kind"],"permissions":[]$via}"""
+        return zip(mapOf("manifest.json" to manifest.toByteArray()))
+    }
+
+    // Before 0.6.8 a kind Folio reads but doesn't act on installed as a record with no changes, under a label saying
+    // it ran a script. A script is code and stays reserved (ADR 0004), so these are refused like any newer package.
+    @Test fun `a script or settings-page package is refused as needing a newer Folio, and nothing is installed`() {
+        for (kind in listOf("script", "settingsSchema")) {
+            assertEquals(PackageInstaller.ReadResult.NeedsNewerFolio(listOf(kind)), installer.read(kindPackage(kind)))
+            assertEquals(InstallResult.NeedsNewerFolio(listOf(kind)), installer.install(kindPackage(kind), origin = InstalledPackage.Origin.FILE))
+        }
+        assertTrue(store.installed().none { it.id.startsWith("dev.example.test.") })
+    }
+
+    // An app listing is offered by its source through Android; opened as a file it would install as nothing.
+    @Test fun `an app listing opened as a file is refused`() {
+        val result = installer.install(kindPackage("externalApp"), origin = InstalledPackage.Origin.FILE)
+        // The manifest itself is fine; it's the channel that's wrong, and the message says so.
+        assertTrue("$result", result is InstallResult.Failed && result.reason == InstallResult.Reason.MANIFEST && "through Android" in result.message)
+        assertTrue(store.installed().none { it.id == "dev.example.test.externalapp" })
+    }
+
     /** A page effect package from the shipped example, with its effect.json replaced when a test wants. */
     private fun effectPackage(effect: String? = File(root, "docs/sdk/examples/page-effect-tilt/effect.json").readText()): ByteArray {
         val files = LinkedHashMap<String, ByteArray>()

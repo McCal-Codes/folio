@@ -16,6 +16,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A shorter Settings list:** the first screen goes from 26 rows to 16. Software Update, What's New, Help, the Roadmap, Credits and Advanced are under a new General page, which also has Language (Android's own per-app language screen). Ko-fi, your supporter code and the Supporters list are one Support Folio row. The Market opens from Tweaks, and Themes from Wallpaper & Appearance.
 
 ### Fixed
+- **Packages Folio can't use yet are refused:** a package of a kind Folio doesn't support yet, such as a script, offered Get and then installed as nothing, labeled as running a script. The Market now says it needs a newer Folio and doesn't install it; Folio doesn't run scripts.
 - **Opening a package file shows it again:** opening a `.foliopkg` from Files or a download opened the Market and nothing else, so the package couldn't be installed. Its install sheet comes up now, opening one while the Market is already open no longer lands on Settings, and a package installed from a file is listed under Installed (Opened from Files), where it can be removed.
 - **Flipbook turns the way it was designed to:** Cube and Carousel drew with their camera about six times too close, so a page shrank to a sliver partway through a swipe instead of turning like the side of a box. The camera sits where it was meant to now, and a page effect looks the same on every phone, whatever its screen density.
 

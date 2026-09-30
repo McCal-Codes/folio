@@ -46,7 +46,8 @@ class PackageSafetyTest {
         """.trimIndent()
         val safety = PackageSafety.of((PackageManifest.parse(json) as ParseResult.Ok).value)
         assertTrue(safety.runsCode)
-        assertTrue(safety.summary.startsWith("Runs a sandboxed script · No network · No personal data"))
+        // Folio doesn't run scripts (the kind is reserved and refused), so the label mustn't say it does.
+        assertTrue(safety.summary.startsWith("Has a script Folio doesn't run · No network · No personal data"))
     }
 
     @Test fun `every package says what it cannot reach`() {

@@ -8,7 +8,7 @@ package com.mccal.folio.market
  * format's rules are in docs/sdk/format-v1.md; ADR 0004 is why.
  */
 data class PackageSafety(
-    /** True only when the package ships a script, which runs in the sandbox with no network and no file access. */
+    /** True when the package ships a script. Folio doesn't run scripts (the kind is reserved), so it can't be installed. */
     val runsCode: Boolean,
     /** What it changes, in the words the privacy label uses. Empty means appearance only. */
     val changes: List<String>,
@@ -17,7 +17,7 @@ data class PackageSafety(
 ) {
     /** The one-line summary for the top of a package's page. */
     val summary: String get() = buildString {
-        append(if (runsCode) "Runs a sandboxed script" else "No code")
+        append(if (runsCode) "Has a script Folio doesn't run" else "No code")
         append(" · No network · No personal data")
         append(if (changes.isEmpty()) " · Appearance only" else " · Changes ${changes.size} thing${if (changes.size == 1) "" else "s"}")
     }
