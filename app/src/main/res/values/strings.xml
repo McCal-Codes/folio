@@ -1522,4 +1522,6 @@
     <string name="hold_longer">Longer</string>
     <string name="touch_and_hold">Touch and Hold</string>
     <string name="touch_and_hold_note">How long to hold an app or a widget on Home before its menu opens. Standard follows Android, including Samsung\'s Touch and hold delay in Accessibility.</string>
+    <string name="shade_shortcut_notifications">Folio Notification Shade</string>
+    <string name="shade_shortcut_quick_settings">Folio Quick Settings</string>
 </resources>

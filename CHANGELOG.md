@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.8] - Unreleased
 
 ### Added
+- **The notification shade over other apps:** Folio Notification Shade and Folio Quick Settings are launchable entries, so a button or gesture action on your phone that opens an app (Samsung's One-hand operation, Routines, a Home shortcut) can pull Android's shade down over whatever is open. They use Folio's gestures service, so nothing is asked for that wasn't already, and without it they take you to how to turn it on.
 - **Touch and Hold, shorter or longer:** Settings › Gestures & Actions › Touch and Hold sets how long you hold an app or widget on Home before its menu opens or it lifts. Standard follows Android, including Samsung's Touch and hold delay in Accessibility, so nothing changes unless you pick Shorter or Longer.
 - **Add Folio Settings to Home:** Settings › Icons & Side Bar › App Icon has an Add Folio Settings to Home button that puts the Settings icon on Home in the first free place, so getting to Folio's Settings is one tap. It reads "on Home" once it is there.
 - **A switch for Today View's Suggestions:** Settings › Today View › Suggestions turns off the row of apps you may want next at the top of Today View, and with it the usage check that picks them. The Suggestions widget and Spotlight's suggestions have their own switches and are not affected.

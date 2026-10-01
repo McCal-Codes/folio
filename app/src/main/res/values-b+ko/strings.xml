@@ -1497,4 +1497,6 @@
     <string name="hold_longer">길게</string>
     <string name="touch_and_hold">길게 누르기</string>
     <string name="touch_and_hold_note">홈에서 앱이나 위젯을 얼마나 오래 눌러야 메뉴가 열리는지 정합니다. 표준은 Android 설정을 따르며, 삼성 접근성의 길게 누르기 지연도 포함됩니다.</string>
+    <string name="shade_shortcut_notifications">Folio 알림 패널</string>
+    <string name="shade_shortcut_quick_settings">Folio 빠른 설정</string>
 </resources>

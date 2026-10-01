@@ -1476,4 +1476,6 @@
     <string name="hold_longer">较长</string>
     <string name="touch_and_hold">触控并按住</string>
     <string name="touch_and_hold_note">设定在主屏幕上按住 App 或小组件多久后打开菜单。“标准”遵循 Android 设置，包括三星“辅助功能”中的触摸和按住延迟。</string>
+    <string name="shade_shortcut_notifications">Folio 通知栏</string>
+    <string name="shade_shortcut_quick_settings">Folio 快捷设置</string>
 </resources>
