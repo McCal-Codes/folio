@@ -32,7 +32,12 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
@@ -432,6 +437,14 @@ fun LauncherScreen(
     }
     // A light tick each time the dragged item snaps to a new spot.
     LaunchedEffect(insertionTarget) { if (insertionTarget != null && drag.moved) haptic.perform(FolioHaptic.Step) }
+    // A full dock turns an app away out loud: a refusal tick, and the dock shakes its head. Reduce Motion keeps the tick.
+    val dockShake = remember { Animatable(0f) }
+    val dockReduceMotion = LocalReduceMotion.current
+    LaunchedEffect(blockedDock) {
+        if (!blockedDock) return@LaunchedEffect
+        haptic.perform(FolioHaptic.Refuse)
+        if (!dockReduceMotion) listOf(-8f, 8f, -5f, 5f, 0f).forEach { dockShake.animateTo(it, tween(55)) }
+    }
     val widgetRawTarget = widgetSession?.let { session -> drag.regions.values.firstOrNull {
         it.target is DropTarget.Home && it.page in eligibleDragPages && it.bounds.contains(session.pointer)
     }?.target as? DropTarget.Home }
@@ -879,6 +892,15 @@ fun LauncherScreen(
             val dockBarWidth = if (geometry.horizontalDock && hinge?.active == true && hinge.vertical) minOf(fromRoom, contentWidth / 2 - 8.dp) else fromRoom
             val dockBarScrolls = dockBarFull > dockBarWidth
             val dockBarScroll = rememberScrollState()
+            // A place opening or closing in the dock moves the bar and the icons with a spring; a change of window (fold,
+            // rotate) still lands at once, so the dock never lags behind the rest of Home. Reduce Motion lands at once too.
+            var settledDockSlots by remember { mutableIntStateOf(shownDock.size) }
+            val dockResizes = settledDockSlots != shownDock.size
+            SideEffect { settledDockSlots = shownDock.size }
+            val dockSpec: AnimationSpec<Float> = if (dockResizes && !dockReduceMotion) spring(dampingRatio = .82f, stiffness = 420f) else snap()
+            val dockPitchShown by animateFloatAsState(if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight, dockSpec, label = "dock pitch")
+            val dockRailHeightShown by animateFloatAsState(dockHeightShown, dockSpec, label = "dock height")
+            val dockBarWidthShown = animateFloatAsState(dockBarWidth.value, dockSpec, label = "dock width").value.dp
             // Like iPhone, the dock bar steps aside for Today View: it follows the swipe out, then leaves altogether so
             // it can't sit over Today's widgets and Edit button (#25). Only the bar; the Side Bar dock is beside Today.
             val dockStepsAsideForToday = todayMode && firstHome > 0 && geometry.horizontalDock
@@ -887,17 +909,18 @@ fun LauncherScreen(
             }
             if (!dockAwayForToday) Box((if (geometry.horizontalDock) (if (hinge?.active == true && hinge.vertical)
                     // Half folded like a book: the bar sits centered on the trailing half, off the hinge.
-                    Modifier.align(Alignment.BottomEnd).padding(end = ((contentWidth / 2 - dockBarWidth) / 2).coerceAtLeast(0.dp))
+                    Modifier.align(Alignment.BottomEnd).padding(end = ((contentWidth / 2 - dockBarWidthShown) / 2).coerceAtLeast(0.dp))
                 else if (geometry.dockBesideRail)
                     // Centered under the grid, which sits beside the status Side Bar.
                     Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart)
-                        .padding(start = if (state.leftHanded) 0.dp else ((pagerWidth + FolioSpace.LARGE.dp - dockBarWidth) / 2).coerceAtLeast(0.dp),
-                            end = if (state.leftHanded) ((pagerWidth + FolioSpace.LARGE.dp - dockBarWidth) / 2).coerceAtLeast(0.dp) else 0.dp)
+                        .padding(start = if (state.leftHanded) 0.dp else ((pagerWidth + FolioSpace.LARGE.dp - dockBarWidthShown) / 2).coerceAtLeast(0.dp),
+                            end = if (state.leftHanded) ((pagerWidth + FolioSpace.LARGE.dp - dockBarWidthShown) / 2).coerceAtLeast(0.dp) else 0.dp)
                     else Modifier.align(Alignment.BottomCenter))
                     .padding(bottom = controlsSpace + FolioSpace.SMALL.dp)
-                    .width(dockBarWidth).height(geometry.dockBarHeight.dp)
+                    .width(dockBarWidthShown).height(geometry.dockBarHeight.dp)
                 else Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp).offset(y = dockTopShown.dp)
-                    .width(preset.dockWidth.dp).height(dockHeightShown.dp)).graphicsLayer {
+                    .width(preset.dockWidth.dp).height(dockRailHeightShown.dp)).graphicsLayer {
+                    translationX = dockShake.value * this.density
                     if (dockStepsAsideForToday) {
                         // Read here, not in composition, so following the swipe doesn't recompose the screen.
                         val towardToday = (1f - nativePager.currentPage - nativePager.currentPageOffsetFraction).coerceIn(0f, 1f)
@@ -910,7 +933,7 @@ fun LauncherScreen(
                 }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(30.dp))
                 .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(30.dp)).testTag("dock")) {
                 Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
-                    DockAppColumn(shownDock, previewLayout.dock, appsById, if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight,
+                    DockAppColumn(shownDock, previewLayout.dock, appsById, dockPitchShown,
                         dockIconSize(geometry.iconSize), drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },
                         magnify = FeatureScopes.on(state.featureScopes, "dockMagnify", state.dockMagnify, screenFor(wide)) &&
