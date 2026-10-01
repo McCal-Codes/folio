@@ -462,6 +462,7 @@ internal fun MarketScreen(
                             onOpen = { openId = it },
                             onGet = { onExternalOrConfirm(it) },
                             onRemove = { id, name -> remove(id, name) },
+                            onTryAgain = { id, name -> tryAgain(id, name) },
                         )
                     }
                 }
@@ -849,6 +850,7 @@ private fun MarketList(
     onOpen: (String) -> Unit,
     onGet: (MarketEntry) -> Unit,
     onRemove: (String, String) -> Unit,
+    onTryAgain: (String, String) -> Unit,
 ) {
     // A package is an update when a source offers a higher version than the one installed. An app of its own is
     // never in [installed] - Android has it, not Folio - so its version is asked of Android, and only for the
@@ -974,8 +976,15 @@ private fun MarketList(
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(pkg.name, color = Color.White, fontSize = 16.sp)
-                                Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
-                                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                                if (!pkg.enabled) {
+                                    // A listed package is put back on its page; one from a file has no page, so its
+                                    // row says what happened and offers the same Try Again.
+                                    Text(stringResource(R.string.turned_off_after_a_crash), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
+                                    TryAgainButton(pkg.name, onClick = { onTryAgain(pkg.id, pkg.name) })
+                                } else {
+                                    Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
+                                        color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                                }
                             }
                             MarketActionButton(R.string.remove, pkg.name, onClick = { onRemove(pkg.id, pkg.name) })
                         }
@@ -1148,6 +1157,19 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
     )
 }
 
+/** Puts back a package Safe Mode turned off. A word under what it's about, with its name for TalkBack as Remove has. */
+@Composable
+private fun TryAgainButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val described = stringResource(R.string.text_1_s_2_s, stringResource(R.string.try_again), name)
+    Text(
+        stringResource(R.string.try_again),
+        color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+        modifier = modifier.clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
+            .padding(vertical = 11.dp).semantics { contentDescription = described },
+    )
+}
+
 @Composable
 private fun MarketPackagePage(
     entry: IndexPackage,
@@ -1224,13 +1246,7 @@ private fun MarketPackagePage(
                         )
                         // Safe Mode took its changes off Home. This puts them back, for a crash that wasn't its
                         // fault; Remove, below, is the other way out.
-                        Text(
-                            stringResource(R.string.try_again),
-                            color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(12.dp))
-                                .clickable(onClick = onTryAgain).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
-                                .padding(vertical = 11.dp).testTag("package-try-again"),
-                        )
+                        TryAgainButton(name, onTryAgain, Modifier.padding(top = FolioSpace.SMALL.dp).testTag("package-try-again"))
                     }
                 }
             }
