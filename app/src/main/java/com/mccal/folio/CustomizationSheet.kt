@@ -473,7 +473,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.STATUS, CustomizationPage.ISLAND -> {
                     if (page == CustomizationPage.STATUS && !split) MiniHomePreview(backgrounds.previewBitmap, state, 210.dp)
                     val st = state.statusStyle
-                    if (page == CustomizationPage.STATUS) AppIconCard(onChanged = { model.refresh() })
+                    if (page == CustomizationPage.STATUS) AppIconCard(state, model, onChanged = { model.refresh() })
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.app_icons)) {
                         val iconContext = androidx.compose.ui.platform.LocalContext.current
                         val packs = remember { IconPacks.installed(iconContext) }
@@ -2190,7 +2190,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
 
 
 /** iOS-style alternate app icons: tap one to use it for Folio's app entry. */
-@Composable private fun AppIconCard(onChanged: () -> Unit) {
+@Composable private fun AppIconCard(state: LauncherState, model: LauncherModel, onChanged: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var current by remember { mutableStateOf(AppIconChoice.current(context)) }
     SettingsCard(stringResource(R.string.app_icon)) {
@@ -2211,6 +2211,14 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
             }
         }
         CardNote(stringResource(R.string.changes_folio_s_icon_in_the_app_library))
+        // Folio's Settings icon is in the App Library; this puts it on Home in one tap, in the first free place.
+        val folio = state.apps.firstOrNull { it.component.packageName == context.packageName }
+        if (folio != null) {
+            val onHome = folio.id in state.homeAppIds()
+            CardAction(stringResource(if (onHome) R.string.folio_settings_on_home else R.string.add_folio_settings_to_home), enabled = !onHome,
+                modifier = Modifier.testTag("add-settings-to-home"), onClick = { model.setPinned(folio.id, true) })
+            CardNote(stringResource(R.string.folio_settings_icon_note))
+        }
     }
 }
 

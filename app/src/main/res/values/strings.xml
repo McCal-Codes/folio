@@ -1515,4 +1515,7 @@
     <string name="saved_home_layout_could_not_be_read">Saved Home layout could not be read; it was left unchanged.</string>
     <string name="widget_waiting_for_setup">%1$s, waiting for setup</string>
     <string name="today_suggestions_note">The row of apps you may want next, at the top of Today View. The Suggestions widget and Spotlight have their own switches.</string>
+    <string name="add_folio_settings_to_home">Add Folio Settings to Home</string>
+    <string name="folio_settings_on_home">Folio Settings is on Home</string>
+    <string name="folio_settings_icon_note">The icon opens Folio\'s Settings when Folio is your Home app.</string>
 </resources>

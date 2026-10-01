@@ -1490,4 +1490,7 @@
     <string name="credit_foldfx_keeler">Gary Keeler · MIT · Duet의 스타일 목록(코드)</string>
     <string name="credit_duo_open">marcoazeem · MIT · Duet 서리와 그늘 조절 아이디어(코드 없음)</string>
     <string name="today_suggestions_note">다음에 열 만한 앱을 오늘 보기 맨 위에 보여 줍니다. 제안 위젯과 Spotlight에는 각각 별도의 스위치가 있습니다.</string>
+    <string name="add_folio_settings_to_home">홈에 Folio 설정 추가</string>
+    <string name="folio_settings_on_home">Folio 설정이 홈에 있습니다</string>
+    <string name="folio_settings_icon_note">Folio가 기본 홈 앱일 때 이 아이콘으로 Folio 설정이 열립니다.</string>
 </resources>

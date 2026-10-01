@@ -1469,4 +1469,7 @@
     <string name="credit_foldfx_keeler">Gary Keeler · MIT · Duet 的样式目录（代码）</string>
     <string name="credit_duo_open">marcoazeem · MIT · Duet 磨砂和阴影控制的创意（无代码）</string>
     <string name="today_suggestions_note">在“今天”视图顶部显示你接下来可能会打开的 App。建议小组件和聚焦搜索有各自的开关。</string>
+    <string name="add_folio_settings_to_home">将 Folio 设置添加到主屏幕</string>
+    <string name="folio_settings_on_home">Folio 设置已在主屏幕上</string>
+    <string name="folio_settings_icon_note">Folio 是默认主屏幕应用时，点按此图标会打开 Folio 设置。</string>
 </resources>
