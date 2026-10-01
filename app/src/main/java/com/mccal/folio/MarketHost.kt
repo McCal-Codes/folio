@@ -203,7 +203,8 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         // A bundle that leaves out a screen means "not there": an override, not the tweak's own default.
         launcher.setFeatureScope(feature.id, FolioScreen.COVER, if (setting.cover) ScopeValue.DEFAULT else ScopeValue.OFF)
         launcher.setFeatureScope(feature.id, FolioScreen.INNER, if (setting.inner) ScopeValue.DEFAULT else ScopeValue.OFF)
-        if (setting.id == TweakId.DUET && setting.options.isNotEmpty()) applyDuet(setting.options)
+        // A package that turns Duet off sets no options for it.
+        if (setting.id == TweakId.DUET && setting.enabled && setting.options.isNotEmpty()) applyDuet(setting.options)
     }
 
     /** Only the keys the package set change; the rest keep what the person has. [DuetOptions.fromJson] clamps. */

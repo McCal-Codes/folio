@@ -1487,7 +1487,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folioPanels = j.optBoolean("folioPanels", true),
         minPages = j.optInt("minPages", 1).coerceIn(1, 20),
         statusStyle = StatusStyle.fromJson(j.optJSONObject("statusStyle")),
-        foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f), duet = com.mccal.folio.duet.DuetOptions.fromJson(j.optJSONObject("duet")),
+        foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f), // A save from before Duet had today's fold, which is the Duo style; only a new save carries a choice.
+        duet = if (j.has("duet")) com.mccal.folio.duet.DuetOptions.fromJson(j.optJSONObject("duet")) else com.mccal.folio.duet.DuetOptions(style = com.mccal.folio.duet.DuetStyles.DUO.id),
         stayAwakeOnFold = j.optBoolean("stayAwakeOnFold", true),
         panelBlur = j.optDouble("panelBlur", 1.0).toFloat().coerceIn(0f, 1f), notificationClock = j.optBoolean("notificationClock", true),
         groupNotifications = j.optBoolean("groupNotifications", true),

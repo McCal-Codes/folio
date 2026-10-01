@@ -43,6 +43,7 @@ class SchemaConformanceTest {
     private val entrySchema = schema("entry")
     private val indexSchema = schema("index")
     private val revokedSchema = schema("revoked")
+    private val tweaksSchema = schema("tweaks")
     private val sourceDir = File(root, "docs/sdk/source")
 
     private fun schema(name: String): JsonSchema = factory.getSchema(File(schemaDir, "$name.schema.json").readText())
@@ -81,6 +82,26 @@ class SchemaConformanceTest {
             assertEquals(emptyList<String>(), schemaErrors(schema, text))
             assertEquals(null, agree(schema, text, parse))
         }
+    }
+
+    @Test fun `the Duet example, and tweak options in general, get the same answer from the schema and the parser`() {
+        val example = File(root, "docs/sdk/examples/duet-deep")
+        val manifest = example.resolve("manifest.json").readText()
+        val bundle = example.resolve("tweaks.json").readText()
+        assertEquals(emptyList<String>(), schemaErrors(manifestSchema, manifest))
+        assertEquals(emptyList<String>(), schemaErrors(tweaksSchema, bundle))
+        assertEquals(null, agree(manifestSchema, manifest, PackageManifest::parse))
+        assertEquals(null, agree(tweaksSchema, bundle, TweakBundle::parse))
+        fun tweak(id: String, options: String) = """{"format":1,"tweaks":[{"id":"$id","enabled":true,"options":$options}]}"""
+        for (text in listOf(
+            tweak("duet", """{"style":"classic","direction":"closing","intensity":1.5,"frost":2,"darkening":0,"perspective":1.33}"""),
+            tweak("duet", "{}"),
+            tweak("duet", """{"style":"sparkle"}"""),           // a style Folio doesn't have
+            tweak("duet", """{"frost":2.5}"""),                 // out of range
+            tweak("duet", """{"ripple":true}"""),               // a key from a newer Folio: the parser skips it, the schema says so
+            tweak("appPanels", """{"style":"deep"}"""),         // options on a tweak that takes none
+            tweak("appPanels", "{}"),
+        )) assertEquals(text, null, agree(tweaksSchema, text, TweakBundle::parse))
     }
 
     @Test fun `mutated source files get the same answer from the schema and the parser`() {

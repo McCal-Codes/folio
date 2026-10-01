@@ -71,7 +71,9 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val fold = remember { FoldTimeline(context) }
     fold.unfoldStart = style.startAt
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
-    val cornerPx = remember(view, expanded) { screenCornerPx(view) }
+    // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
+    // arrive after the first frame, and a 0 kept from then would square off the panel's corners until the next switch.
+    var cornerPx by remember(view, expanded) { mutableFloatStateOf(0f) }
     // Android 15+ files a layer with no motion hint as "normal", which the Fold8 runs at 60 Hz. While the fold
     // animates, ask for the display's top rate; once it settles, hand the choice back to the system (dynamic).
     val fastest = remember(view, expanded) { view.display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f }
@@ -131,6 +133,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             // than up to one poll later. The timeout is only a backstop.
             if (!fold.busy && m == 0f) { animating(false); lastFrame = 0L; kotlinx.coroutines.withTimeoutOrNull(IDLE_WAIT_MS) { fold.wake.receive() }; continue }
             animating(enabled)
+            if (cornerPx == 0f) cornerPx = screenCornerPx(view)
             withFrameNanos { frame ->
                 val now = SystemClock.uptimeMillis()
                 val dt = if (lastFrame == 0L) 16f else ((frame - lastFrame) / 1_000_000f).coerceIn(1f, 64f)

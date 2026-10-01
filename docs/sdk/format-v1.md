@@ -124,8 +124,15 @@ today:
 ```
 
 A value outside its range, or a style Folio doesn't have, is refused when the package is read. Keys this Folio doesn't
-know are skipped and reported, so a newer package still installs. Only the keys a package sets change, and removing
-the package puts back the options it replaced.
+know are skipped and reported, so a newer package still installs; the schema is stricter and rejects them (and any
+`options` on a tweak that takes none), so a misspelled key is caught while you write the package. Only the keys a
+package sets change, and removing the package puts back the options it replaced. A package that sets `"enabled": false`
+turns the tweak off and sets no options.
+
+Options configure a built-in tweak that is a setting (Duet's look). A tweak whose variants are things you add, such as
+Flipbook's page effects, takes them as their own package kind instead (see Page effects above). Pick `options` when
+the choice is a number or a name from a fixed list, and a kind when it is a file. See
+[`examples/duet-deep/`](examples/duet-deep/).
 
 #### Wallpapers
 

@@ -97,6 +97,23 @@
               }
             }
           }
+        },
+        "if": {
+          "properties": {
+            "id": {
+              "const": "duet"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "else": {
+          "properties": {
+            "options": {
+              "maxProperties": 0
+            }
+          }
         }
       }
     }

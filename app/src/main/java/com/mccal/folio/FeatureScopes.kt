@@ -85,7 +85,8 @@ internal val TweakFeatures = listOf(
     TweakFeature(DUET_ID, "Duet", "Duo Fold Live by joeconsorti", // english-only
         R.string.tweak_duet_detail,
         androidx.compose.material.icons.Icons.Rounded.MenuBook, FolioColors.Value.Indigo,
-        { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit),
+        { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit,
+        keywords = R.string.settings_keywords_fold_animation),
 )
 
 internal const val DUET_ID = "duet"

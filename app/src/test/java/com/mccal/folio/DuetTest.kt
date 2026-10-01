@@ -8,7 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Duet, the fold animation as a tweak: nothing changes for anyone until they pick a different look. */
+/** Duet, the fold animation as a tweak: a save from before Duet keeps the fold it had until someone picks another look. */
 class DuetTest {
     @Test fun `the default is iPhone Duo, with Apple's numbers`() {
         assertEquals(DuetStyles.IPHONE, DuetOptions().resolved())
@@ -21,6 +21,13 @@ class DuetTest {
             assertTrue(classic)
             assertEquals("starts where the Fold8 lights its inner panel, ~125 degrees", .61f, startAt, 1e-6f)
         }
+    }
+
+    @Test fun `a save from before Duet keeps the Duo fold, and a new save keeps its choice`() {
+        val before = JSONObject().put("foldEffect", true)
+        assertEquals("duo", decodeLauncherState(before.toString(), legacyRaw = null).duet.style)
+        val after = JSONObject().put("foldEffect", true).put("duet", DuetOptions(style = "deep").toJson())
+        assertEquals("deep", decodeLauncherState(after.toString(), legacyRaw = null).duet.style)
     }
 
     @Test fun `Duo is still Folio's earlier fold, number for number`() {

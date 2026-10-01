@@ -1775,23 +1775,22 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
-/** One style, drawn by the real shader at a fixed half fold over the person's own Home. */
 /** The preview's Home pair, recorded once and drawn by every style tile. */
 @androidx.compose.runtime.Stable
 private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLayer) {
     var size by mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
 }
 
+/** One style, drawn by the real shader at a fixed half fold over the person's own Home. */
 @Composable private fun DuetStyleTile(style: com.mccal.folio.duet.DuetStyle, selected: Boolean, state: LauncherState,
     home: DuetHome, modifier: Modifier, onClick: () -> Unit) {
     val name = stringResource(style.name)
     val resolved = state.duet.copy(style = style.id).resolved()
     Column(modifier.clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.White.copy(alpha = .06f))
         .border(2.dp, if (selected) androidx.compose.ui.graphics.Color(FolioColors.Value.Blue) else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(14.dp))
-        
         .selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
         .testTag("duet-style-${style.id}").padding(FolioSpace.SNUG.dp)) {
-        // The Home pair the big preview recorded, scaled to fit: one layout for all five tiles, not ten.
+        // The Home pair the big preview recorded, scaled to fit: one recording shared by every tile.
         val src = home.size
         androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()
             .aspectRatio(if (src.width > 0 && src.height > 0) src.width.toFloat() / src.height else 7f / 6f)

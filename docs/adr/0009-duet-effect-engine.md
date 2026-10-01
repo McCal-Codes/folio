@@ -1,4 +1,4 @@
-# 0008: Duet is the fold animation, and its looks are ported only from licensed code
+# 0009: Duet is the fold animation, and its looks are ported only from licensed code
 
 - **Status:** proposed, 2026-09-28
 
@@ -26,16 +26,23 @@ wallpapers). They were checked on 28 Sep 2026 for license, lineage and what Foli
 
 1. **Merge, don't fork a second tweak.** Fold FX is not a separate package. Its ideas become Duet's styles and options.
    The name is dropped because iamkeeler/FoldFX already uses it.
-2. **Duet's looks are a catalog of `DuetEffect`s** in `com.mccal.folio.duet`. The launcher sees only
-   `FoldTransitionHost` and that interface, so a ported look can be replaced or removed without touching the launcher.
+2. **Duet's looks are a catalog of `DuetStyle`s** in `com.mccal.folio.duet`: numbers over one shader (`DuetShader`),
+   in one list (`DuetStyles.all`) that the picker, the renderer and the package validator all read. The launcher sees
+   only `FoldTransitionHost`, so a look can be added, changed or removed without touching the launcher. Hingewave's
+   and Duo Fold Live's projections are two modes of the shader; a look is not a class.
 3. **Code is ported only from MIT sources pinned to a commit** and listed in `third_party/duet/PROVENANCE.md`, with an
-   SPDX line and an upstream header in each ported file. Nothing is ported from a project whose shader lineage leads
+   SPDX line and an upstream header in each file that carries ported code (`DuetShader.kt`). `DuetOptions.kt` takes
+   only FoldFX's idea of one catalog, no code, and says so in its KDoc. Nothing is ported from a project whose shader lineage leads
    to Atomicx7.
 4. **Only renderer math comes in.** No services, overlays, accessibility, capture, reflection, hidden APIs or network.
 5. **Packages carry options, not code.** `tweaks.json` gains an optional `options` object per tweak, validated per
    tweak id and clamped on apply, and removing the package restores the previous options. The capability is
    `tweaks.foldTransition`.
-6. **The default look is unchanged.** Existing installs keep today's animation until someone picks another style.
+6. **Existing installs keep today's animation.** Folio's earlier fold is the Duo style. A save from before Duet has no
+   `duet` key and decodes to Duo; new installs start on iPhone Duo, which is the default for `DuetOptions()`.
+7. **Options are for settings, a package kind is for files.** A tweak whose choice is a number or a name from a fixed
+   list takes `options` (Duet). A tweak whose variants are things you add takes its own kind (Flipbook's `pageEffect`).
+   Both are described in `docs/sdk/format-v1.md`.
 
 ## Consequences
 
