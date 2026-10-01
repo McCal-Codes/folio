@@ -318,6 +318,9 @@ fun LauncherScreen(
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
     } }
+    // Given half of a split screen, show a Home page (one cover-sized page beside the app) rather than where Folio was left.
+    val splitScreen = androidx.compose.ui.platform.LocalConfiguration.current.let { launcherActivity.isInMultiWindowMode }
+    LaunchedEffect(splitScreen) { splitViewHomePage(splitScreen, pager.currentPage, homePages, lastHomePage)?.let { pager.scrollToPage(it) } }
     // Turning on a Focus with a Home page goes straight there.
     LaunchedEffect(state.activeFocus) {
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
