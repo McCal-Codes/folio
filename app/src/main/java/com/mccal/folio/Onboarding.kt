@@ -76,6 +76,9 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             OnboardingPage("home", Icons.Rounded.Home, FolioColors.Value.Blue, context.getString(R.string.make_folio_your_home),
                 context.getString(R.string.onboarding_home_detail),
                 action = context.getString(R.string.choose_home_app), done = { isDefaultHome }, onAction = onMakeDefault),
+            // Which of Folio's iPhone-style pieces to start with. Skipping keeps today's defaults, which are the Folio profile.
+            OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, context.getString(R.string.how_should_folio_feel),
+                context.getString(R.string.how_should_folio_feel_detail), optional = false),
             OnboardingPage("notifications", Icons.Rounded.Notifications, FolioColors.Value.RedLight, context.getString(R.string.notifications_title),
                 context.getString(R.string.onboarding_notifications_detail),
                 uses = listOf(context.getString(R.string.onboarding_use_island), context.getString(R.string.onboarding_use_quick_reply), context.getString(R.string.onboarding_use_badges)),
@@ -90,7 +93,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 optional = false),
             OnboardingPage("done", Icons.Rounded.CheckCircle, FolioColors.Value.Green, context.getString(R.string.youre_all_set),
                 context.getString(R.string.a_few_things_to_try), action = context.getString(R.string.get_started), optional = false),
-        ).filter { page -> page.key in setOf("welcome", "look", "done") || !page.done() }
+        ).filter { page -> page.key in setOf("welcome", "feel", "look", "done") || !page.done() }
     }
     // Resume by page key: the page list changes between versions (and skips what's already allowed), so an index
     // saved by an older Folio could land on the wrong page.
@@ -170,6 +173,17 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                                 }
                             }
                         }
+                    }
+                    if (p.key == "feel" && state != null && model != null) {
+                        val chosen = state.profile()
+                        Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XXL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
+                            listOf(ExperienceProfile.FOLIO, ExperienceProfile.ANDROID_STYLE).forEach { profile ->
+                                IosChip(selected = chosen == profile, onClick = { model.setExperienceProfile(profile) },
+                                    label = { Text(stringResource(profile.label)) }, modifier = Modifier.weight(1f).testTag("profile-${profile.name.lowercase()}"))
+                            }
+                        }
+                        Text(stringResource(chosen.detail), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp, textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = FolioSpace.LARGE.dp))
                     }
                     if (p.key == "look") Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XXL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                         IosChip(selected = systemWallpaper, onClick = { onWallpaper(true) }, label = { Text(stringResource(R.string.my_wallpaper)) }, modifier = Modifier.weight(1f))

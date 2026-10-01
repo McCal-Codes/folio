@@ -86,6 +86,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- The shade as an app a phone's own button or gesture action can open: see ShadeShortcutActivity. -->
+        <activity android:name=".ShadeShortcutActivity" android:exported="false"
+            android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
+            android:taskAffinity="com.mccal.folio.shade" android:launchMode="singleInstance" />
+        <activity-alias android:name=".ShadeShortcutNotifications" android:targetActivity=".ShadeShortcutActivity"
+            android:exported="true" android:label="@string/shade_shortcut_notifications" android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="folio.shade.panel" android:value="NOTIFICATIONS" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ShadeShortcutQuickSettings" android:targetActivity=".ShadeShortcutActivity"
+            android:exported="true" android:label="@string/shade_shortcut_quick_settings" android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="folio.shade.panel" android:value="QUICK_SETTINGS" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
         <activity android:name=".FoldBridgeActivity" android:exported="false"
             android:theme="@style/Theme.Folio.FoldBridge"
             android:taskAffinity="com.mccal.folio.foldbridge" android:excludeFromRecents="true"

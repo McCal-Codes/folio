@@ -1097,7 +1097,7 @@
     <string name="settings_keywords_status_spacing">状态 间距 紧凑 时间 日期 侧边栏 status spacing compact time date side bar</string>
     <string name="settings_keywords_widgets">小组件 叠放 智能 widget stack smart</string>
     <string name="settings_today_view_left_of_home">“今天”视图 / 主屏幕左侧</string>
-    <string name="settings_keywords_today_view_left_of_home">今天 小组件 页面 旁边 today discover google widgets page beside</string>
+    <string name="settings_keywords_today_view_left_of_home">今天 小组件 页面 旁边 建议 today discover google widgets page beside suggestions</string>
     <string name="settings_icon_pack_shape_style">图标包、形状与样式</string>
     <string name="settings_keywords_icon_pack_shape_style">图标 图标包 超椭圆 圆形 着色 深色 icons pack squircle circle tinted dark</string>
     <string name="settings_keywords_notification_badges">标记 圆点 数字 颜色 badge dot count color soft</string>
@@ -1468,4 +1468,22 @@
     <string name="credit_hingewave">Ant-lib · MIT · Duet 的“纵深”样式：倾斜透视和模糊底值（代码）</string>
     <string name="credit_foldfx_keeler">Gary Keeler · MIT · Duet 的样式目录（代码）</string>
     <string name="credit_duo_open">marcoazeem · MIT · Duet 磨砂和阴影控制的创意（无代码）</string>
+    <string name="today_suggestions_note">在“今天”视图顶部显示你接下来可能会打开的 App。建议小组件和聚焦搜索有各自的开关。</string>
+    <string name="add_folio_settings_to_home">将 Folio 设置添加到主屏幕</string>
+    <string name="folio_settings_on_home">Folio 设置已在主屏幕上</string>
+    <string name="folio_settings_icon_note">Folio 是默认主屏幕应用时，点按此图标会打开 Folio 设置。</string>
+    <string name="hold_shorter">较短</string>
+    <string name="hold_longer">较长</string>
+    <string name="touch_and_hold">触控并按住</string>
+    <string name="touch_and_hold_note">设定在主屏幕上按住 App 或小组件多久后打开菜单。“标准”遵循 Android 设置，包括三星“辅助功能”中的触摸和按住延迟。</string>
+    <string name="shade_shortcut_notifications">Folio 通知栏</string>
+    <string name="shade_shortcut_quick_settings">Folio 快捷设置</string>
+    <string name="how_should_folio_feel">希望 Folio 是什么感觉？</string>
+    <string name="how_should_folio_feel_detail">选择一个起点。每一项之后都可以在“设置”中更改。</string>
+    <string name="profile_folio">Folio</string>
+    <string name="profile_android_style">Android 风格</string>
+    <string name="profile_custom">自定</string>
+    <string name="profile_folio_detail">灵动岛、Folio 的通知中心和控制中心，在主屏幕下滑时打开聚焦搜索。</string>
+    <string name="profile_android_style_detail">使用 Android 自带的通知栏和快捷设置，不使用灵动岛，在主屏幕下滑时打开通知栏。</string>
+    <string name="profile_custom_detail">这些是你自己设置的。在上方选一项即可从它开始。</string>
 </resources>

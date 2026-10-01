@@ -398,9 +398,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
+                        IosMenuRow(stringResource(R.string.touch_and_hold), HoldDelay.entries.map { it to stringResource(it.label) }, state.holdDelay, model::setHoldDelay, tag = "hold-delay")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")
                         SettingsSwitch(stringResource(R.string.haptic_feedback), state.haptics, model::setHaptics, "haptics-switch")
                         CardNote(stringResource(R.string.pull_down_from_the_top_left_for_notifica))
+                        CardNote(stringResource(R.string.touch_and_hold_note))
                     }
                     // One page for the panels: the on/off switch and, when on, their options.
                     if (page == CustomizationPage.NOTIFICATIONS) SettingsCard(stringResource(R.string.panels)) {
@@ -453,6 +455,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 "OFF" -> stringResource(R.string.no_today_view_while_unfolded_it_s_still)
                                 else -> stringResource(R.string.swipe_right_from_your_first_home_page_to)
                             })
+                            SettingsSwitch(stringResource(R.string.suggestions), state.todaySuggestions, model::setTodaySuggestions, "today-suggestions-switch")
+                            CardNote(stringResource(R.string.today_suggestions_note))
                         }
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.app_library)) {
@@ -471,7 +475,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.STATUS, CustomizationPage.ISLAND -> {
                     if (page == CustomizationPage.STATUS && !split) MiniHomePreview(backgrounds.previewBitmap, state, 210.dp)
                     val st = state.statusStyle
-                    if (page == CustomizationPage.STATUS) AppIconCard(onChanged = { model.refresh() })
+                    if (page == CustomizationPage.STATUS) AppIconCard(state, model, onChanged = { model.refresh() })
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.app_icons)) {
                         val iconContext = androidx.compose.ui.platform.LocalContext.current
                         val packs = remember { IconPacks.installed(iconContext) }
@@ -2188,7 +2192,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
 
 
 /** iOS-style alternate app icons: tap one to use it for Folio's app entry. */
-@Composable private fun AppIconCard(onChanged: () -> Unit) {
+@Composable private fun AppIconCard(state: LauncherState, model: LauncherModel, onChanged: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var current by remember { mutableStateOf(AppIconChoice.current(context)) }
     SettingsCard(stringResource(R.string.app_icon)) {
@@ -2209,6 +2213,14 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
             }
         }
         CardNote(stringResource(R.string.changes_folio_s_icon_in_the_app_library))
+        // Folio's Settings icon is in the App Library; this puts it on Home in one tap, in the first free place.
+        val folio = state.apps.firstOrNull { it.component.packageName == context.packageName }
+        if (folio != null) {
+            val onHome = folio.id in state.homeAppIds()
+            CardAction(stringResource(if (onHome) R.string.folio_settings_on_home else R.string.add_folio_settings_to_home), enabled = !onHome,
+                modifier = Modifier.testTag("add-settings-to-home"), onClick = { model.setPinned(folio.id, true) })
+            CardNote(stringResource(R.string.folio_settings_icon_note))
+        }
     }
 }
 

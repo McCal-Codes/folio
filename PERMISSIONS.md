@@ -28,7 +28,9 @@ Folio keeps working.
 app open the system notifications and Quick Settings panels: there is no other way for an app to do it. It also shows
 Folio's dock handle and Dynamic Island over other apps, if you turn those on. It observes no events, cannot read what
 is on screen, and cannot tap or type for you (`SystemShadeController.kt`). Without it, Home's swipe-down gestures use
-Folio's own Notification Center and Control Center.
+Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
+(`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
+shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a

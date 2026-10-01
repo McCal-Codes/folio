@@ -48,8 +48,9 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
     val tick by rememberMinuteTick()
     val today = remember(tick) { LocalDate.now() }
     val apps = remember(state.apps, state.hiddenApps) { state.apps.filter { it.id !in state.hiddenApps } }
-    val suggestions by produceState(emptyList<AppEntry>(), apps) {
-        value = withContext(Dispatchers.IO) {
+    // Off means no row and no usage query either.
+    val suggestions by produceState(emptyList<AppEntry>(), apps, state.todaySuggestions) {
+        value = if (!state.todaySuggestions) emptyList() else withContext(Dispatchers.IO) {
             Suggestions.forNow(context, apps)
         }
     }

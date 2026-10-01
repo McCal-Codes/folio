@@ -204,6 +204,8 @@ data class LauncherState(
     val todayWidgets: List<TodayWidget> = DEFAULT_TODAY_WIDGETS,
     /** Unfolded: "PAGE" (swipe left of Home), "BESIDE" (always next to Home, iPad-style) or "OFF". */
     val todayUnfolded: String = "PAGE",
+    /** The row of suggested apps at the top of Today View. The Suggestions widget and Spotlight have their own switches. */
+    val todaySuggestions: Boolean = true,
     /** Show Android's own home-screen wallpaper behind Folio (live wallpapers included) instead of Folio's background. */
     val systemWallpaper: Boolean = false,
     /** Text drawn on the wallpaper: "AUTO" follows the wallpaper, "LIGHT" white, "DARK" dark. */
@@ -226,6 +228,7 @@ data class LauncherState(
     val folderBackground: FolderBackground = FolderBackground.GLASS,
     val labelSize: LabelSize = LabelSize.STANDARD,
     val motionSpeed: MotionSpeed = MotionSpeed.STANDARD,
+    val holdDelay: HoldDelay = HoldDelay.STANDARD,
     /** How Home pages move as you swipe between them. [PageEffect.NONE] is the default and the flat swipe. */
     val pageEffect: PageEffect = PageEffect.NONE,
     /** The effect Flipbook's switch turns back on: the last one chosen, so Carousel survives an off and on. */
@@ -950,6 +953,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (FocusController.isOnInAndroid(getApplication(), active) == false) updateSettings(soon = false) { it.copy(activeFocus = null) }
     }
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
+    fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }
     fun setTodayUnfolded(value: String) = updateSettings(soon = false) { it.copy(todayUnfolded = value) }
     fun setSystemWallpaper(value: Boolean) = updateSettings(soon = false) { it.copy(systemWallpaper = value) }
     fun setHomeInk(value: String) = updateSettings(soon = false) { it.copy(homeInk = value) }
@@ -963,6 +967,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderColumns(value: Int) = updateSettings(soon = false) { it.copy(folderColumns = value.takeIf { v -> v in setOf(0, 3, 4) } ?: 0) }
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
+    fun setExperienceProfile(profile: ExperienceProfile) = updateSettings(soon = false) { it.withProfile(profile) }
+    fun setHoldDelay(value: HoldDelay) = updateSettings(soon = false) { it.copy(holdDelay = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
     fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }
     fun setPageEffectOn(on: Boolean) = updateSettings(soon = false) { it.withPageEffectOn(on) }
@@ -1279,13 +1285,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
             .put("installedTweaks", JSONArray(s.installedTweaks.toList()))
             .put("folderColumns", s.folderColumns).put("folderBackground", s.folderBackground.name)
-            .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("pageEffect", s.pageEffect.name)
+            .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("holdDelay", s.holdDelay.name).put("pageEffect", s.pageEffect.name)
             .put("lastPageEffect", s.lastPageEffect.name)
             .put("packagedEffects", JSONArray().apply { s.packagedEffects.forEach { put(it.toJson()) } })
             .put("packagedEffectId", s.packagedEffectId ?: JSONObject.NULL)
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
-            .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
+            .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("todaySuggestions", s.todaySuggestions).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
             .put("roundedCorners", s.roundedCorners).put("cornerRadius", s.cornerRadius.toDouble())
             .put("dimWallpaperDark", s.dimWallpaperDark).put("homeScrim", s.homeScrim).put("iconTintFromWallpaper", s.iconTintFromWallpaper)
             .put("tintNotifications", s.tintNotifications).put("tintMedia", s.tintMedia).put("dockMagnify", s.dockMagnify).put("appPanels", s.appPanels).put("haptics", s.haptics).put("lockCover", s.lockCover)
@@ -1539,6 +1545,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folderBackground = runCatching { FolderBackground.valueOf(j.optString("folderBackground")) }.getOrDefault(FolderBackground.GLASS),
         labelSize = runCatching { LabelSize.valueOf(j.optString("labelSize")) }.getOrDefault(LabelSize.STANDARD),
         motionSpeed = runCatching { MotionSpeed.valueOf(j.optString("motionSpeed")) }.getOrDefault(MotionSpeed.STANDARD),
+        holdDelay = runCatching { HoldDelay.valueOf(j.optString("holdDelay")) }.getOrDefault(HoldDelay.STANDARD),
         // A save from before Page Effects, and anything unrecognised, reads as the flat swipe.
         pageEffect = PageEffect.of(j.optString("pageEffect")),
         // Before 0.6.7.2 this wasn't saved: the effect in use, else the cube.
@@ -1549,6 +1556,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         focusModes = focusModesFromJson(j.optJSONArray("focusModes")),
         activeFocus = j.optString("activeFocus").takeIf { it.isNotEmpty() },
         leftPage = j.optString("leftPage", "TODAY").takeIf { it in setOf("TODAY", "DISCOVER", "NONE") } ?: "TODAY",
+        todaySuggestions = j.optBoolean("todaySuggestions", true),
         todayUnfolded = j.optString("todayUnfolded", "PAGE").takeIf { it in setOf("PAGE", "BESIDE", "OFF") } ?: "PAGE",
         systemWallpaper = j.optBoolean("systemWallpaper", false),
         homeInk = j.optString("homeInk", "AUTO").takeIf { it in setOf("AUTO", "LIGHT", "DARK") } ?: "AUTO",

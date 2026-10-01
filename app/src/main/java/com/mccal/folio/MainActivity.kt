@@ -338,7 +338,7 @@ class MainActivity : ComponentActivity() {
         // Reassert the token after recreation (and after process restoration, where the
         // in-memory owner set is empty) before any external UI can uncover Discover.
         if (returningFromShadeSettings || restoreShadeDialog) ownShadeSetupExternally()
-        if (restoreShadeDialog) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
+        if (restoreShadeDialog || (savedInstanceState == null && intent.getStringExtra("duo_destination") == "shade_setup")) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
     }
 
     override fun onStart() {
@@ -536,6 +536,8 @@ class MainActivity : ComponentActivity() {
         FoldRenderExperiment.onNewIntent(this, intent)
         updateDefaultHome()
         if (intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++
+        // From the Notification shade shortcut when the gestures service is off: explain how to turn it on.
+        if (intent.getStringExtra("duo_destination") == "shade_setup") showShadeSetup()
         // One chain: tapping Folio's icon opens Settings *or* goes Home, never both.
         if (opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
         else if (takeMarketLink(intent)) settingsRequests.intValue++
