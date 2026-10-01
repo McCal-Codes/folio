@@ -372,7 +372,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
     val context = LocalContext.current
     val fullWidth = fullSize.width / density.density
     val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
-    val preset = if (fullWidth * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && fullSize.height / density.density * classScale >= HOME_REGULAR_MIN_HEIGHT_DP) state.expanded else state.compact
+    val preset = state.presetFor(layoutScreenFor(fullWidth, fullSize.height / density.density, classScale))
     val apps = remember(state.apps) { state.apps.associateBy { it.id } }
     val progress = DiscoverMotion.progress.floatValue
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
@@ -413,7 +413,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
             }
             var statusHeight by remember { mutableFloatStateOf(0f) }
             // Discover's page is laid out beside the Side Bar, so its dock stays there whatever Home uses.
-            val geometry = homeGeometry(fullWidth, maxHeight.value, preset.copy(dockPlacement = DockPlacement.SIDE), state.labels,
+            val geometry = homeGeometry(fullWidth, maxHeight.value, preset.copy(dockPlacement = DockPlacement.SIDE), state.labels, dockSlots = state.dock.size,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = true,
                 homeBottomSpace = if (context.getSystemService(android.app.role.RoleManager::class.java)
