@@ -13,6 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -36,14 +39,17 @@ internal object SettingsFocus {
     if (SettingsFocus.label != label) return this
     val requester = remember { BringIntoViewRequester() }
     val glow = remember { Animatable(0f) }
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val room = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
     LaunchedEffect(label) {
         delay(250) // the page is still sliding in
-        requester.bringIntoView()
+        // Asks for room above and below the row, so it lands clear of the bars rather than flush against an edge.
+        requester.bringIntoView(Rect(0f, -room, size.width.toFloat(), size.height + room))
         glow.snapTo(.28f)
         glow.animateTo(0f, tween(1600))
         if (SettingsFocus.label == label) SettingsFocus.label = null
     }
-    return bringIntoViewRequester(requester).drawBehind {
+    return onSizeChanged { size = it }.bringIntoViewRequester(requester).drawBehind {
         drawRoundRect(Color.White.copy(alpha = glow.value), cornerRadius = CornerRadius(10.dp.toPx()))
     }
 }
