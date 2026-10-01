@@ -12,7 +12,7 @@ class PageEffectSpecTest {
     private val positions = listOf(-2f, -1f, -.6f, -.25f, 0f, .25f, .6f, 1f, 2f)
 
     @Test fun `the built-in effects as specs match the enum at every position`() {
-        for (effect in listOf(PageEffect.CUBE, PageEffect.CAROUSEL)) {
+        for (effect in PageEffect.CHOICES) {
             val spec = effect.spec!!
             positions.forEach { p ->
                 assertEquals("$effect rotation at $p", effect.rotationY(p), spec.rotationY(p), 1e-4f)
@@ -22,6 +22,14 @@ class PageEffectSpecTest {
             assertEquals(effect.cameraWidths, spec.cameraWidths, 1e-4f)
         }
         assertNull("None adds no layer", PageEffect.NONE.spec)
+    }
+
+    // A built-in is a spec a package could have written: inside the range PageEffectSpec.of holds a package to.
+    @Test fun `every built-in effect is within what the engine draws well`() {
+        for (effect in PageEffect.CHOICES) {
+            val spec = effect.spec!!
+            assertEquals("$effect", spec, PageEffectSpec.of(spec.maxRotation, spec.pivot, spec.shrink, spec.cameraWidths))
+        }
     }
 
     @Test fun `a package's numbers are held to what the engine draws well`() {

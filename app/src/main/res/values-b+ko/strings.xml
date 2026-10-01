@@ -417,7 +417,11 @@
     <string name="lynx_2">Lynx 2</string>
     <string name="colorbadges">ColorBadges</string>
     <string name="barrel">Barrel</string>
-    <string name="page_effects_idea_coming_soon_no_code">페이지 효과 아이디어, 출시 예정(코드 미포함)</string>
+    <string name="flipbook_idea_no_code">Flipbook 아이디어(코드 미포함)</string>
+    <string name="cylinder">Cylinder</string>
+    <string name="reed_weichler_flipbook_add_ons_and_inside_cube">Reed Weichler · Flipbook에 더해 쓰는 효과와 안쪽 큐브 아이디어(코드 미포함)</string>
+    <string name="page_squeeze">Page Squeeze</string>
+    <string name="beta382_flipbook_stack_idea_no_code">Beta382(Cylinder용) · Flipbook 스택 아이디어(코드 미포함)</string>
     <string name="contributor_covenant_3_0">Contributor Covenant 3.0</string>
     <string name="organization_for_ethical_source_cc_by_sa">Organization for Ethical Source · CC BY-SA 4.0 · 프로젝트 행동 강령</string>
     <string name="preview">미리보기</string>
@@ -1413,7 +1417,9 @@
     <string name="page_effects">페이지 효과</string>
     <string name="from_packages">패키지에서 추가됨</string>
     <string name="cube">큐브</string>
-    <string name="home_pages_turn_in_3d_as_you_swipe_off_w">쓸어넘길 때 홈 페이지가 3D로 회전합니다. 홈 화면에 두 페이지를 나란히 표시하거나 동작 줄이기가 켜져 있으면 효과가 꺼집니다. 계속 사용하기 전에 화면이 끊기지 않는지 확인해 보세요.</string>
+    <string name="inside_cube">안쪽 큐브</string>
+    <string name="stack">스택</string>
+    <string name="home_pages_turn_in_3d_as_you_swipe_off_w">쓸어넘길 때 홈 페이지가 3D로 움직입니다. 홈 화면에 두 페이지를 나란히 표시하거나 동작 줄이기가 켜져 있으면 효과가 꺼집니다. 계속 사용하기 전에 화면이 끊기지 않는지 확인해 보세요.</string>
     <!-- Added after #143, drafted for 0.6.7; please review. -->
     <string name="a_picture_you_choose_in_folio_only_behind">Folio에서 고른 그림을 Folio 뒤에만 표시합니다.</string>
     <string name="also_set_as_phone_wallpaper">휴대전화 배경화면으로도 설정</string>
@@ -1434,7 +1440,7 @@
     <string name="sunset_to_sunrise">일몰부터 일출까지</string>
     <string name="tweak_cabinet_detail">앱 아이콘을 위로 밀면 바로가기, 최근 알림, 음악 컨트롤이 담긴 작은 패널이 열립니다.</string>
     <string name="tweak_colored_albums_detail">음악 카드와 아일랜드의 사운드 바가 앨범 아트 색을 띱니다.</string>
-    <string name="tweak_flipbook_detail">홈 화면 페이지가 평평하게 밀리는 대신 밀 때 3D로 넘어갑니다.</string>
+    <string name="tweak_flipbook_detail">홈 화면 페이지가 평평하게 밀리는 대신 밀 때 3D로 움직입니다.</string>
     <string name="tweak_harborline_detail">Dock을 따라 밀면 손가락 아래의 아이콘이 커집니다.</string>
     <string name="tweak_palette_detail">알림 카드가 해당 앱 색의 부드러운 색조를 띱니다.</string>
     <string name="tweak_roll_call_detail">알림 센터 위에 앱 아이콘이 한 줄로 표시됩니다. 하나를 누르면 그 앱만 표시합니다.</string>

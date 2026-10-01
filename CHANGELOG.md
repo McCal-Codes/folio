@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.8] - Unreleased
 
 ### Added
+- **Two more Flipbook effects:** Inside Cube folds Home pages toward you as you swipe, like the walls of a room, and Stack steps them back without turning. They re-create Cylinder's Cube (inside) by Reed Weichler and Page Squeeze by Beta382, and Settings › General › Credits names both.
 - **Updates for apps in the Market:** an app a source lists, like Keyd, shows Update with the version it goes from and to, instead of Open, when the source has a newer one. Folio checks the download is the same app signed by the same developer before it installs it over the old copy.
 - **Widgets, one app at a time:** the widget picker has a row of app icons across the top; tap one to see only that app's widgets. While browsing, each app shows a single row with Show All for the rest, so an app with hundreds of widgets no longer stands in front of everything else.
 
@@ -15,7 +16,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Home is ready sooner after Folio starts:** Folio loaded every app's icon, one after another, before Home showed any, which took most of a second on a Galaxy Z Fold8. It now loads the apps on Home, in the dock and in Home's folders first, so Home is complete in about a sixth of the time. The App Library and search fill in as the rest load.
 - **The App Library is ready sooner after a start:** Folio saves app icons and names between starts and uses them while an app is unchanged, so after a start the App Library and search are ready in well under half the time (about 0.3 s instead of 0.8 s on a Galaxy Z Fold8). An app that updates is loaded again, and Refresh Icons forgets them all.
 - **Effects say what they work with:** a page effect's page in the Market and its install sheet say it works with Flipbook. Without Flipbook on your phone they say so before Get, with a way to get Flipbook, instead of an error afterward. Try Again and restoring a backup leave an effect off until Flipbook is back.
-- **Flipbook's effects are on Flipbook's page:** Cube, Carousel and any effect you add from the Market are listed on Flipbook's own page in Settings › Tweaks, instead of a menu in Gestures & Actions. Choosing one turns Flipbook on, and Settings search finds Flipbook when you type Page Effects.
+- **Flipbook's effects are on Flipbook's page:** the built-in effects and any you add from the Market are listed on Flipbook's own page in Settings › Tweaks, instead of a menu in Gestures & Actions. Choosing one turns Flipbook on, and Settings search finds Flipbook when you type Page Effects.
 - **A shorter Settings list:** the first screen goes from 26 rows to 16. Software Update, What's New, Help, the Roadmap, Credits and Advanced are under a new General page, which also has Language (Android's own per-app language screen). Ko-fi, your supporter code and the Supporters list are one Support Folio row. The Market opens from Tweaks, and Themes from Wallpaper & Appearance.
 
 ### Fixed

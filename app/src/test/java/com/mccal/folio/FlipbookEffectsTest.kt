@@ -52,6 +52,25 @@ class FlipbookEffectsTest {
         assertEquals(listOf<Any>(PageEffect.CUBE), picked)
     }
 
+    // Cube's pair beside it, then Carousel's: Inside Cube is Cube from inside, Stack steps back like Carousel without turning.
+    @Test fun `Flipbook offers its four effects in pairs, and choosing Stack reports it`() {
+        assertEquals(listOf(PageEffect.CUBE, PageEffect.INSIDE_CUBE, PageEffect.CAROUSEL, PageEffect.STACK), PageEffect.CHOICES)
+        val picked = mutableListOf<Any>()
+        show(LauncherState(pageEffect = PageEffect.CUBE), { picked += it })
+        compose.onNodeWithTag("page-effect-inside_cube").assertIsNotSelected()
+        compose.onNodeWithText("Inside Cube").assertExists()
+        compose.onNodeWithTag("page-effect-stack").performClick()
+        assertEquals(listOf<Any>(PageEffect.STACK), picked)
+    }
+
+    // Both tweaks it re-creates ideas from are named on its page, and the Tweak Library row names them without authors.
+    @Test fun `Flipbook credits Barrel and Cylinder, and its Tweak Library row names both`() {
+        val flipbook = TweakFeatures.first { it.id == "pageEffects" }
+        assertEquals("Barrel by Aaron Ash, Cylinder by Reed Weichler", flipbook.inspiredBy)
+        assertEquals("Barrel, Cylinder", flipbook.inspiredNames)
+        assertEquals("one tweak, several authors", "Velvet", TweakFeatures.first { it.inspiredBy.startsWith("Velvet") }.inspiredNames)
+    }
+
     @Test fun `with Flipbook off nothing is selected, and without packages there's no packages group`() {
         show(LauncherState(pageEffect = PageEffect.NONE))
         compose.onNodeWithTag("page-effect-cube").assertIsNotSelected()
