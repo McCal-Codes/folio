@@ -1343,6 +1343,8 @@
     <string name="previous">이전</string>
     <string name="play">재생</string>
     <string name="pause">일시 정지</string>
+    <string name="previous_track">이전 곡</string>
+    <string name="next_track">다음 곡</string>
     <string name="decline">거절</string>
     <string name="accept">받기</string>
     <string name="mute">음소거</string>

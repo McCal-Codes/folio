@@ -1322,6 +1322,8 @@
     <string name="previous">上一首</string>
     <string name="play">播放</string>
     <string name="pause">暂停</string>
+    <string name="previous_track">上一首</string>
+    <string name="next_track">下一首</string>
     <string name="decline">拒绝</string>
     <string name="accept">接听</string>
     <string name="mute">静音</string>

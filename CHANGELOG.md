@@ -37,7 +37,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Fixed
 - **The charging island follows the cable:** plugging in at a charge limit, like Samsung's battery protection, shows the charging island and runs your Charging automations, and the battery topping back up at the limit no longer shows the island again with nobody touching the cable.
-- **StandBy shows more of a song's title:** Now Playing in StandBy gives the title two lines, so a long one isn't cut to a few letters on the cover screen.
+- **StandBy shows more of a song's title:** on the cover screen, Now Playing in StandBy puts its controls under the title, so a long title has the card's width and two lines instead of a few letters, and breaks between words.
 - **Plugged in shows as charging:** at a charge limit, like Samsung's battery protection holding at 80%, Android reports the battery as not charging while the phone is still on the cable, so the Side Bar and StandBy showed it as running on battery. They follow the cable now, as iOS does.
 - **The Market's buttons are easier to tap:** Get, Remove, Try Again and the Undo in a banner are full 48 dp targets now. A tap just above Undo used to dismiss the banner instead.
 - **Packages Folio can't use yet are refused:** a package of a kind Folio doesn't support yet, such as a script, offered Get and then installed as nothing, labeled as running a script. The Market now says it needs a newer Folio and doesn't install it; Folio doesn't run scripts.
