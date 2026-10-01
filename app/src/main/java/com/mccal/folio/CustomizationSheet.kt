@@ -680,7 +680,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     LayoutHistoryCard(state, model, onClose)
                 }
                 CustomizationPage.ACCESSIBILITY -> {
-                    SettingsCard(stringResource(R.string.accessibility)) {
+                    SettingsCard(null) {
                         // For people who find the system's buttons too small, especially on the inner screen.
                         SettingsSwitch(stringResource(R.string.big_buttons), state.buttonBar, { on ->
                             model.setButtonBar(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
@@ -2267,9 +2267,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         IosSlider(value, change, valueRange = range, modifier = Modifier.semantics { contentDescription = label }, interactionSource = interaction) }
 }
 
-@Composable internal fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+/** [title] is left out when the page already says it, so a page with one group doesn't repeat its own name. */
+@Composable internal fun SettingsCard(title: String?, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
-        Text(title.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        if (title != null) Text(title.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = FolioSpace.LARGE.dp, top = FolioSpace.COMPACT.dp).semantics { heading() })
         GroupedCard(MaterialTheme.colorScheme.surfaceContainerHigh, androidx.compose.ui.graphics.Color.White.copy(alpha = .12f),
             Modifier.fillMaxWidth(), content)
