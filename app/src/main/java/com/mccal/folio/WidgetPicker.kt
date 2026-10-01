@@ -273,7 +273,7 @@ internal fun VisualWidgetPicker(
                 Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClickLabel = stringResource(R.string.close), onClick = onBack),
                     contentAlignment = Alignment.Center) {
                     Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Close, stringResource(R.string.back), tint = ink, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Rounded.Close, stringResource(R.string.close), tint = ink, modifier = Modifier.size(20.dp))
                     }
                 }
             }

@@ -340,7 +340,7 @@ fun LauncherScreen(
     }
     // Saved layout damaged, or apps failed to load: say so instead of quietly showing an empty Home.
     var problemDismissed by rememberSaveable(state.error) { mutableStateOf(false) }
-    state.error?.takeIf { !problemDismissed && sheet.isEmpty() }?.let { message ->
+    state.error?.takeIf { !problemDismissed && sheet.isEmpty() }?.let {
         if (model.layoutDamaged) AlertDialog(onDismissRequest = { problemDismissed = true },
             title = { Text(stringResource(R.string.your_home_layout_couldn_t_be_loaded)) },
             text = { Text(stringResource(R.string.folio_kept_your_saved_layout_untouched)) },
@@ -351,10 +351,13 @@ fun LauncherScreen(
             } })
         else AlertDialog(onDismissRequest = { problemDismissed = true },
             title = { Text(stringResource(R.string.apps_couldn_t_be_loaded)) },
-            text = { Text(message.removeSuffix(" Tap to retry.")) },
+            text = { Text(stringResource(R.string.apps_could_not_be_loaded)) },
             confirmButton = { TextButton(onClick = { problemDismissed = true; model.refresh() }) { Text(stringResource(R.string.try_again)) } },
             dismissButton = { TextButton(onClick = { problemDismissed = true }) { Text(stringResource(R.string.not_now)) } })
     }
+    // Home keeps the message under its grid after Not Now. A tap on it tries again; a damaged layout is something
+    // trying again can't mend, so there it brings back the choices above.
+    val onProblem = { if (model.layoutDamaged) problemDismissed = false else model.refresh() }
     LaunchedEffect(searchRequests) { if (searchRequests > 0) { drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null; picker.exactTarget = false; overlays.menu = null
         if (!state.googleSearch || !onGoogleSearch(null)) pager.animateScrollToPage(homePages)
     } }
@@ -787,7 +790,7 @@ fun LauncherScreen(
                         onFolder = { overlays.folder = it },
                         onEmptyWidget = onEmptyLongPress,
                         onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
-                        onRefresh = model::refresh,
+                        onProblem = onProblem,
                         libraryBack = { libraryBack },
                         leftPageContent = leftPageContent,
                         besideContent = if (todayMode && state.todayUnfolded == "BESIDE") todayContent else null,
@@ -837,7 +840,7 @@ fun LauncherScreen(
                                     onFolder = { overlays.folder = it },
                                     onEmptyWidget = onEmptyLongPress,
                                     onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
-                                    onRefresh = model::refresh)
+                                    onProblem = onProblem)
                             }
                         }
                     }
@@ -1027,7 +1030,7 @@ fun LauncherScreen(
                         }
                     }
                     when (sheet) {
-                        "dock" -> AppPicker(state.apps, dockSlot,
+                        "dock" -> AppPicker(pickerApps(state), dockSlot,
                             onSelect = {
                                 if (canPlaceInDock(state.layout, it.id)) {
                                     model.applyDrop(it.id, DropTarget.Dock(dockSlot)); sheet = ""
@@ -1572,7 +1575,7 @@ fun LauncherScreen(
                         Text(stringResource(R.string.new_folder_with), style = MaterialTheme.typography.labelLarge,
                             modifier = Modifier.padding(start = FolioSpace.MEDIUM.dp, top = FolioSpace.COMFY.dp, bottom = FolioSpace.TINY.dp))
                     }
-                    items(state.apps.filter { it.id != firstId && it.available }, key = { it.id }) { second ->
+                    items(pickerApps(state).filter { it.id != firstId && it.available }, key = { it.id }) { second ->
                         TextButton(onClick = {
                             val preferredPage = state.layout.indexOfShortcut(firstId)?.let(::homeCellPage)
                                 ?.takeIf { it >= 0 || expandedWorkspace } ?: lastHomePage.coerceIn(0, homePages - 1)

@@ -155,7 +155,8 @@ internal fun RailNowPlaying(media: IslandActivity.Media, accent: Color, width: a
         }
         val controls = controller?.transportControls
         RailControl(Icons.Rounded.FastRewind, "Previous", 22.dp) { controls?.skipToPrevious() }
-        RailControl(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (media.playing) "Pause" else "Play", 32.dp) {
+        RailControl(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            androidx.compose.ui.res.stringResource(if (media.playing) R.string.pause else R.string.play), 32.dp) {
             if (media.playing) controls?.pause() else controls?.play()
         }
         RailControl(Icons.Rounded.FastForward, "Next", 22.dp) { controls?.skipToNext() }

@@ -1327,7 +1327,8 @@
     <string name="do_not_disturb_off_2">방해 금지 꺼짐</string>
     <string name="incoming_call">수신 전화</string>
     <string name="previous">이전</string>
-    <string name="play_or_pause">재생 또는 일시 정지</string>
+    <string name="play">재생</string>
+    <string name="pause">일시 정지</string>
     <string name="decline">거절</string>
     <string name="accept">받기</string>
     <string name="mute">음소거</string>
@@ -1339,7 +1340,7 @@
     <string name="move_down">아래로 이동</string>
     <string name="move_to_next_page">다음 페이지로 이동</string>
     <string name="move_to_previous_page">이전 페이지로 이동</string>
-    <string name="clock_widget_tap_to_replace">시계 위젯, 탭하여 교체</string>
+    <string name="clock_widget_tap_to_open">시계 위젯, 탭하여 시계 열기</string>
     <string name="decrease_widget_width">위젯 너비 줄이기</string>
     <string name="increase_widget_width">위젯 너비 늘리기</string>
     <string name="decrease_widget_height">위젯 높이 줄이기</string>
@@ -1456,4 +1457,7 @@
     <string name="language">언어</string>
     <string name="settings_keywords_general">일반 정보 버전 업데이트 새로운 기능 도움말 로드맵 크레딧 고급</string>
     <string name="settings_keywords_language">언어 번역 영어 한국어 중국어</string>
+    <string name="apps_could_not_be_loaded">앱을 불러오지 못했습니다.</string>
+    <string name="saved_home_layout_could_not_be_read">저장된 홈 화면 레이아웃을 읽지 못해 그대로 두었습니다.</string>
+    <string name="widget_waiting_for_setup">%1$s, 설정 대기 중</string>
 </resources>

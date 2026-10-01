@@ -2,7 +2,6 @@ package com.mccal.folio
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
-import android.content.pm.LauncherApps
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -141,7 +140,8 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         }
                         val t = runCatching { m.controller.transportControls }.getOrNull()
                         TransportButton(Icons.Rounded.FastRewind, "Previous", 30.dp) { t?.skipToPrevious() }
-                        TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play or pause", 34.dp) {
+                        TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            stringResource(if (m.playing) R.string.pause else R.string.play), 34.dp) {
                             if (m.playing) t?.pause() else t?.play()
                         }
                         TransportButton(Icons.Rounded.FastForward, "Next", 30.dp) { t?.skipToNext() }
@@ -162,7 +162,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         if (index > 0) MenuDivider()
                         MenuRow(action.label, bitmap = action.icon) {
                             onDismiss()
-                            runCatching { context.getSystemService(LauncherApps::class.java).startShortcut(action.info, null, null) }
+                            startQuickAction(context, app, action)
                         }
                     }
                 }

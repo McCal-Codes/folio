@@ -81,8 +81,7 @@ internal fun AppLibrary(
         // At a start Home's apps come first; the library waits for all of them rather than show a part as everything.
         // A renamed app answers to both names here, the same as in Spotlight.
         (if (state.loading) emptyList() else state.apps).filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) &&
-            (it.label.contains(text, true) || it.systemLabel.contains(text, true) || Pinyin.matches(it.label, text) || Pinyin.matches(it.systemLabel, text)) &&
-            (editing || it.id !in state.hiddenApps) }
+            appMatches(it, text) && (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
     var openCategory by remember { mutableStateOf<LibraryCategory?>(null) }

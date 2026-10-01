@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -58,6 +59,27 @@ internal object SettingsMemory {
     var focusId = ""
     var bodyScroll = 0
     var sidebarScroll = 0
+    /** How far down each page was when Settings last left it, so Back lands in the same place. */
+    val pageScroll = mutableMapOf<CustomizationPage, Int>()
+}
+
+/**
+ * The scroll of the page Settings shows. Each page gets a new one: the page Back returns to starts where it was left,
+ * as in iPhone Settings, and any other page at its top. A new state is at its offset before the page is laid out;
+ * scrolling the old one back could only have gone as far down as the page it was showing reached.
+ */
+internal class SettingsScroll(private var page: CustomizationPage, offset: Int) {
+    var state = ScrollState(offset)
+        private set
+
+    /** The scroll for [next], as it opens. */
+    fun show(next: CustomizationPage): ScrollState {
+        if (next == page) return state
+        SettingsMemory.pageScroll[page] = state.value
+        state = ScrollState(if (next == page.parent) SettingsMemory.pageScroll[next] ?: 0 else 0)
+        page = next
+        return state
+    }
 }
 
 internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT;
@@ -78,6 +100,53 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
 
     /** The top-level page this one lives under, highlighted in the split view's sidebar. */
     val root: CustomizationPage get() = if (parent == OVERVIEW) this else parent.root
+
+    /** The page's name, over the page and on the Back of the pages under it; a tweak and a Focus show their own. */
+    @get:androidx.annotation.StringRes val title: Int get() = when (this) {
+        OVERVIEW -> R.string.folio
+        SETUP -> R.string.setup_checklist
+        WALLPAPER -> R.string.wallpaper_appearance
+        HOME -> R.string.home_screen_dock
+        STATUS -> R.string.icons_side_bar
+        GESTURES -> R.string.gestures_actions
+        FOLD -> R.string.fold_displays
+        BACKUP -> R.string.backup
+        HELP -> R.string.help
+        SIDE_KEY -> R.string.side_key
+        LOCK -> R.string.lock_cover
+        CREDITS -> R.string.credits
+        SUPPORTERS -> R.string.supporters
+        TWEAKS -> R.string.tweaks
+        MARKET -> R.string.market
+        FOCUS, FOCUS_MODE -> R.string.focus
+        THEMES -> R.string.themes
+        TWEAK, LIBRARY_TWEAK -> R.string.tweak
+        ADVANCED -> R.string.advanced
+        NOTIFICATIONS -> R.string.notifications_control_center
+        SEARCH -> R.string.search_app_library
+        TODAY -> R.string.today_view
+        ISLAND -> R.string.dynamic_island
+        ISLAND_APPS -> R.string.other_notifications
+        PERMISSIONS -> R.string.privacy_permissions
+        COMING_SOON -> R.string.roadmap
+        TWEAK_LIBRARY -> R.string.tweak_library
+        SOFTWARE_UPDATE -> R.string.software_update
+        GENERAL -> R.string.general
+        SUPPORT -> R.string.support_folio
+        SUPPORTER -> R.string.supporter
+    }
+}
+
+/**
+ * What Back says in Settings' nav bar: the name of the page it returns to, as iOS does. Null where there's no Back,
+ * because that page is already on screen: the list beside a top-level page in two columns, or the middle of three.
+ * [columns] is 1 on the phone and while the list slides over the page.
+ */
+@androidx.annotation.StringRes
+internal fun settingsBackLabel(page: CustomizationPage, columns: Int): Int? = when {
+    page == CustomizationPage.OVERVIEW -> null
+    columns >= 3 || (columns == 2 && page.parent == CustomizationPage.OVERVIEW) -> null
+    else -> page.parent.title
 }
 
 @Composable
@@ -106,50 +175,20 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     var settingsQuery by rememberSaveable { mutableStateOf("") }
     var namingBackup by remember { mutableStateOf(false) }
     val title = when (page) {
-        CustomizationPage.OVERVIEW -> stringResource(R.string.folio)
-        CustomizationPage.SETUP -> stringResource(R.string.setup_checklist)
-        CustomizationPage.WALLPAPER -> stringResource(R.string.wallpaper_appearance)
-        CustomizationPage.HOME -> stringResource(R.string.home_screen_dock)
-        CustomizationPage.STATUS -> stringResource(R.string.icons_side_bar)
-        CustomizationPage.GESTURES -> stringResource(R.string.gestures_actions)
-        CustomizationPage.FOLD -> stringResource(R.string.fold_displays)
-        CustomizationPage.BACKUP -> stringResource(R.string.backup)
-        CustomizationPage.HELP -> stringResource(R.string.help)
-        CustomizationPage.SIDE_KEY -> stringResource(R.string.side_key)
-        CustomizationPage.LOCK -> stringResource(R.string.lock_cover)
-        CustomizationPage.CREDITS -> stringResource(R.string.credits)
-        CustomizationPage.SUPPORTERS -> stringResource(R.string.supporters)
-        CustomizationPage.TWEAKS -> stringResource(R.string.tweaks)
-        CustomizationPage.MARKET -> stringResource(R.string.market)
-        CustomizationPage.FOCUS -> stringResource(R.string.focus)
-        CustomizationPage.THEMES -> stringResource(R.string.themes)
-        CustomizationPage.FOCUS_MODE -> state.focusModes.firstOrNull { it.id == focusId }?.name ?: stringResource(R.string.focus)
-        CustomizationPage.TWEAK, CustomizationPage.LIBRARY_TWEAK -> TweakFeatures.firstOrNull { it.id == tweakId }?.name ?: stringResource(R.string.tweak)
-        CustomizationPage.ADVANCED -> stringResource(R.string.advanced)
-        CustomizationPage.NOTIFICATIONS -> stringResource(R.string.notifications_control_center)
-        CustomizationPage.SEARCH -> stringResource(R.string.search_app_library)
-        CustomizationPage.TODAY -> stringResource(R.string.today_view)
-        CustomizationPage.ISLAND -> stringResource(R.string.dynamic_island)
-        CustomizationPage.ISLAND_APPS -> stringResource(R.string.other_notifications)
-        CustomizationPage.PERMISSIONS -> stringResource(R.string.privacy_permissions)
-        CustomizationPage.COMING_SOON -> stringResource(R.string.roadmap)
-        CustomizationPage.TWEAK_LIBRARY -> stringResource(R.string.tweak_library)
-        CustomizationPage.SOFTWARE_UPDATE -> stringResource(R.string.software_update)
-        CustomizationPage.GENERAL -> stringResource(R.string.general)
-        CustomizationPage.SUPPORT -> stringResource(R.string.support_folio)
-        CustomizationPage.SUPPORTER -> stringResource(R.string.supporter)
-    }
-    // Reopening Settings lands where it was, scrolled the same; opening another page starts at its top.
-    val bodyScroll = rememberScrollState(SettingsMemory.bodyScroll)
+        CustomizationPage.FOCUS_MODE -> state.focusModes.firstOrNull { it.id == focusId }?.name
+        CustomizationPage.TWEAK, CustomizationPage.LIBRARY_TWEAK -> TweakFeatures.firstOrNull { it.id == tweakId }?.name
+        else -> null
+    } ?: stringResource(page.title)
+    // Reopening Settings lands where it was, scrolled the same. Back lands where the page it returns to was left;
+    // any other page opens at its top.
+    val scroll = remember { SettingsScroll(page, SettingsMemory.bodyScroll) }
+    val bodyScroll = remember(page) { scroll.show(page) }
     val sidebarScroll = rememberScrollState(SettingsMemory.sidebarScroll)
-    var scrolledPage by remember { mutableStateOf(page) }
-    LaunchedEffect(page) { if (page != scrolledPage) { scrolledPage = page; bodyScroll.scrollTo(0) } }
-    DisposableEffect(Unit) { onDispose { SettingsMemory.bodyScroll = bodyScroll.value; SettingsMemory.sidebarScroll = sidebarScroll.value } }
+    DisposableEffect(Unit) { onDispose { SettingsMemory.bodyScroll = scroll.state.value; SettingsMemory.sidebarScroll = sidebarScroll.value } }
     val setupSteps = rememberSetupSteps(isDefaultHome, onMakeDefault, onShadeSetup, state.messagesApp, model::setMessagesApp, state.systemWallpaper, model::setSystemWallpaper)
     val setupLeft = setupSteps.count { it.required && !it.done }
     val onBack = { onPage(page.parent) }
     val sheetContext = androidx.compose.ui.platform.LocalContext.current
-    val nestedBackLabel = when (page.parent) { CustomizationPage.TWEAKS -> stringResource(R.string.tweaks); CustomizationPage.TWEAK_LIBRARY -> stringResource(R.string.tweak_library); CustomizationPage.FOCUS -> stringResource(R.string.focus); CustomizationPage.ISLAND -> stringResource(R.string.dynamic_island); else -> null }
 
     // The settings list. On the phone it's the first page; in the split view it's the sidebar, with the open page highlighted.
     val overviewRows: @Composable ColumnScope.(selected: CustomizationPage?, sidebar: Boolean) -> Unit = { selected, sidebar ->
@@ -820,7 +859,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
             }
     }
     if (!split) Column(Modifier.fillMaxSize().padding(horizontal = FolioSpace.LARGE.dp)) {
-        SettingsNavBar(if (page == CustomizationPage.OVERVIEW) null else nestedBackLabel ?: stringResource(R.string.folio), onBack, onClose)
+        SettingsNavBar(settingsBackLabel(page, columns = 1)?.let { stringResource(it) }, onBack, onClose)
         if (page != CustomizationPage.OVERVIEW) SettingsLargeTitle(title)
         Column(Modifier.weight(1f).edgeFade(bodyScroll).verticalScroll(bodyScroll).padding(bottom = FolioSpace.XL.dp),
             verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) { pageContent(page) }
@@ -878,17 +917,17 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
             if (threeColumns) {
                 Column(Modifier.width(middleWidth).fillMaxHeight().padding(horizontal = FolioSpace.XL.dp)) {
                     Spacer(Modifier.height(44.dp))
-                    nestedBackLabel?.let { SettingsLargeTitle(it) }
+                    SettingsLargeTitle(stringResource(page.parent.title))
                     Column(Modifier.weight(1f).edgeFade(middleScroll).verticalScroll(middleScroll).padding(bottom = FolioSpace.XL.dp),
                         verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) { pageContent(page.parent) }
                 }
                 divider()
             }
             Column(Modifier.weight(1f).fillMaxHeight().padding(horizontal = FolioSpace.XL.dp)) {
-                // With the list still on screen there's nothing for Back to reveal, so the bar keeps only Done. Without
-                // it, every page but the first gets a way back, not only the sidebar button, which doesn't read as one.
-                SettingsNavBar(if (threeColumns) null else nestedBackLabel
-                    ?: if (!tiled && page != CustomizationPage.OVERVIEW) stringResource(R.string.folio) else null, onBack, onClose,
+                // With the list Back would return to still on screen there's nothing for Back to reveal, so the bar keeps
+                // only Done. Otherwise every page but the first gets a way back, named for where it goes, not only the
+                // sidebar button, which doesn't read as one.
+                SettingsNavBar(settingsBackLabel(page, columns)?.let { stringResource(it) }, onBack, onClose,
                     leading = if (tiled) null else ({ SidebarButton { sidebarOpen = !sidebarOpen } }))
                 if (page != CustomizationPage.OVERVIEW) SettingsLargeTitle(title)
                 Column(Modifier.weight(1f).edgeFade(bodyScroll).verticalScroll(bodyScroll).padding(bottom = FolioSpace.XL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
