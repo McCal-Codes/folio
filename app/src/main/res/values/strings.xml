@@ -105,6 +105,17 @@
     <string name="standby_while_charging_on_its_side">While charging on its side</string>
     <string name="standby_standing_as_a_tent">Standing as a tent</string>
     <string name="standby_ways_note">Charging on its side works in any pose, as on iPhone: plugged in, turned sideways and set down. Your Fold tells apps only closed, halfway and open, so a tent shows up once it’s opened past halfway.</string>
+    <string name="standby_on_the_lock_screen">On the Lock Screen</string>
+    <string name="screen_saver">Screen Saver</string>
+    <string name="not_set_up">Not Set Up</string>
+    <string name="standby_screen_saver_name">Folio StandBy</string>
+    <string name="standby_screen_saver_off_note">On a charger, StandBy stays up until the screen turns off, and then your phone locks. Set up the screen saver to keep StandBy going over the lock screen.</string>
+    <string name="standby_screen_saver_on_note">When the screen turns off on a charger, StandBy carries on over the lock screen, and your phone locks as usual. Pick it up or swipe up from the bottom to leave.</string>
+    <string name="standby_screen_saver_setup_title">StandBy on the Lock Screen</string>
+    <string name="standby_screen_saver_setup_body">Your phone can show a screen saver when the screen turns off by itself while it’s charging. Choose Folio StandBy there, and StandBy carries on over the lock screen while your phone locks as usual.</string>
+    <string name="standby_screen_saver_step_open">1. Tap Open Screen Saver Settings.</string>
+    <string name="standby_screen_saver_step_choose">2. Choose Folio StandBy.</string>
+    <string name="open_screen_saver_settings">Open Screen Saver Settings</string>
     <string name="big_clock_date_next_alarm_battery_and_mu">Big clock, date, next alarm, battery and music while the phone sits half-open on Home. Turns dim red at night. Tap to leave.</string>
     <string name="closing_from_home">Closing from Home</string>
     <string name="stay_awake_on_the_cover_screen">Stay awake on the cover screen</string>
@@ -1180,7 +1191,7 @@
     <string name="settings_keywords_side_key">side key assistant chatgpt claude wallet double press hold</string>
     <string name="settings_keywords_lock_cover">lock screen unlock cover clock</string>
     <string name="settings_keywords_fold_animation">fold unfold animation blur fade duo timing</string>
-    <string name="settings_keywords_standby">standby tent half open clock</string>
+    <string name="settings_keywords_standby">standby tent half open clock screen saver lock screen</string>
     <string name="settings_keywords_themes">theme look snowboard icon style tint shape badges glass import export</string>
     <string name="settings_keywords_focus">focus do not disturb dnd sleep work personal silence quiet grayscale</string>
     <string name="settings_keywords_tweaks">tweak jailbreak velox harbor axon velvet colorflow panels magnification tint album cabinet harborline roll call palette colored albums app row</string>

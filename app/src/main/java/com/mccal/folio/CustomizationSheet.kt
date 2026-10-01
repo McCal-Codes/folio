@@ -651,6 +651,20 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.big_clock_date_next_alarm_battery_and_mu))
                         if (standByMoreOpen) CardNote(stringResource(R.string.standby_ways_note))
                     }
+                    // StandBy over the lock screen is Android's screen saver set to Folio StandBy: Folio can't choose
+                    // it, so the row says whether it's chosen and the setup alert says where to choose it.
+                    if (standByMoreOpen) {
+                        val saverChosen = rememberFolioScreenSaverChosen()
+                        var saverSetup by remember { mutableStateOf(false) }
+                        SettingsCard(stringResource(R.string.standby_on_the_lock_screen)) {
+                            IosNavRow(stringResource(R.string.screen_saver),
+                                stringResource(if (saverChosen) R.string.standby_screen_saver_name else R.string.not_set_up),
+                                { if (saverChosen) openScreenSaverSettings(sheetContext) else saverSetup = true }, "standby-screen-saver")
+                            CardNote(stringResource(if (saverChosen) R.string.standby_screen_saver_on_note else R.string.standby_screen_saver_off_note))
+                        }
+                        if (saverSetup) StandByScreenSaverAlert(onOpen = { saverSetup = false; openScreenSaverSettings(sheetContext) },
+                            onCancel = { saverSetup = false })
+                    }
                     SettingsCard(stringResource(R.string.closing_from_home)) {
                         SettingsSwitch(stringResource(R.string.stay_awake_on_the_cover_screen), state.stayAwakeOnFold, model::setStayAwakeOnFold, "fold-awake-switch")
                         CardNote(stringResource(R.string.samsung_locks_the_phone_when_you_fold_on))
@@ -2357,6 +2371,22 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
         },
         confirmButton = { TextButton(onClick = { onSave(name) }) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) } })
+}
+
+/** Before Android's screen saver list opens: the one choice to make there, and what it gives. */
+@Composable private fun StandByScreenSaverAlert(onOpen: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.standby_screen_saver_setup_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                Text(stringResource(R.string.standby_screen_saver_setup_body), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.standby_screen_saver_step_open), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.standby_screen_saver_step_choose), fontSize = FolioType.SUBHEAD.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = onOpen, modifier = Modifier.testTag("standby-screen-saver-open")) {
+            Text(stringResource(R.string.open_screen_saver_settings)) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.not_now)) } })
 }
 
 /** Tweak Library: every built-in tweak as a package, Sileo-style. Get adds it to Settings › Tweaks and turns it on. */

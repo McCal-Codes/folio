@@ -112,6 +112,17 @@
     <string name="standby_while_charging_on_its_side">侧放充电时</string>
     <string name="standby_standing_as_a_tent">像帐篷一样立着时</string>
     <string name="standby_ways_note">侧放充电在任何姿势下都能用，和 iPhone 一样：插上电源，横过来放下即可。Fold 只告诉应用合上、半开和打开三种状态，所以帐篷要打开超过一半才能识别。</string>
+    <string name="standby_on_the_lock_screen">在锁屏上</string>
+    <string name="screen_saver">屏幕保护程序</string>
+    <string name="not_set_up">未设置</string>
+    <string name="standby_screen_saver_name">Folio 待机显示</string>
+    <string name="standby_screen_saver_off_note">充电时，待机显示会一直显示到屏幕关闭，然后手机锁定。设置屏幕保护程序后，待机显示会在锁屏上继续显示。</string>
+    <string name="standby_screen_saver_on_note">充电时屏幕关闭后，待机显示会在锁屏上继续显示，手机照常锁定。拿起手机或从底部向上轻扫即可退出。</string>
+    <string name="standby_screen_saver_setup_title">锁屏上的待机显示</string>
+    <string name="standby_screen_saver_setup_body">手机充电时，屏幕自动关闭后可以显示屏幕保护程序。在那里选择 Folio 待机显示，手机照常锁定时，待机显示会在锁屏上继续显示。</string>
+    <string name="standby_screen_saver_step_open">1. 轻点“打开屏幕保护程序设置”。</string>
+    <string name="standby_screen_saver_step_choose">2. 选择 Folio 待机显示。</string>
+    <string name="open_screen_saver_settings">打开屏幕保护程序设置</string>
     <string name="big_clock_date_next_alarm_battery_and_mu">手机在主屏幕上半开放置时，显示大时钟、日期、下一个闹钟、电池和音乐。夜间会变为暗红色。轻点即可离开。</string>
     <string name="closing_from_home">在主屏幕上合上时</string>
     <string name="stay_awake_on_the_cover_screen">保持外屏常亮</string>
@@ -1128,7 +1139,7 @@
     <string name="settings_keywords_side_key">侧边按键 助理 钱包 按两下 按住 side key assistant chatgpt claude wallet double press hold</string>
     <string name="settings_keywords_lock_cover">锁定屏幕 解锁 封面 时钟 lock screen unlock cover clock</string>
     <string name="settings_keywords_fold_animation">折叠 展开 动画 模糊 淡入淡出 节奏 fold unfold animation blur fade duo timing</string>
-    <string name="settings_keywords_standby">待机显示 半开 时钟 standby tent half open clock</string>
+    <string name="settings_keywords_standby">待机显示 半开 时钟 屏幕保护程序 锁屏 standby tent half open clock screen saver lock screen</string>
     <string name="settings_keywords_themes">主题 外观 图标 样式 着色 形状 标记 玻璃 导入 导出 theme look snowboard icon style tint shape badges glass import export</string>
     <string name="settings_keywords_focus">专注模式 勿扰 睡眠 工作 个人 静音 灰度 focus do not disturb dnd sleep work personal silence quiet grayscale</string>
     <string name="settings_keywords_tweaks">插件 越狱 面板 放大 着色 专辑 tweak jailbreak velox harbor axon velvet colorflow panels magnification tint album cabinet harborline roll call palette colored albums app row</string>
