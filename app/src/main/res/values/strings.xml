@@ -1532,4 +1532,9 @@
     <string name="profile_folio_detail">Dynamic Island, Folio\'s Notification Center and Control Center, and Spotlight when you swipe down on Home.</string>
     <string name="profile_android_style_detail">Android\'s own notification shade and Quick Settings, no Dynamic Island, and the notification shade when you swipe down on Home.</string>
     <string name="profile_custom_detail">You have set these yourself. Pick one above to start from it.</string>
+    <string name="add_apps">Add Apps</string>
+    <string name="add_apps_to_1">Add Apps to “%1$s”</string>
+    <string name="n_selected">%1$d selected</string>
+    <string name="app_selected">Selected</string>
+    <string name="app_not_selected">Not selected</string>
 </resources>

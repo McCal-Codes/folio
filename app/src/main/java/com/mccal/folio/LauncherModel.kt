@@ -803,6 +803,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (mutable.value.apps.none { it.id == appId }) return false
         return commitLayout(com.mccal.folio.addAppToFolder(mutable.value.layout, folderId, appId, index))
     }
+    /** Several apps into one folder as a single change, so Undo takes them all back. Apps that aren't installed are left out. */
+    fun addAppsToFolder(folderId: String, appIds: List<String>): Boolean {
+        val installed = mutable.value.apps.mapTo(mutableSetOf()) { it.id }
+        return commitLayout(com.mccal.folio.addAppsToFolder(mutable.value.layout, folderId, appIds.filter { it in installed }))
+    }
     fun removeAppFromFolder(folderId: String, appId: String, target: DropTarget) =
         commitLayout(com.mccal.folio.removeAppFromFolder(mutable.value.layout, folderId, appId, target, mutable.value.homeAppRows))
     fun moveFolderApp(folderId: String, appId: String, index: Int) =

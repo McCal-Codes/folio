@@ -1507,4 +1507,9 @@
     <string name="profile_folio_detail">Dynamic Island, Folio의 알림 센터와 제어 센터, 홈에서 아래로 쓸어내리면 Spotlight가 열립니다.</string>
     <string name="profile_android_style_detail">Android 기본 알림 패널과 빠른 설정을 쓰고 Dynamic Island는 끕니다. 홈에서 아래로 쓸어내리면 알림 패널이 열립니다.</string>
     <string name="profile_custom_detail">직접 설정한 상태입니다. 위에서 하나를 고르면 그 설정에서 시작합니다.</string>
+    <string name="add_apps">앱 추가</string>
+    <string name="add_apps_to_1">“%1$s”에 앱 추가</string>
+    <string name="n_selected">%1$d개 선택됨</string>
+    <string name="app_selected">선택됨</string>
+    <string name="app_not_selected">선택 안 됨</string>
 </resources>

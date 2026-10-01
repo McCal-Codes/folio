@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.material.icons.rounded.AddCircle
 import kotlinx.coroutines.launch
 
 @Composable
@@ -37,7 +38,7 @@ internal fun FolderPanel(
     homeDestinations: List<Int>, dockVacancies: List<Int>, onDismiss: () -> Unit,
     onRename: (String) -> Unit, onLaunch: (AppEntry, android.graphics.Rect?) -> Unit,
     onMoveOut: (String, DropTarget) -> Unit,
-    color: Long? = null, onColor: (Long?) -> Unit = {},
+    color: Long? = null, onColor: (Long?) -> Unit = {}, onAddApps: (() -> Unit)? = null,
 ) {
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
@@ -103,6 +104,14 @@ internal fun FolderPanel(
                         .then(if (selected) Modifier.border(2.5.dp, Color.White, androidx.compose.foundation.shape.CircleShape) else Modifier))
                 }
             }
+        }
+        // Add several apps at once, from a list, instead of one at a time from each app's menu.
+        if (onAddApps != null) Row(Modifier.padding(bottom = FolioSpace.COMFY.dp).heightIn(min = FolioTouch.MIN.dp)
+            .clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAddApps)
+            .padding(horizontal = FolioSpace.LARGE.dp).testTag("folder-add-apps"), verticalAlignment = Alignment.CenterVertically) {
+            Icon(androidx.compose.material.icons.Icons.Rounded.AddCircle, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(androidx.compose.ui.res.stringResource(R.string.add_apps), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
         Surface(Modifier.fillMaxWidth(.86f).widthIn(max = 520.dp).fillMaxHeight(.7f).heightIn(min = 240.dp, max = 560.dp)
             .clickable(

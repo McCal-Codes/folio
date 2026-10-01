@@ -314,7 +314,7 @@ fun LauncherScreen(
             ?: lastHomePage.coerceIn(0, homePages - 1)
         drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
         picker.exactTarget = false; widgetPlacementMessage = null; overlays.menu = null
-        overlays.folder = null; overlays.newFolder = null; overlays.emptyCell = null; homeEdit.stop()
+        overlays.folder = null; overlays.newFolder = null; overlays.addToFolder = null; overlays.emptyCell = null; homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
     } }
@@ -1514,6 +1514,16 @@ fun LauncherScreen(
             if (stacked.isEmpty()) LaunchedEffect(anchor.id) { overlays.stackFan = null }
             else IconStackFan(anchor, stacked, onDismiss = { overlays.stackFan = null }) { overlays.stackFan = null; onLaunchFrom(it, IconBounds.of(anchor.id)) }
         }
+        overlays.addToFolder?.let { id ->
+            val target = model.folder(id)
+            if (target == null) LaunchedEffect(id) { overlays.addToFolder = null }
+            else ModalBottomSheet(onDismissRequest = { overlays.addToFolder = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                FolderAppsEditor(target, pickerApps(state), onDone = { picked ->
+                    if (picked.isNotEmpty()) model.addAppsToFolder(id, picked)
+                    overlays.addToFolder = null
+                })
+            }
+        }
         appsById[overlays.stackEditor]?.let { anchor ->
             ModalBottomSheet(onDismissRequest = { overlays.stackEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 IconStackEditor(anchor, state.apps.filter { it.id !in state.hiddenApps }, state.iconStacks[anchor.id].orEmpty(),
@@ -1608,7 +1618,7 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
-                    onLaunch = onLaunchFrom,
+                    onLaunch = onLaunchFrom, onAddApps = { overlays.addToFolder = id },
                     onMoveOut = { appId, destination ->
                         if (model.removeAppFromFolder(id, appId, destination)) overlays.folder = model.folder(id)?.id
                     })

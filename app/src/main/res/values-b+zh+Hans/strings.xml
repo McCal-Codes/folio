@@ -1486,4 +1486,9 @@
     <string name="profile_folio_detail">灵动岛、Folio 的通知中心和控制中心，在主屏幕下滑时打开聚焦搜索。</string>
     <string name="profile_android_style_detail">使用 Android 自带的通知栏和快捷设置，不使用灵动岛，在主屏幕下滑时打开通知栏。</string>
     <string name="profile_custom_detail">这些是你自己设置的。在上方选一项即可从它开始。</string>
+    <string name="add_apps">添加 App</string>
+    <string name="add_apps_to_1">向“%1$s”添加 App</string>
+    <string name="n_selected">已选择 %1$d 个</string>
+    <string name="app_selected">已选择</string>
+    <string name="app_not_selected">未选择</string>
 </resources>

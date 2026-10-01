@@ -26,6 +26,7 @@ internal class HomeOverlays(
     folder: String? = null,
     newFolder: String? = null,
     emptyCell: Int? = null,
+    addToFolder: String? = null,
 ) {
     /** The icon whose context menu is showing. */
     var menu by mutableStateOf(menu)
@@ -44,15 +45,18 @@ internal class HomeOverlays(
     var folder by mutableStateOf(folder)
     var newFolder by mutableStateOf(newFolder)
 
+    /** The folder whose apps are being added to, from the folder itself. */
+    var addToFolder by mutableStateOf(addToFolder)
+
     /** The empty Home cell whose menu is open. */
     var emptyCell by mutableStateOf(emptyCell)
 
     companion object {
         val Saver = listSaver<HomeOverlays, Any?>(
-            save = { listOf(it.menu, it.rename, it.panel, it.stackFan, it.stackEditor, it.folder, it.newFolder, it.emptyCell) },
+            save = { listOf(it.menu, it.rename, it.panel, it.stackFan, it.stackEditor, it.folder, it.newFolder, it.emptyCell, it.addToFolder) },
             restore = {
                 HomeOverlays(it[0] as String?, it[1] as String?, it[2] as String?, it[3] as String?,
-                    it[4] as String?, it[5] as String?, it[6] as String?, it[7] as Int?)
+                    it[4] as String?, it[5] as String?, it[6] as String?, it[7] as Int?, it.getOrNull(8) as String?)
             },
         )
     }
