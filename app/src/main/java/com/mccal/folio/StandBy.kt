@@ -179,9 +179,7 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
         active = true
     }
     val view = LocalView.current
-    // The screen stays on while charging, as on iPhone, and in the laptop pose as before; a tent off the charger
-    // follows the screen timeout rather than draining the battery.
-    val awake = active && (shown == StandByWay.HALF_OPEN || status.charging)
+    val awake = active && standByHoldsScreen(shown, status.charging)
     DisposableEffect(awake) { view.keepScreenOn = awake; onDispose { view.keepScreenOn = false } }
     // On the cover, StandBy is sideways even when Home doesn't turn (auto-rotate off): ask for landscape while it's up.
     // Android honors that below 600 dp; the inner screen has the fold to lay out by instead.
@@ -195,21 +193,36 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
     BackHandler(active) { active = false; dismissed = true }
 
     AnimatedVisibility(active, enter = fadeIn(tween(500)), exit = fadeOut(tween(300))) {
-        val tick by rememberMinuteTick()
-        val now = displayNow(tick)
-        val night = now.hour >= 22 || now.hour < 6
-        val ink = if (night) Color(0xFFB3261E) else Color.White
-        val soft = ink.copy(alpha = if (night) .75f else .6f)
         Box(Modifier.fillMaxSize().background(Color.Black)
             .clickable(remember { MutableInteractionSource() }, null) { active = false; dismissed = true }) {
-            val clock: @Composable (Modifier) -> Unit = { m -> BigClock(now, ink, soft, m) }
-            val info: @Composable (Modifier) -> Unit = { m -> StandByInfo(status, ink, soft, night, m) }
-            if (pose == FoldingFeature.Orientation.HORIZONTAL) Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                clock(Modifier.weight(1f).fillMaxWidth()); info(Modifier.weight(1f).fillMaxWidth())
-            } else Row(Modifier.fillMaxSize().safeDrawingPadding()) {
-                clock(Modifier.weight(1f).fillMaxHeight()); info(Modifier.weight(1f).fillMaxHeight())
-            }
+            StandByFace(status, stacked = pose == FoldingFeature.Orientation.HORIZONTAL, Modifier.fillMaxSize().safeDrawingPadding())
         }
+    }
+}
+
+/**
+ * Whether StandBy holds the screen on. Only the laptop pose off the charger does, as it always has. On a charger the
+ * screen follows its timeout, so the phone locks as usual: with Folio StandBy chosen as the screen saver Android then
+ * carries StandBy on over the lock screen, and without it the screen turns off. A tent off the charger follows the
+ * timeout too, rather than draining the battery.
+ */
+internal fun standByHoldsScreen(shown: StandByWay?, charging: Boolean): Boolean = shown == StandByWay.HALF_OPEN && !charging
+
+/** Red and dim from 10 PM to 6 AM. */
+internal fun isStandByNight(now: LocalDateTime): Boolean = now.hour >= 22 || now.hour < 6
+
+/** The clock and what's next, side by side or [stacked]; the same on Home and in the screen saver. */
+@Composable
+internal fun StandByFace(status: DeviceStatus, stacked: Boolean, modifier: Modifier = Modifier) {
+    val tick by rememberMinuteTick()
+    val now = displayNow(tick)
+    val night = isStandByNight(now)
+    val ink = if (night) Color(0xFFB3261E) else Color.White
+    val soft = ink.copy(alpha = if (night) .75f else .6f)
+    if (stacked) Column(modifier) {
+        BigClock(now, ink, soft, Modifier.weight(1f).fillMaxWidth()); StandByInfo(status, ink, soft, night, Modifier.weight(1f).fillMaxWidth())
+    } else Row(modifier) {
+        BigClock(now, ink, soft, Modifier.weight(1f).fillMaxHeight()); StandByInfo(status, ink, soft, night, Modifier.weight(1f).fillMaxHeight())
     }
 }
 

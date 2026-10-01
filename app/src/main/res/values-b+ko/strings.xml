@@ -110,6 +110,17 @@
     <string name="standby_while_charging_on_its_side">옆으로 세워 충전할 때</string>
     <string name="standby_standing_as_a_tent">텐트처럼 세웠을 때</string>
     <string name="standby_ways_note">옆으로 세워 충전하기는 iPhone처럼 어떤 자세에서도 작동합니다. 충전기를 꽂고 옆으로 돌려 내려놓으세요. Fold는 앱에 닫힘, 반쯤 열림, 열림만 알려 주므로 텐트는 반 이상 열었을 때 인식됩니다.</string>
+    <string name="standby_on_the_lock_screen">잠금 화면에서</string>
+    <string name="screen_saver">화면 보호기</string>
+    <string name="not_set_up">설정 안 됨</string>
+    <string name="standby_screen_saver_name">Folio 스탠바이</string>
+    <string name="standby_screen_saver_off_note">충전 중에는 화면이 꺼질 때까지 스탠바이가 표시되고, 그다음 휴대전화가 잠깁니다. 화면 보호기를 설정하면 잠금 화면 위에서도 스탠바이가 계속 표시됩니다.</string>
+    <string name="standby_screen_saver_on_note">충전 중에 화면이 꺼지면 스탠바이가 잠금 화면 위에서 계속 표시되고, 휴대전화는 평소처럼 잠깁니다. 나가려면 휴대전화를 들거나 아래에서 위로 쓸어 올리세요.</string>
+    <string name="standby_screen_saver_setup_title">잠금 화면의 스탠바이</string>
+    <string name="standby_screen_saver_setup_body">충전 중에 화면이 저절로 꺼지면 휴대전화가 화면 보호기를 표시할 수 있습니다. 거기서 Folio 스탠바이를 선택하면, 휴대전화가 평소처럼 잠기는 동안 스탠바이가 잠금 화면 위에서 계속 표시됩니다.</string>
+    <string name="standby_screen_saver_step_open">1. 화면 보호기 설정 열기를 탭하세요.</string>
+    <string name="standby_screen_saver_step_choose">2. Folio 스탠바이를 선택하세요.</string>
+    <string name="open_screen_saver_settings">화면 보호기 설정 열기</string>
     <string name="big_clock_date_next_alarm_battery_and_mu">홈 화면에서 휴대전화를 반쯤 펼쳐 내려놓으면 큰 시계, 날짜, 다음 알람, 배터리 및 음악을 표시합니다. 밤에는 어두운 빨간색으로 바뀝니다. 탭하면 종료됩니다.</string>
     <string name="closing_from_home">홈 화면에서 접을 때</string>
     <string name="stay_awake_on_the_cover_screen">커버 화면을 켠 상태로 유지</string>
@@ -1163,7 +1174,7 @@
     <string name="settings_keywords_side_key">측면 버튼 어시스턴트 ChatGPT Claude Wallet 두 번 누르기 길게</string>
     <string name="settings_keywords_lock_cover">잠금 화면 해제 커버 시계</string>
     <string name="settings_keywords_fold_animation">접기 펼치기 애니메이션 흐림 페이드 Duo 속도</string>
-    <string name="settings_keywords_standby">스탠바이 텐트 반쯤 펼치기 시계</string>
+    <string name="settings_keywords_standby">스탠바이 텐트 반쯤 펼치기 시계 화면 보호기 잠금 화면</string>
     <string name="settings_keywords_themes">테마 모양 SnowBoard 아이콘 스타일 색조 모양 배지 글래스 가져오기 내보내기</string>
     <string name="settings_keywords_focus">집중 모드 방해 금지 수면 업무 개인 시간 무음 조용히 흑백</string>
     <string name="settings_keywords_tweaks">트윅 탈옥 Velox Harbor Axon Velvet ColorFlow 패널 확대 색조 앨범 Cabinet Harborline Roll Call Palette Colored Albums 앱 행</string>

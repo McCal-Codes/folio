@@ -115,6 +115,15 @@
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
         </service>
+        <!-- StandBy over the lock screen, as Android's screen saver. Off until StandBy's charger ways open:
+             syncStandByScreenSaver turns it on. -->
+        <service android:name=".StandByScreenSaver" android:label="@string/standby_screen_saver_name"
+            android:permission="android.permission.BIND_DREAM_SERVICE" android:exported="true" android:enabled="false">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
         <service android:name=".SystemShadeAccessibilityService"
             android:label="@string/shade_service_label"
             android:description="@string/shade_service_description"
