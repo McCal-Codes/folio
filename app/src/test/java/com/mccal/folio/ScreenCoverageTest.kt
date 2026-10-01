@@ -43,7 +43,9 @@ class ScreenCoverageTest {
         // Extra rows only tighten the space under labels down to 4 dp, never into the labels.
         val labelSpace = if (labels) maxOf(20f, labelHeight) else 20f
         if (g.rowGap > 0f && g.rowGap < preset.sanitized().rowGap && g.rowHeight - g.iconSize - labelSpace < 4f - .01f) out += "labels crowded"
+        // Four dock apps always fit. With more, the bar is held to the room it has and scrolls (dockBarRoom).
         if (g.horizontalDock && 4f * g.dockPitch + 16f > (if (g.dockBesideRail) w - preset.sanitized().dockWidth - 12f else w) + .5f) out += "dock bar too wide"
+        if (g.horizontalDock && g.dockBarRoom > (if (g.dockBesideRail) w - preset.sanitized().dockWidth - 12f else w) + .5f) out += "dock bar room over the window"
         // Tier A (480 dp or taller, text up to 1.3×): the whole page fits. Shorter windows and larger text scroll the
         // page instead (HomeWorkspace), like Android asks for, so only the touch-target rules apply there.
         val mustFit = h >= 480f && labelHeight <= 26f

@@ -1620,7 +1620,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     // status rail, dock, search pill), then scaled down, so the preview matches Home instead of approximating it.
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
-        appRows = state.homeAppRows)
+        appRows = state.homeAppRows, dockSlots = state.dock.size)
     val placements = state.widgetPlacements.filter { it.page == 0 }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
@@ -1927,6 +1927,13 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
             DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
             DockPlacement.BOTTOM -> if (wide) stringResource(R.string.the_dock_sits_along_the_bottom_under_you) else stringResource(R.string.the_dock_sits_along_the_bottom_in_landsc)
         } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
+    }
+    SettingsCard(stringResource(R.string.dock_apps)) {
+        // Four until you ask for more. Fewer than the dock has apps in it is refused, so none is ever lost.
+        var refused by remember { mutableStateOf(false) }
+        IosSegmented((MIN_DOCK_SLOTS..MAX_DOCK_SLOTS).map { it to it.toString() }, state.dock.size, { slots -> refused = !model.setDockSlots(slots) },
+            Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "dock-slots")
+        CardNote(stringResource(if (refused) R.string.dock_apps_refused else R.string.dock_apps_note))
     }
     SettingsCard(stringResource(R.string.side_rail)) {
         CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }

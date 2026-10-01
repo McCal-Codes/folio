@@ -100,7 +100,8 @@ data class LauncherState(
     val leadingSlots: List<String?> = List(HOME_CELLS) { null },
     val editRevision: Int = 0,
     val canUndoEdit: Boolean = false,
-    val dock: List<String?> = List(4) { null },
+    /** The dock's apps, one per slot: [MIN_DOCK_SLOTS] to [MAX_DOCK_SLOTS] of them, four until the person asks for more. */
+    val dock: List<String?> = List(MIN_DOCK_SLOTS) { null },
     val widgetPlacements: List<WidgetPlacement> = DEFAULT_WIDGET_PLACEMENTS,
     val widgetRestores: List<WidgetRestore> = emptyList(),
     val googleSearch: Boolean = true,
@@ -318,6 +319,16 @@ data class LauncherState(
 internal fun LauncherState.trackedAppIds(): List<String> =
     homeSlots.filterNotNull() + leadingSlots.filterNotNull() + dock.filterNotNull() + folders.flatMap { it.appIds } +
         iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys
+
+/**
+ * [dock] with [slots] places: more places are added empty on the end, fewer drop empty places from the end. Null when
+ * that would drop an app, so shrinking the dock can never lose one: move the app first.
+ */
+fun resizedDock(dock: List<String?>, slots: Int): List<String?>? {
+    val size = slots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)
+    if (size >= dock.size) return dock + List(size - dock.size) { null }
+    return if (dock.drop(size).any { it != null }) null else dock.take(size)
+}
 
 /** The saved layout [screen] uses: the upright inner screen falls back to the inner one until it has its own. */
 fun LauncherState.presetFor(screen: LayoutScreen): LayoutPreset = when (screen) {
@@ -1185,6 +1196,17 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))
     }
+    /** How many apps the dock holds. Fewer than it has apps in it is refused, so none is lost; the call says whether it changed. */
+    fun setDockSlots(slots: Int): Boolean {
+        if (statePayloadInvalid) return false
+        val old = mutable.value
+        val resized = resizedDock(old.dock, slots) ?: return false
+        if (resized == old.dock) return true
+        undoLayout = null; undoImportSettings = null
+        mutable.update { it.copy(dock = resized, canUndoEdit = false) }
+        persist()
+        return true
+    }
     fun setLeftHanded(value: Boolean) = updateSettings(soon = false) { it.copy(leftHanded = value) }
     fun setVerticalStatus(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(verticalStatus = value, canUndoEdit = false) }; persist() }
     fun setGoogleSearch(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(googleSearch = value, canUndoEdit = false) }; persist() }
@@ -1440,7 +1462,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         require(leading.length() == size)
         migrateLegacyLeadingSlots(List(size) { leading.optString(it).takeIf { id -> id.isNotBlank() && id != "null" } })
     } else List(HOME_CELLS) { null }
-    val loadedDock = List(4) { j.optJSONArray("dock")?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } }
+    val dockArray = j.optJSONArray("dock")
+    // Four slots, or as many as were saved up to the most the dock holds; a damaged length can never be fewer than four.
+    val loadedDock = List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } }
     val widgetArray = j.optJSONArray("widgets")
     val placements = if (schema >= 6) {
         require(widgetArray != null) { "Schema $schema requires a widget placement array" }

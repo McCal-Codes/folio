@@ -618,7 +618,7 @@ fun LauncherScreen(
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
             var statusHeight by remember { mutableFloatStateOf(0f) }
-            val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels,
+            val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = state.dock.size,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
@@ -867,7 +867,11 @@ fun LauncherScreen(
             // Background and border without clipping, so Harbor-style magnified icons can grow past the rail.
             // Portrait unfolded (iPhone Duo): a horizontal dock bar centered along the bottom, above the page controls.
             val dockPitch = geometry.dockPitch
-            val dockBarWidth = (dockPitch * state.dock.size + 16f).dp
+            val dockBarFull = (dockPitch * state.dock.size + 16f).dp
+            // More dock apps than the window has room for: the bar stops at the room it has and scrolls.
+            val dockBarWidth = if (geometry.dockBarRoom > 0f) minOf(dockBarFull, geometry.dockBarRoom.dp) else dockBarFull
+            val dockBarScrolls = dockBarFull > dockBarWidth
+            val dockBarScroll = rememberScrollState()
             // Like iPhone, the dock bar steps aside for Today View: it follows the swipe out, then leaves altogether so
             // it can't sit over Today's widgets and Edit button (#25). Only the bar; the Side Bar dock is beside Today.
             val dockStepsAsideForToday = todayMode && firstHome > 0 && geometry.horizontalDock
@@ -898,7 +902,7 @@ fun LauncherScreen(
                         else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                 }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(30.dp))
                 .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(30.dp)).testTag("dock")) {
-                Column(if (geometry.horizontalDock) Modifier.fillMaxSize().padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
+                Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
                     DockAppColumn(state.dock, previewLayout.dock, appsById, if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight,
                         dockIconSize(geometry.iconSize), drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },

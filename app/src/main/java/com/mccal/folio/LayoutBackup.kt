@@ -159,8 +159,8 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
         require((rawSlots + rawLeadingSlots).count(folder.id::equals) == 1)
     }
     val dockArray = root.getJSONArray("dock")
-    require(dockArray.length() == 4)
-    val rawDock = List(4) { index -> if (dockArray.isNull(index)) null else dockArray.getString(index) }
+    require(dockArray.length() in MIN_DOCK_SLOTS..MAX_DOCK_SLOTS)
+    val rawDock = List(dockArray.length()) { index -> if (dockArray.isNull(index)) null else dockArray.getString(index) }
     val surfaceApps = (rawSlots + rawLeadingSlots).filterNotNull().filterNot(::isReservedFolderId) + rawDock.filterNotNull() +
         importedFolders.flatMap(FolderEntry::appIds)
     require(surfaceApps.distinct().size == surfaceApps.size) { "An app shortcut appears more than once" }
