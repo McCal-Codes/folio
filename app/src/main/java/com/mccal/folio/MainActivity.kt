@@ -263,6 +263,7 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
                 LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, state.badgeStyle, state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
+                LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
                 LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,

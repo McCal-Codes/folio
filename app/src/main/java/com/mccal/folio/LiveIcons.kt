@@ -78,6 +78,37 @@ internal object LiveIcons {
 enum class IconStyle(@androidx.annotation.StringRes val label: Int) { DEFAULT(R.string.default_choice), DARK(R.string.dark), TINTED(R.string.tinted), CLEAR(R.string.clear) }
 
 enum class IconShape(@androidx.annotation.StringRes val label: Int) { DEFAULT(R.string.default_choice), SQUIRCLE(R.string.squircle), CIRCLE(R.string.circle), ROUNDED(R.string.rounded_square) }
+/**
+ * One app's own icon look, over the launcher's: a null part follows it. Applied when the icon is drawn, never in the
+ * saved or cached icon pictures, so changing or clearing it can't leave a stale icon behind.
+ */
+data class AppIconOverride(val style: IconStyle? = null, val shape: IconShape? = null) {
+    val isDefault: Boolean get() = style == null && shape == null
+
+    internal fun applyTo(look: IconLook): IconLook = look.copy(style = style ?: look.style, shape = shape ?: look.shape)
+
+    fun toJson(): org.json.JSONObject = org.json.JSONObject().also { o -> style?.let { o.put("style", it.name) }; shape?.let { o.put("shape", it.name) } }
+
+    companion object {
+        fun fromJson(o: org.json.JSONObject?): AppIconOverride = AppIconOverride(
+            style = o?.optString("style")?.let { n -> IconStyle.entries.firstOrNull { it.name == n } },
+            shape = o?.optString("shape")?.let { n -> IconShape.entries.firstOrNull { it.name == n } })
+    }
+}
+
+/** [override] for [id] in [map], or no entry at all when it follows the launcher, so the map holds only real choices. */
+fun editAppIcon(map: Map<String, AppIconOverride>, id: String, override: AppIconOverride): Map<String, AppIconOverride> =
+    if (override.isDefault) map - id else map + (id to override)
+
+fun appIconStylesToJson(map: Map<String, AppIconOverride>): org.json.JSONObject =
+    org.json.JSONObject().also { o -> map.forEach { (id, override) -> if (!override.isDefault) o.put(id, override.toJson()) } }
+
+/** Saved choices back into a map; a damaged entry, an unknown name or a choice that follows the launcher is dropped. */
+fun appIconStylesFromJson(o: org.json.JSONObject?): Map<String, AppIconOverride> =
+    o?.keys()?.asSequence()?.mapNotNull { id -> AppIconOverride.fromJson(o.optJSONObject(id)).takeUnless { it.isDefault }?.let { id to it } }?.toMap().orEmpty()
+
+internal val LocalAppIconStyles = androidx.compose.runtime.staticCompositionLocalOf { emptyMap<String, AppIconOverride>() }
+
 enum class BadgeStyle(@androidx.annotation.StringRes val label: Int) { OFF(R.string.off), DOT(R.string.dot), COUNT(R.string.count) }
 enum class BadgeColor(@androidx.annotation.StringRes val label: Int, val fixed: Long? = null) {
     RED(R.string.red), APP(R.string.match_icon), SOFT(R.string.soft),
@@ -154,9 +185,11 @@ private fun filterFor(look: IconLook): androidx.compose.ui.graphics.ColorFilter?
 internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape? = null, badge: Boolean = shape != null) {
     val context = LocalContext.current
-    val look0 = LocalIconLook.current
-    val kind = remember(app.component.packageName, look0.liveIcons) { if (look0.liveIcons) LiveIcons.kind(context, app.component.packageName) else null }
-    val look = LocalIconLook.current
+    val launcherLook = LocalIconLook.current
+    // This app's own look, if it has one, over the launcher's.
+    val override = LocalAppIconStyles.current[app.id]
+    val look = remember(launcherLook, override) { override?.applyTo(launcherLook) ?: launcherLook }
+    val kind = remember(app.component.packageName, look.liveIcons) { if (look.liveIcons) LiveIcons.kind(context, app.component.packageName) else null }
     val accent = if (look.style == IconStyle.TINTED) look.tint else null
     val lookShape = remember(look.shape) { look.shape.toShape() }
     val clipShape = lookShape ?: shape

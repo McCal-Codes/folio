@@ -1540,4 +1540,9 @@
     <string name="custom_search_engine">Custom…</string>
     <string name="custom_search_note" formatted="false">Your own search address, with %s where the search goes. It leaves your phone for that site, like any web search.</string>
     <string name="custom_search_invalid" formatted="false">That is not a web address Folio can use. It needs http or https, a site name, and %s where the search goes.</string>
+    <string name="edit_icon">Edit Icon</string>
+    <string name="edit_icon_for_1">Icon for %1$s</string>
+    <string name="like_other_icons">Like other icons</string>
+    <string name="edit_icon_note">Changes only this app\'s icon, here and everywhere Folio shows it. Settings › Icons &amp; Side Bar still sets the look for the rest.</string>
+    <string name="reset_icon">Reset Icon</string>
 </resources>

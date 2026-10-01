@@ -1494,4 +1494,9 @@
     <string name="custom_search_engine">自定…</string>
     <string name="custom_search_note" formatted="false">你自己的搜索地址，用 %s 表示搜索词的位置。和其他网页搜索一样，搜索词会发送到该网站。</string>
     <string name="custom_search_invalid" formatted="false">这不是 Folio 能使用的网址。需要 http 或 https、网站名，以及表示搜索词位置的 %s。</string>
+    <string name="edit_icon">编辑图标</string>
+    <string name="edit_icon_for_1">%1$s 的图标</string>
+    <string name="like_other_icons">与其他图标相同</string>
+    <string name="edit_icon_note">只更改此 App 的图标，Folio 显示它的所有位置都会生效。其余图标仍在“设置”›“图标与侧栏”中设定。</string>
+    <string name="reset_icon">重置图标</string>
 </resources>

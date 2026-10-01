@@ -314,7 +314,7 @@ fun LauncherScreen(
             ?: lastHomePage.coerceIn(0, homePages - 1)
         drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
         picker.exactTarget = false; widgetPlacementMessage = null; overlays.menu = null
-        overlays.folder = null; overlays.newFolder = null; overlays.addToFolder = null; overlays.emptyCell = null; homeEdit.stop()
+        overlays.folder = null; overlays.newFolder = null; overlays.addToFolder = null; overlays.iconEditor = null; overlays.emptyCell = null; homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
     } }
@@ -1555,7 +1555,13 @@ fun LauncherScreen(
                 onToggleHidden = { model.setHidden(app.id, app.id !in state.hiddenApps); overlays.menu = null },
                 onInfo = { onAppInfo(app); overlays.menu = null },
                 onRename = { overlays.rename = app.id; overlays.menu = null },
+                onEditIcon = if (app.isShortcut) null else {{ overlays.iconEditor = app.id; overlays.menu = null }},
                 onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null)
+        }
+        appsById[overlays.iconEditor]?.let { app ->
+            ModalBottomSheet(onDismissRequest = { overlays.iconEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                AppIconEditor(app, state.appIconStyles[app.id] ?: AppIconOverride(), onChange = { model.setAppIconStyle(app.id, it) }, onDone = { overlays.iconEditor = null })
+            }
         }
         appsById[overlays.rename]?.let { app ->
             RenameAppAlert(app, onDismiss = { overlays.rename = null }, onRename = { model.renameApp(app.id, it); overlays.rename = null })
