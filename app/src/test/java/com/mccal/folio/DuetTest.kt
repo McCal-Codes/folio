@@ -28,6 +28,8 @@ class DuetTest {
         assertEquals("duo", decodeLauncherState(before.toString(), legacyRaw = null).duet.style)
         val after = JSONObject().put("foldEffect", true).put("duet", DuetOptions(style = "deep").toJson())
         assertEquals("deep", decodeLauncherState(after.toString(), legacyRaw = null).duet.style)
+        // Nothing saved at all is a new install, which starts on the default look.
+        assertEquals(DuetStyles.IPHONE.id, decodeLauncherState("{}", legacyRaw = null).duet.style)
     }
 
     @Test fun `Duo is still Folio's earlier fold, number for number`() {

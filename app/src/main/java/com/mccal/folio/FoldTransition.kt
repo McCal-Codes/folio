@@ -181,7 +181,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             if (useBlurEffect() && m > 0f) {
                 if (fold.expanded) drawRect(Brush.horizontalGradient(0f to Color.Black.copy(alpha = (m * style.darkening).coerceIn(0f, 1f)),
                     .5f to Color.Transparent, startX = 0f, endX = size.width))
-                else drawRect(Color.Black.copy(alpha = .5f * m))
+                else drawRect(Color.Black.copy(alpha = (.5f * m * style.darkening).coerceIn(0f, 1f)))
             }
         })) {
         Box(Modifier.fillMaxSize()
