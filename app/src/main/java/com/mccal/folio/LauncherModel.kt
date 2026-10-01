@@ -335,7 +335,8 @@ internal fun LauncherState.withFullWidthHome(screen: LayoutScreen, on: Boolean):
     val key = screen.name
     return if (on) {
         val remembered = fullWidthRestore.toMutableMap()
-        if (now.dockPlacement != DockPlacement.BOTTOM) remembered[key] = now.dockPlacement.name
+        // Even a dock that was already at the bottom: the entry is also what marks this screen as in Full-Width Home.
+        remembered[key] = now.dockPlacement.name
         if ("status" !in remembered) remembered["status"] = verticalStatus.toString()
         withPreset(screen, now.copy(dockPlacement = DockPlacement.BOTTOM)).copy(verticalStatus = false, fullWidthRestore = remembered)
     } else {
@@ -347,6 +348,18 @@ internal fun LauncherState.withFullWidthHome(screen: LayoutScreen, on: Boolean):
             verticalStatus = if (bringBack) fullWidthRestore["status"]?.toBooleanStrictOrNull() ?: true else verticalStatus,
             fullWidthRestore = if (bringBack) emptyMap() else rest)
     }
+}
+
+/**
+ * Forgets that [screen] was in Full-Width Home, for when the screen itself goes away (the upright layout is merged back
+ * into the inner one). The Side Bar returns once no screen is left in it.
+ */
+internal fun LauncherState.withoutFullWidthEntry(screen: LayoutScreen): LauncherState {
+    if (screen.name !in fullWidthRestore) return this
+    val rest = fullWidthRestore - screen.name
+    val bringBack = rest.keys.none { it != "status" }
+    return copy(verticalStatus = if (bringBack) fullWidthRestore["status"]?.toBooleanStrictOrNull() ?: true else verticalStatus,
+        fullWidthRestore = if (bringBack) emptyMap() else rest)
 }
 
 /** [preset] saved for [screen]; the upright inner screen without a layout of its own edits the inner one. */
@@ -610,7 +623,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val reconciled = reconcileFolders(HomeLayout(validPins, validDock, old.widgetPlacements, old.folders,
                         old.widgetRestores, old.leadingSlots, old.minPages), removedIds)
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
-                        dock = reconciled.dock, folders = reconciled.folders,
+                        dock = trimmedDock(reconciled.dock), folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
                         appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds,
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
@@ -887,11 +900,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, apps = old.apps.withAppNames(names),
-            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = preview.layout.dock,
+            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
+            // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
+            fullWidthRestore = emptyMap(),
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -988,7 +1003,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (old.layout == next) return false
         undoLayout = old.layout to next
         undoImportSettings = null
-        mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = next.dock,
+        mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = trimmedDock(next.dock),
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
@@ -1120,7 +1135,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val settings = undoImportSettings
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
-            dock = before.dock.map { it?.takeIf(installed::contains) }, widgetPlacements = before.widgetPlacements, folders = before.folders,
+            dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
@@ -1257,7 +1272,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setSeparatePortrait(on: Boolean) {
         if (statePayloadInvalid) return
         undoLayout = null; undoImportSettings = null
-        mutable.update { it.copy(portrait = if (on) (it.portrait ?: it.expanded) else null, canUndoEdit = false) }
+        mutable.update {
+            val next = it.copy(portrait = if (on) (it.portrait ?: it.expanded) else null, canUndoEdit = false)
+            if (on) next else next.withoutFullWidthEntry(LayoutScreen.INNER_UPRIGHT)
+        }
         persist()
     }
     val retainedWidgetIds: Set<Int> get() {
@@ -1291,7 +1309,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val installed = (mutable.value.apps.map { it.id } + layout.folders.map { it.id }).toSet()
         mutable.update { it.copy(homeSlots = reconcileHomeSlots(layout.slots, installed),
             leadingSlots = layout.slotsForPage(-1).map { id -> id?.takeIf { it in installed || isFolderId(it) } },
-            dock = layout.dock.map { id -> id?.takeIf { it in installed || isFolderId(it) } }, widgetPlacements = layout.widgetPlacements,
+            dock = trimmedDock(layout.dock.map { id -> id?.takeIf { it in installed || isFolderId(it) } }), widgetPlacements = layout.widgetPlacements,
             folders = layout.folders, widgetRestores = layout.widgetRestores, widgetStacks = emptyMap(),
             canUndoEdit = false, editRevision = it.editRevision + 1) }
         undoLayout = null
