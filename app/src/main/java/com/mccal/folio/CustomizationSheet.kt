@@ -1329,6 +1329,38 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.turn_on_automatically to CustomizationPage.FOCUS,
     R.string.silence_notifications to CustomizationPage.FOCUS,
     R.string.when_you_hold_it to CustomizationPage.SIDE_KEY,
+    R.string.fold_displays to CustomizationPage.FOLD,
+    R.string.gestures_actions to CustomizationPage.GESTURES,
+    R.string.home_screen_dock to CustomizationPage.HOME,
+    R.string.icons_side_bar to CustomizationPage.STATUS,
+    R.string.search_app_library to CustomizationPage.SEARCH,
+    R.string.support_folio to CustomizationPage.SUPPORT,
+    R.string.add_widget_to_this_page to CustomizationPage.HOME,
+    R.string.arrange_like_iphone to CustomizationPage.HOME,
+    R.string.choose_home_apps to CustomizationPage.HOME,
+    R.string.reset_this_layout to CustomizationPage.HOME,
+    R.string.save_current_layout to CustomizationPage.BACKUP,
+    R.string.email_the_developer to CustomizationPage.HELP,
+    R.string.show_welcome_again to CustomizationPage.HELP,
+    R.string.allow_do_not_disturb_access to CustomizationPage.FOCUS,
+    R.string.allow_notification_access to CustomizationPage.ISLAND,
+    R.string.put_the_island_back_at_the_camera to CustomizationPage.ISLAND,
+    R.string.also_set_as_phone_wallpaper to CustomizationPage.WALLPAPER,
+    R.string.change_android_wallpaper to CustomizationPage.WALLPAPER,
+    R.string.check_for_updates to CustomizationPage.SOFTWARE_UPDATE,
+    R.string.import_theme to CustomizationPage.THEMES,
+    R.string.save_current_look_as_theme to CustomizationPage.THEMES,
+    R.string.market to CustomizationPage.TWEAKS,
+    R.string.open_the_market to CustomizationPage.TWEAKS,
+    R.string.put_the_buttons_back_at_the_bottom to CustomizationPage.ACCESSIBILITY,
+    R.string.refresh_icons to CustomizationPage.STATUS,
+    R.string.reset_fold_timing to CustomizationPage.FOLD,
+    R.string.restore_from_backup to CustomizationPage.BACKUP,
+    R.string.save_backup to CustomizationPage.BACKUP,
+    R.string.save_backup_to_files to CustomizationPage.BACKUP,
+    R.string.share_diagnostics to CustomizationPage.ADVANCED,
+    R.string.share_latest to CustomizationPage.ADVANCED,
+    R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
 
 internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex + SettingsRows.map { (title, page) -> Triple(title, null, page) }
@@ -1336,7 +1368,8 @@ internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = Setti
 private class Found(val title: String, val keywords: String, val page: CustomizationPage, val row: Boolean)
 
 internal fun settingsMatches(query: String, title: String, keywords: String): Boolean {
-    val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    // A lone "&" or "-" in the query ("Fold & Displays") has nothing to match, so it must not make the search fail.
+    val words = query.trim().lowercase().split(Regex("\\s+")).filter { w -> w.any { it.isLetterOrDigit() } }
     val hay = "$title $keywords".lowercase()
     return words.isNotEmpty() && words.all { it in hay }
 }
@@ -1366,7 +1399,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     else SheetGroup {
         results.forEachIndexed { index, found ->
             if (index > 0) MenuDivider()
-            SettingsSearchRow(found.title, if (found.row) stringResource(found.page.title) else null) { onOpen(found.page, found.title.takeIf { found.row }) }
+            // A page found by its own name needs no "where": it is the page.
+            val where = if (found.row) stringResource(found.page.title).takeIf { it != found.title } else null
+            SettingsSearchRow(found.title, where) { onOpen(found.page, found.title.takeIf { found.row && where != null }) }
         }
         // A tweak says it's a tweak, since its name alone ("Cabinet", "Palette") doesn't say where it lives.
         tweakResults.forEachIndexed { index, tweak ->
