@@ -198,6 +198,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     val setupLeft = setupSteps.count { it.required && !it.done }
     val onBack = { onPage(page.parent) }
     val sheetContext = androidx.compose.ui.platform.LocalContext.current
+    // A search target whose row never shows (its option is hidden until a switch is on) is dropped, not saved for later.
+    LaunchedEffect(SettingsFocus.label) { if (SettingsFocus.label != null) { kotlinx.coroutines.delay(SettingsFocus.PATIENCE_MS); SettingsFocus.label = null } }
 
     // The settings list. On the phone it's the first page; in the split view it's the sidebar, with the open page highlighted.
     val overviewRows: @Composable ColumnScope.(selected: CustomizationPage?, sidebar: Boolean) -> Unit = { selected, sidebar ->
@@ -294,7 +296,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     // Like iOS Settings: the header gets out of the way while searching.
                     if (settingsQuery.isBlank()) TweakBanner()
                     SettingsSearchField(settingsQuery) { settingsQuery = it }
-                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { settingsQuery = ""; onPage(it) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
+                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> settingsQuery = ""; SettingsFocus.label = row; onPage(page) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
                     else {
                         overviewActions()
                         MiniHomePreview(backgrounds.previewBitmap, state, 176.dp)
@@ -940,7 +942,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 .padding(horizontal = FolioSpace.LARGE.dp).padding(top = 44.dp, bottom = FolioSpace.XL.dp).testTag("settings-sidebar"), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 SettingsLargeTitle(stringResource(R.string.folio))
                 SettingsSearchField(settingsQuery) { settingsQuery = it }
-                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { onPage(it) }, onOpenTweak = { openTweak(it) })
+                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> SettingsFocus.label = row; onPage(page) }, onOpenTweak = { openTweak(it) })
                 else {
                     // Like the account card at the top of iPad Settings: Folio's own page.
                     SheetGroup { SidebarAppRow(selected = page == CustomizationPage.OVERVIEW, setupLeft) { onPage(CustomizationPage.OVERVIEW) } }
@@ -1331,6 +1333,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
 
 internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex + SettingsRows.map { (title, page) -> Triple(title, null, page) }
 
+private class Found(val title: String, val keywords: String, val page: CustomizationPage, val row: Boolean)
+
 internal fun settingsMatches(query: String, title: String, keywords: String): Boolean {
     val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
     val hay = "$title $keywords".lowercase()
@@ -1347,21 +1351,22 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         tweak to listOfNotNull(tweak.inspiredBy, context.getString(tweak.description), tweak.keywords?.let(context::getString)).joinToString(" ")
     }
 
-@Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage) -> Unit, onOpenTweak: (TweakFeature) -> Unit) {
+/** [onOpen] gets the page and, for a setting found by its own name, that name, so the page can scroll to its row. */
+@Composable private fun SettingsSearchResults(query: String, onOpen: (CustomizationPage, String?) -> Unit, onOpenTweak: (TweakFeature) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val resources = context.resources
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
-        SettingsEntries.map { (title, keywords, page) -> Triple(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page) }
+        SettingsEntries.map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
-    val results = index.filter { (title, keywords) -> settingsMatches(query, title, keywords) }
+    val results = index.filter { settingsMatches(query, it.title, it.keywords) }
     val tweakResults = tweaks.filter { (tweak, keywords) -> settingsMatches(query, tweak.name, keywords) }.map { it.first }
     if (results.isEmpty() && tweakResults.isEmpty()) Text(stringResource(R.string.no_results_for_1, query.trim()), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f),
         modifier = Modifier.fillMaxWidth().padding(FolioSpace.XXL.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     else SheetGroup {
-        results.forEachIndexed { index, (title, _, page) ->
+        results.forEachIndexed { index, found ->
             if (index > 0) MenuDivider()
-            SettingsSearchRow(title, null) { onOpen(page) }
+            SettingsSearchRow(found.title, if (found.row) stringResource(found.page.title) else null) { onOpen(found.page, found.title.takeIf { found.row }) }
         }
         // A tweak says it's a tweak, since its name alone ("Cabinet", "Palette") doesn't say where it lives.
         tweakResults.forEachIndexed { index, tweak ->
@@ -2158,7 +2163,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
 
 @Composable internal fun SettingsSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, tag: String? = null) {
     // One accessible element for TalkBack ("label, switch, on"); the whole row toggles.
-    Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).settingsFocus(label).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f).padding(end = FolioSpace.MEDIUM.dp, top = FolioSpace.SNUG.dp, bottom = FolioSpace.SNUG.dp), fontSize = FolioType.BODY.sp); IosSwitch(checked, onChecked, Modifier.then(if (tag != null) Modifier.testTag(tag) else Modifier))
     }
 }
@@ -2185,7 +2190,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
         onChange(next)
     }
-    Column(Modifier.padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.HAIR.dp).onGloballyPositioned { bounds = it.boundsInWindow() }) {
+    Column(Modifier.settingsFocus(label).padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.HAIR.dp).onGloballyPositioned { bounds = it.boundsInWindow() }) {
         Row { Text(label, Modifier.weight(1f), fontSize = FolioType.BODY.sp); Text(valueLabel, fontSize = FolioType.BODY.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f)) }
         IosSlider(value, change, valueRange = range, modifier = Modifier.semantics { contentDescription = label }, interactionSource = interaction) }
 }

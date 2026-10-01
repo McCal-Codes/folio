@@ -199,7 +199,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
     var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val current = options.firstOrNull { it.first == selected }?.second ?: ""
-    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).settingsFocus(title).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
         .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Choose $title") { open = true }
         .then(if (tag != null) Modifier.testTag(tag) else Modifier)
         .androidxAlpha(if (enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically) {
