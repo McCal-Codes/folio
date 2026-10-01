@@ -301,7 +301,8 @@ class MainActivity : ComponentActivity() {
                 // charging on its side and a tent on the cover.
                 val standByMore = androidx.compose.runtime.remember { FeatureGate.STANDBY_CHARGING.isOpen(this@MainActivity) }
                 val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
-                val standByWays = StandByWays(state.standBy, standByMore && state.standByCharging, standByMore && state.standByTent)
+                val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
+                val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
                 val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
                 StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
                     halfOpenPose, blocked = overlayOpen, status = deviceStatus)
