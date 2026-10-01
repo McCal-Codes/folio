@@ -614,7 +614,7 @@ fun LauncherScreen(
             }
             val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
             val wide = maxWidth.value * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && maxHeight.value * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
-            val preset = if (wide) state.expanded else state.compact
+            val preset = state.presetFor(layoutScreenFor(maxWidth.value, maxHeight.value, classScale))
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
             var statusHeight by remember { mutableFloatStateOf(0f) }

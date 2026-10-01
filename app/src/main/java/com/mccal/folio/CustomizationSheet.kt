@@ -170,6 +170,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     onShowWhatsNew: () -> Unit = {},
 ) {
     var wide by rememberSaveable { mutableStateOf(initiallyWide) }
+    // Which inner layout the layout sliders edit, when the upright one is separate.
+    var upright by rememberSaveable { mutableStateOf(false) }
     var tweakId by rememberSaveable { mutableStateOf(SettingsMemory.tweakId) }
     var focusId by rememberSaveable { mutableStateOf(SettingsMemory.focusId) }
     SideEffect { SettingsMemory.tweakId = tweakId; SettingsMemory.focusId = focusId }
@@ -386,7 +388,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.HOME -> {
-                    HomeLayoutSettings(state, wide, { wide = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
+                    HomeLayoutSettings(state, wide, { wide = it }, upright, { upright = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
                     SettingsCard(stringResource(R.string.folders)) {
                         IosMenuRow(stringResource(R.string.columns), listOf(0 to stringResource(R.string.automatic), 3 to "3", 4 to "4"), state.folderColumns, model::setFolderColumns, tag = "folder-columns")
                         IosMenuRow(stringResource(R.string.background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
@@ -1873,11 +1875,21 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     }
 }
 
-@Composable private fun HomeLayoutSettings(state: LauncherState, wide: Boolean, onWide: (Boolean) -> Unit,
+@Composable private fun HomeLayoutSettings(state: LauncherState, wide: Boolean, onWide: (Boolean) -> Unit, upright: Boolean, onUpright: (Boolean) -> Unit,
     model: LauncherModel, homePage: Int, onEditPins: () -> Unit, onWidget: (Int) -> Unit,
     onAddWidget: (Int) -> Unit, onRemoveWidget: (Int) -> Unit) {
-    val p = if (wide) state.expanded else state.compact
+    val screen = if (!wide) LayoutScreen.COVER else if (upright && state.portrait != null) LayoutScreen.INNER_UPRIGHT else LayoutScreen.INNER
+    val p = state.presetFor(screen)
     IosSegmented(listOf(false to stringResource(R.string.cover), true to stringResource(R.string.inner)), wide, onWide, Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "layout-screen")
+    if (wide) {
+        // The upright inner screen can have a layout of its own; until it does, it shares the inner one.
+        if (state.portrait != null) IosSegmented(listOf(false to stringResource(R.string.sideways), true to stringResource(R.string.upright)), upright, onUpright,
+            Modifier.padding(bottom = FolioSpace.TINY.dp), tag = "layout-orientation")
+        SettingsCard(stringResource(R.string.inner)) {
+            SettingsSwitch(stringResource(R.string.separate_upright_layout), state.portrait != null, { on -> model.setSeparatePortrait(on); onUpright(on) }, "separate-portrait-switch")
+            CardNote(stringResource(R.string.separate_upright_layout_note))
+        }
+    }
     var confirmIPhone by remember { mutableStateOf(false) }
     SheetGroup {
         IosActionRow(stringResource(R.string.choose_home_apps), onClick = onEditPins)
@@ -1891,10 +1903,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         dismissButton = { TextButton(onClick = { confirmIPhone = false }) { Text(stringResource(R.string.cancel)) } })
     SettingsCard(stringResource(R.string.layout)) {
         val d = LayoutPreset()
-        CustomizationSlider(stringResource(R.string.app_icon_size), stringResource(R.string.dp_value, p.iconSize.toInt()), p.iconSize, 40f..68f, d.iconSize, peek = true) { model.setPreset(wide, p.copy(iconSize = it)) }
-        CustomizationSlider(stringResource(R.string.space_between_rows), stringResource(R.string.dp_value, p.rowGap.toInt()), p.rowGap, 0f..28f, d.rowGap, peek = true) { model.setPreset(wide, p.copy(rowGap = it)) }
-        CustomizationSlider(stringResource(R.string.space_between_columns), stringResource(R.string.dp_value, p.columnGap.toInt()), p.columnGap, 8f..40f, d.columnGap, peek = true) { model.setPreset(wide, p.copy(columnGap = it)) }
-        CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(wide, p.copy(widgetScale = it)) }
+        CustomizationSlider(stringResource(R.string.app_icon_size), stringResource(R.string.dp_value, p.iconSize.toInt()), p.iconSize, 40f..68f, d.iconSize, peek = true) { model.setPreset(screen, p.copy(iconSize = it)) }
+        CustomizationSlider(stringResource(R.string.space_between_rows), stringResource(R.string.dp_value, p.rowGap.toInt()), p.rowGap, 0f..28f, d.rowGap, peek = true) { model.setPreset(screen, p.copy(rowGap = it)) }
+        CustomizationSlider(stringResource(R.string.space_between_columns), stringResource(R.string.dp_value, p.columnGap.toInt()), p.columnGap, 8f..40f, d.columnGap, peek = true) { model.setPreset(screen, p.copy(columnGap = it)) }
+        CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
         // Automatic says which number it landed on, so the count is never a mystery.
         IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.homeAppRows), 4 to "4"), state.homeRows, model::setHomeRows, tag = "home-rows")
         CardNote(stringResource(R.string.automatic_adds_up_to_3_more_rows_of_apps))
@@ -1903,13 +1915,13 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     }
     SettingsCard(stringResource(R.string.position)) {
         IosMenuRow(stringResource(R.string.dock), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
-            p.dockPlacement, { model.setPreset(wide, p.copy(dockPlacement = it)) }, tag = "dock-placement")
+            p.dockPlacement, { model.setPreset(screen, p.copy(dockPlacement = it)) }, tag = "dock-placement")
         IosMenuRow(stringResource(R.string.apps), listOf(false to stringResource(R.string.centered), true to "Top"), p.pageTop,
-            { model.setPreset(wide, p.copy(pageTop = it)) }, tag = "page-position")
+            { model.setPreset(screen, p.copy(pageTop = it)) }, tag = "page-position")
         IosMenuRow(stringResource(R.string.status), listOf(true to stringResource(R.string.level_with_apps), false to stringResource(R.string.custom)), p.statusAlignToGrid,
-            { model.setPreset(wide, p.copy(statusAlignToGrid = it)) }, tag = "status-position")
+            { model.setPreset(screen, p.copy(statusAlignToGrid = it)) }, tag = "status-position")
         if (!p.statusAlignToGrid) CustomizationSlider(stringResource(R.string.status_height), if (p.statusPosition < .01f) "Top" else "${(p.statusPosition * 100).toInt()}%",
-            p.statusPosition, 0f..1f, peek = true) { model.setPreset(wide, p.copy(statusPosition = it)) }
+            p.statusPosition, 0f..1f, peek = true) { model.setPreset(screen, p.copy(statusPosition = it)) }
         CardNote(when (p.dockPlacement) {
             DockPlacement.AUTOMATIC -> if (wide) stringResource(R.string.the_dock_stays_on_the_side_bar_and_moves) else stringResource(R.string.the_dock_stays_on_the_side_bar)
             DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
@@ -1917,13 +1929,13 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
     }
     SettingsCard(stringResource(R.string.side_rail)) {
-        CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(wide, p.copy(dockWidth = it)) }
-        CustomizationSlider(stringResource(R.string.space_between_dock_apps), stringResource(R.string.dp_value, p.dockSpacing.toInt()), p.dockSpacing, 0f..24f, 0f, peek = true) { model.setPreset(wide, p.copy(dockSpacing = it)) }
-        if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.align_dock_with_app_rows), p.dockAlignToGrid, { model.setPreset(wide, p.copy(dockAlignToGrid = it)) })
+        CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
+        CustomizationSlider(stringResource(R.string.space_between_dock_apps), stringResource(R.string.dp_value, p.dockSpacing.toInt()), p.dockSpacing, 0f..24f, 0f, peek = true) { model.setPreset(screen, p.copy(dockSpacing = it)) }
+        if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.align_dock_with_app_rows), p.dockAlignToGrid, { model.setPreset(screen, p.copy(dockAlignToGrid = it)) })
         if (!p.dockAlignToGrid && p.dockPlacement != DockPlacement.BOTTOM) CustomizationSlider(stringResource(R.string.dock_height), "${(p.dockPosition * 100).toInt()}%", p.dockPosition, 0f..1f,
-            LayoutPreset().dockPosition, peek = true) { model.setPreset(wide, p.copy(dockPosition = it)) }
+            LayoutPreset().dockPosition, peek = true) { model.setPreset(screen, p.copy(dockPosition = it)) }
     }
-    SheetGroup { IosActionRow(stringResource(R.string.reset_this_layout), destructive = true, onClick = { model.setPreset(wide, LayoutPreset()) }) }
+    SheetGroup { IosActionRow(stringResource(R.string.reset_this_layout), destructive = true, onClick = { model.setPreset(screen, LayoutPreset()) }) }
     // Per-page looks (after Atria): each page can have its own icon size and labels.
     SheetGroupLabel(stringResource(R.string.pages))
     // Real pages and styles (a Focus hiding pages renumbers the state Home draws), collected so the chips update.

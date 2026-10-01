@@ -155,6 +155,18 @@ const val HOME_REGULAR_MIN_HEIGHT_DP = 560f
  * [classScale] converts to dp at the phone's own density (see [classScale]), so a changed display size can't turn a
  * phone-sized screen into a tablet one.
  */
+/**
+ * Which of Home's saved layouts a window uses. The cover and any window too small to be "expanded" use the cover's
+ * ([COVER]); an expanded window uses the inner screen's, and an upright one ([INNER_UPRIGHT], taller than wide) uses its
+ * own only if the person made one (see [LauncherState.portrait]), else the inner screen's, as it always has.
+ */
+enum class LayoutScreen { COVER, INNER, INNER_UPRIGHT }
+
+/** The one rule for which layout a window of this size gets; Home, Discover and Settings all ask it. */
+fun layoutScreenFor(widthDp: Float, heightDp: Float, classScale: Float = 1f): LayoutScreen =
+    if (widthDp * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP)
+        (if (heightDp > widthDp) LayoutScreen.INNER_UPRIGHT else LayoutScreen.INNER) else LayoutScreen.COVER
+
 fun fitsRegularHomeLayout(widthDp: Float, heightDp: Float, classScale: Float = 1f) =
     widthDp * classScale >= ANDROID_MEDIUM_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
 

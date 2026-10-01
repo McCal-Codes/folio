@@ -105,6 +105,8 @@ data class LauncherState(
     val widgetRestores: List<WidgetRestore> = emptyList(),
     val googleSearch: Boolean = true,
     val compact: LayoutPreset = LayoutPreset(),
+    /** The inner screen held upright, when it has a layout of its own; null means it uses [expanded], as it always did. */
+    val portrait: LayoutPreset? = null,
     val expanded: LayoutPreset = LayoutPreset(),
     val labels: Boolean = true,
     val verticalStatus: Boolean = true,
@@ -317,6 +319,13 @@ internal fun LauncherState.trackedAppIds(): List<String> =
     homeSlots.filterNotNull() + leadingSlots.filterNotNull() + dock.filterNotNull() + folders.flatMap { it.appIds } +
         iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys
 
+/** The saved layout [screen] uses: the upright inner screen falls back to the inner one until it has its own. */
+fun LauncherState.presetFor(screen: LayoutScreen): LayoutPreset = when (screen) {
+    LayoutScreen.COVER -> compact
+    LayoutScreen.INNER -> expanded
+    LayoutScreen.INNER_UPRIGHT -> portrait ?: expanded
+}
+
 /** Every app id Home shows without opening an app: its pages, the dock, and the apps in its folders and icon stacks. */
 internal fun LauncherState.homeAppIds(): Set<String> =
     ((homeSlots + leadingSlots + dock).filterNotNull().filterNot(::isFolderId) + folders.flatMap { it.appIds } +
@@ -351,7 +360,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     private data class RefreshedApps(val entries: List<AppEntry>, val profiles: List<AppProfile>,
         val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>)
     private data class UndoImportSettings(val compact: LayoutPreset, val expanded: LayoutPreset, val labels: Boolean,
-        val googleSearch: Boolean, val verticalStatus: Boolean)
+        val googleSearch: Boolean, val verticalStatus: Boolean, val portrait: LayoutPreset? = null)
     private val prefs = application.getSharedPreferences("launcher", 0)
     private val launcherApps = application.getSystemService(LauncherApps::class.java)
     private val userManager = application.getSystemService(UserManager::class.java)
@@ -833,17 +842,17 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val old = mutable.value
         val kept = before ?: old
         if (old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
-            old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
+            old.portrait == preview.portrait && old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
             old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles) return false
         if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
         undoLayout = kept.layout to preview.layout
-        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus)
+        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, apps = old.apps.withAppNames(names),
             homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = preview.layout.dock,
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
-            widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded,
+            widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             editRevision = old.editRevision + 1, canUndoEdit = true)
@@ -1075,7 +1084,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             dock = before.dock.map { it?.takeIf(installed::contains) }, widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
-            expanded = settings?.expanded ?: old.expanded, labels = settings?.labels ?: old.labels,
+            expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
             googleSearch = settings?.googleSearch ?: old.googleSearch, verticalStatus = settings?.verticalStatus ?: old.verticalStatus,
             canUndoEdit = false,
             editRevision = old.editRevision + 1)
@@ -1179,12 +1188,30 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setLeftHanded(value: Boolean) = updateSettings(soon = false) { it.copy(leftHanded = value) }
     fun setVerticalStatus(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(verticalStatus = value, canUndoEdit = false) }; persist() }
     fun setGoogleSearch(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(googleSearch = value, canUndoEdit = false) }; persist() }
-    fun setPreset(expanded: Boolean, value: LayoutPreset) {
+    fun setPreset(expanded: Boolean, value: LayoutPreset) = setPreset(if (expanded) LayoutScreen.INNER else LayoutScreen.COVER, value)
+
+    fun setPreset(screen: LayoutScreen, value: LayoutPreset) {
         if (statePayloadInvalid) return
         undoLayout = null; undoImportSettings = null
-        mutable.update { if (expanded) it.copy(expanded = value.sanitized(), canUndoEdit = false) else it.copy(compact = value.sanitized(), canUndoEdit = false) }
+        mutable.update {
+            when (screen) {
+                LayoutScreen.COVER -> it.copy(compact = value.sanitized(), canUndoEdit = false)
+                LayoutScreen.INNER -> it.copy(expanded = value.sanitized(), canUndoEdit = false)
+                // Only a layout that exists can be edited; asking for the upright one without it changes the inner one.
+                LayoutScreen.INNER_UPRIGHT -> if (it.portrait != null) it.copy(portrait = value.sanitized(), canUndoEdit = false)
+                    else it.copy(expanded = value.sanitized(), canUndoEdit = false)
+            }
+        }
         // Home updates on every slider step; the write waits until the slider rests.
         persistSoon()
+    }
+
+    /** The upright inner screen gets a layout of its own, starting as a copy of the inner one, or goes back to sharing it. */
+    fun setSeparatePortrait(on: Boolean) {
+        if (statePayloadInvalid) return
+        undoLayout = null; undoImportSettings = null
+        mutable.update { it.copy(portrait = if (on) (it.portrait ?: it.expanded) else null, canUndoEdit = false) }
+        persist()
     }
     val retainedWidgetIds: Set<Int> get() {
         val state = mutable.value
@@ -1328,6 +1355,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put(SettingKeys.BUTTON_BAR_WIDTH, s.buttonBarWidth.toDouble()).put(SettingKeys.BUTTON_BAR_ANDROID_ORDER, s.buttonBarAndroidOrder)
             .put(SettingKeys.BUTTON_BAR_LIGHT, s.buttonBarLight).put(SettingKeys.BUTTON_BAR_FADE, s.buttonBarFade)
             .put("compact", preset(s.compact)).put("expanded", preset(s.expanded))
+            .also { o -> s.portrait?.let { o.put("portrait", preset(it)) } }
             .put("homeRows", s.homeRows).put("homeFitCompact", s.homeFitCompact).put("homeFitExpanded", s.homeFitExpanded)
         val editor = prefs.edit()
         if (legacyRaw != null && sourceSchema == 2 && !prefs.contains("state_v2_backup"))
@@ -1510,7 +1538,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         widgetPlacements = placements, folders = folders, widgetRestores = restores,
         googleSearch = j.optBoolean("googleSearch", true),
         labels = j.optBoolean("labels", true), compact = preset("compact", LayoutPreset()),
-        expanded = preset("expanded", LayoutPreset()), verticalStatus = j.optBoolean("verticalStatus", true),
+        expanded = preset("expanded", LayoutPreset()), portrait = j.optJSONObject("portrait")?.let { preset("portrait", LayoutPreset()) }, verticalStatus = j.optBoolean("verticalStatus", true),
         leftHanded = j.optBoolean("leftHanded", false),
         hiddenApps = j.optJSONArray("hiddenApps")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         island = j.optBoolean("island", true),

@@ -1546,4 +1546,8 @@
     <string name="edit_icon_note">Changes only this app\'s icon, here and everywhere Folio shows it. Settings › Icons &amp; Side Bar still sets the look for the rest.</string>
     <string name="reset_icon">Reset Icon</string>
     <string name="custom_search_blank">Until you type an address, Search with Enter uses Google.</string>
+    <string name="separate_upright_layout">Separate layout when upright</string>
+    <string name="separate_upright_layout_note">The upright inner screen gets its own layout. It starts as a copy of the sideways one, and turning this off goes back to sharing it.</string>
+    <string name="sideways">Sideways</string>
+    <string name="upright">Upright</string>
 </resources>
