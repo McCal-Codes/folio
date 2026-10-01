@@ -153,7 +153,7 @@ class PackageInstaller(
             return InstallResult.NeedsNewerFolio(listOf("Folio $needs"))
         }
         // An add-on without its host would sit on the phone doing nothing, so the host comes first.
-        val hosts = pkg.manifest.kinds.mapNotNull { it.hostTweak }.distinct().filterNot(host::hasTweak)
+        val hosts = missingHosts(pkg.changes)
         if (hosts.isNotEmpty()) return InstallResult.NeedsHost(hosts)
         val already = store.installed()
         already.firstOrNull { it.id != pkg.id && pkg.manifest.conflicts.any { c -> c.id == it.id && c.matches(it.version) } }
@@ -259,6 +259,9 @@ class PackageInstaller(
     fun enable(id: String): Boolean {
         val installed = store.find(id)?.takeIf { !it.enabled } ?: return false
         val changes = store.changesFor(installed.id, installed.version) ?: return false
+        // As at install: an add-on whose host was removed since stays off, rather than going on to do nothing. This is
+        // also what keeps one off when a backup is restored onto a phone without its host.
+        if (missingHosts(changes).isNotEmpty()) return false
         safeMode.beginChange(id)
         val snapshots = mutableListOf<String>()
         try {
@@ -274,6 +277,13 @@ class PackageInstaller(
         safeMode.endChange()
         return true
     }
+
+    /** The host tweaks installed package [id] is an add-on to that aren't on this phone ([PackageKind.hostTweak]). */
+    fun missingHosts(id: String): List<String> =
+        store.find(id)?.let { store.changesFor(it.id, it.version) }?.let(::missingHosts).orEmpty()
+
+    private fun missingHosts(changes: List<PackageChange>): List<String> =
+        changes.mapNotNull { it.hostTweak }.distinct().filterNot(host::hasTweak)
 
     /** Takes a package off, putting back whatever it replaced. */
     fun remove(id: String): Boolean {

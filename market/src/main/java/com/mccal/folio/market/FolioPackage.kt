@@ -70,6 +70,8 @@ data class FolioPackage(
 sealed interface PackageChange {
     /** The Folio capabilities this needs, so compatibility is settled before anything is applied. */
     val capabilities: Set<Capability>
+    /** The tweak this change is an add-on to ([PackageKind.hostTweak]): on without it, the change would do nothing. */
+    val hostTweak: String? get() = null
 
     data class Theme(val json: String) : PackageChange {
         override val capabilities get() = setOf(Capability.THEME)
@@ -93,6 +95,7 @@ sealed interface PackageChange {
         val maxRotation: Float, val pivot: String, val shrink: Float, val cameraWidths: Float,
     ) : PackageChange {
         override val capabilities get() = setOf(Capability.PAGE_EFFECTS)
+        override val hostTweak get() = PackageKind.PAGE_EFFECT.hostTweak
 
         companion object {
             val PIVOTS = setOf("seam", "center")

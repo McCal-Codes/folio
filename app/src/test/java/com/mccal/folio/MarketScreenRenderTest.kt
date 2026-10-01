@@ -1,17 +1,22 @@
 package com.mccal.folio
 
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -130,24 +135,57 @@ class MarketScreenRenderTest {
         assertEquals(false, session.addTweak("no such tweak"))
     }
 
-    // Like a script for jailbreak Cylinder, a page effect is an add-on to Flipbook. Getting one without Flipbook says
-    // so, and the message's action opens Flipbook's own page, where it can be got.
-    @Test fun `an effect without Flipbook offers Flipbook`() {
+    // Like a script for jailbreak Cylinder, a page effect is an add-on to Flipbook. Without Flipbook the sheet says so
+    // before Get rather than after it fails: Get is off, and the note's action opens Flipbook's own page to get it.
+    @Test fun `an effect without Flipbook says so before Get, and offers Flipbook`() {
         val session = session()
         session.prefs.introductionSeen = true
         try {
             MarketImport.pending = tiltPackage()
             compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
             compose.waitUntil(5_000) { compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("market-install-confirm").performScrollTo().performClick()
-            awaitText("Tilt works with Flipbook. Get Flipbook first.")
+            compose.onNodeWithText("Works with Flipbook").assertExists()
+            compose.onNodeWithText("Needs Flipbook. Get Flipbook first, then Tilt adds an effect to it.").assertExists()
+            compose.onNodeWithTag("market-install-confirm").assertIsNotEnabled()
+            compose.onNodeWithText("Get Flipbook").performScrollTo().performClick()
+            // The sheet makes way for Flipbook's own page, and nothing was installed.
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("package-show-source").fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(0, compose.onAllNodesWithTag("market-install-sheet").fetchSemanticsNodes().size)
             assertEquals(true, session.installed().none { it.id == "com.mccal.folio.effect.tilt" })
-            compose.onNodeWithText("Get Flipbook").performClick()
-            // Flipbook's page, with its own Get.
-            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Get Flipbook").fetchSemanticsNodes().isNotEmpty() }
         } finally {
             MarketImport.pending = null
         }
+    }
+
+    @Test fun `with Flipbook on, an effect's sheet says what it works with, and Get goes ahead`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val session = MarketSession(context, NoopLauncher(), kotlinx.coroutines.Dispatchers.Unconfined)
+        session.prefs.introductionSeen = true
+        session.installed().forEach { session.remove(it.id) }
+        assertEquals(true, session.addTweak("pageEffects"))
+        try {
+            MarketImport.pending = tiltPackage()
+            compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Works with Flipbook").assertExists()
+            assertEquals(0, compose.onAllNodesWithTag("needs-host").fetchSemanticsNodes().size)
+            compose.onNodeWithTag("market-install-confirm").assertIsEnabled().performScrollTo().performClick()
+            awaitText("Tilt is on")
+        } finally {
+            MarketImport.pending = null
+        }
+    }
+
+    @Test fun `an effect's page says it works with Flipbook, and without Flipbook Get waits for it`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://mccal-codes.github.io/folio-tweaks/", "Folio Tweaks", effectIndex())
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Tilt").performScrollTo().performClick()
+        compose.onNodeWithText("Works with Flipbook").assertExists()
+        compose.onNodeWithContentDescription("Get Tilt").assertIsNotEnabled()
+        compose.onNodeWithTag("needs-host").assertExists()
     }
 
     // Found on the Fold8, 29 Sep 2026: a package installed from a file is listed by no source, and the Installed tab
@@ -189,10 +227,11 @@ class MarketScreenRenderTest {
         session.installed().forEach { session.remove(it.id) }
         compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
         compose.onNodeWithTag("market-tab-packages").performClick()
-        compose.onNodeWithContentDescription("Get Cabinet").performClick()
+        // Android's 48 dp targets: the pill, and the banner's Undo, which sits inside a banner that dismisses.
+        compose.onNodeWithContentDescription("Get Cabinet").assertHeightIsAtLeast(48.dp).performClick()
         compose.onNodeWithTag("market-install-confirm").performScrollTo().performClick()
         awaitText("Cabinet is on")
-        compose.onNodeWithText("Undo").assertExists()
+        compose.onNodeWithText("Undo").assertHeightIsAtLeast(48.dp)
     }
 
     @Test fun `a message with Undo stays, and a plain one goes away by itself`() {
@@ -417,6 +456,16 @@ class MarketScreenRenderTest {
             """{"format":1,"keyId":"A1B2C3D4E5F60789","timestamp":1789660320,"maxAge":604800,
                 "index":{"path":"index.json","sha256":"$hash","size":${bytes.size}}}""",
         )
+    }
+
+    /** A page effect listed by a source (an add-on to Flipbook), as its cached list. */
+    private fun effectIndex(): String {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        // Lowered like tiltPackage's, so this test build (a beta of 0.6.8) doesn't count as too old for it.
+        val manifest = org.json.JSONObject(java.io.File(root, "docs/sdk/examples/page-effect-tilt/manifest.json").readText())
+            .put("minFolio", "0.6.6").apply { remove("\$schema") }
+        return """{"format":1,"name":"Folio Tweaks","packages":[{"id":"com.mccal.folio.effect.tilt","version":"1.0.0",
+            "url":"https://example.test/tilt.foliopkg","sha256":"${"b".repeat(64)}","size":2048,"manifest":$manifest}]}"""
     }
 
     /** A one-package index from another source, as its cached list. */

@@ -126,6 +126,35 @@ class PackageInstallerTest {
         assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
     }
 
+    // Flipbook can be removed after an effect is on. Try Again mustn't turn the effect back on without it, the same as
+    // Get won't put one on: it would sit there doing nothing.
+    @Test fun `an effect isn't turned back on while Flipbook is gone`() {
+        val tilt = "com.mccal.folio.effect.tilt"
+        val with = PackageInstaller(store, FakeHost(tweaks = setOf("pageEffects")), clock = { now })
+        assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        assertTrue(with.disable(tilt, "Folio stopped twice just after this package changed."))
+        val gone = FakeHost(tweaks = emptySet())
+        val without = PackageInstaller(store, gone, clock = { now })
+        assertEquals(listOf("pageEffects"), without.missingHosts(tilt))
+        assertFalse(without.enable(tilt))
+        assertTrue("nothing was applied", gone.applied.isEmpty())
+        assertFalse(store.find(tilt)!!.enabled)
+        // With Flipbook back, it goes back on.
+        assertEquals(emptyList<String>(), with.missingHosts(tilt))
+        assertTrue(with.enable(tilt))
+    }
+
+    @Test fun `a restored backup leaves an effect off while Flipbook is gone`() {
+        val tilt = "com.mccal.folio.effect.tilt"
+        val with = PackageInstaller(store, FakeHost(tweaks = setOf("pageEffects")), clock = { now })
+        assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        val backup = store.export()
+        val without = PackageInstaller(store, FakeHost(tweaks = emptySet()), clock = { now })
+        val restored = without.restoreBackup(backup, "Folio couldn't put this back on.") {}!!
+        assertEquals(listOf(tilt), restored.failed.map { it.id })
+        assertFalse(store.find(tilt)!!.enabled)
+    }
+
     @Test fun `a page effect package without a usable effect json is refused`() {
         listOf(null, "not json", """{"maxRotation":18,"pivot":"sideways","shrink":0,"cameraWidths":3}""",
             """{"maxRotation":"a lot","pivot":"center","shrink":0,"cameraWidths":3}""").forEach { effect ->

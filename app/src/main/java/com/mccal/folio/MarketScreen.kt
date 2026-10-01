@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -174,6 +175,26 @@ internal fun MarketScreen(
      */
     fun say(text: String?) { message = text; undo = null; offer = null; said++ }
 
+    /** The tweak [manifest]'s package is an add-on to, by the name Settings shows, and whether it's on the phone. */
+    fun hostFor(manifest: com.mccal.folio.market.PackageManifest?): HostTweak? =
+        manifest?.kinds?.firstNotNullOfOrNull { it.hostTweak }?.let { id ->
+            HostTweak(id, TweakFeatures.firstOrNull { it.id == id }?.name ?: id, session.hasTweak(id))
+        }
+
+    /** Gets tweak [tweakId] for an add-on: its listing's page when that isn't installed, or the tweak itself back. */
+    fun getHost(tweakId: String, hostName: String) {
+        val hostId = hostPackageFor(tweakId)
+        if (hostId != null && hostId !in installed) {
+            // Its listing isn't installed: open it, on a tab that shows packages (Settings doesn't).
+            tab = MarketTab.PACKAGES; openId = hostId; message = null; offer = null
+        } else {
+            // The listing is installed but its tweak was removed in Settings, so the listing only offers Remove: add
+            // the tweak back here instead of sending the user to a dead end.
+            if (session.addTweak(tweakId)) say(context.getString(R.string.text_1_s_is_on, hostName)) else { message = null; offer = null }
+            refresh()
+        }
+    }
+
     /** What the banner says about a finished install, and whether it can still be undone. */
     fun announce(name: String, result: InstallResult) {
         when (result) {
@@ -185,14 +206,7 @@ internal fun MarketScreen(
                 val hostName = tweak?.name ?: result.tweaks.first()
                 say(context.getString(R.string.text_1_s_works_with_2_s_get_it_first, name, hostName))
                 val tweakId = result.tweaks.first()
-                val hostId = hostPackageFor(tweakId)
-                offer = context.getString(R.string.get_tweak, hostName) to when {
-                    // Its listing isn't installed: open it, on a tab that shows packages (Settings doesn't).
-                    hostId != null && hostId !in installed -> { { tab = MarketTab.PACKAGES; openId = hostId; message = null; offer = null } }
-                    // The listing is installed but its tweak was removed in Settings, so the listing only offers
-                    // Remove: add the tweak back here instead of sending the user to a dead end.
-                    else -> { { if (session.addTweak(tweakId)) say(context.getString(R.string.text_1_s_is_on, hostName)) else { message = null; offer = null } } }
-                }
+                offer = context.getString(R.string.get_tweak, hostName) to { getHost(tweakId, hostName) }
             }
             is InstallResult.Failed -> say(result.message)
         }
@@ -298,6 +312,12 @@ internal fun MarketScreen(
     fun tryAgain(id: String, name: String) {
         if (MarketWork.busy) return
         scope.launch {
+            // An add-on whose tweak was removed since: say so and offer the tweak, as Get does, not "couldn't".
+            val hosts = withContext(session.io) { session.missingHosts(id) }
+            if (hosts.isNotEmpty()) {
+                announce(name, InstallResult.NeedsHost(hosts))
+                return@launch
+            }
             val back = withContext(session.io) { session.enable(id) }
             say(context.getString(if (back) R.string.text_1_s_is_back_on else R.string.folio_couldn_t_put_1_s_back_on, name))
             refresh()
@@ -488,9 +508,12 @@ internal fun MarketScreen(
                 }
                 if (open != null) {
                     Box(Modifier.weight(1f).fillMaxHeight()) {
+                        val openHost = hostFor(open.entry.manifest)
                         MarketPackagePage(
                             entry = open.entry,
                             session = session,
+                            host = openHost,
+                            onGetHost = { openHost?.let { getHost(it.id, it.name) } },
                             installed = installed[open.id],
                             appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
@@ -566,6 +589,7 @@ internal fun MarketScreen(
                     val signing by produceState<com.mccal.folio.market.AuthorTrust.Result?>(null, pkg.id, pkg.version) {
                         value = withContext(session.io) { session.authorOf(pkg) }
                     }
+                    val importHost = hostFor(pkg.manifest)
                     MarketInstallSheet(
                         manifest = pkg.manifest,
                         origin = InstallOrigin(
@@ -591,6 +615,8 @@ internal fun MarketScreen(
                             MarketWork.install(pkg.manifest.id, pkg.manifest.name.english, context.getString(R.string.folio_couldn_t_finish_that_install)) { session.installFile(bytes) }
                         },
                         onCancel = { MarketImport.pending = null },
+                        host = importHost,
+                        onGetHost = { MarketImport.pending = null; importHost?.let { getHost(it.id, it.name) } },
                     )
                 }
             }
@@ -689,11 +715,14 @@ internal fun MarketScreen(
                             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
                             .clickable(enabled = false) {},
                     ) {
+                        val sheetHost = hostFor(entry.entry.manifest)
                         MarketInstallSheet(
                             entry = entry.entry,
                             builtIn = entry.source.kind == Source.Kind.BUILT_IN,
                             onGet = { apply(entry) },
                             onCancel = { confirming = null },
+                            host = sheetHost,
+                            onGetHost = { confirming = null; sheetHost?.let { getHost(it.id, it.name) } },
                         )
                     }
                 }
@@ -948,7 +977,7 @@ private fun MarketList(
                                 Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
                                     color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                             }
-                            MarketActionButton(R.string.remove, pkg.name) { onRemove(pkg.id, pkg.name) }
+                            MarketActionButton(R.string.remove, pkg.name, onClick = { onRemove(pkg.id, pkg.name) })
                         }
                     }
                 }
@@ -1101,19 +1130,19 @@ private fun MarketOwnSettings(style: FeaturedStyle, onStyle: (FeaturedStyle) -> 
 
 /** The Get / Remove pill. Its name says which package it belongs to, so a screen reader hears more than "Get". */
 @Composable
-private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: String, onClick: () -> Unit) {
+private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: String, onClick: () -> Unit, enabled: Boolean = true) {
     // A semantics block isn't a composable scope, so the spoken name is read before the modifier chain.
     val described = stringResource(R.string.text_1_s_2_s, stringResource(label), name)
     Text(
         stringResource(label),
-        color = LocalAccent.current.ink,
+        color = LocalAccent.current.ink.copy(alpha = if (enabled) 1f else .4f),
         fontSize = FolioType.SUBHEAD.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
             .clip(RoundedCornerShape(FolioRadius.CARD.dp))
-            .clickable(onClick = onClick)
-            // 44 dp tall, so it's a comfortable target rather than just big enough to see.
-            .heightIn(min = 44.dp)
+            .clickable(enabled = enabled, onClick = onClick)
+            // Android's 48 dp target, with the word centered in it.
+            .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
             .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp)
             .semantics { contentDescription = described },
     )
@@ -1123,6 +1152,9 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
 private fun MarketPackagePage(
     entry: IndexPackage,
     session: MarketSession,
+    /** The tweak this package is an add-on to, when it is one ([HostTweak]). */
+    host: HostTweak? = null,
+    onGetHost: () -> Unit = {},
     installed: InstalledPackage?,
     /** The app on the phone this listing would update, when it is an app of its own and newer. */
     appUpdate: MarketAppUpdate.OnPhone? = null,
@@ -1176,6 +1208,7 @@ private fun MarketPackagePage(
                 // The author said AI helped make it (the manifest's aiAssisted). A plain tag, not a warning: it's
                 // how the package was made, the way the author line says who made it.
                 if (entry.manifest?.aiAssisted != null) AiAssistedTag(Modifier.padding(top = FolioSpace.TINY.dp))
+                host?.let { WorksWithChip(it, Modifier.padding(top = FolioSpace.TINY.dp)) }
             }
         }
 
@@ -1195,7 +1228,7 @@ private fun MarketPackagePage(
                             stringResource(R.string.try_again),
                             color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(12.dp))
-                                .clickable(onClick = onTryAgain).heightIn(min = 44.dp)
+                                .clickable(onClick = onTryAgain).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
                                 .padding(vertical = 11.dp).testTag("package-try-again"),
                         )
                     }
@@ -1214,7 +1247,8 @@ private fun MarketPackagePage(
                 appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-                else -> MarketActionButton(R.string.get, name, onGet)
+                // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
+                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false)
             }
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source
@@ -1229,6 +1263,8 @@ private fun MarketPackagePage(
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
+
+        if (host != null && !host.onPhone) NeedsHostNote(host, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
 
         entry.manifest?.description?.english?.let {
             Text(it, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
@@ -1299,7 +1335,7 @@ private fun MarketPackagePage(
                     sourceLine,
                     color = LocalAccent.current.ink, fontSize = 14.sp,
                     modifier = Modifier.clickable(onClickLabel = sourceLine, onClick = onShowSource)
-                        .heightIn(min = 44.dp).padding(vertical = FolioSpace.MEDIUM.dp).testTag("package-show-source"),
+                        .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(vertical = FolioSpace.MEDIUM.dp).testTag("package-show-source"),
                 )
                 // Provenance, or the honest absence of it. A package from a source with no provenance was being
                 // called "Built into Folio", which said the opposite of where it actually came from.
@@ -1378,15 +1414,17 @@ private fun MarketMessage(text: String, action: Pair<String, () -> Unit>?, onDis
         Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
             .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface)
             .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = onDismiss)
-            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
+            .padding(horizontal = FolioSpace.COMFY.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f))
+        Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f).padding(vertical = FolioSpace.MEDIUM.dp))
         if (action != null) {
-            // Undo, or another step the message offers; a real button, so TalkBack and a keyboard can reach it.
+            // Undo, or another step the message offers; a real button, so TalkBack and a keyboard can reach it. The
+            // whole banner dismisses it, so this needs a full 48 dp of its own: Compose only widens a small target
+            // where nothing else is under the finger, and here the banner always is.
             Text(action.first, color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = action.second)
-                    .padding(start = FolioSpace.SMALL.dp))
+                    .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(start = FolioSpace.SMALL.dp))
         }
     }
 }

@@ -55,8 +55,10 @@ internal class MarketSession(
 
     private val store = InstalledStore(files)
     private val safeMode = PackageSafeMode(files)
+    /** What the installer asks about the launcher; the screen asks the same thing before Get. */
+    private val host = MarketHost(launcher)
     private val installer = PackageInstaller(
-        store, MarketHost(launcher), safeMode,
+        store, host, safeMode,
         folioVersion = FolioVersion.fromAppVersion(WhatsNew.currentVersion(context)),
     )
 
@@ -212,6 +214,12 @@ internal class MarketSession(
 
     /** Try Again, after Safe Mode turned a package off: its changes go back on. */
     fun enable(id: String): Boolean = installer.enable(id).also { Diagnostics.marketTurnedOn(id, it) }
+
+    /** Whether tweak [id] is on this phone, asked the way the installer asks before putting an add-on on. */
+    fun hasTweak(id: String): Boolean = host.hasTweak(id)
+
+    /** The tweaks package [id] is an add-on to that this phone hasn't got, so it can't go back on yet. */
+    fun missingHosts(id: String): List<String> = installer.missingHosts(id)
 
     /** What a layout backup carries about packages, or null when this phone has none to carry. */
     fun exportPackages(): String? = store.installed().takeIf { it.isNotEmpty() }?.let { store.export() }
