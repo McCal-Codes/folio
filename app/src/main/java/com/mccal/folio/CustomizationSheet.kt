@@ -87,7 +87,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -97,7 +97,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         FOCUS_MODE -> FOCUS
         ISLAND_APPS -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
-        SOFTWARE_UPDATE, ADVANCED, HELP, COMING_SOON, CREDITS -> GENERAL
+        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
@@ -138,6 +138,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         TWEAK_LIBRARY -> R.string.tweak_library
         SOFTWARE_UPDATE -> R.string.software_update
         GENERAL -> R.string.general
+        ACCESSIBILITY -> R.string.accessibility
         SUPPORT -> R.string.support_folio
         SUPPORTER -> R.string.supporter
     }
@@ -201,6 +202,14 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // The settings list. On the phone it's the first page; in the split view it's the sidebar, with the open page highlighted.
     val overviewRows: @Composable ColumnScope.(selected: CustomizationPage?, sidebar: Boolean) -> Unit = { selected, sidebar ->
                     SheetGroup {
+                        // General holds what you open once: updates, what's new, language, help, the roadmap, credits.
+                        val updateWaiting by SoftwareUpdate.status.collectAsState()
+                        TweakRow(Icons.Rounded.Settings, FolioColors.Value.Gray, stringResource(R.string.general), "customization-general",
+                            if (updateWaiting is SoftwareUpdate.Status.Available) "1" else null, selected = selected == CustomizationPage.GENERAL, chevron = !sidebar) { onPage(CustomizationPage.GENERAL) }
+                        MenuDivider()
+                        TweakRow(Icons.Rounded.Accessibility, FolioColors.Value.Blue, stringResource(R.string.accessibility), "customization-accessibility", selected = selected == CustomizationPage.ACCESSIBILITY, chevron = !sidebar) { onPage(CustomizationPage.ACCESSIBILITY) }
+                    }
+                    SheetGroup {
                         TweakRow(Icons.Rounded.Wallpaper, FolioColors.Value.CyanLight, stringResource(R.string.wallpaper_appearance), "customization-wallpaper",
                             if (backgrounds.previewPending) stringResource(R.string.photo_ready) else null, selected = selected == CustomizationPage.WALLPAPER, chevron = !sidebar) { onPage(CustomizationPage.WALLPAPER) }
                         MenuDivider()
@@ -237,13 +246,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     SheetGroup {
                         TweakRow(Icons.Rounded.PanTool, FolioColors.Value.Blue, stringResource(R.string.privacy_permissions), "customization-permissions", selected = selected == CustomizationPage.PERMISSIONS, chevron = !sidebar) { onPage(CustomizationPage.PERMISSIONS) }
-                        MenuDivider()
-                        TweakRow(Icons.Rounded.Save, FolioColors.Value.Gray, stringResource(R.string.backup), "customization-backup", selected = selected == CustomizationPage.BACKUP, chevron = !sidebar) { onPage(CustomizationPage.BACKUP) }
-                        MenuDivider()
-                        // General holds what you open once: updates, what's new, language, help, the roadmap, credits.
-                        val updateWaiting by SoftwareUpdate.status.collectAsState()
-                        TweakRow(Icons.Rounded.Settings, FolioColors.Value.Gray, stringResource(R.string.general), "customization-general",
-                            if (updateWaiting is SoftwareUpdate.Status.Available) "1" else null, selected = selected == CustomizationPage.GENERAL, chevron = !sidebar) { onPage(CustomizationPage.GENERAL) }
                     }
                     // One row for Ko-fi, the supporter code and the Supporters list: a page of its own, not three rows here.
                     SheetGroup {
@@ -484,31 +486,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.app_icons)) {
                         val iconContext = androidx.compose.ui.platform.LocalContext.current
                         val packs = remember { IconPacks.installed(iconContext) }
-                        IosMenuRow(stringResource(R.string.icon_pack), listOf<Pair<String?, String>>(null to stringResource(R.string.app_icons)) + packs.map { it.packageName to it.label },
-                            state.iconPack, { IconPacks.clear(); model.setIconPack(it) }, tag = "icon-pack")
-                        CardNote(stringResource(R.string.icon_packs_and_themes_are_made_by_indepe))
-                        if (packs.isEmpty()) CardNote(stringResource(R.string.install_any_icon_pack_made_for_nova_styl))
-                        CardAction(stringResource(R.string.refresh_icons), onClick = model::reloadIcons)
-                        CardNote(stringResource(R.string.refresh_icons_note))
-                        // Live Clock and Calendar: the app's own icon, or live icons that match the others, or always light/dark.
-                        IosMenuRow(stringResource(R.string.clock_calendar), listOf("OFF" to stringResource(R.string.app_icons_2), "AUTO" to stringResource(R.string.live_automatic), "LIGHT" to stringResource(R.string.live_light), "DARK" to stringResource(R.string.live_dark)),
-                            if (state.liveIcons) state.liveIconLook else "OFF",
-                            { if (it == "OFF") model.setLiveIcons(false) else model.setLiveIconLook(it) }, tag = "live-icons-menu")
-                        IosMenuRow(stringResource(R.string.shape), IconShape.entries.map { it to stringResource(it.label) }, state.iconShape, model::setIconShape, tag = "icon-shape")
-                        IosMenuRow(stringResource(R.string.notification_badges), BadgeStyle.entries.map { it to stringResource(it.label) }, state.badgeStyle, model::setBadgeStyle, tag = "badge-style")
-                        if (state.badgeStyle != BadgeStyle.OFF) {
-                            IosMenuRow(stringResource(R.string.badge_color), BadgeColor.entries.map { it to stringResource(it.label) }, state.badgeColor, model::setBadgeColor, tag = "badge-color")
-                            IosMenuRow(stringResource(R.string.badge_look), BadgeLook.entries.map { it to stringResource(it.label) }, state.badgeLook, model::setBadgeLook, tag = "badge-look")
-                            IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to stringResource(it.label) }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
-                            BadgePreviewRow(state)
-                            // Clear Badges When Opened, for supporters until 0.6.8 (FeatureGate.BADGES_WHEN_OPENED).
-                            val badgesWhenOpenedOpen = remember { FeatureGate.BADGES_WHEN_OPENED.isOpen(iconContext) }
-                            if (badgesWhenOpenedOpen) {
-                                SettingsSwitch(stringResource(R.string.clear_badges_when_opened), state.badgesWhenOpened,
-                                    model::setBadgesWhenOpened, "badges-when-opened-switch")
-                                CardNote(stringResource(R.string.a_badge_goes_away_when_you_open_the_app))
-                            }
-                        }
                         // iOS Home Screen customization: Default, Dark and Tinted side by side.
                         Text(stringResource(R.string.style), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
                         IosSegmented(IconStyle.entries.map { it to stringResource(it.label) }, state.iconStyle, { model.setIconStyle(it, state.iconTint) }, Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "icon-style")
@@ -530,6 +507,31 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                     .description(R.string.tint_color).semantics { selected = !state.iconTintFromWallpaper && state.iconTint == c })
                             }
                         }
+                        IosMenuRow(stringResource(R.string.icon_pack), listOf<Pair<String?, String>>(null to stringResource(R.string.app_icons)) + packs.map { it.packageName to it.label },
+                            state.iconPack, { IconPacks.clear(); model.setIconPack(it) }, tag = "icon-pack")
+                        CardNote(stringResource(R.string.icon_packs_and_themes_are_made_by_indepe))
+                        if (packs.isEmpty()) CardNote(stringResource(R.string.install_any_icon_pack_made_for_nova_styl))
+                        IosMenuRow(stringResource(R.string.shape), IconShape.entries.map { it to stringResource(it.label) }, state.iconShape, model::setIconShape, tag = "icon-shape")
+                        // Live Clock and Calendar: the app's own icon, or live icons that match the others, or always light/dark.
+                        IosMenuRow(stringResource(R.string.clock_calendar), listOf("OFF" to stringResource(R.string.app_icons_2), "AUTO" to stringResource(R.string.live_automatic), "LIGHT" to stringResource(R.string.live_light), "DARK" to stringResource(R.string.live_dark)),
+                            if (state.liveIcons) state.liveIconLook else "OFF",
+                            { if (it == "OFF") model.setLiveIcons(false) else model.setLiveIconLook(it) }, tag = "live-icons-menu")
+                        IosMenuRow(stringResource(R.string.notification_badges), BadgeStyle.entries.map { it to stringResource(it.label) }, state.badgeStyle, model::setBadgeStyle, tag = "badge-style")
+                        if (state.badgeStyle != BadgeStyle.OFF) {
+                            IosMenuRow(stringResource(R.string.badge_color), BadgeColor.entries.map { it to stringResource(it.label) }, state.badgeColor, model::setBadgeColor, tag = "badge-color")
+                            IosMenuRow(stringResource(R.string.badge_look), BadgeLook.entries.map { it to stringResource(it.label) }, state.badgeLook, model::setBadgeLook, tag = "badge-look")
+                            IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to stringResource(it.label) }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
+                            BadgePreviewRow(state)
+                            // Clear Badges When Opened, for supporters until 0.6.8 (FeatureGate.BADGES_WHEN_OPENED).
+                            val badgesWhenOpenedOpen = remember { FeatureGate.BADGES_WHEN_OPENED.isOpen(iconContext) }
+                            if (badgesWhenOpenedOpen) {
+                                SettingsSwitch(stringResource(R.string.clear_badges_when_opened), state.badgesWhenOpened,
+                                    model::setBadgesWhenOpened, "badges-when-opened-switch")
+                                CardNote(stringResource(R.string.a_badge_goes_away_when_you_open_the_app))
+                            }
+                        }
+                        CardAction(stringResource(R.string.refresh_icons), onClick = model::reloadIcons)
+                        CardNote(stringResource(R.string.refresh_icons_note))
                     }
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.side_rail)) {
                         SettingsSwitch(stringResource(R.string.left_handed_layout_rail_on_the_left), state.leftHanded, model::setLeftHanded, "left-handed-switch")
@@ -553,42 +555,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             CardNote(stringResource(R.string.status_colors_green_while_charging_orang))
                         }
                     }
-                    if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.in_every_app)) {
-                        SettingsSwitch(stringResource(R.string.dock_handle_on_the_rail_edge), state.dockEverywhere, { on ->
-                            model.setDockEverywhere(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
-                        }, "dock-everywhere-switch")
-                        SettingsSwitch(stringResource(R.string.dynamic_island), state.islandEverywhere, { on ->
-                            model.setIslandEverywhere(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
-                        }, "island-everywhere-switch")
-                        if (state.islandEverywhere) {
-                            // A pill over a full-screen film or game is in the way, so it steps aside by default.
-                            SettingsSwitch(stringResource(R.string.hide_in_full_screen), state.islandHideFullScreen, model::setIslandHideFullScreen, "island-hide-full-screen-switch")
-                            SettingsSwitch(stringResource(R.string.hide_in_landscape), state.islandHideLandscape, model::setIslandHideLandscape, "island-hide-landscape-switch")
-                            CardNote(stringResource(R.string.the_island_comes_back_as_soon_as_the_app))
-                        }
-                        // For people who find the system's buttons too small, especially on the inner screen.
-                        SettingsSwitch(stringResource(R.string.big_buttons), state.buttonBar, { on ->
-                            model.setButtonBar(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
-                        }, "button-bar-switch")
-                        if (state.buttonBar) {
-                            IosMenuRow(stringResource(R.string.size), listOf(44f to stringResource(R.string.standard), 52f to stringResource(R.string.large), 60f to stringResource(R.string.extra_large)), state.buttonBarHeight,
-                                model::setButtonBarHeight, tag = "button-bar-size")
-                            IosMenuRow(stringResource(R.string.width), listOf(.36f to stringResource(R.string.compact), .5f to stringResource(R.string.half_the_screen), .7f to stringResource(R.string.wide)), state.buttonBarWidth,
-                                model::setButtonBarWidth, tag = "button-bar-width")
-                            IosMenuRow(stringResource(R.string.order), listOf(false to stringResource(R.string.recents_home_back), true to stringResource(R.string.back_home_recents)), state.buttonBarAndroidOrder,
-                                model::setButtonBarAndroidOrder, tag = "button-bar-order")
-                            IosMenuRow(stringResource(R.string.look), listOf(false to stringResource(R.string.dark_glass), true to stringResource(R.string.light_glass)), state.buttonBarLight,
-                                model::setButtonBarLight, tag = "button-bar-look")
-                            SettingsSwitch(stringResource(R.string.fade_when_idle), state.buttonBarFade, model::setButtonBarFade, "button-bar-fade-switch")
-                            val buttonContext = androidx.compose.ui.platform.LocalContext.current
-                            CardAction(stringResource(R.string.put_the_buttons_back_at_the_bottom), onClick = { ButtonBarPosition.reset(buttonContext) })
-                            CardNote(stringResource(R.string.long_press_and_drag_the_bar_to_move_it_u))
-                            CardNote(stringResource(R.string.big_back_home_and_recents_buttons_float))
-                            if (!gestureNavigation(androidx.compose.ui.platform.LocalContext.current))
-                                CardNote(stringResource(R.string.android_s_three_buttons_are_on_so_you_ll))
-                        }
-                        CardNote(stringResource(R.string.uses_folios_accessibility_service_the_sa))
-                    }
                     if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.island)) {
                         val islandContext = androidx.compose.ui.platform.LocalContext.current
                         SettingsSwitch(stringResource(R.string.music_and_live_progress), state.island, { on ->
@@ -605,7 +571,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             CardNote(stringResource(R.string.long_press_and_drag_the_island_to_move_i))
                         }
                     }
-                    SettingsCard(stringResource(R.string.brief_pop_ups)) {
+                    if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.brief_pop_ups)) {
                         if (state.island) {
                             listOf("CHARGING" to stringResource(R.string.charging), "SILENT" to stringResource(R.string.silent_mode), "FOCUS" to stringResource(R.string.do_not_disturb), "BLUETOOTH" to stringResource(R.string.headphones_speakers), "MESSAGE" to stringResource(R.string.new_messages_with_quick_reply), "CALL" to stringResource(R.string.calls_answer_decline_end)).forEach { (kind, label) ->
                                 SettingsSwitch(label, kind !in state.islandEventsOff, { model.setIslandEvent(kind, it) }, "island-event-${kind.lowercase()}")
@@ -621,6 +587,21 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             }
                         }
                         CardNote(stringResource(R.string.reads_only_music_calls_timers_navigation))
+                    }
+                    if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.in_every_app)) {
+                        SettingsSwitch(stringResource(R.string.dynamic_island), state.islandEverywhere, { on ->
+                            model.setIslandEverywhere(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
+                        }, "island-everywhere-switch")
+                        if (state.islandEverywhere) {
+                            // A pill over a full-screen film or game is in the way, so it steps aside by default.
+                            SettingsSwitch(stringResource(R.string.hide_in_full_screen), state.islandHideFullScreen, model::setIslandHideFullScreen, "island-hide-full-screen-switch")
+                            SettingsSwitch(stringResource(R.string.hide_in_landscape), state.islandHideLandscape, model::setIslandHideLandscape, "island-hide-landscape-switch")
+                            CardNote(stringResource(R.string.the_island_comes_back_as_soon_as_the_app))
+                        }
+                        SettingsSwitch(stringResource(R.string.dock_handle_on_the_rail_edge), state.dockEverywhere, { on ->
+                            model.setDockEverywhere(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
+                        }, "dock-everywhere-switch")
+                        CardNote(stringResource(R.string.uses_folios_accessibility_service_the_sa))
                     }
                 }
                 CustomizationPage.FOLD -> {
@@ -696,6 +677,31 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     )
                     LayoutHistoryCard(state, model, onClose)
                 }
+                CustomizationPage.ACCESSIBILITY -> {
+                    SettingsCard(stringResource(R.string.accessibility)) {
+                        // For people who find the system's buttons too small, especially on the inner screen.
+                        SettingsSwitch(stringResource(R.string.big_buttons), state.buttonBar, { on ->
+                            model.setButtonBar(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
+                        }, "button-bar-switch")
+                        if (state.buttonBar) {
+                            IosMenuRow(stringResource(R.string.size), listOf(44f to stringResource(R.string.standard), 52f to stringResource(R.string.large), 60f to stringResource(R.string.extra_large)), state.buttonBarHeight,
+                                model::setButtonBarHeight, tag = "button-bar-size")
+                            IosMenuRow(stringResource(R.string.width), listOf(.36f to stringResource(R.string.compact), .5f to stringResource(R.string.half_the_screen), .7f to stringResource(R.string.wide)), state.buttonBarWidth,
+                                model::setButtonBarWidth, tag = "button-bar-width")
+                            IosMenuRow(stringResource(R.string.order), listOf(false to stringResource(R.string.recents_home_back), true to stringResource(R.string.back_home_recents)), state.buttonBarAndroidOrder,
+                                model::setButtonBarAndroidOrder, tag = "button-bar-order")
+                            IosMenuRow(stringResource(R.string.look), listOf(false to stringResource(R.string.dark_glass), true to stringResource(R.string.light_glass)), state.buttonBarLight,
+                                model::setButtonBarLight, tag = "button-bar-look")
+                            SettingsSwitch(stringResource(R.string.fade_when_idle), state.buttonBarFade, model::setButtonBarFade, "button-bar-fade-switch")
+                            val buttonContext = androidx.compose.ui.platform.LocalContext.current
+                            CardAction(stringResource(R.string.put_the_buttons_back_at_the_bottom), onClick = { ButtonBarPosition.reset(buttonContext) })
+                            CardNote(stringResource(R.string.long_press_and_drag_the_bar_to_move_it_u))
+                            CardNote(stringResource(R.string.big_back_home_and_recents_buttons_float))
+                            if (!gestureNavigation(androidx.compose.ui.platform.LocalContext.current))
+                                CardNote(stringResource(R.string.android_s_three_buttons_are_on_so_you_ll))
+                        }
+                    }
+                }
                 CustomizationPage.SIDE_KEY -> SideKeyPage()
                 CustomizationPage.LOCK -> {
                     SettingsCard(stringResource(R.string.lock_cover)) {
@@ -725,6 +731,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             }
                             MenuDivider()
                         }
+                        TweakRow(Icons.Rounded.Save, FolioColors.Value.Gray, stringResource(R.string.backup), "customization-backup") { onPage(CustomizationPage.BACKUP) }
+                        MenuDivider()
                         TweakRow(Icons.Rounded.Tune, FolioColors.Value.Gray, stringResource(R.string.advanced), "customization-advanced") { onPage(CustomizationPage.ADVANCED) }
                     }
                     SheetGroup {
@@ -1200,10 +1208,10 @@ private fun HelpTip(icon: ImageVector, color: Long, title: String, detail: Strin
     IosSearchField(query, onQuery, stringResource(R.string.search), fieldModifier = Modifier.testTag("settings-search"))
 
 /** Where each setting lives, for Settings search: its title as shown, and words people search for (settings_keywords_*). */
-private val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
+internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_background_wallpaper, R.string.settings_keywords_background_wallpaper, CustomizationPage.WALLPAPER),
     Triple(R.string.text_on_home, R.string.settings_keywords_text_on_home, CustomizationPage.WALLPAPER),
-    Triple(R.string.settings_big_buttons_in_every_app, R.string.settings_keywords_big_buttons_in_every_app, CustomizationPage.ISLAND),
+    Triple(R.string.settings_big_buttons_in_every_app, R.string.settings_keywords_big_buttons_in_every_app, CustomizationPage.ACCESSIBILITY),
     Triple(R.string.settings_dock_and_status_position, R.string.settings_keywords_dock_and_status_position, CustomizationPage.HOME),
     Triple(R.string.settings_rounded_screen_corners, R.string.settings_keywords_rounded_screen_corners, CustomizationPage.WALLPAPER),
     Triple(R.string.glass, R.string.settings_keywords_glass, CustomizationPage.WALLPAPER),
@@ -1261,6 +1269,67 @@ private val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.supporters, R.string.settings_keywords_supporters, CustomizationPage.SUPPORTERS),
 )
 
+/**
+ * Settings that Settings search finds by the name they have on screen, so they need no keyword string of their own.
+ * SettingsSearchCoverageTest fails when a switch, menu or slider is on a page and neither list has it.
+ */
+internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
+    R.string.align_dock_with_app_rows to CustomizationPage.HOME,
+    R.string.app_icon_size to CustomizationPage.HOME,
+    R.string.dock_height to CustomizationPage.HOME,
+    R.string.full_width_home to CustomizationPage.HOME,
+    R.string.separate_upright_layout to CustomizationPage.HOME,
+    R.string.space_between_rows to CustomizationPage.HOME,
+    R.string.status_height to CustomizationPage.HOME,
+    R.string.automatic_updates to CustomizationPage.SOFTWARE_UPDATE,
+    R.string.beta_updates to CustomizationPage.SOFTWARE_UPDATE,
+    R.string.background_blur to CustomizationPage.NOTIFICATIONS,
+    R.string.big_clock_in_notification_center to CustomizationPage.NOTIFICATIONS,
+    R.string.iphone_style_control_center_and_notifica to CustomizationPage.NOTIFICATIONS,
+    R.string.stack_notifications_by_app to CustomizationPage.NOTIFICATIONS,
+    R.string.unfolded_clock_beside_notifications to CustomizationPage.NOTIFICATIONS,
+    R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
+    R.string.badge_size to CustomizationPage.STATUS,
+    R.string.battery_percentage to CustomizationPage.STATUS,
+    R.string.clear_badges_when_opened to CustomizationPage.STATUS,
+    R.string.clock_calendar to CustomizationPage.STATUS,
+    R.string.color_battery_when_charging_or_low to CustomizationPage.STATUS,
+    R.string.left_handed_layout_rail_on_the_left to CustomizationPage.STATUS,
+    R.string.show_app_names to CustomizationPage.STATUS,
+    R.string.show_status_in_the_rail to CustomizationPage.STATUS,
+    R.string.silent_mode_icon to CustomizationPage.STATUS,
+    R.string.dock_handle_on_the_rail_edge to CustomizationPage.ISLAND,
+    R.string.dont_double_up_with_android_pop_ups to CustomizationPage.ISLAND,
+    R.string.headphones_speakers to CustomizationPage.ISLAND,
+    R.string.live_activities_under_the_status_bar to CustomizationPage.ISLAND,
+    R.string.music_and_live_progress to CustomizationPage.ISLAND,
+    R.string.fade_when_idle to CustomizationPage.ACCESSIBILITY,
+    R.string.width to CustomizationPage.ACCESSIBILITY,
+    R.string.drag_page_dots_to_flip_pages to CustomizationPage.GESTURES,
+    R.string.touch_and_hold to CustomizationPage.GESTURES,
+    R.string.add_new_apps_to_home_screen to CustomizationPage.SEARCH,
+    R.string.group_apps_into_categories to CustomizationPage.SEARCH,
+    R.string.message_contacts_with to CustomizationPage.SEARCH,
+    R.string.search_button_on_home to CustomizationPage.SEARCH,
+    R.string.search_button_opens_the_google_app to CustomizationPage.SEARCH,
+    R.string.search_with_enter to CustomizationPage.SEARCH,
+    R.string.work_apps to CustomizationPage.SEARCH,
+    R.string.show_after_unlocking to CustomizationPage.LOCK,
+    R.string.standby_half_open_like_a_laptop to CustomizationPage.FOLD,
+    R.string.standby_standing_as_a_tent to CustomizationPage.FOLD,
+    R.string.standby_while_charging_on_its_side to CustomizationPage.FOLD,
+    R.string.stay_awake_on_the_cover_screen to CustomizationPage.FOLD,
+    R.string.text_color to CustomizationPage.WALLPAPER,
+    R.string.wallpaper_moves_with_pages to CustomizationPage.WALLPAPER,
+    R.string.reduce_transparency to CustomizationPage.WALLPAPER,
+    R.string.when_unfolded to CustomizationPage.TODAY,
+    R.string.turn_on_automatically to CustomizationPage.FOCUS,
+    R.string.silence_notifications to CustomizationPage.FOCUS,
+    R.string.when_you_hold_it to CustomizationPage.SIDE_KEY,
+)
+
+internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex + SettingsRows.map { (title, page) -> Triple(title, null, page) }
+
 internal fun settingsMatches(query: String, title: String, keywords: String): Boolean {
     val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
     val hay = "$title $keywords".lowercase()
@@ -1281,7 +1350,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val context = androidx.compose.ui.platform.LocalContext.current
     val resources = context.resources
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
-        SettingsIndex.map { (title, keywords, page) -> Triple(resources.getString(title), resources.getString(keywords), page) }
+        SettingsEntries.map { (title, keywords, page) -> Triple(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
     val results = index.filter { (title, keywords) -> settingsMatches(query, title, keywords) }
