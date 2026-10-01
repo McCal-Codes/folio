@@ -122,6 +122,8 @@ data class LauncherState(
     val foldIntensity: Float = 1f,
     /** Fold style: blur only (false) or iPhone Duo — still 1:1 right half plus blur (true). */
     val foldSnapshot: Boolean = false,
+    /** Duet's look (style and its sliders). */
+    val duet: com.mccal.folio.duet.DuetOptions = com.mccal.folio.duet.DuetOptions(),
     val stayAwakeOnFold: Boolean = true,
     /** Blur of Home behind panels and Spotlight, 0…1. */
     val panelBlur: Float = 1f,
@@ -1131,6 +1133,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setGroupNotifications(value: Boolean) = updateSettings(soon = false) { it.copy(groupNotifications = value) }
     fun setFoldEffect(value: Boolean) = updateSettings(soon = false) { it.copy(foldEffect = value) }
     fun setFoldIntensity(value: Float) = updateSettings(soon = true) { it.copy(foldIntensity = value) }
+    internal fun setDuet(value: com.mccal.folio.duet.DuetOptions) = updateSettings(soon = true) { it.copy(duet = value) }
+    /** A package's Duet options and intensity, in one save. */
+    internal fun setDuet(value: com.mccal.folio.duet.DuetOptions, intensity: Float) =
+        updateSettings(soon = false) { it.copy(duet = value, foldIntensity = intensity.coerceIn(.3f, 1.5f)) }
     fun setStayAwakeOnFold(value: Boolean) = updateSettings(soon = false) { it.copy(stayAwakeOnFold = value) }
     fun setStatusStyle(style: StatusStyle) = updateSettings(soon = true) { it.copy(statusStyle = style) }
     fun setFolioPanels(value: Boolean) = updateSettings(soon = false) { it.copy(folioPanels = value) }
@@ -1254,7 +1260,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("folioPanels", s.folioPanels)
             .put("minPages", s.minPages)
             .put("statusStyle", s.statusStyle.toJson())
-            .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("stayAwakeOnFold", s.stayAwakeOnFold)
+            .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications)
             .put("standBy", s.standBy).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
@@ -1481,7 +1487,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folioPanels = j.optBoolean("folioPanels", true),
         minPages = j.optInt("minPages", 1).coerceIn(1, 20),
         statusStyle = StatusStyle.fromJson(j.optJSONObject("statusStyle")),
-        foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f),
+        foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f), duet = com.mccal.folio.duet.DuetOptions.fromJson(j.optJSONObject("duet")),
         stayAwakeOnFold = j.optBoolean("stayAwakeOnFold", true),
         panelBlur = j.optDouble("panelBlur", 1.0).toFloat().coerceIn(0f, 1f), notificationClock = j.optBoolean("notificationClock", true),
         groupNotifications = j.optBoolean("groupNotifications", true),
@@ -1596,6 +1602,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
                     tintNotifications = false, tintMedia = false)
             }
         }
+        // The fold animation was built in before it became Duet, and on by default. A save from before Duet keeps it
+        // exactly as it was: installed when it was on.
+        .let { st -> if (!j.has("duet") && st.foldEffect) st.copy(installedTweaks = st.installedTweaks + DUET_ID) else st }
 }
 
 /** How strongly glass takes the wallpaper color: none when tinting is off; half the slider is the original .28. */

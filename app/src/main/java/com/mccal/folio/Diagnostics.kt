@@ -172,10 +172,33 @@ internal object Diagnostics {
             "animations ${scale}×",
             "left page ${state?.optString("leftPage", "TODAY") ?: "?"}",
             "wallpaper ${if (state?.optBoolean("systemWallpaper", false) == true) "Android" else "Folio"}",
-            "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}",
+            "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}" +
+                " (Duet ${state?.optJSONObject("duet")?.optString("style")?.ifBlank { null } ?: "duo"}," +
+                " plays ${state?.optJSONObject("duet")?.optString("direction")?.ifBlank { null } ?: "both"})",
             "page effect ${state?.optString("pageEffect")?.ifBlank { PageEffect.NONE.name } ?: "?"}",
             "safe mode ${if (SafeMode.active) "on" else "off"}",
         ).joinToString(", ")
+    }
+
+    /**
+     * Every sensor that could be the hinge, and what Folio learned about it: some foldables report only a few fixed
+     * positions (the Fold8's public sensor gives 0, 90 and 180), which decides how Duet can follow the fold. The idea
+     * of a copyable sensor report is from marcoazeem/duo-open (MIT); this is Folio's own listing, no code from it.
+     */
+    fun hingeReport(context: Context): String = buildString {
+        appendLine("Hinge sensors:")
+        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)?.getSensorList(android.hardware.Sensor.TYPE_ALL).orEmpty()
+        val hinge = Regex("hinge|angle|fold|posture|flip", RegexOption.IGNORE_CASE)
+        val found = sensors.filter { it.type == android.hardware.Sensor.TYPE_HINGE_ANGLE || hinge.containsMatchIn(it.name) || hinge.containsMatchIn(it.stringType) }
+        if (found.isEmpty()) appendLine("  (none)")
+        found.forEach { s ->
+            appendLine("  ${s.name} · ${s.vendor} · ${s.stringType} (type ${s.type})" +
+                " · range ${s.maximumRange} · resolution ${s.resolution} · min delay ${s.minDelay} µs" +
+                " · ${if (s.isWakeUpSensor) "wake-up" else "non-wake-up"}" +
+                (if (s.type == android.hardware.Sensor.TYPE_HINGE_ANGLE && s.resolution >= 45f) " · steps only" else ""))
+        }
+        val learned = context.getSharedPreferences("folio", 0).getString("fold_hinge_capability", null)
+        append("Folio has seen the hinge as: ${learned?.lowercase() ?: "not moved yet"}")
     }
 
     fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"
@@ -187,6 +210,8 @@ internal object Diagnostics {
     fun bundle(context: Context): String = buildString {
         appendLine("Folio diagnostics (${format(System.currentTimeMillis())})")
         appendLine(CrashLog.environment(context))
+        appendLine()
+        appendLine(hingeReport(context))
         appendLine()
         appendLine("Recent events:")
         appendLine(trailText().ifBlank { "(none)" })

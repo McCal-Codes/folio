@@ -729,7 +729,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                     "tweaks",
                     JSONArray().apply {
                         change.bundle.tweaks.forEach {
-                            put(JSONObject().put("id", it.id.id).put("enabled", it.enabled).put("cover", it.cover).put("inner", it.inner))
+                            put(JSONObject().put("id", it.id.id).put("enabled", it.enabled).put("cover", it.cover).put("inner", it.inner)
+                                .apply { if (it.options.isNotEmpty()) put("options", JSONObject(it.options)) })
                         }
                     },
                 )
@@ -768,7 +769,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                             (0 until list.length()).mapNotNull { k ->
                                 val t = list.optJSONObject(k) ?: return@mapNotNull null
                                 TweakId.from(t.optString("id"))?.let {
-                                    TweakSetting(it, t.optBoolean("enabled"), t.optBoolean("cover", true), t.optBoolean("inner", true))
+                                    TweakSetting(it, t.optBoolean("enabled"), t.optBoolean("cover", true), t.optBoolean("inner", true),
+                                        t.optJSONObject("options")?.let(::readOptionRecord).orEmpty())
                                 }
                             },
                         ),
@@ -786,3 +788,15 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
         const val MAX_BACKUP_PACKAGES = 200
     }
 }
+
+/**
+ * A tweak's options as a record saved them: numbers come back as Double and strings as String, the two shapes
+ * [TweakOptions] allows. Anything else is from a newer format and is left out rather than turned into a string.
+ */
+internal fun readOptionRecord(o: JSONObject): Map<String, Any> = o.keys().asSequence().mapNotNull { key ->
+    when (val v = o.opt(key)) {
+        is Number -> key to v.toDouble()
+        is String -> key to v
+        else -> null
+    }
+}.toMap()

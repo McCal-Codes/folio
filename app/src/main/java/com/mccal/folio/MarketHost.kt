@@ -22,6 +22,9 @@ internal interface MarketLauncher {
     fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue)
     fun applyTheme(theme: FolioTheme)
 
+    /** Duet's look and the fold intensity, from a package. Read-only launchers ignore it. */
+    fun setDuet(options: com.mccal.folio.duet.DuetOptions, intensity: Float) = Unit
+
     /**
      * Installs a piece of art, shows it, and returns what was behind Home before so Undo can put it back.
      *
@@ -50,6 +53,7 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
     override fun addPageEffect(effect: PackagedPageEffect) = model.addPackagedEffect(effect)
     override fun removePageEffect(id: String) = model.removePackagedEffect(id)
     override fun applyTheme(theme: FolioTheme) = model.applyTheme(theme)
+    override fun setDuet(options: com.mccal.folio.duet.DuetOptions, intensity: Float) = model.setDuet(options, intensity)
 
     /**
      * [bytes] is empty when this change came from a record rather than from a package file, because a record does
@@ -143,6 +147,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         Capability.TINT_NOTIFICATIONS,
         Capability.TINT_MEDIA,
         Capability.PAGE_EFFECTS,
+        Capability.FOLD_TRANSITION,
     )
 
     // Added from the Market or from Settings' Tweak Library: either way it's in installedTweaks.
@@ -198,6 +203,16 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         // A bundle that leaves out a screen means "not there": an override, not the tweak's own default.
         launcher.setFeatureScope(feature.id, FolioScreen.COVER, if (setting.cover) ScopeValue.DEFAULT else ScopeValue.OFF)
         launcher.setFeatureScope(feature.id, FolioScreen.INNER, if (setting.inner) ScopeValue.DEFAULT else ScopeValue.OFF)
+        if (setting.id == TweakId.DUET && setting.options.isNotEmpty()) applyDuet(setting.options)
+    }
+
+    /** Only the keys the package set change; the rest keep what the person has. [DuetOptions.fromJson] clamps. */
+    private fun applyDuet(options: Map<String, Any>) {
+        val state = launcher.state
+        val merged = state.duet.toJson()
+        for (key in listOf("style", "frost", "darkening", "perspective", "direction")) options[key]?.let { merged.put(key, it) }
+        val intensity = (options["intensity"] as? Double)?.toFloat() ?: state.foldIntensity
+        launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(merged), intensity)
     }
 
     private fun restoreTweaks(snapshot: String) {
@@ -210,6 +225,8 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
                 val value = ScopeValue.entries.firstOrNull { it.name == json.optString(screen.name) } ?: ScopeValue.DEFAULT
                 launcher.setFeatureScope(feature.id, screen, value)
             }
+            // Removing the package puts back the look it replaced, not the default.
+            json.optJSONObject("duet")?.let { launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(it), json.optDouble("foldIntensity", 1.0).toFloat()) }
         }
     }
 
@@ -228,6 +245,9 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
                     .put("installed", feature.id in state.installedTweaks)
                 for (screen in FolioScreen.entries) {
                     json.put(screen.name, FeatureScopes.value(state.featureScopes, feature.id, screen).name)
+                }
+                if (setting.id == TweakId.DUET && setting.options.isNotEmpty()) {
+                    json.put("duet", state.duet.toJson()).put("foldIntensity", state.foldIntensity.toDouble())
                 }
                 array.put(json)
             }

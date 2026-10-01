@@ -106,6 +106,27 @@ nearer than 1.5 widths tears the perspective. `folio-pkg validate` warns about a
 page is always drawn as it is, and Reduce Motion and Safe Mode turn every effect off. The package needs
 `tweaks.pageEffects` in `requires.features`.
 
+#### Tweak options
+
+A `tweaks.json` entry can carry an `options` object with that tweak's own settings. Only Duet (`duet`) takes options
+today:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `style` | `iphone`, `duo`, `classic`, `deep`, `subtle`, `minimal` | Duet's look. `iphone` (the default) follows Apple's iPhone Duo; `duo` is Folio's earlier fold animation; `classic` is Duo Fold Live's Classic Glass. |
+| `direction` | `both`, `opening`, `closing` | Which way the animation plays. |
+| `intensity` | number, 0.3 to 1.5 | The fold's overall strength (Settings' Intensity slider). |
+| `frost`, `darkening` | number, 0 to 2 | Multipliers on the style's own blur and shade. 1 is the style as it comes. |
+| `perspective` | number, 0 to 1.33 | Multiplier on how far the moving half tilts. Only `deep` and `classic` tilt. |
+
+```json
+{ "format": 1, "tweaks": [{ "id": "duet", "enabled": true, "options": { "style": "deep", "frost": 0.8 } }] }
+```
+
+A value outside its range, or a style Folio doesn't have, is refused when the package is read. Keys this Folio doesn't
+know are skipped and reported, so a newer package still installs. Only the keys a package sets change, and removing
+the package puts back the options it replaced.
+
 #### Wallpapers
 
 A wallpaper package is **one piece of art**, so the fields a package already has are the credit Folio needs, and
@@ -426,6 +447,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `tweaks.tintNotifications` | Palette (formerly Tinted Notifications) | 0.6.0 |
 | `tweaks.tintMedia` | Colored Albums (formerly Album Art Colors) | 0.6.0 |
 | `tweaks.pageEffects` | Flipbook: Home pages turn in 3D as you swipe (supporters in 0.6.7, everyone in 0.6.8) | 0.6.7 |
+| `tweaks.foldTransition` | Duet, the fold animation, and its `options` in `tweaks.json` | 0.6.8 |
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |
 | `focus.modes` | Switching Home Modes / Focus | 0.7.x |
 | `settings.pages` | Settings pages drawn from `settings.json` | 0.7.x |
