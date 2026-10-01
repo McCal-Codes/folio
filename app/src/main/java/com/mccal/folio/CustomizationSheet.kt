@@ -453,6 +453,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 "OFF" -> stringResource(R.string.no_today_view_while_unfolded_it_s_still)
                                 else -> stringResource(R.string.swipe_right_from_your_first_home_page_to)
                             })
+                            SettingsSwitch(stringResource(R.string.suggestions), state.todaySuggestions, model::setTodaySuggestions, "today-suggestions-switch")
+                            CardNote(stringResource(R.string.today_suggestions_note))
                         }
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.app_library)) {

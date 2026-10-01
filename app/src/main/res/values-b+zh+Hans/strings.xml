@@ -1097,7 +1097,7 @@
     <string name="settings_keywords_status_spacing">状态 间距 紧凑 时间 日期 侧边栏 status spacing compact time date side bar</string>
     <string name="settings_keywords_widgets">小组件 叠放 智能 widget stack smart</string>
     <string name="settings_today_view_left_of_home">“今天”视图 / 主屏幕左侧</string>
-    <string name="settings_keywords_today_view_left_of_home">今天 小组件 页面 旁边 today discover google widgets page beside</string>
+    <string name="settings_keywords_today_view_left_of_home">今天 小组件 页面 旁边 建议 today discover google widgets page beside suggestions</string>
     <string name="settings_icon_pack_shape_style">图标包、形状与样式</string>
     <string name="settings_keywords_icon_pack_shape_style">图标 图标包 超椭圆 圆形 着色 深色 icons pack squircle circle tinted dark</string>
     <string name="settings_keywords_notification_badges">标记 圆点 数字 颜色 badge dot count color soft</string>
@@ -1468,4 +1468,5 @@
     <string name="credit_hingewave">Ant-lib · MIT · Duet 的“纵深”样式：倾斜透视和模糊底值（代码）</string>
     <string name="credit_foldfx_keeler">Gary Keeler · MIT · Duet 的样式目录（代码）</string>
     <string name="credit_duo_open">marcoazeem · MIT · Duet 磨砂和阴影控制的创意（无代码）</string>
+    <string name="today_suggestions_note">在“今天”视图顶部显示你接下来可能会打开的 App。建议小组件和聚焦搜索有各自的开关。</string>
 </resources>

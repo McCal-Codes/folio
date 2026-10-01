@@ -204,6 +204,8 @@ data class LauncherState(
     val todayWidgets: List<TodayWidget> = DEFAULT_TODAY_WIDGETS,
     /** Unfolded: "PAGE" (swipe left of Home), "BESIDE" (always next to Home, iPad-style) or "OFF". */
     val todayUnfolded: String = "PAGE",
+    /** The row of suggested apps at the top of Today View. The Suggestions widget and Spotlight have their own switches. */
+    val todaySuggestions: Boolean = true,
     /** Show Android's own home-screen wallpaper behind Folio (live wallpapers included) instead of Folio's background. */
     val systemWallpaper: Boolean = false,
     /** Text drawn on the wallpaper: "AUTO" follows the wallpaper, "LIGHT" white, "DARK" dark. */
@@ -950,6 +952,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (FocusController.isOnInAndroid(getApplication(), active) == false) updateSettings(soon = false) { it.copy(activeFocus = null) }
     }
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
+    fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }
     fun setTodayUnfolded(value: String) = updateSettings(soon = false) { it.copy(todayUnfolded = value) }
     fun setSystemWallpaper(value: Boolean) = updateSettings(soon = false) { it.copy(systemWallpaper = value) }
     fun setHomeInk(value: String) = updateSettings(soon = false) { it.copy(homeInk = value) }
@@ -1285,7 +1288,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("packagedEffectId", s.packagedEffectId ?: JSONObject.NULL)
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
-            .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
+            .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("todaySuggestions", s.todaySuggestions).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
             .put("roundedCorners", s.roundedCorners).put("cornerRadius", s.cornerRadius.toDouble())
             .put("dimWallpaperDark", s.dimWallpaperDark).put("homeScrim", s.homeScrim).put("iconTintFromWallpaper", s.iconTintFromWallpaper)
             .put("tintNotifications", s.tintNotifications).put("tintMedia", s.tintMedia).put("dockMagnify", s.dockMagnify).put("appPanels", s.appPanels).put("haptics", s.haptics).put("lockCover", s.lockCover)
@@ -1549,6 +1552,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         focusModes = focusModesFromJson(j.optJSONArray("focusModes")),
         activeFocus = j.optString("activeFocus").takeIf { it.isNotEmpty() },
         leftPage = j.optString("leftPage", "TODAY").takeIf { it in setOf("TODAY", "DISCOVER", "NONE") } ?: "TODAY",
+        todaySuggestions = j.optBoolean("todaySuggestions", true),
         todayUnfolded = j.optString("todayUnfolded", "PAGE").takeIf { it in setOf("PAGE", "BESIDE", "OFF") } ?: "PAGE",
         systemWallpaper = j.optBoolean("systemWallpaper", false),
         homeInk = j.optString("homeInk", "AUTO").takeIf { it in setOf("AUTO", "LIGHT", "DARK") } ?: "AUTO",

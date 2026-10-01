@@ -1149,7 +1149,7 @@
     <string name="settings_keywords_status_spacing">status spacing compact time date side bar</string>
     <string name="settings_keywords_widgets">widget stack smart</string>
     <string name="settings_today_view_left_of_home">Today View / Left of Home</string>
-    <string name="settings_keywords_today_view_left_of_home">today discover google widgets page beside</string>
+    <string name="settings_keywords_today_view_left_of_home">today discover google widgets page beside suggestions</string>
     <string name="settings_icon_pack_shape_style">Icon pack, shape &amp; style</string>
     <string name="settings_keywords_icon_pack_shape_style">icons pack squircle circle tinted dark</string>
     <string name="settings_keywords_notification_badges">badge dot count color soft</string>
@@ -1514,4 +1514,5 @@
     <string name="apps_could_not_be_loaded">Apps could not be loaded.</string>
     <string name="saved_home_layout_could_not_be_read">Saved Home layout could not be read; it was left unchanged.</string>
     <string name="widget_waiting_for_setup">%1$s, waiting for setup</string>
+    <string name="today_suggestions_note">The row of apps you may want next, at the top of Today View. The Suggestions widget and Spotlight have their own switches.</string>
 </resources>
