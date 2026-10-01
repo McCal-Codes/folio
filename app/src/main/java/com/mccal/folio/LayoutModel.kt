@@ -200,7 +200,12 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     /** Rows › Automatic: space left under the last row that fits is shared between the rows (up to 12 dp each). */
     fillSpace: Boolean = false,
     /** Dock apps (see [MIN_DOCK_SLOTS]); the dock gets as many touch targets as it has slots. */
-    dockSlots: Int = MIN_DOCK_SLOTS): HomeGeometry {
+    dockSlots: Int = MIN_DOCK_SLOTS,
+    /**
+     * Whether the status Side Bar is shown. Without it, a bottom dock bar has nothing to sit beside, so the page and the
+     * bar use the whole width (Full-width Home); with it, they leave its strip as they always did.
+     */
+    statusRail: Boolean = true): HomeGeometry {
     val p = preset.sanitized()
     val slots = dockSlots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS).toFloat()
     // Unfolded Duo layout only with regular size both ways; the cover in landscape is still compact.
@@ -216,7 +221,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         DockPlacement.BOTTOM -> regular || (height > width && height >= HOME_REGULAR_MIN_HEIGHT_DP)
     }
     // Everywhere but the upright unfolded screen, the status Side Bar stays and the bottom dock sits beside it.
-    val dockBesideRail = horizontalDock && !tallRegular
+    val dockBesideRail = horizontalDock && !tallRegular && statusRail
+    // A bottom bar with no status Side Bar: nothing to leave room for, so the grid takes the width (less its margins).
+    val fullWidth = horizontalDock && !tallRegular && !statusRail
     val expanded = width * classScale >= 650f && height * classScale >= HOME_REGULAR_MIN_HEIGHT_DP && !tallRegular
     val homeWidth = if (expanded) minOf(460f, width * 0.56f, if (foldAtCenter) width / 2f else Float.MAX_VALUE) else width
     val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) + 28f else 0f
@@ -228,6 +235,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Upright with a Side Bar dock: the same centered spread, beside the dock.
     var gridWidth = if (tallRegular && horizontalDock) minOf(width - 2f * (p.dockWidth + 56f), 4f * p.iconSize * 2.6f).coerceAtLeast(4f * (p.iconSize + 16f))
         else if (tallRegular) minOf(width - p.dockWidth - 44f, 4f * p.iconSize * 2.6f).coerceAtLeast(192f)
+        else if (fullWidth) (homeWidth - 32f).coerceAtLeast(192f)
         else (homeWidth - p.dockWidth - 44f).coerceAtLeast(192f)
     // Keep the same icon rhythm when labels are hidden; allow larger system text to fit.
     val labelSpace = if (labels) maxOf(20f, labelHeight) else 20f

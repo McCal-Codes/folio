@@ -12,10 +12,10 @@ class ScreenCoverageTest {
 
     /** The rules for one window, with four app rows and with as many as fit (More rows). Returns what broke. */
     private fun problems(w: Float, h: Float, preset: LayoutPreset = LayoutPreset(), labels: Boolean = true,
-        labelHeight: Float = 20f, status: Float = 160f): List<String> {
-        val base = homeGeometry(w, h, preset, labels, statusHeight = status, labelHeight = labelHeight)
+        labelHeight: Float = 20f, status: Float = 160f, dockSlots: Int = MIN_DOCK_SLOTS, statusRail: Boolean = true): List<String> {
+        val base = homeGeometry(w, h, preset, labels, statusHeight = status, labelHeight = labelHeight, dockSlots = dockSlots, statusRail = statusRail)
         val fit = homeGeometry(w, h, preset, labels, statusHeight = status, labelHeight = labelHeight, appRows = base.fitAppRows,
-            fillSpace = true)
+            fillSpace = true, dockSlots = dockSlots, statusRail = statusRail)
         if (base.fitAppRows !in BASE_APP_ROWS..MAX_APP_ROWS) return listOf("fit rows ${base.fitAppRows}")
         // Fewer rows re-center the page but never change the columns or icon size.
         if (fit.gridWidth != base.gridWidth || fit.iconSize != base.iconSize)
@@ -93,6 +93,9 @@ class ScreenCoverageTest {
             for ((labels, lh) in listOf(false to 20f, true to 26f, true to 30f, true to 40f))
                 yield(Triple(w.toFloat(), h.toFloat()) { problems(w.toFloat(), h.toFloat(), labels = labels, labelHeight = lh) })
             yield(Triple(w.toFloat(), h.toFloat()) { problems(w.toFloat(), h.toFloat(), status = 0f) })
+            // Six dock apps, and Full-width Home (no status Side Bar), alone and together, under each dock placement.
+            for (p in presets.take(2)) for (slots in listOf(4, 6)) for (rail in listOf(true, false))
+                yield(Triple(w.toFloat(), h.toFloat()) { problems(w.toFloat(), h.toFloat(), p, dockSlots = slots, statusRail = rail) })
         }
     })
 

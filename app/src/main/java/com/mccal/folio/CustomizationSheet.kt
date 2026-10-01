@@ -1620,7 +1620,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     // status rail, dock, search pill), then scaled down, so the preview matches Home instead of approximating it.
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
-        appRows = state.homeAppRows, dockSlots = state.dock.size)
+        appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
     val placements = state.widgetPlacements.filter { it.page == 0 }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
@@ -1927,6 +1927,15 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
             DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
             DockPlacement.BOTTOM -> if (wide) stringResource(R.string.the_dock_sits_along_the_bottom_under_you) else stringResource(R.string.the_dock_sits_along_the_bottom_in_landsc)
         } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
+    }
+    SettingsCard(stringResource(R.string.full_width_home)) {
+        // Two settings that already exist, in one tap: a dock along the bottom, and no status Side Bar beside the page.
+        val fullWidth = p.dockPlacement == DockPlacement.BOTTOM && !state.verticalStatus
+        SettingsSwitch(stringResource(R.string.full_width_home), fullWidth, { on ->
+            model.setPreset(screen, p.copy(dockPlacement = if (on) DockPlacement.BOTTOM else DockPlacement.AUTOMATIC))
+            model.setVerticalStatus(!on)
+        }, "full-width-home-switch")
+        CardNote(stringResource(R.string.full_width_home_note))
     }
     SettingsCard(stringResource(R.string.dock_apps)) {
         // Four until you ask for more. Fewer than the dock has apps in it is refused, so none is ever lost.

@@ -618,7 +618,7 @@ fun LauncherScreen(
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
             var statusHeight by remember { mutableFloatStateOf(0f) }
-            val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = state.dock.size,
+            val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = state.dock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
