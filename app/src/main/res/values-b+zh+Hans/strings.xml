@@ -123,7 +123,7 @@
     <string name="standby_screen_saver_step_open">1. 轻点“打开屏幕保护程序设置”。</string>
     <string name="standby_screen_saver_step_choose">2. 选择 Folio 待机显示。</string>
     <string name="open_screen_saver_settings">打开屏幕保护程序设置</string>
-    <string name="big_clock_date_next_alarm_battery_and_mu">手机在主屏幕上半开放置时，显示大时钟、日期、下一个闹钟、电池和音乐。夜间会变为暗红色。轻点即可离开。</string>
+    <string name="big_clock_date_next_alarm_battery_and_mu">在主屏幕上显示大时钟、日期、下一个闹钟、电池和音乐。夜间会变为暗红色。轻点即可离开。</string>
     <string name="closing_from_home">在主屏幕上合上时</string>
     <string name="stay_awake_on_the_cover_screen">保持外屏常亮</string>
     <string name="samsung_locks_the_phone_when_you_fold_on">三星会在你于任何主屏幕上合上手机时锁定手机。合上时 Folio 会短暂让开，使外屏保持亮起。需要在“设置 › 显示 › 外屏上继续使用应用”中选择“始终”。</string>

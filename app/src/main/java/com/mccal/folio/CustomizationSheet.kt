@@ -644,14 +644,17 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.duet_moved_note))
                     }
                     val standByMoreOpen = remember { FeatureGate.STANDBY_CHARGING.isOpen(sheetContext) }
-                    SettingsCard(stringResource(R.string.standby)) {
-                        SettingsSwitch(stringResource(R.string.standby_half_open_like_a_laptop), state.standBy, model::setStandBy, "standby-switch")
-                        if (standByMoreOpen) {
+                    // Only the ways this phone can use: half-open and tent need a hinge.
+                    val standByOffered = remember { standByWaysOffered(hasHinge(sheetContext), standByMoreOpen) }
+                    if (standByOffered.isNotEmpty()) SettingsCard(stringResource(R.string.standby)) {
+                        if (StandByWay.HALF_OPEN in standByOffered)
+                            SettingsSwitch(stringResource(R.string.standby_half_open_like_a_laptop), state.standBy, model::setStandBy, "standby-switch")
+                        if (StandByWay.CHARGING in standByOffered)
                             SettingsSwitch(stringResource(R.string.standby_while_charging_on_its_side), state.standByCharging, model::setStandByCharging, "standby-charging-switch")
+                        if (StandByWay.TENT in standByOffered)
                             SettingsSwitch(stringResource(R.string.standby_standing_as_a_tent), state.standByTent, model::setStandByTent, "standby-tent-switch")
-                        }
                         CardNote(stringResource(R.string.big_clock_date_next_alarm_battery_and_mu))
-                        if (standByMoreOpen) CardNote(stringResource(R.string.standby_ways_note))
+                        if (StandByWay.TENT in standByOffered) CardNote(stringResource(R.string.standby_ways_note))
                     }
                     // StandBy over the lock screen is Android's screen saver set to Folio StandBy: Folio can't choose
                     // it, so the row says whether it's chosen and the setup alert says where to choose it.

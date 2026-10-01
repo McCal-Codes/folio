@@ -116,7 +116,7 @@
     <string name="standby_screen_saver_step_open">1. Tap Open Screen Saver Settings.</string>
     <string name="standby_screen_saver_step_choose">2. Choose Folio StandBy.</string>
     <string name="open_screen_saver_settings">Open Screen Saver Settings</string>
-    <string name="big_clock_date_next_alarm_battery_and_mu">Big clock, date, next alarm, battery and music while the phone sits half-open on Home. Turns dim red at night. Tap to leave.</string>
+    <string name="big_clock_date_next_alarm_battery_and_mu">Big clock, date, next alarm, battery and music, on Home. Turns dim red at night. Tap to leave.</string>
     <string name="closing_from_home">Closing from Home</string>
     <string name="stay_awake_on_the_cover_screen">Stay awake on the cover screen</string>
     <string name="samsung_locks_the_phone_when_you_fold_on">Samsung locks the phone when you fold on any home screen. Folio briefly steps aside while you close it so the cover screen stays on. Needs Settings › Display › Continue apps on cover screen › Always.</string>

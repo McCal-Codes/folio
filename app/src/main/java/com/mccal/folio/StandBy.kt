@@ -208,6 +208,20 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
  */
 internal fun standByHoldsScreen(shown: StandByWay?, charging: Boolean): Boolean = shown == StandByWay.HALF_OPEN && !charging
 
+/**
+ * Whether this phone folds, from the hinge sensor Android lists for it: a capability, not a list of models. The laptop
+ * and tent ways need a hinge; charging on its side and the screen saver work on any phone.
+ */
+internal fun hasHinge(context: android.content.Context): Boolean =
+    context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+
+/** The ways Settings offers, in its order: the fold's two only with a hinge, the charger's once its gate is open. */
+internal fun standByWaysOffered(hinge: Boolean, chargingOpen: Boolean): List<StandByWay> = buildList {
+    if (hinge) add(StandByWay.HALF_OPEN)
+    if (chargingOpen) add(StandByWay.CHARGING)
+    if (hinge && chargingOpen) add(StandByWay.TENT)
+}
+
 /** Red and dim from 10 PM to 6 AM. */
 internal fun isStandByNight(now: LocalDateTime): Boolean = now.hour >= 22 || now.hour < 6
 
@@ -275,7 +289,8 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
             media.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp))) }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(media.title, color = ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Two lines: on the cover the controls leave the title about a third of the row.
+                Text(media.title, color = ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 media.subtitle?.let { Text(it, color = soft, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             val t = media.controller.transportControls

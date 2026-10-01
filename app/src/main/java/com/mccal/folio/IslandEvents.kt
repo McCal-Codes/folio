@@ -29,6 +29,14 @@ internal val IslandEvent.kind: String get() = when (this) {
     is IslandEvent.Notice -> "NOTICE"
 }
 
+/**
+ * The charging island's moment, and the Charging trigger's: the cable going in. Plugged in counts as charging, as it does
+ * for the Side Bar and StandBy, so a phone held at a charge limit (Samsung's battery protection) shows it on plug-in,
+ * and the battery topping back up at the limit doesn't show it again. The first reading after Folio starts listening
+ * is the state it was already in, not news.
+ */
+internal fun startsCharging(wasCharging: Boolean?, status: Int, plugged: Int): Boolean = wasCharging == false && isCharging(status, plugged)
+
 /** Listens for brief system moments (charging, silent, focus, Bluetooth) and publishes them for the island. */
 class IslandEvents private constructor(private val context: Context) {
     private var registered = false
@@ -41,11 +49,11 @@ class IslandEvents private constructor(private val context: Context) {
             when (intent.action) {
                 Intent.ACTION_BATTERY_CHANGED -> {
                     val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                    val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
                     val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1).takeIf { it >= 0 }
                         ?.let { it * 100 / intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1) }
-                    if (lastCharging == false && charging) { emit(IslandEvent.Charging(level)); FolioActions.onTrigger(c, FolioTrigger.CHARGING) }
-                    lastCharging = charging
+                    if (startsCharging(lastCharging, status, plugged)) { emit(IslandEvent.Charging(level)); FolioActions.onTrigger(c, FolioTrigger.CHARGING) }
+                    lastCharging = isCharging(status, plugged)
                 }
                 AudioManager.RINGER_MODE_CHANGED_ACTION -> {
                     val mode = intent.getIntExtra(AudioManager.EXTRA_RINGER_MODE, AudioManager.RINGER_MODE_NORMAL)
