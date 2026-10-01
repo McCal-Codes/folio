@@ -1357,7 +1357,8 @@
     <string name="do_not_disturb_off_2">Do Not Disturb off</string>
     <string name="incoming_call">Incoming call</string>
     <string name="previous">Previous</string>
-    <string name="play_or_pause">Play or pause</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
     <string name="decline">Decline</string>
     <string name="accept">Accept</string>
     <string name="mute">Mute</string>
@@ -1369,7 +1370,7 @@
     <string name="move_down">Move Down</string>
     <string name="move_to_next_page">Move to Next Page</string>
     <string name="move_to_previous_page">Move to Previous Page</string>
-    <string name="clock_widget_tap_to_replace">Clock widget; tap to replace</string>
+    <string name="clock_widget_tap_to_open">Clock widget; tap to open Clock</string>
     <string name="decrease_widget_width">Decrease widget width</string>
     <string name="increase_widget_width">Increase widget width</string>
     <string name="decrease_widget_height">Decrease widget height</string>
@@ -1481,4 +1482,7 @@
     <string name="language">Language</string>
     <string name="settings_keywords_general">general about version update what\'s new help roadmap credits advanced</string>
     <string name="settings_keywords_language">language translation english korean chinese locale</string>
+    <string name="apps_could_not_be_loaded">Apps could not be loaded.</string>
+    <string name="saved_home_layout_could_not_be_read">Saved Home layout could not be read; it was left unchanged.</string>
+    <string name="widget_waiting_for_setup">%1$s, waiting for setup</string>
 </resources>

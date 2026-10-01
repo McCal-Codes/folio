@@ -74,6 +74,15 @@ internal fun loadQuickActions(context: android.content.Context, app: AppEntry, l
 }.getOrDefault(emptyList())
 
 /**
+ * Starts one of [app]'s quick actions. One that won't start (the app has removed or turned it off) says so, the way an
+ * app that won't open does, instead of the menu closing on nothing.
+ */
+internal fun startQuickAction(context: android.content.Context, app: AppEntry, action: QuickAction) {
+    runCatching { context.getSystemService(LauncherApps::class.java).startShortcut(action.info, null, null) }
+        .onFailure { IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, action.label.ifBlank { app.label }), app.icon) }
+}
+
+/**
  * iPhone-style long-press menu: the icon lifts where it is, Home blurs behind, and a compact menu
  * appears next to it with the app's own quick actions first, then Folio's actions.
  */
@@ -165,7 +174,7 @@ internal fun AppContextMenu(
                 shownActions.forEachIndexed { i, action ->
                     MenuRow(action.label, bitmap = action.icon) {
                         onDismiss()
-                        runCatching { context.getSystemService(LauncherApps::class.java).startShortcut(action.info, null, null) }
+                        startQuickAction(context, app, action)
                     }
                     if (i == shownActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
                     else MenuDivider()

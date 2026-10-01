@@ -112,7 +112,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         // event happened to arrive.
         val (event, at) = eventPair ?: run { eventVisible = null; return@LaunchedEffect }
         if (event.kind in eventsOff) { eventVisible = null; return@LaunchedEffect }
-        val remaining = IslandEvents.showMs(event) - (System.currentTimeMillis() - at)
+        val remaining = IslandEvents.showMs(view.context, event) - (System.currentTimeMillis() - at)
         if (remaining <= 0) { eventVisible = null; return@LaunchedEffect }
         eventVisible = event; delay(remaining)
         snapshotFlow { replying }.first { r -> !r }
@@ -497,7 +497,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
             is IslandActivity.Media -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val t = activity.controller.transportControls
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
-                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(R.string.play_or_pause), tint = Color.White,
+                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = Color.White,
                     modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
             }

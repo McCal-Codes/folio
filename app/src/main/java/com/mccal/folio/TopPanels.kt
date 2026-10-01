@@ -748,7 +748,7 @@ private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: 
                 val t = media?.controller?.transportControls
                 val tint = Color.White.copy(alpha = if (t != null) 1f else .35f)
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() })
-                Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(R.string.play_or_pause), tint = tint,
+                Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media?.playing == true) R.string.pause else R.string.play), tint = tint,
                     modifier = Modifier.size(cell * .42f).clip(CircleShape).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToNext() })
             }

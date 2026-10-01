@@ -94,11 +94,17 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * The apps a chooser offers, for the dock or a new folder. Hidden apps stay out, as they do in the App Library,
+ * Spotlight and on Home; only Settings, behind its unlock, lists them.
+ */
+internal fun pickerApps(state: LauncherState): List<AppEntry> = state.apps.filter { it.id !in state.hiddenApps }
+
 @Composable
 internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry) -> Unit, onClear: () -> Unit,
     onLongClick: (AppEntry) -> Unit, canSelect: (AppEntry) -> Boolean = { true }, blockedHint: String? = null) {
     var query by rememberSaveable { mutableStateOf("") }
-    val filtered = remember(apps, query) { apps.filter { it.label.contains(query.trim(), ignoreCase = true) } }
+    val filtered = remember(apps, query) { apps.filter { appMatches(it, query.trim()) } }
     Column(Modifier.fillMaxWidth().fillMaxHeight(.88f).padding(horizontal = FolioSpace.XL.dp).imePadding()) {
         Text(if (dockSlot == null) "Your Apps" else "Dock Position ${dockSlot + 1}", color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
         IosSearchField(query, { query = it }, stringResource(R.string.search_apps), Modifier.padding(vertical = FolioSpace.MEDIUM.dp), fieldModifier = Modifier.testTag("search-field"))

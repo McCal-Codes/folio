@@ -428,6 +428,13 @@ private fun SpotlightRoundAction(icon: ImageVector, label: String, onClick: () -
 // Search logic
 
 /**
+ * Whether an app answers to [query] in a plain A–Z list (the App Library, the dock's and an icon stack's choosers):
+ * the name you gave it or the one Android gives it, as typed or in pinyin. Spotlight ranks its results, with [rankApps].
+ */
+internal fun appMatches(app: AppEntry, query: String): Boolean =
+    app.label.contains(query, true) || app.systemLabel.contains(query, true) || Pinyin.matches(app.label, query) || Pinyin.matches(app.systemLabel, query)
+
+/**
  * Prefix beats word-start beats substring beats initials ("gm" → Google Maps). An app you renamed is still
  * found by the name Android gives it, after everything matching the name you chose.
  */

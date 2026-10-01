@@ -138,6 +138,15 @@ class WidgetController(
     fun providersForPackage(packageName: String, profile: UserHandle = Process.myUserHandle()): List<AppWidgetProviderInfo> =
         manager.getInstalledProvidersForPackage(packageName, profile)
 
+    /** What the app calls the widget being set up; null before there is one, or once its app no longer lists it. */
+    fun pendingLabel(): String? {
+        val provider = pendingProvider ?: return null
+        return runCatching {
+            providersForPackage(provider.packageName, pendingProfile ?: Process.myUserHandle())
+                .firstOrNull { it.provider == provider }?.loadLabel(activity.packageManager)?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
+
     fun canReconfigure(id: Int): Boolean {
         val info = manager.getAppWidgetInfo(id) ?: return false
         return id >= 0 && model.state.value.widgetPlacements.any { it.id == id } && info.configure != null &&

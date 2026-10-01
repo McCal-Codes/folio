@@ -148,7 +148,7 @@ internal fun IconStackFan(anchor: AppEntry, apps: List<AppEntry>, onDismiss: () 
 @Composable
 internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: List<String>, onToggle: (String) -> Unit, onDone: () -> Unit) {
     var query by remember { mutableStateOf("") }
-    val shown = remember(apps, query) { apps.filter { it.id != anchor.id && !it.isWork && it.label.contains(query.trim(), true) } }
+    val shown = remember(apps, query) { apps.filter { it.id != anchor.id && !it.isWork && appMatches(it, query.trim()) } }
     Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).padding(horizontal = FolioSpace.LARGE.dp).testTag("icon-stack-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppIcon(anchor, null, Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), badge = false)

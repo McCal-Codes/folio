@@ -1306,7 +1306,8 @@
     <string name="do_not_disturb_off_2">勿扰模式已关闭</string>
     <string name="incoming_call">来电</string>
     <string name="previous">上一首</string>
-    <string name="play_or_pause">播放或暂停</string>
+    <string name="play">播放</string>
+    <string name="pause">暂停</string>
     <string name="decline">拒绝</string>
     <string name="accept">接听</string>
     <string name="mute">静音</string>
@@ -1318,7 +1319,7 @@
     <string name="move_down">向下移动</string>
     <string name="move_to_next_page">移到下一页</string>
     <string name="move_to_previous_page">移到上一页</string>
-    <string name="clock_widget_tap_to_replace">时钟小组件；轻点以替换</string>
+    <string name="clock_widget_tap_to_open">时钟小组件；轻点以打开时钟</string>
     <string name="decrease_widget_width">减小小组件宽度</string>
     <string name="increase_widget_width">增大小组件宽度</string>
     <string name="decrease_widget_height">减小小组件高度</string>
@@ -1435,4 +1436,7 @@
     <string name="language">语言</string>
     <string name="settings_keywords_general">通用 关于 版本 更新 新功能 帮助 路线图 致谢 高级</string>
     <string name="settings_keywords_language">语言 翻译 英语 韩语 中文</string>
+    <string name="apps_could_not_be_loaded">无法载入 App。</string>
+    <string name="saved_home_layout_could_not_be_read">无法读取存储的主屏幕布局，已保持原样。</string>
+    <string name="widget_waiting_for_setup">%1$s，等待设置</string>
 </resources>
