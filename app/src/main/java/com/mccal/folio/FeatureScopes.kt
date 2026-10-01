@@ -25,6 +25,10 @@ internal object FeatureScopes {
 
 internal fun screenFor(wide: Boolean) = if (wide) FolioScreen.INNER else FolioScreen.COVER
 
+/** "Barrel by Aaron Ash, Cylinder by Reed Weichler" without the authors: the short credit on a Tweak Library row. */
+internal val TweakFeature.inspiredNames: String get() = inspiredBy.replace(AUTHOR, "")
+private val AUTHOR = Regex(" by [^,]+")
+
 /** A tweak-inspired feature: its page in Settings › Tweaks, with a main switch and per-screen overrides. */
 internal data class TweakFeature(
     val id: String, val name: String, val inspiredBy: String,
@@ -70,7 +74,7 @@ internal val TweakFeatures = listOf(
     // The switch is on or off, and which effect it is lives on Flipbook's own page, beside the effects packages add
     // (Flipbook is their host, as Cylinder is for its scripts). Turning it on brings back the last one chosen; the
     // cube the first time, since that is the one Barrel was known for.
-    TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash", // english-only
+    TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash, Cylinder by Reed Weichler", // english-only
         R.string.tweak_flipbook_detail,
         androidx.compose.material.icons.Icons.Rounded.AutoStories, FolioColors.Value.Teal,
         { it.pageEffect != PageEffect.NONE },

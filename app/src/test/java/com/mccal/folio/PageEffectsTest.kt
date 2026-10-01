@@ -63,6 +63,30 @@ class PageEffectsTest {
         }
     }
 
+    // Cylinder's Cube (inside): the cube's own seam and camera, turned the other way.
+    @Test fun `Inside Cube hinges on the cube's seam, toward you`() {
+        for (position in listOf(-1f, -.6f, -.25f, .25f, .6f, 1f)) {
+            assertEquals(-PageEffect.CUBE.rotationY(position), PageEffect.INSIDE_CUBE.rotationY(position), 0f)
+            assertEquals(PageEffect.CUBE.pivotX(position), PageEffect.INSIDE_CUBE.pivotX(position), 0f)
+            assertEquals(1f, PageEffect.INSIDE_CUBE.scale(position), 0f)
+        }
+        assertEquals(PageEffect.CUBE.cameraWidths, PageEffect.INSIDE_CUBE.cameraWidths, 0f)
+        assertTrue("a page on the right turns its free edge toward you", PageEffect.INSIDE_CUBE.rotationY(.5f) < 0f)
+    }
+
+    // Page Squeeze for Cylinder: depth without a turn, so it never needs the 3D camera.
+    @Test fun `Stack steps a page back without turning it`() {
+        for (position in listOf(-2f, -1f, -.5f, .5f, 1f, 2f)) assertEquals(0f, PageEffect.STACK.rotationY(position), 0f)
+        assertEquals(.75f, PageEffect.STACK.scale(1f), 1e-6f)
+        assertEquals(.875f, PageEffect.STACK.scale(-.5f), 1e-6f)
+        assertEquals("no deeper than a page out", .75f, PageEffect.STACK.scale(2f), 1e-6f)
+    }
+
+    @Test fun `the new effects are saved and read back by name`() {
+        assertEquals(PageEffect.INSIDE_CUBE, decode(saved("pageEffect" to "INSIDE_CUBE").toString()).pageEffect)
+        assertEquals(PageEffect.STACK, decode(saved("pageEffect" to "STACK").toString()).pageEffect)
+    }
+
     @Test fun `None does nothing at any position`() {
         for (position in listOf(-2f, -1f, -.5f, 0f, .37f, 1f, 2f)) {
             assertEquals(0f, PageEffect.NONE.rotationY(position), 0f)

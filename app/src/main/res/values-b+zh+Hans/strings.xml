@@ -418,7 +418,11 @@
     <string name="lynx_2">Lynx 2</string>
     <string name="colorbadges">ColorBadges</string>
     <string name="barrel">Barrel</string>
-    <string name="page_effects_idea_coming_soon_no_code">页面效果的创意，即将推出（不含代码）</string>
+    <string name="flipbook_idea_no_code">Flipbook 的创意（不含代码）</string>
+    <string name="cylinder">Cylinder</string>
+    <string name="reed_weichler_flipbook_add_ons_and_inside_cube">Reed Weichler · 可接入 Flipbook 的效果和内侧立方体的创意（不含代码）</string>
+    <string name="page_squeeze">Page Squeeze</string>
+    <string name="beta382_flipbook_stack_idea_no_code">Beta382（为 Cylinder 所作）· Flipbook 堆叠效果的创意（不含代码）</string>
     <string name="contributor_covenant_3_0">贡献者公约 3.0</string>
     <string name="organization_for_ethical_source_cc_by_sa">Organization for Ethical Source · CC BY-SA 4.0 · 本项目的行为准则</string>
     <string name="preview">预览</string>
@@ -1401,7 +1405,9 @@
     <string name="page_effects">页面效果</string>
     <string name="from_packages">来自软件包</string>
     <string name="cube">立方体</string>
-    <string name="home_pages_turn_in_3d_as_you_swipe_off_w">滑动时主屏页面会以 3D 方式翻转。主屏并排显示两页时不启用，开启「减弱动态效果」时也不启用；留用之前请先留意有没有掉帧。</string>
+    <string name="inside_cube">内侧立方体</string>
+    <string name="stack">堆叠</string>
+    <string name="home_pages_turn_in_3d_as_you_swipe_off_w">滑动时主屏页面会以 3D 方式移动。主屏并排显示两页时不启用，开启「减弱动态效果」时也不启用；留用之前请先留意有没有掉帧。</string>
     <string name="your_photo">你的照片</string>
     <string name="from_folio">来自 Folio</string>
     <string name="wallpaper_by_artist">%1$s，由 %2$s 创作</string>
@@ -1413,7 +1419,7 @@
     <string name="tweak_roll_call_detail">通知中心上方的一排应用图标。点按其中一个，只显示该应用的通知。</string>
     <string name="tweak_palette_detail">通知卡片会呈现所属应用颜色的柔和版本。</string>
     <string name="tweak_colored_albums_detail">音乐卡片和灵动岛的声音条会呈现专辑封面的颜色。</string>
-    <string name="tweak_flipbook_detail">滑动时主屏幕页面以 3D 方式翻转，而不是平移。</string>
+    <string name="tweak_flipbook_detail">滑动时主屏幕页面以 3D 方式移动，而不是平移。</string>
     <string name="follow_system">跟随系统</string>
     <string name="sunset_to_sunrise">日落到日出</string>
     <string name="also_set_as_phone_wallpaper">同时设为手机壁纸</string>

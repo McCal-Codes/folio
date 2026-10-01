@@ -1504,7 +1504,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         stringResource(R.string.icon_restore) to stringResource(R.string.layout_history_idea_no_code),
         stringResource(R.string.lynx_2) to "recent-app dots idea (no code)",
         stringResource(R.string.colorbadges) to "badges that match the app idea (no code)",
-        stringResource(R.string.barrel) to stringResource(R.string.page_effects_idea_coming_soon_no_code),
+        stringResource(R.string.barrel) to stringResource(R.string.flipbook_idea_no_code),
+        stringResource(R.string.cylinder) to stringResource(R.string.reed_weichler_flipbook_add_ons_and_inside_cube),
+        stringResource(R.string.page_squeeze) to stringResource(R.string.beta382_flipbook_stack_idea_no_code),
         stringResource(R.string.contributor_covenant_3_0) to stringResource(R.string.organization_for_ethical_source_cc_by_sa),
     )
     SettingsCard(stringResource(R.string.thanks_to)) {
@@ -2214,7 +2216,7 @@ private fun roadmapIcon(name: String): ImageVector = when (name) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(tweak.name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.inspired_by_1, tweak.inspiredBy.substringBefore(" by ")), fontSize = FolioType.FOOTNOTE.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), maxLines = 1)
+                    Text(stringResource(R.string.inspired_by_1, tweak.inspiredNames), fontSize = FolioType.FOOTNOTE.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), maxLines = 1)
                 }
                 // Sileo's pill: Get in blue; once installed it reads Open and goes to the tweak's settings.
                 val actionLabel = stringResource(if (installed) R.string.open_tweak else R.string.get_tweak, tweak.name)
