@@ -108,7 +108,10 @@
     <string name="takes_a_quick_in_memory_snapshot_of_foli">在铰链开始转动时，于内存中快速截取 Folio 的画面，并把它融入另一块屏幕。不会保存任何内容。</string>
     <string name="your_fold_reports_only_a_few_hinge_posit">你的 Fold 只报告少数几个铰链位置，所以 Folio 会学习你开合的速度，并让效果与之匹配。</string>
     <string name="standby">待机显示</string>
-    <string name="show_standby_when_set_down_half_open">半开放置时显示待机显示</string>
+    <string name="standby_half_open_like_a_laptop">像笔记本电脑一样半开时</string>
+    <string name="standby_while_charging_on_its_side">侧放充电时</string>
+    <string name="standby_standing_as_a_tent">像帐篷一样立着时</string>
+    <string name="standby_ways_note">侧放充电在任何姿势下都能用，和 iPhone 一样：插上电源，横过来放下即可。Fold 只告诉应用合上、半开和打开三种状态，所以帐篷要打开超过一半才能识别。</string>
     <string name="big_clock_date_next_alarm_battery_and_mu">手机在主屏幕上半开放置时，显示大时钟、日期、下一个闹钟、电池和音乐。夜间会变为暗红色。轻点即可离开。</string>
     <string name="closing_from_home">在主屏幕上合上时</string>
     <string name="stay_awake_on_the_cover_screen">保持外屏常亮</string>
