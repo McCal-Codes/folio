@@ -284,20 +284,34 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
                 }
             }
         }
-        if (media != null) Row(Modifier.widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp))
-            .background(if (night) Color(0xFF1A0605) else FolioColors.SecondaryBackground).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            media.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp))) }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                // Two lines: on the cover the controls leave the title about a third of the row.
-                Text(media.title, color = ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                media.subtitle?.let { Text(it, color = soft, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        if (media != null) BoxWithConstraints(Modifier.widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp))
+            .background(if (night) Color(0xFF1A0605) else FolioColors.SecondaryBackground).padding(16.dp)) {
+            // On a narrow card (the cover's half of the screen) the controls go under the title, so the title has the
+            // card's width instead of a third of it and breaks between words rather than inside one.
+            val stacked = maxWidth < 360.dp
+            val art: @Composable () -> Unit = {
+                media.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp))) }
+                Spacer(Modifier.width(14.dp))
+            }
+            val words: @Composable (Modifier) -> Unit = { m ->
+                Column(m) {
+                    Text(media.title, color = ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    media.subtitle?.let { Text(it, color = soft, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
             }
             val t = media.controller.transportControls
-            Icon(Icons.Rounded.SkipPrevious, "Previous", tint = ink, modifier = Modifier.minimumInteractiveComponentSize().size(36.dp).clip(CircleShape).clickable { t.skipToPrevious() })
-            Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play), tint = ink,
-                modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() })
-            Icon(Icons.Rounded.SkipNext, "Next", tint = ink, modifier = Modifier.minimumInteractiveComponentSize().size(36.dp).clip(CircleShape).clickable { t.skipToNext() })
+            val controls: @Composable () -> Unit = {
+                Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.previous_track), tint = ink,
+                    modifier = Modifier.minimumInteractiveComponentSize().size(36.dp).clip(CircleShape).clickable { t.skipToPrevious() })
+                Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play), tint = ink,
+                    modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() })
+                Icon(Icons.Rounded.SkipNext, stringResource(R.string.next_track), tint = ink,
+                    modifier = Modifier.minimumInteractiveComponentSize().size(36.dp).clip(CircleShape).clickable { t.skipToNext() })
+            }
+            if (stacked) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) { art(); words(Modifier.weight(1f)) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { controls() }
+            } else Row(verticalAlignment = Alignment.CenterVertically) { art(); words(Modifier.weight(1f)); controls() }
         }
     }
 }

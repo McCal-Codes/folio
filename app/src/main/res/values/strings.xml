@@ -1373,6 +1373,8 @@
     <string name="previous">Previous</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
+    <string name="previous_track">Previous track</string>
+    <string name="next_track">Next track</string>
     <string name="decline">Decline</string>
     <string name="accept">Accept</string>
     <string name="mute">Mute</string>
