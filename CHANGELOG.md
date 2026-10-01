@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.8] - Unreleased
 
 ### Added
+- **More search engines, and your own:** Settings › Search & App Library › Search with Enter now offers Bing, Brave Search, Ecosia, Startpage, Qwant and Kagi beside Google and DuckDuckGo, and Custom…, where you type your own search address with %s where the search goes. Folio checks it as you type and falls back to Google if it can't be used, and only http and https addresses are accepted. The one you pick also gets a chip under a search.
 - **Add several apps to a folder at once:** an open folder has an Add Apps button. It lists your apps with a check each, shows how many you have picked, and Done puts them all in as one change, so Undo takes them all back. Apps already in the folder are shown ticked, and hidden apps stay out of the list.
 - **Home beside an app in split screen:** when Folio is one half of a split screen, it shows a Home page, the one you were on or your last one, instead of the App Library or Today View it was left on. It is one cover-sized page next to your app. Android and your phone decide which half Folio gets.
 - **Choose how Folio feels at setup:** a new setup page offers Folio (Dynamic Island, Folio's own Notification Center and Control Center, Spotlight on a swipe down) or Android style (Android's notification shade and Quick Settings, no Dynamic Island). Skipping keeps Folio, and if you already use Folio nothing changes. Each is only a set of existing switches, so everything stays changeable in Settings.

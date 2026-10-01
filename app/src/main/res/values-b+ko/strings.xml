@@ -1512,4 +1512,7 @@
     <string name="n_selected">%1$d개 선택됨</string>
     <string name="app_selected">선택됨</string>
     <string name="app_not_selected">선택 안 됨</string>
+    <string name="custom_search_engine">직접 입력…</string>
+    <string name="custom_search_note" formatted="false">검색어가 들어갈 자리에 %s를 넣은 나만의 검색 주소입니다. 다른 웹 검색처럼 해당 사이트로 전송됩니다.</string>
+    <string name="custom_search_invalid" formatted="false">Folio에서 사용할 수 없는 웹 주소입니다. http 또는 https, 사이트 이름, 검색어가 들어갈 자리의 %s가 필요합니다.</string>
 </resources>

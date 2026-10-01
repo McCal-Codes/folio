@@ -150,6 +150,8 @@ data class LauncherState(
     val spotlightHidden: Set<String> = emptySet(),
     /** Engine for Enter in search: a [WebSearchTarget] name. */
     val searchEngine: String = "GOOGLE",
+    /** Your own search address for Search with Enter, used when [searchEngine] is CUSTOM: see [customSearchUrl]. */
+    val searchCustomUrl: String = "",
     /** Island system pop-ups the user turned off (IslandEventKind names). */
     val islandEventsOff: Set<String> = emptySet(),
     val libraryCategories: Boolean = true,
@@ -1085,6 +1087,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setSpotlightSection(section: String, visible: Boolean) = updateSettings(soon = false) {
         it.copy(spotlightHidden = if (visible) it.spotlightHidden - section else it.spotlightHidden + section) }
     fun setSearchEngine(engine: String) = updateSettings(soon = false) { it.copy(searchEngine = engine) }
+    fun setSearchCustomUrl(url: String) = updateSettings(soon = true) { it.copy(searchCustomUrl = url.take(500)) }
     fun setIslandEvent(kind: String, enabled: Boolean) = updateSettings(soon = false) {
         it.copy(islandEventsOff = if (enabled) it.islandEventsOff - kind else it.islandEventsOff + kind) }
     fun setLibraryCategories(value: Boolean) = updateSettings(soon = false) { it.copy(libraryCategories = value) }
@@ -1279,7 +1282,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications)
-            .put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
+            .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
@@ -1513,7 +1516,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         standByCharging = j.optBoolean("standByCharging", true),
         standByTent = j.optBoolean("standByTent", false),
         spotlightHidden = j.optJSONArray("spotlightHidden")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
-        searchEngine = j.optString("searchEngine", "GOOGLE"),
+        searchEngine = j.optString("searchEngine", "GOOGLE").takeIf { it == CUSTOM_SEARCH || runCatching { WebSearchTarget.valueOf(it) }.isSuccess } ?: "GOOGLE",
+        searchCustomUrl = j.optString("searchCustomUrl", "").take(500),
         islandEventsOff = j.optJSONArray(SettingKeys.ISLAND_EVENTS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         libraryCategories = j.optBoolean("libraryCategories", true),
         libraryWork = j.optBoolean("libraryWork", true),

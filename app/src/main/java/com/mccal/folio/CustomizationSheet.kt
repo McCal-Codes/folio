@@ -419,8 +419,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.spotlight)) {
-                        IosMenuRow(stringResource(R.string.search_with_enter), listOf(WebSearchTarget.GOOGLE.name to stringResource(R.string.google_no_ai), WebSearchTarget.DUCKDUCKGO.name to stringResource(R.string.duckduckgo)),
+                        IosMenuRow(stringResource(R.string.search_with_enter),
+                            WebSearchTarget.enterEngines.map { it.name to when (it) { WebSearchTarget.GOOGLE -> stringResource(R.string.google_no_ai); WebSearchTarget.DUCKDUCKGO -> stringResource(R.string.duckduckgo); else -> it.label } } +
+                                (CUSTOM_SEARCH to stringResource(R.string.custom_search_engine)),
                             state.searchEngine, model::setSearchEngine, tag = "search-engine")
+                        if (state.searchEngine == CUSTOM_SEARCH) CustomSearchField(state.searchCustomUrl, model::setSearchCustomUrl)
                         SpotlightSection.entries.forEach { section ->
                             SettingsSwitch(stringResource(section.title), section.name !in state.spotlightHidden,
                                 { model.setSpotlightSection(section.name, it) }, "spotlight-${section.name.lowercase()}")
@@ -2541,3 +2544,20 @@ internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
 /** Like [description], replacing whatever the children would have said. */
 @Composable internal fun Modifier.clearedDescription(@androidx.annotation.StringRes id: Int): Modifier =
     stringResource(id).let { text -> clearAndSetSemantics { contentDescription = text } }
+
+/** Your own search address: a field, and whether it works, so a typo is caught before it is used. */
+@Composable private fun CustomSearchField(url: String, onUrl: (String) -> Unit) {
+    var text by remember { mutableStateOf(url) }
+    val valid = text.isBlank() || customSearchTemplateIsValid(text)
+    androidx.compose.foundation.text.BasicTextField(text, { text = it.take(500); onUrl(text) },
+        Modifier.padding(vertical = FolioSpace.SNUG.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .1f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.MEDIUM.dp)
+            .testTag("search-custom-url"),
+        singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.SUBHEAD.sp),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.White),
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+            imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+        decorationBox = { inner -> Box { if (text.isEmpty()) Text("https://example.com/search?q=%s", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .35f), fontSize = FolioType.SUBHEAD.sp); inner() } })
+    CardNote(stringResource(if (valid) R.string.custom_search_note else R.string.custom_search_invalid))
+}
+

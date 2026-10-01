@@ -1537,4 +1537,7 @@
     <string name="n_selected">%1$d selected</string>
     <string name="app_selected">Selected</string>
     <string name="app_not_selected">Not selected</string>
+    <string name="custom_search_engine">Custom…</string>
+    <string name="custom_search_note" formatted="false">Your own search address, with %s where the search goes. It leaves your phone for that site, like any web search.</string>
+    <string name="custom_search_invalid" formatted="false">That is not a web address Folio can use. It needs http or https, a site name, and %s where the search goes.</string>
 </resources>

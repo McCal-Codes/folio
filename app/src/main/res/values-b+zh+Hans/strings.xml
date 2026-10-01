@@ -1491,4 +1491,7 @@
     <string name="n_selected">已选择 %1$d 个</string>
     <string name="app_selected">已选择</string>
     <string name="app_not_selected">未选择</string>
+    <string name="custom_search_engine">自定…</string>
+    <string name="custom_search_note" formatted="false">你自己的搜索地址，用 %s 表示搜索词的位置。和其他网页搜索一样，搜索词会发送到该网站。</string>
+    <string name="custom_search_invalid" formatted="false">这不是 Folio 能使用的网址。需要 http 或 https、网站名，以及表示搜索词位置的 %s。</string>
 </resources>
