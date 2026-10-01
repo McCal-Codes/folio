@@ -228,6 +228,7 @@ data class LauncherState(
     val folderBackground: FolderBackground = FolderBackground.GLASS,
     val labelSize: LabelSize = LabelSize.STANDARD,
     val motionSpeed: MotionSpeed = MotionSpeed.STANDARD,
+    val holdDelay: HoldDelay = HoldDelay.STANDARD,
     /** How Home pages move as you swipe between them. [PageEffect.NONE] is the default and the flat swipe. */
     val pageEffect: PageEffect = PageEffect.NONE,
     /** The effect Flipbook's switch turns back on: the last one chosen, so Carousel survives an off and on. */
@@ -966,6 +967,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderColumns(value: Int) = updateSettings(soon = false) { it.copy(folderColumns = value.takeIf { v -> v in setOf(0, 3, 4) } ?: 0) }
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
+    fun setHoldDelay(value: HoldDelay) = updateSettings(soon = false) { it.copy(holdDelay = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
     fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }
     fun setPageEffectOn(on: Boolean) = updateSettings(soon = false) { it.withPageEffectOn(on) }
@@ -1282,7 +1284,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
             .put("installedTweaks", JSONArray(s.installedTweaks.toList()))
             .put("folderColumns", s.folderColumns).put("folderBackground", s.folderBackground.name)
-            .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("pageEffect", s.pageEffect.name)
+            .put("labelSize", s.labelSize.name).put("motionSpeed", s.motionSpeed.name).put("holdDelay", s.holdDelay.name).put("pageEffect", s.pageEffect.name)
             .put("lastPageEffect", s.lastPageEffect.name)
             .put("packagedEffects", JSONArray().apply { s.packagedEffects.forEach { put(it.toJson()) } })
             .put("packagedEffectId", s.packagedEffectId ?: JSONObject.NULL)
@@ -1542,6 +1544,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folderBackground = runCatching { FolderBackground.valueOf(j.optString("folderBackground")) }.getOrDefault(FolderBackground.GLASS),
         labelSize = runCatching { LabelSize.valueOf(j.optString("labelSize")) }.getOrDefault(LabelSize.STANDARD),
         motionSpeed = runCatching { MotionSpeed.valueOf(j.optString("motionSpeed")) }.getOrDefault(MotionSpeed.STANDARD),
+        holdDelay = runCatching { HoldDelay.valueOf(j.optString("holdDelay")) }.getOrDefault(HoldDelay.STANDARD),
         // A save from before Page Effects, and anything unrecognised, reads as the flat swipe.
         pageEffect = PageEffect.of(j.optString("pageEffect")),
         // Before 0.6.7.2 this wasn't saved: the effect in use, else the cube.

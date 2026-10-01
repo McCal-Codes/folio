@@ -1518,4 +1518,8 @@
     <string name="add_folio_settings_to_home">Add Folio Settings to Home</string>
     <string name="folio_settings_on_home">Folio Settings is on Home</string>
     <string name="folio_settings_icon_note">The icon opens Folio\'s Settings when Folio is your Home app.</string>
+    <string name="hold_shorter">Shorter</string>
+    <string name="hold_longer">Longer</string>
+    <string name="touch_and_hold">Touch and Hold</string>
+    <string name="touch_and_hold_note">How long to hold an app or a widget on Home before its menu opens. Standard follows Android, including Samsung\'s Touch and hold delay in Accessibility.</string>
 </resources>

@@ -1472,4 +1472,8 @@
     <string name="add_folio_settings_to_home">将 Folio 设置添加到主屏幕</string>
     <string name="folio_settings_on_home">Folio 设置已在主屏幕上</string>
     <string name="folio_settings_icon_note">Folio 是默认主屏幕应用时，点按此图标会打开 Folio 设置。</string>
+    <string name="hold_shorter">较短</string>
+    <string name="hold_longer">较长</string>
+    <string name="touch_and_hold">触控并按住</string>
+    <string name="touch_and_hold_note">设定在主屏幕上按住 App 或小组件多久后打开菜单。“标准”遵循 Android 设置，包括三星“辅助功能”中的触摸和按住延迟。</string>
 </resources>

@@ -398,9 +398,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
                             state.swipeDownHome, model::setSwipeDownHome, tag = "swipe-down-home")
+                        IosMenuRow(stringResource(R.string.touch_and_hold), HoldDelay.entries.map { it to stringResource(it.label) }, state.holdDelay, model::setHoldDelay, tag = "hold-delay")
                         SettingsSwitch(stringResource(R.string.drag_page_dots_to_flip_pages), state.pageScrub, model::setPageScrub, "page-scrub-switch")
                         SettingsSwitch(stringResource(R.string.haptic_feedback), state.haptics, model::setHaptics, "haptics-switch")
                         CardNote(stringResource(R.string.pull_down_from_the_top_left_for_notifica))
+                        CardNote(stringResource(R.string.touch_and_hold_note))
                     }
                     // One page for the panels: the on/off switch and, when on, their options.
                     if (page == CustomizationPage.NOTIFICATIONS) SettingsCard(stringResource(R.string.panels)) {
