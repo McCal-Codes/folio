@@ -356,7 +356,8 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         splitColumns = splitColumns, cellWidth = if (splitColumns) splitCell else cell, zoneGap = if (splitColumns) zoneGap else 0f,
         horizontalDock = horizontalDock, dockBarHeight = dockBarHeight, dockBesideRail = dockBesideRail, statusTop = statusTop,
         appRows = rows, fitAppRows = if (splitColumns) BASE_APP_ROWS else fitRows, rowGap = gap, columnsInset = columnsInset, dockPitch = dockPitch,
-        dockBarRoom = barRoom.coerceAtLeast(0f))
+        // barRoom keeps a 32 dp margin for spacing the apps out; the bar itself may use the whole room beside the Side Bar.
+        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f))
 }
 
 /** Keep stored order stable across installs, removals and configuration changes. */
