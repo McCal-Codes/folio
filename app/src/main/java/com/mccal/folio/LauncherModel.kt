@@ -111,6 +111,11 @@ data class LauncherState(
     val expanded: LayoutPreset = LayoutPreset(),
     val labels: Boolean = true,
     val verticalStatus: Boolean = true,
+    /**
+     * What Full-Width Home replaced, so turning it off puts it back: the dock placement of each screen it was turned on
+     * for (by [LayoutScreen] name) and whether the status Side Bar was showing ("status"). Empty when it is off.
+     */
+    val fullWidthRestore: Map<String, String> = emptyMap(),
     /** Mirror the side rail (dock, status, controls) to the left edge. */
     val leftHanded: Boolean = false,
     /** App ids kept out of All apps and app search (Home shortcuts are unaffected). */
@@ -321,13 +326,47 @@ internal fun LauncherState.trackedAppIds(): List<String> =
         iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys
 
 /**
- * [dock] with [slots] places: more places are added empty on the end, fewer drop empty places from the end. Null when
- * that would drop an app, so shrinking the dock can never lose one: move the app first.
+ * Full-Width Home turned on or off for [screen]: a bottom dock and no status Side Bar, or what they were before. Turning
+ * it on remembers the dock placement (and whether the Side Bar showed) so turning it off puts back exactly that, not a
+ * guess; with nothing remembered, off goes back to the automatic dock and the Side Bar.
  */
-fun resizedDock(dock: List<String?>, slots: Int): List<String?>? {
-    val size = slots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)
-    if (size >= dock.size) return dock + List(size - dock.size) { null }
-    return if (dock.drop(size).any { it != null }) null else dock.take(size)
+internal fun LauncherState.withFullWidthHome(screen: LayoutScreen, on: Boolean): LauncherState {
+    val now = presetFor(screen)
+    val key = screen.name
+    return if (on) {
+        val remembered = fullWidthRestore.toMutableMap()
+        // Even a dock that was already at the bottom: the entry is also what marks this screen as in Full-Width Home.
+        remembered[key] = now.dockPlacement.name
+        if ("status" !in remembered) remembered["status"] = verticalStatus.toString()
+        withPreset(screen, now.copy(dockPlacement = DockPlacement.BOTTOM)).copy(verticalStatus = false, fullWidthRestore = remembered)
+    } else {
+        val before = DockPlacement.parse(fullWidthRestore[key] ?: DockPlacement.AUTOMATIC.name)
+        val rest = fullWidthRestore - key
+        // The Side Bar comes back once no screen is still in Full-Width Home by way of a remembered placement.
+        val bringBack = rest.keys.none { it != "status" }
+        withPreset(screen, now.copy(dockPlacement = before)).copy(
+            verticalStatus = if (bringBack) fullWidthRestore["status"]?.toBooleanStrictOrNull() ?: true else verticalStatus,
+            fullWidthRestore = if (bringBack) emptyMap() else rest)
+    }
+}
+
+/**
+ * Forgets that [screen] was in Full-Width Home, for when the screen itself goes away (the upright layout is merged back
+ * into the inner one). The Side Bar returns once no screen is left in it.
+ */
+internal fun LauncherState.withoutFullWidthEntry(screen: LayoutScreen): LauncherState {
+    if (screen.name !in fullWidthRestore) return this
+    val rest = fullWidthRestore - screen.name
+    val bringBack = rest.keys.none { it != "status" }
+    return copy(verticalStatus = if (bringBack) fullWidthRestore["status"]?.toBooleanStrictOrNull() ?: true else verticalStatus,
+        fullWidthRestore = if (bringBack) emptyMap() else rest)
+}
+
+/** [preset] saved for [screen]; the upright inner screen without a layout of its own edits the inner one. */
+internal fun LauncherState.withPreset(screen: LayoutScreen, preset: LayoutPreset): LauncherState = when (screen) {
+    LayoutScreen.COVER -> copy(compact = preset)
+    LayoutScreen.INNER -> copy(expanded = preset)
+    LayoutScreen.INNER_UPRIGHT -> if (portrait != null) copy(portrait = preset) else copy(expanded = preset)
 }
 
 /** The saved layout [screen] uses: the upright inner screen falls back to the inner one until it has its own. */
@@ -584,7 +623,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val reconciled = reconcileFolders(HomeLayout(validPins, validDock, old.widgetPlacements, old.folders,
                         old.widgetRestores, old.leadingSlots, old.minPages), removedIds)
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
-                        dock = reconciled.dock, folders = reconciled.folders,
+                        dock = trimmedDock(reconciled.dock), folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
                         appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds,
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
@@ -794,9 +833,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         mutable.update { old -> old.copy(canUndoEdit = false,
             homeSlots = if (id == null) old.homeSlots else old.homeSlots.map { it?.takeUnless(id::equals) }.dropLastWhile { it == null },
             leadingSlots = if (id == null) old.leadingSlots else old.leadingSlots.map { it?.takeUnless(id::equals) },
-            dock = old.dock.mapIndexed { index, value ->
+            dock = trimmedDock(old.dock.mapIndexed { index, value ->
                 when { index == slot -> id; value == id && id != null -> null; else -> value }
-            }) }
+            })) }
         persist()
     }
 
@@ -861,11 +900,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, apps = old.apps.withAppNames(names),
-            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = preview.layout.dock,
+            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
+            // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
+            fullWidthRestore = emptyMap(),
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -962,7 +1003,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (old.layout == next) return false
         undoLayout = old.layout to next
         undoImportSettings = null
-        mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = next.dock,
+        mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = trimmedDock(next.dock),
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
@@ -1066,8 +1107,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val state = mutable.value
         return commitLayout(arrangeLikeIPhone(state.layout, resolveIPhoneApps(getApplication(), state.apps, state.messagesApp), state.homeAppRows))
     }
-    private fun commitLayout(next: HomeLayout): Boolean {
+    private fun commitLayout(requested: HomeLayout): Boolean {
         if (statePayloadInvalid) return false
+        // The dock is as big as what is in it (four at least), so a place left empty at its end closes.
+        val next = requested.copy(dock = trimmedDock(requested.dock))
         // A Focus hiding Home pages locks editing: Home shows a filtered copy, so its positions aren't the real ones.
         if (FocusPages.lockingFocus(mutable.value) != null) return false
         val old = mutable.value
@@ -1092,7 +1135,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val settings = undoImportSettings
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
-            dock = before.dock.map { it?.takeIf(installed::contains) }, widgetPlacements = before.widgetPlacements, folders = before.folders,
+            dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
@@ -1196,17 +1239,6 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))
     }
-    /** How many apps the dock holds. Fewer than it has apps in it is refused, so none is lost; the call says whether it changed. */
-    fun setDockSlots(slots: Int): Boolean {
-        if (statePayloadInvalid) return false
-        val old = mutable.value
-        val resized = resizedDock(old.dock, slots) ?: return false
-        if (resized == old.dock) return true
-        undoLayout = null; undoImportSettings = null
-        mutable.update { it.copy(dock = resized, canUndoEdit = false) }
-        persist()
-        return true
-    }
     fun setLeftHanded(value: Boolean) = updateSettings(soon = false) { it.copy(leftHanded = value) }
     fun setVerticalStatus(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(verticalStatus = value, canUndoEdit = false) }; persist() }
     fun setGoogleSearch(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(googleSearch = value, canUndoEdit = false) }; persist() }
@@ -1229,10 +1261,21 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** The upright inner screen gets a layout of its own, starting as a copy of the inner one, or goes back to sharing it. */
+    /** Full-Width Home for [screen] on or off, as one change that remembers and restores what it replaced. */
+    fun setFullWidthHome(screen: LayoutScreen, on: Boolean) {
+        if (statePayloadInvalid) return
+        undoLayout = null; undoImportSettings = null
+        mutable.update { it.withFullWidthHome(screen, on).copy(canUndoEdit = false) }
+        persist()
+    }
+
     fun setSeparatePortrait(on: Boolean) {
         if (statePayloadInvalid) return
         undoLayout = null; undoImportSettings = null
-        mutable.update { it.copy(portrait = if (on) (it.portrait ?: it.expanded) else null, canUndoEdit = false) }
+        mutable.update {
+            val next = it.copy(portrait = if (on) (it.portrait ?: it.expanded) else null, canUndoEdit = false)
+            if (on) next else next.withoutFullWidthEntry(LayoutScreen.INNER_UPRIGHT)
+        }
         persist()
     }
     val retainedWidgetIds: Set<Int> get() {
@@ -1266,7 +1309,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val installed = (mutable.value.apps.map { it.id } + layout.folders.map { it.id }).toSet()
         mutable.update { it.copy(homeSlots = reconcileHomeSlots(layout.slots, installed),
             leadingSlots = layout.slotsForPage(-1).map { id -> id?.takeIf { it in installed || isFolderId(it) } },
-            dock = layout.dock.map { id -> id?.takeIf { it in installed || isFolderId(it) } }, widgetPlacements = layout.widgetPlacements,
+            dock = trimmedDock(layout.dock.map { id -> id?.takeIf { it in installed || isFolderId(it) } }), widgetPlacements = layout.widgetPlacements,
             folders = layout.folders, widgetRestores = layout.widgetRestores, widgetStacks = emptyMap(),
             canUndoEdit = false, editRevision = it.editRevision + 1) }
         undoLayout = null
@@ -1332,6 +1375,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("restores", restores)
             .put("googleSearch", s.googleSearch)
             .put("verticalStatus", s.verticalStatus)
+            .also { o -> if (s.fullWidthRestore.isNotEmpty()) o.put("fullWidthRestore", JSONObject(s.fullWidthRestore)) }
             .put(SettingKeys.LEFT_HANDED, s.leftHanded)
             .put("hiddenApps", JSONArray(s.hiddenApps.toList()))
             .put("island", s.island)
@@ -1464,7 +1508,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
     } else List(HOME_CELLS) { null }
     val dockArray = j.optJSONArray("dock")
     // Four slots, or as many as were saved up to the most the dock holds; a damaged length can never be fewer than four.
-    val loadedDock = List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } }
+    val loadedDock = trimmedDock(List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } })
     val widgetArray = j.optJSONArray("widgets")
     val placements = if (schema >= 6) {
         require(widgetArray != null) { "Schema $schema requires a widget placement array" }
@@ -1562,7 +1606,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         widgetPlacements = placements, folders = folders, widgetRestores = restores,
         googleSearch = j.optBoolean("googleSearch", true),
         labels = j.optBoolean("labels", true), compact = preset("compact", LayoutPreset()),
-        expanded = preset("expanded", LayoutPreset()), portrait = j.optJSONObject("portrait")?.let { preset("portrait", LayoutPreset()) }, verticalStatus = j.optBoolean("verticalStatus", true),
+        expanded = preset("expanded", LayoutPreset()), fullWidthRestore = j.optJSONObject("fullWidthRestore")?.let { o -> o.keys().asSequence().associateWith { o.optString(it) }.filterValues(String::isNotBlank) }.orEmpty(),
+        portrait = j.optJSONObject("portrait")?.let { preset("portrait", LayoutPreset()) }, verticalStatus = j.optBoolean("verticalStatus", true),
         leftHanded = j.optBoolean("leftHanded", false),
         hiddenApps = j.optJSONArray("hiddenApps")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         island = j.optBoolean("island", true),

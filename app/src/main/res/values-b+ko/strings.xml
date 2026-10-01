@@ -1538,9 +1538,6 @@
     <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 레이아웃을 줍니다. 처음에는 가로 레이아웃을 복사해 시작하며, 끄면 다시 공유합니다.</string>
     <string name="sideways">가로</string>
     <string name="upright">세로</string>
-    <string name="dock_apps">Dock의 앱 수</string>
-    <string name="dock_apps_note">Dock에 최대 6개의 앱을 둘 수 있으며, 두 화면 모두에 적용됩니다. 기본은 4개입니다.</string>
-    <string name="dock_apps_refused">먼저 앱을 Dock에서 옮기세요. Dock은 들어 있는 앱 수보다 적은 칸을 가질 수 없습니다.</string>
     <string name="full_width_home">전체 너비 홈</string>
-    <string name="full_width_home_note">Dock이 아래쪽에 놓이고 상태 사이드바가 사라져 홈이 화면 전체 너비를 사용합니다. 대부분의 휴대폰 런처와 같은 방식입니다. 사이드바 설정은 두 화면 모두에 적용됩니다. 끄면 사이드바와 Folio 기본 Dock 위치로 돌아갑니다.</string>
+    <string name="full_width_home_note">Dock이 아래쪽에 놓이고 상태 사이드바가 사라져 홈이 화면 전체 너비를 사용합니다. 대부분의 휴대폰 런처와 같은 방식입니다. 사이드바 설정은 두 화면 모두에 적용됩니다. 끄면 이전에 쓰던 Dock과 사이드바로 돌아갑니다.</string>
 </resources>

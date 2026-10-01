@@ -64,9 +64,9 @@ class FolderEditingTest {
 
     @Test fun rejectedExtractionFromFullDockPreservesEveryFolderChild() {
         val folder = FolderEntry(folderId, "Pair", listOf("a", "b"))
-        val before = HomeLayout(listOf(folderId), listOf("d0", "d1", "d2", "d3"), folders = listOf(folder))
+        val before = HomeLayout(listOf(folderId), listOf("d0", "d1", "d2", "d3", "d4", "d5"), folders = listOf(folder))
         assertSame(before, removeAppFromFolder(before, folderId, "b", DropTarget.Dock(0)))
-        assertEquals(setOf("a", "b", "d0", "d1", "d2", "d3"),
+        assertEquals(setOf("a", "b", "d0", "d1", "d2", "d3", "d4", "d5"),
             (before.folders.flatMap { it.appIds } + before.dock.filterNotNull()).toSet())
     }
 

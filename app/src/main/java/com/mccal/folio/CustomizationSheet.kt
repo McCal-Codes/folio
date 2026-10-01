@@ -1951,18 +1951,8 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     SettingsCard(stringResource(R.string.full_width_home)) {
         // Two settings that already exist, in one tap: a dock along the bottom, and no status Side Bar beside the page.
         val fullWidth = p.dockPlacement == DockPlacement.BOTTOM && !state.verticalStatus
-        SettingsSwitch(stringResource(R.string.full_width_home), fullWidth, { on ->
-            model.setPreset(screen, p.copy(dockPlacement = if (on) DockPlacement.BOTTOM else DockPlacement.AUTOMATIC))
-            model.setVerticalStatus(!on)
-        }, "full-width-home-switch")
+        SettingsSwitch(stringResource(R.string.full_width_home), fullWidth, { on -> model.setFullWidthHome(screen, on) }, "full-width-home-switch")
         CardNote(stringResource(R.string.full_width_home_note))
-    }
-    SettingsCard(stringResource(R.string.dock_apps)) {
-        // Four until you ask for more. Fewer than the dock has apps in it is refused, so none is ever lost.
-        var refused by remember { mutableStateOf(false) }
-        IosSegmented((MIN_DOCK_SLOTS..MAX_DOCK_SLOTS).map { it to it.toString() }, state.dock.size, { slots -> refused = !model.setDockSlots(slots) },
-            Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "dock-slots")
-        CardNote(stringResource(if (refused) R.string.dock_apps_refused else R.string.dock_apps_note))
     }
     SettingsCard(stringResource(R.string.side_rail)) {
         CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
