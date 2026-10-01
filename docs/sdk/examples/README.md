@@ -7,3 +7,4 @@ is at least the package's `minFolio`, which `FolioVersionTest` enforces.
 | Example | Shows |
 |---|---|
 | [`wallpaper-wooded-hilly-landscape/`](wallpaper-wooded-hilly-landscape/) | A `wallpaper` package, and how one carries its artist and its license under [DES-2b](../../standards/design.md) |
+| [`duet-deep/`](duet-deep/) | A `tweakBundle` that sets a built-in tweak's `options`: Duet's style, direction and frost |

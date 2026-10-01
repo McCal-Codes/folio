@@ -356,6 +356,7 @@
               "tweaks.tintNotifications",
               "tweaks.tintMedia",
               "tweaks.pageEffects",
+              "tweaks.foldTransition",
               "island.messages",
               "focus.modes",
               "settings.pages",

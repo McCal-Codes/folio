@@ -265,7 +265,12 @@ class MainActivity : ComponentActivity() {
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
-                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(state.foldEffect && !reduceMotion, state.foldIntensity, state.stayAwakeOnFold, state.foldSnapshot, state.haptics) {
+                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
+                    screenFor(androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())), state.foldIntensity, state.stayAwakeOnFold,
+                    // Reduce Motion: a plain shade, no frost, tilt, shrink or picture moving (DYN-11: motion becomes a fade).
+                    state.foldSnapshot && !reduceMotion, state.haptics,
+                    if (reduceMotion) com.mccal.folio.duet.DuetStyles.reducedMotion(state.duet.resolved()) else state.duet.resolved(), state.duet.plays,
+                    reduceMotion = reduceMotion) {
                 // The launcher blurs behind every overlay with the same spring the overlay uses.
                 androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
                     .graphicsLayer {

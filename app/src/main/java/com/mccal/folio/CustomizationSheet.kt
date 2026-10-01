@@ -1,5 +1,10 @@
 package com.mccal.folio
 
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -82,12 +87,13 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
         TWEAK, TWEAK_LIBRARY -> TWEAKS
         LIBRARY_TWEAK -> TWEAK_LIBRARY // a tweak opened from the Tweak Library goes back there
+        FOLD_TWEAK -> FOLD // Duet opened from Fold & Displays goes back there
         FOCUS_MODE -> FOCUS
         ISLAND_APPS -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
@@ -120,7 +126,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         MARKET -> R.string.market
         FOCUS, FOCUS_MODE -> R.string.focus
         THEMES -> R.string.themes
-        TWEAK, LIBRARY_TWEAK -> R.string.tweak
+        TWEAK, LIBRARY_TWEAK, FOLD_TWEAK -> R.string.tweak
         ADVANCED -> R.string.advanced
         NOTIFICATIONS -> R.string.notifications_control_center
         SEARCH -> R.string.search_app_library
@@ -176,7 +182,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     var namingBackup by remember { mutableStateOf(false) }
     val title = when (page) {
         CustomizationPage.FOCUS_MODE -> state.focusModes.firstOrNull { it.id == focusId }?.name
-        CustomizationPage.TWEAK, CustomizationPage.LIBRARY_TWEAK -> TweakFeatures.firstOrNull { it.id == tweakId }?.name
+        CustomizationPage.TWEAK, CustomizationPage.LIBRARY_TWEAK, CustomizationPage.FOLD_TWEAK -> TweakFeatures.firstOrNull { it.id == tweakId }?.name
         else -> null
     } ?: stringResource(page.title)
     // Reopening Settings lands where it was, scrolled the same. Back lands where the page it returns to was left;
@@ -621,15 +627,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         })
                         CardNote(stringResource(R.string.learned_from_your_last_folds_and_used_to))
                     }
+                    // The fold animation is the Duet tweak now; its styles and sliders live on its own page.
                     SettingsCard(stringResource(R.string.fold_animation)) {
-                        SettingsSwitch(stringResource(R.string.fold_animation), state.foldEffect, model::setFoldEffect, "fold-effect-switch")
-                        if (state.foldEffect) IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
-                            state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")
-                        if (state.foldEffect && state.foldSnapshot) CardNote(stringResource(R.string.takes_a_quick_in_memory_snapshot_of_foli))
-                        if (state.foldEffect) CustomizationSlider(stringResource(R.string.intensity), "${(state.foldIntensity * 100).toInt()}%",
-                            state.foldIntensity, .3f..1.5f) { model.setFoldIntensity(it) }
-                        if (state.foldEffect) FoldEffectPreview(state, backgrounds.previewBitmap)
-                        CardNote(stringResource(R.string.your_fold_reports_only_a_few_hinge_posit))
+                        val duetOn = DUET_ID in state.installedTweaks && state.foldEffect
+                        IosNavRow("Duet", if (duetOn) stringResource(state.duet.look.name) else stringResource(R.string.off), // english-only
+                            { tweakId = DUET_ID; onPage(CustomizationPage.FOLD_TWEAK) }, "fold-duet")
+                        CardNote(stringResource(R.string.duet_moved_note))
                     }
                     SettingsCard(stringResource(R.string.standby)) {
                         SettingsSwitch(stringResource(R.string.show_standby_when_set_down_half_open), state.standBy, model::setStandBy, "standby-switch")
@@ -854,7 +857,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.FOCUS -> FocusListPage(state, model) { focusId = it; onPage(CustomizationPage.FOCUS_MODE) }
                 CustomizationPage.FOCUS_MODE -> state.focusModes.firstOrNull { it.id == focusId }?.let { FocusModePage(it, state, model) }
                     ?: LaunchedEffect(Unit) { onPage(CustomizationPage.FOCUS) }
-                CustomizationPage.TWEAK, CustomizationPage.LIBRARY_TWEAK -> TweakFeatures.firstOrNull { it.id == tweakId }?.let { tweak -> TweakPage(tweak, state, model) }
+                CustomizationPage.TWEAK, CustomizationPage.LIBRARY_TWEAK, CustomizationPage.FOLD_TWEAK -> TweakFeatures.firstOrNull { it.id == tweakId }?.let { tweak -> TweakPage(tweak, state, model, backgrounds.previewBitmap) }
                     ?: LaunchedEffect(Unit) { onPage(CustomizationPage.TWEAKS) }
             }
     }
@@ -1320,12 +1323,12 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 }
 
 /** Tweak preference page: main switch first, per-screen overrides (dimmed when off), credit, reset. */
-@Composable private fun TweakPage(tweak: TweakFeature, state: LauncherState, model: LauncherModel) {
+@Composable private fun TweakPage(tweak: TweakFeature, state: LauncherState, model: LauncherModel, previewBitmap: android.graphics.Bitmap? = null) {
     // Not installed yet: just what it does and Get, like a package page. Its settings appear once it's installed.
     if (tweak.id !in state.installedTweaks) {
         SettingsCard(tweak.name) {
             CardNote(stringResource(tweak.description))
-            CardNote(stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
+            CardNote(tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
         }
         SheetGroup { IosActionRow(stringResource(R.string.get_tweak, tweak.name), "tweak-get-${tweak.id}") { model.installTweak(tweak) } }
         return
@@ -1336,6 +1339,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardNote(stringResource(tweak.description))
     }
     if (tweak.id == "pageEffects") FlipbookEffects(state, model::setPageEffect, model::setPackagedEffect)
+    // Duet's look, only while it's on, like the fold settings always were.
+    if (tweak.id == DUET_ID && on) DuetSettings(state, model, previewBitmap)
     SettingsCard(stringResource(R.string.use_on)) {
         Column(Modifier.alpha(if (on) 1f else .4f)) {
             FolioScreen.entries.forEach { screen ->
@@ -1347,7 +1352,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
     SettingsCard(stringResource(R.string.about)) {
         TextButton(onClick = { model.resetTweak(tweak) }) { Text(stringResource(R.string.reset_1, tweak.name)) }
-        CardNote(stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
+        CardNote(tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
     }
     SheetGroup { IosActionRow(stringResource(R.string.remove_control, tweak.name), "tweak-remove-${tweak.id}", destructive = true) { model.removeTweak(tweak) } }
 }
@@ -1528,6 +1533,10 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val credits = listOf(
         stringResource(R.string.duolauncher) to "jakesgoodapps (github.com/jakesgoodapps/DuoLauncher) · MIT · Folio’s starting codebase: iPhone Duo-style Home layouts for both screens, widgets, folders, work profile, wallpapers and Discover",
         "iphone-duo" to "chuspeeism · MIT · fold blur and darkening model",
+        "Duo Fold Live" to stringResource(R.string.credit_duo_fold_live), // english-only
+        "hingewave" to stringResource(R.string.credit_hingewave), // english-only
+        "FoldFX (iamkeeler)" to stringResource(R.string.credit_foldfx_keeler), // english-only
+        "Duo Open" to stringResource(R.string.credit_duo_open), // english-only
         "iPhone Duo on Galaxy Z Fold 8 demo" to "u/moomanjohnny · screenshot + shader idea (no code)",
         stringResource(R.string.quicklaunch) to stringResource(R.string.ahmedthegeek_spotlight_ideas_no_code),
         stringResource(R.string.foldfx) to "u/FixHour8452 · fold transition ideas: halfway haptic tick, light sweep, slight scale, following a smooth hinge angle (no code)",
@@ -1687,7 +1696,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 }
 
 /** Drag to see the fold effect at your Intensity without folding: two Home pages side by side, like the open screen. */
-@Composable private fun FoldEffectPreview(state: LauncherState, bitmap: android.graphics.Bitmap?) {
+@Composable private fun FoldEffectPreview(state: LauncherState, bitmap: android.graphics.Bitmap?,
+    /** Where to keep a copy of the clean Home pair, so Duet's style tiles can draw it instead of building their own. */
+    record: DuetHome? = null) {
     var fold by rememberSaveable { mutableFloatStateOf(.5f) }
     val corner = 16.dp
     val bezel = 5.dp
@@ -1695,7 +1706,13 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         Box(Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)
             .clearedDescription(R.string.fold_effect_preview)) {
-            Row(Modifier.clip(RoundedCornerShape(corner)).foldPreviewEffect { fold * state.foldIntensity }) {
+            Row(Modifier.clip(RoundedCornerShape(corner)).foldPreviewEffect(state.duet.resolved()) { fold * state.foldIntensity }
+                .then(if (record != null) Modifier.drawWithContent {
+                    // Inside the effect's layer, so this is the Home before any frost.
+                    record.layer.record { this@drawWithContent.drawContent() }
+                    drawLayer(record.layer)
+                    if (record.size != record.layer.size) record.size = record.layer.size
+                } else Modifier)) {
                 // Two Home pages with one Side Bar, on the right (on the left in left-handed layouts), like the open Fold.
                 MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded)
                 MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded)
@@ -1704,6 +1721,89 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
     // Slider end to end is the hinge from open (180°) to half folded (90°), where the effect peaks.
     CustomizationSlider(stringResource(R.string.preview), if (fold < .01f) stringResource(R.string.open) else "${(180 - 90 * fold).toInt()}°", fold, 0f..1f) { fold = it }
+}
+
+/**
+ * Duet's own settings: the preview, the style picker and the sliders that adjust the style (DuetOptions). Frost is
+ * hidden for a style with none and Tilt for a style that doesn't tilt, rather than shown greyed out.
+ */
+@Composable private fun DuetSettings(state: LauncherState, model: LauncherModel, bitmap: android.graphics.Bitmap?) {
+    val duet = state.duet
+    val look = duet.look
+    val home = DuetHome(androidx.compose.ui.graphics.rememberGraphicsLayer())
+    SettingsCard(stringResource(R.string.preview)) { FoldEffectPreview(state, bitmap, home) }
+    SettingsCard(stringResource(R.string.duet_style)) {
+        // Three to a row on the cover screen, all five across when there's room; a short last row keeps tile widths.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val perRow = if (maxWidth >= 520.dp) 5 else 3
+            Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+                com.mccal.folio.duet.DuetStyles.all.chunked(perRow).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+                        row.forEach { style ->
+                            DuetStyleTile(style, style.id == look.id, state, home, Modifier.weight(1f)) { model.setDuet(duet.copy(style = style.id)) }
+                        }
+                        repeat(perRow - row.size) { androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+        CustomizationSlider(stringResource(R.string.intensity), "${(state.foldIntensity * 100).toInt()}%", state.foldIntensity, .3f..1.5f, default = 1f) {
+            model.setFoldIntensity(it) }
+        if (look.frost > 0f) CustomizationSlider(stringResource(R.string.duet_frost), "${(duet.frost * 100).toInt()}%", duet.frost,
+            com.mccal.folio.duet.DuetOptions.FROST, default = 1f) { model.setDuet(duet.copy(frost = it)) }
+        CustomizationSlider(stringResource(R.string.duet_shade), "${(duet.darkening * 100).toInt()}%", duet.darkening,
+            com.mccal.folio.duet.DuetOptions.DARKENING, default = 1f) { model.setDuet(duet.copy(darkening = it)) }
+        if (look.perspective > 0f) CustomizationSlider(stringResource(R.string.duet_tilt), "${(duet.perspective * 100).toInt()}%", duet.perspective,
+            com.mccal.folio.duet.DuetOptions.PERSPECTIVE, default = 1f) { model.setDuet(duet.copy(perspective = it)) }
+        val note = stringResource(R.string.duet_adjust_note)
+        val tiltNote = stringResource(R.string.duet_tilt_only_deep)
+        val frostNote = stringResource(R.string.duet_minimal_no_frost)
+        CardNote(listOfNotNull(note, tiltNote.takeIf { look.perspective == 0f }, frostNote.takeIf { look.frost == 0f }).joinToString(" "))
+        IosActionRow(stringResource(R.string.duet_reset_style), "duet-reset-style",
+            enabled = duet.frost != 1f || duet.darkening != 1f || duet.perspective != 1f) {
+            model.setDuet(duet.copy(frost = 1f, darkening = 1f, perspective = 1f)) }
+    }
+    SettingsCard(stringResource(R.string.duet_direction)) {
+        IosSegmented(com.mccal.folio.duet.DuetDirection.entries.map { it to stringResource(it.label) }, duet.plays,
+            { model.setDuet(duet.copy(direction = it.id)) }, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "duet-direction")
+    }
+    SettingsCard(stringResource(R.string.duet_handover)) {
+        IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
+            state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")
+        if (state.foldSnapshot) CardNote(stringResource(R.string.takes_a_quick_in_memory_snapshot_of_foli))
+        CardNote(stringResource(R.string.your_fold_reports_only_a_few_hinge_posit))
+    }
+}
+
+/** The preview's Home pair, recorded once and drawn by every style tile. */
+@androidx.compose.runtime.Stable
+private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLayer) {
+    var size by mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
+}
+
+/** One style, drawn by the real shader at a fixed half fold over the person's own Home. */
+@Composable private fun DuetStyleTile(style: com.mccal.folio.duet.DuetStyle, selected: Boolean, state: LauncherState,
+    home: DuetHome, modifier: Modifier, onClick: () -> Unit) {
+    val name = stringResource(style.name)
+    val resolved = state.duet.copy(style = style.id).resolved()
+    Column(modifier.clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.White.copy(alpha = .06f))
+        .border(2.dp, if (selected) androidx.compose.ui.graphics.Color(FolioColors.Value.Blue) else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(14.dp))
+        .selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
+        .testTag("duet-style-${style.id}").padding(FolioSpace.SNUG.dp)) {
+        // The Home pair the big preview recorded, scaled to fit: one recording shared by every tile.
+        val src = home.size
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()
+            .aspectRatio(if (src.width > 0 && src.height > 0) src.width.toFloat() / src.height else 7f / 6f)
+            .clip(RoundedCornerShape(9.dp)).foldPreviewEffect(resolved) { .6f * state.foldIntensity }
+            .drawBehind {
+                if (src.width > 0) scale(size.width / src.width, size.height / src.height,
+                    androidx.compose.ui.geometry.Offset.Zero) { drawLayer(home.layer) }
+            })
+        Row(Modifier.padding(top = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(name, Modifier.weight(1f), fontSize = FolioType.BODY.sp)
+            if (selected) androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null, tint = androidx.compose.ui.graphics.Color(FolioColors.Value.Blue), modifier = Modifier.size(18.dp))
+        }
+    }
 }
 
 /**

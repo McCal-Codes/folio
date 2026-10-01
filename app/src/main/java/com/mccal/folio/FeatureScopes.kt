@@ -41,6 +41,8 @@ internal data class TweakFeature(
     val gate: FeatureGate? = null,
     /** More words Settings search finds it by, for a tweak people know by what it does ("Page Effects"). */
     @androidx.annotation.StringRes val keywords: Int? = null,
+    /** The credit line when this tweak includes someone's code, in place of "re-created from scratch". */
+    @androidx.annotation.StringRes val credit: Int? = null,
 )
 
 /**
@@ -79,4 +81,12 @@ internal val TweakFeatures = listOf(
         androidx.compose.material.icons.Icons.Rounded.AutoStories, FolioColors.Value.Teal,
         { it.pageEffect != PageEffect.NONE },
         { m, v -> m.setPageEffectOn(v) }, false, FeatureGate.PAGE_EFFECTS, keywords = R.string.page_effects),
+    // Folio's fold animation. It was built in, so it defaults on and a save from before it counts as installed.
+    TweakFeature(DUET_ID, "Duet", "Duo Fold Live by joeconsorti", // english-only
+        R.string.tweak_duet_detail,
+        androidx.compose.material.icons.Icons.Rounded.MenuBook, FolioColors.Value.Indigo,
+        { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit,
+        keywords = R.string.settings_keywords_fold_animation),
 )
+
+internal const val DUET_ID = "duet"

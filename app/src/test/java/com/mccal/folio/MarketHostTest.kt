@@ -52,6 +52,10 @@ class MarketHostTest {
             background = snapshot
         }
 
+        override fun setDuet(options: com.mccal.folio.duet.DuetOptions, intensity: Float) {
+            state = state.copy(duet = options, foldIntensity = intensity)
+        }
+
         override fun applyTheme(theme: FolioTheme) {
             themes += theme
             state = state.withTheme(theme, installedPacks = emptySet())
@@ -115,13 +119,35 @@ class MarketHostTest {
         assertTrue("nothing was applied", launcher.themes.isEmpty())
     }
 
+    @Test fun `a Duet package sets only the options it names, and removing it puts back the look it replaced`() {
+        val mine = com.mccal.folio.duet.DuetOptions(style = "subtle", frost = .7f)
+        val launcher = FakeLauncher(LauncherState(duet = mine, foldIntensity = .9f, installedTweaks = setOf(DUET_ID)))
+        val host = MarketHost(launcher)
+        val change = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DUET, true,
+            options = mapOf("style" to "deep", "intensity" to 1.4))))
+        val before = host.apply(change)
+        assertEquals(mine.copy(style = "deep"), launcher.state.duet)
+        assertEquals(1.4f, launcher.state.foldIntensity)
+        host.restore(change, before)
+        assertEquals(mine, launcher.state.duet)
+        assertEquals(.9f, launcher.state.foldIntensity)
+        assertTrue(DUET_ID in launcher.state.installedTweaks)
+    }
+
+    @Test fun `a Duet package without options leaves the look alone`() {
+        val mine = com.mccal.folio.duet.DuetOptions(style = "minimal")
+        val launcher = FakeLauncher(LauncherState(duet = mine))
+        MarketHost(launcher).apply(PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DUET, true))))
+        assertEquals(mine, launcher.state.duet)
+    }
+
     @Test fun `Folio only claims the capabilities it really has`() {
         val host = MarketHost(FakeLauncher())
         assertEquals(
             setOf(
                 Capability.THEME, Capability.WALLPAPER, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
                 Capability.NOTIFICATION_APP_ROW, Capability.TINT_NOTIFICATIONS, Capability.TINT_MEDIA,
-                Capability.PAGE_EFFECTS,
+                Capability.PAGE_EFFECTS, Capability.FOLD_TRANSITION,
             ),
             host.capabilities,
         )
