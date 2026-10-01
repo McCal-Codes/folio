@@ -42,4 +42,10 @@ class AppIconOverrideTest {
     @Test fun `nothing set writes nothing`() {
         assertFalse(appIconStylesToJson(mapOf(mail to AppIconOverride())).has(mail))
     }
+
+    @Test fun `an app that is only remembered for its icon look is still tracked, so uninstalling it clears the look`() {
+        val state = LauncherState(appIconStyles = mapOf(mail to AppIconOverride(shape = IconShape.CIRCLE)), appNames = mapOf("renamed" to "X"),
+            dock = listOf("docked", null, null, null), homeSlots = listOf("homed"))
+        assertEquals(setOf(mail, "renamed", "docked", "homed"), state.trackedAppIds().toSet())
+    }
 }

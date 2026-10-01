@@ -1624,7 +1624,8 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
-                    onLaunch = onLaunchFrom, onAddApps = { overlays.addToFolder = id },
+                    // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
+                    onLaunch = onLaunchFrom, onAddApps = if (focusLock == null) {{ overlays.addToFolder = id }} else null,
                     onMoveOut = { appId, destination ->
                         if (model.removeAppFromFolder(id, appId, destination)) overlays.folder = model.folder(id)?.id
                     })

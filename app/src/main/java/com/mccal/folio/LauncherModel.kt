@@ -309,6 +309,14 @@ data class LauncherState(
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
 
+/**
+ * Every app the saved state remembers something about: where it is on Home, the dock, folders and stacks, and a name or
+ * icon look chosen for it. When one is no longer installed, all of that goes, so nothing stale comes back with it.
+ */
+internal fun LauncherState.trackedAppIds(): List<String> =
+    homeSlots.filterNotNull() + leadingSlots.filterNotNull() + dock.filterNotNull() + folders.flatMap { it.appIds } +
+        iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys
+
 /** Every app id Home shows without opening an app: its pages, the dock, and the apps in its folders and icon stacks. */
 internal fun LauncherState.homeAppIds(): Set<String> =
     ((homeSlots + leadingSlots + dock).filterNotNull().filterNot(::isFolderId) + folders.flatMap { it.appIds } +
@@ -532,9 +540,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val pins = if (sourceSchema < 6 && needsMigration) migrateSchema5Apps(legacyPins) else legacyPins
                     val availableIds = entries.mapTo(mutableSetOf(), AppEntry::id)
                     val authoritative = apps.authoritativeProfiles
-                    val removedIds = removedAppIds(old.homeSlots.filterNotNull() + old.leadingSlots.filterNotNull() +
-                        old.dock.filterNotNull() + old.folders.flatMap { it.appIds } + old.iconStacks.keys + old.iconStacks.values.flatten() +
-                        old.appNames.keys, availableIds,
+                    val removedIds = removedAppIds(old.trackedAppIds(), availableIds,
                         authoritative, temporarilyUnavailable, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
                         apps.removedProfiles)
                     // iOS "Add to Home Screen": a newly downloaded app also goes to the first free spot on Home.
