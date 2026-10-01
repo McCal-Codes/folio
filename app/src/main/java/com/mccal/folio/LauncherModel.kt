@@ -150,6 +150,8 @@ data class LauncherState(
     val spotlightHidden: Set<String> = emptySet(),
     /** Engine for Enter in search: a [WebSearchTarget] name. */
     val searchEngine: String = "GOOGLE",
+    /** Your own search address for Search with Enter, used when [searchEngine] is CUSTOM: see [customSearchUrl]. */
+    val searchCustomUrl: String = "",
     /** Island system pop-ups the user turned off (IslandEventKind names). */
     val islandEventsOff: Set<String> = emptySet(),
     val libraryCategories: Boolean = true,
@@ -279,6 +281,8 @@ data class LauncherState(
     val iconStacks: Map<String, List<String>> = emptyMap(),
     /** Custom app names by app id; apps without an entry keep the name Android reports. */
     val appNames: Map<String, String> = emptyMap(),
+    /** Icon looks chosen for single apps (long-press, More, Edit Icon); an app not here follows the launcher. */
+    val appIconStyles: Map<String, AppIconOverride> = emptyMap(),
     /** Per-page looks by real Home page number (pages without an entry use Home's settings). */
     val pageStyles: Map<Int, PageStyle> = emptyMap(),
     val islandEverywhere: Boolean = false,
@@ -304,6 +308,14 @@ data class LauncherState(
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
+
+/**
+ * Every app the saved state remembers something about: where it is on Home, the dock, folders and stacks, and a name or
+ * icon look chosen for it. When one is no longer installed, all of that goes, so nothing stale comes back with it.
+ */
+internal fun LauncherState.trackedAppIds(): List<String> =
+    homeSlots.filterNotNull() + leadingSlots.filterNotNull() + dock.filterNotNull() + folders.flatMap { it.appIds } +
+        iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys
 
 /** Every app id Home shows without opening an app: its pages, the dock, and the apps in its folders and icon stacks. */
 internal fun LauncherState.homeAppIds(): Set<String> =
@@ -528,9 +540,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val pins = if (sourceSchema < 6 && needsMigration) migrateSchema5Apps(legacyPins) else legacyPins
                     val availableIds = entries.mapTo(mutableSetOf(), AppEntry::id)
                     val authoritative = apps.authoritativeProfiles
-                    val removedIds = removedAppIds(old.homeSlots.filterNotNull() + old.leadingSlots.filterNotNull() +
-                        old.dock.filterNotNull() + old.folders.flatMap { it.appIds } + old.iconStacks.keys + old.iconStacks.values.flatten() +
-                        old.appNames.keys, availableIds,
+                    val removedIds = removedAppIds(old.trackedAppIds(), availableIds,
                         authoritative, temporarilyUnavailable, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
                         apps.removedProfiles)
                     // iOS "Add to Home Screen": a newly downloaded app also goes to the first free spot on Home.
@@ -556,7 +566,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
                         dock = reconciled.dock, folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
-                        appNames = old.appNames - removedIds,
+                        appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds,
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
                         error = if (statePayloadInvalid) old.error else null)
                 }
@@ -803,6 +813,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (mutable.value.apps.none { it.id == appId }) return false
         return commitLayout(com.mccal.folio.addAppToFolder(mutable.value.layout, folderId, appId, index))
     }
+    /** Several apps into one folder as a single change, so Undo takes them all back. Apps that aren't installed are left out. */
+    fun addAppsToFolder(folderId: String, appIds: List<String>): Boolean {
+        val installed = mutable.value.apps.mapTo(mutableSetOf()) { it.id }
+        return commitLayout(com.mccal.folio.addAppsToFolder(mutable.value.layout, folderId, appIds.filter { it in installed }))
+    }
     fun removeAppFromFolder(folderId: String, appId: String, target: DropTarget) =
         commitLayout(com.mccal.folio.removeAppFromFolder(mutable.value.layout, folderId, appId, target, mutable.value.homeAppRows))
     fun moveFolderApp(folderId: String, appId: String, index: Int) =
@@ -819,13 +834,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val kept = before ?: old
         if (old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
             old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
-            old.appNames + preview.appNames == old.appNames) return false
+            old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles) return false
         if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
         undoLayout = kept.layout to preview.layout
         undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus)
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
-        mutable.value = old.copy(appNames = names, apps = old.apps.withAppNames(names),
+        mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, apps = old.apps.withAppNames(names),
             homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = preview.layout.dock,
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded,
@@ -1080,6 +1095,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setSpotlightSection(section: String, visible: Boolean) = updateSettings(soon = false) {
         it.copy(spotlightHidden = if (visible) it.spotlightHidden - section else it.spotlightHidden + section) }
     fun setSearchEngine(engine: String) = updateSettings(soon = false) { it.copy(searchEngine = engine) }
+    fun setSearchCustomUrl(url: String) = updateSettings(soon = true) { it.copy(searchCustomUrl = url.take(500)) }
     fun setIslandEvent(kind: String, enabled: Boolean) = updateSettings(soon = false) {
         it.copy(islandEventsOff = if (enabled) it.islandEventsOff - kind else it.islandEventsOff + kind) }
     fun setLibraryCategories(value: Boolean) = updateSettings(soon = false) { it.copy(libraryCategories = value) }
@@ -1155,6 +1171,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setIsland(value: Boolean) = updateSettings(soon = false) { it.copy(island = value) }
     fun setHidden(id: String, hidden: Boolean) = updateSettings(soon = false) { it.copy(hiddenApps = if (hidden) it.hiddenApps + id else it.hiddenApps - id) }
     /** Renames one app everywhere it appears; a blank name puts the name Android reports back. */
+    fun setAppIconStyle(id: String, override: AppIconOverride) = updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
     fun renameApp(id: String, name: String) = updateSettings(soon = false) { s ->
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))
@@ -1274,7 +1291,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications)
-            .put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
+            .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
@@ -1302,6 +1319,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("folderColors", JSONObject().apply { s.folderColors.forEach { (id, c) -> put(id, c) } })
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
+            .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
             .put("pageStyles", JSONObject().apply { s.pageStyles.forEach { (page, style) -> put(page.toString(), JSONObject().put("scale", style.iconScale.toDouble())
                 .apply { style.labels?.let { put("labels", it) } }) } })
             .put(SettingKeys.DOCK_EVERYWHERE, s.dockEverywhere).put(SettingKeys.ISLAND_EVERYWHERE, s.islandEverywhere)
@@ -1508,7 +1526,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         standByCharging = j.optBoolean("standByCharging", true),
         standByTent = j.optBoolean("standByTent", false),
         spotlightHidden = j.optJSONArray("spotlightHidden")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
-        searchEngine = j.optString("searchEngine", "GOOGLE"),
+        searchEngine = j.optString("searchEngine", "GOOGLE").takeIf { it == CUSTOM_SEARCH || runCatching { WebSearchTarget.valueOf(it) }.isSuccess } ?: "GOOGLE",
+        searchCustomUrl = j.optString("searchCustomUrl", "").take(500),
         islandEventsOff = j.optJSONArray(SettingKeys.ISLAND_EVENTS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         libraryCategories = j.optBoolean("libraryCategories", true),
         libraryWork = j.optBoolean("libraryWork", true),
@@ -1589,6 +1608,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         appNames = j.optJSONObject("appNames")?.let { o -> o.keys().asSequence()
             .associateWith { o.optString(it).trim().takeAppName() }
             .filterValues(String::isNotBlank) } ?: emptyMap(),
+        appIconStyles = appIconStylesFromJson(j.optJSONObject("appIconStyles")),
         iconStacks = j.optJSONObject("iconStacks")?.let { o -> o.keys().asSequence().associateWith { key ->
             o.optJSONArray(key)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()
         }.filterValues { it.isNotEmpty() } } ?: emptyMap(),

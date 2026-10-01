@@ -314,10 +314,13 @@ fun LauncherScreen(
             ?: lastHomePage.coerceIn(0, homePages - 1)
         drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
         picker.exactTarget = false; widgetPlacementMessage = null; overlays.menu = null
-        overlays.folder = null; overlays.newFolder = null; overlays.emptyCell = null; homeEdit.stop()
+        overlays.folder = null; overlays.newFolder = null; overlays.addToFolder = null; overlays.iconEditor = null; overlays.emptyCell = null; homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
     } }
+    // Given half of a split screen, show a Home page (one cover-sized page beside the app) rather than where Folio was left.
+    val splitScreen = androidx.compose.ui.platform.LocalConfiguration.current.let { launcherActivity.isInMultiWindowMode }
+    LaunchedEffect(splitScreen) { splitViewHomePage(splitScreen, pager.currentPage, homePages, lastHomePage)?.let { pager.scrollToPage(it) } }
     // Turning on a Focus with a Home page goes straight there.
     LaunchedEffect(state.activeFocus) {
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
@@ -1511,6 +1514,16 @@ fun LauncherScreen(
             if (stacked.isEmpty()) LaunchedEffect(anchor.id) { overlays.stackFan = null }
             else IconStackFan(anchor, stacked, onDismiss = { overlays.stackFan = null }) { overlays.stackFan = null; onLaunchFrom(it, IconBounds.of(anchor.id)) }
         }
+        overlays.addToFolder?.let { id ->
+            val target = model.folder(id)
+            if (target == null) LaunchedEffect(id) { overlays.addToFolder = null }
+            else ModalBottomSheet(onDismissRequest = { overlays.addToFolder = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                FolderAppsEditor(target, pickerApps(state), onDone = { picked ->
+                    if (picked.isNotEmpty()) model.addAppsToFolder(id, picked)
+                    overlays.addToFolder = null
+                })
+            }
+        }
         appsById[overlays.stackEditor]?.let { anchor ->
             ModalBottomSheet(onDismissRequest = { overlays.stackEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 IconStackEditor(anchor, state.apps.filter { it.id !in state.hiddenApps }, state.iconStacks[anchor.id].orEmpty(),
@@ -1542,7 +1555,13 @@ fun LauncherScreen(
                 onToggleHidden = { model.setHidden(app.id, app.id !in state.hiddenApps); overlays.menu = null },
                 onInfo = { onAppInfo(app); overlays.menu = null },
                 onRename = { overlays.rename = app.id; overlays.menu = null },
+                onEditIcon = if (app.isShortcut) null else {{ overlays.iconEditor = app.id; overlays.menu = null }},
                 onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null)
+        }
+        appsById[overlays.iconEditor]?.let { app ->
+            ModalBottomSheet(onDismissRequest = { overlays.iconEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                AppIconEditor(app, state.appIconStyles[app.id] ?: AppIconOverride(), onChange = { model.setAppIconStyle(app.id, it) }, onDone = { overlays.iconEditor = null })
+            }
         }
         appsById[overlays.rename]?.let { app ->
             RenameAppAlert(app, onDismiss = { overlays.rename = null }, onRename = { model.renameApp(app.id, it); overlays.rename = null })
@@ -1605,7 +1624,8 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
-                    onLaunch = onLaunchFrom,
+                    // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
+                    onLaunch = onLaunchFrom, onAddApps = if (focusLock == null) {{ overlays.addToFolder = id }} else null,
                     onMoveOut = { appId, destination ->
                         if (model.removeAppFromFolder(id, appId, destination)) overlays.folder = model.folder(id)?.id
                     })

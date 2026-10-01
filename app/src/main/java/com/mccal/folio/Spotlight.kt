@@ -217,7 +217,6 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     }
     val q = query.trim()
     fun shows(section: SpotlightSection) = section.name !in state.spotlightHidden
-    val engine = runCatching { WebSearchTarget.valueOf(state.searchEngine) }.getOrDefault(WebSearchTarget.GOOGLE)
     val appHits = remember(q, apps, frecency) { if (q.isEmpty()) emptyList() else rankApps(apps, q, frecency) }
     val shortcuts = remember(context) { settingShortcuts(context) }
     val settingHits = remember(q, shortcuts) { if (q.length < 2) emptyList() else shortcuts.filter { it.matches(q) }.take(4) }
@@ -262,7 +261,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         keyboardActions = KeyboardActions(onSearch = {
                             when {
                                 appHits.isNotEmpty() -> launch(appHits.first())
-                                q.isNotEmpty() -> { onClose(); openWebSearch(context, engine, q) }
+                                q.isNotEmpty() -> { onClose(); openEnterSearch(context, state, q) }
                             }
                         }))
                 }
@@ -319,11 +318,11 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                     if (shows(SpotlightSection.WEB)) item("web") {
                         Section(stringResource(R.string.search_the_web_ask_ai)) {
                             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                                WebSearchTarget.entries.forEach { target ->
+                                WebSearchTarget.chips(state.searchEngine).forEach { target ->
                                     Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
                                         .clickable { onClose(); openWebSearch(context, target, q) }
                                         .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(if (target.label.startsWith("Ask")) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
+                                        Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
                                             tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text(target.label, color = Color.White, fontSize = 14.sp)

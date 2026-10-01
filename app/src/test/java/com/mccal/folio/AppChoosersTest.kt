@@ -34,10 +34,10 @@ class AppChoosersTest {
     @Test fun `a hidden app is offered to neither the dock nor a new folder`() {
         val state = LauncherState(apps = listOf(mail, diary), hiddenApps = setOf(diary.id))
         assertEquals(listOf(mail), pickerApps(state))
-        // Both lists are built from it: the dock's chooser, and the apps Create Folder offers to go with the first.
+        // Every list is built from it: the dock's chooser, the apps Create Folder offers to go with the first, and Add Apps in a folder.
         val screen = java.io.File(root, "app/src/main/java/com/mccal/folio/LauncherScreen.kt").readText()
         assertFalse("the dock's chooser lists every app", "AppPicker(state.apps" in screen)
-        assertEquals("both choosers should leave hidden apps out", 2, Regex("""pickerApps\(state\)""").findAll(screen).count())
+        assertEquals("every chooser should leave hidden apps out", 3, Regex("""pickerApps\(state\)""").findAll(screen).count())
     }
 
     @Test fun `the dock's chooser finds an app by the name Android gives it`() {

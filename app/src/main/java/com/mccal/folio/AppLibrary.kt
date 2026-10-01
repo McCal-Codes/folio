@@ -129,8 +129,7 @@ internal fun AppLibrary(
             IosSearchField(query, onQuery, if (editing) stringResource(R.string.search_apps) else stringResource(R.string.app_library), Modifier.padding(vertical = FolioSpace.MEDIUM.dp),
                 fieldModifier = (if (editing) Modifier else Modifier.focusRequester(searchFocus)).testTag(if (editing) "pin-search" else "library-search"),
                 ink = ink, onSearch = {
-                    if (!editing && query.isNotBlank()) openWebSearch(context,
-                        runCatching { WebSearchTarget.valueOf(state.searchEngine) }.getOrDefault(WebSearchTarget.GOOGLE), query)
+                    if (!editing && query.isNotBlank()) openEnterSearch(context, state, query)
                 })
             var libraryWidth by remember { mutableStateOf(360.dp) }
             val density = androidx.compose.ui.platform.LocalDensity.current
@@ -145,7 +144,7 @@ internal fun AppLibrary(
                 }
                 if (!editing && query.isBlank()) item("downloading") { DownloadingApps(ink) }
                 if (!editing && query.isNotBlank()) item("web-search") {
-                    WebSearchRow(query) { openWebSearch(context, it, query) }
+                    WebSearchRow(query, state.searchEngine) { openWebSearch(context, it, query) }
                 }
                 if (browsing && categorized.isNotEmpty()) {
                     // Tiles stay iPhone-sized: more columns on the wide inner screen instead of giant tiles.
@@ -203,15 +202,15 @@ internal fun AppLibrary(
 }
 
 @Composable
-private fun WebSearchRow(query: String, onSearch: (WebSearchTarget) -> Unit) {
+private fun WebSearchRow(query: String, engine: String, onSearch: (WebSearchTarget) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(bottom = FolioSpace.SMALL.dp)) {
         Text(stringResource(R.string.search_1_with, query.trim()), fontSize = FolioType.GROUP_LABEL.sp, color = Ink.copy(alpha = .75f),
             modifier = Modifier.padding(bottom = FolioSpace.SNUG.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-            WebSearchTarget.entries.forEach { target ->
+            WebSearchTarget.chips(engine).forEach { target ->
                 AssistChip(onClick = { onSearch(target) }, label = { Text(target.label) },
-                    leadingIcon = { Icon(if (target.label.startsWith("Ask")) Icons.Rounded.AutoAwesome else Icons.Rounded.Public,
+                    leadingIcon = { Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public,
                         null, Modifier.size(16.dp)) },
                     modifier = Modifier.testTag("web-search-${target.name.lowercase()}"))
             }

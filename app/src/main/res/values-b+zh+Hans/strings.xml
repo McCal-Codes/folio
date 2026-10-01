@@ -1099,7 +1099,7 @@
     <string name="settings_today_view_left_of_home">“今天”视图 / 主屏幕左侧</string>
     <string name="settings_keywords_today_view_left_of_home">今天 小组件 页面 旁边 建议 today discover google widgets page beside suggestions</string>
     <string name="settings_icon_pack_shape_style">图标包、形状与样式</string>
-    <string name="settings_keywords_icon_pack_shape_style">图标 图标包 超椭圆 圆形 着色 深色 icons pack squircle circle tinted dark</string>
+    <string name="settings_keywords_icon_pack_shape_style">图标 图标包 超椭圆 圆形 着色 深色 icons pack squircle circle tinted dark per app individual edit icon</string>
     <string name="settings_keywords_notification_badges">标记 圆点 数字 颜色 badge dot count color soft</string>
     <string name="settings_live_clock_and_calendar_icons">实时时钟和日历图标</string>
     <string name="settings_keywords_live_clock_and_calendar_icons">实时 时钟 日历 live clock calendar</string>
@@ -1114,14 +1114,14 @@
     <string name="settings_keywords_hide_the_island_in_full_screen">灵动岛 全屏 横屏 视频 游戏 沉浸 隐藏 island full screen landscape video game immersive hide</string>
     <string name="settings_keywords_notification_center">通知 时钟 堆叠 分组 模糊 面板 notifications clock stack group split blur panels iphone style</string>
     <string name="settings_keywords_control_center">控制中心 大小 居中 开关 control center size centered toggles</string>
-    <string name="settings_keywords_spotlight">搜索引擎 联系人 计算器 信息 search engine google duckduckgo contacts calculator sections messages openbubbles</string>
+    <string name="settings_keywords_spotlight">搜索引擎 联系人 计算器 信息 search engine google duckduckgo contacts calculator sections messages openbubbles bing brave ecosia startpage qwant kagi custom url</string>
     <string name="settings_keywords_app_library">资源库 类别 隐藏 App library categories hidden apps</string>
     <string name="settings_search_button_swipe_down">搜索按钮与下滑</string>
     <string name="settings_keywords_search_button_swipe_down">搜索 按钮 下滑 search pill swipe google</string>
     <string name="settings_page_dots_haptics">页面圆点与触感</string>
     <string name="settings_keywords_page_dots_haptics">页面圆点 拖动 翻页 触感 振动 反馈 page dots scrub drag flip haptics vibration feedback</string>
     <string name="settings_gestures_pull_downs">手势与下拉</string>
-    <string name="settings_keywords_gestures_pull_downs">手势 下拉 轻扫 gesture pull down swipe</string>
+    <string name="settings_keywords_gestures_pull_downs">手势 下拉 轻扫 gesture pull down swipe touch hold press delay long</string>
     <string name="settings_swipe_down_on_home">在主屏幕下滑</string>
     <string name="settings_keywords_swipe_down_on_home">下滑 主屏幕 聚焦搜索 搜索 通知中心 下拉 单指 swipe down home spotlight search notification center shade pull one finger</string>
     <string name="settings_keywords_actions">操作 连点两下 双指 充电 蓝牙 耳机 触发 activator double tap two finger charging bluetooth headphones trigger</string>
@@ -1486,4 +1486,18 @@
     <string name="profile_folio_detail">灵动岛、Folio 的通知中心和控制中心，在主屏幕下滑时打开聚焦搜索。</string>
     <string name="profile_android_style_detail">使用 Android 自带的通知栏和快捷设置，不使用灵动岛，在主屏幕下滑时打开通知栏。</string>
     <string name="profile_custom_detail">这些是你自己设置的。在上方选一项即可从它开始。</string>
+    <string name="add_apps">添加 App</string>
+    <string name="add_apps_to_1">向“%1$s”添加 App</string>
+    <string name="n_selected">已选择 %1$d 个</string>
+    <string name="app_selected">已选择</string>
+    <string name="app_not_selected">未选择</string>
+    <string name="custom_search_engine">自定…</string>
+    <string name="custom_search_note" formatted="false">你自己的搜索地址，用 %s 表示搜索词的位置。和其他网页搜索一样，搜索词会发送到该网站。</string>
+    <string name="custom_search_invalid" formatted="false">这不是 Folio 能使用的网址。需要 http 或 https、网站名，以及表示搜索词位置的 %s。</string>
+    <string name="edit_icon">编辑图标</string>
+    <string name="edit_icon_for_1">%1$s 的图标</string>
+    <string name="like_other_icons">与其他图标相同</string>
+    <string name="edit_icon_note">只更改此 App 的图标，Folio 显示它的所有位置都会生效。其余图标仍在“设置”›“图标与侧栏”中设定。</string>
+    <string name="reset_icon">重置图标</string>
+    <string name="custom_search_blank">在你输入地址之前，按回车搜索会使用 Google。</string>
 </resources>

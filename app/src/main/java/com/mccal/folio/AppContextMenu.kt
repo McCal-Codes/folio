@@ -93,6 +93,8 @@ internal fun AppContextMenu(
     lockedBy: String? = null,
     onDismiss: () -> Unit, onMove: () -> Unit, onAddOrRemove: () -> Unit, onCreateFolder: () -> Unit, hasFolders: Boolean = false,
     onWidgets: (() -> Unit)?, onToggleHidden: () -> Unit, onInfo: () -> Unit, onRename: () -> Unit,
+    /** This app's own icon look; null where an icon has none to change. */
+    onEditIcon: (() -> Unit)? = null,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
 ) {
@@ -207,6 +209,7 @@ internal fun AppContextMenu(
                     onStack?.let { MenuDivider(); MenuRow(stringResource(R.string.stack_apps), Icons.Rounded.Layers) { it() } }
                     MenuDivider()
                     MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
+                    onEditIcon?.let { MenuDivider(); MenuRow(stringResource(R.string.edit_icon), Icons.Rounded.Palette) { it() } }
                     MenuDivider()
                     MenuRow(if (hidden) stringResource(R.string.show_in_app_library) else stringResource(R.string.hide_from_app_library), if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
                     MenuDivider()
