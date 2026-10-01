@@ -618,7 +618,12 @@ fun LauncherScreen(
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
             var statusHeight by remember { mutableFloatStateOf(0f) }
-            val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = state.dock.size, statusRail = state.verticalStatus,
+            // While an app is dragged toward a full dock that can still grow, it shows one open place at the end: drop there
+            // and the dock becomes a place bigger. Gone again as soon as the drag ends.
+            val dockOpenPlace = drag.active && drag.source?.appId != null && drag.source?.target !is DropTarget.Dock &&
+                state.dock.size < MAX_DOCK_SLOTS && state.dock.none { it == null }
+            val shownDock = if (dockOpenPlace) state.dock + null else state.dock
+            val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
@@ -867,7 +872,7 @@ fun LauncherScreen(
             // Background and border without clipping, so Harbor-style magnified icons can grow past the rail.
             // Portrait unfolded (iPhone Duo): a horizontal dock bar centered along the bottom, above the page controls.
             val dockPitch = geometry.dockPitch
-            val dockBarFull = (dockPitch * state.dock.size + 16f).dp
+            val dockBarFull = (dockPitch * shownDock.size + 16f).dp
             // More dock apps than the window has room for: the bar stops at the room it has and scrolls.
             val fromRoom = if (geometry.dockBarRoom > 0f) minOf(dockBarFull, geometry.dockBarRoom.dp) else dockBarFull
             // Half folded like a book, the bar lives on the trailing half and must not reach across the hinge.
@@ -905,7 +910,7 @@ fun LauncherScreen(
                 }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(30.dp))
                 .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(30.dp)).testTag("dock")) {
                 Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
-                    DockAppColumn(state.dock, previewLayout.dock, appsById, if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight,
+                    DockAppColumn(shownDock, previewLayout.dock, appsById, if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight,
                         dockIconSize(geometry.iconSize), drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },
                         magnify = FeatureScopes.on(state.featureScopes, "dockMagnify", state.dockMagnify, screenFor(wide)) &&

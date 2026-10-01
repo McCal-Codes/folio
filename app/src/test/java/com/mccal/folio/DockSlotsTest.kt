@@ -24,17 +24,52 @@ class DockSlotsTest {
     }
 
     @Test fun `a saved dock keeps up to six places, and a damaged one is held to that`() {
-        assertEquals(listOf("a", "b", "c", "d", "e", null), decodeLauncherState("""{"dock":["a","b","c","d","e",null]}""", legacyRaw = null).dock)
+        assertEquals(listOf("a", "b", "c", "d", "e"), decodeLauncherState("""{"dock":["a","b","c","d","e",null]}""", legacyRaw = null).dock)
+        assertEquals("a dock left with empty places from the old selector closes", 4, decodeLauncherState("""{"dock":["a",null,null,null,null,null]}""", legacyRaw = null).dock.size)
         assertEquals(6, decodeLauncherState(JSONObject().put("dock", org.json.JSONArray(List(40) { "x$it" })).toString(), legacyRaw = null).dock.size)
     }
 
-    @Test fun `growing adds empty places, and shrinking never drops an app`() {
-        assertEquals(listOf("a", null, null, null, null, null), resizedDock(listOf("a", null, null, null), 6))
-        assertEquals(listOf("a", "b", null, null), resizedDock(listOf("a", "b", null, null, null, null), 4))
-        assertNull("a fifth app would be lost", resizedDock(listOf("a", "b", "c", "d", "e", null), 4))
-        assertEquals(listOf("a", "b", "c", "d", "e"), resizedDock(listOf("a", "b", "c", "d", "e", null), 5))
-        assertEquals("never fewer than four, never more than six", 6, resizedDock(listOf("a", null, null, null), 99)!!.size)
-        assertEquals(4, resizedDock(listOf("a", null, null, null, null), 1)!!.size)
+    private fun layout(dock: List<String?>, home: List<String?> = emptyList()) = HomeLayout(home, dock)
+
+    @Test fun `an empty end of the dock closes, down to four places`() {
+        assertEquals(listOf("a", null, null, null), trimmedDock(listOf("a", null, null, null, null, null)))
+        assertEquals(listOf("a", null, "b", null), trimmedDock(listOf("a", null, "b", null, null)))
+        assertEquals(listOf("a", "b", "c", "d", "e"), trimmedDock(listOf("a", "b", "c", "d", "e", null)))
+        assertEquals("a dock of four or fewer is left as it is", listOf("a", null), trimmedDock(listOf("a", null)))
+        assertEquals(listOf(null, null, null, null), trimmedDock(List(6) { null }))
+        assertEquals("never more than six", 6, trimmedDock(List(9) { "x$it" }).size)
+    }
+
+    @Test fun `a full dock opens one place for an app dragged to its end, up to six`() {
+        val full = layout(listOf("a", "b", "c", "d"), home = listOf("e", "f"))
+        val five = dropApp(full, "e", DropTarget.Dock(4))
+        assertEquals(listOf("a", "b", "c", "d", "e"), five.dock)
+        assertEquals("the app left Home", listOf(null, "f"), five.slots)
+        val six = dropApp(five, "f", DropTarget.Dock(5))
+        assertEquals(listOf("a", "b", "c", "d", "e", "f"), six.dock)
+        // At six there is no open place, and no room to push into: the drop is refused.
+        val seven = layout(six.dock, home = listOf("g"))
+        assertEquals(seven, dropApp(seven, "g", DropTarget.Dock(6)))
+        assertEquals(seven, dropApp(seven, "g", DropTarget.Dock(2)))
+    }
+
+    @Test fun `dropping onto an app in a full dock makes room instead of turning it away`() {
+        val full = layout(listOf("a", "b", "c", "d"), home = listOf("e"))
+        assertEquals(listOf("a", "e", "b", "c", "d"), dropApp(full, "e", DropTarget.Dock(1)).dock)
+    }
+
+    @Test fun `with room in the dock nothing grows, and taking an app out closes the extra place`() {
+        val roomy = layout(listOf("a", null, "c", "d"), home = listOf("e"))
+        assertEquals(listOf("a", "e", "c", "d"), dropApp(roomy, "e", DropTarget.Dock(1)).dock)
+        val five = layout(listOf("a", "b", "c", "d", "e"))
+        val after = dropApp(five, "e", DropTarget.Home(0))
+        assertEquals(4, trimmedDock(after.dock).size)
+        assertEquals(null, trimmedDock(after.dock).getOrNull(4))
+    }
+
+    @Test fun `reordering inside the dock never changes its size`() {
+        val five = layout(listOf("a", "b", "c", "d", "e"))
+        assertEquals(listOf("a", "b", "e", "c", "d"), dropApp(five, "e", DropTarget.Dock(2)).dock)
     }
 
     @Test fun `a backup of a four place dock is exactly what it was, and a bigger one is read back`() {

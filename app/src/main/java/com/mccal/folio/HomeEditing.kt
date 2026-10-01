@@ -129,7 +129,7 @@ sealed interface DropTarget {
 
 fun canPlaceInDock(layout: HomeLayout, id: String): Boolean =
     id.isNotBlank() && !isReservedFolderId(id) && layout.folders.none { id in it.appIds } &&
-        (id in layout.dock || layout.dock.any { it == null })
+        (id in layout.dock || layout.dock.any { it == null } || layout.dock.size < MAX_DOCK_SLOTS)
 
 fun WidgetPlacement.coveredIndices(): Set<Int> {
     if (page < -1) return emptySet()
@@ -248,10 +248,14 @@ fun dropApp(layout: HomeLayout, id: String, target: DropTarget, appRows: Int = M
                 leadingSlots = normalizedLeadingSlots(layout.leadingSlots).map { it?.takeUnless(id::equals) })
         }
         is DropTarget.Dock -> {
-            if (target.index !in layout.dock.indices || !canPlaceInDock(layout, id)) return layout
+            // The dock grows as apps are dragged in: when it has room to, one open place past its end takes an app, and a
+            // full dock makes room for a drop onto an app rather than turning it away.
+            val grows = layout.dock.size < MAX_DOCK_SLOTS
+            if (target.index !in 0..(if (grows) layout.dock.size else layout.dock.lastIndex) || !canPlaceInDock(layout, id)) return layout
             val dock = layout.dock.toMutableList()
             val source = dock.indexOf(id)
             dock.indices.filter { it != source && dock[it] == id }.forEach { dock[it] = null }
+            if (target.index == dock.size) dock.add(null)
             val occupied = dock[target.index] != null
             when {
                 source == target.index -> Unit
@@ -264,15 +268,26 @@ fun dropApp(layout: HomeLayout, id: String, target: DropTarget, appRows: Int = M
                     when {
                         later != null -> { for (i in later downTo target.index + 1) dock[i] = dock[i - 1]; dock[target.index] = id }
                         earlier != null -> { for (i in earlier until target.index) dock[i] = dock[i + 1]; dock[target.index] = id }
+                        grows -> { dock.add(null); for (i in dock.lastIndex downTo target.index + 1) dock[i] = dock[i - 1]; dock[target.index] = id }
                         else -> return layout
                     }
                 }
             }
-            layout.copy(slots = layout.slots.map { it?.takeUnless { app -> app == id } }.dropLastWhile { it == null }, dock = dock,
+            layout.copy(slots = layout.slots.map { it?.takeUnless { app -> app == id } }.dropLastWhile { it == null }, dock = trimmedDock(dock),
                 leadingSlots = normalizedLeadingSlots(layout.leadingSlots).map { it?.takeUnless(id::equals) })
         }
         else -> layout
     }
+}
+
+/**
+ * [dock] without the empty places past its last app, but never fewer than [MIN_DOCK_SLOTS] places and never more than
+ * [MAX_DOCK_SLOTS]: the dock is as big as what is in it, and four when it holds fewer. A dock already that small is left alone.
+ */
+fun trimmedDock(dock: List<String?>): List<String?> {
+    if (dock.size <= MIN_DOCK_SLOTS) return dock
+    val trimmed = dock.take(MAX_DOCK_SLOTS).dropLastWhile { it == null }
+    return if (trimmed.size >= MIN_DOCK_SLOTS) trimmed else trimmed + List(MIN_DOCK_SLOTS - trimmed.size) { null }
 }
 
 fun placeWidget(layout: HomeLayout, placement: WidgetPlacement): HomeLayout {

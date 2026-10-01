@@ -1561,9 +1561,6 @@
     <string name="separate_upright_layout_note">The upright inner screen gets its own layout. It starts as a copy of the sideways one, and turning this off goes back to sharing it.</string>
     <string name="sideways">Sideways</string>
     <string name="upright">Upright</string>
-    <string name="dock_apps">Apps in the dock</string>
-    <string name="dock_apps_note">Up to six apps in the dock, on both screens. Four is how it has always been.</string>
-    <string name="dock_apps_refused">Move an app out of the dock first: the dock cannot hold fewer places than it has apps.</string>
     <string name="full_width_home">Full-Width Home</string>
-    <string name="full_width_home_note">The dock runs along the bottom and the status Side Bar goes away, so Home uses the whole width, like most phone launchers. The Side Bar setting is for both screens. Turning this off brings the Side Bar back with Folio\'s own dock position.</string>
+    <string name="full_width_home_note">The dock runs along the bottom and the status Side Bar goes away, so Home uses the whole width, like most phone launchers. The Side Bar setting is for both screens. Turning this off puts back the dock and Side Bar you had.</string>
 </resources>

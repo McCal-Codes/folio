@@ -1515,9 +1515,6 @@
     <string name="separate_upright_layout_note">为竖向的内屏提供单独的布局。它一开始是横向布局的副本，关闭后会恢复共用。</string>
     <string name="sideways">横向</string>
     <string name="upright">竖向</string>
-    <string name="dock_apps">程序坞中的 App 数</string>
-    <string name="dock_apps_note">程序坞中最多可放六个 App，两块屏幕都适用。默认一直是四个。</string>
-    <string name="dock_apps_refused">请先把一个 App 移出程序坞：程序坞的位置数不能少于其中的 App 数。</string>
     <string name="full_width_home">全宽主屏幕</string>
-    <string name="full_width_home_note">程序坞移到底部，状态侧栏消失，主屏幕使用整个宽度，与大多数手机桌面一致。侧栏设置对两块屏幕都生效。关闭后会恢复侧栏和 Folio 自己的程序坞位置。</string>
+    <string name="full_width_home_note">程序坞移到底部，状态侧栏消失，主屏幕使用整个宽度，与大多数手机桌面一致。侧栏设置对两块屏幕都生效。关闭后会恢复你之前的程序坞和侧栏。</string>
 </resources>
