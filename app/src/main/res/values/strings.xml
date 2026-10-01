@@ -1524,4 +1524,12 @@
     <string name="touch_and_hold_note">How long to hold an app or a widget on Home before its menu opens. Standard follows Android, including Samsung\'s Touch and hold delay in Accessibility.</string>
     <string name="shade_shortcut_notifications">Folio Notification Shade</string>
     <string name="shade_shortcut_quick_settings">Folio Quick Settings</string>
+    <string name="how_should_folio_feel">How should Folio feel?</string>
+    <string name="how_should_folio_feel_detail">Pick a starting point. Every piece can be changed later in Settings.</string>
+    <string name="profile_folio">Folio</string>
+    <string name="profile_android_style">Android style</string>
+    <string name="profile_custom">Custom</string>
+    <string name="profile_folio_detail">Dynamic Island, Folio\'s Notification Center and Control Center, and Spotlight when you swipe down on Home.</string>
+    <string name="profile_android_style_detail">Android\'s own notification shade and Quick Settings, no Dynamic Island, and the notification shade when you swipe down on Home.</string>
+    <string name="profile_custom_detail">You have set these yourself. Pick one above to start from it.</string>
 </resources>

@@ -1499,4 +1499,12 @@
     <string name="touch_and_hold_note">홈에서 앱이나 위젯을 얼마나 오래 눌러야 메뉴가 열리는지 정합니다. 표준은 Android 설정을 따르며, 삼성 접근성의 길게 누르기 지연도 포함됩니다.</string>
     <string name="shade_shortcut_notifications">Folio 알림 패널</string>
     <string name="shade_shortcut_quick_settings">Folio 빠른 설정</string>
+    <string name="how_should_folio_feel">Folio를 어떤 느낌으로 사용할까요?</string>
+    <string name="how_should_folio_feel_detail">시작점을 고르세요. 모든 항목은 나중에 설정에서 바꿀 수 있습니다.</string>
+    <string name="profile_folio">Folio</string>
+    <string name="profile_android_style">Android 스타일</string>
+    <string name="profile_custom">사용자 지정</string>
+    <string name="profile_folio_detail">Dynamic Island, Folio의 알림 센터와 제어 센터, 홈에서 아래로 쓸어내리면 Spotlight가 열립니다.</string>
+    <string name="profile_android_style_detail">Android 기본 알림 패널과 빠른 설정을 쓰고 Dynamic Island는 끕니다. 홈에서 아래로 쓸어내리면 알림 패널이 열립니다.</string>
+    <string name="profile_custom_detail">직접 설정한 상태입니다. 위에서 하나를 고르면 그 설정에서 시작합니다.</string>
 </resources>
