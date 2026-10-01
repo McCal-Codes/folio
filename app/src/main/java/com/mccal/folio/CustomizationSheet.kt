@@ -683,6 +683,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.big_buttons), state.buttonBar, { on ->
                             model.setButtonBar(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
                         }, "button-bar-switch")
+                        // The footer says what the switch does, so it shows while the switch is off too.
+                        CardNote(stringResource(R.string.big_back_home_and_recents_buttons_float))
                         if (state.buttonBar) {
                             IosMenuRow(stringResource(R.string.size), listOf(44f to stringResource(R.string.standard), 52f to stringResource(R.string.large), 60f to stringResource(R.string.extra_large)), state.buttonBarHeight,
                                 model::setButtonBarHeight, tag = "button-bar-size")
@@ -696,7 +698,6 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             val buttonContext = androidx.compose.ui.platform.LocalContext.current
                             CardAction(stringResource(R.string.put_the_buttons_back_at_the_bottom), onClick = { ButtonBarPosition.reset(buttonContext) })
                             CardNote(stringResource(R.string.long_press_and_drag_the_bar_to_move_it_u))
-                            CardNote(stringResource(R.string.big_back_home_and_recents_buttons_float))
                             if (!gestureNavigation(androidx.compose.ui.platform.LocalContext.current))
                                 CardNote(stringResource(R.string.android_s_three_buttons_are_on_so_you_ll))
                         }
