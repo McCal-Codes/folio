@@ -106,7 +106,10 @@
     <string name="takes_a_quick_in_memory_snapshot_of_foli">힌지가 움직이기 시작하면 Folio 화면을 메모리에 잠시 캡처하여 다른 디스플레이로 자연스럽게 전환합니다. 이미지는 저장하지 않습니다.</string>
     <string name="your_fold_reports_only_a_few_hinge_posit">Fold에서 제공하는 힌지 각도 정보가 제한적이므로, Folio가 접고 펼치는 속도를 학습하여 효과의 속도를 맞춥니다.</string>
     <string name="standby">스탠바이</string>
-    <string name="show_standby_when_set_down_half_open">반쯤 펼쳐 내려놓으면 스탠바이 표시</string>
+    <string name="standby_half_open_like_a_laptop">노트북처럼 반쯤 열었을 때</string>
+    <string name="standby_while_charging_on_its_side">옆으로 세워 충전할 때</string>
+    <string name="standby_standing_as_a_tent">텐트처럼 세웠을 때</string>
+    <string name="standby_ways_note">옆으로 세워 충전하기는 iPhone처럼 어떤 자세에서도 작동합니다. 충전기를 꽂고 옆으로 돌려 내려놓으세요. Fold는 앱에 닫힘, 반쯤 열림, 열림만 알려 주므로 텐트는 반 이상 열었을 때 인식됩니다.</string>
     <string name="big_clock_date_next_alarm_battery_and_mu">홈 화면에서 휴대전화를 반쯤 펼쳐 내려놓으면 큰 시계, 날짜, 다음 알람, 배터리 및 음악을 표시합니다. 밤에는 어두운 빨간색으로 바뀝니다. 탭하면 종료됩니다.</string>
     <string name="closing_from_home">홈 화면에서 접을 때</string>
     <string name="stay_awake_on_the_cover_screen">커버 화면을 켠 상태로 유지</string>

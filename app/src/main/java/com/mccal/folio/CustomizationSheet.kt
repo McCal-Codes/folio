@@ -634,9 +634,15 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             { tweakId = DUET_ID; onPage(CustomizationPage.FOLD_TWEAK) }, "fold-duet")
                         CardNote(stringResource(R.string.duet_moved_note))
                     }
+                    val standByMoreOpen = remember { FeatureGate.STANDBY_CHARGING.isOpen(sheetContext) }
                     SettingsCard(stringResource(R.string.standby)) {
-                        SettingsSwitch(stringResource(R.string.show_standby_when_set_down_half_open), state.standBy, model::setStandBy, "standby-switch")
+                        SettingsSwitch(stringResource(R.string.standby_half_open_like_a_laptop), state.standBy, model::setStandBy, "standby-switch")
+                        if (standByMoreOpen) {
+                            SettingsSwitch(stringResource(R.string.standby_while_charging_on_its_side), state.standByCharging, model::setStandByCharging, "standby-charging-switch")
+                            SettingsSwitch(stringResource(R.string.standby_standing_as_a_tent), state.standByTent, model::setStandByTent, "standby-tent-switch")
+                        }
                         CardNote(stringResource(R.string.big_clock_date_next_alarm_battery_and_mu))
+                        if (standByMoreOpen) CardNote(stringResource(R.string.standby_ways_note))
                     }
                     SettingsCard(stringResource(R.string.closing_from_home)) {
                         SettingsSwitch(stringResource(R.string.stay_awake_on_the_cover_screen), state.stayAwakeOnFold, model::setStayAwakeOnFold, "fold-awake-switch")

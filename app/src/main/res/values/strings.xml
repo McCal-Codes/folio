@@ -101,7 +101,10 @@
     <string name="takes_a_quick_in_memory_snapshot_of_foli">Takes a quick in-memory snapshot of Folio’s screen as the hinge starts moving and melts it into the other display. Nothing is saved.</string>
     <string name="your_fold_reports_only_a_few_hinge_posit">Your Fold reports only a few hinge positions, so Folio learns how fast you open and close and paces the effect to match.</string>
     <string name="standby">StandBy</string>
-    <string name="show_standby_when_set_down_half_open">Show StandBy when set down half-open</string>
+    <string name="standby_half_open_like_a_laptop">Half-open, like a laptop</string>
+    <string name="standby_while_charging_on_its_side">While charging on its side</string>
+    <string name="standby_standing_as_a_tent">Standing as a tent</string>
+    <string name="standby_ways_note">Charging on its side works in any pose, as on iPhone: plugged in, turned sideways and set down. Your Fold tells apps only closed, halfway and open, so a tent shows up once it’s opened past halfway.</string>
     <string name="big_clock_date_next_alarm_battery_and_mu">Big clock, date, next alarm, battery and music while the phone sits half-open on Home. Turns dim red at night. Tap to leave.</string>
     <string name="closing_from_home">Closing from Home</string>
     <string name="stay_awake_on_the_cover_screen">Stay awake on the cover screen</string>
