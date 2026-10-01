@@ -53,13 +53,12 @@ Android Settings › Accessibility is safe: Folio keeps working, and you can tur
 Every release lists the APK's SHA-256. To check the file you downloaded:
 
 ```bash
-shasum -a 256 Folio-0.6.6.apk
+shasum -a 256 Folio-<version>.apk
 ```
 
-Releases also link a [VirusTotal](https://www.virustotal.com/) scan of that exact APK, so you don't have to take the
-checksum on faith. Every release carries the certificate it was signed with (`signing-certificate.txt`), so you can
-check it's the same key that signed the last one. Android won't let a build signed by anyone else update the
-Folio you already have.
+Every release is signed with the same key, and its SHA-256 is on [foliolauncher.com/download](https://foliolauncher.com/download/)
+(some releases also attach it as `signing-certificate.txt`), so you can check it's the key that signed the last one.
+Android won't let a build signed by anyone else update the Folio you already have.
 
 An unsigned or sideloaded launcher deserves suspicion. If anything here doesn't match what you see in the code, please
 [open an issue](https://github.com/McCal-Codes/folio/issues/new). That's a bug worth fixing.
