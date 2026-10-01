@@ -21,18 +21,32 @@ class SettingsSearchCoverageTest {
     }
 
     /** Titles written as stringResource(R.string.x) on a control; ones built at run time are skipped. */
-    private fun controlNames(): Set<String> =
-        Regex("""\b(?:SettingsSwitch|IosMenuRow|CustomizationSlider|IosNavRow|IosActionRow|CardAction|TweakRow)\((?:Icons\.Rounded\.\w+, [\w.]+, )?stringResource\(R\.string\.(\w+)\)""").findAll(sheet).map { it.groupValues[1] }.toSet()
+    private fun controlNames(kinds: String, icon: String = ""): Set<String> =
+        Regex("""\b(?:$kinds)\($icon""" + """stringResource\(R\.string\.(\w+)\)""").findAll(sheet).map { it.groupValues[1] }.toSet()
+
+    /** Rows on a page: each needs its own entry, so a result scrolls to it. */
+    private val rows get() = controlNames("SettingsSwitch|IosMenuRow|CustomizationSlider|IosNavRow|IosActionRow|CardAction")
+
+    /** The overview's page rows: a page is found by its name, so a keyword match on its own title will do. */
+    private val pages get() = controlNames("TweakRow", """(?:Icons\.Rounded\.\w+, [\w.]+, )?""")
+
+    private fun id(name: String) = R.string::class.java.getField(name).getInt(null)
 
     /** Settings on a tweak's own page, which Settings search reaches through the tweak (searchableTweaks). */
-    private val onTweakPages = setOf("enabled", "intensity", "preview", "duet_tilt")
+    private val onTweakPages = setOf("enabled", "intensity", "preview", "duet_tilt", "duet_frost", "duet_shade")
 
     /** Shown only in the moment they apply (a dialog button, an undo, the Market's intro, the Set as home banner). */
-    private val onDemand = setOf("cancel", "undo_last_layout_change", "undo_theme_change", "use_island", "set_as_home_app", "show_the_introduction_again", "duet_reset_style", "add_widget_to_this_page_2")
+    private val onDemand = setOf("cancel", "undo_last_layout_change", "undo_theme_change", "use_island", "set_as_home_app", "show_the_introduction_again", "duet_reset_style", "add_widget_to_this_page_2", "clear", "set", "supporter")
 
-    @Test fun `every setting can be found by its own name`() {
+    @Test fun `every row has an entry of its own, so a result can scroll to it`() {
+        val own = SettingsRows.map { it.first }.toSet() + SettingsIndex.map { it.first }.toSet()
+        val missing = (rows - onTweakPages - onDemand).filter { id(it) !in own }
+        assertTrue("These rows have no entry in SettingsRows: ${missing.sorted()}", missing.isEmpty())
+    }
+
+    @Test fun `every page can be found by its own name`() {
         val xml = File(root, "app/src/main/res/values/strings.xml").readText()
-        val missing = (controlNames() - onTweakPages - onDemand).mapNotNull { name ->
+        val missing = (pages - onTweakPages - onDemand).mapNotNull { name ->
             val text = Regex("""<string name="$name"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).find(xml)?.groupValues?.get(1)
                 ?.replace("\\'", "'")?.replace("&amp;", "&") ?: return@mapNotNull null
             if (indexed.any { (title, keywords) -> settingsMatches(text, title, keywords) }) null else "$name: $text"
