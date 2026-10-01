@@ -523,6 +523,8 @@ fun LauncherScreen(
         LiveDiscover.homeLayer = homeLayer
         onDispose { if (LiveDiscover.homeLayer === homeLayer) LiveDiscover.homeLayer = null }
     }
+    // The hold delay covers all of Home, including the root detector that picks icons up, which is built here.
+    WithHoldDelay(state.holdDelay) {
     Box(Modifier.fillMaxSize().graphicsLayer {
         // The feed frame reuses the pager's render nodes in another window. Give Main
         // a complete render target so cross-window damage cannot erase stationary controls.
@@ -555,10 +557,7 @@ fun LauncherScreen(
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
-        val viewConfiguration = androidx.compose.ui.platform.LocalViewConfiguration.current
-        CompositionLocalProvider(androidx.compose.ui.platform.LocalViewConfiguration provides remember(viewConfiguration, state.holdDelay) {
-            if (state.holdDelay == HoldDelay.STANDARD) viewConfiguration else HoldViewConfiguration(viewConfiguration, state.holdDelay)
-        }, LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+        CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
@@ -1659,6 +1658,7 @@ fun LauncherScreen(
         }
         }
     } } }
+    }
 }
 
 // Keeps a block in its own compiled method. Home's content lambda outgrew 256 registers, and R8 then wrote a

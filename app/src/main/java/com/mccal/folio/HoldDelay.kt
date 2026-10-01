@@ -22,3 +22,15 @@ enum class HoldDelay(@androidx.annotation.StringRes val label: Int, val factor: 
 internal class HoldViewConfiguration(private val base: ViewConfiguration, private val delay: HoldDelay) : ViewConfiguration by base {
     override val longPressTimeoutMillis: Long get() = delay.millis(base.longPressTimeoutMillis)
 }
+
+/** Everything inside uses [delay] for its holds; Standard leaves Android's configuration exactly as it is. */
+@androidx.compose.runtime.Composable
+internal fun WithHoldDelay(delay: HoldDelay, content: @androidx.compose.runtime.Composable () -> Unit) {
+    val base = androidx.compose.ui.platform.LocalViewConfiguration.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalViewConfiguration provides androidx.compose.runtime.remember(base, delay) {
+            if (delay == HoldDelay.STANDARD) base else HoldViewConfiguration(base, delay)
+        },
+        content = content,
+    )
+}
