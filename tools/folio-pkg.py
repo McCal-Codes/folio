@@ -529,6 +529,8 @@ def check_source(root: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
         str(path.relative_to(root))
         for path in sorted(root.rglob("*"))
         if path.is_file() and path.suffix.lower() not in SOURCE_SUFFIXES
+        # The web page at the top is for browsers. A phone never asks for it, so it is allowed there and nowhere else.
+        and path != root / "index.html"
     ]
     if extras:
         shown = ", ".join(extras[:3]) + (f" and {len(extras) - 3} more" if len(extras) > 3 else "")
