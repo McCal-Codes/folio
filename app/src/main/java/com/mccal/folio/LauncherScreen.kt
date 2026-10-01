@@ -869,7 +869,9 @@ fun LauncherScreen(
             val dockPitch = geometry.dockPitch
             val dockBarFull = (dockPitch * state.dock.size + 16f).dp
             // More dock apps than the window has room for: the bar stops at the room it has and scrolls.
-            val dockBarWidth = if (geometry.dockBarRoom > 0f) minOf(dockBarFull, geometry.dockBarRoom.dp) else dockBarFull
+            val fromRoom = if (geometry.dockBarRoom > 0f) minOf(dockBarFull, geometry.dockBarRoom.dp) else dockBarFull
+            // Half folded like a book, the bar lives on the trailing half and must not reach across the hinge.
+            val dockBarWidth = if (geometry.horizontalDock && hinge?.active == true && hinge.vertical) minOf(fromRoom, contentWidth / 2 - 8.dp) else fromRoom
             val dockBarScrolls = dockBarFull > dockBarWidth
             val dockBarScroll = rememberScrollState()
             // Like iPhone, the dock bar steps aside for Today View: it follows the swipe out, then leaves altogether so

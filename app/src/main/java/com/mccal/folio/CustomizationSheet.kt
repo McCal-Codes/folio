@@ -951,7 +951,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 Column(Modifier.weight(1f).edgeFade(bodyScroll).verticalScroll(bodyScroll).padding(bottom = FolioSpace.XL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Column(Modifier.widthIn(max = 720.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                         // The space beside the list shows what the page changes, drawn from your real Home.
-                        if (page == CustomizationPage.HOME && wide) UnfoldedHomePreview(backgrounds.previewBitmap, state, 200.dp)
+                        if (page == CustomizationPage.HOME && wide) UnfoldedHomePreview(backgrounds.previewBitmap, state, 200.dp,
+                            // The sliders edit the upright layout when it is separate and chosen, so the preview shows that one.
+                            state.presetFor(if (upright && state.portrait != null) LayoutScreen.INNER_UPRIGHT else LayoutScreen.INNER))
                         else if (page == CustomizationPage.HOME || page == CustomizationPage.STATUS)
                             MiniHomePreview(backgrounds.previewBitmap, state, 240.dp)
                         pageContent(page)
@@ -1679,8 +1681,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                     if (sideBar && state.verticalStatus) StatusRail(DeviceStatus(battery = 80, wifiConnected = true, wifiLevel = 4, cellularLevel = 4),
                         Modifier.align(railAlign).then(railEdge).offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp),
                         iconSize = dockIconSize(iconSize).dp, style = state.statusStyle)
-                    if (sideBar && geometry.dockBesideRail) Box(Modifier.align(if (left) Alignment.BottomEnd else Alignment.BottomStart)
-                        .width((refW - preset.dockWidth - 28f).dp).padding(bottom = 58.dp), contentAlignment = Alignment.Center) { Row(Modifier
+                    // A bottom dock bar: beside the status Side Bar, or the whole width when there is none (Full-Width Home).
+                    if (sideBar && geometry.horizontalDock) Box(Modifier.align(if (!geometry.dockBesideRail) Alignment.BottomCenter else if (left) Alignment.BottomEnd else Alignment.BottomStart)
+                        .width((if (geometry.dockBesideRail) refW - preset.dockWidth - 28f else refW).dp).padding(bottom = 58.dp), contentAlignment = Alignment.Center) { Row(Modifier
                         .height(geometry.dockBarHeight.dp).background(glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(30.dp))
                         .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(30.dp)).padding(horizontal = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
                         state.dock.forEach { id ->
@@ -2110,15 +2113,15 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
 }
 
 /** The open Fold for the Inner tab: two Home pages with one Side Bar, laid out with the inner screen's settings. */
-@Composable private fun UnfoldedHomePreview(bitmap: android.graphics.Bitmap?, state: LauncherState, height: androidx.compose.ui.unit.Dp) {
+@Composable private fun UnfoldedHomePreview(bitmap: android.graphics.Bitmap?, state: LauncherState, height: androidx.compose.ui.unit.Dp, preset: LayoutPreset = state.expanded) {
     val corner = 18.dp
     val bezel = 5.dp
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Row(Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)
             .clip(RoundedCornerShape(corner)).clearedDescription(R.string.preview_of_home_on_the_inner_screen)) {
-            MiniHomePreview(bitmap, state, height, framed = false, sideBar = state.leftHanded, preset = state.expanded)
-            MiniHomePreview(bitmap, state, height, framed = false, sideBar = !state.leftHanded, preset = state.expanded)
+            MiniHomePreview(bitmap, state, height, framed = false, sideBar = state.leftHanded, preset = preset)
+            MiniHomePreview(bitmap, state, height, framed = false, sideBar = !state.leftHanded, preset = preset)
         }
     }
 }
