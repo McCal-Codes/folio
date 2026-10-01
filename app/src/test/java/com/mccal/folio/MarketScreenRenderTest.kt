@@ -212,6 +212,27 @@ class MarketScreenRenderTest {
         awaitText("Tilt removed")
     }
 
+    // A listed package is put back on its page, but one from a file has no page: its row only offered Remove, with
+    // nothing saying why it had stopped working.
+    @Test fun `a package from a file that Safe Mode turned off says so in its row, and Try Again puts it back`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val session = MarketSession(context, NoopLauncher().apply { state = LauncherState(installedTweaks = setOf("pageEffects")) },
+            kotlinx.coroutines.Dispatchers.Unconfined)
+        session.prefs.introductionSeen = true
+        val tilt = "com.mccal.folio.effect.tilt"
+        assertEquals(true, kotlinx.coroutines.runBlocking { session.installFile(tiltPackage()) } is com.mccal.folio.market.InstallResult.Installed)
+        session.disable(tilt, "Folio stopped twice just after this package changed.")
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-installed").performClick()
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+            .performScrollToNode(androidx.compose.ui.test.hasContentDescription("Try Again Tilt"))
+        compose.onNodeWithText("Turned off after a crash").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Remove Tilt").assertExists()
+        compose.onNodeWithContentDescription("Try Again Tilt").assertHeightIsAtLeast(48.dp).performClick()
+        awaitText("Tilt is back on")
+        assertEquals(true, session.installed().first { it.id == tilt }.enabled)
+    }
+
     @Test fun `the introduction comes first, then Featured lists Folio's packages`() {
         val session = session()
         session.prefs.introductionSeen = false
