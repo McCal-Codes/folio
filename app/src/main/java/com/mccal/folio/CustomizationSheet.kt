@@ -2558,6 +2558,6 @@ internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
             imeAction = androidx.compose.ui.text.input.ImeAction.Done),
         decorationBox = { inner -> Box { if (text.isEmpty()) Text("https://example.com/search?q=%s", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .35f), fontSize = FolioType.SUBHEAD.sp); inner() } })
-    CardNote(stringResource(if (valid) R.string.custom_search_note else R.string.custom_search_invalid))
+    CardNote(stringResource(when { text.isBlank() -> R.string.custom_search_blank; valid -> R.string.custom_search_note; else -> R.string.custom_search_invalid }))
 }
 

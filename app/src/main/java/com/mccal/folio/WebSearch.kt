@@ -45,12 +45,12 @@ internal const val CUSTOM_SEARCH = "CUSTOM"
 internal fun customSearchUrl(template: String, query: String): String? {
     val raw = template.trim()
     if (raw.isEmpty() || raw.length > 500) return null
-    val marker = listOf("%s", "{query}").firstOrNull { it in raw } ?: return null
+    if (listOf("%s", "{query}").none { it in raw }) return null
     val encoded = encodeSearch(query)
     val filled = raw.replace("%s", encoded).replace("{query}", encoded)
     val uri = runCatching { java.net.URI(filled) }.getOrNull() ?: return null
     if (uri.scheme?.lowercase() !in setOf("http", "https") || uri.host.isNullOrBlank() || uri.userInfo != null) return null
-    return filled.takeIf { marker.isNotEmpty() }
+    return filled
 }
 
 /** Whether [template] would work, for telling you while you type it. */

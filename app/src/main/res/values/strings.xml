@@ -1151,7 +1151,7 @@
     <string name="settings_today_view_left_of_home">Today View / Left of Home</string>
     <string name="settings_keywords_today_view_left_of_home">today discover google widgets page beside suggestions</string>
     <string name="settings_icon_pack_shape_style">Icon pack, shape &amp; style</string>
-    <string name="settings_keywords_icon_pack_shape_style">icons pack squircle circle tinted dark</string>
+    <string name="settings_keywords_icon_pack_shape_style">icons pack squircle circle tinted dark per app individual edit icon</string>
     <string name="settings_keywords_notification_badges">badge dot count color soft</string>
     <string name="settings_live_clock_and_calendar_icons">Live Clock and Calendar icons</string>
     <string name="settings_keywords_live_clock_and_calendar_icons">live clock calendar</string>
@@ -1166,14 +1166,14 @@
     <string name="settings_keywords_hide_the_island_in_full_screen">island full screen landscape video game immersive hide</string>
     <string name="settings_keywords_notification_center">notifications clock stack group split blur panels iphone style</string>
     <string name="settings_keywords_control_center">control center size centered toggles</string>
-    <string name="settings_keywords_spotlight">search engine google duckduckgo contacts calculator sections messages openbubbles</string>
+    <string name="settings_keywords_spotlight">search engine google duckduckgo contacts calculator sections messages openbubbles bing brave ecosia startpage qwant kagi custom url</string>
     <string name="settings_keywords_app_library">library categories hidden apps</string>
     <string name="settings_search_button_swipe_down">Search button &amp; swipe down</string>
     <string name="settings_keywords_search_button_swipe_down">search pill swipe google</string>
     <string name="settings_page_dots_haptics">Page dots &amp; haptics</string>
     <string name="settings_keywords_page_dots_haptics">page dots scrub drag flip haptics vibration feedback</string>
     <string name="settings_gestures_pull_downs">Gestures &amp; pull-downs</string>
-    <string name="settings_keywords_gestures_pull_downs">gesture pull down swipe</string>
+    <string name="settings_keywords_gestures_pull_downs">gesture pull down swipe touch hold press delay long</string>
     <string name="settings_swipe_down_on_home">Swipe down on Home</string>
     <string name="settings_keywords_swipe_down_on_home">swipe down home spotlight search notification center shade pull one finger</string>
     <string name="settings_keywords_actions">activator double tap two finger charging bluetooth headphones trigger</string>
@@ -1545,4 +1545,5 @@
     <string name="like_other_icons">Like other icons</string>
     <string name="edit_icon_note">Changes only this app\'s icon, here and everywhere Folio shows it. Settings › Icons &amp; Side Bar still sets the look for the rest.</string>
     <string name="reset_icon">Reset Icon</string>
+    <string name="custom_search_blank">Until you type an address, Search with Enter uses Google.</string>
 </resources>

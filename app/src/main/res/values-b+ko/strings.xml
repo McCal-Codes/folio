@@ -1134,7 +1134,7 @@
     <string name="settings_today_view_left_of_home">오늘 보기 / 홈 화면 왼쪽</string>
     <string name="settings_keywords_today_view_left_of_home">오늘 Discover 디스커버 Google 구글 위젯 페이지 옆 제안 추천</string>
     <string name="settings_icon_pack_shape_style">아이콘 팩, 모양 및 스타일</string>
-    <string name="settings_keywords_icon_pack_shape_style">아이콘 팩 스쿼클 원형 색조 다크</string>
+    <string name="settings_keywords_icon_pack_shape_style">아이콘 팩 스쿼클 원형 색조 다크 per app individual edit icon</string>
     <string name="settings_keywords_notification_badges">배지 점 개수 색상 부드럽게</string>
     <string name="settings_live_clock_and_calendar_icons">실시간 시계 및 캘린더 아이콘</string>
     <string name="settings_keywords_live_clock_and_calendar_icons">실시간 시계 캘린더 달력</string>
@@ -1149,14 +1149,14 @@
     <string name="settings_keywords_hide_the_island_in_full_screen">Dynamic Island 전체 화면 가로 동영상 게임 몰입 숨기기</string>
     <string name="settings_keywords_notification_center">알림 시계 스택 그룹 분할 흐림 패널 아이폰 스타일</string>
     <string name="settings_keywords_control_center">제어 센터 크기 가운데 스위치</string>
-    <string name="settings_keywords_spotlight">검색 엔진 Google 구글 DuckDuckGo 덕덕고 연락처 계산기 섹션 메시지 OpenBubbles</string>
+    <string name="settings_keywords_spotlight">검색 엔진 Google 구글 DuckDuckGo 덕덕고 연락처 계산기 섹션 메시지 OpenBubbles bing brave ecosia startpage qwant kagi custom url</string>
     <string name="settings_keywords_app_library">보관함 카테고리 숨긴 앱</string>
     <string name="settings_search_button_swipe_down">검색 버튼 및 쓸어내리기</string>
     <string name="settings_keywords_search_button_swipe_down">검색 알약 쓸어내리기 Google 구글</string>
     <string name="settings_page_dots_haptics">페이지 표시점 및 햅틱</string>
     <string name="settings_keywords_page_dots_haptics">페이지 표시점 드래그 넘기기 햅틱 진동 피드백</string>
     <string name="settings_gestures_pull_downs">제스처 및 쓸어내리기</string>
-    <string name="settings_keywords_gestures_pull_downs">제스처 아래로 쓸어내리기</string>
+    <string name="settings_keywords_gestures_pull_downs">제스처 아래로 쓸어내리기 touch hold press delay long</string>
     <string name="settings_swipe_down_on_home">홈 화면에서 아래로 쓸어내리기</string>
     <string name="settings_keywords_swipe_down_on_home">아래로 쓸어내리기 홈 Spotlight 검색 알림 센터 알림창 한 손가락</string>
     <string name="settings_keywords_actions">Activator 두 번 탭 두 손가락 충전 블루투스 헤드폰 트리거</string>
@@ -1520,4 +1520,5 @@
     <string name="like_other_icons">다른 아이콘과 동일</string>
     <string name="edit_icon_note">이 앱의 아이콘만 바꾸며, Folio가 표시하는 모든 곳에 적용됩니다. 나머지 아이콘은 설정 › 아이콘 및 사이드 바에서 정합니다.</string>
     <string name="reset_icon">아이콘 초기화</string>
+    <string name="custom_search_blank">주소를 입력하기 전에는 Enter 검색에 Google이 사용됩니다.</string>
 </resources>
