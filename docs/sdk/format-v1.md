@@ -452,7 +452,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `tweaks.dockMagnify` | Harborline (formerly Dock Magnification) | 0.6.0 |
 | `tweaks.notificationAppRow` | Roll Call (formerly Notification App Row) | 0.6.0 |
 | `tweaks.tintNotifications` | Palette (formerly Tinted Notifications) | 0.6.0 |
-| `tweaks.tintMedia` | Colored Albums (formerly Album Art Colors) | 0.6.0 |
+| `tweaks.tintMedia` | Afterglow (formerly Colored Albums, and before that Album Art Colors) | 0.6.0 |
 | `tweaks.pageEffects` | Flipbook: Home pages turn in 3D as you swipe (supporters in 0.6.7, everyone in 0.6.8) | 0.6.7 |
 | `tweaks.foldTransition` | Duet, the fold animation, and its `options` in `tweaks.json` | 0.6.8 |
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |

@@ -70,9 +70,9 @@ internal val TweakFeatures = listOf(
     TweakFeature("tintNotifications", "Palette", "Velvet by NoisyFlake & HiMyNameisUbik", // english-only
         R.string.tweak_palette_detail,
         androidx.compose.material.icons.Icons.Rounded.Star, FolioColors.Value.Orange, { it.tintNotifications }, { m, v -> m.setTintNotifications(v) }, false),
-    TweakFeature("tintMedia", "Colored Albums", "ColorFlow by David Goldman", // english-only
+    TweakFeature("tintMedia", "Afterglow", "ColorFlow by David Goldman", // english-only
         R.string.tweak_colored_albums_detail,
-        androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true),
+        androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true, keywords = R.string.settings_keywords_afterglow),
     // The switch is on or off, and which effect it is lives on Flipbook's own page, beside the effects packages add
     // (Flipbook is their host, as Cylinder is for its scripts). Turning it on brings back the last one chosen; the
     // cube the first time, since that is the one Barrel was known for.

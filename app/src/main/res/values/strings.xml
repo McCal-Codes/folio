@@ -414,7 +414,7 @@
     <string name="velvet">Velvet</string>
     <string name="noisyflake_himynameisubik_tinted_notific">NoisyFlake &amp; HiMyNameisUbik · Palette idea</string>
     <string name="colorflow">ColorFlow</string>
-    <string name="david_goldman_album_art_colors_idea">David Goldman · Colored Albums idea</string>
+    <string name="david_goldman_album_art_colors_idea">David Goldman · Afterglow idea</string>
     <string name="harbor">Harbor</string>
     <string name="evan_swick_dock_magnification_idea">Evan Swick · Harborline idea</string>
     <string name="snowboard">SnowBoard</string>
@@ -1566,4 +1566,5 @@
     <string name="upright">Upright</string>
     <string name="full_width_home">Full-Width Home</string>
     <string name="full_width_home_note">The dock runs along the bottom and the status Side Bar goes away, so Home uses the whole width, like most phone launchers. The Side Bar setting is for both screens. Turning this off puts back the dock and Side Bar you had.</string>
+    <string name="settings_keywords_afterglow">colored albums album art music color colorflow now playing</string>
 </resources>

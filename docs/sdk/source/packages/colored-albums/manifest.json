@@ -2,8 +2,8 @@
   "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
   "format": 1,
   "id": "com.mccal.folio.colored-albums",
-  "name": "Colored Albums",
-  "version": "1.0.0",
+  "name": "Afterglow",
+  "version": "1.0.1",
   "author": {
     "name": "Folio",
     "url": "https://github.com/McCal-Codes/folio"
