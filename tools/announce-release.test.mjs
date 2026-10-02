@@ -198,3 +198,21 @@ test('two servers each receive their own ping, and the wall is downloaded once',
   assert.doesNotMatch(mmd.message.content, /1553093586705449062/)
   assert.ok(mmd.hasFile)
 })
+
+test('a manual re-post reads the release from RELEASE_FILE, which is the release itself and not an event around it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'announce-'))
+  const file = join(dir, 'release.json')
+  writeFileSync(file, JSON.stringify(release))
+  const out = await new Promise((resolve) => {
+    let text = ''
+    const child = spawn(process.execPath, [new URL('./announce-release.mjs', import.meta.url).pathname, '--dry-run'], {
+      // GITHUB_EVENT_PATH points at an event with no release, as GitHub's own file does for a manual run.
+      env: { ...process.env, RELEASE_FILE: file, GITHUB_EVENT_PATH: join(dir, 'missing.json') },
+    })
+    child.stdout.on('data', (d) => (text += d))
+    child.on('exit', (code) => resolve({ code, text }))
+  })
+  assert.equal(out.code, 0)
+  assert.match(out.text, /Dry run\. This is the message:/)
+  assert.match(out.text, /v0\.6\.6|0\.6\.6/)
+})

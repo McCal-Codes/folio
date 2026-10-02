@@ -220,9 +220,13 @@ async function post(webhook, message, loaded) {
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run')
+  // A manual run has no release in GitHub's own event file, and a step cannot change GITHUB_EVENT_PATH, so the
+  // workflow fetches the release itself and names the file in RELEASE_FILE. An automatic run reads the event.
+  const releaseFile = process.env.RELEASE_FILE
   const eventPath = process.env.GITHUB_EVENT_PATH
-  if (!eventPath) throw new Error('No GITHUB_EVENT_PATH; run this from the workflow, which writes one either way')
-  const { release } = JSON.parse(readFileSync(eventPath, 'utf8'))
+  if (!releaseFile && !eventPath) throw new Error('No RELEASE_FILE or GITHUB_EVENT_PATH; run this from the workflow')
+  const parsed = JSON.parse(readFileSync(releaseFile || eventPath, 'utf8'))
+  const release = releaseFile ? parsed : parsed.release
   if (!release) throw new Error('The event carries no release')
 
   if (release.draft) return console.log('Draft release, nothing posted.')
