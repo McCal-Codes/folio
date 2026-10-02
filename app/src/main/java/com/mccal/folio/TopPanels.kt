@@ -626,7 +626,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             }
                         }
                     }
-                } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = "Choose a Focus") { focusOpen = true }.testTag("cc-focus")) {
+                } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
                     Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
                         val mode = current ?: focusModes.first()
                         RoundToggle(mode.icon(), if (current != null) "Turn off ${mode.name}" else "Turn on ${mode.name}", current != null, Color(mode.color), cell * .7f) {

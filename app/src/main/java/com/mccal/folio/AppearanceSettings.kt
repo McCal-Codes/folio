@@ -82,20 +82,21 @@ internal fun AppearanceSettings(state: AppearanceState, onMode: (AppearanceMode)
         }
         if (state.mode == AppearanceMode.SUNRISE_SUNSET) {
             state.fallback?.let { Text(it, color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(horizontal = FolioSpace.LARGE.dp)) }
-            SheetGroupLabel("Location")
+            SheetGroupLabel(stringResource(R.string.location))
             SheetGroup {
                 InlineField(stringResource(R.string.place_name), place, { place = it }, "appearance-place")
                 MenuDivider()
-                InlineField("Latitude", latitude, { latitude = it }, "appearance-latitude", "−90 to 90", number = true)
+                InlineField(stringResource(R.string.latitude), latitude, { latitude = it }, "appearance-latitude", stringResource(R.string.latitude_range), number = true)
                 MenuDivider()
-                InlineField("Longitude", longitude, { longitude = it }, "appearance-longitude", "−180 to 180", number = true)
+                InlineField(stringResource(R.string.longitude), longitude, { longitude = it }, "appearance-longitude", stringResource(R.string.longitude_range), number = true)
                 MenuDivider()
+                val outOfRange = stringResource(R.string.enter_a_latitude_from_90_to_90_and_longitude)
                 IosActionRow(stringResource(R.string.use_this_place), "appearance-save-place") {
                     focusManager.clearFocus(); keyboard?.hide()
                     val lat = latitude.toDoubleOrNull(); val lon = longitude.toDoubleOrNull()
                     if (lat != null && lon != null && lat in -90.0..90.0 && lon in -180.0..180.0) {
                         inputError = null; onManual(place, lat, lon)
-                    } else inputError = "Enter a latitude from −90 to 90 and longitude from −180 to 180."
+                    } else inputError = outOfRange
                 }
             }
             AppearanceFeedback(inputError, FolioColors.Red, "appearance-manual-status")

@@ -193,13 +193,16 @@ fun StatusRail(
     val longDate = stringResource(R.string.eeee_mmmm_d)
     val longDateFormatter = remember(longDate) { DateTimeFormatter.ofPattern(longDate) }
     val description = listOfNotNull(
-        if (locationInUse) "Location in use" else null,
-        focus?.let { "${it.name} on" },
-        if (status.silent && style.showSilent) "Silent mode" else null,
+        if (locationInUse) stringResource(R.string.location_in_use) else null,
+        focus?.let { stringResource(R.string.text_1_s_is_on, it.name) },
+        if (status.silent && style.showSilent) stringResource(R.string.silent_mode) else null,
         "${now.format(longDateFormatter)}, ${now.format(timeFormatter)}",
-        status.battery?.let { "Battery $it percent${if (status.charging) ", charging" else ""}" } ?: "Battery unavailable",
-        if (status.wifiConnected) "Wi-Fi connected${status.wifiLevel?.let { ", signal $it of 4" } ?: ""}" else "Wi-Fi disconnected",
-        if (status.airplane) "Airplane mode" else status.cellularLevel?.let { "Cellular signal $it of 4" } ?: "Cellular signal unavailable",
+        status.battery?.let { stringResource(if (status.charging) R.string.battery_1_d_percent_charging else R.string.battery_1_d_percent, it) }
+            ?: stringResource(R.string.battery_unavailable),
+        if (!status.wifiConnected) stringResource(R.string.wi_fi_disconnected)
+        else status.wifiLevel?.let { stringResource(R.string.wi_fi_connected_signal_1_d_of_4, it) } ?: stringResource(R.string.wi_fi_connected),
+        if (status.airplane) stringResource(R.string.airplane_mode)
+        else status.cellularLevel?.let { stringResource(R.string.cellular_signal_1_d_of_4, it) } ?: stringResource(R.string.cellular_signal_unavailable),
     ).joinToString(". ")
     val fontScale = LocalDensity.current.fontScale
     val wifiVisual = wifiSignalVisual(status.wifiConnected, status.wifiLevel)
