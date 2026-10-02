@@ -477,11 +477,9 @@
     <string name="android_shows_its_own_pop_up">Android shows its own pop-up</string>
     <string name="the_island_shows_these_apps_new_notifica">The island shows these apps\' new notifications even when Android shows its own pop-up too.</string>
     <string name="android_pop_up">Android pop-up</string>
-    <string name="in_this_update">In this update</string>
     <string name="in_progress">In progress</string>
     <string name="planned">Planned</string>
     <string name="exploring">Exploring</string>
-    <string name="released">Released</string>
     <string name="where_folio_is_headed">Where Folio is headed.</string>
     <string name="suggest_a_feature">Suggest a Feature</string>
     <string name="app_icon">App Icon</string>
@@ -1170,7 +1168,6 @@
     <string name="preview_of_home_on_the_inner_screen">Preview of Home on the inner screen</string>
     <string name="preview_of_home">Preview of Home</string>
     <string name="folio_version">Folio %1$s</string>
-    <string name="coming_in">Coming in %1$s</string>
     <string name="before_restoring_a_backup_arrange_like_i">Before restoring a backup, Arrange Like iPhone or an older layout, Folio saves your Home here so you can go back. The last %1$s are kept on this phone.</string>
     <string name="a_small_dot_beside_dock_apps_you_ve_used">A small dot beside dock apps you\'ve used in the last hour. Android doesn\'t tell launchers which apps are running, so this uses Usage Access.</string>
     <string name="badge_preview">Badge preview</string>
@@ -1256,7 +1253,6 @@
     <string name="settings_keywords_roadmap">roadmap coming soon planned future features next later lock designer keyboard</string>
     <string name="settings_keywords_help">help report bug issue problem broken welcome setup again onboarding tips email developer</string>
     <string name="settings_keywords_credits">credits thanks duolauncher jakesgoodapps license</string>
-    <string name="folio_version_coming">Folio %1$s · Coming</string>
     <string name="folio_version_beta">Folio %1$s Beta</string>
     <plurals name="rows_note_fixed">
         <item quantity="one">Fixed at %1$d row on both screens.</item>
@@ -1640,4 +1636,18 @@
     <string name="compat_screen_inner_only_detail">It doesn\'t change the cover screen. Nothing is wrong; it just won\'t show there.</string>
     <string name="compat_screen_cover_only">Cover screen only</string>
     <string name="compat_screen_cover_only_detail">It doesn\'t change the inner screen. Nothing is wrong; it just won\'t show there.</string>
+    <string name="roadmap_now">Now</string>
+    <string name="roadmap_next">Next</string>
+    <string name="roadmap_shipped">Shipped</string>
+    <string name="roadmap_earlier_releases">Earlier releases</string>
+    <string name="roadmap_show_earlier">Show earlier releases</string>
+    <string name="roadmap_hide_earlier">Hide earlier releases</string>
+    <string name="roadmap_done">Done</string>
+    <string name="roadmap_in_beta">In beta</string>
+    <string name="roadmap_ready_to_try">%1$d of %2$d ready to try</string>
+    <string name="roadmap_all_done">All %1$d done</string>
+    <string name="roadmap_checking">Checking for updates…</string>
+    <string name="roadmap_offline">Can\'t reach the roadmap. Showing the copy saved on this phone.</string>
+    <string name="roadmap_updated">Updated %1$s</string>
+    <string name="roadmap_saved_copy">Saved copy from %1$s</string>
 </resources>

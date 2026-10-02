@@ -483,11 +483,9 @@
     <string name="android_shows_its_own_pop_up">Android 显示自己的弹出通知</string>
     <string name="the_island_shows_these_apps_new_notifica">即使 Android 也显示了自己的弹出通知，灵动岛仍会显示这些 App 的新通知。</string>
     <string name="android_pop_up">Android 弹出通知</string>
-    <string name="in_this_update">本次更新中</string>
     <string name="in_progress">进行中</string>
     <string name="planned">已计划</string>
     <string name="exploring">探索中</string>
-    <string name="released">已发布</string>
     <string name="where_folio_is_headed">Folio 的前进方向。</string>
     <string name="suggest_a_feature">建议功能</string>
     <string name="app_icon">App 图标</string>
@@ -1118,7 +1116,6 @@
     <string name="preview_of_home_on_the_inner_screen">内屏主屏幕预览</string>
     <string name="preview_of_home">主屏幕预览</string>
     <string name="folio_version">Folio %1$s</string>
-    <string name="coming_in">将在 %1$s 推出</string>
     <string name="before_restoring_a_backup_arrange_like_i">在恢复备份、“像 iPhone 一样排列”或恢复旧布局之前，Folio 会先把你的主屏幕保存在这里，以便你回退。这部手机上会保留最近 %1$s 个。</string>
     <string name="a_small_dot_beside_dock_apps_you_ve_used">在你过去一小时内使用过的程序坞 App 旁显示一个小圆点。Android 不会告诉启动器哪些 App 正在运行，所以这需要使用情况访问权限。</string>
     <string name="badge_preview">标记预览</string>
@@ -1202,7 +1199,6 @@
     <string name="settings_keywords_roadmap">路线图 即将推出 计划 未来 功能 键盘 roadmap coming soon planned future features next later lock designer keyboard</string>
     <string name="settings_keywords_help">帮助 报告 错误 问题 欢迎 设置 引导 提示 邮件 开发者 help report bug issue problem broken welcome setup again onboarding tips email developer</string>
     <string name="settings_keywords_credits">致谢 感谢 许可 credits thanks duolauncher jakesgoodapps license</string>
-    <string name="folio_version_coming">Folio %1$s · 即将推出</string>
     <string name="folio_version_beta">Folio %1$s 测试版</string>
     <string name="rows_note_unmeasured">Folio 还没有测量过屏幕，所以暂时显示四行。请在每块屏幕上各打开一次主屏幕。</string>
     <string name="rows_note_cover_only">目前已测量：外屏可容纳 %1$d 行。在另一块屏幕上打开主屏幕后，Folio 会使用两者中较小的值。</string>
@@ -1592,4 +1588,18 @@
     <string name="compat_screen_inner_only_detail">它不会改变外屏。这并不是问题，只是不会在那里显示。</string>
     <string name="compat_screen_cover_only">仅限外屏</string>
     <string name="compat_screen_cover_only_detail">它不会改变内屏。这并不是问题，只是不会在那里显示。</string>
+    <string name="roadmap_now">现在</string>
+    <string name="roadmap_next">接下来</string>
+    <string name="roadmap_shipped">已发布</string>
+    <string name="roadmap_earlier_releases">更早的版本</string>
+    <string name="roadmap_show_earlier">显示更早的版本</string>
+    <string name="roadmap_hide_earlier">隐藏更早的版本</string>
+    <string name="roadmap_done">已完成</string>
+    <string name="roadmap_in_beta">测试中</string>
+    <string name="roadmap_ready_to_try">%2$d 项中有 %1$d 项可试用</string>
+    <string name="roadmap_all_done">全部 %1$d 项已完成</string>
+    <string name="roadmap_checking">正在检查更新…</string>
+    <string name="roadmap_offline">无法连接路线图，正在显示此手机上保存的副本。</string>
+    <string name="roadmap_updated">%1$s更新</string>
+    <string name="roadmap_saved_copy">保存于%1$s的副本</string>
 </resources>
