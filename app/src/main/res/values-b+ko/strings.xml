@@ -1104,6 +1104,7 @@
     <string name="apps_that_android_already_pops_up_stay_w">배너가 중복되지 않도록 Android에서 이미 팝업으로 표시하는 앱은 그대로 둡니다. Dynamic Island 사용을 선택하면 해당 앱의 Android 팝업을 끄고 여기에 알림을 표시합니다.</string>
     <string name="android_popup_title">Android 팝업</string>
     <string name="preview_of_home_on_the_inner_screen">내부 화면의 홈 화면 미리보기</string>
+    <string name="preview_of_home">홈 화면 미리보기</string>
     <string name="folio_version">Folio %1$s</string>
     <string name="coming_in">%1$s에서 제공 예정</string>
     <string name="before_restoring_a_backup_arrange_like_i">백업 복원, iPhone처럼 정렬 또는 이전 레이아웃 복원 전에 현재 홈 화면을 여기에 저장하여 되돌릴 수 있도록 합니다. 최근 %1$s개를 이 휴대전화에 보관합니다.</string>

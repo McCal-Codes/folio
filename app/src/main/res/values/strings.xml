@@ -1119,6 +1119,7 @@
     <string name="apps_that_android_already_pops_up_stay_w">Apps that Android already pops up stay with Android so you don\'t get two banners. Use Island turns off Android\'s pop-up for that app, and its notifications show here instead.</string>
     <string name="android_popup_title">Android Pop-up</string>
     <string name="preview_of_home_on_the_inner_screen">Preview of Home on the inner screen</string>
+    <string name="preview_of_home">Preview of Home</string>
     <string name="folio_version">Folio %1$s</string>
     <string name="coming_in">Coming in %1$s</string>
     <string name="before_restoring_a_backup_arrange_like_i">Before restoring a backup, Arrange Like iPhone or an older layout, Folio saves your Home here so you can go back. The last %1$s are kept on this phone.</string>
