@@ -62,6 +62,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **The island waits as long as you've asked:** what the island shows for a moment, like Folio's notices and new messages, went away after a fixed few seconds. It follows Time to take action in Android's accessibility settings now.
 - **A quick action that won't start says so:** choosing one of an app's quick actions, from its menu or its panel, that the app had removed or turned off closed the menu and did nothing. Folio says it's unavailable now, as it does for an app that won't open.
 - **TalkBack says what controls do:** the middle music button was read as "Play or pause"; it's Play or Pause now, whichever a tap will do. The widget gallery's close button is called Close instead of Back, a widget waiting to be set up is read by its name instead of a name from the app's code, and the Today View's Remove, Move Up and Move Down buttons are read in your language.
+- **Market clips and rows behave:** a clip scrolled out of view stops playing, a still screenshot is no longer decoded twice, and a package you have whose newer version Folio can't read keeps its Remove button.
 
 ## [0.6.7.3] - 2026-09-28
 
