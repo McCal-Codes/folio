@@ -244,7 +244,7 @@ class PackageInstallerTest {
         assertTrue(read is PackageInstaller.ReadResult.Ok)
         val pkg = (read as PackageInstaller.ReadResult.Ok).pkg
         assertEquals("Cabinet", pkg.manifest.name.english)
-        assertEquals(6, pkg.depiction?.blocks?.size)
+        assertEquals(7, pkg.depiction?.blocks?.size)
         assertTrue(host.applied.isEmpty() && store.installed().isEmpty())
     }
 
