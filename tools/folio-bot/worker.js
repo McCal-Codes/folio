@@ -6,10 +6,10 @@
  * same `wrangler deploy` as the supporter worker.
  *
  * Secrets: DISCORD_PUBLIC_KEY (from the application's General Information page) checks that a request came from
- * Discord. DISCORD_BOT_TOKEN lets /redeem hand out a role and the daily sweep take it back; nothing else uses it.
+ * Discord. DISCORD_BOT_TOKEN lets the "Get release pings" button give and take back the Folio updates role; nothing else uses it.
  */
-import { PRIVATE, optionsOf, run } from './commands.mjs'
-import { discordFor, expire, redeem } from './redeem.mjs'
+import { optionsOf, run } from './commands.mjs'
+import { discordFor } from './discord.mjs'
 import { PINGS_BUTTON, togglePings } from './pings.mjs'
 import { sources as liveSources } from './sources.mjs'
 
@@ -106,49 +106,23 @@ export function createWorker({
       if (interaction.type !== APPLICATION_COMMAND) return json({ type: PONG })
 
       const name = interaction.data?.name
-      const secret = PRIVATE.has(name)
-      const options = optionsOf(interaction)
-      const answer =
-        name === 'redeem'
-          ? redeem(
-              env,
-              {
-                // In a server the person is interaction.member.user; in a DM it would be interaction.user.
-                userId: interaction.member?.user?.id ?? interaction.user?.id,
-                guildId: interaction.guild_id,
-                text: options.code,
-              },
-              discord(env),
-            ).catch((error) => {
-              console.error(`redeem failed: ${error.message}`)
-              return 'Codes cannot be checked right now. Try again in a little while.'
-            })
-          : run(name, options, sources)
+      const answer = run(name, optionsOf(interaction), sources)
       const timer = new Promise((resolve) => setTimeout(() => resolve(null), wait))
       const quick = await Promise.race([answer, timer])
-      if (quick !== null) return json({ type: CHANNEL_MESSAGE, data: message(quick, secret) })
+      if (quick !== null) return json({ type: CHANNEL_MESSAGE, data: message(quick) })
 
       // Too slow to answer in place. Say so now, and edit the real answer in when it lands. The interaction's own
       // token authorises the edit, so no bot token is involved.
       const followUp = answer.then((content) =>
         send(
           `https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,
-          { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(message(content, secret)) },
+          { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(message(content)) },
         ).then((response) => {
           if (!response.ok) console.error(`Could not edit the answer in: Discord said ${response.status}`)
         }),
       )
       ctx?.waitUntil?.(followUp)
-      // The deferral decides who can see the answer that follows, so a private one has to be private from here.
-      return json(secret ? { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } } : { type: DEFERRED_CHANNEL_MESSAGE })
-    },
-
-    /** The daily sweep, from the cron in wrangler.toml: roles whose codes have ended are taken back. */
-    async scheduled(_event, env, ctx) {
-      if (!env.DB || !env.DISCORD_BOT_TOKEN) return
-      ctx.waitUntil(
-        expire(env, discord(env)).then((result) => console.log(`sweep: ${result.checked} ended, ${result.removed.length} roles taken back`)),
-      )
+      return json({ type: DEFERRED_CHANNEL_MESSAGE })
     },
   }
 }

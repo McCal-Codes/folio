@@ -1,7 +1,6 @@
 # Mr Folio
 
-Folio's Discord bot, application `1553079678988849294`. Phase 1 of the plan in
-`~/dev/folio-marketing/discord/BOT.md`: six read-only commands, no permissions, no state.
+Folio's Discord bot, application `1553079678988849294`. Six read-only commands, and one button: Get release pings.
 
 | Command | Answers with | Read from |
 |---|---|---|
@@ -11,31 +10,22 @@ Folio's Discord bot, application `1553079678988849294`. Phase 1 of the plan in
 | `/help [topic]` | The matching help page, or the list | foliolauncher.com's sitemap |
 | `/tweak [name]` | What a tweak does and which screens it runs on | `docs/sdk/source/index.json` |
 | `/screens <width>` | Whether a window that wide fits, and how many panes | `screen-matrix.json` |
-| `/redeem <code>` | Your supporter role, until your code ends. Only you see the reply | The code itself, checked by `kofi-worker/beta.js` |
 
 Every answer comes from a file the project already publishes, cached for five minutes, so the bot cannot tell anyone
 something the app does not do.
 
-## /redeem
+## Get release pings
 
-A supporter code becomes a supporter role, and the role goes when the code does. It reuses the Ko-fi worker's own
-checker rather than a copy: the same signature, the same withdrawn list, and the same first-seen day for a
-months-code, so the role ends on the day the code ends everywhere else. The signing key never leaves the Mac.
+A button on the pinned welcome post and in `#faq`. Pressing it gives you the `Folio updates` role, which the release
+announcement mentions, and pressing it again takes it back. The answer is only visible to the person who pressed. It is
+`pings.mjs`; the role is `ROLE_UPDATES` in `wrangler.toml`.
 
-**Which role.** Every code minted so far is tier 1, so the tier cannot tell Coffee from Backer. The `thanks` scope
-marks Builder (the Builder tier and tips of $15 and up); a code minted with `--tier 2` is Backer; anything else is
-Coffee. That is `roleFor` in `redeem.mjs`, one function, if the mapping should change.
+Discord only lets a bot hand out roles below its own, so **Mr Folio's role must sit above Folio updates** in Server
+Settings › Roles. If it does not, the button says exactly that rather than failing with a bare 403.
 
-**One code, one person.** The serial is the key of `discord_roles` in the shared D1 database. A code someone else has
-redeemed is refused, and it is refused before the full check runs, so a stranger pasting it cannot start its month.
-
-**The role goes.** The cron in `wrangler.toml` runs `expire` daily at 06:17 UTC. A role is taken back the day after
-its code's last day, unless another live code of the same person earns the same role. Someone who has left the
-server is closed off; a Discord error is tried again the next day.
-
-**Role order.** Discord only lets a bot hand out roles below its own, so **Mr Folio's role must sit above Builder**
-in Server Settings › Roles. If it does not, `/redeem` says exactly that rather than failing with a bare 403, and
-records nothing, so the person can try again once it is fixed.
+There is no `/redeem`. It turned a supporter code into a Discord role and was removed on 2 Oct 2026: Ko-fi's own
+Discord bot manages the supporter roles, and two systems handing out the same roles could take a role from someone who
+still has it. A code is redeemed in Folio, under Settings › Supporter.
 
 ## How it runs
 
@@ -54,13 +44,11 @@ what Discord's own endpoint check expects.
    ```
 
    The public key is on the application's **General Information** page. It is not a secret, but it lives as one so
-   it cannot be changed by editing a file. `/redeem` also needs the bot token:
+   it cannot be changed by editing a file. The release-pings button also needs the bot token:
 
    ```
    cat ~/.folio-discord-bot-token | npx wrangler secret put DISCORD_BOT_TOKEN
    ```
-
-   and the `discord_roles` table, which is in `tools/kofi-worker/schema.sql` beside the tables it shares.
 
 2. **Point Discord at it.** Same page, **Interactions Endpoint URL**, the `folio-bot` workers.dev address. Discord
    sends two deliberately bad requests when you save; the page only saves if the Worker refuses both.
