@@ -2126,7 +2126,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     SettingsCard(stringResource(R.string.position)) {
         IosMenuRow(stringResource(R.string.dock), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
             p.dockPlacement, { model.setPreset(screen, p.copy(dockPlacement = it)) }, tag = "dock-placement")
-        IosMenuRow(stringResource(R.string.apps), listOf(false to stringResource(R.string.centered), true to "Top"), p.pageTop,
+        IosMenuRow(stringResource(R.string.apps), listOf(false to stringResource(R.string.centered), true to stringResource(R.string.top)), p.pageTop,
             { model.setPreset(screen, p.copy(pageTop = it)) }, tag = "page-position")
         IosMenuRow(stringResource(R.string.status), listOf(true to stringResource(R.string.level_with_apps), false to stringResource(R.string.custom)), p.statusAlignToGrid,
             { model.setPreset(screen, p.copy(statusAlignToGrid = it)) }, tag = "status-position")

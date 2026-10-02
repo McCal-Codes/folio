@@ -83,7 +83,7 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
         // Tap the time for Notification Center; hold it for Folio's settings.
         Column(Modifier.clip(RoundedCornerShape(FolioRadius.GROUP.dp))
-            .combinedClickable(onClickLabel = "Notification Center", onLongClickLabel = "Folio Settings",
+            .combinedClickable(onClickLabel = stringResource(R.string.notification_center), onLongClickLabel = stringResource(R.string.folio_settings),
                 onLongClick = onSettings, onClick = onNotifications)
             .padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.HAIR.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(time, color = Color.White, fontSize = timeSize.sp, fontWeight = FontWeight.SemiBold,
@@ -99,8 +99,8 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
         }
         media?.let { MicroNowPlaying(it) }
         if (roomy) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            MicroChip(if (notifications == 1) "1 notification" else "$notifications notifications", null, onNotifications)
-            MicroChip("Search", Icons.Rounded.Search, onSearch)
+            MicroChip(androidx.compose.ui.res.pluralStringResource(R.plurals.text_1_d_notifications, notifications, notifications), null, onNotifications)
+            MicroChip(stringResource(R.string.search), Icons.Rounded.Search, onSearch)
         }
     }
 }
@@ -120,7 +120,7 @@ private fun MicroNowPlaying(media: IslandActivity.Media) {
             media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .65f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = .9f))
-            .clickable(onClickLabel = if (media.playing) "Pause" else "Play") { if (media.playing) controls?.pause() else controls?.play() },
+            .clickable(onClickLabel = stringResource(if (media.playing) R.string.pause else R.string.play)) { if (media.playing) controls?.pause() else controls?.play() },
             contentAlignment = Alignment.Center) {
             Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
         }

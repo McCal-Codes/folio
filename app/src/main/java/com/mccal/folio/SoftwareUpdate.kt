@@ -164,7 +164,7 @@ internal object SoftwareUpdate {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = android.app.Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle("Folio ${release.version} is available")
+            .setContentTitle(context.getString(R.string.folio_1_s_is_available, release.version))
             .setContentText(context.getString(R.string.tap_to_see_what_s_new_and_install_it))
             .setContentIntent(open).setAutoCancel(true).build()
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
@@ -508,7 +508,7 @@ class SoftwareUpdateReceiver : BroadcastReceiver() {
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> SoftwareUpdate.status.value = SoftwareUpdate.Status.Failed(
-                intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.let { "The update wasn't installed: $it" } ?: "The update wasn't installed.")
+                intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.let { context.getString(R.string.the_update_wasn_t_installed_1_s, it) } ?: context.getString(R.string.the_update_wasn_t_installed))
         }
     }
 }

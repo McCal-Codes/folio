@@ -66,7 +66,7 @@ internal fun FolderPanel(
         .clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
-            onClickLabel = "Close folder",
+            onClickLabel = stringResource(R.string.close_folder),
             onClick = close,
         )
         .imePadding().testTag("folder-panel"),
@@ -97,7 +97,7 @@ internal fun FolderPanel(
                 // The swatch still draws at 30 dp with a 10 dp gap; the tap is 40 x 48, made of the circle and the
                 // gap around it. Eight 48 dp-wide targets would not fit a cover screen's folder panel (A11Y-1).
                 Box(Modifier.width(40.dp).height(FolioTouch.MIN.dp)
-                    .clickable(onClickLabel = if (swatch == null) "No folder color" else "Folder color") { onColor(swatch) },
+                    .clickable(onClickLabel = stringResource(if (swatch == null) R.string.no_folder_color else R.string.folder_color)) { onColor(swatch) },
                     contentAlignment = Alignment.Center) {
                     Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
                         .background(swatch?.let { Color(it) } ?: Color.White.copy(alpha = .18f))
@@ -167,7 +167,7 @@ private fun FolderChild(
                 AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp))
                 Text(app.label, Modifier.padding(top = FolioSpace.SNUG.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium)
-                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else "${app.profileLabel} unavailable",
+                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else stringResource(R.string.text_1_s_unavailable, app.profileLabel),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)

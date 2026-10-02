@@ -1411,9 +1411,10 @@ fun LauncherScreen(
                                 }
                             }
                         } else if (session.dragging) {
+                            val noRoomHere = stringResource(R.string.no_room_here)
                             Surface(Modifier.offset { IntOffset((session.pointer.x - 90.dp.toPx()).roundToInt(),
                                 (session.pointer.y - 60.dp.toPx()).roundToInt()) }.size(180.dp, 120.dp)
-                                .testTag("widget-placement-preview").semantics { stateDescription = "No room here" },
+                                .testTag("widget-placement-preview").semantics { stateDescription = noRoomHere },
                                 color = Color(0xFFE7B6B6).copy(alpha = .9f), shape = RoundedCornerShape(FolioRadius.PANEL.dp)) {
                                 Box(contentAlignment = Alignment.Center) {
                                     if (sessionEntry != null) WidgetProviderPreview(sessionEntry, session.span,
