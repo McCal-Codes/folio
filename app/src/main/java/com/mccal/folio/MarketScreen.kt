@@ -1328,6 +1328,12 @@ private fun MarketPackagePage(
         // What a package can't reach is worked out from the Folio permissions it asks for. An app of its own asks
         // Folio for nothing and gets everything Android grants it - a keyboard sees what you type - so the list
         // would be a promise Folio has no way to keep. It says what is true instead.
+        // Whether it works here comes before what it can't reach: the first thing to know about a package is whether
+        // it can be had at all.
+        if (compat.isNotEmpty()) {
+            SheetGroupLabel(stringResource(R.string.compatibility))
+            CompatibilityCard(compat, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
+        }
         if (external) {
             SheetGroupLabel(stringResource(R.string.an_app_of_its_own))
             SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
@@ -1404,10 +1410,6 @@ private fun MarketPackagePage(
         // exactly why an app doesn't get one: its manifest asks Folio for nothing, and "No data collected" under a
         // keyboard would be Folio vouching for something it can't see.
         if (external) return@Column
-        if (compat.isNotEmpty()) {
-            SheetGroupLabel(stringResource(R.string.compatibility))
-            CompatibilityCard(compat)
-        }
         SheetGroupLabel(stringResource(if (entry.manifest?.permissions.isNullOrEmpty()) R.string.no_data_collected else R.string.what_this_package_changes))
         SheetGroup(Modifier.padding(bottom = FolioSpace.XXL.dp)) {
             val lines = entry.manifest?.permissions.orEmpty().mapNotNull(PackagePermission::label)
