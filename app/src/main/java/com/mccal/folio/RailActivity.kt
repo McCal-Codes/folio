@@ -32,6 +32,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -275,8 +276,8 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
                     is IslandActivity.Progress -> Ring(live.fraction, 18.dp)
                     is IslandActivity.Navigation, null -> when (val e = (content as? IslandContent.Event)?.event) {
                         is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                        is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                        is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, Modifier.size(18.dp).clip(RoundedCornerShape(5.dp))) }
                         else -> Unit
                     }

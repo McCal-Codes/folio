@@ -29,4 +29,19 @@ class TranslatableTextTest {
         val bad = sources.filter { it.name !in namesNotTranslated && enumLabel.containsMatchIn(it.readText()) }.map { it.name }
         assertTrue("An enum in $bad holds a label as String; hold a string resource id instead.", bad.isEmpty())
     }
+
+    @Test fun `dates and on-off states come from the translations`() {
+        // A date pattern written in Kotlin keeps English word order in every language: Korean read "금요일, 10월 2"
+        // instead of "10월 2일 금요일". The day and month names alone are fine; it's a month and a day together.
+        val pattern = Regex(""""([^"\n]*MMM[^"\n]*)"""")  // any text with a month name in it, chosen by an if or not
+        val dayOfMonth = Regex("""(^|[^d])d($|[^d])""")
+        val dates = sources.flatMap { file ->
+            pattern.findAll(file.readText()).map { it.groupValues[1] }
+                .filter { "MMM" in it && dayOfMonth.containsMatchIn(it) }.map { "${file.name}: $it" }.toList()
+        }
+        assertTrue("Date patterns in code: $dates. Use a pattern from strings.xml, like R.string.eeee_mmmm_d, so " +
+            "each language puts the month and day in its own order.", dates.isEmpty())
+        val onOff = sources.filter { """"On" else "Off"""" in it.readText() }.map { it.name }
+        assertTrue("\"On\"/\"Off\" written in $onOff stays English. Use R.string.state_on and R.string.state_off.", onOff.isEmpty())
+    }
 }

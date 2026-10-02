@@ -447,6 +447,8 @@
     <string name="rows">Rows</string>
     <string name="position">Position</string>
     <string name="dock">Dock</string>
+    <string name="your_apps">Your Apps</string>
+    <string name="dock_position_1_d">Dock Position %1$d</string>
     <string name="bottom">Bottom</string>
     <string name="apps">Apps</string>
     <string name="centered">Centered</string>
@@ -605,6 +607,8 @@
     <string name="bluetooth">Bluetooth</string>
     <string name="mobile_network">Mobile network</string>
     <string name="airplane_mode">Airplane mode</string>
+    <string name="airplane_mode_2">Airplane Mode</string>
+    <string name="cellular_data">Cellular Data</string>
     <string name="display_brightness">Display &amp; brightness</string>
     <string name="sounds_vibration">Sounds &amp; vibration</string>
     <string name="battery">Battery</string>
@@ -645,6 +649,10 @@
     <string name="samsung_side_button_press_and_hold_digit">Samsung: Side button › Press and hold › Digital assistant, so holding the key reaches Folio’s picker.</string>
     <string name="message_contacts_from_spotlight_in_openb">Message contacts from Spotlight in OpenBubbles. New messages also pop out of the island with quick reply.</string>
     <string name="mmmm_d">MMMM d</string>
+    <string name="mmm_d">MMM d</string>
+    <string name="eee_mmm_d">EEE MMM d</string>
+    <string name="eee_mmm_d_2">EEE, MMM d</string>
+    <string name="d_mmm_yyyy">d MMM yyyy</string>
     <string name="saved_widget">Saved widget</string>
     <string name="unavailable_profile">Unavailable profile</string>
     <string name="that_provider_or_profile_isn_t_available">That provider or profile isn’t available. Choose a replacement.</string>
@@ -692,6 +700,7 @@
     <string name="circle">Circle</string>
     <string name="rounded_square">Rounded square</string>
     <string name="off">Off</string>
+    <string name="state_off">Off</string>
     <string name="dot">Dot</string>
     <string name="count">Count</string>
     <string name="red">Red</string>
@@ -708,6 +717,7 @@
     <string name="cover_screen">Cover Screen</string>
     <string name="inner_screen">Inner Screen</string>
     <string name="on">On</string>
+    <string name="state_on">On</string>
     <string name="ring">Ring</string>
     <string name="rings">Rings</string>
     <string name="ring_with_percentage">Ring with Percentage</string>
