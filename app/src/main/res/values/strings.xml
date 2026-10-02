@@ -1567,4 +1567,22 @@
     <string name="full_width_home">Full-Width Home</string>
     <string name="full_width_home_note">The dock runs along the bottom and the status Side Bar goes away, so Home uses the whole width, like most phone launchers. The Side Bar setting is for both screens. Turning this off puts back the dock and Side Bar you had.</string>
     <string name="settings_keywords_afterglow">colored albums album art music color colorflow now playing</string>
+    <string name="compatibility">Compatibility</string>
+    <string name="compat_works">Works with your Folio</string>
+    <string name="compat_works_detail">Folio %1$s has everything it asks for.</string>
+    <string name="compat_needs_folio">Needs Folio %1$s</string>
+    <string name="compat_needs_folio_detail">This phone has Folio %2$s. Update Folio, then it can be installed.</string>
+    <string name="compat_kind_detail">It is a kind of package this version of Folio can\'t use yet.</string>
+    <string name="compat_features_detail">It uses something this version of Folio doesn\'t have yet.</string>
+    <string name="compat_replaces">Replaces %1$s</string>
+    <string name="compat_replaces_detail">Both can\'t be on at once. Remove %1$s first.</string>
+    <string name="compat_needs_package">Needs %1$s</string>
+    <string name="compat_needs_package_detail">Install it first, then this package.</string>
+    <string name="compat_have_package_detail">Already on this phone.</string>
+    <string name="compat_screens_both">Cover and inner screens</string>
+    <string name="compat_screens_both_detail">Works on both of this phone\'s screens.</string>
+    <string name="compat_screen_inner_only">Inner screen only</string>
+    <string name="compat_screen_inner_only_detail">It doesn\'t change the cover screen. Nothing is wrong; it just won\'t show there.</string>
+    <string name="compat_screen_cover_only">Cover screen only</string>
+    <string name="compat_screen_cover_only_detail">It doesn\'t change the inner screen. Nothing is wrong; it just won\'t show there.</string>
 </resources>

@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -385,6 +386,37 @@ class MarketScreenRenderTest {
         compose.onNodeWithText("Example · Maya").assertExists()
     }
 
+    @Test fun `a package that needs a later Folio says so on its row, with no Get, and its page says why`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://maya.example/folio/", "Maya", mayaIndex(minFolio = "9.0.0"))
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Sunset Icons").assertExists()
+        compose.onNodeWithText("Needs Folio 9.0.0").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        compose.onNodeWithText("Sunset Icons").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("COMPATIBILITY").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertIsNotEnabled()
+    }
+
+    @Test fun `a listing this Folio cannot read says it needs a newer Folio on its row and its page, and cannot be got`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://maya.example/folio/", "Maya", mayaIndex(kind = "settingsSchema"))
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Sunset Icons").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        compose.onNodeWithText("Sunset Icons").performClick()
+        compose.waitForIdle()
+        // The page offers no Get at all, rather than one that opens a blank sheet.
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        // The row and the page both say why (the list sits beside the page at this width).
+        compose.onAllNodesWithText("Needs a newer Folio").assertCountEquals(2)
+    }
+
     @Test fun `a source is a place with its packages in it`() {
         val session = session()
         session.prefs.introductionSeen = true
@@ -489,11 +521,11 @@ class MarketScreenRenderTest {
             "url":"https://example.test/tilt.foliopkg","sha256":"${"b".repeat(64)}","size":2048,"manifest":$manifest}]}"""
     }
 
-    /** A one-package index from another source, as its cached list. */
-    private fun mayaIndex(): String {
+    /** A one-package index from another source, as its cached list. Its minFolio is low enough for this build to take, now that a row says when it isn't. */
+    private fun mayaIndex(minFolio: String = "0.6.6", kind: String = "theme"): String {
         val manifest = """
             {"format":1,"id":"dev.maya.sunset-icons","name":"Sunset Icons","version":"1.2.0",
-             "author":{"name":"Example"},"minFolio":"0.7.0","section":"themes","kind":["theme"],
+             "author":{"name":"Example"},"minFolio":"$minFolio","section":"themes","kind":["$kind"],
              "permissions":["home.appearance"]}
         """.trimIndent()
         return """{"format":1,"name":"Maya","packages":[{"id":"dev.maya.sunset-icons","version":"1.2.0",
