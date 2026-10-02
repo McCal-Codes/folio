@@ -20,8 +20,11 @@ internal object Roadmap {
 
     enum class Status { DONE, BUILDING, PLANNED, EXPLORING }
     data class Item(val icon: String, val color: Long, val title: String, val detail: String, val status: Status)
-    /** [release] is set for a version's own section ("Folio 0.6.1"); otherwise [title] names it ("Next"). */
-    data class Section(val title: String?, val release: String?, val items: List<Item>)
+    /**
+     * [release] is set for a version's own section ("Folio 0.6.1"); otherwise [title] names it ("Next"). [subtitle] is an
+     * optional theme for a release ("Foundation"); a Folio that predates it ignores the field.
+     */
+    data class Section(val title: String?, val release: String?, val items: List<Item>, val subtitle: String? = null)
     data class Content(val note: String?, val sections: List<Section>)
 
     /** Reads a roadmap file; null if it isn't a valid one. Unknown statuses and bad colors are skipped or defaulted. */
@@ -37,13 +40,14 @@ internal object Roadmap {
                 val title = section.optString("title").takeIf { it.isNotBlank() }?.take(40)
                 if (release == null && title == null) return@mapNotNull null
                 val items = section.getJSONArray("items")
+                val subtitle = section.optString("subtitle").trim().takeIf { it.isNotEmpty() }?.take(40)
                 Section(title, release, (0 until minOf(items.length(), 30)).mapNotNull { i ->
                     val item = items.getJSONObject(i)
                     val status = runCatching { Status.valueOf(item.getString("status").uppercase(java.util.Locale.ROOT)) }.getOrNull() ?: return@mapNotNull null
                     val itemTitle = item.optString("title").trim().takeIf { it.isNotEmpty() }?.take(60) ?: return@mapNotNull null
                     Item(item.optString("icon").take(24), color(item.optString("color")), itemTitle,
                         item.optString("detail").trim().take(240), status)
-                }).takeIf { it.items.isNotEmpty() }
+                }, subtitle).takeIf { it.items.isNotEmpty() }
             }).takeIf { it.sections.isNotEmpty() }
     }.getOrNull()
 

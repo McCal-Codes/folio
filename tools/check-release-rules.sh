@@ -3,11 +3,13 @@
 #
 #   bash tools/check-release-rules.sh [base-ref]        # default base: origin/main
 #
-# Four rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026; REL-4b
+# Five rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026; REL-4b
 # became "the same app" on 2 Oct 2026, so a fix to a tool or a note no longer waits a whole release:
 #
 #   REL-4b  A stable ships the same app as the last beta of its version: what goes into the APK matches that beta's
 #           tag, apart from the version, the roadmap and the notes.
+#
+#   REL-14b A stable's own roadmap section has no item still Building or Planned: each is done or moved.
 #
 #   REL-5   No AI attribution: no co-author, credit line or robot footer in a commit or the description, and no
 #           branch named after a tool. Not waivable.
@@ -134,6 +136,36 @@ else
         fail "REL-13 folioVersion moves to $new_version in a pull request that also changes:
 $(echo "$stray" | head -5 | sed 's/^/          /')
         Land the change first, then bump the version on its own, so the release is one reviewable diff."
+    fi
+fi
+
+# REL-14b: a stable's own roadmap section has nothing left Building or Planned. The roadmap is read from `main` by every
+# install, so a stable that leaves its own items open tells people the release is still coming.
+if [[ "$version_changed" != yes || "$new_version" == *-* ]]; then
+    skip "REL-14b not a stable release"
+else
+    section=$(echo "${new_version%%-*}" | cut -d. -f1-3)
+    still_open=$(git show HEAD:app/src/main/assets/roadmap.json 2>/dev/null | python3 -c '
+import json, sys
+section = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+except ValueError:
+    print("(roadmap.json is not valid JSON)"); sys.exit(0)
+for s in data.get("sections", []):
+    if s.get("release") == section:
+        for i in s.get("items", []):
+            if i.get("status") in ("building", "planned"):
+                print("%s (%s)" % (i.get("title"), i.get("status")))
+' "$section")
+    if has_label release-exception; then
+        skip "REL-14b waived by the release-exception label"
+    elif [[ -z "$still_open" ]]; then
+        pass "REL-14b the $section roadmap section has nothing still Building or Planned"
+    else
+        fail "REL-14b the $section roadmap section still lists open items on a stable:
+$(echo "$still_open" | head -6 | sed 's/^/          /')
+        Mark each one done, or move it to the release it now belongs to, in the version bump."
     fi
 fi
 

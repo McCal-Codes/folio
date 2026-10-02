@@ -36,6 +36,16 @@ class RoadmapTest {
         assertEquals(0xFF8E8E93, content.sections.single().items[1].color)
     }
 
+    @Test fun `reads a release's optional subtitle and tolerates its absence`() {
+        val content = Roadmap.parse("""{"roadmap":1,"sections":[
+            {"release":"0.6.9","subtitle":"Foundation","items":[{"title":"A","status":"planned"}]},
+            {"release":"0.7.0","items":[{"title":"B","status":"planned"}]},
+            {"release":"0.7.1","subtitle":"${"x".repeat(80)}","items":[{"title":"C","status":"planned"}]}]}""")!!
+        assertEquals("Foundation", content.sections[0].subtitle)
+        assertNull(content.sections[1].subtitle)
+        assertEquals(40, content.sections[2].subtitle!!.length)
+    }
+
     @Test fun `ignores oversized files`() {
         assertNull(Roadmap.parse("""{"roadmap":1,"note":"${"x".repeat(70_000)}","sections":[]}"""))
     }
