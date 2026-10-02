@@ -300,15 +300,17 @@ class MainActivity : ComponentActivity() {
                 // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
                 // charging on its side and a tent on the cover.
                 val standByMore = androidx.compose.runtime.remember { FeatureGate.STANDBY_CHARGING.isOpen(this@MainActivity) }
+                val standByShowing = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                 val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
                 val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
                 val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
                 val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
                 StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
-                    halfOpenPose, blocked = overlayOpen, status = deviceStatus)
+                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it })
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
-                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen)
-                SetupReminderCard(defaultHome.value, blocked = overlayOpen || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
+                // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
+                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)
+                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
@@ -321,7 +323,7 @@ class MainActivity : ComponentActivity() {
                 }
                 if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
                 // With live activities in the side rail, the camera island on Home keeps only its brief events.
-                if (state.island) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
+                if (state.island && !standByShowing.value) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
                     ?.takeUnless { it is IslandActivity.Call && "CALL" in state.islandEventsOff }
                     ?.takeUnless { state.railActivities && state.verticalStatus && !overlayOpen }, state.islandEventsOff + "BLUETOOTH") {
                     IslandListenerService.open(this@MainActivity, it)
