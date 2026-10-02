@@ -1069,6 +1069,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setAppPanels(value: Boolean) = updateSettings(soon = false) { it.copy(appPanels = value) }
     fun setHaptics(value: Boolean) = updateSettings(soon = false) { it.copy(haptics = value) }
     fun setLockCover(value: Boolean) = updateSettings(soon = false) { it.copy(lockCover = value) }
+    fun setTweakOptions(tweakId: String, values: Map<String, String>) =
+        updateSettings(soon = false) { it.copy(tweakOptions = TweakOptions.replace(it.tweakOptions, tweakId, values)) }
     fun setTweakOption(tweakId: String, optionId: String, value: String) =
         updateSettings(soon = false) { it.copy(tweakOptions = TweakOptions.set(it.tweakOptions, tweakId, optionId, value)) }
     fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) =

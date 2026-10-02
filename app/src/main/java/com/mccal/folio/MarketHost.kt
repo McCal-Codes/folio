@@ -20,6 +20,9 @@ internal interface MarketLauncher {
     fun installTweak(feature: TweakFeature)
     fun removeTweak(feature: TweakFeature)
     fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue)
+
+    /** Puts a tweak's options back exactly (the ones a package restore saved). Read-only launchers ignore it. */
+    fun setTweakOptions(id: String, options: Map<String, String>) = Unit
     fun applyTheme(theme: FolioTheme)
 
     /** Duet's look and the fold intensity, from a package. Read-only launchers ignore it. */
@@ -49,6 +52,7 @@ internal class ModelLauncher(private val model: LauncherModel, private val conte
     override val state get() = model.state.value
     override fun installTweak(feature: TweakFeature) = model.installTweak(feature)
     override fun removeTweak(feature: TweakFeature) = model.removeTweak(feature)
+    override fun setTweakOptions(id: String, options: Map<String, String>) = model.setTweakOptions(id, options)
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = model.setFeatureScope(id, screen, value)
     override fun addPageEffect(effect: PackagedPageEffect) = model.addPackagedEffect(effect)
     override fun removePageEffect(id: String) = model.removePackagedEffect(id)
@@ -226,6 +230,8 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
                 val value = ScopeValue.entries.firstOrNull { it.name == json.optString(screen.name) } ?: ScopeValue.DEFAULT
                 launcher.setFeatureScope(feature.id, screen, value)
             }
+            // Turning a tweak off forgets its options, so removing the package has to put them back with it.
+            launcher.setTweakOptions(feature.id, json.optJSONObject("options")?.let { o -> o.keys().asSequence().associateWith { o.optString(it) } }.orEmpty())
             // Removing the package puts back the look it replaced, not the default.
             json.optJSONObject("duet")?.let { launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(it), json.optDouble("foldIntensity", 1.0).toFloat()) }
         }
@@ -247,6 +253,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
                 for (screen in FolioScreen.entries) {
                     json.put(screen.name, FeatureScopes.value(state.featureScopes, feature.id, screen).name)
                 }
+                json.put("options", JSONObject(state.tweakOptions[feature.id].orEmpty()))
                 if (setting.id == TweakId.DUET && setting.options.isNotEmpty()) {
                     json.put("duet", state.duet.toJson()).put("foldIntensity", state.foldIntensity.toDouble())
                 }

@@ -1572,7 +1572,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                 val value = TweakOptions.value(state.tweakOptions, tweak.id, option.id)
                 when (option) {
                     is TweakOption.Toggle -> SettingsSwitch(label, value == TweakOptions.ON,
-                        { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag)
+                        { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag, enabled = on)
                     is TweakOption.Choice -> IosMenuRow(label, option.choices.map { (stored, text) -> stored to stringResource(text) }, value,
                         { model.setTweakOption(tweak.id, option.id, it) }, tag = tag, enabled = on)
                 }
@@ -2266,10 +2266,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     }
 }
 
-@Composable internal fun SettingsSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, tag: String? = null) {
+@Composable internal fun SettingsSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, tag: String? = null, enabled: Boolean = true) {
     // One accessible element for TalkBack ("label, switch, on"); the whole row toggles.
     Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).settingsFocus(label).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f).padding(end = FolioSpace.MEDIUM.dp, top = FolioSpace.SNUG.dp, bottom = FolioSpace.SNUG.dp), fontSize = FolioType.BODY.sp); IosSwitch(checked, onChecked, Modifier.then(if (tag != null) Modifier.testTag(tag) else Modifier))
+        Text(label, Modifier.weight(1f).padding(end = FolioSpace.MEDIUM.dp, top = FolioSpace.SNUG.dp, bottom = FolioSpace.SNUG.dp), fontSize = FolioType.BODY.sp); IosSwitch(checked, onChecked, Modifier.then(if (tag != null) Modifier.testTag(tag) else Modifier), enabled)
     }
 }
 

@@ -69,6 +69,10 @@ internal object TweakOptions {
         return if (mine.isEmpty()) options - tweakId else options + (tweakId to mine)
     }
 
+    /** [options] with everything for [tweakId] swapped for [values] (what a package restore puts back), kept to what this build knows. */
+    fun replace(options: Map<String, Map<String, String>>, tweakId: String, values: Map<String, String>): Map<String, Map<String, String>> =
+        cleaned(options - tweakId + (tweakId to values))
+
     /** Only what this build knows: a save from a newer Folio may name an option or a value that is not here. */
     fun cleaned(options: Map<String, Map<String, String>>): Map<String, Map<String, String>> =
         options.mapValues { (tweak, values) -> values.filter { (id, value) -> option(tweak, id)?.let { isValid(it, value) } == true } }
