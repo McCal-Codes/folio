@@ -18,6 +18,10 @@ internal object FolioColors {
         const val Red = 0xFFFF453AL
         const val RedLight = 0xFFFF3B30L
         const val RedOnDark = 0xFFFF8A80L
+        const val StandByNight = 0xFFB3261EL
+        const val StandByNightText = 0xFFFF453AL
+        const val StandByNightSoft = 0xFFE63B30L
+        const val StandByNightCard = 0xFF1A0605L
         const val RedSoft = 0xFFFF6961L
         const val Green = 0xFF30D158L
         const val GreenLight = 0xFF34C759L
@@ -50,6 +54,14 @@ internal object FolioColors {
     val RedLight = Color(Value.RedLight)
     /** Destructive text on dark menus and sheets: [Red] measures 3.33 on a menu's grey, this one 4.97 (A11Y-9). */
     val RedOnDark = Color(Value.RedOnDark)
+    /** StandBy at night, the big clock: a dim red, 3.2:1 on black, enough for text that large (WCAG 1.4.3). */
+    val StandByNight = Color(Value.StandByNight)
+    /** StandBy's smaller night text: 6.2:1 on black and 5.7:1 on [StandByNightCard], over the 4.5:1 small text needs. */
+    val StandByNightText = Color(Value.StandByNightText)
+    /** StandBy's secondary night text (dates, artists, times): 5.0:1 on black and 4.7:1 on [StandByNightCard]. */
+    val StandByNightSoft = Color(Value.StandByNightSoft)
+    /** StandBy's cards at night (Up Next, Now Playing). */
+    val StandByNightCard = Color(Value.StandByNightCard)
     /** A softer red, for a state that is wrong rather than destructive: a source that failed, a paused profile. */
     val RedSoft = Color(Value.RedSoft)
     val Green = Color(Value.Green)

@@ -40,6 +40,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Settings is ordered like iOS Settings:** General and Accessibility come first, Backup is now inside General, the Dynamic Island page opens with the island and its pop-ups before the options for other apps, and the App Icons card starts with Style (Default, Dark, Tinted) and puts Notification Badges last, where its options open. Nothing is renamed and every setting keeps its value. The Brief pop-ups card no longer also shows on the Icons & Side Bar page.
 
 ### Fixed
+- **Nothing covers StandBy:** while StandBy is up on Home, the island, the headphones card and the setup reminder wait instead of drawing over it.
+- **StandBy's night text is readable:** at night the date, the battery and alarm, and the cards used a red too dim to read (2.2:1 against black). They use brighter reds now, at least 4.5:1, while the big clock keeps its dim red.
 - **The charging island follows the cable:** plugging in at a charge limit, like Samsung's battery protection, shows the charging island and runs your Charging automations, and the battery topping back up at the limit no longer shows the island again with nobody touching the cable.
 - **StandBy shows more of a song's title:** on the cover screen, Now Playing in StandBy puts its controls under the title, so a long title has the card's width and two lines instead of a few letters, and breaks between words.
 - **Plugged in shows as charging:** at a charge limit, like Samsung's battery protection holding at 80%, Android reports the battery as not charging while the phone is still on the cable, so the Side Bar and StandBy showed it as running on battery. They follow the cable now, as iOS does.

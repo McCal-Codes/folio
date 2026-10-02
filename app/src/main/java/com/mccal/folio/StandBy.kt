@@ -164,7 +164,8 @@ internal fun rememberStandBySignals(activity: Activity, ways: StandByWays, plugg
  * now playing. Dim red at night. Tap anywhere or open the phone flat to leave.
  */
 @Composable
-internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeature.Orientation?, blocked: Boolean, status: DeviceStatus) {
+internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeature.Orientation?, blocked: Boolean, status: DeviceStatus,
+    onShowing: (Boolean) -> Unit = {}) {
     var active by remember { mutableStateOf(false) }
     var dismissed by remember { mutableStateOf(false) }
     var shown by remember { mutableStateOf<StandByWay?>(null) }
@@ -191,6 +192,8 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
         onDispose { if (turn && before != null) activity.requestedOrientation = before }
     }
     BackHandler(active) { active = false; dismissed = true }
+    // Home keeps everything else off StandBy while it's up (MainActivity: the island, the headphones card, the setup reminder).
+    DisposableEffect(active) { onShowing(active); onDispose { if (active) onShowing(false) } }
 
     AnimatedVisibility(active, enter = fadeIn(tween(500)), exit = fadeOut(tween(300))) {
         Box(Modifier.fillMaxSize().background(Color.Black)
@@ -231,12 +234,15 @@ internal fun StandByFace(status: DeviceStatus, stacked: Boolean, modifier: Modif
     val tick by rememberMinuteTick()
     val now = displayNow(tick)
     val night = isStandByNight(now)
-    val ink = if (night) Color(0xFFB3261E) else Color.White
-    val soft = ink.copy(alpha = if (night) .75f else .6f)
+    // At night the big clock stays a dim red, which is enough at its size; the smaller text uses brighter reds that
+    // reach the 4.5:1 small text needs (it was 2.2:1), so the date, chips and cards stay readable in the dark.
+    val clockInk = if (night) FolioColors.StandByNight else Color.White
+    val ink = if (night) FolioColors.StandByNightText else Color.White
+    val soft = if (night) FolioColors.StandByNightSoft else Color.White.copy(alpha = .6f)
     if (stacked) Column(modifier) {
-        BigClock(now, ink, soft, Modifier.weight(1f).fillMaxWidth()); StandByInfo(status, ink, soft, night, Modifier.weight(1f).fillMaxWidth())
+        BigClock(now, clockInk, soft, Modifier.weight(1f).fillMaxWidth()); StandByInfo(status, ink, soft, night, Modifier.weight(1f).fillMaxWidth())
     } else Row(modifier) {
-        BigClock(now, ink, soft, Modifier.weight(1f).fillMaxHeight()); StandByInfo(status, ink, soft, night, Modifier.weight(1f).fillMaxHeight())
+        BigClock(now, clockInk, soft, Modifier.weight(1f).fillMaxHeight()); StandByInfo(status, ink, soft, night, Modifier.weight(1f).fillMaxHeight())
     }
 }
 
@@ -272,7 +278,7 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
         // Up Next while nothing is playing: the next event, in the calendar's color (not tinted red at night).
         val next by produceState<UpNextEvent?>(null, tick) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { UpNext.events(context, limit = 1).firstOrNull() } }
         if (media == null) next?.let { e ->
-            Row(Modifier.widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(if (night) Color(0xFF1A0605) else FolioColors.SecondaryBackground)
+            Row(Modifier.widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(if (night) FolioColors.StandByNightCard else FolioColors.SecondaryBackground)
                 .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(if (night) soft else e.color?.let { Color(it) } ?: LocalAccent.current.fill))
                 Spacer(Modifier.width(12.dp))
@@ -285,7 +291,7 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
             }
         }
         if (media != null) BoxWithConstraints(Modifier.widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp))
-            .background(if (night) Color(0xFF1A0605) else FolioColors.SecondaryBackground).padding(16.dp)) {
+            .background(if (night) FolioColors.StandByNightCard else FolioColors.SecondaryBackground).padding(16.dp)) {
             // On a narrow card (the cover's half of the screen) the controls go under the title, so the title has the
             // card's width instead of a third of it and breaks between words rather than inside one.
             val stacked = maxWidth < 360.dp
