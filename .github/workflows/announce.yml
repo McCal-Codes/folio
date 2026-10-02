@@ -32,7 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Both triggers end up with the same file, so the manual run and the automatic one cannot drift apart.
+      # Both triggers end up with the same file, so the manual run and the automatic one cannot drift apart. A step cannot
+      # change GITHUB_EVENT_PATH, which is why a manual run used to fail with "The event carries no release"; the script
+      # reads this file by its own name instead.
       - name: Gather the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,8 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > release.json
-          jq '{release: .}' release.json > event.json
-          echo "GITHUB_EVENT_PATH=$PWD/event.json" >> "$GITHUB_ENV"
+          echo "RELEASE_FILE=$PWD/release.json" >> "$GITHUB_ENV"
 
       - name: Post it
         env:
