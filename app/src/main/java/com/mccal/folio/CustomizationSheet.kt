@@ -2604,6 +2604,9 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             else stringResource(R.string.turn_on_to_try_new_features_before_they))
         // A supporter's code turns this on by itself, so say where it came from rather than leaving them to wonder.
         if (beta && Supporter.has(context, BetaCodes.SCOPE_BETA)) CardNote(stringResource(R.string.a_supporter_code_turned_this_on_you_can))
+        // Betas come through the supporter worker. Without a code Folio only sees public releases, and "up to date" would
+        // read as if no beta existed (#239).
+        if (!SoftwareUpdate.betaSourceReady(context)) CardNote(stringResource(R.string.betas_are_for_supporters))
     }
     CardNote(stringResource(R.string.every_update_is_checked_against_its_publ), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
 }
