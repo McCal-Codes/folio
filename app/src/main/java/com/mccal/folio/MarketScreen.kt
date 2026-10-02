@@ -498,6 +498,7 @@ internal fun MarketScreen(
                                         session = session,
                                         entry = entry,
                                         installed = installed[entry.id],
+                                        installedAll = installed,
                                         busy = entry.id == busyId,
                                         selected = false,
                                         onOpen = { openId = entry.id },
@@ -518,6 +519,7 @@ internal fun MarketScreen(
                             host = openHost,
                             onGetHost = { openHost?.let { getHost(it.id, it.name) } },
                             installed = installed[open.id],
+                            installedAll = installed,
                             appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
                             source = open.source,
@@ -918,6 +920,7 @@ private fun MarketList(
                             session = session,
                             entry = entry,
                             installed = installed[entry.id],
+                            installedAll = installed,
                             busy = entry.id == busyId,
                             update = true,
                             selected = entry.id == openId,
@@ -952,6 +955,7 @@ private fun MarketList(
                                         session = session,
                                         entry = entry,
                                         installed = installed[entry.id],
+                                        installedAll = installed,
                                         busy = entry.id == busyId,
                                         selected = entry.id == openId,
                                         onOpen = { onOpen(entry.id) },
@@ -1002,6 +1006,8 @@ private fun MarketRow(
     session: MarketSession,
     entry: MarketEntry,
     installed: InstalledPackage?,
+    /** Everything installed, which a compatibility answer reads (a dependency, a conflict), so it is recomputed when it changes. */
+    installedAll: Map<String, InstalledPackage> = emptyMap(),
     busy: Boolean,
     selected: Boolean,
     onOpen: () -> Unit,
@@ -1016,7 +1022,7 @@ private fun MarketRow(
     val appUpdate = if (external) appUpdateFor(entry) else null
     // Whether it can be had here, before the person taps. A package already on the phone has been through that, unless
     // this row offers a newer version of it: that version can need more than the one installed did.
-    val compat = remember(entry, installed, update, MarketWork.busyId) {
+    val compat = remember(entry, installed, installedAll, update, MarketWork.busyId) {
         if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
     }
     Row(
@@ -1191,6 +1197,8 @@ private fun MarketPackagePage(
     host: HostTweak? = null,
     onGetHost: () -> Unit = {},
     installed: InstalledPackage?,
+    /** Everything installed, which a compatibility answer reads (a dependency, a conflict), so it is recomputed when it changes. */
+    installedAll: Map<String, InstalledPackage> = emptyMap(),
     /** The app on the phone this listing would update, when it is an app of its own and newer. */
     appUpdate: MarketAppUpdate.OnPhone? = null,
     revoked: String?,
@@ -1228,7 +1236,7 @@ private fun MarketPackagePage(
     val onPhone = if (external) externalAppId(entry.manifest) else null
     // A newer listing of what is installed offers Update, and has to be checked like anything else being got.
     val updateAvailable = installed != null && entry.version > installed.version
-    val compat = remember(entry, installed, updateAvailable, MarketWork.busyId) {
+    val compat = remember(entry, installed, installedAll, updateAvailable, MarketWork.busyId) {
         if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
