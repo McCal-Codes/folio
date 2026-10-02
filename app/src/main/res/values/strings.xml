@@ -1567,6 +1567,12 @@
     <string name="full_width_home">Full-Width Home</string>
     <string name="full_width_home_note">The dock runs along the bottom and the status Side Bar goes away, so Home uses the whole width, like most phone launchers. The Side Bar setting is for both screens. Turning this off puts back the dock and Side Bar you had.</string>
     <string name="settings_keywords_afterglow">colored albums album art music color colorflow now playing</string>
+    <string name="tweak_opt_amount">Amount</string>
+    <string name="tweak_opt_subtle">Subtle</string>
+    <string name="tweak_opt_strong">Strong</string>
+    <string name="tweak_opt_tick">Tick as you slide</string>
+    <string name="tweak_opt_music_card">Music card</string>
+    <string name="tweak_opt_island_bars">Island sound bars</string>
     <string name="compatibility">Compatibility</string>
     <string name="compat_works">Works with your Folio</string>
     <string name="compat_works_detail">Folio %1$s has everything it asks for.</string>

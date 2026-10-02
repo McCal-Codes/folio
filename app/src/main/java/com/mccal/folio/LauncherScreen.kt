@@ -937,7 +937,8 @@ fun LauncherScreen(
                         dockIconSize(geometry.iconSize), drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },
                         magnify = FeatureScopes.on(state.featureScopes, "dockMagnify", state.dockMagnify, screenFor(wide)) &&
-                            !LocalReduceMotion.current, leftHanded = state.leftHanded, horizontal = geometry.horizontalDock)
+                            !LocalReduceMotion.current, leftHanded = state.leftHanded, horizontal = geometry.horizontalDock,
+                        magnifyAmount = TweakOptions.magnifyAmount(state.tweakOptions), magnifyTick = TweakOptions.on(state.tweakOptions, "dockMagnify", "tick"))
                 }
             }
             // Unfolded, the pager carries the extra left page beside Home, so a row centred on the whole pager lands

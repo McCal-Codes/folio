@@ -1543,6 +1543,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     if (tweak.id == "pageEffects") FlipbookEffects(state, model::setPageEffect, model::setPackagedEffect)
     // Duet's look, only while it's on, like the fold settings always were.
     if (tweak.id == DUET_ID && on) DuetSettings(state, model, previewBitmap)
+    TweakOptionsCard(tweak, state, model, on)
     SettingsCard(stringResource(R.string.use_on)) {
         Column(Modifier.alpha(if (on) 1f else .4f)) {
             FolioScreen.entries.forEach { screen ->
@@ -1557,6 +1558,27 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardNote(tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
     }
     SheetGroup { IosActionRow(stringResource(R.string.remove_control, tweak.name), "tweak-remove-${tweak.id}", destructive = true) { model.removeTweak(tweak) } }
+}
+
+/** The settings a tweak offers on its own page (see [TweakOptions]): dimmed while the tweak is off, kept either way. */
+@Composable private fun TweakOptionsCard(tweak: TweakFeature, state: LauncherState, model: LauncherModel, on: Boolean) {
+    val options = TweakOptions.of(tweak.id)
+    if (options.isEmpty()) return
+    SettingsCard(stringResource(R.string.options)) {
+        Column(Modifier.alpha(if (on) 1f else .4f)) {
+            options.forEach { option ->
+                val label = stringResource(option.label)
+                val tag = "tweak-option-${tweak.id}-${option.id}"
+                val value = TweakOptions.value(state.tweakOptions, tweak.id, option.id)
+                when (option) {
+                    is TweakOption.Toggle -> SettingsSwitch(label, value == TweakOptions.ON,
+                        { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag, enabled = on)
+                    is TweakOption.Choice -> IosMenuRow(label, option.choices.map { (stored, text) -> stored to stringResource(text) }, value,
+                        { model.setTweakOption(tweak.id, option.id, it) }, tag = tag, enabled = on)
+                }
+            }
+        }
+    }
 }
 
 /** Themes (after SnowBoard): built-in looks with a live preview, plus saving and importing theme files. */
@@ -2244,10 +2266,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     }
 }
 
-@Composable internal fun SettingsSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, tag: String? = null) {
+@Composable internal fun SettingsSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, tag: String? = null, enabled: Boolean = true) {
     // One accessible element for TalkBack ("label, switch, on"); the whole row toggles.
     Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).settingsFocus(label).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f).padding(end = FolioSpace.MEDIUM.dp, top = FolioSpace.SNUG.dp, bottom = FolioSpace.SNUG.dp), fontSize = FolioType.BODY.sp); IosSwitch(checked, onChecked, Modifier.then(if (tag != null) Modifier.testTag(tag) else Modifier))
+        Text(label, Modifier.weight(1f).padding(end = FolioSpace.MEDIUM.dp, top = FolioSpace.SNUG.dp, bottom = FolioSpace.SNUG.dp), fontSize = FolioType.BODY.sp); IosSwitch(checked, onChecked, Modifier.then(if (tag != null) Modifier.testTag(tag) else Modifier), enabled)
     }
 }
 

@@ -33,7 +33,12 @@ class MarketHostTest {
             state = state.copy(
                 installedTweaks = state.installedTweaks - feature.id,
                 featureScopes = state.featureScopes - feature.id,
+                tweakOptions = state.tweakOptions - feature.id,
             )
+        }
+
+        override fun setTweakOptions(id: String, options: Map<String, String>) {
+            state = state.copy(tweakOptions = TweakOptions.replace(state.tweakOptions, id, options))
         }
 
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) {
@@ -92,6 +97,21 @@ class MarketHostTest {
         host.restore(change, before)
         assertTrue("appPanels" in launcher.state.installedTweaks)
         assertEquals(ScopeValue.OFF, FeatureScopes.value(launcher.state.featureScopes, "appPanels", FolioScreen.COVER))
+    }
+
+    @Test fun `removing a package that turned a tweak off puts back the options the person had set`() {
+        val start = LauncherState(
+            installedTweaks = setOf("dockMagnify"),
+            tweakOptions = mapOf("dockMagnify" to mapOf("amount" to "strong", "tick" to "off")),
+        )
+        val launcher = FakeLauncher(start)
+        val host = MarketHost(launcher)
+        val off = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DOCK_MAGNIFY, enabled = false)))
+        val before = host.apply(off)
+        assertTrue("turning it off forgot the options", launcher.state.tweakOptions.isEmpty())
+        host.restore(off, before)
+        assertTrue("dockMagnify" in launcher.state.installedTweaks)
+        assertEquals(mapOf("dockMagnify" to mapOf("amount" to "strong", "tick" to "off")), launcher.state.tweakOptions)
     }
 
     @Test fun `a bundle that names one screen leaves the other off`() {
