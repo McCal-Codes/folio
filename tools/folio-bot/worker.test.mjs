@@ -162,3 +162,17 @@ test('the read-only answers stay public', async () => {
   const answer = await (await worker.fetch(await signed(body), env)).json()
   assert.equal(answer.data.flags & 64, 0)
 })
+
+test('a press of the release-pings button toggles the role and the answer is private', async () => {
+  const calls = []
+  const bot = createWorker({ discord: () => ({ addRole: async (...a) => (calls.push(a), 204), removeRole: async () => 204 }) })
+  const body = JSON.stringify({ type: 3, guild_id: 'folio', member: { user: { id: 'u1' }, roles: [] }, data: { custom_id: 'folio-release-pings' } })
+  const answer = await (await bot.fetch(await signed(body), { ...env, GUILD_ID: 'folio', ROLE_UPDATES: 'ping', DISCORD_BOT_TOKEN: 't' }, {})).json()
+  assert.equal(answer.type, 4)
+  assert.equal(answer.data.flags & 64, 64, 'ephemeral')
+  assert.match(answer.data.content, /pinged/)
+  assert.equal(calls.length, 1)
+  // A button this bot did not make is acknowledged and ignored.
+  const other = JSON.stringify({ type: 3, guild_id: 'folio', member: { user: { id: 'u1' }, roles: [] }, data: { custom_id: 'something-else' } })
+  assert.deepEqual(await (await bot.fetch(await signed(other), env, {})).json(), { type: 1 })
+})

@@ -10,10 +10,12 @@
  */
 import { PRIVATE, optionsOf, run } from './commands.mjs'
 import { discordFor, expire, redeem } from './redeem.mjs'
+import { PINGS_BUTTON, togglePings } from './pings.mjs'
 import { sources as liveSources } from './sources.mjs'
 
 const PING = 1
 const APPLICATION_COMMAND = 2
+const MESSAGE_COMPONENT = 3
 const PONG = 1
 const CHANNEL_MESSAGE = 4
 const DEFERRED_CHANNEL_MESSAGE = 5
@@ -92,6 +94,15 @@ export function createWorker({
 
       const interaction = JSON.parse(body)
       if (interaction.type === PING) return json({ type: PONG })
+      if (interaction.type === MESSAGE_COMPONENT) {
+        // A button press. Only the release-pings button exists; anything else is acknowledged and ignored.
+        if (interaction.data?.custom_id !== PINGS_BUTTON) return json({ type: PONG })
+        const said = await togglePings(env, interaction, discord(env)).catch((error) => {
+          console.error(`pings failed: ${error.message}`)
+          return 'That did not work. Try again in a little while.'
+        })
+        return json({ type: CHANNEL_MESSAGE, data: message(said, true) })
+      }
       if (interaction.type !== APPLICATION_COMMAND) return json({ type: PONG })
 
       const name = interaction.data?.name
