@@ -63,7 +63,9 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-13 MUST** make the version bump its own commit, the last one before the tag, touching only the version, the
   changelog date, the roadmap's statuses for that release and its release doc.
 - **REL-14 MUST** give every release a section in `app/src/main/assets/roadmap.json` matching its version, so
-  `RoadmapTest` passes and Settings › Roadmap agrees with What's New.
+  `RoadmapTest` passes and Settings › Roadmap agrees with What's New. A stable's own section has no item still
+  Building or Planned: each is marked done, or moved to the release it now belongs to, in the bump
+  (`tools/check-release-rules.sh`, REL-14b). A section may carry an optional `subtitle`, its theme.
 - **REL-15 MUST NOT** publish a stable release carrying less than a beta of the same version. Either the stable
   includes everything its betas had, or the beta line is renumbered before the stable goes out.
 - **REL-16** A version number means one build. If what ships has to change after a beta, the number moves; the

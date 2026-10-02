@@ -482,11 +482,9 @@
     <string name="android_shows_its_own_pop_up">Android 기본 팝업 표시</string>
     <string name="the_island_shows_these_apps_new_notifica">Android 기본 팝업이 표시될 때도 이 앱들의 새 알림을 Dynamic Island에 표시합니다.</string>
     <string name="android_pop_up">Android 팝업</string>
-    <string name="in_this_update">이번 업데이트</string>
     <string name="in_progress">진행 중</string>
     <string name="planned">예정</string>
     <string name="exploring">검토 중</string>
-    <string name="released">출시됨</string>
     <string name="where_folio_is_headed">Folio가 나아갈 방향입니다.</string>
     <string name="suggest_a_feature">기능 제안</string>
     <string name="app_icon">앱 아이콘</string>
@@ -1153,7 +1151,6 @@
     <string name="preview_of_home_on_the_inner_screen">내부 화면의 홈 화면 미리보기</string>
     <string name="preview_of_home">홈 화면 미리보기</string>
     <string name="folio_version">Folio %1$s</string>
-    <string name="coming_in">%1$s에서 제공 예정</string>
     <string name="before_restoring_a_backup_arrange_like_i">백업 복원, iPhone처럼 정렬 또는 이전 레이아웃 복원 전에 현재 홈 화면을 여기에 저장하여 되돌릴 수 있도록 합니다. 최근 %1$s개를 이 휴대전화에 보관합니다.</string>
     <string name="a_small_dot_beside_dock_apps_you_ve_used">지난 한 시간 동안 사용한 Dock 앱 옆에 작은 점을 표시합니다. Android는 실행 중인 앱을 런처에 알려주지 않으므로 사용 정보 접근 권한을 사용합니다.</string>
     <string name="badge_preview">배지 미리보기</string>
@@ -1237,7 +1234,6 @@
     <string name="settings_keywords_roadmap">개발 계획 출시 예정 계획 향후 기능 다음 나중 잠금 디자이너 키보드</string>
     <string name="settings_keywords_help">도움말 보고 버그 오류 문제 고장 환영 설정 다시 초기 안내 팁 이메일 개발자</string>
     <string name="settings_keywords_credits">크레딧 감사 DuoLauncher jakesgoodapps 라이선스</string>
-    <string name="folio_version_coming">Folio %1$s · 출시 예정</string>
     <string name="folio_version_beta">Folio %1$s 베타</string>
     <plurals name="rows_note_fixed">
         <item quantity="other">두 화면 모두 %1$d행으로 고정됩니다.</item>
@@ -1613,4 +1609,18 @@
     <string name="compat_screen_inner_only_detail">커버 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
     <string name="compat_screen_cover_only">커버 화면 전용</string>
     <string name="compat_screen_cover_only_detail">내부 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
+    <string name="roadmap_now">지금</string>
+    <string name="roadmap_next">다음</string>
+    <string name="roadmap_shipped">출시됨</string>
+    <string name="roadmap_earlier_releases">이전 릴리스</string>
+    <string name="roadmap_show_earlier">이전 릴리스 보기</string>
+    <string name="roadmap_hide_earlier">이전 릴리스 숨기기</string>
+    <string name="roadmap_done">완료</string>
+    <string name="roadmap_in_beta">베타 중</string>
+    <string name="roadmap_ready_to_try">%2$d개 중 %1$d개 사용해 볼 수 있음</string>
+    <string name="roadmap_all_done">%1$d개 모두 완료</string>
+    <string name="roadmap_checking">업데이트 확인 중…</string>
+    <string name="roadmap_offline">개발 계획에 연결할 수 없습니다. 이 휴대전화에 저장된 사본을 표시합니다.</string>
+    <string name="roadmap_updated">%1$s 업데이트됨</string>
+    <string name="roadmap_saved_copy">%1$s에 저장된 사본</string>
 </resources>
