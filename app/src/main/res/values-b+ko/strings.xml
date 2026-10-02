@@ -419,7 +419,7 @@
     <string name="velvet">Velvet</string>
     <string name="noisyflake_himynameisubik_tinted_notific">NoisyFlake &amp; HiMyNameisUbik · Palette 아이디어</string>
     <string name="colorflow">ColorFlow</string>
-    <string name="david_goldman_album_art_colors_idea">David Goldman · Colored Albums 아이디어</string>
+    <string name="david_goldman_album_art_colors_idea">David Goldman · Afterglow 아이디어</string>
     <string name="harbor">Harbor</string>
     <string name="evan_swick_dock_magnification_idea">Evan Swick · Harborline 아이디어</string>
     <string name="snowboard">SnowBoard</string>
@@ -1541,4 +1541,5 @@
     <string name="upright">세로</string>
     <string name="full_width_home">전체 너비 홈</string>
     <string name="full_width_home_note">Dock이 아래쪽에 놓이고 상태 사이드바가 사라져 홈이 화면 전체 너비를 사용합니다. 대부분의 휴대폰 런처와 같은 방식입니다. 사이드바 설정은 두 화면 모두에 적용됩니다. 끄면 이전에 쓰던 Dock과 사이드바로 돌아갑니다.</string>
+    <string name="settings_keywords_afterglow">colored albums 앨범 아트 음악 색상 colorflow 재생 중</string>
 </resources>

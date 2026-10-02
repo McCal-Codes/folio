@@ -22,7 +22,7 @@ packages/<name>/
 | Harborline | tweaks | `tweaks.dockMagnify` |
 | Roll Call | tweaks | `tweaks.notificationAppRow` |
 | Palette | tweaks | `tweaks.tintNotifications` |
-| Colored Albums | tweaks | `tweaks.tintMedia` |
+| Afterglow | tweaks | `tweaks.tintMedia` |
 | Flipbook | tweaks | `tweaks.pageEffects` |
 | Classic, Dark, Tinted and Clear themes | themes | `theme` |
 

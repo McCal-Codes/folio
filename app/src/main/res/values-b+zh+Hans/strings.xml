@@ -420,7 +420,7 @@
     <string name="velvet">Velvet</string>
     <string name="noisyflake_himynameisubik_tinted_notific">NoisyFlake 与 HiMyNameisUbik · Palette 的创意</string>
     <string name="colorflow">ColorFlow</string>
-    <string name="david_goldman_album_art_colors_idea">David Goldman · Colored Albums 的创意</string>
+    <string name="david_goldman_album_art_colors_idea">David Goldman · Afterglow 的创意</string>
     <string name="harbor">Harbor</string>
     <string name="evan_swick_dock_magnification_idea">Evan Swick · Harborline 的创意</string>
     <string name="snowboard">SnowBoard</string>
@@ -1520,4 +1520,5 @@
     <string name="upright">竖向</string>
     <string name="full_width_home">全宽主屏幕</string>
     <string name="full_width_home_note">程序坞移到底部，状态侧栏消失，主屏幕使用整个宽度，与大多数手机桌面一致。侧栏设置对两块屏幕都生效。关闭后会恢复你之前的程序坞和侧栏。</string>
+    <string name="settings_keywords_afterglow">colored albums 专辑封面 音乐 着色 colorflow 正在播放</string>
 </resources>
