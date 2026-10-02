@@ -4,6 +4,12 @@
   "tint": "#0A84FF",
   "blocks": [
     {
+      "type": "screenshots",
+      "images": [
+        "assets/screenshots/cabinet-panel.webp"
+      ]
+    },
+    {
       "type": "markdown",
       "text": "Flick up on an app icon and a small panel opens over the Home screen - above the icon where there is room for it, below the icon near the top of the screen where there isn't.\n\nThe panel holds whatever that app has to offer right now. Music it is playing, with the artwork and previous, play and next. Its three most recent notifications, each one tapping straight through to the app. Up to four of its shortcuts, the same ones a long press offers. An app with none of those says so rather than opening an empty panel, and Open is always in the corner.\n\nThe gesture only claims a clear upward flick, so tapping, holding and swiping between pages carry on as they were. Music and notifications need notification access; the shortcuts do not.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by Velox by Phillip Tennen. Re-created from scratch for Folio; no tweak code is included."
     },
