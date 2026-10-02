@@ -28,4 +28,18 @@ class MarketAnimationTest {
         assertNull(MarketImages.bundledAnimation({ asked++; big }, "assets/screenshots/big.webp"))
         assertTrue("the source was read once, then the bytes were dropped", asked == 1)
     }
+
+    private val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+
+    @Test fun `the header tells a clip from a still without decoding it`() {
+        val clips = java.io.File(root, "docs/sdk/source/assets/screenshots").listFiles { f -> f.extension == "webp" }.orEmpty()
+        assertTrue("the shipped clips are there", clips.size >= 3)
+        clips.forEach { assertTrue("${it.name} is animated", MarketImages.isAnimated(it.readBytes())) }
+        val still = java.io.File(root, "docs/sdk/source/assets/home-clear.webp").readBytes()
+        assertTrue("a still WebP is not", !MarketImages.isAnimated(still))
+        assertTrue("a GIF is worth decoding to find out", MarketImages.isAnimated("GIF89a".toByteArray() + ByteArray(20)))
+        assertTrue(!MarketImages.isAnimated(pngHeader))
+        assertTrue(!MarketImages.isAnimated(ByteArray(0)))
+        assertTrue("a cut-off header is not", !MarketImages.isAnimated("RIFF".toByteArray()))
+    }
 }

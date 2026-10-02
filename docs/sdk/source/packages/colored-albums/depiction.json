@@ -27,14 +27,9 @@
       "type": "changelog",
       "entries": [
         {
-          "version": "1.0.1",
-          "date": "2026-10-02",
-          "notes": "Renamed from Colored Albums."
-        },
-        {
           "version": "1.0.0",
           "date": "2026-09-17",
-          "notes": "Colored Albums becomes a package in the Folio Market. The tweak itself has shipped with Folio since 0.6.0."
+          "notes": "Colored Albums becomes a package in the Folio Market. The tweak itself has shipped with Folio since 0.6.0. Called Colored Albums until 0.6.8, when it was renamed Afterglow."
         }
       ]
     },
