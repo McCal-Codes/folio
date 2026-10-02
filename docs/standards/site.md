@@ -22,12 +22,13 @@ that shape of mistake.
 
 - **WEB-1 MUST** build product facts from the app repository at the latest release's tag, never from `main` and never
   retyped: version, date, size, checksum, signing certificate, changelog, roadmap, tweak pages and the screen matrix.
-  The site never runs ahead of the APK a reader can download.
+  The site never runs ahead of the APK a reader can download. The one other source is Keyd's README, read at Keyd's
+  latest release, because Keyd is a separate app with its own releases.
 - **WEB-2 MUST NOT** present planned, exploring or unreleased work as shipped. A roadmap section counts as shipped
   only when its version is a dated changelog entry.
 - **WEB-3 MUST** keep every claim about privacy, permissions, signing, networking and what a release contains in step
   with [PRIVACY.md](../../PRIVACY.md), [PERMISSIONS.md](../../PERMISSIONS.md) and the release's own assets. When one of
-  those changes, the page that repeats it changes in the same week. A claim that cannot be traced to one of them does
+  those changes, the page that repeats it changes in the same release. A claim that cannot be traced to one of them does
   not go on the site.
 - **WEB-4 MUST** say so when something is missing rather than fall back silently. A release without
   `signing-certificate.txt` is covered by an explicit fallback that logs it, and a blank or non-hex checksum or signer
@@ -43,11 +44,13 @@ that shape of mistake.
 - **WEB-7 MUST** be first person and plain: concrete claims over adjectives, no "revolutionary", "seamless" or
   "next-generation". Punctuate without em dashes ([REL-9](releases.md)) and spell American.
 - **WEB-8 MUST** get wording for bios, intros, pitches and anything else that speaks for the project's owner from the
-  owner. A draft by anyone else, including a tool, is labeled a draft until the owner has changed it.
+  owner. A draft by anyone else, including a tool, is marked as a draft in its pull request, says what in it is the
+  drafter's own phrasing, and does not ship until the owner has read and approved the wording.
 - **WEB-9 SHOULD** name the thing the way someone would say the problem: "An update will not install", not
   "Signature mismatch". The answer comes in the first paragraph.
-- **WEB-10 MUST NOT** use the word "safe" as a claim. Say what is true and checkable: "signed with the same key as
-  every release", "asks for no permissions".
+- **WEB-10 MUST NOT** claim that Folio, a download or an update is "safe". Quoting a visitor's own question ("Is
+  sideloading it safe?") is fine and is answered with what is true and checkable: "signed with the same key as every
+  release", "asks for no permissions".
 
 ### Pictures
 
@@ -67,11 +70,15 @@ that shape of mistake.
   Performance is measured in the lab, never from visitors.
 - **WEB-16 MUST** keep a restrictive Content Security Policy, HSTS, `X-Content-Type-Options`, `Referrer-Policy` and
   `Permissions-Policy` on every HTML response, and **MUST** know whether each response comes from the static assets or
-  from Worker code, since headers rules do not apply to Worker responses.
+  from Worker code, since headers rules do not apply to Worker responses. `script-src` **MUST NOT** allow
+  `'unsafe-inline'` or `'unsafe-eval'`; `scripts/check.mjs` fails the build if it does. The one allowance is in
+  Recorded exceptions.
 - **WEB-17 MUST NOT** put a secret, token, supporter code or private address in the repository or in client-side code.
   Deploy tokens live in repository secrets and are set by their owner.
-- **WEB-18 MUST** treat anything rendered from the app repo as trusted only because the tag it comes from is. Markdown
-  from a changelog is rendered, not executed, and a new source of content gets the same thought before it is added.
+- **WEB-18 MUST** treat anything rendered from the app repo as trusted only because the tag it comes from is. A
+  changelog is rendered from markdown with `marked`, which lets raw HTML through, so it is the Content Security Policy
+  (WEB-16, no inline script) and not the renderer that stops a script in it from running. A new source of content gets
+  the same thought before it is added.
 
 ### Accessibility and performance
 
@@ -84,6 +91,8 @@ that shape of mistake.
   scrolling rows) are done with CSS and HTML.
 - **WEB-22 MUST** hold Largest Contentful Paint at or under 2.5 s and Cumulative Layout Shift at or under 0.1 on the
   pages that matter, and accessibility at 95 or above, as measured by Lighthouse in CI. These limits fail the run.
+  Lighthouse cannot measure Interaction to Next Paint, so total blocking time at or under 200 ms stands in for it and
+  warns.
 - **WEB-23 MUST** keep the layout correct from a 320px phone to a very wide display, with no horizontal scrolling of
   the page itself.
 
@@ -113,12 +122,14 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
   disagree, and Keyd's CI fails if its merged manifest declares any permission.
 - **Words (WEB-7, 8).** Held by habit and by review. No check looks for em dashes or banned words.
 - **Pictures (WEB-11 to 14).** `check.mjs` checks alt text, dimensions, aspect ratio, images wider than three times
-  their slot, and unused files. It also fails if a page's share image does not exist. 41 pages have share images
-  drawn per page by `npm run og`; the rest are hand-made. The roadmap timeline has screenshots only for 0.6.0 and
+  their slot, and unused files. It also fails if a page's share image does not exist. 43 pages have share images
+  drawn per page by `npm run og` (41 on 2 Oct, plus the new Market and Keyd help pages); the rest are hand-made. The roadmap timeline has screenshots only for 0.6.0 and
   0.6.6.
-- **Privacy and security (WEB-15 to 17).** No analytics and no client script on any page. `public/_headers` sets the CSP,
-  HSTS, nosniff, Referrer-Policy and Permissions-Policy, and they appear on HTML responses served through the Worker.
-  `workers_dev` is off.
+- **Privacy and security (WEB-15 to 18).** No analytics and no client script on any page: 52 built pages carry no script
+  tag other than JSON-LD data. `public/_headers` sets the CSP, HSTS, nosniff, Referrer-Policy and Permissions-Policy, and
+  they appear on HTML responses served through the Worker. `workers_dev` is off. `script-src` was `'self'
+  'unsafe-inline'` until folio-site#17, which tightens it to `'self'` and adds the check; until that merges the site
+  breaks WEB-16.
 - **Accessibility and performance (WEB-19 to 23).** 258 page and width combinations (43 pages, six widths from 320 to
   2560) have no horizontal overflow. A contrast sweep of nine pages found no failures in light or dark. Lighthouse in CI
   (`.github/workflows/lighthouse.yml`) measures six pages: LCP 1.1 to 1.9 s, layout shift 0.000, every category 100.
@@ -139,7 +150,11 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
 | 5 | The release workflow attaches `signing-certificate.txt` every time, so the fallback in WEB-4 is never used | S |
 | 6 | Confirm the `site.yml` dispatch fires on the next real release (WEB-26) | S |
 | 7 | Tab order through the interactive pages with a real keyboard and a screen reader (WEB-19) | S |
+| 8 | `download.astro` says the signing certificate "is what makes future updates safe", which WEB-10 now forbids. Reword it to what is checkable, in the owner's words (WEB-8) | S |
+| 9 | Drop `'unsafe-inline'` from `style-src` by moving Astro's scoped styles to external CSS or hashing them, then remove the exception below (WEB-16) | M |
 
 ## Recorded exceptions
 
-None.
+- **WEB-16, `style-src 'unsafe-inline'`.** Astro emits scoped `<style>` blocks and inline style attributes, so the
+  policy allows inline styles. It does not allow inline script. Condition for removing it: gap 9. The reasoning is in the
+  comment above the policy in `public/_headers`.
