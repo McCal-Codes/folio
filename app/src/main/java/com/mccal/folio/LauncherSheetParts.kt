@@ -106,7 +106,7 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) { apps.filter { appMatches(it, query.trim()) } }
     Column(Modifier.fillMaxWidth().fillMaxHeight(.88f).padding(horizontal = FolioSpace.XL.dp).imePadding()) {
-        Text(if (dockSlot == null) "Your Apps" else "Dock Position ${dockSlot + 1}", color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
+        Text(if (dockSlot == null) stringResource(R.string.your_apps) else stringResource(R.string.dock_position_1_d, dockSlot + 1), color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
         IosSearchField(query, { query = it }, stringResource(R.string.search_apps), Modifier.padding(vertical = FolioSpace.MEDIUM.dp), fieldModifier = Modifier.testTag("search-field"))
         if (dockSlot != null) SheetGroup(Modifier.padding(bottom = FolioSpace.SMALL.dp)) { IosActionRow(stringResource(R.string.leave_this_position_empty), destructive = true, onClick = onClear) }
         if (blockedHint != null) Text(blockedHint, color = MaterialTheme.colorScheme.error,

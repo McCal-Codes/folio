@@ -253,7 +253,7 @@ private fun BigClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Modi
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = ink, fontSize = 120.sp, fontWeight = FontWeight.Thin,
             lineHeight = 124.sp, style = TextStyle(fontFeatureSettings = "tnum"))
-        Text(now.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")), color = soft, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = 22.sp, fontWeight = FontWeight.Medium)
     }
 }
 

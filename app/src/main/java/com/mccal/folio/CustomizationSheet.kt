@@ -1513,7 +1513,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                     Text(perm.name, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp)
                     Text(stringResource(R.string.used_by_1, perm.usedBy), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
-                Text(if (perm.allowed) stringResource(R.string.allowed) else "Off", color = if (perm.allowed) FolioColors.Green
+                Text(stringResource(if (perm.allowed) R.string.allowed else R.string.state_off), color = if (perm.allowed) FolioColors.Green
                     else androidx.compose.ui.graphics.Color.White.copy(alpha = .5f), fontSize = FolioType.SUBHEAD.sp)
                 Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
             }
@@ -1655,7 +1655,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                 Icon(mode.icon(), null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(19.dp))
             }
             Spacer(Modifier.width(12.dp))
-            Text(if (on) "On" else "Off", color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
+            Text(stringResource(if (on) R.string.state_on else R.string.state_off), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
             IosSwitch(on, { model.setFocus(if (it) mode.id else null) }, Modifier.testTag("focus-switch-${mode.id}"))
         }
     }

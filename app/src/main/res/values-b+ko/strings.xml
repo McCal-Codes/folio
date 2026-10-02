@@ -452,6 +452,8 @@
     <string name="rows">행 수</string>
     <string name="position">위치</string>
     <string name="dock">Dock</string>
+    <string name="your_apps">내 앱</string>
+    <string name="dock_position_1_d">Dock 위치 %1$d</string>
     <string name="bottom">하단</string>
     <string name="apps">앱</string>
     <string name="centered">가운데</string>
@@ -610,6 +612,8 @@
     <string name="bluetooth">Bluetooth</string>
     <string name="mobile_network">모바일 네트워크</string>
     <string name="airplane_mode">비행기 모드</string>
+    <string name="airplane_mode_2">비행기 모드</string>
+    <string name="cellular_data">모바일 데이터</string>
     <string name="display_brightness">디스플레이 및 밝기</string>
     <string name="sounds_vibration">소리 및 진동</string>
     <string name="battery">배터리</string>
@@ -650,6 +654,10 @@
     <string name="samsung_side_button_press_and_hold_digit">삼성: 측면 버튼 › 길게 누르기 › 디지털 어시스턴트로 설정하면 길게 눌러 Folio 선택 화면을 열 수 있습니다.</string>
     <string name="message_contacts_from_spotlight_in_openb">Spotlight에서 OpenBubbles로 연락처에 메시지를 보냅니다. 새 메시지는 Dynamic Island에 팝업으로 표시되며 빠른 답장도 지원합니다.</string>
     <string name="mmmm_d">M월 d일</string>
+    <string name="mmm_d">M월 d일</string>
+    <string name="eee_mmm_d">M월 d일 (E)</string>
+    <string name="eee_mmm_d_2">M월 d일 (E)</string>
+    <string name="d_mmm_yyyy">yyyy년 M월 d일</string>
     <string name="saved_widget">저장된 위젯</string>
     <string name="unavailable_profile">사용할 수 없는 프로필</string>
     <string name="that_provider_or_profile_isn_t_available">해당 위젯 제공 앱이나 프로필을 사용할 수 없습니다. 대체 항목을 선택하세요.</string>
@@ -697,6 +705,7 @@
     <string name="circle">원형</string>
     <string name="rounded_square">둥근 사각형</string>
     <string name="off">끄기</string>
+    <string name="state_off">꺼짐</string>
     <string name="dot">점</string>
     <string name="count">개수</string>
     <string name="red">빨간색</string>
@@ -713,6 +722,7 @@
     <string name="cover_screen">커버 화면</string>
     <string name="inner_screen">내부 화면</string>
     <string name="on">켜기</string>
+    <string name="state_on">켜짐</string>
     <string name="ring">링</string>
     <string name="rings">링</string>
     <string name="ring_with_percentage">잔량 표시 링</string>

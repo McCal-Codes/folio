@@ -370,8 +370,8 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
     when (content) {
         is IslandContent.Event -> when (val e = content.event) {
             is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The app's icon beside the sender's photo; without a photo the icon is already on the left.
             is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { Image(it.asImageBitmap(), null, Modifier.size(size * .8f).clip(RoundedCornerShape(size * .22f))) }

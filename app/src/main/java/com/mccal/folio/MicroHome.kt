@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +76,7 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
     val time = android.text.format.DateFormat.format(
         if (android.text.format.DateFormat.is24HourFormat(context)) "H:mm" else "h:mm", now).toString()
     val timeSize = minOf(if (roomy) 52f else 44f, (width.value - 2 * MICRO_SIDE) / 3.2f)
-    val date = android.text.format.DateFormat.format("EEE, MMM d", now).toString() +
+    val date = android.text.format.DateFormat.format(stringResource(R.string.eee_mmm_d_2), now).toString() +
         (status.battery?.let { " · $it%" } ?: "")
     val shown = apps.take(microAppCount(width.value))
     Column(Modifier.fillMaxSize().padding(horizontal = MICRO_SIDE.dp, vertical = FolioSpace.COMFY.dp).testTagMicro(),

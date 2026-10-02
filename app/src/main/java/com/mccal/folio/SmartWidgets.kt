@@ -114,7 +114,7 @@ internal fun BigClockCard(onClick: () -> Unit) {
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
         val big = (maxHeight.value * .46f).coerceAtMost(maxWidth.value * .3f).sp
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(now.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")), color = ink.primary, fontSize = (big.value * .2f).coerceIn(13f, 20f).sp,
+            Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = ink.primary, fontSize = (big.value * .2f).coerceIn(13f, 20f).sp,
                 fontWeight = FontWeight.SemiBold, style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = ink.primary, fontSize = big,
                 fontWeight = FontWeight.SemiBold, lineHeight = big * 1.02f, maxLines = 1,

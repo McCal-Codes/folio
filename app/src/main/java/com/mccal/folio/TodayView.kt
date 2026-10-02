@@ -77,7 +77,7 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
                     Column(Modifier.padding(start = FolioSpace.TINY.dp, top = FolioSpace.SNUG.dp)) {
                         Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp,
                             fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp)
-                        Text(today.format(DateTimeFormatter.ofPattern("MMMM d")), color = LocalHomeInk.current.primary, fontSize = if (wide) 40.sp else 34.sp,
+                        Text(today.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.primary, fontSize = if (wide) 40.sp else 34.sp,
                             fontWeight = FontWeight.Bold)
                     }
                     if (suggestions.isNotEmpty() && !edit.active) TodaySuggestions(suggestions, 4, onLaunch)

@@ -453,6 +453,8 @@
     <string name="rows">行数</string>
     <string name="position">位置</string>
     <string name="dock">程序坞</string>
+    <string name="your_apps">你的 App</string>
+    <string name="dock_position_1_d">程序坞位置 %1$d</string>
     <string name="bottom">底部</string>
     <string name="apps">App</string>
     <string name="centered">居中</string>
@@ -611,6 +613,8 @@
     <string name="bluetooth">蓝牙</string>
     <string name="mobile_network">移动网络</string>
     <string name="airplane_mode">飞行模式</string>
+    <string name="airplane_mode_2">飞行模式</string>
+    <string name="cellular_data">蜂窝数据</string>
     <string name="display_brightness">显示与亮度</string>
     <string name="sounds_vibration">声音与振动</string>
     <string name="battery">电池</string>
@@ -651,6 +655,10 @@
     <string name="samsung_side_button_press_and_hold_digit">三星：侧边按钮 › 按住 › 数字助理，这样按住按键即可打开 Folio 的选择器。</string>
     <string name="message_contacts_from_spotlight_in_openb">从聚焦搜索中用 OpenBubbles 给联系人发信息。新信息也会从灵动岛弹出，并可快速回复。</string>
     <string name="mmmm_d">M月d日</string>
+    <string name="mmm_d">M月d日</string>
+    <string name="eee_mmm_d">M月d日 EEE</string>
+    <string name="eee_mmm_d_2">M月d日 EEE</string>
+    <string name="d_mmm_yyyy">yyyy年M月d日</string>
     <string name="saved_widget">已存储的小组件</string>
     <string name="unavailable_profile">不可用的用户资料</string>
     <string name="that_provider_or_profile_isn_t_available">该提供程序或用户资料不可用。请选择替代项。</string>
@@ -698,6 +706,7 @@
     <string name="circle">圆形</string>
     <string name="rounded_square">圆角方形</string>
     <string name="off">关</string>
+    <string name="state_off">已关闭</string>
     <string name="dot">圆点</string>
     <string name="count">数字</string>
     <string name="red">红色</string>
@@ -714,6 +723,7 @@
     <string name="cover_screen">外屏</string>
     <string name="inner_screen">内屏</string>
     <string name="on">开</string>
+    <string name="state_on">已开启</string>
     <string name="ring">圆环</string>
     <string name="rings">圆环</string>
     <string name="ring_with_percentage">带百分比的圆环</string>

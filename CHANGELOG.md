@@ -45,6 +45,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **One compatibility check for the Market and the installer:** whether a package works on your phone (it needs a later Folio, a tweak you don't have, a package that conflicts or one it depends on) is now answered in one place, in the order the installer always refused in, so a package's page can say it before you tap Get.
 
 ### Fixed
+- **Dates and switches in your language:** in Korean and Chinese, StandBy, the Big Clock, Lock Cover, the Side Bar and Today View show the date in that language's order (10월 2일 금요일, 10月2日 星期五) instead of English order, and Control Center, the island, Settings and the dock chooser say On and Off, Airplane Mode, Cellular Data, Your Apps and Dock Position in your language instead of English.
 - **Back in Settings goes up a page from the Folio icon too:** opened from the Folio icon or Android's settings gear, Settings is a tab beside the Market, and there Back closed everything from any page. It now goes up a page, as it does everywhere else, and closes Settings only from the top.
 - **TalkBack in Settings:** the search field is read as "Search" instead of a nameless edit box, rows on the phone no longer each say "Not selected", and the preview of Home at the top is one picture, "Preview of Home", instead of about 25 of its parts and a made-up battery level read out before General.
 - **Nothing covers StandBy:** while StandBy is up on Home, the island, the headphones card and the setup reminder wait instead of drawing over it.
