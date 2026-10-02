@@ -55,9 +55,22 @@ const DEFINITIONS = [
     description: 'Whether Folio fits a screen that size',
     options: [{ name: 'width', description: 'Width in dp, for example 932', type: 4, required: true, min_value: 1 }],
   },
+  {
+    name: 'redeem',
+    description: 'Turn your supporter code into your supporter role',
+    options: [{ name: 'code', description: 'The code from your Ko-fi email', type: 3, required: true, min_length: 20 }],
+    // Server-installed and server channels only: the roles live in the Folio server, and a code typed anywhere
+    // else would be a code typed somewhere it can be seen for nothing.
+    integration_types: [0],
+    contexts: [0],
+  },
 ]
 
-export const COMMANDS = DEFINITIONS.map((command) => ({ ...command, ...EVERYWHERE }))
+/** Commands whose answers only the person who asked can see. A code's reply never sits in a channel. */
+export const PRIVATE = new Set(['redeem'])
+
+// A command's own integration_types and contexts win over the default, which is how /redeem stays in the server.
+export const COMMANDS = DEFINITIONS.map((command) => ({ ...EVERYWHERE, ...command }))
 
 const trim = (text, limit = LIMIT) =>
   text.length <= limit ? text : `${text.slice(0, limit - 2).trimEnd()}…`

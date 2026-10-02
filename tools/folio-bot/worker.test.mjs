@@ -125,10 +125,40 @@ test('a slow answer is deferred inside the deadline, then edited in with the int
   assert.deepEqual(edited.allowed_mentions, { parse: [] })
 })
 
-test('every command says where it can be used, since user install is on', async () => {
+test('every command says where it can be used, and /redeem only works in a server', async () => {
   const { COMMANDS } = await import('./commands.mjs')
   for (const command of COMMANDS) {
+    if (command.name === 'redeem') {
+      assert.deepEqual(command.integration_types, [0])
+      assert.deepEqual(command.contexts, [0])
+      continue
+    }
     assert.deepEqual(command.integration_types, [0, 1], command.name)
     assert.deepEqual(command.contexts, [0, 1, 2], command.name)
   }
+})
+
+test("/redeem's answer is private, whether it comes back in place or after a deferral", async () => {
+  const redeemBody = JSON.stringify({
+    type: 2, application_id: 'app', token: 'tok', guild_id: 'somewhere-else',
+    member: { user: { id: 'u1' } }, data: { name: 'redeem', options: [{ name: 'code', value: 'ABCDEFGHJKMNPQRSTVWX' }] },
+  })
+  const quick = createWorker({ discord: () => ({}) })
+  const inPlace = await (await quick.fetch(await signed(redeemBody), { ...env, GUILD_ID: 'folio' }, {})).json()
+  assert.equal(inPlace.type, 4)
+  assert.equal(inPlace.data.flags & 64, 64, 'the reply must be ephemeral')
+  assert.match(inPlace.data.content, /Folio Community server/)
+
+  // A zero wait forces the deferral path, which is the one that decides privacy for the edit that follows.
+  let finished
+  const slow = createWorker({ discord: () => ({}), wait: 0, send: async () => new Response(null, { status: 200 }) })
+  const deferred = await (await slow.fetch(await signed(redeemBody), { ...env, GUILD_ID: 'folio' }, { waitUntil(p) { finished = p } })).json()
+  await finished
+  if (deferred.type === 5) assert.equal(deferred.data?.flags, 64, 'a public deferral would make the answer public')
+})
+
+test('the read-only answers stay public', async () => {
+  const body = JSON.stringify({ type: 2, data: { name: 'sandwich', options: [] } })
+  const answer = await (await worker.fetch(await signed(body), env)).json()
+  assert.equal(answer.data.flags & 64, 0)
 })
