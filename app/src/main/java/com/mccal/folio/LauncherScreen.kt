@@ -954,7 +954,7 @@ fun LauncherScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     // Only when there is a page to the left of Home: with Today View and Discover both off, the
                     // button led nowhere (reported on r/GalaxyFold, 18 Sep 2026).
-                    if (!drag.active && (firstHome > 0 || discoverMode)) IconButton(onClick = openDiscover, Modifier.size(32.dp).testTag("discover-page-link")) {
+                    if (!drag.active && (firstHome > 0 || discoverMode)) IconButton(onClick = openDiscover, Modifier.size(FolioTouch.MIN.dp).testTag("discover-page-link")) {
                         Icon(Icons.Rounded.Explore, stringResource(R.string.discover), tint = Color.White.copy(alpha = .65f), modifier = Modifier.size(17.dp))
                     }
                     // iOS: a "Search" capsule where the page dots are; the dots come back while paging or editing.
@@ -1010,7 +1010,7 @@ fun LauncherScreen(
                             }
                         }
                     }
-                    IconButton(onClick = openLibrary, Modifier.size(32.dp).testTag("library-page-link")) {
+                    IconButton(onClick = openLibrary, Modifier.size(FolioTouch.MIN.dp).testTag("library-page-link")) {
                         Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, stringResource(R.string.all_apps_page), tint = Color.White.copy(alpha = if (pager.currentPage == homePages) 1f else .6f), modifier = Modifier.size(17.dp))
                     }
                 }

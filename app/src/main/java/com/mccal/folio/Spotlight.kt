@@ -417,9 +417,11 @@ private fun ResultRow(icon: ImageVector, title: String, subtitle: String?, trail
 
 @Composable
 private fun SpotlightRoundAction(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .16f)).clickable(onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center) {
-        Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp))
+    // The circle is still 36 dp; the tap is 48 (A11Y-1). The target is the box around it, not the circle.
+    Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
+            Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
     }
 }
 
