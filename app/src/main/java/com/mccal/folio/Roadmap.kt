@@ -104,6 +104,9 @@ internal object Roadmap {
         }.getOrDefault(Refresh.Failed)
     }
 
+    /** A hotfix (0.6.7.1) or a beta (0.6.8-beta.5) belongs to its release's section: 0.6.7, 0.6.8. */
+    fun releaseOf(version: String): String = version.substringBefore('-').split('.').take(3).joinToString(".")
+
     /** The page's groups: what is in progress, what comes after, what is already out, and the titled lists. */
     data class Groups(val now: Section?, val next: List<Section>, val shipped: List<Section>, val titled: List<Section>)
 
@@ -114,7 +117,7 @@ internal object Roadmap {
      * (0.6.7.1) and a beta (0.6.8-beta.5) belong to their release's section. [isNewer] is SoftwareUpdate's comparison.
      */
     fun group(content: Content, installed: String, isNewer: (candidate: String, installed: String) -> Boolean): Groups {
-        val thisRelease = installed.substringBefore('-').split('.').take(3).joinToString(".")
+        val thisRelease = releaseOf(installed)
         val releases = content.sections.filter { it.release != null }
         val own = releases.firstOrNull { it.release == thisRelease }
         val newer = releases.filter { it !== own && isNewer(it.release!!, installed) }

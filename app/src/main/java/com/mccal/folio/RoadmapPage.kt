@@ -85,7 +85,8 @@ private enum class RoadmapPhase { Idle, Checking, Offline }
     groups?.now?.let { section ->
         RoadmapHeader(stringResource(R.string.roadmap_now), releaseTitle(section))
         RoadmapCard {
-            RoadmapProgress(section)
+            // "Ready to try" is only true for someone on that release's beta; for everyone else the labels say enough.
+            RoadmapProgress(section, show = section.release == Roadmap.releaseOf(version))
             section.items.forEach { RoadmapRow(it, showAll = true) }
         }
     }
@@ -147,9 +148,10 @@ private enum class RoadmapPhase { Idle, Checking, Offline }
 }
 
 /** "8 of 11 ready to try" with a slim bar. Done and in-beta items count; a finished release says "All 11 done". */
-@Composable private fun RoadmapProgress(section: Roadmap.Section) {
+@Composable private fun RoadmapProgress(section: Roadmap.Section, show: Boolean) {
     val (ready, total) = Roadmap.ready(section)
     val allDone = section.items.all { it.status == Roadmap.Status.DONE }
+    if (!show && !allDone) return
     val text = if (allDone) stringResource(R.string.roadmap_all_done, total) else stringResource(R.string.roadmap_ready_to_try, ready, total)
     Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp).semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {

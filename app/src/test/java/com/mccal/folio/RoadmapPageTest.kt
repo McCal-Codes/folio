@@ -59,6 +59,14 @@ class RoadmapPageTest {
         compose.onNodeWithText("1 of 2 ready to try").assertExists()
     }
 
+    @Test fun `someone on another release is not told items in a beta are ready to try`() {
+        save("""{"release":"0.0.1","items":[${item("Old thing", "done")}]}""",
+            """{"release":"99.0.0","items":[${item("Beta thing", "building", beta = true)},${item("Other", "planned")}]}""")
+        page()
+        compose.onNodeWithText("In beta").assertIsDisplayed()
+        compose.onNode(hasText("ready to try", substring = true)).assertDoesNotExist()
+    }
+
     @Test fun `items are plain list rows, not buttons`() {
         save("""{"release":"$release","items":[${item("Beta thing", "building", beta = true)}]}""")
         page()
