@@ -1,22 +1,19 @@
-# Tells foliolauncher.com to rebuild when something it is built from changes: a published release, or on main the
-# changelog, the roadmap, Folio's own packages or the screen matrix. The site reads those files itself; this only
-# says when (folio-site's .github/workflows/deploy.yml does the building).
+# Tells foliolauncher.com to rebuild when a release is published. The site reads Folio's changelog, roadmap, packages and
+# screen table at the latest release's tag, not at main, so a push to main changes nothing on the site until a release is
+# cut. This used to rebuild on every push that touched those files, which was six deploys in one morning that changed
+# nothing. The site also rebuilds once a day on its own (folio-site's deploy.yml), as a safety net.
 #
-# Needs the secret FOLIO_SITE_TOKEN: a fine-grained token with Contents read and write on McCal-Codes/folio-site,
-# which is what GitHub asks of a repository_dispatch. Until it exists this says so and does nothing, and the site
-# still rebuilds once a day on its own.
+# Needs the secret FOLIO_SITE_TOKEN: a fine-grained token with Contents read and write on McCal-Codes/folio-site, which is
+# what GitHub asks of a repository_dispatch. It expires, so a missing or rejected token fails this run on purpose: it only
+# runs on a release or by hand, and a silent skip would leave the site a day behind a release with nothing to say why.
+#
+# By hand: Actions > Site > Run workflow. It sends the same dispatch a release does, so it tests the token.
 name: Site
 
 on:
   release:
     types: [published]
-  push:
-    branches: [main]
-    paths:
-      - CHANGELOG.md
-      - app/src/main/assets/roadmap.json
-      - docs/sdk/source/**
-      - app/src/test/resources/screen-matrix.json
+  workflow_dispatch:
 
 permissions: {}
 
@@ -27,11 +24,11 @@ jobs:
       - name: Ask the site to rebuild
         env:
           GH_TOKEN: ${{ secrets.FOLIO_SITE_TOKEN }}
-          WHY: ${{ github.event_name == 'release' && format('release {0}', github.event.release.tag_name) || format('main at {0}', github.sha) }}
+          WHY: ${{ github.event_name == 'release' && format('release {0}', github.event.release.tag_name) || format('a manual run at {0}', github.sha) }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "::notice::No FOLIO_SITE_TOKEN set, so the site rebuilds on its daily run instead."
-            exit 0
+            echo "::error::No FOLIO_SITE_TOKEN set, so the site was not asked to rebuild. It will on its daily run."
+            exit 1
           fi
           gh api repos/McCal-Codes/folio-site/dispatches -f event_type=folio-updated -f "client_payload[why]=$WHY"
           echo "Asked foliolauncher.com to rebuild for $WHY."
