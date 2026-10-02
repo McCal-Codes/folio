@@ -200,6 +200,10 @@ test('two servers each receive their own ping, and the wall is downloaded once',
 })
 
 test('a manual re-post reads the release from RELEASE_FILE, which is the release itself and not an event around it', async () => {
+  const { spawn } = await import('node:child_process')
+  const { mkdtempSync, writeFileSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
   const dir = mkdtempSync(join(tmpdir(), 'announce-'))
   const file = join(dir, 'release.json')
   writeFileSync(file, JSON.stringify(release))
