@@ -1510,6 +1510,12 @@ private fun MarketImage(session: MarketSession, source: Source, path: String, mo
 private fun MarketScreenshot(session: MarketSession, source: Source, path: String, height: androidx.compose.ui.unit.Dp) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
+    // A picture that moves plays; one that doesn't is drawn as before. Only a source's own files, not ones fetched.
+    val moving = remember(path, url) { if (url != null) null else MarketImages.bundledAnimation(session.source::asset, path) }
+    if (moving != null) {
+        AnimatedScreenshot(moving, height)
+        return
+    }
     val bundled = remember(path, url) { if (url != null) null else MarketImages.bundled(session.source::asset, path) }
     val painter = when {
         bundled != null -> remember(bundled) { androidx.compose.ui.graphics.painter.BitmapPainter(bundled) }
@@ -1519,10 +1525,7 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
     val size = painter?.intrinsicSize
     // Until the picture arrives there is no shape to follow, so it holds a phone-shaped space rather than none.
     val ratio = if (size != null && size != androidx.compose.ui.geometry.Size.Unspecified && size.width > 0f && size.height > 0f) size.width / size.height else 150f / 260f
-    Box(
-        Modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).then(Modifier.width(height * ratio))
-            .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
-    ) {
+    ScreenshotFrame(height, ratio) {
         painter?.let {
             androidx.compose.foundation.Image(
                 painter = it,
@@ -1531,6 +1534,43 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+/** The frame every screenshot sits in, still or moving: a fixed height, the picture's own width, rounded. */
+@Composable
+private fun ScreenshotFrame(height: androidx.compose.ui.unit.Dp, ratio: Float, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+    Box(
+        Modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).width(height * ratio)
+            .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
+        content = content,
+    )
+}
+
+/**
+ * A screenshot that moves, in the same frame as a still one. It loops while it is on screen, and with Reduce Motion on it
+ * stays on its first frame, which is a screenshot like any other.
+ */
+@Composable
+private fun AnimatedScreenshot(drawable: android.graphics.drawable.AnimatedImageDrawable, height: androidx.compose.ui.unit.Dp) {
+    val reduceMotion = LocalReduceMotion.current
+    val ratio = if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight else 150f / 260f
+    DisposableEffect(drawable, reduceMotion) {
+        drawable.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
+        if (!reduceMotion) drawable.start()
+        onDispose { drawable.stop() }
+    }
+    ScreenshotFrame(height, ratio) {
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { context ->
+                android.widget.ImageView(context).apply {
+                    scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                    importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO // the page's text says what it is
+                    setImageDrawable(drawable)
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 
