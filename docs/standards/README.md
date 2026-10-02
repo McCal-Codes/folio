@@ -56,6 +56,7 @@ Nobody has to fix the whole tree before shipping a feature.
 | [Testing](testing.md) | `TST` | What gets tested where, and what "done" means |
 | [Releases](releases.md) | `REL` | Branches, the changelog, version numbers, betas, and what goes out beside a build |
 | [Market](market.md) | `MKT` | Bridges to other repositories, what a package page may contain, editorial |
+| [Site and docs](site.md) | `WEB` | foliolauncher.com and public pages: where facts come from, voice, pictures, privacy, checks |
 
 Where standards overlap, the more specific one wins: Dynamic UI over Design for motion, Accessibility over Design for
 contrast and size, Privacy over everything for what leaves the phone, and Privacy over Market for anything a package
@@ -108,3 +109,4 @@ standard's checklist is met, and report any rule you couldn't meet instead of sk
   accessibility, layout, materials).
 - W3C: [WCAG 2.2](https://www.w3.org/TR/WCAG22/) for contrast and target size.
 - [Laws of UX](https://lawsofux.com), as applied in the 17 to 19 Sep 2026 review.
+- Web: [Core Web Vitals](https://web.dev/articles/vitals) for the LCP, INP and CLS limits in WEB-22.
