@@ -108,5 +108,5 @@ private class FloatArrayList {
 @Composable
 internal fun CardAction(label: String, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
     Text(label, color = Color(if (destructive) FolioColors.Value.Red else FolioColors.Value.Blue).copy(alpha = if (enabled) 1f else .4f), fontSize = FolioType.BODY.sp,
-        modifier = modifier.heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
+        modifier = modifier.heightIn(min = FolioRow.ACTION.dp).settingsFocus(label).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
 }
