@@ -49,11 +49,17 @@ export const sources = {
 
   async roadmap() {
     const file = await get(`${RAW}/app/src/main/assets/roadmap.json`, { json: true })
-    return (file.sections ?? []).map((section) => ({
-      name: section.release ? `Folio ${section.release}` : section.title,
-      shipped: Boolean(section.release),
-      items: (section.items ?? []).map(({ title, detail, status }) => ({ title, detail, status })),
-    }))
+    // A section with a version is a release. It is shipped only once every item in it is done: the current release
+    // and the ones after it have items still building or planned, and those are what the roadmap is about.
+    return (file.sections ?? []).map((section) => {
+      const items = (section.items ?? []).map(({ title, detail, status }) => ({ title, detail, status }))
+      return {
+        name: section.release ? `Folio ${section.release}${section.subtitle ? ` (${section.subtitle})` : ''}` : section.title,
+        release: Boolean(section.release),
+        shipped: Boolean(section.release) && items.length > 0 && items.every((item) => item.status === 'done'),
+        items,
+      }
+    })
   },
 
   async tweaks() {
