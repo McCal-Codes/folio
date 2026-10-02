@@ -385,6 +385,21 @@ class MarketScreenRenderTest {
         compose.onNodeWithText("Example · Maya").assertExists()
     }
 
+    @Test fun `a package that needs a later Folio says so on its row, with no Get, and its page says why`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://maya.example/folio/", "Maya", mayaIndex(minFolio = "9.0.0"))
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Sunset Icons").assertExists()
+        compose.onNodeWithText("Needs Folio 9.0.0").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        compose.onNodeWithText("Sunset Icons").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("COMPATIBILITY").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertIsNotEnabled()
+    }
+
     @Test fun `a source is a place with its packages in it`() {
         val session = session()
         session.prefs.introductionSeen = true
@@ -489,11 +504,11 @@ class MarketScreenRenderTest {
             "url":"https://example.test/tilt.foliopkg","sha256":"${"b".repeat(64)}","size":2048,"manifest":$manifest}]}"""
     }
 
-    /** A one-package index from another source, as its cached list. */
-    private fun mayaIndex(): String {
+    /** A one-package index from another source, as its cached list. Its minFolio is low enough for this build to take, now that a row says when it isn't. */
+    private fun mayaIndex(minFolio: String = "0.6.6"): String {
         val manifest = """
             {"format":1,"id":"dev.maya.sunset-icons","name":"Sunset Icons","version":"1.2.0",
-             "author":{"name":"Example"},"minFolio":"0.7.0","section":"themes","kind":["theme"],
+             "author":{"name":"Example"},"minFolio":"$minFolio","section":"themes","kind":["theme"],
              "permissions":["home.appearance"]}
         """.trimIndent()
         return """{"format":1,"name":"Maya","packages":[{"id":"dev.maya.sunset-icons","version":"1.2.0",

@@ -1521,4 +1521,22 @@
     <string name="full_width_home">全宽主屏幕</string>
     <string name="full_width_home_note">程序坞移到底部，状态侧栏消失，主屏幕使用整个宽度，与大多数手机桌面一致。侧栏设置对两块屏幕都生效。关闭后会恢复你之前的程序坞和侧栏。</string>
     <string name="settings_keywords_afterglow">colored albums 专辑封面 音乐 着色 colorflow 正在播放</string>
+    <string name="compatibility">兼容性</string>
+    <string name="compat_works">适用于你的 Folio</string>
+    <string name="compat_works_detail">Folio %1$s 具备它所需的全部功能。</string>
+    <string name="compat_needs_folio">需要 Folio %1$s</string>
+    <string name="compat_needs_folio_detail">这部手机的 Folio 是 %2$s。更新 Folio 后即可安装。</string>
+    <string name="compat_kind_detail">这是此版本 Folio 暂时还无法使用的软件包类型。</string>
+    <string name="compat_features_detail">它用到了此版本 Folio 还没有的功能。</string>
+    <string name="compat_replaces">取代 %1$s</string>
+    <string name="compat_replaces_detail">两者不能同时启用。请先移除 %1$s。</string>
+    <string name="compat_needs_package">需要 %1$s</string>
+    <string name="compat_needs_package_detail">请先安装它，再安装此软件包。</string>
+    <string name="compat_have_package_detail">已在这部手机上。</string>
+    <string name="compat_screens_both">外屏和内屏</string>
+    <string name="compat_screens_both_detail">在这部手机的两块屏幕上都能使用。</string>
+    <string name="compat_screen_inner_only">仅限内屏</string>
+    <string name="compat_screen_inner_only_detail">它不会改变外屏。这并不是问题，只是不会在那里显示。</string>
+    <string name="compat_screen_cover_only">仅限外屏</string>
+    <string name="compat_screen_cover_only_detail">它不会改变内屏。这并不是问题，只是不会在那里显示。</string>
 </resources>
