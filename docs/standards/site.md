@@ -73,7 +73,9 @@ that shape of mistake.
   from Worker code, since headers rules do not apply to Worker responses. `script-src` **MUST NOT** allow
   `'unsafe-inline'` or `'unsafe-eval'`; `scripts/check.mjs` fails the build if it does. The one allowance is in
   Recorded exceptions.
-- **WEB-17 MUST NOT** put a secret, token, supporter code or private address in the repository or in client-side code.
+- **WEB-17 MUST NOT** put a secret, token, supporter code or private address in the repository or in a script the site
+  ships. A code a visitor brings with them may be handled in their browser, as `/redeem/` does with the part of the
+  link after the `#`, but is never sent to a server.
   Deploy tokens live in repository secrets and are set by their owner.
 - **WEB-18 MUST** treat anything rendered from the app repo as trusted only because the tag it comes from is. A
   changelog is rendered from markdown with `marked`, which lets raw HTML through, so it is the Content Security Policy
@@ -125,8 +127,11 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
   their slot, and unused files. It also fails if a page's share image does not exist. 43 pages have share images
   drawn per page by `npm run og` (41 on 2 Oct, plus the new Market and Keyd help pages); the rest are hand-made. The roadmap timeline has screenshots only for 0.6.0 and
   0.6.6.
-- **Privacy and security (WEB-15 to 18).** No analytics and no client script on any page: 52 built pages carry no script
-  tag other than JSON-LD data. `public/_headers` sets the CSP, HSTS, nosniff, Referrer-Policy and Permissions-Policy, and
+- **Privacy and security (WEB-15 to 18).** No analytics. One page runs a script: `/redeem/`, the landing page for the
+  link in a supporter's email, loads its own file (`public/redeem.js`, so `script-src` stays `'self'`) to show the code
+  from the part of the URL after the `#`, copy it, and build the Android link, and the browser never sends that part to a
+  server. It is not in the sitemap and is `noindex`. Every other built page carries no script tag other than JSON-LD
+  data. `public/_headers` sets the CSP, HSTS, nosniff, Referrer-Policy and Permissions-Policy, and
   they appear on HTML responses served through the Worker. `workers_dev` is off. `script-src` was `'self'
   'unsafe-inline'` until folio-site#17, which tightened it to `'self'` and added the check (deployed 2 Oct 2026).
 - **Accessibility and performance (WEB-19 to 23).** 258 page and width combinations (43 pages, six widths from 320 to
