@@ -128,8 +128,7 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
 - **Privacy and security (WEB-15 to 18).** No analytics and no client script on any page: 52 built pages carry no script
   tag other than JSON-LD data. `public/_headers` sets the CSP, HSTS, nosniff, Referrer-Policy and Permissions-Policy, and
   they appear on HTML responses served through the Worker. `workers_dev` is off. `script-src` was `'self'
-  'unsafe-inline'` until folio-site#17, which tightens it to `'self'` and adds the check; until that merges the site
-  breaks WEB-16.
+  'unsafe-inline'` until folio-site#17, which tightened it to `'self'` and added the check (deployed 2 Oct 2026).
 - **Accessibility and performance (WEB-19 to 23).** 258 page and width combinations (43 pages, six widths from 320 to
   2560) have no horizontal overflow. A contrast sweep of nine pages found no failures in light or dark. Lighthouse in CI
   (`.github/workflows/lighthouse.yml`) measures six pages: LCP 1.1 to 1.9 s, layout shift 0.000, every category 100.
@@ -150,7 +149,7 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
 | 5 | The release workflow attaches `signing-certificate.txt` every time, so the fallback in WEB-4 is never used | S |
 | 6 | Confirm the `site.yml` dispatch fires on the next real release (WEB-26) | S |
 | 7 | Tab order through the interactive pages with a real keyboard and a screen reader (WEB-19) | S |
-| 8 | `download.astro` says the signing certificate "is what makes future updates safe", which WEB-10 now forbids. Reword it to what is checkable, in the owner's words (WEB-8) | S |
+| 8 | ~~`download.astro` called the signing certificate what "makes future updates safe"~~ (done: folio-site#18 reworded it to what Android checks) | S |
 | 9 | Drop `'unsafe-inline'` from `style-src` by moving Astro's scoped styles to external CSS or hashing them, then remove the exception below (WEB-16) | M |
 
 ## Recorded exceptions
