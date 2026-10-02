@@ -55,6 +55,20 @@ internal object MarketImages {
                 ?.also { decoded.put(path, it) }
         }
 
+    /** The most a moving picture may weigh. A package page shouldn't cost a phone more than that to open. */
+    const val MAX_ANIMATION_BYTES = 1_500_000
+
+    /**
+     * The bundled picture at [path] as something that plays, when it is an animated WebP or GIF; null when it is still,
+     * missing, too big or not a picture. A still one goes through [bundled], so a package can ship either.
+     */
+    fun bundledAnimation(read: (String) -> ByteArray?, path: String): android.graphics.drawable.AnimatedImageDrawable? {
+        val bytes = read(path)?.takeIf { it.size <= MAX_ANIMATION_BYTES } ?: return null
+        return runCatching {
+            android.graphics.ImageDecoder.decodeDrawable(android.graphics.ImageDecoder.createSource(java.nio.ByteBuffer.wrap(bytes)))
+        }.getOrNull() as? android.graphics.drawable.AnimatedImageDrawable
+    }
+
     @Volatile private var loader: ImageLoader? = null
 
     fun loader(context: Context): ImageLoader = loader ?: synchronized(this) {
