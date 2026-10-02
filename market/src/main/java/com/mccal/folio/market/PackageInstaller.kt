@@ -143,27 +143,22 @@ class PackageInstaller(
         /** The id and author key to remember, once this package is really on. */
         pinning: Pair<String, String>? = null,
     ): InstallResult {
-        val missing = pkg.manifest.missingCapabilities(host.capabilities).map { it.id } +
-            pkg.changes.flatMap { it.capabilities }.filterNot { it in host.capabilities }.map { it.id }
-        if (missing.isNotEmpty()) return InstallResult.NeedsNewerFolio(missing.distinct())
-        // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that needs a
-        // later Folio's behaviour without naming anything. Both mean the same thing to the user.
-        val needs = pkg.manifest.minFolio
-        if (!builtIn && folioVersion != null && needs > folioVersion) {
-            return InstallResult.NeedsNewerFolio(listOf("Folio $needs"))
-        }
-        // An add-on without its host would sit on the phone doing nothing, so the host comes first.
-        val hosts = missingHosts(pkg.changes)
-        if (hosts.isNotEmpty()) return InstallResult.NeedsHost(hosts)
+        // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
+        // page would have said before the person tapped Get, in the same order.
         val already = store.installed()
-        already.firstOrNull { it.id != pkg.id && pkg.manifest.conflicts.any { c -> c.id == it.id && c.matches(it.version) } }
-            ?.let { return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${it.name}") }
-        // Dependencies have to be installed first; the store's queue sheet offers to add them (Phase 5).
-        val missingDepends = pkg.manifest.depends.filterNot { needed ->
-            already.any { it.id == needed.id && it.enabled && needed.matches(it.version) }
-        }
-        if (missingDepends.isNotEmpty()) {
-            return InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${missingDepends.joinToString { it.toString() }} first")
+        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
+        when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+            is CompatCheck.Kinds -> return InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
+            is CompatCheck.Features -> return InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
+            // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
+            // needs a later Folio's behaviour without naming anything. Both mean the same thing to the user.
+            is CompatCheck.Release -> return InstallResult.NeedsNewerFolio(listOf("Folio ${stop.needs}"))
+            // An add-on without its host would sit on the phone doing nothing, so the host comes first.
+            is CompatCheck.Hosts -> return InstallResult.NeedsHost(stop.missing)
+            is CompatCheck.Replaces -> return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
+            // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
+            is CompatCheck.Needs -> return InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
+            else -> Unit
         }
 
         // Applying starts here. Safe Mode watches from now until the marker is cleared, so a crash while a package is
