@@ -179,3 +179,25 @@ test('without a mail key the code is still claimed, to send by hand', async () =
   assert.equal(DB.handled.get('m1').emailed, 0)
   assert.equal(DB.handled.get('m1').code, 'CODE-1')
 })
+
+test('the email goes to Resend as both HTML and plain text, with the link and the reply address', async () => {
+  const DB = database([{ code: 'CODE-1', pool: 'beta' }])
+  const sent = []
+  const real = globalThis.fetch
+  globalThis.fetch = async (url, init) => { sent.push({ url, init }); return new Response('{}', { status: 200 }) }
+  try {
+    const env = { DB, KOFI_TOKEN: TOKEN, POOLS, RESEND_KEY: 'key', MAIL_FROM: 'Folio <a@send.example>', REPLY_TO: 'me@example.com' }
+    await worker.fetch(payment({ type: 'Subscription', tier_name: 'Bronze', from_name: 'Alex' }), env)
+  } finally {
+    globalThis.fetch = real
+  }
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0].url, 'https://api.resend.com/emails')
+  const body = JSON.parse(sent[0].init.body)
+  assert.equal(body.to, 'jo@example.com')
+  assert.equal(body.reply_to, 'me@example.com')
+  assert.equal(body.subject, 'Your Folio supporter code')
+  assert.ok(body.text.includes('CODE-1') && body.html.includes('CODE-1'))
+  assert.ok(body.html.includes('href="folio://redeem?c=CODE-1"'))
+  assert.equal(DB.handled.get('m1').emailed, 1)
+})
