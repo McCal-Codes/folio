@@ -1548,4 +1548,22 @@
     <string name="tweak_opt_tick">슬라이드할 때 틱 진동</string>
     <string name="tweak_opt_music_card">음악 카드</string>
     <string name="tweak_opt_island_bars">아일랜드 사운드 바</string>
+    <string name="compatibility">호환성</string>
+    <string name="compat_works">내 Folio에서 사용 가능</string>
+    <string name="compat_works_detail">Folio %1$s에 필요한 기능이 모두 있습니다.</string>
+    <string name="compat_needs_folio">Folio %1$s 필요</string>
+    <string name="compat_needs_folio_detail">이 휴대전화의 Folio는 %2$s입니다. Folio를 업데이트하면 설치할 수 있습니다.</string>
+    <string name="compat_kind_detail">이 버전의 Folio에서 아직 사용할 수 없는 종류의 패키지입니다.</string>
+    <string name="compat_features_detail">이 버전의 Folio에 아직 없는 기능을 사용합니다.</string>
+    <string name="compat_replaces">%1$s 대체</string>
+    <string name="compat_replaces_detail">둘을 동시에 사용할 수 없습니다. 먼저 %1$s을(를) 제거하세요.</string>
+    <string name="compat_needs_package">%1$s 필요</string>
+    <string name="compat_needs_package_detail">먼저 설치한 다음 이 패키지를 설치하세요.</string>
+    <string name="compat_have_package_detail">이미 이 휴대전화에 있습니다.</string>
+    <string name="compat_screens_both">커버 및 내부 화면</string>
+    <string name="compat_screens_both_detail">이 휴대전화의 두 화면 모두에서 작동합니다.</string>
+    <string name="compat_screen_inner_only">내부 화면 전용</string>
+    <string name="compat_screen_inner_only_detail">커버 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
+    <string name="compat_screen_cover_only">커버 화면 전용</string>
+    <string name="compat_screen_cover_only_detail">내부 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
 </resources>

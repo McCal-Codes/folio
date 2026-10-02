@@ -1012,6 +1012,9 @@ private fun MarketRow(
     val openLabel = stringResource(R.string.open_1_s, name)
     val external = MarketExternalApp.isExternal(entry.entry.manifest)
     val appUpdate = if (external) appUpdateFor(entry) else null
+    // Whether it can be had here, before the person taps. A package already on the phone has been through that, unless
+    // this row offers a newer version of it: that version can need more than the one installed did.
+    val compat = if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
     Row(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
@@ -1039,6 +1042,7 @@ private fun MarketRow(
                 },
                 fontSize = FolioType.FOOTNOTE.sp,
             )
+            compatSummary(compat)?.let { Text(it.rowText(), color = it.rowColor(), fontSize = FolioType.FOOTNOTE.sp) }
             if (entry.unsigned) {
                 Text(stringResource(R.string.unsigned), color = FolioColors.Warning, fontSize = FolioType.GROUP_LABEL.sp)
             }
@@ -1060,6 +1064,9 @@ private fun MarketRow(
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            // The line under its name says why; there is nothing to install until that changes. What is already on the
+            // phone can still be removed.
+            compatBlocked(compat) != null -> if (installed != null) MarketActionButton(R.string.remove, name, onRemove)
             update || appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
             // An app of its own is Get until Android has it, then Open, and Update when its source lists a newer one.
             external ->
@@ -1213,6 +1220,9 @@ private fun MarketPackagePage(
     val backLabel = stringResource(R.string.back)
     val external = MarketExternalApp.isExternal(entry.manifest)
     val onPhone = if (external) externalAppId(entry.manifest) else null
+    // A newer listing of what is installed offers Update, and has to be checked like anything else being got.
+    val updateAvailable = installed != null && entry.version > installed.version
+    val compat = if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1262,9 +1272,13 @@ private fun MarketPackagePage(
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
                 appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
+                // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
+                entry.needs.isNotEmpty() && installed == null ->
+                    Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
+                updateAvailable && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
-                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false)
+                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
             }
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source
@@ -1272,6 +1286,7 @@ private fun MarketPackagePage(
             Text(
                 when {
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
+                    updateAvailable -> "${installed?.version} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
@@ -1322,6 +1337,12 @@ private fun MarketPackagePage(
         // What a package can't reach is worked out from the Folio permissions it asks for. An app of its own asks
         // Folio for nothing and gets everything Android grants it - a keyboard sees what you type - so the list
         // would be a promise Folio has no way to keep. It says what is true instead.
+        // Whether it works here comes before what it can't reach: the first thing to know about a package is whether
+        // it can be had at all.
+        if (compat.isNotEmpty()) {
+            SheetGroupLabel(stringResource(R.string.compatibility))
+            CompatibilityCard(compat, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
+        }
         if (external) {
             SheetGroupLabel(stringResource(R.string.an_app_of_its_own))
             SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
