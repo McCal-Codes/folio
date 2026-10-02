@@ -105,8 +105,10 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
   packages (manifest, depiction, icon) and screen matrix at that release's tag. It fails the build on a failed fetch, an
   empty list or a blank checksum. `roadmap.astro` counts a section as shipped only if it is a dated changelog entry.
   `check.mjs` fails if the download version has no dated changelog entry and page.
-- **Claims (WEB-3).** Not enforced. The home page and the no-ads page were corrected by hand on 1 Oct, and
-  `PERMISSIONS.md` lost its VirusTotal sentence. Nothing compares the site's claims to those documents.
+- **Claims (WEB-3).** Partly enforced. `src/data/claims.json` in folio-site ties eight claims about privacy, permissions
+  and signing to the phrase in `PRIVACY.md`, `PERMISSIONS.md` or Keyd's README that supports each, and `check.mjs`
+  fails the build when a page makes a claim whose phrase is gone, or repeats a phrase the documents contradict. It is a
+  tripwire: it only recognizes the phrasings listed, and it proves the documents say something, not that the app does.
 - **Words (WEB-7, 8).** Held by habit and by review. No check looks for em dashes or banned words.
 - **Pictures (WEB-11 to 14).** `check.mjs` checks alt text, dimensions, aspect ratio, images wider than three times
   their slot, and unused files. It also fails if a page's share image does not exist. 41 pages have share images
@@ -126,7 +128,9 @@ Measured on 1 and 2 Oct 2026, against folio-site `main`.
 
 | | What it takes | Size |
 |---|---|---|
-| 1 | A check that fails when the site's privacy, permissions and signing sentences stop matching `PRIVACY.md` and `PERMISSIONS.md` (WEB-3). The cheap version is a list of the claim sentences kept in one file the pages import, compared to those documents in CI | M |
+| 1 | ~~A check that the site's privacy, permissions and signing sentences match `PRIVACY.md` and `PERMISSIONS.md`~~ (done as a tripwire, see Claims above) | M |
+| 1a | Check the claims against the code instead of prose: compare the permissions in the built APK's manifest with the list in `PERMISSIONS.md`, and Keyd's manifest with "asks for no permissions". This belongs in the app repo's CI, where the manifest is, and is what would make WEB-3 a guarantee | M |
+| 1b | Flag any sentence on a page that makes a privacy or safety claim ("never", "no tracking", "safe") and is not in the registry, so a person reviews new phrasings | S |
 | 2 | A lint for em dashes and banned words in `src/` (WEB-7) | S |
 | 3 | Lighthouse over every page type, not six (WEB-22), and a test that a failing page really turns the run red | S |
 | 4 | Screenshots for the timeline stops and the tweak pages, from Screenshot Mode (WEB-11, 13) | M |
