@@ -106,10 +106,14 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var replying by remember { mutableStateOf(false) }
     LaunchedEffect(eventPair) {
         if (replying) return@LaunchedEffect
-        val (event, at) = eventPair ?: return@LaunchedEffect
-        if (event.kind in eventsOff) return@LaunchedEffect
-        val remaining = IslandEvents.showMs(event) - (System.currentTimeMillis() - at)
-        if (remaining <= 0) return@LaunchedEffect
+        // Every way out of here that is not "show this one" clears the island, or what was showing stays up for
+        // good. Dismissing from the Everywhere overlay sets the shared event to null and nothing else, a filtered
+        // kind or an event that expired in the background used to leave the previous card on screen until the next
+        // event happened to arrive.
+        val (event, at) = eventPair ?: run { eventVisible = null; return@LaunchedEffect }
+        if (event.kind in eventsOff) { eventVisible = null; return@LaunchedEffect }
+        val remaining = IslandEvents.showMs(view.context, event) - (System.currentTimeMillis() - at)
+        if (remaining <= 0) { eventVisible = null; return@LaunchedEffect }
         eventVisible = event; delay(remaining)
         snapshotFlow { replying }.first { r -> !r }
         eventVisible = null
@@ -148,7 +152,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
 
     with(density) {
         val cameraGeometry = islandGeometry(cutout, windowWidth, density.density)
-        val geometry = custom?.let { islandGeometryAt(it.xFraction * windowWidth, it.topDp, windowWidth, density.density) } ?: cameraGeometry
+        val geometry = custom?.clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
+            ?.let { islandGeometryAt(it.xFraction * windowWidth, it.topDp, windowWidth, density.density) } ?: cameraGeometry
         val camW = geometry.camW.dp
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
@@ -181,6 +186,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         val nearCamera = kotlin.math.abs(newCenterX - cameraGeometry.centerXPx) < 56.dp.toPx() &&
                             kotlin.math.abs(newTopDp - cameraGeometry.top) < 40f && cutout != null
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
+                            .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
                         IslandPosition.save(context, wide, landscape, custom)
                         dragOffset = androidx.compose.ui.geometry.Offset.Zero
                     },
@@ -208,6 +214,18 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
 
 /** Where the user dragged the island on one screen: horizontal center as a fraction of width, top in dp. */
 internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
+    /**
+     * Kept inside the window, with the whole pill visible. A drag used to save whatever it ended at, and the top
+     * had no upper bound, so a pill dragged to the bottom edge was saved there and came back under the search pill
+     * or off the screen, with nothing left to grab. The saved string is also clamped on the way in, so a value from
+     * an older build or a different window size cannot place the pill where it cannot be reached.
+     */
+    fun clamped(windowWidthPx: Int, windowHeightPx: Int, density: Float, pillHDp: Float): IslandPosition {
+        val heightDp = windowHeightPx / density
+        val maxTop = (heightDp - pillHDp - ISLAND_EDGE_GAP).coerceAtLeast(ISLAND_EDGE_GAP)
+        return IslandPosition(xFraction.coerceIn(0f, 1f), topDp.coerceIn(ISLAND_EDGE_GAP, maxTop))
+    }
+
     companion object {
         // Saved per screen and orientation: a spot dragged to in landscape means nothing once the screen turns.
         // (The original keys were the natural orientations: unfolded landscape, cover portrait.)
@@ -352,15 +370,15 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
     when (content) {
         is IslandContent.Event -> when (val e = content.event) {
             is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The app's icon beside the sender's photo; without a photo the icon is already on the left.
             is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { Image(it.asImageBitmap(), null, Modifier.size(size * .8f).clip(RoundedCornerShape(size * .22f))) }
             is IslandEvent.Notice -> Unit
         }
         is IslandContent.Live -> when (val a = content.activity) {
-            is IslandActivity.Media -> Bars(a.playing, if (LocalTintOptions.current.media) rememberAccent(a.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen else IslandGreen)
+            is IslandActivity.Media -> Bars(a.playing, if (LocalTintOptions.current.mediaIsland) rememberAccent(a.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen else IslandGreen)
             is IslandActivity.Progress -> Ring(a.fraction, size)
             is IslandActivity.Call -> Bars(playing = !a.incoming)
             is IslandActivity.Timer -> Chronometer(a.base, a.countDown, IslandOrange)
@@ -479,7 +497,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
             is IslandActivity.Media -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val t = activity.controller.transportControls
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
-                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(R.string.play_or_pause), tint = Color.White,
+                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = Color.White,
                     modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
             }
@@ -583,7 +601,7 @@ private val Red = FolioColors.Red
 private val Purple = FolioColors.Indigo
 internal val IslandBlue = FolioColors.Blue
 
-private const val ISLAND_EDGE_GAP = 8f
+internal const val ISLAND_EDGE_GAP = 8f
 /** Smallest gap between the island and the left or right screen edge. */
 private const val ISLAND_SIDE_MARGIN = 12f
 private const val ISLAND_CAMERA_MARGIN = 5f

@@ -98,8 +98,8 @@ Not yet:
 |---|---|---|
 | 1 | Split `LauncherState` into Home, Appearance, Status and Settings slices so a status change doesn't recompose Home | L |
 | 2 | Split `LauncherScreen()` and `CustomizationSheet.kt` by surface (one file per Settings page group) | L |
-| 3 | Fix the `state.value` reads and the uncached prefs read | S |
+| 3 | ~~The `state.value` reads~~ (not a problem: both are in an event handler and an effect, where reading the current value is right). Left: the uncached prefs read in `CustomizationSheet.kt`, which is open in other pull requests | S |
 | 4 | Document `FolioSettingsBridge` as the one bridge; remove or document the other mutable globals | M |
-| 5 | Add ktlint (or spotless) and an `.editorconfig` | S |
+| 5 | ~~`.editorconfig`~~ (done). A formatter that enforces style is McCal's call: turned on today it would rewrite most of the codebase in one commit | S |
 | 6 | Send swallowed failures to `Diagnostics` | M |
 | 7 | Extract the pure layout code into `:core:layout` (it's already JVM-tested) | M |

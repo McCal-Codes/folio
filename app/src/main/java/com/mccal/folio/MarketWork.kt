@@ -64,7 +64,8 @@ internal object MarketWork {
         busyId = id
         progress = MarketProgress(MarketProgress.Phase.APPLYING)
         scope.launch {
-            val result = runCatching { work() }.getOrElse {
+            // Nothing cancels this scope, so any failure, cancellation included, is an install that failed.
+            val result = caught("Market: installing a package", rethrowCancellation = false) { work() }.getOrElse {
                 InstallResult.Failed(InstallResult.Reason.APPLY, failed)
             }
             finished = Finished(name, result)
@@ -91,7 +92,7 @@ internal object MarketWork {
         busyId = id
         progress = MarketProgress(MarketProgress.Phase.APPLYING)
         scope.launch {
-            runCatching { work() }
+            caught("Market: handing an app to Android", rethrowCancellation = false) { work() }
             busyId = null
             progress = null
         }
@@ -103,6 +104,6 @@ internal object MarketWork {
      * code is redeemed, say. It isn't an install, so it doesn't touch [busy] and two of them may overlap.
      */
     fun background(work: suspend () -> Unit) {
-        scope.launch { runCatching { kotlinx.coroutines.withContext(Dispatchers.IO) { work() } } }
+        scope.launch { caught("Market: background work", rethrowCancellation = false) { kotlinx.coroutines.withContext(Dispatchers.IO) { work() } } }
     }
 }

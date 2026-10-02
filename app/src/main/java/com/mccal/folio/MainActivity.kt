@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { syncStandByScreenSaver(this@MainActivity) }
         FocusScheduler.run(this)
         // USER_PRESENT is a protected system broadcast delivered to runtime receivers.
         androidx.core.content.ContextCompat.registerReceiver(this, unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT),
@@ -125,6 +126,8 @@ class MainActivity : ComponentActivity() {
         else sharedTheme.value = savedInstanceState.getString(PENDING_THEME)?.let(FolioTheme::fromJson)
         setContent {
             val savedState = model.state.collectAsStateWithLifecycle().value
+            // Home is fully drawn once its own apps are in; at a start they come ahead of the rest.
+            androidx.activity.compose.ReportDrawnWhen { savedState.homeReady }
             val safeMode = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(SafeMode.active) }
             val solidGlass = savedState.reduceTransparency || rememberSystemHighContrast()
             val state = FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
@@ -255,15 +258,22 @@ class MainActivity : ComponentActivity() {
                 LocalTintOptions provides androidx.compose.ui.platform.LocalConfiguration.current.let { config ->
                     val screen = screenFor(config.fitsRegularHomeLayout())
                     TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
-                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen),
-                        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen))
+                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
+                        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
+                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
                 },
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
                 LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, state.badgeStyle, state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
+                LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
-                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(state.foldEffect && !reduceMotion, state.foldIntensity, state.stayAwakeOnFold, state.foldSnapshot, state.haptics) {
+                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
+                    screenFor(androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())), state.foldIntensity, state.stayAwakeOnFold,
+                    // Reduce Motion: a plain shade, no frost, tilt, shrink or picture moving (DYN-11: motion becomes a fade).
+                    state.foldSnapshot && !reduceMotion, state.haptics,
+                    if (reduceMotion) com.mccal.folio.duet.DuetStyles.reducedMotion(state.duet.resolved()) else state.duet.resolved(), state.duet.plays,
+                    reduceMotion = reduceMotion) {
                 // The launcher blurs behind every overlay with the same spring the overlay uses.
                 androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
                     .graphicsLayer {
@@ -288,10 +298,20 @@ class MainActivity : ComponentActivity() {
                     onFinishFirstRun = ::finishFirstRun,
                     onShadeSetup = ::showShadeSetup, onShowWelcome = { showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
                 }
-                StandByOverlay(rememberHalfOpenPose(this@MainActivity), state.standBy, blocked = overlayOpen, status = deviceStatus)
+                // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
+                // charging on its side and a tent on the cover.
+                val standByMore = androidx.compose.runtime.remember { FeatureGate.STANDBY_CHARGING.isOpen(this@MainActivity) }
+                val standByShowing = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
+                val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
+                val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
+                val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
+                StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
+                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it })
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
-                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen)
-                SetupReminderCard(defaultHome.value, blocked = overlayOpen || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
+                // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
+                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)
+                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
@@ -304,7 +324,7 @@ class MainActivity : ComponentActivity() {
                 }
                 if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
                 // With live activities in the side rail, the camera island on Home keeps only its brief events.
-                if (state.island) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
+                if (state.island && !standByShowing.value) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
                     ?.takeUnless { it is IslandActivity.Call && "CALL" in state.islandEventsOff }
                     ?.takeUnless { state.railActivities && state.verticalStatus && !overlayOpen }, state.islandEventsOff + "BLUETOOTH") {
                     IslandListenerService.open(this@MainActivity, it)
@@ -324,7 +344,7 @@ class MainActivity : ComponentActivity() {
         // Reassert the token after recreation (and after process restoration, where the
         // in-memory owner set is empty) before any external UI can uncover Discover.
         if (returningFromShadeSettings || restoreShadeDialog) ownShadeSetupExternally()
-        if (restoreShadeDialog) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
+        if (restoreShadeDialog || (savedInstanceState == null && intent.getStringExtra("duo_destination") == "shade_setup")) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
     }
 
     override fun onStart() {
@@ -522,6 +542,8 @@ class MainActivity : ComponentActivity() {
         FoldRenderExperiment.onNewIntent(this, intent)
         updateDefaultHome()
         if (intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++
+        // From the Notification shade shortcut when the gestures service is off: explain how to turn it on.
+        if (intent.getStringExtra("duo_destination") == "shade_setup") showShadeSetup()
         // One chain: tapping Folio's icon opens Settings *or* goes Home, never both.
         if (opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
         else if (takeMarketLink(intent)) settingsRequests.intValue++

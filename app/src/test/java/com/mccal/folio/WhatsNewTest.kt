@@ -33,7 +33,11 @@ class WhatsNewTest {
         val gradle = java.io.File(root, "app/build.gradle.kts").readText()
         // A beta carries its release's notes, so the section to match is the version without the suffix.
         val version = Regex("""val folioVersion = "([^"]+)"""").find(gradle)!!.groupValues[1].substringBefore('-')
-        assertEquals(version, newest.version)
+        // Notes for the next version are written under "Unreleased" before its bump (REL-7, REL-13), so until then
+        // the app is still the newest dated release.
+        val notes = WhatsNew.parse(java.io.File(root, "CHANGELOG.md").readText())
+        val shipped = if (newest.date == "Unreleased" && newest.version != version) notes[1] else newest
+        assertEquals(version, shipped.version)
     }
 
     @Test fun `a beta shows the notes for the release it belongs to`() {
@@ -53,7 +57,10 @@ class WhatsNewTest {
     @Test fun `every new feature in the current release has a short bold title`() {
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
         val latest = WhatsNew.parse(java.io.File(root, "CHANGELOG.md").readText()).first()
-        val added = latest.sections.first { it.first == "Added" }.second.map(WhatsNew::split)
+        // A hotfix (x.y.z.n) may carry only fixes; a feature release must have something under Added.
+        val section = latest.sections.firstOrNull { it.first == "Added" }
+        if (section == null) { assertTrue("${latest.version} has no Added section", latest.version.count { it == '.' } == 3); return }
+        val added = section.second.map(WhatsNew::split)
         assertTrue(added.isNotEmpty())
         added.forEach { assertTrue("Needs a title: ${it.detail}", it.title != null && it.title!!.length <= 40) }
     }

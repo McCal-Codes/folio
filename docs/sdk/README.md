@@ -35,7 +35,7 @@ Make themes, tweaks and layouts for the Folio Market.
 
 ## Rules for every package
 
-- **Data only:** JSON and images, plus an optional sandboxed script. No DEX, JAR or native code.
+- **Data only:** JSON and images. No code of any kind: no DEX, JAR, native code or scripts (the `script` kind is reserved and refused).
 - **Declare everything:** list every permission your package uses. The privacy label is built from that list.
 - **Credit and licensing:** credit anything that inspired you, and don't include GPL code.
 - **Made with AI:** if something helped make your package, set `aiAssisted` in the manifest and keep it on updates and

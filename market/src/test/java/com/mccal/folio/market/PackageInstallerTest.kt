@@ -24,7 +24,12 @@ class PackageInstallerTest {
     private var now = 1_789_000_000L
 
     /** Stands in for the launcher: remembers what was applied, and can be told to fail. */
-    private class FakeHost(override val capabilities: Set<Capability> = Capability.entries.toSet()) : PackageHost {
+    private class FakeHost(
+        override val capabilities: Set<Capability> = Capability.entries.toSet(),
+        val tweaks: Set<String>? = null,
+    ) : PackageHost {
+        // Null means every tweak is here, which is what the tests that aren't about add-ons want.
+        override fun hasTweak(id: String) = tweaks?.contains(id) ?: true
         val applied = mutableListOf<PackageChange>()
         val restored = mutableListOf<PackageChange>()
         var failOn: ((PackageChange) -> Boolean)? = null
@@ -49,7 +54,134 @@ class PackageInstallerTest {
             is PackageChange.Layout -> "layout"
             is PackageChange.Wallpaper -> change.path
             is PackageChange.IconPack -> change.packageName
+            is PackageChange.PageEffect -> "pageEffect:" + change.id
         }
+    }
+
+    /** A wallpaper package built from the shipped example's manifest, with whatever images the test wants. */
+    private fun wallpaperPackage(images: Map<String, ByteArray>, depiction: String? = null): ByteArray {
+        val manifest = File(root, "docs/sdk/examples/wallpaper-wooded-hilly-landscape/manifest.json").readBytes()
+        val files = LinkedHashMap<String, ByteArray>()
+        files["manifest.json"] = manifest
+        if (depiction != null) files["depiction.json"] = depiction.toByteArray()
+        files.putAll(images)
+        return zip(files)
+    }
+
+    private fun wallpaperPath(bytes: ByteArray): String {
+        val read = installer.read(bytes)
+        assertTrue("$read", read is PackageInstaller.ReadResult.Ok)
+        return ((read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.Wallpaper).path
+    }
+
+    /** A package of [kind] with nothing else in it, or with an app store listing for externalApp. */
+    private fun kindPackage(kind: String): ByteArray {
+        val via = if (kind == "externalApp") ""","via":[{"store":"playStore","id":"com.example.app"}]""" else ""
+        val manifest = """{"format":1,"id":"dev.example.test.${kind.lowercase()}","name":"Example","version":"1.0","author":{"name":"Example"},
+            "minFolio":"0.6.6","section":"tweaks","kind":["$kind"],"permissions":[]$via}"""
+        return zip(mapOf("manifest.json" to manifest.toByteArray()))
+    }
+
+    // Before 0.6.8 a kind Folio reads but doesn't act on installed as a record with no changes, under a label saying
+    // it ran a script. A script is code and stays reserved (ADR 0004), so these are refused like any newer package.
+    @Test fun `a script or settings-page package is refused as needing a newer Folio, and nothing is installed`() {
+        for (kind in listOf("script", "settingsSchema")) {
+            assertEquals(PackageInstaller.ReadResult.NeedsNewerFolio(listOf(kind)), installer.read(kindPackage(kind)))
+            assertEquals(InstallResult.NeedsNewerFolio(listOf(kind)), installer.install(kindPackage(kind), origin = InstalledPackage.Origin.FILE))
+        }
+        assertTrue(store.installed().none { it.id.startsWith("dev.example.test.") })
+    }
+
+    // An app listing is offered by its source through Android; opened as a file it would install as nothing.
+    @Test fun `an app listing opened as a file is refused`() {
+        val result = installer.install(kindPackage("externalApp"), origin = InstalledPackage.Origin.FILE)
+        // The manifest itself is fine; it's the channel that's wrong, and the message says so.
+        assertTrue("$result", result is InstallResult.Failed && result.reason == InstallResult.Reason.MANIFEST && "through Android" in result.message)
+        assertTrue(store.installed().none { it.id == "dev.example.test.externalapp" })
+    }
+
+    /** A page effect package from the shipped example, with its effect.json replaced when a test wants. */
+    private fun effectPackage(effect: String? = File(root, "docs/sdk/examples/page-effect-tilt/effect.json").readText()): ByteArray {
+        val files = LinkedHashMap<String, ByteArray>()
+        files["manifest.json"] = File(root, "docs/sdk/examples/page-effect-tilt/manifest.json").readBytes()
+        if (effect != null) files["effect.json"] = effect.toByteArray()
+        return zip(files)
+    }
+
+    @Test fun `a page effect package reads as its four numbers, named after the package`() {
+        val read = installer.read(effectPackage())
+        assertTrue("$read", read is PackageInstaller.ReadResult.Ok)
+        val effect = (read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.PageEffect
+        assertEquals(PackageChange.PageEffect("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f), effect)
+        assertEquals(setOf(Capability.PAGE_EFFECTS), effect.capabilities)
+    }
+
+    // A page effect is an add-on to Flipbook (PackageKind.hostTweak), like a script for jailbreak Cylinder: without
+    // the tweak it would sit on the phone doing nothing, so it isn't applied and the Market offers the tweak instead.
+    @Test fun `a page effect needs Flipbook on the phone, however Flipbook got there`() {
+        val without = PackageInstaller(store, FakeHost(tweaks = emptySet()), clock = { now })
+        assertEquals(InstallResult.NeedsHost(listOf("pageEffects")), without.install(effectPackage(), origin = InstalledPackage.Origin.FILE))
+        assertTrue(store.installed().none { it.id == "com.mccal.folio.effect.tilt" })
+        val with = PackageInstaller(store, FakeHost(tweaks = setOf("pageEffects")), clock = { now })
+        assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+    }
+
+    // Flipbook can be removed after an effect is on. Try Again mustn't turn the effect back on without it, the same as
+    // Get won't put one on: it would sit there doing nothing.
+    @Test fun `an effect isn't turned back on while Flipbook is gone`() {
+        val tilt = "com.mccal.folio.effect.tilt"
+        val with = PackageInstaller(store, FakeHost(tweaks = setOf("pageEffects")), clock = { now })
+        assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        assertTrue(with.disable(tilt, "Folio stopped twice just after this package changed."))
+        val gone = FakeHost(tweaks = emptySet())
+        val without = PackageInstaller(store, gone, clock = { now })
+        assertEquals(listOf("pageEffects"), without.missingHosts(tilt))
+        assertFalse(without.enable(tilt))
+        assertTrue("nothing was applied", gone.applied.isEmpty())
+        assertFalse(store.find(tilt)!!.enabled)
+        // With Flipbook back, it goes back on.
+        assertEquals(emptyList<String>(), with.missingHosts(tilt))
+        assertTrue(with.enable(tilt))
+    }
+
+    @Test fun `a restored backup leaves an effect off while Flipbook is gone`() {
+        val tilt = "com.mccal.folio.effect.tilt"
+        val with = PackageInstaller(store, FakeHost(tweaks = setOf("pageEffects")), clock = { now })
+        assertTrue(with.install(effectPackage(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        val backup = store.export()
+        val without = PackageInstaller(store, FakeHost(tweaks = emptySet()), clock = { now })
+        val restored = without.restoreBackup(backup, "Folio couldn't put this back on.") {}!!
+        assertEquals(listOf(tilt), restored.failed.map { it.id })
+        assertFalse(store.find(tilt)!!.enabled)
+    }
+
+    @Test fun `a page effect package without a usable effect json is refused`() {
+        listOf(null, "not json", """{"maxRotation":18,"pivot":"sideways","shrink":0,"cameraWidths":3}""",
+            """{"maxRotation":"a lot","pivot":"center","shrink":0,"cameraWidths":3}""").forEach { effect ->
+            val read = installer.read(effectPackage(effect))
+            assertTrue("$effect -> $read", read is PackageInstaller.ReadResult.Failed)
+        }
+    }
+
+    @Test fun `the wallpaper is the image the page does not spend, not the first one in the zip`() {
+        // The hero is listed first and is tiny; the wallpaper is second and large. Zip order used to decide.
+        val page = """{"format":1,"blocks":[{"type":"hero","image":"assets/hero.png"},{"type":"screenshots","images":["assets/shot.png"]}]}"""
+        val bytes = wallpaperPackage(
+            linkedMapOf("assets/hero.png" to ByteArray(300), "assets/shot.png" to ByteArray(200), "assets/picture.webp" to ByteArray(9000)),
+            depiction = page,
+        )
+        assertEquals("assets/picture.webp", wallpaperPath(bytes))
+    }
+
+    @Test fun `with no page to spend them, the largest image is the wallpaper`() {
+        val bytes = wallpaperPackage(linkedMapOf("assets/small.png" to ByteArray(100), "assets/big.jpg" to ByteArray(5000)))
+        assertEquals("assets/big.jpg", wallpaperPath(bytes))
+    }
+
+    @Test fun `a wallpaper package whose only images the page spends has no wallpaper`() {
+        val page = """{"format":1,"blocks":[{"type":"hero","image":"assets/hero.png"}]}"""
+        val read = installer.read(wallpaperPackage(linkedMapOf("assets/hero.png" to ByteArray(300)), depiction = page))
+        assertTrue("$read", read is PackageInstaller.ReadResult.Failed)
     }
 
     @Before fun setUp() {
@@ -112,7 +244,7 @@ class PackageInstallerTest {
         assertTrue(read is PackageInstaller.ReadResult.Ok)
         val pkg = (read as PackageInstaller.ReadResult.Ok).pkg
         assertEquals("Cabinet", pkg.manifest.name.english)
-        assertEquals(6, pkg.depiction?.blocks?.size)
+        assertEquals(7, pkg.depiction?.blocks?.size)
         assertTrue(host.applied.isEmpty() && store.installed().isEmpty())
     }
 

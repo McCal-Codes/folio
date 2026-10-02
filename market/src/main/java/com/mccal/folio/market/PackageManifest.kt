@@ -190,9 +190,25 @@ enum class Section(val id: String) {
     }
 }
 
-enum class PackageKind(val id: String) {
+enum class PackageKind(
+    val id: String,
+    /**
+     * The tweak this kind plugs into, when it's an add-on rather than something that stands alone: a page effect is
+     * one more effect for Flipbook, the way a Cylinder script is one more effect for Cylinder. The kind says it, not
+     * each package, so an author can't leave it out or point it at the wrong id, and a new host is one line here.
+     */
+    val hostTweak: String? = null,
+    /**
+     * Folio reads the kind but doesn't install it yet, so a package of it is refused ("needs a newer Folio") rather
+     * than installed as a record that does nothing. `script` stays reserved on purpose: a script is code, a higher
+     * trust class than JSON and images, and ADR 0004's sandbox has never been built.
+     */
+    val reserved: Boolean = false,
+) {
     THEME("theme"), LAYOUT_PRESET("layoutPreset"), WALLPAPER("wallpaper"), ICON_PACK_LINK("iconPackLink"),
-    TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema"), SCRIPT("script"), EXTERNAL_APP("externalApp");
+    TWEAK_BUNDLE("tweakBundle"), SETTINGS_SCHEMA("settingsSchema", reserved = true), SCRIPT("script", reserved = true),
+    EXTERNAL_APP("externalApp"),
+    PAGE_EFFECT("pageEffect", hostTweak = "pageEffects");
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }
@@ -241,6 +257,7 @@ enum class Capability(val id: String) {
     THEME("theme"), HOME_LAYOUT("home.layout"), WALLPAPER("wallpaper"), ICONS("icons"), ICON_PACKS("icons.packs"),
     APP_PANELS("tweaks.appPanels"), DOCK_MAGNIFY("tweaks.dockMagnify"), NOTIFICATION_APP_ROW("tweaks.notificationAppRow"),
     TINT_NOTIFICATIONS("tweaks.tintNotifications"), TINT_MEDIA("tweaks.tintMedia"),
+    PAGE_EFFECTS("tweaks.pageEffects"), FOLD_TRANSITION("tweaks.foldTransition"),
     ISLAND_MESSAGES("island.messages"), FOCUS_MODES("focus.modes"), SETTINGS_PAGES("settings.pages"), SCRIPTS("scripts");
 
     companion object {

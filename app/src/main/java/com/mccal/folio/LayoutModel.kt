@@ -83,6 +83,8 @@ data class HomeGeometry(
     val columnsInset: Float = 0f,
     /** The bottom dock bar's distance between apps. */
     val dockPitch: Float = 0f,
+    /** The most width the bottom dock bar can have in this window; a bar with more apps than fit scrolls. 0 = not measured. */
+    val dockBarRoom: Float = 0f,
 )
 
 /**
@@ -132,6 +134,17 @@ fun upgradePreset(preset: LayoutPreset, schema: Int, expanded: Boolean): LayoutP
 const val ANDROID_MEDIUM_WIDTH_DP = 600f
 
 /**
+ * Folio's own fit rules beside Android's classes (ADP-3): each is the number a layout was measured against, named
+ * so a change is made once. Compared after multiplying by `classScale` where the call site already does.
+ */
+/** Wide enough for two Home panels side by side: the expanded Home, Discover's expanded dock. */
+const val EXPANDED_HOME_MIN_WIDTH_DP = 650f
+/** Below this height the dock and status rail draw their compact form. */
+const val COMPACT_DOCK_MAX_HEIGHT_DP = 500f
+/** Today View puts its widgets in two columns from this width. */
+const val TODAY_TWO_COLUMN_MIN_WIDTH_DP = 560f
+
+/**
  * Folio's own height for the regular Home layout, not an Android size class (Android's medium height starts at
  * 480 dp): Home's widget row, four app rows, status and dock need about this much. The unfolded screen clears it in
  * either rotation; the cover in landscape (~475 dp) doesn't.
@@ -144,6 +157,18 @@ const val HOME_REGULAR_MIN_HEIGHT_DP = 560f
  * [classScale] converts to dp at the phone's own density (see [classScale]), so a changed display size can't turn a
  * phone-sized screen into a tablet one.
  */
+/**
+ * Which of Home's saved layouts a window uses. The cover and any window too small to be "expanded" use the cover's
+ * ([COVER]); an expanded window uses the inner screen's, and an upright one ([INNER_UPRIGHT], taller than wide) uses its
+ * own only if the person made one (see [LauncherState.portrait]), else the inner screen's, as it always has.
+ */
+enum class LayoutScreen { COVER, INNER, INNER_UPRIGHT }
+
+/** The one rule for which layout a window of this size gets; Home, Discover and Settings all ask it. */
+fun layoutScreenFor(widthDp: Float, heightDp: Float, classScale: Float = 1f): LayoutScreen =
+    if (widthDp * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP)
+        (if (heightDp > widthDp) LayoutScreen.INNER_UPRIGHT else LayoutScreen.INNER) else LayoutScreen.COVER
+
 fun fitsRegularHomeLayout(widthDp: Float, heightDp: Float, classScale: Float = 1f) =
     widthDp * classScale >= ANDROID_MEDIUM_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
 
@@ -159,6 +184,10 @@ fun windowChangedShape(was: Pair<Int, Int>?, now: Pair<Int, Int>, slack: Int = 8
 fun classScale(densityDpi: Int, stableDpi: Int): Float =
     if (densityDpi <= 0 || stableDpi <= 0) 1f else densityDpi.toFloat() / stableDpi
 
+/** How many apps the dock holds: four, or more if the person asks (up to six). */
+const val MIN_DOCK_SLOTS = 4
+const val MAX_DOCK_SLOTS = 6
+
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
     /** Whether round controls (search, back) sit at the bottom of the rail on Home; without them the dock may run lower. */
     railControls: Boolean = true,
@@ -169,8 +198,16 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     /** A book-style fold down the middle of the window: the Home half stays on its side of it. */
     foldAtCenter: Boolean = false,
     /** Rows › Automatic: space left under the last row that fits is shared between the rows (up to 12 dp each). */
-    fillSpace: Boolean = false): HomeGeometry {
+    fillSpace: Boolean = false,
+    /** Dock apps (see [MIN_DOCK_SLOTS]); the dock gets as many touch targets as it has slots. */
+    dockSlots: Int = MIN_DOCK_SLOTS,
+    /**
+     * Whether the status Side Bar is shown. Without it, a bottom dock bar has nothing to sit beside, so the page and the
+     * bar use the whole width (Full-width Home); with it, they leave its strip as they always did.
+     */
+    statusRail: Boolean = true): HomeGeometry {
     val p = preset.sanitized()
+    val slots = dockSlots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS).toFloat()
     // Unfolded Duo layout only with regular size both ways; the cover in landscape is still compact.
     // Two Duo panels side by side need a window wider than tall. Taller than wide (portrait), iPhone Duo keeps one
     // centered Home page with the dock as a horizontal bar: the only pose where Apple keeps horizontal bars.
@@ -184,7 +221,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         DockPlacement.BOTTOM -> regular || (height > width && height >= HOME_REGULAR_MIN_HEIGHT_DP)
     }
     // Everywhere but the upright unfolded screen, the status Side Bar stays and the bottom dock sits beside it.
-    val dockBesideRail = horizontalDock && !tallRegular
+    val dockBesideRail = horizontalDock && !tallRegular && statusRail
+    // A bottom bar with no status Side Bar: nothing to leave room for, so the grid takes the width (less its margins).
+    val fullWidth = horizontalDock && !tallRegular && !statusRail
     val expanded = width * classScale >= 650f && height * classScale >= HOME_REGULAR_MIN_HEIGHT_DP && !tallRegular
     val homeWidth = if (expanded) minOf(460f, width * 0.56f, if (foldAtCenter) width / 2f else Float.MAX_VALUE) else width
     val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) + 28f else 0f
@@ -196,6 +235,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Upright with a Side Bar dock: the same centered spread, beside the dock.
     var gridWidth = if (tallRegular && horizontalDock) minOf(width - 2f * (p.dockWidth + 56f), 4f * p.iconSize * 2.6f).coerceAtLeast(4f * (p.iconSize + 16f))
         else if (tallRegular) minOf(width - p.dockWidth - 44f, 4f * p.iconSize * 2.6f).coerceAtLeast(192f)
+        else if (fullWidth) (homeWidth - 32f).coerceAtLeast(192f)
         else (homeWidth - p.dockWidth - 44f).coerceAtLeast(192f)
     // Keep the same icon rhythm when labels are hidden; allow larger system text to fit.
     val labelSpace = if (labels) maxOf(20f, labelHeight) else 20f
@@ -280,7 +320,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val statusSpan = (statusHeight - 22f).coerceAtLeast(0f)
     val statusTop = if (p.statusAlignToGrid || statusHeight <= 0f) contentTop else {
         val lowest = if (horizontalDock) height - homeBottomSpace - statusSpan
-            else height - homeReserve - 4f * 48f - 16f - 10f - statusSpan
+            else height - homeReserve - slots * 48f - 16f - 10f - statusSpan
         16f + p.statusPosition * (lowest - 16f).coerceAtLeast(0f)
     }
     // [statusHeight] is the rail's full height (its location slot included) plus a 22dp margin, and the rail sits at
@@ -293,9 +333,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Never shorter than four 48dp dock targets, even when a short window has shrunk the rows.
     // Space between dock apps makes the dock taller; aligned with the rows, it grows evenly above and below them.
     val dockSpace = p.dockSpacing
-    val desiredHeight = maxOf(4f * 48f + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + 4f * dockSpace)
+    val desiredHeight = maxOf(slots * 48f + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + slots * dockSpace)
     val dockHeight = minOf(desiredHeight, (height - topLimit - bottomReserve).coerceAtLeast(76f))
-    val dockRowHeight = ((dockHeight - 16f) / 4f).coerceAtLeast(48f)
+    val dockRowHeight = ((dockHeight - 16f) / slots).coerceAtLeast(48f)
     // Use the home position as the anchor, so removing library buttons does not
     // move a low-positioned dock on ordinary page swipes. Move up only to fit.
     val homeDockHeight = minOf(desiredHeight, (height - topLimit - homeReserve).coerceAtLeast(76f))
@@ -309,13 +349,15 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Bottom bar: the spacing widens each app's slot, but the bar still fits its window (beside the Side Bar, or the whole width).
     val basePitch = dockIconSize(icon) + 22f
     val barRoom = (if (dockBesideRail) width - p.dockWidth - 12f else width) - 32f
-    val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / 4f))
+    val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // Upright unfolded with the dock at the bottom, the page is centered, so narrower columns stay centered too.
     val columnsInset = if (!splitColumns && tallRegular && horizontalDock) (gridWidth - 4f * cell) / 2f else 0f
     return HomeGeometry(expanded, homeWidth, gridWidth, icon, row, widget, contentTop, dockTop, dockHeight, dockRowHeight,
         splitColumns = splitColumns, cellWidth = if (splitColumns) splitCell else cell, zoneGap = if (splitColumns) zoneGap else 0f,
         horizontalDock = horizontalDock, dockBarHeight = dockBarHeight, dockBesideRail = dockBesideRail, statusTop = statusTop,
-        appRows = rows, fitAppRows = if (splitColumns) BASE_APP_ROWS else fitRows, rowGap = gap, columnsInset = columnsInset, dockPitch = dockPitch)
+        appRows = rows, fitAppRows = if (splitColumns) BASE_APP_ROWS else fitRows, rowGap = gap, columnsInset = columnsInset, dockPitch = dockPitch,
+        // barRoom keeps a 32 dp margin for spacing the apps out; the bar itself may use the whole room beside the Side Bar.
+        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f))
 }
 
 /** Keep stored order stable across installs, removals and configuration changes. */

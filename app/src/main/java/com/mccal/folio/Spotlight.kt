@@ -217,7 +217,6 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     }
     val q = query.trim()
     fun shows(section: SpotlightSection) = section.name !in state.spotlightHidden
-    val engine = runCatching { WebSearchTarget.valueOf(state.searchEngine) }.getOrDefault(WebSearchTarget.GOOGLE)
     val appHits = remember(q, apps, frecency) { if (q.isEmpty()) emptyList() else rankApps(apps, q, frecency) }
     val shortcuts = remember(context) { settingShortcuts(context) }
     val settingHits = remember(q, shortcuts) { if (q.length < 2) emptyList() else shortcuts.filter { it.matches(q) }.take(4) }
@@ -262,7 +261,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         keyboardActions = KeyboardActions(onSearch = {
                             when {
                                 appHits.isNotEmpty() -> launch(appHits.first())
-                                q.isNotEmpty() -> { onClose(); openWebSearch(context, engine, q) }
+                                q.isNotEmpty() -> { onClose(); openEnterSearch(context, state, q) }
                             }
                         }))
                 }
@@ -319,11 +318,11 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                     if (shows(SpotlightSection.WEB)) item("web") {
                         Section(stringResource(R.string.search_the_web_ask_ai)) {
                             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                                WebSearchTarget.entries.forEach { target ->
+                                WebSearchTarget.chips(state.searchEngine).forEach { target ->
                                     Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
                                         .clickable { onClose(); openWebSearch(context, target, q) }
                                         .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(if (target.label.startsWith("Ask")) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
+                                        Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
                                             tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text(target.label, color = Color.White, fontSize = 14.sp)
@@ -418,14 +417,23 @@ private fun ResultRow(icon: ImageVector, title: String, subtitle: String?, trail
 
 @Composable
 private fun SpotlightRoundAction(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .16f)).clickable(onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center) {
-        Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp))
+    // The circle is still 36 dp; the tap is 48 (A11Y-1). The target is the box around it, not the circle.
+    Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
+            Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
     }
 }
 
 // ---------------------------------------------------------------------------------------------
 // Search logic
+
+/**
+ * Whether an app answers to [query] in a plain A–Z list (the App Library, the dock's and an icon stack's choosers):
+ * the name you gave it or the one Android gives it, as typed or in pinyin. Spotlight ranks its results, with [rankApps].
+ */
+internal fun appMatches(app: AppEntry, query: String): Boolean =
+    app.label.contains(query, true) || app.systemLabel.contains(query, true) || Pinyin.matches(app.label, query) || Pinyin.matches(app.systemLabel, query)
 
 /**
  * Prefix beats word-start beats substring beats initials ("gm" → Google Maps). An app you renamed is still

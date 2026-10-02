@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.material.icons.rounded.AddCircle
 import kotlinx.coroutines.launch
 
 @Composable
@@ -37,7 +38,7 @@ internal fun FolderPanel(
     homeDestinations: List<Int>, dockVacancies: List<Int>, onDismiss: () -> Unit,
     onRename: (String) -> Unit, onLaunch: (AppEntry, android.graphics.Rect?) -> Unit,
     onMoveOut: (String, DropTarget) -> Unit,
-    color: Long? = null, onColor: (Long?) -> Unit = {},
+    color: Long? = null, onColor: (Long?) -> Unit = {}, onAddApps: (() -> Unit)? = null,
 ) {
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
@@ -65,7 +66,7 @@ internal fun FolderPanel(
         .clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
-            onClickLabel = "Close folder",
+            onClickLabel = stringResource(R.string.close_folder),
             onClick = close,
         )
         .imePadding().testTag("folder-panel"),
@@ -96,13 +97,21 @@ internal fun FolderPanel(
                 // The swatch still draws at 30 dp with a 10 dp gap; the tap is 40 x 48, made of the circle and the
                 // gap around it. Eight 48 dp-wide targets would not fit a cover screen's folder panel (A11Y-1).
                 Box(Modifier.width(40.dp).height(FolioTouch.MIN.dp)
-                    .clickable(onClickLabel = if (swatch == null) "No folder color" else "Folder color") { onColor(swatch) },
+                    .clickable(onClickLabel = stringResource(if (swatch == null) R.string.no_folder_color else R.string.folder_color)) { onColor(swatch) },
                     contentAlignment = Alignment.Center) {
                     Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape)
                         .background(swatch?.let { Color(it) } ?: Color.White.copy(alpha = .18f))
                         .then(if (selected) Modifier.border(2.5.dp, Color.White, androidx.compose.foundation.shape.CircleShape) else Modifier))
                 }
             }
+        }
+        // Add several apps at once, from a list, instead of one at a time from each app's menu.
+        if (onAddApps != null) Row(Modifier.padding(bottom = FolioSpace.COMFY.dp).heightIn(min = FolioTouch.MIN.dp)
+            .clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAddApps)
+            .padding(horizontal = FolioSpace.LARGE.dp).testTag("folder-add-apps"), verticalAlignment = Alignment.CenterVertically) {
+            Icon(androidx.compose.material.icons.Icons.Rounded.AddCircle, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(androidx.compose.ui.res.stringResource(R.string.add_apps), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
         Surface(Modifier.fillMaxWidth(.86f).widthIn(max = 520.dp).fillMaxHeight(.7f).heightIn(min = 240.dp, max = 560.dp)
             .clickable(
@@ -158,7 +167,7 @@ private fun FolderChild(
                 AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp))
                 Text(app.label, Modifier.padding(top = FolioSpace.SNUG.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium)
-                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else "${app.profileLabel} unavailable",
+                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else stringResource(R.string.text_1_s_unavailable, app.profileLabel),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)

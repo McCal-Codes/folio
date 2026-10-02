@@ -5,7 +5,9 @@ package com.mccal.folio
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetProviderInfo
+import android.content.Intent
 import android.os.UserManager
+import android.provider.AlarmClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -96,10 +98,23 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Holding a built-in widget where nothing around it takes the hold: the Today View, where it starts editing. Null on
+ * Home, whose own long press picks the widget up or opens its options.
+ */
+internal val LocalWidgetHold = staticCompositionLocalOf<(() -> Unit)?> { null }
+
+/** A built-in widget's tap, and its hold where [LocalWidgetHold] gives one. */
+@Composable
+internal fun Modifier.widgetTap(onClick: () -> Unit): Modifier {
+    val hold = LocalWidgetHold.current ?: return clickable(onClick = onClick)
+    return combinedClickable(onLongClickLabel = stringResource(R.string.edit), onLongClick = hold, onClick = onClick)
+}
+
 @Composable
 internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val look = LocalGlassLook.current
-    Surface(modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).clickable(onClick = onClick),
+    Surface(modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).widgetTap(onClick),
         color = Glass.copy(alpha = look.widget), shape = RoundedCornerShape(FolioRadius.PANEL.dp),
         border = if (look.outline > 0f) androidx.compose.foundation.BorderStroke(1.dp, look.outlineColor) else null) {
         // Like iOS widgets, the whole card scales with its size, so a narrower column (the Today View beside
@@ -122,12 +137,12 @@ internal fun currentTime(): LocalDateTime {
 
 @Composable
 internal fun ClockCard(onClick: () -> Unit) {
-    val clockWidgetTapToReplaceLabel = stringResource(R.string.clock_widget_tap_to_replace)
+    val clockWidgetTapToOpenLabel = stringResource(R.string.clock_widget_tap_to_open)
     val time = currentTime()
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     GlassCard(onClick = onClick) {
         Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
-            modifier = Modifier.semantics { contentDescription = clockWidgetTapToReplaceLabel })
+            modifier = Modifier.semantics { contentDescription = clockWidgetTapToOpenLabel })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
         Text(time.format(DateTimeFormatter.ofPattern(if (format == "HH:mm") "EEE" else "a · EEE")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
@@ -232,19 +247,42 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
                 if (drag.active && target == cell) Color.White else Color.Transparent, RoundedCornerShape(FolioRadius.PANEL.dp))
             .semantics { onLongClick(context.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
         if (cards.size > 1) SmartStack(cards, slot, controller, chrome, onAdd)
-        else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, onAdd) }
+        else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, opensApp = true, onAdd = onAdd) }
     if (edit.active && id != EMPTY_WIDGET && id != INFO_WIDGET) JiggleRemoveButton(stringResource(R.string.remove_widget)) { edit.onRemove(cell) }
     }
 }
 
+/**
+ * The app a built-in card shows, which tapping the card opens, as iOS opens Clock and Calendar from their widgets.
+ * Null for the cards that aren't one app's.
+ */
+internal fun builtinWidgetApp(id: Int): Intent? = when (id) {
+    CLOCK_WIDGET, BIG_CLOCK_WIDGET -> Intent(AlarmClock.ACTION_SHOW_ALARMS)
+    DATE_WIDGET, UP_NEXT_WIDGET -> Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
+    else -> null
+}
+
+/**
+ * One of Folio's own widgets. With [opensApp] (Home and the Today View) tapping a clock or a date opens that app, and
+ * holding the card is the way to its options, or in the Today View to editing. A tap while editing still does [onAdd],
+ * as does one on a phone with nothing to open it with; the preview in Settings leaves [opensApp] off.
+ */
 @Composable
-internal fun BuiltinWidgetCard(id: Int, slot: Int, onAdd: () -> Unit) {
+internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, onAdd: () -> Unit) {
+    val context = LocalContext.current
+    val edit = LocalHomeEdit.current
+    val onTap: () -> Unit = if (!opensApp) onAdd else {{
+        val app = builtinWidgetApp(id)
+        val opened = app != null && !edit.active &&
+            runCatching { context.startActivity(app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        if (!opened) onAdd()
+    }}
     when (id) {
-        CLOCK_WIDGET -> ClockCard(onAdd)
-        DATE_WIDGET -> DateCard(onAdd)
-        UP_NEXT_WIDGET -> UpNextCard(onAdd)
+        CLOCK_WIDGET -> ClockCard(onTap)
+        DATE_WIDGET -> DateCard(onTap)
+        UP_NEXT_WIDGET -> UpNextCard(onTap)
         SUGGESTIONS_WIDGET -> SuggestionsCard(onAdd)
-        BIG_CLOCK_WIDGET -> BigClockCard(onAdd)
+        BIG_CLOCK_WIDGET -> BigClockCard(onTap)
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
@@ -271,7 +309,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     val haptic = LocalHapticFeedback.current
     var lastSettled by remember { mutableIntStateOf(0) }
     LaunchedEffect(pager.settledPage) {
-        if (pager.settledPage != lastSettled) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        if (pager.settledPage != lastSettled) haptic.perform(FolioHaptic.Step)
         lastSettled = pager.settledPage
     }
     // Smart Rotate, like iOS: every 15 minutes the stack moves to the widget that matters now: an event starting
@@ -303,7 +341,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
         androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)),
             key = { cards[it] }, beyondViewportPageCount = 0) { page ->
             val card = cards[page]
-            WidgetSlot(card, slot, controller, Modifier.fillMaxSize(), onAdd) { BuiltinWidgetCard(card, slot, onAdd) }
+            WidgetSlot(card, slot, controller, Modifier.fillMaxSize(), onAdd) { BuiltinWidgetCard(card, slot, opensApp = true, onAdd = onAdd) }
         }
         val dotsAlpha by animateFloatAsState(if (dotsVisible) 1f else 0f, label = "stack dots")
         Column(Modifier.align(Alignment.CenterEnd).padding(end = 5.dp).alpha(dotsAlpha)

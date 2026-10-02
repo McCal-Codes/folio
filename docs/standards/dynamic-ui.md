@@ -157,7 +157,7 @@ Not yet:
 | 2 | Sheet motion on a spring, growing from the source, with detents | M |
 | 3 | ~~Smart Stack rotation behind `repeatOnLifecycle`; `StatusRail` and `MicroHome` clocks onto `Ticker`~~ (done) | S |
 | 4 | ~~`collectAsState` → `collectAsStateWithLifecycle`~~ (done for the island, the cover, installs, notifications and the update status). Left: `CustomizationSheet.kt`, `StandBy.kt` (open in other pull requests) and `EverywhereOverlay.kt`, whose window has no lifecycle to follow | S |
-| 5 | `DiscoverFrame` onto `LocalReduceMotion` rather than reading the setting itself. **Not** "a scale below 1 counts as Reduce Motion", as this row used to say: a scale of 0.5 means the person wants animations *faster*, not gone. Honouring the scale as a speed, alongside Animation Speed, is the right shape and is its own decision | S |
+| 5 | ~~`DiscoverFrame` reads Reduce Motion through `reduceMotionEnabled()`~~ (done; it is a View, so it uses the helper `LocalReduceMotion` is built from). **Not** "a scale below 1 counts as Reduce Motion", as this row used to say: a scale of 0.5 means the person wants animations *faster*, not gone. Honouring the scale as a speed, alongside Animation Speed, is the right shape and is its own decision | S |
 | 6 | ~~Live regions for island notices and page changes~~ (done) | S |
 | 7 | Carry velocity into a re-grabbed page settle (part of the 0.7.1 Home swipe work; measure first) | M |
 | 8 | Replace the 600 ms full-screen poll in `EverywhereOverlay` with a window-insets or accessibility-event signal, if one proves reliable | M |

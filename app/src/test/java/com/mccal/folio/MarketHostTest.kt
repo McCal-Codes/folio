@@ -6,6 +6,7 @@ import com.mccal.folio.market.ParseResult
 import com.mccal.folio.market.TweakBundle
 import com.mccal.folio.market.TweakId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,6 +21,10 @@ class MarketHostTest {
             private set
         val themes = mutableListOf<FolioTheme>()
 
+        /** What is behind Home, as [BackgroundChoice.save] writes it, plus the art that has been installed. */
+        var background = BackgroundChoice.None.save()
+        val artwork = mutableMapOf<String, Artwork>()
+
         override fun installTweak(feature: TweakFeature) {
             state = state.copy(installedTweaks = state.installedTweaks + feature.id)
         }
@@ -28,11 +33,32 @@ class MarketHostTest {
             state = state.copy(
                 installedTweaks = state.installedTweaks - feature.id,
                 featureScopes = state.featureScopes - feature.id,
+                tweakOptions = state.tweakOptions - feature.id,
             )
+        }
+
+        override fun setTweakOptions(id: String, options: Map<String, String>) {
+            state = state.copy(tweakOptions = TweakOptions.replace(state.tweakOptions, id, options))
         }
 
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) {
             state = state.copy(featureScopes = FeatureScopes.set(state.featureScopes, id, screen, value))
+        }
+
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String {
+            val was = background
+            artwork[art.id] = art
+            background = BackgroundChoice.Art(art.id).save()
+            return was
+        }
+
+        override fun restoreArtBackground(artId: String, snapshot: String) {
+            artwork -= artId
+            background = snapshot
+        }
+
+        override fun setDuet(options: com.mccal.folio.duet.DuetOptions, intensity: Float) {
+            state = state.copy(duet = options, foldIntensity = intensity)
         }
 
         override fun applyTheme(theme: FolioTheme) {
@@ -73,6 +99,21 @@ class MarketHostTest {
         assertEquals(ScopeValue.OFF, FeatureScopes.value(launcher.state.featureScopes, "appPanels", FolioScreen.COVER))
     }
 
+    @Test fun `removing a package that turned a tweak off puts back the options the person had set`() {
+        val start = LauncherState(
+            installedTweaks = setOf("dockMagnify"),
+            tweakOptions = mapOf("dockMagnify" to mapOf("amount" to "strong", "tick" to "off")),
+        )
+        val launcher = FakeLauncher(start)
+        val host = MarketHost(launcher)
+        val off = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DOCK_MAGNIFY, enabled = false)))
+        val before = host.apply(off)
+        assertTrue("turning it off forgot the options", launcher.state.tweakOptions.isEmpty())
+        host.restore(off, before)
+        assertTrue("dockMagnify" in launcher.state.installedTweaks)
+        assertEquals(mapOf("dockMagnify" to mapOf("amount" to "strong", "tick" to "off")), launcher.state.tweakOptions)
+    }
+
     @Test fun `a bundle that names one screen leaves the other off`() {
         val launcher = FakeLauncher()
         MarketHost(launcher).apply(PackageChange.Tweaks(cabinetBundle(cover = false)))
@@ -98,18 +139,75 @@ class MarketHostTest {
         assertTrue("nothing was applied", launcher.themes.isEmpty())
     }
 
+    @Test fun `a Duet package sets only the options it names, and removing it puts back the look it replaced`() {
+        val mine = com.mccal.folio.duet.DuetOptions(style = "subtle", frost = .7f)
+        val launcher = FakeLauncher(LauncherState(duet = mine, foldIntensity = .9f, installedTweaks = setOf(DUET_ID)))
+        val host = MarketHost(launcher)
+        val change = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DUET, true,
+            options = mapOf("style" to "deep", "intensity" to 1.4))))
+        val before = host.apply(change)
+        assertEquals(mine.copy(style = "deep"), launcher.state.duet)
+        assertEquals(1.4f, launcher.state.foldIntensity)
+        host.restore(change, before)
+        assertEquals(mine, launcher.state.duet)
+        assertEquals(.9f, launcher.state.foldIntensity)
+        assertTrue(DUET_ID in launcher.state.installedTweaks)
+    }
+
+    @Test fun `a Duet package without options leaves the look alone`() {
+        val mine = com.mccal.folio.duet.DuetOptions(style = "minimal")
+        val launcher = FakeLauncher(LauncherState(duet = mine))
+        MarketHost(launcher).apply(PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DUET, true))))
+        assertEquals(mine, launcher.state.duet)
+    }
+
     @Test fun `Folio only claims the capabilities it really has`() {
         val host = MarketHost(FakeLauncher())
         assertEquals(
             setOf(
-                Capability.THEME, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
+                Capability.THEME, Capability.WALLPAPER, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
                 Capability.NOTIFICATION_APP_ROW, Capability.TINT_NOTIFICATIONS, Capability.TINT_MEDIA,
+                Capability.PAGE_EFFECTS, Capability.FOLD_TRANSITION,
             ),
             host.capabilities,
         )
         // Every built-in tweak has a capability, and every tweak capability has a built-in tweak.
         assertEquals(TweakFeatures.map { it.id }.toSet(), TweakId.entries.map { it.id }.toSet())
         assertTrue(TweakId.entries.all { it.capability in host.capabilities })
+    }
+
+    @Test fun `a wallpaper is shown, and removing it puts back what was there`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val change = com.mccal.folio.market.PackageChange.Wallpaper(
+            path = "assets/hills.webp", bytes = byteArrayOf(1, 2, 3), id = "dev.example.hills",
+            title = "Green Hills", artist = "A Painter", license = "CC0-1.0",
+        )
+
+        val snapshot = host.apply(change)
+
+        assertEquals("nothing was behind Home before", BackgroundChoice.None.save(), snapshot)
+        assertEquals(BackgroundChoice.Art("dev.example.hills").save(), launcher.background)
+        assertEquals("A Painter", launcher.artwork.getValue("dev.example.hills").artist)
+
+        host.restore(change, snapshot)
+
+        assertEquals("removing it puts Home back", BackgroundChoice.None.save(), launcher.background)
+        assertTrue("and forgets the art", launcher.artwork.isEmpty())
+    }
+
+    @Test fun `a wallpaper with no artist or no license is refused`() {
+        val host = MarketHost(FakeLauncher())
+        val noArtist = com.mccal.folio.market.PackageChange.Wallpaper(
+            path = "assets/x.webp", bytes = byteArrayOf(1), id = "dev.example.x",
+            title = "X", artist = "", license = "CC0-1.0",
+        )
+        val noLicense = noArtist.copy(artist = "Someone", license = "")
+
+        for (change in listOf(noArtist, noLicense)) {
+            val failed = runCatching { host.apply(change) }.exceptionOrNull()
+            assertTrue("$change should not be applied", failed is IllegalStateException)
+        }
     }
 
     @Test fun `every package Folio ships can be applied by this host`() {
@@ -150,4 +248,17 @@ class MarketHostTest {
     }
 
     private fun parsed(result: ParseResult<*>) = result is ParseResult.Ok
+
+    // Page effects are Flipbook add-ons (PackageKind.hostTweak). Flipbook added from Settings' Tweak Library leaves no
+    // Market record, so the host answers from installedTweaks, not from the Market's list: a `depends` on Flipbook's
+    // package would refuse Tilt on a phone that plainly has Flipbook.
+    @Test fun `a tweak counts as there however it was added, and not once it's removed`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        assertFalse(host.hasTweak("pageEffects"))
+        launcher.installTweak(TweakFeatures.first { it.id == "pageEffects" }) // what Settings' Tweak Library does
+        assertTrue(host.hasTweak("pageEffects"))
+        launcher.removeTweak(TweakFeatures.first { it.id == "pageEffects" })
+        assertFalse(host.hasTweak("pageEffects"))
+    }
 }

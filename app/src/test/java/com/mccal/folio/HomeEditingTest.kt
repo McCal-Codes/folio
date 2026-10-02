@@ -98,7 +98,8 @@ class HomeEditingTest {
     }
 
     @Test fun `full dock rejects a home newcomer without changing either surface`() {
-        val before = HomeLayout(listOf("left", "new", "right"), listOf("a", "b", "c", "d"))
+        // Six is as big as the dock gets; a dock with fewer would grow to take the app.
+        val before = HomeLayout(listOf("left", "new", "right"), listOf("a", "b", "c", "d", "e", "f"))
         val next = dropApp(before, "new", DropTarget.Dock(1))
         assertFalse(canPlaceInDock(before, "new"))
         assertSame(before, next)
@@ -115,7 +116,7 @@ class HomeEditingTest {
     }
 
     @Test fun `full dock rejects a library newcomer and keeps every shortcut`() {
-        val before = HomeLayout(listOf("home"), listOf("a", "b", "c", "d"))
+        val before = HomeLayout(listOf("home"), listOf("a", "b", "c", "d", "e", "f"))
         val next = dropApp(before, "new", DropTarget.Dock(0))
         assertSame(before, next)
         assertEquals(shortcuts(before), shortcuts(next))
@@ -157,7 +158,8 @@ class HomeEditingTest {
     @Test fun `invalid drop leaves layout unchanged`() {
         assertEquals(layout, dropApp(layout, "a", DropTarget.Home(-HOME_CELLS - 1)))
         assertEquals(layout, dropApp(layout, "a", DropTarget.Home(2 * HOME_CELLS)))
-        assertEquals(layout, dropApp(layout, "a", DropTarget.Dock(4)))
+        // One past the end is the open place a dock that can grow offers; two past it is nowhere.
+        assertEquals(layout, dropApp(layout, "a", DropTarget.Dock(layout.dock.size + 1)))
         assertEquals(layout, dropApp(layout, " ", DropTarget.Dock(0)))
         assertEquals(layout, dropApp(layout, "a", DropTarget.Library("a")))
         assertFalse(canPlaceInDock(layout.copy(dock = listOf("a", "b")), ""))

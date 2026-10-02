@@ -41,8 +41,8 @@ internal class DiscoverFrame(private val activity: Activity, private val vertica
         // so creating the frame during binding would put it underneath the native feed.
         show()
         if (live) { coverAlpha = 0f; return }
-        if (runCatching { android.provider.Settings.Global.getFloat(activity.contentResolver,
-                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)) {
+        // The same rule LocalReduceMotion follows, from the same helper: this is a View, so it can't read the local.
+        if (reduceMotionEnabled(activity)) {
             coverAlpha = 0f; invalidate(); return
         }
         if (coverAlpha <= 0f || revealAnimator != null) return

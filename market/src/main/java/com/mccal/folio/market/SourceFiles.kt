@@ -156,7 +156,12 @@ data class IndexPackage(
                 if (embedded.version != version) p.errors += "$at.version doesn't match the manifest's version"
             }
             if (id == null || version == null) return null
-            val needs = if (embedded == null && f.has("manifest")) listOf(NEEDS_NEWER_FOLIO) else emptyList()
+            val needs = when {
+                embedded == null && f.has("manifest") -> listOf(NEEDS_NEWER_FOLIO)
+                // A kind this Folio reads but won't install: the listing says so instead of offering Get.
+                embedded != null && embedded.kinds.any { it.reserved } -> embedded.kinds.filter { it.reserved }.map { it.id }
+                else -> emptyList()
+            }
             val signedBy = AuthorSignature.read(f, at)
             if (signedBy != null && sha256 == null) {
                 p.errors += "$at.signedBy needs the package's sha256 to sign over"

@@ -80,7 +80,7 @@ internal object LayoutHistory {
         val legacy = o.optInt("pageCells", LEGACY_HOME_CELLS) == LEGACY_HOME_CELLS
         return HomeLayout(
             slots = idList(o.optJSONArray("slots")).let { if (legacy) migrateLegacyHomeSlots(it) else it },
-            dock = idList(o.optJSONArray("dock")).let { d -> List(4) { d.getOrNull(it) } },
+            dock = idList(o.optJSONArray("dock")).let { d -> List(d.size.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { d.getOrNull(it) } },
             widgetPlacements = objects("widgets") { w -> WidgetPlacement(w.getInt("slot"), w.getInt("id"), w.getInt("page"), w.getInt("column"),
                 w.getInt("row"), w.getInt("spanX"), w.getInt("spanY")).let { if (legacy) migrateLegacyWidgetPlacement(it) else it } },
             folders = objects("folders") { f -> FolderEntry(f.getString("id"), f.optString("title"),

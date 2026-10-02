@@ -8,7 +8,12 @@ import android.view.accessibility.AccessibilityManager
 import java.lang.ref.WeakReference
 
 /** iOS 27–style zones for a downward swipe on Home: notifications, search/assistant, controls. */
-internal enum class ShadePanel { NOTIFICATIONS, SEARCH, QUICK_SETTINGS }
+internal enum class ShadePanel { NOTIFICATIONS, SEARCH, QUICK_SETTINGS;
+    companion object {
+        /** The shortcut's panel from its name; Search is Folio's own and has no system panel, so only these two open one. */
+        fun fromShortcut(name: String?): ShadePanel? = entries.firstOrNull { it != SEARCH && it.name == name }
+    }
+}
 
 internal enum class ShadeOpenResult { OPENED, SERVICE_DISABLED, SERVICE_STARTING, ACTION_REJECTED }
 

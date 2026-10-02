@@ -53,6 +53,8 @@ SCHEMA_DIR = _schema_dir()
 PACKAGE_SUFFIXES = {".json", ".png", ".webp", ".jpg", ".jpeg", ".js"}
 SOURCE_SUFFIXES = PACKAGE_SUFFIXES | {".sig", ".pub", ".foliopkg"}
 PICTURE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
+# Read but refused (format-v1): no Folio installs a package of one. The app's list is PackageKind.reserved.
+RESERVED_KINDS = ("settingsSchema", "script")
 
 MAX_ZIP_COMPRESSED = 20 * 1024 * 1024
 MAX_ZIP_UNCOMPRESSED = 50 * 1024 * 1024
@@ -343,6 +345,22 @@ def check_picture(root: pathlib.Path, named: str, where: str, report: Report) ->
         report.warn(f"{where}: {named} is {size // 1024} KB; it is downloaded just to show the package")
 
 
+def check_effect(effect, where: str, report: Report):
+    """A page effect's numbers, as PageEffectSpec.of reads them: out of range is clamped, so only a warning; anything
+    it can't read at all, starting with an effect that isn't an object, is an error."""
+    if not isinstance(effect, dict):
+        report.error(f"{where}: must be a JSON object with maxRotation, pivot, shrink and cameraWidths")
+        return
+    for key, low, high in (("maxRotation", -90, 90), ("shrink", 0, 0.3), ("cameraWidths", 1.5, 4)):
+        value = effect.get(key)
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            report.error(f"{where}: {key} must be a number")
+        elif not low <= value <= high:
+            report.warn(f"{where}: {key} {value} is outside {low} to {high}; Folio will clamp it")
+    if effect.get("pivot") not in ("seam", "center"):
+        report.error(f"{where}: pivot must be seam or center")
+
+
 def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: SchemaSet, report: Report) -> dict | None:
     """One package folder: its manifest, its page, and the files its manifest promises."""
     name = folder.name
@@ -353,12 +371,24 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
         report.error(problem)
 
     kinds = manifest.get("kind", [])
-    if "script" in kinds and not (folder / "script.js").is_file():
-        report.error(f"{name}: kind includes script, but there is no script.js")
+    for kind in RESERVED_KINDS:
+        if kind in kinds:
+            report.error(f"{name}: kind {kind} is reserved; Folio refuses a package of it and won't install it")
     if "script" not in kinds and (folder / "script.js").is_file():
         report.error(f"{name}: there is a script.js, but kind does not include script")
     if "tweakBundle" in kinds and not (folder / "tweaks.json").is_file():
         report.error(f"{name}: kind includes tweakBundle, but there is no tweaks.json")
+    if "pageEffect" in kinds:
+        effect_file = folder / "effect.json"
+        if not effect_file.is_file():
+            report.error(f"{name}: kind includes pageEffect, but there is no effect.json")
+        else:
+            try:
+                effect = json.loads(effect_file.read_text(encoding="utf-8"))
+            except ValueError as problem:
+                report.error(f"{name}/effect.json: not JSON ({problem})")
+            else:
+                check_effect(effect, f"{name}/effect.json", report)
 
     version = manifest.get("minFolio")
     if isinstance(version, str) and not VERSION_RE.match(version):
@@ -466,9 +496,30 @@ def check_source(root: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
                         f"packages/{archive_path.name}: what is inside differs from what index.json advertises"
                     )
 
-    for package_id in listed:
+    for package_id, entry in listed.items():
+        kinds = entry.get("manifest", {}).get("kind", [])
+        url = entry.get("url")
+        if "externalApp" in kinds:
+            # An app lives wherever its releases do; the source only says where, and what the bytes must hash to.
+            if url is not None and not str(url).startswith("https://"):
+                report.error(f"index.json: {package_id} is an app, so its url has to be an https:// link to the APK")
+            continue
         if package_id not in on_disk and package_id not in packed:
             report.error(f"index.json lists {package_id}, but there is no folder or .foliopkg for it here")
+            continue
+        if package_id in packed:
+            # A phone refuses a package with no url, sha256 and size, and refuses one whose bytes don't match them.
+            # Checking here is cheaper than finding out from someone who pressed Get.
+            archive = packed[package_id]
+            if url is None:
+                report.error(f"index.json: {package_id} has no url, so no phone can download it")
+            elif not str(url).startswith("https://") and (root / url).resolve() != archive.resolve():
+                report.error(f"index.json: {package_id}'s url is {url}, but its package is packages/{archive.name}")
+            data = archive.read_bytes()
+            if entry.get("sha256") != hashlib.sha256(data).hexdigest():
+                report.error(f"index.json: {package_id}'s sha256 doesn't match packages/{archive.name}")
+            if entry.get("size") != len(data):
+                report.error(f"index.json: {package_id}'s size doesn't match packages/{archive.name}")
 
     signed = (root / "entry.json").is_file()
     check_entry(root, schemas, report)
@@ -478,6 +529,8 @@ def check_source(root: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
         str(path.relative_to(root))
         for path in sorted(root.rglob("*"))
         if path.is_file() and path.suffix.lower() not in SOURCE_SUFFIXES
+        # The web page at the top is for browsers. A phone never asks for it, so it is allowed there and nowhere else.
+        and path != root / "index.html"
     ]
     if extras:
         shown = ", ".join(extras[:3]) + (f" and {len(extras) - 3} more" if len(extras) > 3 else "")
@@ -576,11 +629,24 @@ def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report, stand
     if not isinstance(manifest, dict):
         report.error(f"{path.name}: manifest.json must be a JSON object")
         return None
-    label = "manifest.json" if standalone else f"packages/{path.name}: manifest.json"
+    prefix = "" if standalone else f"packages/{path.name}: "
+    label = f"{prefix}manifest.json"
     for problem in schemas.validate(manifest, schemas.get("manifest.schema.json"), label):
         report.error(problem)
     if "depiction" in manifest and manifest["depiction"] not in names:
         report.error(f"{label}: names {manifest['depiction']}, which is not in the archive")
+    # A published source carries only archives, so what a phone installs gets the same effect checks as a folder.
+    kinds = manifest.get("kind")
+    if isinstance(kinds, list) and "pageEffect" in kinds:
+        if "effect.json" not in names:
+            report.error(f"{label}: kind includes pageEffect, but there is no effect.json in the archive")
+        else:
+            try:
+                effect = json.loads(archive.read("effect.json").decode("utf-8"))
+            except ValueError as problem:
+                report.error(f"{prefix}effect.json: not JSON ({problem})")
+            else:
+                check_effect(effect, f"{prefix}effect.json", report)
     if standalone:
         report.note("pictures are not checked here: they live on the source, not in the package")
     return manifest

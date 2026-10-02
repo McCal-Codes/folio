@@ -36,7 +36,7 @@ class BackupController(
     private val userManager = activity.getSystemService(UserManager::class.java)
     private val scope = layoutBackupScope(activity)
     // Built on first use, so a phone that never opens Settings never builds it.
-    private val market by lazy { MarketSession(activity, ModelLauncher(model)) }
+    private val market by lazy { MarketSession(activity, ModelLauncher(model, activity)) }
     /** Whether this phone has the Market. A package it can't show is one nobody could turn off or remove. */
     private val marketOpen by lazy { runCatching { MarketAccess.isOpen(activity) }.getOrDefault(false) }
     private var operation: String? = null
@@ -125,7 +125,7 @@ class BackupController(
                 val before = model.state.value
                 val putLayoutBack = { changed = model.applyImportedLayout(imported, before) }
                 val packages = if (marketOpen) imported.packages else null
-                val restored = runCatching { market.restorePackages(packages, activity.getString(R.string.folio_couldn_t_put_this_package_back), putLayoutBack) }.getOrElse {
+                val restored = caught("Backup: restoring Market packages") { market.restorePackages(packages, activity.getString(R.string.folio_couldn_t_put_this_package_back), putLayoutBack) }.getOrElse {
                     // The Market failing is no reason to lose the layout the user asked for.
                     if (!changed) putLayoutBack()
                     null
@@ -153,14 +153,14 @@ class BackupController(
     private fun encodeBackup(state: LauncherState): String {
         val descriptors = widgetDescriptors(state)
         val packages = savedPackages()
-        return runCatching { encodeLayoutBackup(state, descriptors, scope, packages) }.getOrElse { error ->
+        return caught("Backup: saving with Market packages") { encodeLayoutBackup(state, descriptors, scope, packages) }.getOrElse { error ->
             if (packages == null) throw error
             encodeLayoutBackup(state, descriptors, scope, null)
         }
     }
 
     /** What this phone has installed from the Market, for the backup to carry. */
-    private fun savedPackages(): String? = runCatching { market.exportPackages() }.getOrNull()
+    private fun savedPackages(): String? = caught("Backup: reading Market packages") { market.exportPackages() }.getOrNull()
 
     /** What the user is told afterwards: the layout first, then whatever happened to the packages it carried. */
     private fun restoredMessage(changed: Boolean, packages: String?, restored: PackageInstaller.Restore?): String {
@@ -232,7 +232,7 @@ class BackupController(
                 val imported = decodeLayoutBackup(raw, state.apps, state.profiles, scope)
                 // Only the Market can read what it wrote, so the count is filled in here rather than in the decoder,
                 // and off the main thread with the rest of the reading.
-                imported.copy(packageCount = if (marketOpen) runCatching { market.countPackages(imported.packages) }.getOrDefault(0) else 0)
+                imported.copy(packageCount = if (marketOpen) caught("Backup: counting Market packages") { market.countPackages(imported.packages) }.getOrDefault(0) else 0)
             } }
             result.rethrowCancellation()
             result.onSuccess {

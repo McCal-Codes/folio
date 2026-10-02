@@ -33,7 +33,9 @@
               "dockMagnify",
               "notificationAppRow",
               "tintNotifications",
-              "tintMedia"
+              "tintMedia",
+              "pageEffects",
+              "duet"
             ]
           },
           "enabled": {
@@ -49,6 +51,67 @@
               "inner": {
                 "type": "boolean"
               }
+            }
+          },
+          "options": {
+            "description": "The tweak's own settings. Only Duet takes options today; Folio ignores options it does not know.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "style": {
+                "enum": [
+                  "iphone",
+                  "duo",
+                  "classic",
+                  "deep",
+                  "subtle",
+                  "minimal"
+                ]
+              },
+              "direction": {
+                "enum": [
+                  "both",
+                  "opening",
+                  "closing"
+                ]
+              },
+              "intensity": {
+                "type": "number",
+                "minimum": 0.3,
+                "maximum": 1.5
+              },
+              "frost": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2
+              },
+              "darkening": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2
+              },
+              "perspective": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1.33
+              }
+            }
+          }
+        },
+        "if": {
+          "properties": {
+            "id": {
+              "const": "duet"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "else": {
+          "properties": {
+            "options": {
+              "maxProperties": 0
             }
           }
         }

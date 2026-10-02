@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,12 +47,12 @@ private val IosTrackOff = Color(0xFF39393D)
 
 /** iOS switch: 51×31 green track with a white thumb that springs across. */
 @Composable
-internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptic = LocalHapticFeedback.current
     val track by animateColorAsState(if (checked) FolioColors.GreenLight else IosTrackOff, label = "switch track")
     val offset by animateDpAsState(if (checked) 20.dp else 0.dp, spring(dampingRatio = .7f, stiffness = Spring.StiffnessMedium), label = "switch thumb")
     Box(modifier.minimumInteractiveComponentSize()
-        .toggleable(checked, role = Role.Switch, onValueChange = {
+        .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = {
             haptic.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff); onCheckedChange(it)
         }), contentAlignment = Alignment.Center) {
         Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).padding(FolioSpace.HAIR.dp)) {
@@ -93,23 +94,30 @@ internal fun IosSlider(value: Float, onValueChange: (Float) -> Unit, valueRange:
 @Composable
 internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier,
     fieldModifier: Modifier = Modifier, ink: Color = Color.White, onSearch: (() -> Unit)? = null) {
-    // 40 dp at the normal text size, taller only when larger text needs it (A11Y-12). The clear button fills
-    // the height rather than setting it, so it never makes the field grow when it appears.
+    // 40 dp at the normal text size, taller only when larger text needs it (A11Y-12). The row is as tall as its
+    // content (IntrinsicSize.Min), so the clear button's fillMaxHeight fills the field, not the space around it.
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = .12f))
-        .heightIn(min = 40.dp).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
+        .heightIn(min = 40.dp).height(IntrinsicSize.Min).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) androidx.compose.material3.Text(placeholder, color = ink.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
+            // The placeholder is drawn inside the field, so TalkBack takes it as the field's name. Beside the field it
+            // lay under it, and Compose leaves a covered node out of what TalkBack sees: a nameless "Edit box".
             androidx.compose.foundation.text.BasicTextField(query, onQuery, fieldModifier.fillMaxWidth(), singleLine = true,
                 textStyle = TextStyle(color = ink, fontSize = FolioType.BODY.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(ink),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }),
+                decorationBox = { field ->
+                    Box {
+                        if (query.isEmpty()) androidx.compose.material3.Text(placeholder, color = ink.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
+                        field()
+                    }
+                })
         }
-        // The row's height is fixed at 40 dp, so this only widens the target: nothing drawn moves (A11Y-1).
+        // The row's height comes from its text, so this only widens the target: nothing drawn moves (A11Y-1).
         if (query.isNotEmpty()) Box(Modifier.width(FolioTouch.MIN.dp).fillMaxHeight().clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
             contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, "Clear search", tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, stringResource(R.string.clear_search), tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -119,14 +127,29 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
 internal fun IosActionRow(text: String, tag: String? = null, destructive: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val color = if (destructive) FolioColors.RedOnDark else LocalAccent.current.ink
     androidx.compose.material3.Text(text, color = if (enabled) color else Color.White.copy(alpha = .3f), fontSize = FolioType.BODY.sp,
-        modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).settingsFocus(text).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = FolioSpace.LARGE.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
+}
+
+/**
+ * One choice in an iOS selection list: its label, and a checkmark on the one in use. A radio button to TalkBack.
+ * Tapping the chosen row does nothing, so a repeat tap doesn't rewrite what's saved (as [IosMenuRow] guards too).
+ * No inset of its own: the card it sits in provides it.
+ */
+@Composable
+internal fun IosCheckRow(text: String, selected: Boolean, onClick: () -> Unit, tag: String? = null) {
+    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).selectable(selected, role = Role.RadioButton) { if (!selected) onClick() }
+        .then(if (tag != null) Modifier.testTag(tag) else Modifier), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.Text(text, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
+        if (selected) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Check, null,
+            tint = LocalAccent.current.ink, modifier = Modifier.size(20.dp))
+    }
 }
 
 /** A row that opens another page, like iOS Settings: label, current value and a chevron. */
 @Composable
 internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: String? = null) {
-    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.NAV.dp).clickable(role = Role.Button, onClick = onClick)
+    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.NAV.dp).settingsFocus(text).clickable(role = Role.Button, onClick = onClick)
         .then(if (tag != null) Modifier.testTag(tag) else Modifier), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Text(text, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
         value?.let { androidx.compose.material3.Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp) }
@@ -135,6 +158,31 @@ internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: S
 }
 
 /** Used when haptic feedback is turned off in settings. */
+/**
+ * What a haptic means rather than which buzz it is, so the same moment always feels the same (INT-14). Call
+ * `haptic.perform(FolioHaptic.Step)`; the Haptics switch still turns every one off, through [NoHaptics].
+ */
+internal enum class FolioHaptic(val type: HapticFeedbackType) {
+    /** Picked something up, or a menu opened from a long press. */
+    PickedUp(HapticFeedbackType.LongPress),
+    /** Crossed one step: a page, a drop target, a picker value. */
+    Step(HapticFeedbackType.SegmentTick),
+    /** A continuous scrub, like the dock's magnification. */
+    Scrub(HapticFeedbackType.SegmentFrequentTick),
+    /** Something light opened from a swipe, like an app's panel. */
+    Open(HapticFeedbackType.ContextClick),
+    /** Committed: dropped, sent, done. */
+    Commit(HapticFeedbackType.Confirm),
+    /** Refused, or something removed: a full dock, a locked Focus, an app taken off Home. */
+    Refuse(HapticFeedbackType.Reject),
+    /** A gesture went past its threshold and did its thing. */
+    GestureDone(HapticFeedbackType.GestureEnd),
+    ToggleOn(HapticFeedbackType.ToggleOn),
+    ToggleOff(HapticFeedbackType.ToggleOff),
+}
+
+internal fun androidx.compose.ui.hapticfeedback.HapticFeedback.perform(meaning: FolioHaptic) = performHapticFeedback(meaning.type)
+
 internal object NoHaptics : androidx.compose.ui.hapticfeedback.HapticFeedback {
     override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit
 }
@@ -159,8 +207,8 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
     var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val current = options.firstOrNull { it.first == selected }?.second ?: ""
-    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-        .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Choose $title") { open = true }
+    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).settingsFocus(title).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+        .clickable(enabled = enabled, role = Role.Button, onClickLabel = stringResource(R.string.choose_1_s, title)) { open = true }
         .then(if (tag != null) Modifier.testTag(tag) else Modifier)
         .androidxAlpha(if (enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Text(title, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
@@ -174,7 +222,7 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
                     options.forEachIndexed { index, (value, label) ->
                         if (index > 0) androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .1f), thickness = .5.dp)
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.SegmentTick); open = false; if (value != selected) onSelect(value)
+                            haptic.perform(FolioHaptic.Step); open = false; if (value != selected) onSelect(value)
                         }.padding(horizontal = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                             // iOS menus mark the choice with a leading checkmark and keep the labels lined up.
                             Box(Modifier.size(24.dp), contentAlignment = Alignment.CenterStart) {
@@ -291,7 +339,7 @@ internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSel
             options.forEach { (value, label) ->
                 Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(7.dp))
                     .selectable(value == selected, role = Role.RadioButton) {
-                        if (value != selected) { haptic.performHapticFeedback(HapticFeedbackType.SegmentTick); onSelect(value) }
+                        if (value != selected) { haptic.perform(FolioHaptic.Step); onSelect(value) }
                     }, contentAlignment = Alignment.Center) {
                     androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
                         fontWeight = if (value == selected) FontWeight.SemiBold else FontWeight.Medium)

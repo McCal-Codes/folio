@@ -49,18 +49,60 @@ internal object LauncherBackgroundCache {
     fun forget(listener: () -> Unit) { listeners -= listener }
 }
 
-internal fun launcherBackgroundFile(context: Context) = File(context.filesDir, BACKGROUND_FILE)
+/** The one photo the user picked. Written by [LauncherBackgroundController] and nothing else. */
+internal fun launcherPhotoFile(context: Context) = File(context.filesDir, BACKGROUND_FILE)
+
+/**
+ * The file behind Home right now, whichever kind of picture it is.
+ *
+ * Callers that want "the background" want this. Callers that want the picked photo specifically, which means the
+ * picker staging a new one and the code that clears it, want [launcherPhotoFile].
+ */
+internal fun launcherBackgroundFile(context: Context): File = when (val choice = backgroundChoice(context)) {
+    BackgroundChoice.None -> launcherPhotoFile(context)
+    BackgroundChoice.Photo -> launcherPhotoFile(context)
+    is BackgroundChoice.Art -> BackgroundLibrary.artFile(context, choice.id)
+}
 internal fun launcherBackgroundPreferences(context: Context) =
     context.getSharedPreferences(BACKGROUND_PREFS, Context.MODE_PRIVATE)
-internal fun launcherBackgroundEnabled(context: Context) =
-    launcherBackgroundPreferences(context).getBoolean(BACKGROUND_ENABLED, false) &&
-        launcherBackgroundFile(context).isFile
+internal fun launcherBackgroundEnabled(context: Context) = when (val choice = backgroundChoice(context)) {
+    BackgroundChoice.None -> false
+    BackgroundChoice.Photo -> launcherPhotoFile(context).isFile
+    is BackgroundChoice.Art -> BackgroundLibrary.exists(context, choice.id)
+}
+/**
+ * What the cached bitmap is a picture of, so a stale copy is never mistaken for the current one.
+ *
+ * A photo's identity is the id written when it was committed, which changes every time one is picked, even if the
+ * new photo happens to be the same size as the old. A piece of art is identified by itself: the id names the file
+ * and the file does not change under it, so switching art and switching back reuses the decode rather than
+ * discarding it.
+ */
 internal fun launcherBackgroundIdentity(context: Context): String? {
     if (!launcherBackgroundEnabled(context)) return null
-    return launcherBackgroundPreferences(context).getString(BACKGROUND_ID, null)
-        ?: "legacy-${launcherBackgroundFile(context).lastModified()}"
+    return when (val choice = backgroundChoice(context)) {
+        BackgroundChoice.None -> null
+        is BackgroundChoice.Art -> choice.save()
+        BackgroundChoice.Photo -> launcherBackgroundPreferences(context).getString(BACKGROUND_ID, null)
+            ?: "legacy-${launcherPhotoFile(context).lastModified()}"
+    }
 }
 
+/**
+ * The background image, decoded once and shared.
+ *
+ * **Why the decode publishes what it decoded.** Three places want this picture on a cold start: Home, the wallpaper
+ * preview in Settings, and [DuneWallpaperService] drawing the live wallpaper. They are one process, so they should
+ * be looking at one bitmap. This used to return the cached copy on a hit but hand back a private copy on a miss
+ * without ever filling the cache, so a cold start decoded the same file two or three times over and held every
+ * copy. At the size a background is stored today that is roughly 12 MiB each, and it is the reason the stored
+ * resolution cannot go up until this is fixed.
+ *
+ * The publish is guarded rather than unconditional: a decode takes long enough that the user may have picked a new
+ * photo, or cleared it, while this one was running. [LauncherBackgroundCache.revision] moving, or the saved
+ * identity no longer matching the one this decode was for, both mean the result is already stale, so it is returned
+ * to the caller that asked for it but not installed as the shared copy.
+ */
 internal fun loadLauncherBackground(context: Context): Bitmap? {
     if (!launcherBackgroundEnabled(context)) return null
     val file = launcherBackgroundFile(context)
@@ -68,7 +110,36 @@ internal fun loadLauncherBackground(context: Context): Bitmap? {
     LauncherBackgroundCache.bitmap?.let {
         if (!it.isRecycled && LauncherBackgroundCache.identity == identity) return it
     }
-    return BitmapFactory.decodeFile(file.absolutePath)
+    val startingRevision = LauncherBackgroundCache.revision.intValue
+    val decoded = decodeBackground(context, file) ?: return null
+    if (LauncherBackgroundCache.revision.intValue == startingRevision &&
+        launcherBackgroundIdentity(context) == identity
+    ) LauncherBackgroundCache.changed(decoded, identity)
+    return decoded
+}
+
+/**
+ * Reads the picture, from wherever this one lives.
+ *
+ * Art that shipped with Folio is an asset inside the APK and has no path on the filesystem, so it cannot go through
+ * [BitmapFactory.decodeFile] the way a photo or an installed piece does. Everything after this point is the same
+ * bitmap either way, which is the whole reason art and photos share one path.
+ */
+private fun decodeBackground(context: Context, file: File): Bitmap? {
+    val choice = backgroundChoice(context)
+    if (choice is BackgroundChoice.Art && BackgroundLibrary.isBuiltIn(choice.id)) {
+        return runCatching {
+            context.assets.open(BackgroundLibrary.assetPath(choice.id)).use(BitmapFactory::decodeStream)
+        }.getOrNull() ?: null.also { Diagnostics.backgroundUnreadable(choice) }
+    }
+    // Sampled rather than trusted: an installed picture is checked for size when it goes on, and this keeps a file
+    // that got past that from being decoded at a size Android then refuses to draw.
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    val sample = BackgroundLibrary.sampleSize(bounds.outWidth, bounds.outHeight)
+    if (sample > 1) Diagnostics.backgroundSampled(choice, bounds.outWidth, bounds.outHeight, sample)
+    return BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample })
+        ?: null.also { Diagnostics.backgroundUnreadable(choice, bounds.outWidth, bounds.outHeight) }
 }
 
 internal fun cachedLauncherBackground(context: Context): Bitmap? {
@@ -96,6 +167,80 @@ class LauncherBackgroundController(
         private set
     var previewPending by mutableStateOf(false)
         private set
+
+    /**
+     * A piece of art tapped in the picker but not yet set. Art and photos apply the same way now: a tap stages, the
+     * preview at the top of the page shows the candidate under Home's real chrome, and Set is what writes the choice.
+     * Every well-regarded picker previews before it applies and none applies on tap (iOS, AOSP, One UI), and this
+     * was the outlier. Not saved: leaving the page drops it, which is what Cancel does too.
+     *
+     * The controller owns the candidate, as it already owns the staged photo, so "what is being tried" has one owner
+     * the way "what is chosen" does (STA-1, STA-2); the picker reads it and sends taps. Transient, not saveable: it
+     * describes a gesture in progress, not a setting (STA-3).
+     */
+    internal var pendingArt by mutableStateOf<BackgroundChoice.Art?>(null)
+        private set
+    var pendingArtBitmap by mutableStateOf<Bitmap?>(null)
+        private set
+
+    /**
+     * True for the moment after a Set, and only then: the page offers "Also set as phone wallpaper" once, behind
+     * Android's own preview, because that action cannot be undone and Folio's can. Cleared by the next stage, cancel,
+     * reset or offer taken.
+     */
+    var justSet by mutableStateOf(false)
+        private set
+
+    fun stageArt(id: String) {
+        // A photo mid-preview and a piece of art cannot both be the candidate.
+        if (previewPending) cancelPreview()
+        justSet = false
+        pendingArt = BackgroundChoice.Art(id)
+        pendingArtBitmap = null
+        val wanted = pendingArt
+        activity.lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) { backgroundThumbnail(activity.applicationContext, id) }
+            if (pendingArt == wanted) pendingArtBitmap = bitmap
+        }
+    }
+
+    fun setPendingArt() {
+        val art = pendingArt ?: return
+        setBackgroundChoice(activity, art)
+        Diagnostics.backgroundSet(art)
+        // Drop the decoded picture rather than decoding the new one here: whatever draws next asks for it, on its
+        // own thread, through the one loader.
+        LauncherBackgroundCache.changed(null)
+        pendingArt = null
+        pendingArtBitmap = null
+        photoSelected = launcherBackgroundEnabled(activity)
+        errorMessage = null; successMessage = null
+        justSet = true
+    }
+
+    /**
+     * Puts the photo already saved back behind Home, after an artwork was chosen over it. The photo file stays when
+     * art is chosen, so this needs no picker: "Choose a different photo" is the way to replace it.
+     */
+    fun useSavedPhoto() {
+        if (!launcherPhotoFile(activity).isFile) return choosePhoto()
+        if (previewPending) cancelPreview()
+        cancelPendingArt()
+        setBackgroundChoice(activity, BackgroundChoice.Photo)
+        Diagnostics.backgroundSet(BackgroundChoice.Photo)
+        LauncherBackgroundCache.changed(null)
+        photoSelected = true
+        errorMessage = null
+        successMessage = activity.getString(R.string.launcher_background_updated)
+        justSet = true
+    }
+
+    fun cancelPendingArt() {
+        pendingArt = null
+        pendingArtBitmap = null
+    }
+
+    fun offerTaken() { justSet = false }
     private var generation = 0
     private var preview: StagedBackground? = null
     private val prefs = launcherBackgroundPreferences(activity)
@@ -147,6 +292,8 @@ class LauncherBackgroundController(
     }
 
     fun choosePhoto() {
+        cancelPendingArt()
+        justSet = false
         discardPreview()
         releasePreviewGrant()
         cleanupStagedFiles()
@@ -156,6 +303,7 @@ class LauncherBackgroundController(
         onExternalResultChanged(true)
         try { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         catch (error: Exception) {
+            Diagnostics.caught("Wallpaper: opening the photo picker", error)
             errorMessage = error.message ?: activity.getString(R.string.the_photo_picker_is_unavailable)
             clearPickerPending()
         }
@@ -167,10 +315,13 @@ class LauncherBackgroundController(
         releasePreviewGrant()
         // A Compose or wallpaper-service canvas may still be drawing the old bitmap.
         LauncherBackgroundCache.changed(null)
-        launcherBackgroundFile(activity).delete()
+        launcherPhotoFile(activity).delete()
+        // Clearing the photo clears the background: a piece of art is chosen in the picker, not fallen back to.
+        setBackgroundChoice(activity, BackgroundChoice.None)
+        Diagnostics.backgroundSet(BackgroundChoice.None)
         prefs.edit().putBoolean(BACKGROUND_ENABLED, false).remove(BACKGROUND_ID).remove(PICKER_PENDING).remove(PENDING_URI)
             .remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
-        photoSelected = false; errorMessage = null; successMessage = activity.getString(R.string.using_folio_dunes)
+        photoSelected = false; errorMessage = null; successMessage = activity.getString(R.string.no_background_behind_home)
         onExternalResultChanged(false)
         cleanupStagedFiles()
     }
@@ -186,9 +337,11 @@ class LauncherBackgroundController(
         val staged = preview ?: return
         if (!previewPending || pendingOperation() != staged.operation ||
             previewFile()?.absolutePath != staged.file.absolutePath) return
-        runCatching { staged.commit(launcherBackgroundFile(activity)) }
+        caught("Wallpaper: setting the photo") { staged.commit(launcherPhotoFile(activity)) }
             .onSuccess {
                 releasePreviewGrant(staged.operation)
+                setBackgroundChoice(activity, BackgroundChoice.Photo)
+                Diagnostics.backgroundSet(BackgroundChoice.Photo)
                 prefs.edit().putBoolean(BACKGROUND_ENABLED, true).putString(BACKGROUND_ID, staged.operation)
                     .remove(PENDING_URI).remove(PENDING_OPERATION).remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
                 preview = null
@@ -197,6 +350,7 @@ class LauncherBackgroundController(
                 loading = false
                 LauncherBackgroundCache.changed(staged.bitmap, staged.operation)
                 photoSelected = true
+                justSet = true
                 errorMessage = null
                 successMessage = activity.getString(R.string.launcher_background_updated)
                 cleanupStagedFiles()
@@ -240,7 +394,7 @@ class LauncherBackgroundController(
             val ownershipRecorded = prefs.edit().putString(PREVIEW_GRANT_URI, uri.toString())
                 .putString(PREVIEW_GRANT_OPERATION, operation).commit()
             if (ownershipRecorded && pendingOperation() == operation) {
-                val granted = runCatching {
+                val granted = caught("Wallpaper: keeping access to the photo") {
                     activity.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }.isSuccess
                 if (!granted) forgetPreviewGrant(operation)
@@ -270,6 +424,7 @@ class LauncherBackgroundController(
                 // not turn lifecycle cancellation into a failure that clears that operation.
                 throw cancel
             } catch (error: Throwable) {
+                Diagnostics.caught("Wallpaper: reading the photo", error)
                 Result.failure(error)
             }
             if (token != generation || !previewPending || pendingOperation() != operation) {
@@ -308,7 +463,8 @@ class LauncherBackgroundController(
                 bitmapAcrossDispatch.getAndSet(null)
                     ?.takeUnless { it === LauncherBackgroundCache.bitmap || it.isRecycled }?.recycle()
                 throw cancel
-            } catch (_: Throwable) {
+            } catch (error: Throwable) {
+                Diagnostics.caught("Wallpaper: reopening the preview", error)
                 null
             }
             if (token != generation || !previewPending || pendingOperation() != operation ||
@@ -394,7 +550,7 @@ class LauncherBackgroundController(
     private fun previewFile(): File? {
         val name = runCatching { prefs.getString(PREVIEW_FILE, null) }.getOrNull() ?: return null
         if (File(name).name != name || !name.startsWith("$BACKGROUND_FILE.") || !name.endsWith(".tmp")) return null
-        return File(launcherBackgroundFile(activity).parentFile, name)
+        return File(launcherPhotoFile(activity).parentFile, name)
     }
 
     private fun stage(uri: Uri, operation: String): StagedBackground {
@@ -411,7 +567,7 @@ class LauncherBackgroundController(
             bitmap.recycle()
             throw IllegalArgumentException("The selected image is too large.")
         }
-        val temporary = File(launcherBackgroundFile(activity).parentFile,
+        val temporary = File(launcherPhotoFile(activity).parentFile,
             "$BACKGROUND_FILE.$operation.${UUID.randomUUID()}.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -448,7 +604,7 @@ class LauncherBackgroundController(
     }
 
     private fun cleanupStagedFiles(keep: File? = null) {
-        launcherBackgroundFile(activity).parentFile?.listFiles { file ->
+        launcherPhotoFile(activity).parentFile?.listFiles { file ->
             file.name.startsWith("$BACKGROUND_FILE.") && file.name.endsWith(".tmp")
         }?.filterNot { keep != null && it.absolutePath == keep.absolutePath }?.forEach(File::delete)
     }

@@ -166,12 +166,12 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                 shownFeatures.forEachIndexed { index, note -> item(key = "feature-$index") { FeatureRow(note) } }
                 if (features.size > shownFeatures.size) item(key = "more-features") {
                     SheetGroup {
-                        DisclosureRow("${features.size - shownFeatures.size} more new features", open = false, tag = "whats-new-more") { showAllFeatures = true }
+                        DisclosureRow((features.size - shownFeatures.size).let { androidx.compose.ui.res.pluralStringResource(R.plurals.more_new_features, it, it) }, open = false, tag = "whats-new-more") { showAllFeatures = true }
                     }
                 }
                 if (others.isNotEmpty()) item(key = "fixes") {
                     SheetGroup {
-                        DisclosureRow("Fixes and Improvements", open = fixesOpen, count = others.size, tag = "whats-new-fixes") { fixesOpen = !fixesOpen }
+                        DisclosureRow(stringResource(R.string.fixes_and_improvements), open = fixesOpen, count = others.size, tag = "whats-new-fixes") { fixesOpen = !fixesOpen }
                         if (fixesOpen) others.forEach { note ->
                             MenuDivider()
                             androidx.compose.material3.Text(MarketText.inline(note.title?.let { "**$it:** ${note.detail}" } ?: note.detail, LocalAccent.current.ink),
@@ -181,7 +181,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                     }
                 }
                 // Version History: every earlier release, collapsed like iOS disclosure rows.
-                if (older.isNotEmpty()) item { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp)) { SheetGroupLabel("Version History") } }
+                if (older.isNotEmpty()) item { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp)) { SheetGroupLabel(stringResource(R.string.version_history)) } }
                 older.forEach { notes ->
                     item(key = "history-${notes.version}") {
                         val open = notes.version in expanded

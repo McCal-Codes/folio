@@ -22,10 +22,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `market-keyboard-size-class` ([#126](https://github.com/McCal-Codes/folio/pull/126)) | The Market keeps its panes while the keyboard is up | `MarketScreen.kt`, `SizeClass.kt`, `CustomizationSheet.kt`, `CHANGELOG.md` |
-| `standby-charging` ([#113](https://github.com/McCal-Codes/folio/pull/113)) | StandBy comes on while charging, in any pose | `StandBy.kt`, `MainActivity.kt`, `LauncherModel.kt`, `CustomizationSheet.kt`, `strings.xml` |
-| `announce-many-webhooks` ([#137](https://github.com/McCal-Codes/folio/pull/137)) | A release can reach more than one channel | `tools/announce-release.mjs`, `.github/workflows/announce.yml` |
-| `dynamic-lifecycle` ([#140](https://github.com/McCal-Codes/folio/pull/140)) | Nothing ticks while nobody is watching | `HomeWidgets.kt`, `StatusRail.kt`, `MicroHome.kt`, `TopPanels.kt`, `LauncherScreen.kt`, and the island and cover files |
+| `release-068-beta6` | Beta.6 is the 0.6.8 release candidate. Until the stable ships, nothing that goes into the APK merges to `main` (REL-4b, checked on the stable's bump): docs, tools and tests can. The stable's bump removes this row. | `app/`, `market/`, `docs/sdk/source/`, the Gradle files |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.

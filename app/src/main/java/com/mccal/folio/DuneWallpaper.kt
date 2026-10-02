@@ -33,13 +33,26 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
+/**
+ * Folio's own background: the picture chosen in Settings, or a plain surface when there is none.
+ *
+ * Pass [scrim] to darken the top and bottom for the text above (Settings > Wallpaper > Darken behind text): it is
+ * drawn into the same cached layer as the background, so it costs nothing per frame.
+ *
+ * **There is no drift here any more.** Folio used to slide its own background a little as pages moved, which was
+ * free while the background was a scene drawn in code: it could be drawn at any width. A picture cannot, so the
+ * extra width had to come out of the picture's own pixels, and on the Fold8's inner screen that scaled the print
+ * Folio ships up by 1.60x and showed less than a third of it. Android's own wallpaper still drifts, because the
+ * system moves that one and can size it accordingly. See [SystemWallpaperParallax].
+ */
 @Composable
-internal fun DuneWallpaper(modifier: Modifier = Modifier) {
+internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = HomeScrim.None) {
     val palette = LocalDuoPalette.current
     val context = LocalContext.current.applicationContext
     val revision = LauncherBackgroundCache.revision.intValue
@@ -47,17 +60,22 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier) {
     val photo = produceState(initialValue = initial, key1 = context, key2 = revision) {
         value = withContext(Dispatchers.IO) { loadLauncherBackground(context) }
     }.value
-    // Drawn once into its own layer and reused: the background never moves, but during a swipe everything above it
-    // does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU missed
-    // frames. A cached layer is one texture copy a frame instead.
-    Canvas(Modifier.fillMaxSize().then(modifier).graphicsLayer {
-        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-    }) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
+    // Drawn once into its own layer and reused: the background never redraws itself, but during a swipe everything
+    // above it does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU
+    // missed frames. A cached layer is one texture copy a frame instead.
+    Canvas(Modifier.fillMaxSize().then(modifier)
+        .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+        // After the layer, so the scrim is rasterised into it with the background rather than composited over it every
+        // frame. A vertical gradient is the same at every x, so the drift sliding it sideways cannot show.
+        .homeScrim(scrim)) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
 }
 
 internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false) {
     if (photo == null || photo.width <= 0 || photo.height <= 0) {
-        drawDunes(dark)
+        // No picture chosen. A flat surface rather than a scene: DES-2a says Folio does not draw backgrounds, and
+        // this is the absence of one. It still has to be opaque, because Home's window is see-through and a window
+        // with nothing behind it keeps showing the frame before (#12, #35).
+        drawRect(if (dark) Color(0xFF0B0B0C) else Color(0xFFE9E9EC))
         return
     }
     val destinationWidth = size.width.toInt().coerceAtLeast(1)
@@ -81,32 +99,7 @@ internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean
     )
 }
 
-internal fun DrawScope.drawDunes(dark: Boolean = false) {
-        val w = size.width; val h = size.height
-        drawRect(Brush.verticalGradient(if (dark) listOf(Color(0xFF132832), Color(0xFF263E49), Color(0xFF463F35))
-            else listOf(Color(0xFF41687E), Color(0xFF94ADB5), Color(0xFFD8CEB6))))
-        fun dune(y: Float, crest: Float, color: Color) {
-            val path = Path().apply {
-                moveTo(0f, h * y)
-                cubicTo(w * .3f, h * (y - crest), w * .6f, h * (y + crest), w, h * (y - crest * .35f))
-                lineTo(w, h); lineTo(0f, h); close()
-            }
-            drawPath(path, color)
-        }
-        dune(.57f, .17f, if (dark) Color(0xFF5B5040) else Color(0xFFC9B38E))
-        dune(.72f, .12f, if (dark) Color(0xFF453D32) else Color(0xFFA49373))
-        dune(.85f, .19f, if (dark) Color(0xFF302C26) else Color(0xFF84775F))
-        for (n in 0..28) {
-            val y = h * (.84f + n * .011f)
-            val path = Path().apply {
-                moveTo(0f, y)
-                cubicTo(w * .35f, y - h * .17f, w * .65f, y + h * .05f, w, y - h * .06f)
-            }
-            drawPath(path, Color.White.copy(alpha = .045f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.3f))
-        }
-}
-
-/** A static scene rendered on surface changes: no animation loop or background polling. */
+/** Folio's chosen background as the phone's wallpaper. Rendered on surface changes: no animation loop. */
 class DuneWallpaperService : WallpaperService() {
     override fun onCreateEngine(): Engine = DuneEngine()
 
@@ -215,27 +208,52 @@ class DuneWallpaperService : WallpaperService() {
 /**
  * With Android's wallpaper behind Home, tell the wallpaper which page is showing so it can shift a little
  * as pages change (the parallax iPhone and most launchers have). Draws nothing.
+ *
+ * **Why a still picture is moved less than the pages it follows.** A live wallpaper draws itself as wide as it
+ * likes, so it can afford the full travel. A still one is a fixed image the system has cropped to the screen, and
+ * there is no spare width to slide: asking for the whole travel across two pages slides it twice as far as the
+ * picture can go, which the system absorbs by squashing the movement into whatever margin it happens to have.
+ * AOSP's answer, in `WallpaperOffsetInterpolator`, is [MIN_PARALLAX_SPAN]: spread a still wallpaper's parallax over
+ * at least four pages however few there really are, and use the true count only when the wallpaper is live. Folio
+ * asked for the true count either way, so on a two page Home it moved Android's wallpaper twice as far as Android's
+ * own launcher would.
  */
 @Composable
 internal fun SystemWallpaperParallax(pager: androidx.compose.foundation.pager.PagerState) {
     val view = androidx.compose.ui.platform.LocalView.current
     val manager = androidx.compose.runtime.remember(view) { android.app.WallpaperManager.getInstance(view.context) }
     androidx.compose.runtime.LaunchedEffect(pager, view) {
+        // getWallpaperInfo() is a binder call, so it is read once here rather than on every page of every swipe.
+        // A wallpaper swapped while Home is open keeps the old span until Home is next composed, which costs a
+        // slightly wrong drift and nothing else.
+        val live = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            runCatching { manager.wallpaperInfo }.getOrNull() != null
+        }
         // The offset call is a binder round-trip: keep it off the UI thread and drop stale positions.
         androidx.compose.runtime.snapshotFlow { pager.currentPage + pager.currentPageOffsetFraction to pager.pageCount }
             .conflate()
             .collect { (position, count) ->
                 val token = view.windowToken ?: return@collect
-                val steps = (count - 1).coerceAtLeast(1)
+                val pages = if (live) count else maxOf(MIN_PARALLAX_SPAN, count)
+                val steps = (pages - 1).coerceAtLeast(1)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     runCatching {
-                        manager.setWallpaperOffsetSteps(1f / steps, 0f)
+                        // yStep is 1f, not 0f: a wallpaper that works out its vertical pixel offset from the step
+                        // divides by it, and Folio was handing it a zero to divide by while still asking for the
+                        // middle of the vertical range below. AOSP passes 1f here for the same pair of values.
+                        manager.setWallpaperOffsetSteps(1f / steps, 1f)
                         manager.setWallpaperOffsets(token, (position / steps).coerceIn(0f, 1f), .5f)
                     }
                 }
             }
     }
 }
+
+/**
+ * The fewest pages a still wallpaper's parallax is spread over, matching `MIN_PARALLAX_PAGE_SPAN` in AOSP's
+ * `WallpaperOffsetInterpolator`. See [SystemWallpaperParallax] for why a still picture gets less travel.
+ */
+private const val MIN_PARALLAX_SPAN = 4
 
 /**
  * Switches Home between Android's wallpaper and Folio's own background.

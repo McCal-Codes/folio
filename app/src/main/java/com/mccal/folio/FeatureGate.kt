@@ -73,7 +73,7 @@ internal enum class FeatureGate(
          * The features built during 0.6.7 for supporters to try, which open to everyone in 0.6.8. One flag rather than
          * one per feature, because they open together: `FeatureGateTest` fails at 0.6.8 while this is still false.
          */
-        private const val OPEN_IN_0_6_8 = false
+        private const val OPEN_IN_0_6_8 = true
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }

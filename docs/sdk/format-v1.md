@@ -1,13 +1,13 @@
 # Folio Package Format v1
 
-Status: **draft**, first shipped in Folio 0.6.6. Fields marked *(0.7.x)* are reserved: parsers accept them, but Folio doesn't act on them yet.
+Status: **draft**, first shipped in Folio 0.6.6. Fields marked *(0.7.x)* are reserved: parsers accept them, but Folio doesn't act on them yet. Kinds marked *(reserved)* are read but refused: the Market shows a package of one as needing a newer Folio and won't install it.
 
 This page is the reference for packages and sources. The machine-readable versions are the JSON Schemas in
 [`schema/v1/`](schema/v1/). Folio's parser and the `folio-pkg` tool are both tested against these schemas.
 
 ## Principles
 
-- **Declarative first.** A package is data: JSON, images, and (optionally) a sandboxed script. Folio never downloads or loads DEX, JAR or native code. See [ADR 0004](../adr/0004-declarative-first.md).
+- **Declarative first.** A package is data: JSON and images. No package runs code: Folio never downloads or loads DEX, JAR or native code, and the `script` kind is reserved and refused. A script is code, a higher trust class than data, and would need process isolation and its own store label before it could ship. See [ADR 0004](../adr/0004-declarative-first.md).
 - **Signed sources, verified files.** A source signs its entry file, the entry file pins the index's hash, and the index pins every package's hash. See [ADR 0001](../adr/0001-repo-format.md).
 - **Permissions are the source of truth.** Everything a package can do maps to a permission it declares. Folio shows those permissions before install, builds the privacy label from them, and enforces them at runtime.
 - **Local-first.** Folio only goes online for sources the user adds.
@@ -20,7 +20,7 @@ A `.foliopkg` file is a zip archive:
 manifest.json      required
 depiction.json     optional, the package page
 assets/            optional, png, webp or jpg
-script.js          optional, only when kind includes "script"
+script.js          reserved: a package whose kind includes "script" is refused
 ```
 
 Limits:
@@ -48,7 +48,7 @@ Limits:
 | `conflicts` | array of string | Same syntax. |
 | `icon` | path | `assets/icons/cabinet.png`, square, at least 180 px. Resolved against the **source**, not the package (see Pictures). |
 | `depiction` | path | Usually `depiction.json`. |
-| `license` | string | SPDX id, e.g. `MIT`. GPL code isn't accepted in the Community source. |
+| `license` | string | SPDX id, e.g. `MIT`. GPL code isn't accepted in the Community source. A license with no SPDX id takes SPDX's own `LicenseRef-` form: `LicenseRef-Unsplash`, `LicenseRef-Pexels`. Public domain is `CC0-1.0` when the holder dedicated it and `CC-PDDC` for a work whose rights have lapsed. Required on a `wallpaper` package, which must also name the artist in `author` (see Wallpapers). |
 | `description` | text | One or two sentences, shown under the name. |
 | `aiAssisted` | object | Set when something helped make the package: `{ "tools": [1 to 5 tool names, 60 characters each], "note"?: text }`. The note says what it did. Folio 0.6.6 skips it; 0.6.7 shows it on the package page and the install sheet. |
 | `provides` *(later)* | array of enum | `iconPack`, `wallpapers`, `widgets`, `folioTheme`: what an external app brings. |
@@ -76,9 +76,85 @@ comments, unquoted keys, single quotes, trailing commas, trailing text and dupli
 | `wallpaper` | images in `assets/` | the wallpaper picker |
 | `iconPackLink` | `iconpack.json`: `{ "format": 1, "package": "com.example.icons" }` | the ADW/Nova icon-pack lookup |
 | `tweakBundle` | `tweaks.json`: built-in tweak ids and their options | `installTweak` and feature scopes |
-| `settingsSchema` *(0.7.x)* | `settings.json` (see its schema) | Folio's settings renderer |
-| `script` *(0.7.x)* | `script.js` | the script sandbox |
+| `settingsSchema` *(reserved)* | `settings.json` (see its schema) | none yet: refused |
+| `script` *(reserved)* | `script.js` | none: refused (see Declarative first) |
 | `externalApp` *(later)* | a `via` list: `playStore`, `fdroid`, `obtainium` | Get opens the store, then Apply |
+| `pageEffect` *(0.6.8)* | `effect.json`: how Home's pages turn as you swipe (see Page effects) | Folio's page-effect engine |
+
+#### Page effects
+
+A page effect package describes how Home's pages turn as you swipe, as four numbers. Folio's engine draws it, the
+same engine that draws the built-in Cube and Carousel, so a page effect is data and never code (ADR 0004, ADR 0008).
+
+A page effect is an add-on to the Flipbook tweak, the way a script is an add-on to jailbreak Cylinder: the kind says so,
+so a package doesn't list it. Folio installs one only where Flipbook is on the phone, whether it was added from the
+Market or from Settings › Tweaks; otherwise the Market says the effect works with Flipbook and offers Flipbook first.
+
+```json
+{ "maxRotation": 28, "pivot": "center", "shrink": 0.2, "cameraWidths": 3 }
+```
+
+| Field | Meaning | Folio holds it to |
+|---|---|---|
+| `maxRotation` | Degrees a page turns around its vertical axis at one full page out | -90 to 90 |
+| `pivot` | `seam`: the edge it shares with the next page (a box); `center`: its middle (cards) | one of the two |
+| `shrink` | How much smaller a page is at one full page out | 0 to 0.3 |
+| `cameraWidths` | How far the camera sits, in page widths; nearer is stronger perspective | 1.5 to 4 |
+
+Folio clamps every number to its range rather than trusting it: past 90 degrees a page shows its back, and a camera
+nearer than 1.5 widths tears the perspective. `folio-pkg validate` warns about a number outside its range. A settled
+page is always drawn as it is, and Reduce Motion and Safe Mode turn every effect off. The package needs
+`tweaks.pageEffects` in `requires.features`.
+
+#### Tweak options
+
+A `tweaks.json` entry can carry an `options` object with that tweak's own settings. Only Duet (`duet`) takes options
+today:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `style` | `iphone`, `duo`, `classic`, `deep`, `subtle`, `minimal` | Duet's look. `iphone` (the default) follows Apple's iPhone Duo; `duo` is Folio's earlier fold animation; `classic` is Duo Fold Live's Classic Glass. |
+| `direction` | `both`, `opening`, `closing` | Which way the animation plays. |
+| `intensity` | number, 0.3 to 1.5 | The fold's overall strength (Settings' Intensity slider). |
+| `frost`, `darkening` | number, 0 to 2 | Multipliers on the style's own blur and shade. 1 is the style as it comes. |
+| `perspective` | number, 0 to 1.33 | Multiplier on how far the moving half tilts. Only `deep` and `classic` tilt. |
+
+```json
+{ "format": 1, "tweaks": [{ "id": "duet", "enabled": true, "options": { "style": "deep", "frost": 0.8 } }] }
+```
+
+A value outside its range, or a style Folio doesn't have, is refused when the package is read. Keys this Folio doesn't
+know are skipped and reported, so a newer package still installs; the schema is stricter and rejects them (and any
+`options` on a tweak that takes none), so a misspelled key is caught while you write the package. Only the keys a
+package sets change, and removing the package puts back the options it replaced. A package that sets `"enabled": false`
+turns the tweak off and sets no options.
+
+Options configure a built-in tweak that is a setting (Duet's look). A tweak whose variants are things you add, such as
+Flipbook's page effects, takes them as their own package kind instead (see Page effects above). Pick `options` when
+the choice is a number or a name from a fixed list, and a kind when it is a file. See
+[`examples/duet-deep/`](examples/duet-deep/).
+
+#### Wallpapers
+
+A wallpaper package is **one piece of art**, so the fields a package already has are the credit Folio needs, and
+nothing was added to the format for this:
+
+| Field | Carries |
+|---|---|
+| `name` | The work's title, as its holding collection or its photographer writes it |
+| `author` | The artist. `name` is the person, `url` links their page at the museum, on Unsplash, or their own site |
+| `license` | The license the art is under, not the license of the package files. Required |
+| `description` | The date and the holding collection, e.g. "1857. Brooklyn Museum." |
+| `depiction` | The full credit: artist, title, date, collection, and the URL the file came from |
+
+Folio shows the artist and the license wherever the wallpaper is offered, so a package missing either is refused
+rather than listed without a credit. This is [DES-2b](../standards/design.md): credit is not a license, and an image
+with no author has no license to give. A package that gathers several pictures by different artists cannot state one
+artist or one license, so it is not a wallpaper package: ship one per artwork.
+
+The image itself goes under `assets/` with an image extension. Folio takes the largest image there that the
+depiction does not already use as its hero or a screenshot, so a package with one picture needs no naming convention,
+and a package that also carries a hero or screenshots is still read correctly.
 
 ### `depiction.json`
 
@@ -140,12 +216,12 @@ kept. The store offers Try Again, Remove and Details, and everything else keeps 
 
 All of it comes from the manifest, never from anything the author wrote:
 
-- **A one-line summary:** code (only a `script` package runs any, in the sandbox), network (never), personal data
+- **A one-line summary:** code (none: no package runs any), network (never), personal data
   (never), and how many things it changes.
 - **What it changes:** one line per permission, in Folio's words, from the table in [Permissions](#permissions). A
   package with no permissions says "How Folio looks, and nothing else".
 - **What it can't reach:** your apps and their data, notifications, contacts and calendar, the network, and other apps'
-  settings. Not promises — a package is data, so it has no way to reach any of them.
+  settings. Not promises: a package is data, so it has no way to reach any of them.
 - **Where it came from:** built into Folio, or a source you added, with `provenance` and the checksum when the index
   carries them.
 
@@ -376,11 +452,13 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `tweaks.dockMagnify` | Harborline (formerly Dock Magnification) | 0.6.0 |
 | `tweaks.notificationAppRow` | Roll Call (formerly Notification App Row) | 0.6.0 |
 | `tweaks.tintNotifications` | Palette (formerly Tinted Notifications) | 0.6.0 |
-| `tweaks.tintMedia` | Colored Albums (formerly Album Art Colors) | 0.6.0 |
+| `tweaks.tintMedia` | Afterglow (formerly Colored Albums, and before that Album Art Colors) | 0.6.0 |
+| `tweaks.pageEffects` | Flipbook: Home pages turn in 3D as you swipe (supporters in 0.6.7, everyone in 0.6.8) | 0.6.7 |
+| `tweaks.foldTransition` | Duet, the fold animation, and its `options` in `tweaks.json` | 0.6.8 |
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |
 | `focus.modes` | Switching Home Modes / Focus | 0.7.x |
 | `settings.pages` | Settings pages drawn from `settings.json` | 0.7.x |
-| `scripts` | The script sandbox | 0.7.x |
+| `scripts` | Reserved: Folio doesn't run scripts, and a `script` package is refused | Not planned |
 
 "Since" comes from CHANGELOG.md. "Before 0.7.0" means the feature exists today but the changelog doesn't record when it arrived. The 0.1.0 entry is inherited from DuoLauncher, and 0.7.x means planned.
 
@@ -401,7 +479,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `time` | Running on a schedule | Runs on a schedule |
 | `apps.open` | Opening an app the user picked | Opens apps |
 
-Scripts can only use actions whose permission they declare. New permissions come with a new format version.
+New permissions come with a new format version.
 
 ## Versioning this format
 

@@ -29,6 +29,8 @@ data class LayoutImportPreview(
     val widgetCount: Int,
     val compact: LayoutPreset,
     val expanded: LayoutPreset,
+    /** The upright inner screen's own layout (since 0.6.8); null when it shares the inner screen's, as every older backup does. */
+    val portrait: LayoutPreset? = null,
     val labels: Boolean,
     val googleSearch: Boolean,
     val verticalStatus: Boolean,
@@ -38,6 +40,8 @@ data class LayoutImportPreview(
     val packageCount: Int = 0,
     /** Names people typed themselves. They exist nowhere else on the phone, so a backup that left them out lost them. */
     val appNames: Map<String, String> = emptyMap(),
+    /** Icon looks chosen for single apps (since 0.6.8); a backup from before has none, and the ones on the phone stay. */
+    val appIconStyles: Map<String, AppIconOverride> = emptyMap(),
 )
 
 fun layoutBackupScope(context: Context): String {
@@ -86,8 +90,12 @@ fun encodeLayoutBackup(
         .put("dock", JSONArray(state.dock)).put("folders", folders).put("widgets", widgets)
         .put("labels", state.labels).put("googleSearch", state.googleSearch).put("verticalStatus", state.verticalStatus)
         .put("compact", preset(state.compact)).put("expanded", preset(state.expanded))
+        // Only when there is one, so a backup from a phone that never made one is exactly what it was, and older Folio reads it.
+        .also { o -> state.portrait?.let { o.put("portrait", preset(it)) } }
     // The names people typed themselves (since 0.6.5): they exist nowhere else on the phone.
     root.put("appNames", JSONObject().apply { state.appNames.forEach { (id, name) -> put(id, name) } })
+    // Only when there are some, so a backup from a phone that uses none is exactly what it was before this existed.
+    if (state.appIconStyles.isNotEmpty()) root.put("appIconStyles", appIconStylesToJson(state.appIconStyles))
     // Added in 0.7.0, and deliberately not a new backup version: a Folio that has never heard of the Market reads
     // everything else in this file and ignores a key it doesn't know, so backups still travel backwards.
     packages?.let { root.put("packages", JSONObject(it)) }
@@ -151,8 +159,8 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
         require((rawSlots + rawLeadingSlots).count(folder.id::equals) == 1)
     }
     val dockArray = root.getJSONArray("dock")
-    require(dockArray.length() == 4)
-    val rawDock = List(4) { index -> if (dockArray.isNull(index)) null else dockArray.getString(index) }
+    require(dockArray.length() in MIN_DOCK_SLOTS..MAX_DOCK_SLOTS)
+    val rawDock = List(dockArray.length()) { index -> if (dockArray.isNull(index)) null else dockArray.getString(index) }
     val surfaceApps = (rawSlots + rawLeadingSlots).filterNotNull().filterNot(::isReservedFolderId) + rawDock.filterNotNull() +
         importedFolders.flatMap(FolderEntry::appIds)
     require(surfaceApps.distinct().size == surfaceApps.size) { "An app shortcut appears more than once" }
@@ -219,6 +227,7 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
     }
     // Validate settings eagerly even though HomeLayout contains placement data only.
     val compact = preset("compact"); val expanded = preset("expanded")
+    val portrait = if (root.has("portrait")) preset("portrait") else null
     val labels = root.strictBoolean("labels"); val googleSearch = root.strictBoolean("googleSearch")
     val verticalStatus = root.strictBoolean("verticalStatus")
     // Added in 0.7.0; an older backup leaves the key out and carries no packages. Read but not understood here:
@@ -232,8 +241,8 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
         appCount = (slots + leadingSlots).count { it != null && !isReservedFolderId(it) } +
             dock.count { it != null } + folders.sumOf { it.appIds.size },
         folderCount = folders.size, widgetCount = layout.widgetPlacements.size,
-        compact = compact, expanded = expanded, labels = labels, googleSearch = googleSearch, verticalStatus = verticalStatus,
-        packages = packages, appNames = appNames)
+        compact = compact, expanded = expanded, portrait = portrait, labels = labels, googleSearch = googleSearch, verticalStatus = verticalStatus,
+        packages = packages, appNames = appNames, appIconStyles = appIconStylesFromJson(root.optJSONObject("appIconStyles")))
 }
 
 internal fun validBackupPlacement(value: WidgetPlacement): Boolean {

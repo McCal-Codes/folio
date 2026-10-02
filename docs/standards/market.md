@@ -29,7 +29,7 @@ A bridge lets Folio show packages from a repository that isn't a Folio source (a
 - **MKT-6 MUST** treat a bridged index as untrusted input ([PRV-15](privacy-permissions.md)): strict parsing, size
   caps, no remote code, and a fuzz target per parser.
 - **MKT-7 MUST** write every bridge parser from the published format specification. No code, and no derived code, from
-  a GPL client. F-Droid's client is GPL-3.0 and Folio is MIT; copying from it would relicense Folio.
+  a GPL client. F-Droid's client is GPL-3.0 and Folio is MIT; copying from it would bring the GPL's terms to the code Folio distributes, which Folio's MIT license doesn't accept.
 - **MKT-8 MUST NOT** install a bridged app automatically. Android asks, and the source that listed it is what vouches
   for it: [PRV-17](privacy-permissions.md)'s tier rule already says Folio's own features work without it.
 

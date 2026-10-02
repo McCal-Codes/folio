@@ -42,7 +42,7 @@ internal val LocalHomeApps = staticCompositionLocalOf { HomeApps(emptyList()) {}
 
 /** iOS Calendar "Up Next": the day, then the next events with their calendar color, or the next alarm when the day is clear. */
 @Composable
-internal fun UpNextCard(onEdit: () -> Unit) {
+internal fun UpNextCard(onClick: () -> Unit) {
     val context = LocalContext.current
     val ink = LocalHomeInk.current
     val tick by rememberMinuteTick()
@@ -55,7 +55,7 @@ internal fun UpNextCard(onEdit: () -> Unit) {
     fun time(millis: Long) = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).let { t ->
         (if (t.toLocalDate() != today) t.format(DateTimeFormatter.ofPattern("EEE ")) else "") + t.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
     }
-    GlassCard(onClick = onEdit) {
+    GlassCard(onClick = onClick) {
         Column {
             Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = .6.sp)
             Text(today.dayOfMonth.toString(), color = ink.primary, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 32.sp)
@@ -93,7 +93,7 @@ internal fun UpNextCard(onEdit: () -> Unit) {
  * event today, or the next alarm) underneath. Calendar details only show once calendar access is allowed.
  */
 @Composable
-internal fun BigClockCard(onEdit: () -> Unit) {
+internal fun BigClockCard(onClick: () -> Unit) {
     val context = LocalContext.current
     val ink = LocalHomeInk.current
     val tick by rememberMinuteTick()
@@ -110,11 +110,11 @@ internal fun BigClockCard(onEdit: () -> Unit) {
         (if (t.toLocalDate() != today) t.format(DateTimeFormatter.ofPattern("EEE ")) else "") + t.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
     }
     val shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = if (ink.dark) 0f else .25f), blurRadius = 8f)
-    BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).clickable(onClick = onEdit)
+    BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).widgetTap(onClick)
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
         val big = (maxHeight.value * .46f).coerceAtMost(maxWidth.value * .3f).sp
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(now.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")), color = ink.primary, fontSize = (big.value * .2f).coerceIn(13f, 20f).sp,
+            Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = ink.primary, fontSize = (big.value * .2f).coerceIn(13f, 20f).sp,
                 fontWeight = FontWeight.SemiBold, style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = ink.primary, fontSize = big,
                 fontWeight = FontWeight.SemiBold, lineHeight = big * 1.02f, maxLines = 1,

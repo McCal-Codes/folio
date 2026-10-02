@@ -24,13 +24,14 @@ import kotlinx.coroutines.withContext
  *   listing is really that source's.
  * - The bytes must match the **checksum** the index promised, checked before the file is written anywhere
  *   Android can reach, so nothing can be swapped in on the way.
- * - **Android asks, every time.** Folio isn't the installer of record for other people's apps, so the system's
- *   own install screen appears with the app's real name on it.
+ * - **Android asks** before a first install, so the system's own install screen appears with the app's real name
+ *   on it. An update to an app Folio itself installed, signed by the same key, is the one exception
+ *   ([MarketAppUpdate]).
  * - It is **off until someone turns it on**.
  *
- * What is not protected, and cannot be: Folio can't tell whether the app itself is any good. Software Update
- * can insist an update is signed with the same key as the copy already running; there is no such anchor for
- * somebody else's app. The source vouches for it, and that is the whole of it.
+ * What is not protected, and cannot be: Folio can't tell whether the app itself is any good. An update has an
+ * anchor, the key the copy on the phone is signed with, and Folio insists on it the way Software Update does; a
+ * first install has none. The source vouches for it, and that is the whole of it.
  */
 internal object MarketApkInstall {
 
@@ -44,10 +45,13 @@ internal object MarketApkInstall {
     sealed interface Status {
         data object Idle : Status
         data class Working(val name: String) : Status
-        /** Given to Android, which is now asking. Nothing to say here: its own screen is in front. */
-        data class Handed(val name: String) : Status
-        /** Android installed it. [appId] is what it turned out to be, which Folio never told it. */
-        data class Installed(val name: String, val appId: String?) : Status
+        /**
+         * Given to Android, which is now asking. Nothing to say here: its own screen is in front. [updating] when it
+         * replaces a copy already on the phone, which may go in without a screen at all.
+         */
+        data class Handed(val name: String, val updating: Boolean = false) : Status
+        /** Android installed it. [appId] is what it turned out to be, which Folio never told it for a first install. */
+        data class Installed(val name: String, val appId: String?, val updated: Boolean = false) : Status
         data class Failed(val message: String) : Status
     }
 
@@ -78,11 +82,16 @@ internal object MarketApkInstall {
      *
      * The bytes are checked before the file is written anywhere Android can reach, so a source that serves
      * something other than what it listed never gets as far as the install screen.
+     *
+     * With [update], this replaces the copy already on the phone, and two more things must hold first: the APK is
+     * that app, and it is signed by the same key ([MarketAppUpdate.verdict]). When Folio is also that app's installer
+     * of record, Android is asked to update it without a screen.
      */
     suspend fun install(
         context: Context,
         name: String,
         entry: IndexPackage,
+        update: MarketAppUpdate.OnPhone? = null,
         fetch: suspend (String, (Long, Long) -> Unit) -> ByteArray?,
     ): Boolean {
         val url = entry.url ?: return fail(context, R.string.that_listing_has_no_app_to_download)
@@ -92,11 +101,25 @@ internal object MarketApkInstall {
             ?: return fail(context, R.string.folio_couldn_t_download_that_app)
         // Hashing and copying up to 20 MB happen off the main thread: MarketWork runs on it, and only the fetch moved.
         val matches = withContext(Dispatchers.Default) { sha256(bytes).equals(expected, ignoreCase = true) }
-        if (!matches) return fail(context, R.string.that_app_didn_t_match_what_its_source)
+        // The checksum already covers the size; this is the listing's own number, checked in its own right.
+        if (!matches || (entry.size != null && bytes.size != entry.size)) {
+            return fail(context, R.string.that_app_didn_t_match_what_its_source)
+        }
+        val silent = update?.let { onPhone ->
+            val archive = withContext(Dispatchers.IO) { MarketAppUpdate.archive(context, bytes) }
+            when (MarketAppUpdate.verdict(context.packageName, onPhone, archive?.packageName, MarketAppUpdate.signers(archive))) {
+                MarketAppUpdate.Verdict.SILENT -> true
+                MarketAppUpdate.Verdict.ASK -> false
+                MarketAppUpdate.Verdict.WRONG_APP -> return fail(context, R.string.that_update_is_a_different_app)
+                MarketAppUpdate.Verdict.WRONG_SIGNER ->
+                    return fail(context, context.getString(R.string.that_update_isn_t_signed_by_the_same, name))
+            }
+        } ?: false
         MarketWork.applying()
-        return runCatching {
-            withContext(Dispatchers.IO) { hand(context, bytes) }
-            status.value = Status.Handed(name)
+        // Runs inside MarketWork, whose scope nothing cancels: every failure here is one to tell the user about.
+        return caught("Market: writing an app for Android", rethrowCancellation = false) {
+            withContext(Dispatchers.IO) { hand(context, bytes, update?.appId, silent) }
+            status.value = Status.Handed(name, updating = update != null)
             true
         }.getOrElse {
             fail(context, R.string.folio_couldn_t_hand_that_app_to_android)
@@ -106,17 +129,31 @@ internal object MarketApkInstall {
     private fun sha256(bytes: ByteArray) =
         java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    private fun fail(context: Context, message: Int): Boolean {
-        status.value = Status.Failed(context.getString(message))
+    private fun fail(context: Context, message: Int): Boolean = fail(context, context.getString(message))
+
+    private fun fail(context: Context, message: String): Boolean {
+        status.value = Status.Failed(message)
         return false
     }
 
-    /** Written straight into the install session: the checked bytes, with no copy on disk anyone could swap. */
-    private fun hand(context: Context, apk: ByteArray) {
+    /**
+     * Written straight into the install session: the checked bytes, with no copy on disk anyone could swap.
+     *
+     * A first install names no package and asks: this is somebody else's app, and Folio does not get to say which
+     * package these bytes claim to be. An update names [appId], so Android refuses bytes that turn out to be any
+     * other app, and asks only when [silent] is false.
+     */
+    private fun hand(context: Context, apk: ByteArray, appId: String? = null, silent: Boolean = false) {
         val installer = context.packageManager.packageInstaller
-        // No `setAppPackageName` and no `USER_ACTION_NOT_REQUIRED`: this is somebody else's app, so Android asks,
-        // and Folio does not get to say which package these bytes claim to be.
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            if (appId != null) {
+                setAppPackageName(appId)
+                setRequireUserAction(
+                    if (silent) PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+                    else PackageInstaller.SessionParams.USER_ACTION_REQUIRED,
+                )
+            }
+        }
         val sessionId = installer.createSession(params)
         try {
             installer.openSession(sessionId).use { session ->
@@ -143,13 +180,14 @@ class MarketInstallReceiver : BroadcastReceiver() {
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION") val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
-                runCatching { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                caught("Market: showing Android's install prompt") { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
             PackageInstaller.STATUS_SUCCESS -> {
                 val handed = MarketApkInstall.status.value as? MarketApkInstall.Status.Handed
                 MarketApkInstall.status.value = MarketApkInstall.Status.Installed(
                     name = handed?.name ?: intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME).orEmpty(),
                     appId = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME),
+                    updated = handed?.updating == true,
                 )
             }
             else -> MarketApkInstall.status.value = MarketApkInstall.Status.Failed(

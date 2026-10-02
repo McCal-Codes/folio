@@ -1,0 +1,50 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
+  "format": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "image": "assets/wallpaper-wooded-hilly-landscape.webp"
+    },
+    {
+      "type": "markdown",
+      "text": "An oil painting made in London in 1785. A villa stands above a lake with an arched stone bridge and a ruined wall beside it, cattle on the far bank, and the light going out of a sky that still holds the last of it.\n\nAbraham Pether was known for painting night and moonlight, enough that his contemporaries called him Moonlight Pether. This one is not a night scene, but it has the same quiet."
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Abraham Pether, British, 1756 to 1812",
+        "Oil on canvas, 62.9 by 72.4 cm",
+        "Yale Center for British Art, Paul Mellon Collection",
+        "Accession B1981.25.501",
+        "Public domain: the artist's rights lapsed long ago"
+      ]
+    },
+    {
+      "type": "markdown",
+      "text": "Cropped for a phone from the museum's own full resolution scan, 5185 by 4531 pixels, not from a copy that was passed around. The colors are the scan's, left as the museum published them."
+    },
+    {
+      "type": "compatibility",
+      "screens": [
+        "cover",
+        "inner"
+      ]
+    },
+    {
+      "type": "changelog",
+      "entries": [
+        {
+          "version": "1.0.0",
+          "date": "2026-09-24",
+          "notes": "The first painting Folio ships."
+        }
+      ]
+    },
+    {
+      "type": "link",
+      "title": "The full scan, and its rights statement",
+      "url": "https://commons.wikimedia.org/wiki/File:Abraham_Pether_-_Wooded_Hilly_Landscape_-_Google_Art_Project.jpg"
+    }
+  ]
+}

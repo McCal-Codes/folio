@@ -34,6 +34,12 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Live wallpapers. Folio asks Android whether the wallpaper behind Home is a live one, because a live
+             wallpaper draws itself as wide as it likes and can take the full parallax travel while a still picture
+             cannot. From API 34 that question is answered with null unless the asker can see the wallpaper's
+             package, and a live wallpaper has no launcher icon, so the MAIN/LAUNCHER query above never finds one.
+             Without this, every live wallpaper but Folio's own would be mistaken for a still picture. -->
+        <intent><action android:name="android.service.wallpaper.WallpaperService" /></intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.APP_CALENDAR" />
@@ -80,6 +86,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- The shade as an app a phone's own button or gesture action can open: see ShadeShortcutActivity. -->
+        <activity android:name=".ShadeShortcutActivity" android:exported="false"
+            android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
+            android:taskAffinity="com.mccal.folio.shade" android:launchMode="singleInstance" />
+        <activity-alias android:name=".ShadeShortcutNotifications" android:targetActivity=".ShadeShortcutActivity"
+            android:exported="true" android:label="@string/shade_shortcut_notifications" android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="folio.shade.panel" android:value="NOTIFICATIONS" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".ShadeShortcutQuickSettings" android:targetActivity=".ShadeShortcutActivity"
+            android:exported="true" android:label="@string/shade_shortcut_quick_settings" android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="folio.shade.panel" android:value="QUICK_SETTINGS" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
         <activity android:name=".FoldBridgeActivity" android:exported="false"
             android:theme="@style/Theme.Folio.FoldBridge"
             android:taskAffinity="com.mccal.folio.foldbridge" android:excludeFromRecents="true"
@@ -88,6 +114,15 @@
         <service android:name=".IslandListenerService" android:label="@string/label_island_listener"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
+        <!-- StandBy over the lock screen, as Android's screen saver. Off until StandBy's charger ways open:
+             syncStandByScreenSaver turns it on. -->
+        <service android:name=".StandByScreenSaver" android:label="@string/standby_screen_saver_name"
+            android:permission="android.permission.BIND_DREAM_SERVICE" android:exported="true" android:enabled="false">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </service>
         <service android:name=".SystemShadeAccessibilityService"
             android:label="@string/shade_service_label"

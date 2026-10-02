@@ -107,6 +107,21 @@ internal class Fields(private val json: JSONObject, private val path: String, pr
         return exact.toLong()
     }
 
+    /** A string that is one of [values]. */
+    fun choice(key: String, required: Boolean, values: List<String>): String? {
+        val value = string(key, required, maxLength = 64) ?: return null
+        return value.takeIf { it in values } ?: null.also { p.errors += "${where(key)} must be one of ${values.joinToString()}" }
+    }
+
+    /** A JSON number within [range]. `"1"` is not a number. */
+    fun number(key: String, required: Boolean, range: ClosedFloatingPointRange<Double>): Double? {
+        if (missing(key, required)) return null
+        val value = (json.opt(key) as? Number)?.toDouble()?.takeIf { it.isFinite() }
+            ?: return null.also { p.errors += "${where(key)} must be a number" }
+        if (value !in range) return null.also { p.errors += "${where(key)} must be between ${range.start} and ${range.endInclusive}" }
+        return value
+    }
+
     fun bool(key: String, required: Boolean): Boolean? {
         if (missing(key, required)) return null
         return json.opt(key) as? Boolean ?: null.also { p.errors += "${where(key)} must be true or false" }

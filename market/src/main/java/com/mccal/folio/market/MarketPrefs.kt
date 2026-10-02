@@ -41,7 +41,8 @@ class MarketPrefs(private val store: KeyValueStore) {
      * Whether Folio installs an app itself, rather than sending you to Play, F-Droid or Obtainium.
      *
      * Off by default, and only ever for a source whose key ships inside Folio - see `MarketApkInstall` for why
-     * that line is where it is. Android still shows its own install screen every time.
+     * that line is where it is. Android shows its own install screen for a first install; an update to an app
+     * Folio installed itself, signed by the same key, may go in without one (`MarketAppUpdate`).
      */
     var installApps: Boolean
         get() = store.get(INSTALL_APPS) == "1"

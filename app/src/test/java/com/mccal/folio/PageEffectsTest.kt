@@ -40,11 +40,51 @@ class PageEffectsTest {
         assertTrue("the choice has to be written back out too", "\"pageEffect\", s.pageEffect.name" in source("LauncherModel.kt"))
     }
 
+    @Test fun `Flipbook's switch brings back the effect chosen last, not always the cube`() {
+        val carousel = LauncherState().withPageEffect(PageEffect.CAROUSEL)
+        val offAndOn = carousel.withPageEffectOn(false).withPageEffectOn(true)
+        assertEquals(PageEffect.CAROUSEL, offAndOn.pageEffect)
+        // Choosing None from Settings is the same as the switch off: the carousel is still what comes back.
+        assertEquals(PageEffect.CAROUSEL, carousel.withPageEffect(PageEffect.NONE).withPageEffectOn(true).pageEffect)
+        assertEquals("the first time, the cube", PageEffect.CUBE, LauncherState().withPageEffectOn(true).pageEffect)
+    }
+
+    @Test fun `the remembered effect survives a restart, and older saves fall back sensibly`() {
+        assertEquals(PageEffect.CAROUSEL, decode(saved("pageEffect" to "NONE", "lastPageEffect" to "CAROUSEL").toString()).lastPageEffect)
+        assertEquals("a 0.6.7 save in Carousel", PageEffect.CAROUSEL, decode(saved("pageEffect" to "CAROUSEL").toString()).lastPageEffect)
+        assertEquals(PageEffect.CUBE, decode(saved().toString()).lastPageEffect)
+        assertTrue("written back out too", "\"lastPageEffect\", s.lastPageEffect.name" in source("LauncherModel.kt"))
+    }
+
     @Test fun `a settled page is untouched by every effect, so Home is the same with the swipe at rest`() {
         for (effect in PageEffect.entries) {
             assertEquals("${effect.name} turns a settled page", 0f, effect.rotationY(0f), 0f)
             assertEquals("${effect.name} resizes a settled page", 1f, effect.scale(0f), 0f)
         }
+    }
+
+    // Cylinder's Cube (inside): the cube's own seam and camera, turned the other way.
+    @Test fun `Inside Cube hinges on the cube's seam, toward you`() {
+        for (position in listOf(-1f, -.6f, -.25f, .25f, .6f, 1f)) {
+            assertEquals(-PageEffect.CUBE.rotationY(position), PageEffect.INSIDE_CUBE.rotationY(position), 0f)
+            assertEquals(PageEffect.CUBE.pivotX(position), PageEffect.INSIDE_CUBE.pivotX(position), 0f)
+            assertEquals(1f, PageEffect.INSIDE_CUBE.scale(position), 0f)
+        }
+        assertEquals(PageEffect.CUBE.cameraWidths, PageEffect.INSIDE_CUBE.cameraWidths, 0f)
+        assertTrue("a page on the right turns its free edge toward you", PageEffect.INSIDE_CUBE.rotationY(.5f) < 0f)
+    }
+
+    // Page Squeeze for Cylinder: depth without a turn, so it never needs the 3D camera.
+    @Test fun `Stack steps a page back without turning it`() {
+        for (position in listOf(-2f, -1f, -.5f, .5f, 1f, 2f)) assertEquals(0f, PageEffect.STACK.rotationY(position), 0f)
+        assertEquals(.75f, PageEffect.STACK.scale(1f), 1e-6f)
+        assertEquals(.875f, PageEffect.STACK.scale(-.5f), 1e-6f)
+        assertEquals("no deeper than a page out", .75f, PageEffect.STACK.scale(2f), 1e-6f)
+    }
+
+    @Test fun `the new effects are saved and read back by name`() {
+        assertEquals(PageEffect.INSIDE_CUBE, decode(saved("pageEffect" to "INSIDE_CUBE").toString()).pageEffect)
+        assertEquals(PageEffect.STACK, decode(saved("pageEffect" to "STACK").toString()).pageEffect)
     }
 
     @Test fun `None does nothing at any position`() {
@@ -65,13 +105,16 @@ class PageEffectsTest {
     }
 
     @Test fun `the cube is a quarter turn at one page out, and turns the free edge away`() {
-        assertEquals(-90f, PageEffect.CUBE.rotationY(1f), 0f)
-        assertEquals(90f, PageEffect.CUBE.rotationY(-1f), 0f)
+        assertEquals(90f, PageEffect.CUBE.rotationY(1f), 0f)
+        assertEquals(-90f, PageEffect.CUBE.rotationY(-1f), 0f)
         // Half way through a swipe, half way through the turn.
-        assertEquals(-45f, PageEffect.CUBE.rotationY(.5f), 0f)
-        // Negative degrees push the free edge away from the viewer: that is what makes it a solid rather than a box
-        // seen from inside. The page to the right turns about its left edge, so its right half is the half that goes.
-        assertTrue(PageEffect.CUBE.rotationY(.5f) < 0f)
+        assertEquals(45f, PageEffect.CUBE.rotationY(.5f), 0f)
+        // Positive degrees push a right-hand page's free edge away from the viewer: that is what makes it a solid
+        // rather than a box seen from inside. The page to the right turns about its left edge, so its right half is
+        // the half that goes. Measured on a phone, not reasoned: with the sign the other way the leaving page swung
+        // out at the viewer and the arriving one was thrown off screen before it could be seen.
+        assertTrue(PageEffect.CUBE.rotationY(.5f) > 0f)
+        assertTrue("the carousel turns the same way round", PageEffect.CAROUSEL.rotationY(.5f) > 0f)
     }
 
     @Test fun `no effect ever mirrors a page that is kept composed further out`() {
@@ -126,7 +169,9 @@ class PageEffectsTest {
 
         // Turning it off is not a hidden identity transform: with None there is no layer and no pager read at all.
         val effects = source("PageEffects.kt")
-        assertTrue("None should add no layer", "if (effect == PageEffect.NONE) this else graphicsLayer" in effects)
+        // None has no spec, and no spec means no layer (the same rule for packaged effects).
+        assertTrue("None should add no layer", "if (effect == null) this else graphicsLayer" in effects)
+        assertTrue("None has no spec", "PageEffect.NONE -> null" in effects)
         // PRF-7 / DYN-16: the pager is read in the layer block, so a swipe recomposes nothing.
         assertTrue("the position has to be read inside the layer block", "pager.pagePosition(page)" in effects)
         assertTrue("no alpha: it would cost an offscreen buffer per page", "alpha" !in effects.substringAfter("internal fun Modifier.pageEffect"))
@@ -152,11 +197,15 @@ class PageEffectsTest {
             """Row(Modifier.fillMaxSize().testTag("home-surface")""" in screen)
     }
 
-    @Test fun `the setting is only offered where the gate is open, and None is one of the choices`() {
+    // The choice is on Flipbook's own page, which exists only where the gate is open: Flipbook carries the gate and
+    // visibleTweaks leaves a gated tweak out. None isn't offered there; it is Flipbook switched off.
+    @Test fun `the effects are offered only where the gate is open, and every effect has its own name`() {
+        val flipbook = TweakFeatures.first { it.id == "pageEffects" }
+        assertEquals("Flipbook should carry the page-effects gate", FeatureGate.PAGE_EFFECTS, flipbook.gate)
         val sheet = source("CustomizationSheet.kt")
-        assertTrue("Settings should ask the gate", "FeatureGate.PAGE_EFFECTS.isOpen(gestureContext)" in sheet)
-        assertTrue("the row should be behind the gate", "if (pageEffectsOpen) {" in sheet)
-        assertTrue(PageEffect.NONE in PageEffect.entries)
+        assertTrue("Flipbook's page should list the effects",
+            Regex("""tweak\.id\s*==\s*"pageEffects"\s*\)\s*FlipbookEffects\(""").containsMatchIn(sheet))
+        assertEquals(PageEffect.entries - PageEffect.NONE, PageEffect.CHOICES)
         // Every choice needs a name people can read, and no two effects share one.
         val labels = PageEffect.entries.map { it.label }
         assertEquals("two effects share a label", labels.size, labels.toSet().size)

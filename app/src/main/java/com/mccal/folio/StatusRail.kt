@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -186,15 +187,22 @@ fun StatusRail(
     val now = displayNow(rememberMinuteTick().value)
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     val timeFormatter = remember(format) { DateTimeFormatter.ofPattern(format) }
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d") }
+    // Each language's own order for the date (strings.xml), for the rail and for what TalkBack reads.
+    val shortDate = stringResource(R.string.mmm_d)
+    val dateFormatter = remember(shortDate) { DateTimeFormatter.ofPattern(shortDate) }
+    val longDate = stringResource(R.string.eeee_mmmm_d)
+    val longDateFormatter = remember(longDate) { DateTimeFormatter.ofPattern(longDate) }
     val description = listOfNotNull(
-        if (locationInUse) "Location in use" else null,
-        focus?.let { "${it.name} on" },
-        if (status.silent && style.showSilent) "Silent mode" else null,
-        now.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, $format")),
-        status.battery?.let { "Battery $it percent${if (status.charging) ", charging" else ""}" } ?: "Battery unavailable",
-        if (status.wifiConnected) "Wi-Fi connected${status.wifiLevel?.let { ", signal $it of 4" } ?: ""}" else "Wi-Fi disconnected",
-        if (status.airplane) "Airplane mode" else status.cellularLevel?.let { "Cellular signal $it of 4" } ?: "Cellular signal unavailable",
+        if (locationInUse) stringResource(R.string.location_in_use) else null,
+        focus?.let { stringResource(R.string.text_1_s_is_on, it.name) },
+        if (status.silent && style.showSilent) stringResource(R.string.silent_mode) else null,
+        "${now.format(longDateFormatter)}, ${now.format(timeFormatter)}",
+        status.battery?.let { stringResource(if (status.charging) R.string.battery_1_d_percent_charging else R.string.battery_1_d_percent, it) }
+            ?: stringResource(R.string.battery_unavailable),
+        if (!status.wifiConnected) stringResource(R.string.wi_fi_disconnected)
+        else status.wifiLevel?.let { stringResource(R.string.wi_fi_connected_signal_1_d_of_4, it) } ?: stringResource(R.string.wi_fi_connected),
+        if (status.airplane) stringResource(R.string.airplane_mode)
+        else status.cellularLevel?.let { stringResource(R.string.cellular_signal_1_d_of_4, it) } ?: stringResource(R.string.cellular_signal_unavailable),
     ).joinToString(". ")
     val fontScale = LocalDensity.current.fontScale
     val wifiVisual = wifiSignalVisual(status.wifiConnected, status.wifiLevel)
@@ -265,7 +273,7 @@ fun StatusRail(
                                     style = Stroke(stroke, cap = StrokeCap.Round))
                             }
                         }
-                        if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, "Airplane Mode", tint = ink, modifier = Modifier.size(visualSize * .2f))
+                        if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), tint = ink, modifier = Modifier.size(visualSize * .2f))
                     }
                     StatusGlyph.PERCENT -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         Canvas(Modifier.fillMaxSize()) {
@@ -393,7 +401,7 @@ fun StatusRail(
                         // Wi-Fi when joined (in Home's text color, so it reads on light wallpapers), an airplane in Airplane Mode;
                         // otherwise nothing, and the cellular bars below say how you're connected.
                         if (wifiVisual is WifiSignalVisual.Connected) Canvas(Modifier.size(width = 22.dp, height = 16.dp)) { drawWifiFan(size.width, wifiVisual, centered = true, ink = ink, onLight = onLight) }
-                        else if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, "Airplane Mode", tint = ink, modifier = Modifier.size(16.dp))
+                        else if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), tint = ink, modifier = Modifier.size(16.dp))
                         Canvas(Modifier.size(width = 22.dp, height = 14.dp)) {
                             val bar = size.width / 7
                             for (i in 0 until 5) {

@@ -2,7 +2,13 @@ package com.mccal.folio
 
 import android.content.res.Configuration
 import android.util.DisplayMetrics
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalDensity
 
 /**
  * How much to scale dp by to judge a size class at the phone's own screen density. Developer options' "Smallest
@@ -50,6 +56,21 @@ internal fun settingsColumns(
 internal fun sizeClassHeightDp(heightDp: Float, keyboardDp: Float): Float = heightDp + keyboardDp
 
 /**
+ * The keyboard height to give [sizeClassHeightDp] inside FolioSheet's full-screen page, which is where every sheet
+ * that measures its own box is drawn. That page pads its content column by navigationBarsPadding() and only then by
+ * WindowInsets.ime, and windowInsetsPadding subtracts what an earlier one already consumed, so the IME padding takes
+ * off just the part of the keyboard past the navigation bar.
+ *
+ * Reading the raw WindowInsets.ime here would add the navigation bar back a second time and make the reconstructed
+ * window taller than the real one. A window whose content height sits just under [HOME_REGULAR_MIN_HEIGHT_DP] would
+ * then turn regular while a field has focus: #117's bug again, pointing the other way.
+ */
+@Composable
+internal fun keyboardDpOverSheet(): Float = with(LocalDensity.current) {
+    WindowInsets.ime.exclude(WindowInsets.navigationBars).getBottom(this).toDp().value
+}
+
+/**
  * Whether Settings keeps its list beside the page rather than pushing pages over it, given the columns the host
  * allows it ([maxColumns], one pane inside the Market). The keyboard is measured out, as in [settingsColumns].
  */
@@ -68,6 +89,34 @@ internal const val THREE_PANES_DP = 1200f
  * [THREE_PANES_DP]; with the tabs along the bottom (unfolded portrait) they're the two panes.
  */
 internal fun marketListBeside(widthDp: Float, sidebar: Boolean): Boolean = !sidebar || widthDp >= THREE_PANES_DP
+
+/** Where the Market's tabs sit: a bar under the content, a rail along the long edge, or a sidebar beside it. */
+internal enum class TabPlacement { BOTTOM, RAIL, SIDEBAR }
+
+/**
+ * Whether the Market splits its window into panes at all: a regular window with room for two readable columns. The
+ * keyboard is measured out, as in [settingsSplits], so typing a source's address, or searching the Settings tab
+ * inside the Market, can't turn the unfolded screen into a phone-sized one for as long as the keyboard is up (#117).
+ */
+internal fun marketSplits(widthDp: Float, heightDp: Float, classScale: Float = 1f, keyboardDp: Float = 0f): Boolean =
+    fitsRegularHomeLayout(widthDp, sizeClassHeightDp(heightDp, keyboardDp), classScale) && widthDp >= 700f
+
+/**
+ * Where the Market puts its tabs, the same rule the Mockup Lab draws: a sidebar once the window is as wide as the
+ * Fold8 inner screen (iPad), a rail on the long edge when the window is too short for a bar under it (the cover
+ * screen rotated), and the bar itself everywhere else. The keyboard is measured out of both questions: judged on
+ * what's left to draw in, a portrait window would read as a landscape one the moment a field took focus, and the
+ * tabs would leave the bottom for the rail until the keyboard went away.
+ */
+internal fun marketTabs(widthDp: Float, heightDp: Float, classScale: Float = 1f, keyboardDp: Float = 0f): TabPlacement {
+    val height = sizeClassHeightDp(heightDp, keyboardDp)
+    val regular = fitsRegularHomeLayout(widthDp, height, classScale)
+    return when {
+        !regular && widthDp > height -> TabPlacement.RAIL
+        regular && widthDp >= 920f -> TabPlacement.SIDEBAR
+        else -> TabPlacement.BOTTOM
+    }
+}
 
 /**
  * How many columns Settings may use where something else already takes part of the window: the Market's sidebar,

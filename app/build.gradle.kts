@@ -31,7 +31,7 @@ val releaseStoreFile = releaseSigningValues["FOLIO_RELEASE_STORE_FILE"]?.let { c
     }
 }
 
-val folioVersion = "0.6.7-beta.3"
+val folioVersion = "0.6.8-beta.6"
 
 // Bundle the changelog so Folio can show What's New after an update.
 val bundleChangelog = tasks.register<Copy>("bundleChangelog") {
@@ -177,6 +177,8 @@ dependencies {
     implementation("androidx.window:window:1.5.1")
     // Installs the baseline profiles that Compose and AndroidX ship, so hot paths are compiled ahead of time.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // Named trace sections (PRF-13). Other AndroidX libraries already bring it; declared because Folio calls it.
+    implementation("androidx.tracing:tracing:1.2.0")
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
@@ -209,4 +211,19 @@ dependencies {
 
 kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
+}
+
+composeCompiler {
+    // What Folio promises never changes after it's made; see the file for each type and why.
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose-stability.conf"))
+}
+
+// Compose compiler reports, off unless asked for: `./gradlew :app:compileDebugKotlin -PcomposeReports --rerun-tasks`
+// writes app/build/compose-reports/, which says which composables can skip and which classes Compose treats as
+// unstable (so anything reading them redraws whenever its parent does). Nothing changes in a normal build.
+if (providers.gradleProperty("composeReports").isPresent) {
+    composeCompiler {
+        reportsDestination = layout.buildDirectory.dir("compose-reports")
+        metricsDestination = layout.buildDirectory.dir("compose-reports")
+    }
 }

@@ -18,11 +18,13 @@ class MarketAssetsTest {
         override fun removeTweak(feature: TweakFeature) = Unit
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
         override fun applyTheme(theme: FolioTheme) = Unit
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String = ""
+        override fun restoreArtBackground(artId: String, snapshot: String) = Unit
     })
 
     @Test fun `the bundled source loads from assets`() {
         val index = requireNotNull(session.index()) { "assets/market/source/index.json didn't load" }
-        assertEquals(9, index.packages.size)
+        assertEquals(10, index.packages.size)
         val packages = session.source.packages()
         println("packages from assets: " + packages.keys.sorted())
         println("cabinet files: " + packages["com.mccal.folio.cabinet"]?.keys)

@@ -103,8 +103,8 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
     LaunchedEffect(sent) { if (sent) { keyboard?.hide(); delay(700); onDone() } }
     val submit = {
         if (text.isNotBlank() && !sent) {
-            if (onSend(text.trim())) { haptic.performHapticFeedback(HapticFeedbackType.Confirm); sent = true }
-            else haptic.performHapticFeedback(HapticFeedbackType.Reject)
+            if (onSend(text.trim())) { haptic.perform(FolioHaptic.Commit); sent = true }
+            else haptic.perform(FolioHaptic.Refuse)
         }
     }
     Row(modifier.fillMaxWidth().heightIn(min = 40.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f))

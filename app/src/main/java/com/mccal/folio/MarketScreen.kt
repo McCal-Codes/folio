@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -52,6 +54,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -134,6 +139,8 @@ internal fun MarketScreen(
     val scope = rememberCoroutineScope()
     var undo by remember { mutableStateOf<InstallResult.Installed?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    /** An action the message offers other than Undo, such as getting the tweak an add-on needs. */
+    var offer by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     // Counts every message said, so the same words said twice still get their full time on screen: keyed on the text
     // alone, a second "Keyd updated" inherited what was left of the first one's timer.
     var said by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -148,6 +155,14 @@ internal fun MarketScreen(
     val installed by produceState(emptyMap<String, InstalledPackage>(), revision) {
         value = withContext(session.io) { session.installed().associateBy { it.id } }
     }
+    /**
+     * The listing that adds tweak [id]: a tweak bundle needing that tweak's capability, such as Flipbook's. Folio's own
+     * comes first, so a source's bundle that also needs the capability can't stand in for the tweak itself.
+     */
+    fun hostPackageFor(id: String): String? = entries.filter { e ->
+        val manifest = e.entry.manifest ?: return@filter false
+        com.mccal.folio.market.PackageKind.TWEAK_BUNDLE in manifest.kinds && manifest.requiredFeatures.any { it.id == "tweaks.$id" }
+    }.minByOrNull { if (it.source.kind == Source.Kind.BUILT_IN) 0 else 1 }?.id
     LaunchedEffect(revision) { statuses = withContext(session.io) { session.sources.cached() } }
     // Installing outlives this screen: the work can't be stopped halfway, so it's kept where Back can't reach it.
     val busyId = MarketWork.busyId
@@ -160,13 +175,41 @@ internal fun MarketScreen(
      * Says something in the banner. Undo belongs to the install it came from, so any other message takes it away:
      * an Undo left over from an earlier install would remove a package the user is happy with.
      */
-    fun say(text: String?) { message = text; undo = null; said++ }
+    fun say(text: String?) { message = text; undo = null; offer = null; said++ }
+
+    /** The tweak [manifest]'s package is an add-on to, by the name Settings shows, and whether it's on the phone. */
+    fun hostFor(manifest: com.mccal.folio.market.PackageManifest?): HostTweak? =
+        manifest?.kinds?.firstNotNullOfOrNull { it.hostTweak }?.let { id ->
+            HostTweak(id, TweakFeatures.firstOrNull { it.id == id }?.name ?: id, session.hasTweak(id))
+        }
+
+    /** Gets tweak [tweakId] for an add-on: its listing's page when that isn't installed, or the tweak itself back. */
+    fun getHost(tweakId: String, hostName: String) {
+        val hostId = hostPackageFor(tweakId)
+        if (hostId != null && hostId !in installed) {
+            // Its listing isn't installed: open it, on a tab that shows packages (Settings doesn't).
+            tab = MarketTab.PACKAGES; openId = hostId; message = null; offer = null
+        } else {
+            // The listing is installed but its tweak was removed in Settings, so the listing only offers Remove: add
+            // the tweak back here instead of sending the user to a dead end.
+            if (session.addTweak(tweakId)) say(context.getString(R.string.text_1_s_is_on, hostName)) else { message = null; offer = null }
+            refresh()
+        }
+    }
 
     /** What the banner says about a finished install, and whether it can still be undone. */
     fun announce(name: String, result: InstallResult) {
         when (result) {
             is InstallResult.Installed -> { message = context.getString(R.string.text_1_s_is_on, result.installed.name); undo = result; said++ }
             is InstallResult.NeedsNewerFolio -> say(context.getString(R.string.text_1_s_needs_a_newer_folio, name))
+            is InstallResult.NeedsHost -> {
+                // An add-on whose tweak isn't here: say which, and offer the tweak's own page to get it from.
+                val tweak = TweakFeatures.firstOrNull { it.id == result.tweaks.first() }
+                val hostName = tweak?.name ?: result.tweaks.first()
+                say(context.getString(R.string.text_1_s_works_with_2_s_get_it_first, name, hostName))
+                val tweakId = result.tweaks.first()
+                offer = context.getString(R.string.get_tweak, hostName) to { getHost(tweakId, hostName) }
+            }
             is InstallResult.Failed -> say(result.message)
         }
         refresh()
@@ -184,17 +227,6 @@ internal fun MarketScreen(
 
     val appContext = context.applicationContext
 
-    /**
-     * Get, for whichever kind of package this is: an app of its own goes to the sheet that says where it installs
-     * from, or straight to the app when Android already has it. Everything else goes to the confirm sheet.
-     */
-    fun onExternalOrConfirm(entry: MarketEntry) {
-        val manifest = entry.entry.manifest
-        if (!MarketExternalApp.isExternal(manifest)) { confirming = entry.listingKey; return }
-        val already = MarketExternalApp.installedAppId(appContext, manifest)
-        if (already != null) MarketExternalApp.open(context, already, returns) else choosing = entry.listingKey
-    }
-
     // What finished while nobody was looking. Closing the Market during a download used to lose the message and the
     // Undo that went with it; now the store picks them up when it opens.
     LaunchedEffect(MarketWork.finished) {
@@ -205,13 +237,34 @@ internal fun MarketScreen(
      * Folio's own install of an app: download, check the checksum, hand it to Android. It runs where an install
      * runs, so leaving the store doesn't stop it, and the ring in the button follows it like any other.
      */
-    fun installApp(entry: MarketEntry) {
+    fun installApp(entry: MarketEntry, update: MarketAppUpdate.OnPhone? = null) {
         if (MarketWork.busy) return
         MarketWork.run(entry.id) {
-            MarketApkInstall.install(context, entry.name, entry.entry) { url, onProgress ->
+            MarketApkInstall.install(context, entry.name, entry.entry, update) { url, onProgress ->
                 session.sources.fetch(entry.source, url, entry.entry.size ?: 0, onProgress)
             }
         }
+    }
+
+    /**
+     * Get, for whichever kind of package this is: an app of its own goes to the sheet that says where it installs
+     * from, or straight to the app when Android already has it. Everything else goes to the confirm sheet.
+     */
+    fun onExternalOrConfirm(entry: MarketEntry) {
+        val manifest = entry.entry.manifest
+        if (!MarketExternalApp.isExternal(manifest)) { confirming = entry.listingKey; return }
+        // A newer version than the one on the phone: Folio installs it over the old one when it may, and otherwise
+        // the sheet offers the places it installs from, the same as Get.
+        MarketAppUpdate.offered(appContext, entry)?.let { onPhone ->
+            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.revokedReason != null)) {
+                installApp(entry, onPhone)
+            } else {
+                choosing = entry.listingKey
+            }
+            return
+        }
+        val already = MarketExternalApp.installedAppId(appContext, manifest)
+        if (already != null) MarketExternalApp.open(context, already, returns) else choosing = entry.listingKey
     }
 
     /**
@@ -223,7 +276,7 @@ internal fun MarketScreen(
         MarketApkInstall.status.collect { status ->
             when (status) {
                 is MarketApkInstall.Status.Installed -> {
-                    say(context.getString(R.string.text_1_s_is_installed, status.name))
+                    say(context.getString(if (status.updated) R.string.text_1_s_is_updated else R.string.text_1_s_is_installed, status.name))
                     // Ask Android again whether the app is there, so the row stops saying Get.
                     returns = MarketExternalApp.appsChanged()
                     MarketApkInstall.seen()
@@ -261,7 +314,13 @@ internal fun MarketScreen(
     fun tryAgain(id: String, name: String) {
         if (MarketWork.busy) return
         scope.launch {
-            val back = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.enable(id) }
+            // An add-on whose tweak was removed since: say so and offer the tweak, as Get does, not "couldn't".
+            val hosts = withContext(session.io) { session.missingHosts(id) }
+            if (hosts.isNotEmpty()) {
+                announce(name, InstallResult.NeedsHost(hosts))
+                return@launch
+            }
+            val back = withContext(session.io) { session.enable(id) }
             say(context.getString(if (back) R.string.text_1_s_is_back_on else R.string.folio_couldn_t_put_1_s_back_on, name))
             refresh()
         }
@@ -270,7 +329,7 @@ internal fun MarketScreen(
     fun remove(id: String, name: String) {
         if (MarketWork.busy) return
         scope.launch {
-            val removed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.remove(id) }
+            val removed = withContext(session.io) { session.remove(id) }
             if (removed) say(context.getString(R.string.text_1_s_removed, name))
             refresh()
         }
@@ -282,19 +341,26 @@ internal fun MarketScreen(
         if (openId != null) openId = null else openSourceUrl = null
     }
 
-    // A .foliopkg someone opened: read it once, then the same confirm sheet as anything else. Keyed on the file
-    // itself, so one shared while the Market is already open is read there and then.
-    var importing by remember { mutableStateOf<Pair<ByteArray, com.mccal.folio.market.FolioPackage>?>(null) }
-    LaunchedEffect(MarketImport.pending) {
-        val bytes = MarketImport.pending
-        MarketImport.pending = null
-        if (bytes != null) {
-            // Unzipped off the main thread, like every other read here: a big package froze Home before its sheet.
-            when (val read = withContext(session.io) { session.read(bytes) }) {
-                is com.mccal.folio.market.PackageInstaller.ReadResult.Ok -> importing = bytes to read.pkg
-                is com.mccal.folio.market.PackageInstaller.ReadResult.NeedsNewerFolio ->
-                    say(context.getString(R.string.that_package_needs_a_newer_folio))
-                is com.mccal.folio.market.PackageInstaller.ReadResult.Failed -> say(read.message)
+    // A .foliopkg someone opened, then the same confirm sheet as anything else. The file stays in MarketImport.pending
+    // until it's installed or cancelled, and the sheet is read from it, not held here: on the phone the Market sits in
+    // a bottom sheet whose composition can be built twice while it opens, and the first one used to take the file and
+    // lose it with its own state, so opening a package showed the Market and no sheet (found on the Fold8, 29 Sep 2026).
+    // Reading is side-effect free, so a Market built again simply reads it again.
+    val pendingImport = MarketImport.pending
+    val importing by produceState<Pair<ByteArray, com.mccal.folio.market.FolioPackage>?>(null, pendingImport) {
+        // produceState keeps its value across a new key, so the sheet for a file that's gone has to be put away here.
+        value = null
+        val bytes = pendingImport ?: return@produceState
+        // Unzipped off the main thread, like every other read here: a big package froze Home before its sheet.
+        when (val read = withContext(session.io) { session.read(bytes) }) {
+            is com.mccal.folio.market.PackageInstaller.ReadResult.Ok -> value = bytes to read.pkg
+            is com.mccal.folio.market.PackageInstaller.ReadResult.NeedsNewerFolio -> {
+                MarketImport.pending = null
+                say(context.getString(R.string.that_package_needs_a_newer_folio))
+            }
+            is com.mccal.folio.market.PackageInstaller.ReadResult.Failed -> {
+                MarketImport.pending = null
+                say(read.message)
             }
         }
     }
@@ -329,16 +395,14 @@ internal fun MarketScreen(
     // comes back to the front.
     CompositionLocalProvider(LocalAppsChanged provides returns) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val regular = fitsRegularHomeLayout(maxWidth.value, maxHeight.value, LocalConfiguration.current.classScale)
-        val split = regular && maxWidth.value >= 700f
-        // Where the tabs go, the same rule the Mockup Lab draws: a sidebar once the window is as wide as the Fold8
-        // inner screen (iPad), a rail on the long edge when the window is too short for a bar under it (the cover
-        // screen rotated), and the bar itself everywhere else.
-        val tabs = when {
-            !regular && maxWidth > maxHeight -> TabPlacement.RAIL
-            split && maxWidth.value >= 920f -> TabPlacement.SIDEBAR
-            else -> TabPlacement.BOTTOM
-        }
+        val classScale = LocalConfiguration.current.classScale
+        // The keyboard covers the Market; it doesn't make the window smaller (ADP-18a). Measured out here, so
+        // that typing a source's address, or searching the Settings tab, can't take the sidebar and the pane beside
+        // the list away for as long as the keyboard is up and hand them back when it goes (#117).
+        val keyboardDp = keyboardDpOverSheet()
+        val split = marketSplits(maxWidth.value, maxHeight.value, classScale, keyboardDp)
+        // Where the tabs go: a sidebar, a rail along the long edge, or the bar under the content. See [marketTabs].
+        val tabs = marketTabs(maxWidth.value, maxHeight.value, classScale, keyboardDp)
         // The list stays beside what it opened only when both still get a readable width; otherwise the package or
         // source pushes over the list with Back, as the App Store does on an iPad. Nothing open, the list has it all.
         val beside = split && marketListBeside(maxWidth.value, sidebar = tabs == TabPlacement.SIDEBAR)
@@ -400,6 +464,7 @@ internal fun MarketScreen(
                             onOpen = { openId = it },
                             onGet = { onExternalOrConfirm(it) },
                             onRemove = { id, name -> remove(id, name) },
+                            onTryAgain = { id, name -> tryAgain(id, name) },
                         )
                     }
                 }
@@ -433,6 +498,7 @@ internal fun MarketScreen(
                                         session = session,
                                         entry = entry,
                                         installed = installed[entry.id],
+                                        installedAll = installed,
                                         busy = entry.id == busyId,
                                         selected = false,
                                         onOpen = { openId = entry.id },
@@ -446,10 +512,15 @@ internal fun MarketScreen(
                 }
                 if (open != null) {
                     Box(Modifier.weight(1f).fillMaxHeight()) {
+                        val openHost = hostFor(open.entry.manifest)
                         MarketPackagePage(
                             entry = open.entry,
                             session = session,
+                            host = openHost,
+                            onGetHost = { openHost?.let { getHost(it.id, it.name) } },
                             installed = installed[open.id],
+                            installedAll = installed,
+                            appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
                             source = open.source,
                             showBack = !beside,
@@ -479,7 +550,7 @@ internal fun MarketScreen(
             // Android's recommended one, which is longer for someone using TalkBack or a longer timeout setting.
             val a11y = remember { context.getSystemService(android.view.accessibility.AccessibilityManager::class.java) }
             LaunchedEffect(message, undo, said) {
-                if (message != null && undo == null) {
+                if (message != null && undo == null && offer == null) {
                     val wait = a11y?.getRecommendedTimeoutMillis(
                         MESSAGE_MILLIS, android.view.accessibility.AccessibilityManager.FLAG_CONTENT_TEXT,
                     ) ?: MESSAGE_MILLIS
@@ -488,20 +559,21 @@ internal fun MarketScreen(
                 }
             }
             message?.let { text ->
+                val undoAction: (() -> Unit)? = undo?.let { result ->
+                    {
+                        val undone = result
+                        undo = null
+                        message = null
+                        scope.launch {
+                            withContext(session.io) { session.undo(undone) }
+                            refresh()
+                        }
+                    }
+                }
                 MarketMessage(
                     text = text,
-                    undo = undo?.let { result ->
-                        {
-                            val undone = result
-                            undo = null
-                            message = null
-                            scope.launch {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.undo(undone) }
-                                refresh()
-                            }
-                        }
-                    },
-                    onDismiss = { message = null },
+                    action = undoAction?.let { stringResource(R.string.undo) to it } ?: offer,
+                    onDismiss = { message = null; offer = null },
                 )
             }
             if (tabs == TabPlacement.BOTTOM) MarketTabs(tab) { tab = it; openId = null; openSourceUrl = null }
@@ -509,7 +581,7 @@ internal fun MarketScreen(
         if (tabs == TabPlacement.RAIL) MarketRail(tab) { tab = it; openId = null; openSourceUrl = null }
         }
         importing?.let { (bytes, pkg) ->
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { importing = null }) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { MarketImport.pending = null }) {
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                         .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
@@ -522,6 +594,7 @@ internal fun MarketScreen(
                     val signing by produceState<com.mccal.folio.market.AuthorTrust.Result?>(null, pkg.id, pkg.version) {
                         value = withContext(session.io) { session.authorOf(pkg) }
                     }
+                    val importHost = hostFor(pkg.manifest)
                     MarketInstallSheet(
                         manifest = pkg.manifest,
                         origin = InstallOrigin(
@@ -543,10 +616,12 @@ internal fun MarketScreen(
                             },
                         ),
                         onGet = {
-                            importing = null
+                            MarketImport.pending = null
                             MarketWork.install(pkg.manifest.id, pkg.manifest.name.english, context.getString(R.string.folio_couldn_t_finish_that_install)) { session.installFile(bytes) }
                         },
-                        onCancel = { importing = null },
+                        onCancel = { MarketImport.pending = null },
+                        host = importHost,
+                        onGetHost = { MarketImport.pending = null; importHost?.let { getHost(it.id, it.name) } },
                     )
                 }
             }
@@ -645,11 +720,14 @@ internal fun MarketScreen(
                             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(FolioColors.SecondaryBackground)
                             .clickable(enabled = false) {},
                     ) {
+                        val sheetHost = hostFor(entry.entry.manifest)
                         MarketInstallSheet(
                             entry = entry.entry,
                             builtIn = entry.source.kind == Source.Kind.BUILT_IN,
                             onGet = { apply(entry) },
                             onCancel = { confirming = null },
+                            host = sheetHost,
+                            onGetHost = { confirming = null; sheetHost?.let { getHost(it.id, it.name) } },
                         )
                     }
                 }
@@ -676,9 +754,6 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
         }
     }
 }
-
-/** Where the tabs sit: under the content, up the trailing edge, or as a labelled sidebar on a big screen. */
-private enum class TabPlacement { BOTTOM, RAIL, SIDEBAR }
 
 /**
  * The tabs on the long edge, for a window too short for a bar underneath (the Fold8 cover screen rotated). The
@@ -779,16 +854,26 @@ private fun MarketList(
     onOpen: (String) -> Unit,
     onGet: (MarketEntry) -> Unit,
     onRemove: (String, String) -> Unit,
+    onTryAgain: (String, String) -> Unit,
 ) {
-    // A package is an update when a source offers a higher version than the one installed.
+    // A package is an update when a source offers a higher version than the one installed. An app of its own is
+    // never in [installed] - Android has it, not Folio - so its version is asked of Android, and only for the
+    // listings that are apps.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appsChanged = LocalAppsChanged.current
+    val appUpdates = remember(entries, appsChanged) { entries.filter { MarketAppUpdate.offered(context, it) != null } }
     val updates = entries.filter { entry ->
         installed[entry.id]?.let { entry.entry.version > it.version } == true
-    }
+    } + appUpdates
     val shown = when (tab) {
         MarketTab.FEATURED, MarketTab.PACKAGES -> entries
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
+    // Installed from a .foliopkg someone opened, and listed by no source: without these the package was on the phone
+    // with no row to see or remove it by (found on the Fold8, 29 Sep 2026). No listing is made up for them.
+    val fromFiles = if (tab != MarketTab.INSTALLED) emptyList()
+        else installed.values.filter { pkg -> entries.none { it.id == pkg.id } }.sortedBy { it.name.lowercase() }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = FolioSpace.LARGE.dp), state = state, verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp)) {
         item {
             Column(Modifier.padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.TINY.dp)) {
@@ -835,6 +920,7 @@ private fun MarketList(
                             session = session,
                             entry = entry,
                             installed = installed[entry.id],
+                            installedAll = installed,
                             busy = entry.id == busyId,
                             update = true,
                             selected = entry.id == openId,
@@ -846,7 +932,7 @@ private fun MarketList(
                 }
             }
         }
-        if (shown.isEmpty() && tab == MarketTab.INSTALLED && updates.isEmpty()) {
+        if (shown.isEmpty() && tab == MarketTab.INSTALLED && updates.isEmpty() && fromFiles.isEmpty()) {
             item {
                 Text(
                     stringResource(R.string.nothing_yet_themes_and_tweaks_you_get),
@@ -869,6 +955,7 @@ private fun MarketList(
                                         session = session,
                                         entry = entry,
                                         installed = installed[entry.id],
+                                        installedAll = installed,
                                         busy = entry.id == busyId,
                                         selected = entry.id == openId,
                                         onOpen = { onOpen(entry.id) },
@@ -884,6 +971,33 @@ private fun MarketList(
                 }
             }
         }
+        if (fromFiles.isNotEmpty()) {
+            item(key = "label-files") { SheetGroupLabel(stringResource(R.string.opened_from_files)) }
+            item(key = "group-files") {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    for (pkg in fromFiles) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(pkg.name, color = Color.White, fontSize = 16.sp)
+                                if (!pkg.enabled) {
+                                    // A listed package is put back on its page; one from a file has no page, so its
+                                    // row says what happened and offers the same Try Again.
+                                    Text(stringResource(R.string.turned_off_after_a_crash), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
+                                    TryAgainButton(pkg.name, onClick = { onTryAgain(pkg.id, pkg.name) })
+                                } else {
+                                    Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
+                                        color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                                }
+                            }
+                            MarketActionButton(R.string.remove, pkg.name, onClick = { onRemove(pkg.id, pkg.name) })
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -892,6 +1006,8 @@ private fun MarketRow(
     session: MarketSession,
     entry: MarketEntry,
     installed: InstalledPackage?,
+    /** Everything installed, which a compatibility answer reads (a dependency, a conflict), so it is recomputed when it changes. */
+    installedAll: Map<String, InstalledPackage> = emptyMap(),
     busy: Boolean,
     selected: Boolean,
     onOpen: () -> Unit,
@@ -902,6 +1018,13 @@ private fun MarketRow(
     val name = entry.name
     val author = entry.entry.manifest?.author?.name?.english.orEmpty()
     val openLabel = stringResource(R.string.open_1_s, name)
+    val external = MarketExternalApp.isExternal(entry.entry.manifest)
+    val appUpdate = if (external) appUpdateFor(entry) else null
+    // Whether it can be had here, before the person taps. A package already on the phone has been through that, unless
+    // this row offers a newer version of it: that version can need more than the one installed did.
+    val compat = remember(entry, installed, installedAll, update, MarketWork.busyId) {
+        if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    }
     Row(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
@@ -917,6 +1040,7 @@ private fun MarketRow(
                 when {
                     installed?.enabled == false -> stringResource(R.string.turned_off_after_a_crash)
                     entry.revokedReason != null -> entry.revokedReason
+                    appUpdate != null -> "${appUpdate.versionName} → ${entry.entry.version}"
                     update -> "${installed?.version} → ${entry.entry.version}"
                     // A package from somewhere other than Folio says where it came from.
                     entry.source.kind != Source.Kind.BUILT_IN -> "$author · ${entry.source.label}"
@@ -928,6 +1052,7 @@ private fun MarketRow(
                 },
                 fontSize = FolioType.FOOTNOTE.sp,
             )
+            compatSummary(compat)?.let { Text(it.rowText(), color = it.rowColor(), fontSize = FolioType.FOOTNOTE.sp) }
             if (entry.unsigned) {
                 Text(stringResource(R.string.unsigned), color = FolioColors.Warning, fontSize = FolioType.GROUP_LABEL.sp)
             }
@@ -948,10 +1073,15 @@ private fun MarketRow(
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
+            // Something installed keeps its Remove even when its newer listing can't be read.
+            entry.entry.needs.isNotEmpty() && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
-            update -> MarketActionButton(R.string.update, name, onGet)
-            // An app of its own isn't installed by Folio, so what it offers is Get until Android has it, then Open.
-            MarketExternalApp.isExternal(entry.entry.manifest) ->
+            // The line under its name says why; there is nothing to install until that changes. What is already on the
+            // phone can still be removed.
+            compatBlocked(compat) != null -> if (installed != null) MarketActionButton(R.string.remove, name, onRemove)
+            update || appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
+            // An app of its own is Get until Android has it, then Open, and Update when its source lists a newer one.
+            external ->
                 MarketActionButton(
                     if (externalAppId(entry.entry.manifest) != null) R.string.open else R.string.get, name, onGet,
                 )
@@ -973,6 +1103,17 @@ private fun externalAppId(manifest: com.mccal.folio.market.PackageManifest?): St
     val context = androidx.compose.ui.platform.LocalContext.current
     val resumed = LocalAppsChanged.current
     return remember(manifest, resumed) { MarketExternalApp.installedAppId(context, manifest, resumed) }
+}
+
+/**
+ * The installed app this listing would update, or null. Asked again when Folio comes back to the front or has just
+ * installed something, like [externalAppId], because an update can land while the store is open.
+ */
+@Composable
+private fun appUpdateFor(entry: MarketEntry): MarketAppUpdate.OnPhone? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val resumed = LocalAppsChanged.current
+    return remember(entry, resumed) { MarketAppUpdate.offered(context, entry) }
 }
 
 /** Bumped when Folio comes back to the front, so "is it installed yet" is asked again after a trip to Play. */
@@ -1017,21 +1158,34 @@ private fun MarketOwnSettings(style: FeaturedStyle, onStyle: (FeaturedStyle) -> 
 
 /** The Get / Remove pill. Its name says which package it belongs to, so a screen reader hears more than "Get". */
 @Composable
-private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: String, onClick: () -> Unit) {
+private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: String, onClick: () -> Unit, enabled: Boolean = true) {
     // A semantics block isn't a composable scope, so the spoken name is read before the modifier chain.
     val described = stringResource(R.string.text_1_s_2_s, stringResource(label), name)
     Text(
         stringResource(label),
-        color = LocalAccent.current.ink,
+        color = LocalAccent.current.ink.copy(alpha = if (enabled) 1f else .4f),
         fontSize = FolioType.SUBHEAD.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
             .clip(RoundedCornerShape(FolioRadius.CARD.dp))
-            .clickable(onClick = onClick)
-            // 44 dp tall, so it's a comfortable target rather than just big enough to see.
-            .heightIn(min = 44.dp)
+            .clickable(enabled = enabled, onClick = onClick)
+            // Android's 48 dp target, with the word centered in it.
+            .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
             .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp)
             .semantics { contentDescription = described },
+    )
+}
+
+/** Puts back a package Safe Mode turned off. A word under what it's about, with its name for TalkBack as Remove has. */
+@Composable
+private fun TryAgainButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val described = stringResource(R.string.text_1_s_2_s, stringResource(R.string.try_again), name)
+    Text(
+        stringResource(R.string.try_again),
+        color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+        modifier = modifier.clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
+            .padding(vertical = 11.dp).semantics { contentDescription = described },
     )
 }
 
@@ -1039,7 +1193,14 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
 private fun MarketPackagePage(
     entry: IndexPackage,
     session: MarketSession,
+    /** The tweak this package is an add-on to, when it is one ([HostTweak]). */
+    host: HostTweak? = null,
+    onGetHost: () -> Unit = {},
     installed: InstalledPackage?,
+    /** Everything installed, which a compatibility answer reads (a dependency, a conflict), so it is recomputed when it changes. */
+    installedAll: Map<String, InstalledPackage> = emptyMap(),
+    /** The app on the phone this listing would update, when it is an app of its own and newer. */
+    appUpdate: MarketAppUpdate.OnPhone? = null,
     revoked: String?,
     source: Source,
     showBack: Boolean,
@@ -1073,6 +1234,11 @@ private fun MarketPackagePage(
     val backLabel = stringResource(R.string.back)
     val external = MarketExternalApp.isExternal(entry.manifest)
     val onPhone = if (external) externalAppId(entry.manifest) else null
+    // A newer listing of what is installed offers Update, and has to be checked like anything else being got.
+    val updateAvailable = installed != null && entry.version > installed.version
+    val compat = remember(entry, installed, installedAll, updateAvailable, MarketWork.busyId) {
+        if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1090,6 +1256,7 @@ private fun MarketPackagePage(
                 // The author said AI helped make it (the manifest's aiAssisted). A plain tag, not a warning: it's
                 // how the package was made, the way the author line says who made it.
                 if (entry.manifest?.aiAssisted != null) AiAssistedTag(Modifier.padding(top = FolioSpace.TINY.dp))
+                host?.let { WorksWithChip(it, Modifier.padding(top = FolioSpace.TINY.dp)) }
             }
         }
 
@@ -1105,13 +1272,7 @@ private fun MarketPackagePage(
                         )
                         // Safe Mode took its changes off Home. This puts them back, for a crash that wasn't its
                         // fault; Remove, below, is the other way out.
-                        Text(
-                            stringResource(R.string.try_again),
-                            color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(12.dp))
-                                .clickable(onClick = onTryAgain).heightIn(min = 44.dp)
-                                .padding(vertical = 11.dp).testTag("package-try-again"),
-                        )
+                        TryAgainButton(name, onTryAgain, Modifier.padding(top = FolioSpace.SMALL.dp).testTag("package-try-again"))
                     }
                 }
             }
@@ -1125,15 +1286,23 @@ private fun MarketPackagePage(
                     Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
+                appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
+                // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
+                entry.needs.isNotEmpty() && installed == null ->
+                    Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
+                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-                else -> MarketActionButton(R.string.get, name, onGet)
+                // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
+                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
             }
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source
             // that isn't installed yet was being called built in too, which is the one thing it certainly isn't.
             Text(
                 when {
+                    appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
+                    updateAvailable -> "${installed?.version} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
@@ -1141,6 +1310,8 @@ private fun MarketPackagePage(
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
+
+        if (host != null && !host.onPhone) NeedsHostNote(host, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
 
         entry.manifest?.description?.english?.let {
             Text(it, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
@@ -1182,6 +1353,12 @@ private fun MarketPackagePage(
         // What a package can't reach is worked out from the Folio permissions it asks for. An app of its own asks
         // Folio for nothing and gets everything Android grants it - a keyboard sees what you type - so the list
         // would be a promise Folio has no way to keep. It says what is true instead.
+        // Whether it works here comes before what it can't reach: the first thing to know about a package is whether
+        // it can be had at all.
+        if (compat.isNotEmpty()) {
+            SheetGroupLabel(stringResource(R.string.compatibility))
+            CompatibilityCard(compat, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
+        }
         if (external) {
             SheetGroupLabel(stringResource(R.string.an_app_of_its_own))
             SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
@@ -1211,7 +1388,7 @@ private fun MarketPackagePage(
                     sourceLine,
                     color = LocalAccent.current.ink, fontSize = 14.sp,
                     modifier = Modifier.clickable(onClickLabel = sourceLine, onClick = onShowSource)
-                        .heightIn(min = 44.dp).padding(vertical = FolioSpace.MEDIUM.dp).testTag("package-show-source"),
+                        .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(vertical = FolioSpace.MEDIUM.dp).testTag("package-show-source"),
                 )
                 // Provenance, or the honest absence of it. A package from a source with no provenance was being
                 // called "Built into Folio", which said the opposite of where it actually came from.
@@ -1285,17 +1462,22 @@ internal fun AiAssistedTag(modifier: Modifier = Modifier) {
 
 /** The "… is on · Undo" line, the same shape as Folio's other undo messages. */
 @Composable
-private fun MarketMessage(text: String, undo: (() -> Unit)?, onDismiss: () -> Unit) {
+private fun MarketMessage(text: String, action: Pair<String, () -> Unit>?, onDismiss: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
             .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface)
             .clickable(onClickLabel = stringResource(R.string.dismiss), onClick = onDismiss)
-            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
+            .padding(horizontal = FolioSpace.COMFY.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f))
-        if (undo != null) {
-            Text(stringResource(R.string.undo), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = undo))
+        Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f).padding(vertical = FolioSpace.MEDIUM.dp))
+        if (action != null) {
+            // Undo, or another step the message offers; a real button, so TalkBack and a keyboard can reach it. The
+            // whole banner dismisses it, so this needs a full 48 dp of its own: Compose only widens a small target
+            // where nothing else is under the finger, and here the banner always is.
+            Text(action.first, color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = action.second)
+                    .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(start = FolioSpace.SMALL.dp))
         }
     }
 }
@@ -1312,6 +1494,10 @@ private object NoLauncher : MarketLauncher {
     override fun removeTweak(feature: TweakFeature) = Unit
     override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
     override fun applyTheme(theme: FolioTheme) = Unit
+    override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String =
+        error("this launcher applies nothing")
+
+    override fun restoreArtBackground(artId: String, snapshot: String) = Unit
 }
 
 /**
@@ -1361,6 +1547,12 @@ private fun MarketImage(session: MarketSession, source: Source, path: String, mo
 private fun MarketScreenshot(session: MarketSession, source: Source, path: String, height: androidx.compose.ui.unit.Dp) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
+    // A picture that moves plays; one that doesn't is drawn as before. Only a source's own files, not ones fetched.
+    val moving = remember(path, url) { if (url != null) null else MarketImages.bundledAnimation(session.source::asset, path) }
+    if (moving != null) {
+        AnimatedScreenshot(moving, height)
+        return
+    }
     val bundled = remember(path, url) { if (url != null) null else MarketImages.bundled(session.source::asset, path) }
     val painter = when {
         bundled != null -> remember(bundled) { androidx.compose.ui.graphics.painter.BitmapPainter(bundled) }
@@ -1370,10 +1562,7 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
     val size = painter?.intrinsicSize
     // Until the picture arrives there is no shape to follow, so it holds a phone-shaped space rather than none.
     val ratio = if (size != null && size != androidx.compose.ui.geometry.Size.Unspecified && size.width > 0f && size.height > 0f) size.width / size.height else 150f / 260f
-    Box(
-        Modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).then(Modifier.width(height * ratio))
-            .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
-    ) {
+    ScreenshotFrame(height, ratio) {
         painter?.let {
             androidx.compose.foundation.Image(
                 painter = it,
@@ -1382,6 +1571,48 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+/** The frame every screenshot sits in, still or moving: a fixed height, the picture's own width, rounded. */
+@Composable
+private fun ScreenshotFrame(height: androidx.compose.ui.unit.Dp, ratio: Float, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+    Box(
+        modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).width(height * ratio)
+            .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
+        content = content,
+    )
+}
+
+/**
+ * A screenshot that moves, in the same frame as a still one. It loops while it is on screen, and with Reduce Motion on it
+ * stays on its first frame, which is a screenshot like any other.
+ */
+@Composable
+private fun AnimatedScreenshot(drawable: android.graphics.drawable.AnimatedImageDrawable, height: androidx.compose.ui.unit.Dp) {
+    val reduceMotion = LocalReduceMotion.current
+    val ratio = if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight else 150f / 260f
+    // A row of screenshots is not lazy, so a clip scrolled out of view is still composed: it only plays while it is on screen.
+    var onScreen by remember { mutableStateOf(true) }
+    val windowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
+    DisposableEffect(drawable, reduceMotion, onScreen) {
+        drawable.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
+        if (!reduceMotion && onScreen) drawable.start()
+        onDispose { drawable.stop() }
+    }
+    ScreenshotFrame(height, ratio, Modifier.onGloballyPositioned { coordinates ->
+        onScreen = coordinates.isAttached && coordinates.boundsInWindow().let { it.right > 0f && it.left < windowWidth }
+    }) {
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { context ->
+                android.widget.ImageView(context).apply {
+                    scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                    importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO // the page's text says what it is
+                    setImageDrawable(drawable)
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 

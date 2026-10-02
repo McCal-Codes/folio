@@ -28,8 +28,12 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-4a MUST** gate a feature that is not ready for everyone on the `beta` scope rather than holding it on a
   branch. A supporter sees it the day it merges; opening the gate is what shipping it means. Gate it at the entry
   point, not only in the UI, so hidden work costs nobody battery.
-- **REL-4b** A stable release is the same tree as the beta before it, with gates open. Nothing is ported,
-  cherry-picked or rebuilt between the two.
+- **REL-4b** A stable release ships the same app as the beta before it, with gates open: the same code and resources
+  under `app/` and `market/`, the same built-in Market source (`docs/sdk/source`, which the APK bundles) and the same
+  Gradle setup, with only the version, the roadmap and the notes moved
+  (REL-13). Nothing is ported, cherry-picked or rebuilt between the two. Docs, tools and tests may change in between,
+  since nobody installs them. (Until 2 Oct 2026 this said "the same tree", which held a fix to a tool or a note back a
+  whole release.)
 - **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort, only when a breaking migration is mid-flight on
   `main`. It ships and merges back the same day.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
@@ -59,7 +63,9 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-13 MUST** make the version bump its own commit, the last one before the tag, touching only the version, the
   changelog date, the roadmap's statuses for that release and its release doc.
 - **REL-14 MUST** give every release a section in `app/src/main/assets/roadmap.json` matching its version, so
-  `RoadmapTest` passes and Settings › Roadmap agrees with What's New.
+  `RoadmapTest` passes and Settings › Roadmap agrees with What's New. A stable's own section has no item still
+  Building or Planned: each is marked done, or moved to the release it now belongs to, in the bump
+  (`tools/check-release-rules.sh`, REL-14b). A section may carry an optional `subtitle`, its theme.
 - **REL-15 MUST NOT** publish a stable release carrying less than a beta of the same version. Either the stable
   includes everything its betas had, or the beta line is renumbered before the stable goes out.
 - **REL-16** A version number means one build. If what ships has to change after a beta, the number moves; the
@@ -125,7 +131,7 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   rule (#72, `THREE_PANES_DP`) is on `main` and in no tag, so 0.6.6, which is what the site documents and what people
   download, still draws three panes on a Fold's inner screen. The site's Fold screenshot is a real capture from
   22 Sep and is correct until 0.6.7 ships, at which point it has to be re-taken.
-- REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
+- REL-4b (on the stable's bump), REL-5 (AI credit in commits, the branch name and the description), REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
   the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
   useful without opening this file.
 - One feature is gated today: the Market, shut since 19 Sep 2026, due to open in 0.7.0.
@@ -153,6 +159,6 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   shut, so a finished feature cannot sit hidden and forgotten. The Market is the first entry, and
   `MarketAccess.isOpen` asks the gate now.
 - REL-10, REL-16 and a reproducibility check are enforced by `scripts/release-signed.sh`, which refuses to build when
-  the tag already exists, when the changelog has no section for the version, when a **stable** version's section
+  the version's tag already exists on a different commit (building the tagged commit itself is fine), when the changelog has no section for the version, when a **stable** version's section
   still says `Unreleased` (a beta may be built undated), or when the working tree is dirty. `FOLIO_SKIP_RELEASE_CHECKS=1`
   is the way out for a build that will never be published.

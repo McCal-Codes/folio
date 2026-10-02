@@ -11,6 +11,7 @@ import android.media.AudioManager
 import android.os.BatteryManager
 import android.os.Handler
 import android.os.Looper
+import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -28,6 +29,14 @@ internal val IslandEvent.kind: String get() = when (this) {
     is IslandEvent.Notice -> "NOTICE"
 }
 
+/**
+ * The charging island's moment, and the Charging trigger's: the cable going in. Plugged in counts as charging, as it does
+ * for the Side Bar and StandBy, so a phone held at a charge limit (Samsung's battery protection) shows it on plug-in,
+ * and the battery topping back up at the limit doesn't show it again. The first reading after Folio starts listening
+ * is the state it was already in, not news.
+ */
+internal fun startsCharging(wasCharging: Boolean?, status: Int, plugged: Int): Boolean = wasCharging == false && isCharging(status, plugged)
+
 /** Listens for brief system moments (charging, silent, focus, Bluetooth) and publishes them for the island. */
 class IslandEvents private constructor(private val context: Context) {
     private var registered = false
@@ -40,11 +49,11 @@ class IslandEvents private constructor(private val context: Context) {
             when (intent.action) {
                 Intent.ACTION_BATTERY_CHANGED -> {
                     val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                    val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
                     val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1).takeIf { it >= 0 }
                         ?.let { it * 100 / intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1) }
-                    if (lastCharging == false && charging) { emit(IslandEvent.Charging(level)); FolioActions.onTrigger(c, FolioTrigger.CHARGING) }
-                    lastCharging = charging
+                    if (startsCharging(lastCharging, status, plugged)) { emit(IslandEvent.Charging(level)); FolioActions.onTrigger(c, FolioTrigger.CHARGING) }
+                    lastCharging = isCharging(status, plugged)
                 }
                 AudioManager.RINGER_MODE_CHANGED_ACTION -> {
                     val mode = intent.getIntExtra(AudioManager.EXTRA_RINGER_MODE, AudioManager.RINGER_MODE_NORMAL)
@@ -115,10 +124,22 @@ class IslandEvents private constructor(private val context: Context) {
         const val SHOW_MS = 2_600L
         const val MESSAGE_SHOW_MS = 6_000L
         const val NOTICE_SHOW_MS = 3_500L
-        fun showMs(event: IslandEvent) = when (event) {
-            is IslandEvent.Message -> MESSAGE_SHOW_MS
-            is IslandEvent.Notice -> NOTICE_SHOW_MS
-            else -> SHOW_MS
+
+        /**
+         * How long [event] stays up: the times above, or longer for someone who has asked Android for more time to
+         * read and act (A11Y-19), as the Market's banners do. A message can be opened or answered, so it counts as
+         * having controls too.
+         */
+        fun showMs(context: Context, event: IslandEvent): Long {
+            val shown = when (event) {
+                is IslandEvent.Message -> MESSAGE_SHOW_MS
+                is IslandEvent.Notice -> NOTICE_SHOW_MS
+                else -> SHOW_MS
+            }
+            val content = AccessibilityManager.FLAG_CONTENT_TEXT or AccessibilityManager.FLAG_CONTENT_ICONS or
+                (if (event is IslandEvent.Message) AccessibilityManager.FLAG_CONTENT_CONTROLS else 0)
+            return context.getSystemService(AccessibilityManager::class.java)
+                ?.getRecommendedTimeoutMillis(shown.toInt(), content)?.toLong() ?: shown
         }
 
         /** Home islands on screen that can show a notice card (not the upright one beside a side camera). */

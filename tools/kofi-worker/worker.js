@@ -13,6 +13,7 @@
  */
 import { admin } from './admin.js'
 import { betaAsset, betaReleases, sameSecret } from './beta.js'
+import { supporterEmail } from './email.js'
 
 // Ko-fi's "Send test" buttons post a made-up payment with this transaction id. It proves the webhook reaches the
 // worker, so it's written down for the health check, but it never takes a real code out of a pool.
@@ -187,30 +188,17 @@ async function claimCode(env, pool, data) {
  */
 async function email(env, data, code, pool) {
   if (!env.RESEND_KEY || !data.email) return false
+  // The words and the look live in email.js: plain text for apps that show no HTML, and the HTML that most show.
+  const { subject, text, html } = supporterEmail({ name: data.from_name, code, pool })
   const body = {
     from: env.MAIL_FROM,
     to: data.email,
     // Where a reply lands. The From address is on the domain Resend verified, which nobody reads mail at; this is a
     // mailbox McCal actually opens, so a supporter who answers isn't talking into the void.
     ...(env.REPLY_TO ? { reply_to: env.REPLY_TO } : {}),
-    subject: 'Your Folio supporter code',
-    text: [
-      `Thank you${data.from_name ? `, ${data.from_name}` : ''}.`,
-      '',
-      'Here is your Folio supporter code:',
-      '',
-      `    ${code}`,
-      '',
-      'In Folio: Settings › Supporter › Redeem a Code, and paste it in. It is checked on your phone, so it works',
-      'offline and tells nobody that you supported.',
-      '',
-      pool === 'beta' || pool === 'all'
-        ? 'It turns on Beta Features, which you can switch off any time: early features come with more bugs.'
-        : '',
-      '',
-      'Folio stays free and open source. Thank you for keeping it going.',
-      '— McCal',
-    ].filter((line) => line !== undefined).join('\n'),
+    subject,
+    text,
+    html,
   }
   const sent = await fetch('https://api.resend.com/emails', {
     method: 'POST',

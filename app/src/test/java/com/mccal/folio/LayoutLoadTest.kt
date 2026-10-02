@@ -72,7 +72,8 @@ class LayoutLoadTest {
         val state = decodeLauncherState("{}", legacyRaw = null)
         assertTrue(state.homeSlots.all { it == null })
         assertNull(state.error)
-        assertEquals(emptySet<String>(), state.installedTweaks)
+        // Only Duet: the fold animation was built in and on before it became a tweak.
+        assertEquals(setOf(DUET_ID), state.installedTweaks)
     }
 }
 

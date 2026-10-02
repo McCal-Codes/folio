@@ -1,14 +1,23 @@
 package com.mccal.folio
 
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -30,9 +39,17 @@ import org.robolectric.annotation.Config
 class MarketScreenRenderTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Installing reads and writes files, so it happens off the main thread: the banner arrives a moment later. */
-    private fun awaitText(text: String) = compose.waitUntil(5_000) {
-        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    /**
+     * Installing reads and writes files, so it happens off the main thread: the banner arrives a moment later. If it
+     * never does, the failure says what the screen showed instead, so a CI run explains itself.
+     */
+    private fun awaitText(text: String) = try {
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+        val shown = compose.onAllNodesWithText("", substring = true).fetchSemanticsNodes().flatMap { node ->
+            node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text).orEmpty().map { it.text }
+        }
+        throw AssertionError("\"$text\" never showed (Market work: ${MarketWork.busyId ?: "idle"}); the screen showed $shown", timeout)
     }
 
     private fun session(): MarketSession {
@@ -46,6 +63,175 @@ class MarketScreenRenderTest {
         override fun removeTweak(feature: TweakFeature) { state = state.copy(installedTweaks = state.installedTweaks - feature.id) }
         override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
         override fun applyTheme(theme: FolioTheme) = Unit
+        override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String): String = ""
+        override fun restoreArtBackground(artId: String, snapshot: String) = Unit
+    }
+
+    /** A `.foliopkg` of one of Folio's own packages, zipped the way the build does it. */
+    private fun packageFile(name: String): ByteArray {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val dir = java.io.File(root, "docs/sdk/source/packages/$name")
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            dir.walkTopDown().filter { it.isFile }.sortedBy { it.path }.forEach { file ->
+                zip.putNextEntry(java.util.zip.ZipEntry(file.relativeTo(dir).invariantSeparatorsPath))
+                zip.write(file.readBytes())
+                zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    // Found on the Fold8, 29 Sep 2026: opening a .foliopkg opened the Market and nothing else. The effect that reads
+    // the file was keyed on MarketImport.pending and cleared it before its read suspended, so the next frame cancelled
+    // the read. The other tests read on Dispatchers.Unconfined, which never suspends, so this one uses a real thread.
+    @Test fun `a package file opened from another app shows its confirm sheet`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val session = MarketSession(context, NoopLauncher(), kotlinx.coroutines.Dispatchers.IO)
+        session.prefs.introductionSeen = true
+        try {
+            MarketImport.pending = packageFile("cabinet")
+            // On the phone the Market sits in a bottom sheet with its own window, and a composition there can be
+            // thrown away and built again while the sheet opens. The sheet has to survive that.
+            val build = androidx.compose.runtime.mutableIntStateOf(0)
+            compose.setContent { androidx.compose.runtime.key(build.intValue) { MarketScreen(session, emptySet(), onClose = {}) } }
+            compose.runOnIdle { build.intValue++ }
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+            // The file waits until the user decides; Cancel is deciding.
+            compose.onNodeWithText("Cancel").performScrollTo().performClick()
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isEmpty()
+            }
+            assertEquals(null, MarketImport.pending)
+        } finally {
+            MarketImport.pending = null
+        }
+    }
+
+    /** The SDK's Tilt example as a .foliopkg. The example says 0.6.9; this build may be older, and the version check
+     *  isn't what these tests are about. */
+    private fun tiltPackage(): ByteArray {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val example = java.io.File(root, "docs/sdk/examples/page-effect-tilt")
+        val manifest = org.json.JSONObject(java.io.File(example, "manifest.json").readText()).put("minFolio", "0.6.6")
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            for ((name, bytes) in listOf("manifest.json" to manifest.toString().toByteArray(), "effect.json" to java.io.File(example, "effect.json").readBytes())) {
+                zip.putNextEntry(java.util.zip.ZipEntry(name)); zip.write(bytes); zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    // When Flipbook's listing is installed but its tweak was removed in Settings, the listing offers only Remove, so
+    // the message's action adds the tweak back itself (found in review of #191).
+    @Test fun `the Market can add a tweak back without its listing`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val launcher = NoopLauncher()
+        val session = MarketSession(context, launcher, kotlinx.coroutines.Dispatchers.Unconfined)
+        assertEquals(true, session.addTweak("pageEffects"))
+        assertEquals(true, "pageEffects" in launcher.state.installedTweaks)
+        assertEquals(false, session.addTweak("no such tweak"))
+    }
+
+    // Like a script for jailbreak Cylinder, a page effect is an add-on to Flipbook. Without Flipbook the sheet says so
+    // before Get rather than after it fails: Get is off, and the note's action opens Flipbook's own page to get it.
+    @Test fun `an effect without Flipbook says so before Get, and offers Flipbook`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        try {
+            MarketImport.pending = tiltPackage()
+            compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Works with Flipbook").assertExists()
+            compose.onNodeWithText("Needs Flipbook. Get Flipbook first, then Tilt adds an effect to it.").assertExists()
+            compose.onNodeWithTag("market-install-confirm").assertIsNotEnabled()
+            compose.onNodeWithText("Get Flipbook").performScrollTo().performClick()
+            // The sheet makes way for Flipbook's own page, and nothing was installed.
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("package-show-source").fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(0, compose.onAllNodesWithTag("market-install-sheet").fetchSemanticsNodes().size)
+            assertEquals(true, session.installed().none { it.id == "com.mccal.folio.effect.tilt" })
+        } finally {
+            MarketImport.pending = null
+        }
+    }
+
+    @Test fun `with Flipbook on, an effect's sheet says what it works with, and Get goes ahead`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val session = MarketSession(context, NoopLauncher(), kotlinx.coroutines.Dispatchers.Unconfined)
+        session.prefs.introductionSeen = true
+        session.installed().forEach { session.remove(it.id) }
+        assertEquals(true, session.addTweak("pageEffects"))
+        try {
+            MarketImport.pending = tiltPackage()
+            compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("From a file you opened", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Works with Flipbook").assertExists()
+            assertEquals(0, compose.onAllNodesWithTag("needs-host").fetchSemanticsNodes().size)
+            compose.onNodeWithTag("market-install-confirm").assertIsEnabled().performScrollTo().performClick()
+            awaitText("Tilt is on")
+        } finally {
+            MarketImport.pending = null
+        }
+    }
+
+    @Test fun `an effect's page says it works with Flipbook, and without Flipbook Get waits for it`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://mccal-codes.github.io/folio-tweaks/", "Folio Tweaks", effectIndex())
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Tilt").performScrollTo().performClick()
+        compose.onNodeWithText("Works with Flipbook").assertExists()
+        compose.onNodeWithContentDescription("Get Tilt").assertIsNotEnabled()
+        compose.onNodeWithTag("needs-host").assertExists()
+    }
+
+    // Found on the Fold8, 29 Sep 2026: a package installed from a file is listed by no source, and the Installed tab
+    // only showed listings, so it was on the phone with no row to remove it by.
+    @Test fun `a package installed from a file is under Installed and can be removed there`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        // Tilt is a Flipbook add-on, so Flipbook has to be on the phone for it to install.
+        val session = MarketSession(context, NoopLauncher().apply { state = LauncherState(installedTweaks = setOf("pageEffects")) },
+            kotlinx.coroutines.Dispatchers.Unconfined)
+        session.prefs.introductionSeen = true
+        val result = kotlinx.coroutines.runBlocking { session.installFile(tiltPackage()) }
+        assertEquals(true, result is com.mccal.folio.market.InstallResult.Installed)
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-installed").performClick()
+        // A lazy list only builds what's on screen, so the list is scrolled to the section rather than the node.
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("Opened from Files", ignoreCase = true))
+        // Group labels are drawn in capitals, as iOS does.
+        compose.onNodeWithText("Opened from Files", ignoreCase = true).assertIsDisplayed()
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+            .performScrollToNode(androidx.compose.ui.test.hasContentDescription("Remove Tilt"))
+        compose.onNodeWithContentDescription("Remove Tilt").performClick()
+        compose.waitUntil(5_000) { session.installed().none { it.id == "com.mccal.folio.effect.tilt" } }
+        awaitText("Tilt removed")
+    }
+
+    // A listed package is put back on its page, but one from a file has no page: its row only offered Remove, with
+    // nothing saying why it had stopped working.
+    @Test fun `a package from a file that Safe Mode turned off says so in its row, and Try Again puts it back`() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val session = MarketSession(context, NoopLauncher().apply { state = LauncherState(installedTweaks = setOf("pageEffects")) },
+            kotlinx.coroutines.Dispatchers.Unconfined)
+        session.prefs.introductionSeen = true
+        val tilt = "com.mccal.folio.effect.tilt"
+        assertEquals(true, kotlinx.coroutines.runBlocking { session.installFile(tiltPackage()) } is com.mccal.folio.market.InstallResult.Installed)
+        session.disable(tilt, "Folio stopped twice just after this package changed.")
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-installed").performClick()
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+            .performScrollToNode(androidx.compose.ui.test.hasContentDescription("Try Again Tilt"))
+        compose.onNodeWithText("Turned off after a crash").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Remove Tilt").assertExists()
+        compose.onNodeWithContentDescription("Try Again Tilt").assertHeightIsAtLeast(48.dp).performClick()
+        awaitText("Tilt is back on")
+        assertEquals(true, session.installed().first { it.id == tilt }.enabled)
     }
 
     @Test fun `the introduction comes first, then Featured lists Folio's packages`() {
@@ -63,10 +249,11 @@ class MarketScreenRenderTest {
         session.installed().forEach { session.remove(it.id) }
         compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
         compose.onNodeWithTag("market-tab-packages").performClick()
-        compose.onNodeWithContentDescription("Get Cabinet").performClick()
+        // Android's 48 dp targets: the pill, and the banner's Undo, which sits inside a banner that dismisses.
+        compose.onNodeWithContentDescription("Get Cabinet").assertHeightIsAtLeast(48.dp).performClick()
         compose.onNodeWithTag("market-install-confirm").performScrollTo().performClick()
         awaitText("Cabinet is on")
-        compose.onNodeWithText("Undo").assertExists()
+        compose.onNodeWithText("Undo").assertHeightIsAtLeast(48.dp)
     }
 
     @Test fun `a message with Undo stays, and a plain one goes away by itself`() {
@@ -199,6 +386,37 @@ class MarketScreenRenderTest {
         compose.onNodeWithText("Example · Maya").assertExists()
     }
 
+    @Test fun `a package that needs a later Folio says so on its row, with no Get, and its page says why`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://maya.example/folio/", "Maya", mayaIndex(minFolio = "9.0.0"))
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Sunset Icons").assertExists()
+        compose.onNodeWithText("Needs Folio 9.0.0").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        compose.onNodeWithText("Sunset Icons").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("COMPATIBILITY").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertIsNotEnabled()
+    }
+
+    @Test fun `a listing this Folio cannot read says it needs a newer Folio on its row and its page, and cannot be got`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://maya.example/folio/", "Maya", mayaIndex(kind = "settingsSchema"))
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithText("Sunset Icons").assertExists()
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        compose.onNodeWithText("Sunset Icons").performClick()
+        compose.waitForIdle()
+        // The page offers no Get at all, rather than one that opens a blank sheet.
+        compose.onNodeWithContentDescription("Get Sunset Icons").assertDoesNotExist()
+        // The row and the page both say why (the list sits beside the page at this width).
+        compose.onAllNodesWithText("Needs a newer Folio").assertCountEquals(2)
+    }
+
     @Test fun `a source is a place with its packages in it`() {
         val session = session()
         session.prefs.introductionSeen = true
@@ -227,6 +445,53 @@ class MarketScreenRenderTest {
         compose.onNodeWithText("https://maya.example/folio/").assertExists()
     }
 
+    @Test fun `an app with a newer listing than the copy on the phone says Update, with both versions`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://mccal-codes.github.io/folio-keyd/", "Keyd", keydIndex())
+        keydOnThePhone("0.2.0")
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithContentDescription("Update Keyd").assertExists()
+        compose.onNodeWithText("0.2.0 → 0.3.0").assertExists()
+        // And it is listed under Updates in Installed, though Android has it rather than Folio.
+        compose.onNodeWithTag("market-tab-installed").performClick()
+        compose.onNodeWithContentDescription("Update Keyd").assertExists()
+    }
+
+    @Test fun `an app that is up to date says Open`() {
+        val session = session()
+        session.prefs.introductionSeen = true
+        addCachedSource("https://mccal-codes.github.io/folio-keyd/", "Keyd", keydIndex())
+        keydOnThePhone("0.3.0")
+        compose.setContent { MarketScreen(session, emptySet(), onClose = {}) }
+        compose.onNodeWithTag("market-tab-packages").performClick()
+        compose.onNodeWithContentDescription("Open Keyd").assertExists()
+        assertEquals(0, compose.onAllNodesWithText("0.2.0 → 0.3.0").fetchSemanticsNodes().size)
+    }
+
+    private fun keydOnThePhone(versionName: String) {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        org.robolectric.Shadows.shadowOf(context.packageManager).installPackage(
+            android.content.pm.PackageInfo().apply {
+                packageName = "com.mccal.keyd"
+                this.versionName = versionName
+                applicationInfo = android.content.pm.ApplicationInfo().apply { packageName = "com.mccal.keyd" }
+            },
+        )
+    }
+
+    /** Keyd's own source as it is published: one app, 0.3.0, installed from Obtainium or by Folio. */
+    private fun keydIndex(): String {
+        val manifest = """
+            {"format":1,"id":"com.mccal.keyd","name":"Keyd","version":"0.3.0","author":{"name":"McCal"},
+             "minFolio":"0.6.6","section":"tweaks","kind":["externalApp"],"permissions":[],
+             "via":[{"store":"obtainium","repoUrl":"https://github.com/McCal-Codes/folio-keyd","id":"com.mccal.keyd"}]}
+        """.trimIndent()
+        return """{"format":1,"name":"Keyd","packages":[{"id":"com.mccal.keyd","version":"0.3.0",
+            "url":"https://example.test/Keyd-0.3.0.apk","sha256":"${"a".repeat(64)}","size":1024,"manifest":$manifest}]}"""
+    }
+
     /**
      * Writes what a successful refresh leaves behind — the source, its list and the entry that pinned it — using the
      * same store the client reads, so the screen is showing a real cached source rather than a stub.
@@ -246,11 +511,21 @@ class MarketScreenRenderTest {
         )
     }
 
-    /** A one-package index from another source, as its cached list. */
-    private fun mayaIndex(): String {
+    /** A page effect listed by a source (an add-on to Flipbook), as its cached list. */
+    private fun effectIndex(): String {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        // Lowered like tiltPackage's, so this test build (a beta of 0.6.8) doesn't count as too old for it.
+        val manifest = org.json.JSONObject(java.io.File(root, "docs/sdk/examples/page-effect-tilt/manifest.json").readText())
+            .put("minFolio", "0.6.6").apply { remove("\$schema") }
+        return """{"format":1,"name":"Folio Tweaks","packages":[{"id":"com.mccal.folio.effect.tilt","version":"1.0.0",
+            "url":"https://example.test/tilt.foliopkg","sha256":"${"b".repeat(64)}","size":2048,"manifest":$manifest}]}"""
+    }
+
+    /** A one-package index from another source, as its cached list. Its minFolio is low enough for this build to take, now that a row says when it isn't. */
+    private fun mayaIndex(minFolio: String = "0.6.6", kind: String = "theme"): String {
         val manifest = """
             {"format":1,"id":"dev.maya.sunset-icons","name":"Sunset Icons","version":"1.2.0",
-             "author":{"name":"Example"},"minFolio":"0.7.0","section":"themes","kind":["theme"],
+             "author":{"name":"Example"},"minFolio":"$minFolio","section":"themes","kind":["$kind"],
              "permissions":["home.appearance"]}
         """.trimIndent()
         return """{"format":1,"name":"Maya","packages":[{"id":"dev.maya.sunset-icons","version":"1.2.0",

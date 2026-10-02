@@ -4,6 +4,12 @@
   "tint": "#5E5CE6",
   "blocks": [
     {
+      "type": "screenshots",
+      "images": [
+        "assets/screenshots/harborline-dock.webp"
+      ]
+    },
+    {
       "type": "markdown",
       "text": "Slide a finger along the dock and the icon under it grows, with its neighbours rising behind it and settling again as you move, so the dock swells around wherever you are.\n\nThe icon under your finger reaches about a third again its size, and the ones beside it rise a little, less the further away they are. Icons grow toward the screen rather than toward the edge they sit on, so none of them is ever clipped, and a small tick marks the moment you cross from one to the next. The dock along the bottom and the side dock the inner screen uses both do it.\n\nNothing about opening an app changes: a finger passing over the dock opens nothing, and lifting it on an icon opens that app as before.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by Harbor by Evan Swick. Re-created from scratch for Folio; no tweak code is included."
     },

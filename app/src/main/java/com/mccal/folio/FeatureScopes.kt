@@ -25,27 +25,68 @@ internal object FeatureScopes {
 
 internal fun screenFor(wide: Boolean) = if (wide) FolioScreen.INNER else FolioScreen.COVER
 
+/** "Barrel by Aaron Ash, Cylinder by Reed Weichler" without the authors: the short credit on a Tweak Library row. */
+internal val TweakFeature.inspiredNames: String get() = inspiredBy.replace(AUTHOR, "")
+private val AUTHOR = Regex(" by [^,]+")
+
 /** A tweak-inspired feature: its page in Settings › Tweaks, with a main switch and per-screen overrides. */
 internal data class TweakFeature(
-    val id: String, val name: String, val inspiredBy: String, val description: String,
+    val id: String, val name: String, val inspiredBy: String,
+    /** A resource, not a string: this is the one line of a tweak a person reads, so it is translated. The name and
+     *  what it is after are proper nouns and stay as they are. */
+    @androidx.annotation.StringRes val description: Int,
     val icon: androidx.compose.ui.graphics.vector.ImageVector, val color: Long,
     val get: (LauncherState) -> Boolean, val set: (LauncherModel, Boolean) -> Unit, val default: Boolean,
+    /** The gate that has to be open before this is offered, or null for a tweak everyone has. */
+    val gate: FeatureGate? = null,
+    /** More words Settings search finds it by, for a tweak people know by what it does ("Page Effects"). */
+    @androidx.annotation.StringRes val keywords: Int? = null,
+    /** The credit line when this tweak includes someone's code, in place of "re-created from scratch". */
+    @androidx.annotation.StringRes val credit: Int? = null,
 )
 
+/**
+ * The tweaks to offer on this build.
+ *
+ * [TweakFeatures] is the whole table, and stays that way: a tweak a package already turned on has to keep resolving
+ * by id even if this build would not offer it, or removing that package could not find what to put back. This is the
+ * list a person is shown, which is the table minus anything whose gate is still shut. Without it a gated tweak would
+ * sit in the Tweak Library with a switch that does nothing, because the gate is checked again where the effect is
+ * actually drawn.
+ */
+internal fun visibleTweaks(context: android.content.Context): List<TweakFeature> =
+    TweakFeatures.filter { it.gate == null || it.gate.isOpen(context) }
+
 internal val TweakFeatures = listOf(
-    TweakFeature("appPanels", "Cabinet", "Velox by Phillip Tennen",
-        "Swipe up on an app icon for a small panel with its shortcuts, latest notifications and music controls.",
+    TweakFeature("appPanels", "Cabinet", "Velox by Phillip Tennen", // english-only
+        R.string.tweak_cabinet_detail,
         androidx.compose.material.icons.Icons.Rounded.Widgets, FolioColors.Value.Blue, { it.appPanels }, { m, v -> m.setAppPanels(v) }, true),
-    TweakFeature("dockMagnify", "Harborline", "Harbor by Evan Swick",
-        "Dock icons swell under your finger as you slide along the dock.",
+    TweakFeature("dockMagnify", "Harborline", "Harbor by Evan Swick", // english-only
+        R.string.tweak_harborline_detail,
         androidx.compose.material.icons.Icons.Rounded.Add, FolioColors.Value.Indigo, { it.dockMagnify }, { m, v -> m.setDockMagnify(v) }, false),
-    TweakFeature("notificationAppRow", "Roll Call", "Axon by Nepeta",
-        "A row of app icons above Notification Center. Tap one to show only that app.",
+    TweakFeature("notificationAppRow", "Roll Call", "Axon by Nepeta", // english-only
+        R.string.tweak_roll_call_detail,
         androidx.compose.material.icons.Icons.Rounded.Notifications, FolioColors.Value.RedLight, { it.notificationAppRow }, { m, v -> m.setNotificationAppRow(v) }, true),
-    TweakFeature("tintNotifications", "Palette", "Velvet by NoisyFlake & HiMyNameisUbik",
-        "Notification cards take on a soft version of their app’s color.",
+    TweakFeature("tintNotifications", "Palette", "Velvet by NoisyFlake & HiMyNameisUbik", // english-only
+        R.string.tweak_palette_detail,
         androidx.compose.material.icons.Icons.Rounded.Star, FolioColors.Value.Orange, { it.tintNotifications }, { m, v -> m.setTintNotifications(v) }, false),
-    TweakFeature("tintMedia", "Colored Albums", "ColorFlow by David Goldman",
-        "The music card and the island’s sound bars take on the album art’s color.",
-        androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true),
+    TweakFeature("tintMedia", "Afterglow", "ColorFlow by David Goldman", // english-only
+        R.string.tweak_colored_albums_detail,
+        androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true, keywords = R.string.settings_keywords_afterglow),
+    // The switch is on or off, and which effect it is lives on Flipbook's own page, beside the effects packages add
+    // (Flipbook is their host, as Cylinder is for its scripts). Turning it on brings back the last one chosen; the
+    // cube the first time, since that is the one Barrel was known for.
+    TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash, Cylinder by Reed Weichler", // english-only
+        R.string.tweak_flipbook_detail,
+        androidx.compose.material.icons.Icons.Rounded.AutoStories, FolioColors.Value.Teal,
+        { it.pageEffect != PageEffect.NONE },
+        { m, v -> m.setPageEffectOn(v) }, false, FeatureGate.PAGE_EFFECTS, keywords = R.string.page_effects),
+    // Folio's fold animation. It was built in, so it defaults on and a save from before it counts as installed.
+    TweakFeature(DUET_ID, "Duet", "Duo Fold Live by joeconsorti", // english-only
+        R.string.tweak_duet_detail,
+        androidx.compose.material.icons.Icons.Rounded.MenuBook, FolioColors.Value.Indigo,
+        { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit,
+        keywords = R.string.settings_keywords_fold_animation),
 )
+
+internal const val DUET_ID = "duet"

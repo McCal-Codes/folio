@@ -8,12 +8,15 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.mccal.folio.market.InstallResult
+import com.mccal.folio.market.PackageInstaller
 
 /**
  * What happened before a problem, kept only on the phone (shared only if you choose to): Android's own record of why
@@ -37,11 +40,38 @@ internal object Diagnostics {
 
     /** Adds one line to the trail (short, no personal content). */
     @Synchronized fun event(what: String) {
+        lastCaught = null // any other line ends a run of repeats
         trail.addLast("${LocalDateTime.now().format(time)}  $what")
         while (trail.size > TRAIL_SIZE) trail.removeFirst()
     }
 
     @Synchronized fun trailText(): String = trail.joinToString("\n")
+
+    private var lastCaught: String? = null
+    private var caughtRepeats = 0
+
+    /**
+     * Notes a failure Folio carried on from, in the trail: where it happened and the exception's type. Never its
+     * message, which can hold a file path, a package or a name. The same failure again straight after is counted on
+     * its line instead of pushing the rest of the trail out.
+     *
+     * Cancellation is rethrown, not noted: it's a coroutine being stopped on purpose, and swallowing it (as a bare
+     * `runCatching` does) leaves work running that was meant to stop. A caller whose scope is never cancelled passes
+     * [rethrowCancellation] false: there a cancellation can only come from inside the work, and the user should
+     * still be told it failed.
+     */
+    @Synchronized fun caught(where: String, error: Throwable, rethrowCancellation: Boolean = true) {
+        if (error is CancellationException && rethrowCancellation) throw error
+        val what = "$where failed: ${error.javaClass.simpleName}"
+        if (what == lastCaught && trail.isNotEmpty()) {
+            caughtRepeats++
+            trail.removeLast()
+            trail.addLast("${LocalDateTime.now().format(time)}  $what (×${caughtRepeats + 1})")
+        } else {
+            event(what)
+            lastCaught = what; caughtRepeats = 0
+        }
+    }
 
     /** Saves the trail and a heartbeat, so the next start can tell what came before a freeze or restart. */
     fun checkpoint(context: Context, visible: Boolean) {
@@ -142,10 +172,33 @@ internal object Diagnostics {
             "animations ${scale}×",
             "left page ${state?.optString("leftPage", "TODAY") ?: "?"}",
             "wallpaper ${if (state?.optBoolean("systemWallpaper", false) == true) "Android" else "Folio"}",
-            "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}",
+            "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}" +
+                " (Duet ${state?.optJSONObject("duet")?.optString("style")?.ifBlank { null } ?: "duo"}," +
+                " plays ${state?.optJSONObject("duet")?.optString("direction")?.ifBlank { null } ?: "both"})",
             "page effect ${state?.optString("pageEffect")?.ifBlank { PageEffect.NONE.name } ?: "?"}",
             "safe mode ${if (SafeMode.active) "on" else "off"}",
         ).joinToString(", ")
+    }
+
+    /**
+     * Every sensor that could be the hinge, and what Folio learned about it: some foldables report only a few fixed
+     * positions (the Fold8's public sensor gives 0, 90 and 180), which decides how Duet can follow the fold. The idea
+     * of a copyable sensor report is from marcoazeem/duo-open (MIT); this is Folio's own listing, no code from it.
+     */
+    fun hingeReport(context: Context): String = buildString {
+        appendLine("Hinge sensors:")
+        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)?.getSensorList(android.hardware.Sensor.TYPE_ALL).orEmpty()
+        val hinge = Regex("hinge|angle|fold|posture|flip", RegexOption.IGNORE_CASE)
+        val found = sensors.filter { it.type == android.hardware.Sensor.TYPE_HINGE_ANGLE || hinge.containsMatchIn(it.name) || hinge.containsMatchIn(it.stringType) }
+        if (found.isEmpty()) appendLine("  (none)")
+        found.forEach { s ->
+            appendLine("  ${s.name} · ${s.vendor} · ${s.stringType} (type ${s.type})" +
+                " · range ${s.maximumRange} · resolution ${s.resolution} · min delay ${s.minDelay} µs" +
+                " · ${if (s.isWakeUpSensor) "wake-up" else "non-wake-up"}" +
+                (if (s.type == android.hardware.Sensor.TYPE_HINGE_ANGLE && s.resolution >= 45f) " · steps only" else ""))
+        }
+        val learned = context.getSharedPreferences("folio", 0).getString("fold_hinge_capability", null)
+        append("Folio has seen the hinge as: ${learned?.lowercase() ?: "not moved yet"}")
     }
 
     fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"
@@ -157,6 +210,8 @@ internal object Diagnostics {
     fun bundle(context: Context): String = buildString {
         appendLine("Folio diagnostics (${format(System.currentTimeMillis())})")
         appendLine(CrashLog.environment(context))
+        appendLine()
+        appendLine(hingeReport(context))
         appendLine()
         appendLine("Recent events:")
         appendLine(trailText().ifBlank { "(none)" })
@@ -249,4 +304,78 @@ internal object Diagnostics {
     fun markAsked(context: Context, report: File) {
         context.getSharedPreferences(PREFS, 0).edit().putString(ASKED, report.name).apply()
     }
+
+    // The Market and the background, in the trail. The words are here, in the one file McCal reads rather than people,
+    // so callers hand over facts and a bug report reads the same in every language. Ids, versions and sizes only:
+    // never a picture, a path, or what a package contains.
+
+    /** A package fetched and applied, or why not. [id] is null for a file that didn't install, whose id is not known. */
+    fun marketGot(id: String?, result: InstallResult) = event("Market get ${id ?: "from a file"}: ${describe(result)}")
+
+    fun marketRemoved(id: String, ok: Boolean) = event("Market remove $id: ${if (ok) "removed" else "nothing changed"}")
+
+    fun marketUndone(id: String, ok: Boolean) = event("Market undo $id: ${if (ok) "put back" else "couldn't put back"}")
+
+    fun marketTurnedOff(id: String, ok: Boolean, bySafeMode: Boolean) =
+        event("Market ${if (bySafeMode) "Safe Mode turned off" else "turn off"} $id: ${if (ok) "off" else "nothing changed"}")
+
+    fun marketTurnedOn(id: String, ok: Boolean) = event("Market Try Again $id: ${if (ok) "on" else "still off"}")
+
+    fun marketRestored(restore: PackageInstaller.Restore?) = event(
+        if (restore == null) "Market backup: no packages"
+        else "Market backup: ${restore.on.size} on, ${restore.off.size} off, ${restore.failed.size} failed" +
+            restore.failed.joinToString(prefix = " (", postfix = ")") { it.id }.takeIf { restore.failed.isNotEmpty() }.orEmpty(),
+    )
+
+    private fun describe(result: InstallResult) = when (result) {
+        is InstallResult.Installed -> "installed ${result.installed.version.text}" +
+            (result.replaced?.let { " over ${it.version.text}" } ?: "")
+        is InstallResult.NeedsNewerFolio -> "needs a newer Folio (${result.missing.joinToString()})"
+        is InstallResult.NeedsHost -> "needs its tweak first (${result.tweaks.joinToString()})"
+        is InstallResult.Failed -> "failed, ${result.reason.name}: ${result.message}"
+    }
+
+    /** A wallpaper package's picture went on. [shown] is whether it is behind Home now (see ArtSelection). */
+    fun artOn(id: String, fresh: Boolean, shown: Boolean) =
+        event("Wallpaper $id on (${if (fresh) "new" else "again"}), ${if (shown) "behind Home" else "user's choice kept"}")
+
+    /** A wallpaper package's picture came off. [putBack] is whether the earlier background went back behind Home. */
+    fun artOff(id: String, putBack: Boolean) =
+        event("Wallpaper $id off, ${if (putBack) "earlier background put back" else "user's choice kept"}")
+
+    /** Why a wallpaper couldn't go on. The installer shows people one general message, so the reason is kept here. */
+    fun artRefused(id: String, why: String?) = event("Wallpaper $id refused: ${why ?: "no reason given"}")
+
+    fun artPruned(ids: List<String>) { if (ids.isNotEmpty()) event("Wallpaper art cleared: ${ids.joinToString()}") }
+
+    fun backgroundSet(choice: BackgroundChoice) = event("Background set: ${choice.save()}")
+
+    /** Home asked for its background and got nothing back from the decoder. */
+    fun backgroundUnreadable(choice: BackgroundChoice, width: Int = 0, height: Int = 0) =
+        event("Background ${choice.save()} couldn't be decoded" + if (width > 0) " (${width}x$height)" else "")
+
+    /** The background was bigger than Folio draws and was decoded smaller. Expected never to happen. */
+    fun backgroundSampled(choice: BackgroundChoice, width: Int, height: Int, sample: Int) =
+        event("Background ${choice.save()} is ${width}x$height, decoded at 1/$sample")
+
+    /** A pin request turned away. [why] is one of [PinTrust]'s reasons; the package is the one the request named. */
+    fun pinRefused(packageName: String?, why: String) = event("Pin request from ${packageName ?: "an unknown app"} refused: $why")
+}
+
+/**
+ * [runCatching] that leaves a note: a failure goes in the Diagnostics trail as [where] plus its type, and
+ * cancellation is rethrown rather than swallowed. For the places Folio recovers from a failure the user would
+ * otherwise never hear about; an expected miss (an optional file that isn't there) stays a plain `runCatching`.
+ */
+internal inline fun <T> caught(where: String, rethrowCancellation: Boolean = true, block: () -> T): Result<T> =
+    runCatching(block).onFailure { Diagnostics.caught(where, it, rethrowCancellation) }
+
+/**
+ * A named section in a system trace, for Perfetto and Macrobenchmark's TraceSectionMetric. When nothing is tracing
+ * it costs a flag check. Android records an app's own sections from a debuggable or profileable build, which is why
+ * the fast build is profileable.
+ */
+internal inline fun <T> traced(section: String, block: () -> T): T {
+    androidx.tracing.Trace.beginSection(section)
+    try { return block() } finally { androidx.tracing.Trace.endSection() }
 }

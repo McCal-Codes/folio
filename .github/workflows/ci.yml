@@ -5,8 +5,9 @@ on:
     branches: [main, 'release/**']
   # `labeled` and `unlabeled` are here for the release-rules job: its waivers are labels, and without these a pull
   # request stays red after you label it until someone pushes a commit, which teaches people to ignore the check.
+  # `edited` for the same reason: REL-5 reads the description, so fixing the description has to rerun it.
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   schedule:
     - cron: '17 4 * * 1' # weekly fuzzing
   workflow_dispatch:
@@ -32,6 +33,14 @@ jobs:
       # Before anything slow: a key in the repository is the one mistake that can't be taken back by deleting it.
       - name: No private keys in the repository
         run: bash tools/check-secrets.sh
+      # PERMISSIONS.md tells readers they can check it against the manifest. This is that check, both ways, so the
+      # document cannot go on promising a list the app no longer matches (docs/standards/site.md, WEB-3).
+      - name: PERMISSIONS.md lists exactly the permissions the manifest declares
+        run: python3 tools/check-permissions.py
+      # Folio's own packages are the SDK's worked examples, so they have to pass the validator authors are told to
+      # run. The Kotlin parser and the published schemas are separate lists, and this is what keeps them agreeing.
+      - name: Folio's own packages pass the SDK validator
+        run: python3 tools/folio-pkg.py validate docs/sdk/source
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
 
@@ -48,6 +57,8 @@ jobs:
       - name: Branch, notes and version rules
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: bash tools/check-release-rules.sh "origin/${{ github.base_ref }}"
 
   # Fuzzes every package parser for five minutes each (Jazzer). Not on every push: it's slow.

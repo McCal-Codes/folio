@@ -574,10 +574,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing (2×2)
             var connectivityOpen by remember { mutableStateOf(false) }
             val connectivity = listOf(
-                ConnectivityItem(Icons.Rounded.AirplanemodeActive, "Airplane Mode", status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
-                ConnectivityItem(Icons.Rounded.SignalCellularAlt, "Cellular Data", !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
-                ConnectivityItem(Icons.Rounded.Wifi, "Wi-Fi", status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
-                ConnectivityItem(Icons.Rounded.Bluetooth, "Bluetooth", controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
+                ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
+                ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
+                ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
+                ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
             )
             val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
             if (connectivityOpen) Module(Modifier.width(span(4)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
@@ -589,7 +589,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                                Text(if (item.on) "On" else "Off", color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                                Text(stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
                             }
                         }
                     }
@@ -626,7 +626,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             }
                         }
                     }
-                } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = "Choose a Focus") { focusOpen = true }.testTag("cc-focus")) {
+                } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
                     Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
                         val mode = current ?: focusModes.first()
                         RoundToggle(mode.icon(), if (current != null) "Turn off ${mode.name}" else "Turn on ${mode.name}", current != null, Color(mode.color), cell * .7f) {
@@ -748,7 +748,7 @@ private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: 
                 val t = media?.controller?.transportControls
                 val tint = Color.White.copy(alpha = if (t != null) 1f else .35f)
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() })
-                Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(R.string.play_or_pause), tint = tint,
+                Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media?.playing == true) R.string.pause else R.string.play), tint = tint,
                     modifier = Modifier.size(cell * .42f).clip(CircleShape).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToNext() })
             }
@@ -774,9 +774,10 @@ private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: C
 @Composable
 private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val state = stringResource(if (on) R.string.state_on else R.string.state_off)
     Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else ModuleGlass)
         .clickable(role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
-        .semantics { contentDescription = label; stateDescription = if (on) "On" else "Off" }, contentAlignment = Alignment.Center) {
+        .semantics { contentDescription = label; stateDescription = state }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (on && accent == Color.White) Color.Black else Color.White, modifier = Modifier.size(size * .4f))
     }
 }

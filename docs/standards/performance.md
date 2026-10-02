@@ -10,7 +10,7 @@ by the baseline profile.
 
 | # | Journey | Measured? |
 |---|---|---|
-| J1 | Cold start to a usable Home | Profile recorded, not timed |
+| J1 | Cold start to a usable Home | Yes, 30 Sep 2026: see below |
 | J2 | Home page swipe (folded and unfolded) | Yes, 21 Sep 2026: see below |
 | J3 | Fold / unfold transition | No |
 | J4 | Open Spotlight, first result frame | No |
@@ -23,6 +23,19 @@ by the baseline profile.
 
 Baseline, J2 on the Fold8 inner screen (`fast` build, 20 swipes, `dumpsys gfxinfo`): dunes wallpaper 5.1% janky
 frames, P50 9 ms, P90 16 ms, P99 25 ms; Android wallpaper 4.5%, 5 / 8 / 19 ms.
+
+Baseline, J1 on the Fold8 cover screen (`fast` build compiled with its baseline profile, Home started after an update,
+medians of 5): first frame 80 ms, fully drawn 899 ms (827 to 1,151). Uncompiled, as it is right after an update (one
+run): 114 ms and 1,501 ms. Fully drawn missed the 400 ms target because it waited for the app list: one background
+thread loaded every app's icon in turn (about 250 apps and shortcuts), 587 ms compiled, mostly decoding icon images
+(224, 304 ms) and making a `Resources` for each app (253, 156 ms). Reading and decoding the saved layout takes under
+half a millisecond and a save 0.3 ms, so neither is worth moving off the main thread. Method: `atrace` with Folio's
+trace sections and Android's "Displayed" and "Fully drawn" times. An update is what restarts Folio Dev between runs,
+because force-stop turns its accessibility service off. After Home's own apps load first (same method, 30 Sep 2026):
+first frame 78 ms, fully drawn 157 ms (143 to 236). Loading Home's 23 apps takes 127 ms beside the first frame; the
+rest of the list still lands at about 0.8 s, as before. With icons saved between starts (same method, the cache filled
+by an earlier start): Home's apps in at 53 ms (was 139), fully drawn 120 ms (was 157), the full list at 317 ms (was
+824). A start with nothing saved yet saves every icon once, 435 ms in the background after the list is shown.
 
 ### Targets (proposed; the maintainer confirms before they're enforced)
 
@@ -71,13 +84,16 @@ Good:
   App Library, scroll, back), shipped in the APK.
 - Keyed pagers and most keyed lists; visual transforms mostly in `graphicsLayer`; no per-frame blur.
 - `DuoMotionTrace` logs gesture timing in debug builds (`setprop log.tag.DuoMotion DEBUG`).
+- Trace sections on the layout load and save (`Folio.readState`, `Folio.decodeState`, `Folio.persist`), Home reports
+  fully drawn once the first app list is in, and the `fast` build is profileable, so all of it shows in Perfetto.
 
 Not yet:
 
 - One journey in the profile; no timing benchmarks (no `FrameTimingMetric`, no startup metric).
-- No `Trace` sections, no JankStats, no `reportFullyDrawn`.
+- No JankStats.
 - No Compose compiler reports or stability config.
-- The layout loads on the main thread at start.
+- A refresh after a package change still loads every app's name to check it (about 0.45 s in the background on the
+  Fold8), and pinned shortcuts and quiet work apps aren't saved between starts.
 - J2 jank is mostly UI-thread spikes (recomposition), not GPU; see [STA gap 4](state-data.md).
 - Unkeyed `HorizontalPager` in `MarketFeatured.kt:99`.
 
@@ -86,8 +102,9 @@ Not yet:
 | # | Work | Size |
 |---|---|---|
 | 1 | A `FrameTimingMetric` swipe benchmark (J2), then Perfetto on the worst frames (the 0.7.1 Home swipe work) | M |
-| 2 | Startup benchmark (J1) and `reportFullyDrawn` when Home's first page is ready | S |
+| 2 | Startup benchmark (J1); `reportFullyDrawn` is in | S |
 | 3 | Extend the baseline profile to J3 to J9 | M |
 | 4 | Compose compiler reports once, to find unstable parameters on Home | S |
-| 5 | `Trace` sections around layout load, icon loading and widget inflation | S |
+| 5 | `Trace` sections around icon loading and widget inflation (the layout load has them) | S |
 | 6 | Confirm or change the targets above | S |
+| 7 | Check names without loading each app's resources, and save shortcuts and quiet work apps between starts too | M |

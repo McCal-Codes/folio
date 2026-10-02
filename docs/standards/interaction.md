@@ -109,7 +109,7 @@ Not yet:
 
 | # | Work | Size |
 |---|---|---|
-| 1 | `FolioHaptics.perform(meaning)` with the table above; move the 29 call sites | S |
+| 1 | ~~One haptic vocabulary~~ (done: `FolioHaptic` and `haptic.perform(meaning)`; all 17 call sites moved, and removing an app in jiggle mode refuses rather than clicks) | S |
 | 2 | Keyboard focus and focus rings across Home, the dock, folders and Settings | M |
 | 3 | Pointer support: hover, right-click menu, wheel paging | M |
 | 4 | Remaining `BackHandler`s onto `PredictiveBack` where there's something to animate | S |

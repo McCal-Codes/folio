@@ -19,6 +19,13 @@ interface PackageHost {
 
     /** Puts back what [apply] replaced. Called for Undo, for Remove, and when a later step of an install fails. */
     fun restore(change: PackageChange, snapshot: String)
+
+    /**
+     * Whether the tweak [id] is on this phone, however it got there: from the Market or from Settings' Tweak Library,
+     * which records no package. An add-on ([PackageKind.hostTweak]) is only installed where its host is. False unless
+     * a host says otherwise, so a host that forgets to answer refuses add-ons rather than installing them bare.
+     */
+    fun hasTweak(id: String): Boolean = false
 }
 
 /** A package Folio has installed, and what it replaced. */
@@ -50,6 +57,9 @@ sealed interface InstallResult {
 
     /** The package is fine but this Folio can't run it. */
     data class NeedsNewerFolio(val missing: List<String>) : InstallResult
+
+    /** An add-on whose host tweak isn't on this phone yet ([PackageKind.hostTweak]). Nothing was applied. */
+    data class NeedsHost(val tweaks: List<String>) : InstallResult
 
     data class Failed(val reason: Reason, val message: String) : InstallResult
 
@@ -133,24 +143,22 @@ class PackageInstaller(
         /** The id and author key to remember, once this package is really on. */
         pinning: Pair<String, String>? = null,
     ): InstallResult {
-        val missing = pkg.manifest.missingCapabilities(host.capabilities).map { it.id } +
-            pkg.changes.flatMap { it.capabilities }.filterNot { it in host.capabilities }.map { it.id }
-        if (missing.isNotEmpty()) return InstallResult.NeedsNewerFolio(missing.distinct())
-        // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that needs a
-        // later Folio's behaviour without naming anything. Both mean the same thing to the user.
-        val needs = pkg.manifest.minFolio
-        if (!builtIn && folioVersion != null && needs > folioVersion) {
-            return InstallResult.NeedsNewerFolio(listOf("Folio $needs"))
-        }
+        // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
+        // page would have said before the person tapped Get, in the same order.
         val already = store.installed()
-        already.firstOrNull { it.id != pkg.id && pkg.manifest.conflicts.any { c -> c.id == it.id && c.matches(it.version) } }
-            ?.let { return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${it.name}") }
-        // Dependencies have to be installed first; the store's queue sheet offers to add them (Phase 5).
-        val missingDepends = pkg.manifest.depends.filterNot { needed ->
-            already.any { it.id == needed.id && it.enabled && needed.matches(it.version) }
-        }
-        if (missingDepends.isNotEmpty()) {
-            return InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${missingDepends.joinToString { it.toString() }} first")
+        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
+        when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+            is CompatCheck.Kinds -> return InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
+            is CompatCheck.Features -> return InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
+            // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
+            // needs a later Folio's behaviour without naming anything. Both mean the same thing to the user.
+            is CompatCheck.Release -> return InstallResult.NeedsNewerFolio(listOf("Folio ${stop.needs}"))
+            // An add-on without its host would sit on the phone doing nothing, so the host comes first.
+            is CompatCheck.Hosts -> return InstallResult.NeedsHost(stop.missing)
+            is CompatCheck.Replaces -> return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
+            // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
+            is CompatCheck.Needs -> return InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
+            else -> Unit
         }
 
         // Applying starts here. Safe Mode watches from now until the marker is cleared, so a crash while a package is
@@ -246,6 +254,9 @@ class PackageInstaller(
     fun enable(id: String): Boolean {
         val installed = store.find(id)?.takeIf { !it.enabled } ?: return false
         val changes = store.changesFor(installed.id, installed.version) ?: return false
+        // As at install: an add-on whose host was removed since stays off, rather than going on to do nothing. This is
+        // also what keeps one off when a backup is restored onto a phone without its host.
+        if (missingHosts(changes).isNotEmpty()) return false
         safeMode.beginChange(id)
         val snapshots = mutableListOf<String>()
         try {
@@ -261,6 +272,13 @@ class PackageInstaller(
         safeMode.endChange()
         return true
     }
+
+    /** The host tweaks installed package [id] is an add-on to that aren't on this phone ([PackageKind.hostTweak]). */
+    fun missingHosts(id: String): List<String> =
+        store.find(id)?.let { store.changesFor(it.id, it.version) }?.let(::missingHosts).orEmpty()
+
+    private fun missingHosts(changes: List<PackageChange>): List<String> =
+        changes.mapNotNull { it.hostTweak }.distinct().filterNot(host::hasTweak)
 
     /** Takes a package off, putting back whatever it replaced. */
     fun remove(id: String): Boolean {
@@ -391,6 +409,15 @@ class PackageInstaller(
             is ParseResult.Unsupported -> return ReadResult.NeedsNewerFolio(parsed.needs)
             is ParseResult.Invalid -> return ReadResult.Failed(InstallResult.Reason.MANIFEST, parsed.errors.first())
         }
+        // Refused, not installed as nothing: before 0.6.8 a reserved kind installed a record with no changes under a
+        // label saying it ran a script (found 30 Sep 2026).
+        manifest.kinds.filter { it.reserved }.takeIf { it.isNotEmpty() }?.let { reserved ->
+            return ReadResult.NeedsNewerFolio(reserved.map(PackageKind::id))
+        }
+        // An app listing is something its source offers through Android (MarketExternalApp), never a Folio package.
+        if (PackageKind.EXTERNAL_APP in manifest.kinds) {
+            return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that's an app, which the source that lists it offers through Android")
+        }
         val depiction = manifest.depiction?.let { path ->
             files[path]?.let { bytes ->
                 when (val parsed = Depiction.parse(bytes.decodeToString())) {
@@ -418,11 +445,41 @@ class PackageInstaller(
                     ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a layout but has no layout.json")
                 // A picture, named as one: the archive allows other file types under assets/, and handing one of
                 // those to the wallpaper as image bytes is a guess about a name an author chose.
-                PackageKind.WALLPAPER -> files.entries.firstOrNull {
-                    it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES
+                PackageKind.WALLPAPER -> {
+                    // Not "the first image under assets/": a depiction's hero and screenshots live there too, and a zip
+                    // lists them in whatever order the author's tool wrote. The wallpaper is the image the page does
+                    // not spend, and if there are several, the biggest, because a wallpaper is the largest picture
+                    // in its own package.
+                    val spent = buildSet {
+                        depiction?.blocks?.forEach { block ->
+                            when (block) {
+                                is DepictionBlock.Hero -> add(block.image)
+                                is DepictionBlock.Screenshots -> addAll(block.images)
+                                else -> Unit
+                            }
+                        }
+                    }
+                    val image = files.entries
+                        .filter { it.key.startsWith("assets/") && it.key.substringAfterLast('.').lowercase() in IMAGE_TYPES }
+                        .filterNot { it.key in spent }
+                        .maxByOrNull { it.value.size }
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image of its own")
+                    // The credit is read here because here is where the manifest is open. A host applying this
+                    // change is handed the change and nothing else, so an artist and a license that are not
+                    // carried along cannot be shown beside the picture later.
+                    val artist = manifest.author.name.english
+                    val license = manifest.license.orEmpty()
+                    if (artist.isBlank() || license.isBlank()) return ReadResult.Failed(
+                        InstallResult.Reason.MANIFEST,
+                        "a wallpaper has to say who made it and what it is licensed under",
+                    )
+                    PackageChange.Wallpaper(
+                        path = image.key, bytes = image.value, id = manifest.id,
+                        title = manifest.name.english, artist = artist, license = license,
+                        detail = manifest.description?.english.orEmpty(),
+                        source = manifest.author.url.orEmpty(),
+                    )
                 }
-                    ?.let { PackageChange.Wallpaper(it.key, it.value) }
-                    ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a wallpaper but has no image")
                 PackageKind.ICON_PACK_LINK -> {
                     val json = files["iconpack.json"]?.decodeToString()
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it links an icon pack but has no iconpack.json")
@@ -430,7 +487,14 @@ class PackageInstaller(
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "iconpack.json needs the icon pack's package name")
                     PackageChange.IconPack(name)
                 }
-                // Reserved kinds: readable, but nothing is applied until the phase that builds them.
+                PackageKind.PAGE_EFFECT -> {
+                    val text = files["effect.json"]?.decodeToString()
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a page effect but has no effect.json")
+                    PackageChange.PageEffect.parse(manifest.id, manifest.name.english, text)
+                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST,
+                            "effect.json needs maxRotation, shrink and cameraWidths as numbers and a pivot of seam or center")
+                }
+                // Refused above: never reaches here.
                 PackageKind.SETTINGS_SCHEMA, PackageKind.SCRIPT, PackageKind.EXTERNAL_APP -> null
             }
             change?.let(changes::add)
@@ -510,8 +574,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
 
     fun remove(id: String) {
         val all = read().toMutableMap()
-        // What that version changed goes with it. Kept, these pile up for ever, and a wallpaper's record holds a
-        // whole image; the only reader is Undo, which runs before the record is dropped.
+        // What that version changed goes with it. Kept, these pile up for ever; the only reader is Undo, which
+        // runs before the record is dropped.
         all.remove(id)?.let { keyValue.set(changesKey(it.id, it.version), null) }
         write(all)
     }
@@ -645,13 +709,23 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 is PackageChange.Theme -> json.put("kind", "theme").put("json", change.json)
                 is PackageChange.Layout -> json.put("kind", "layout").put("json", change.json)
                 is PackageChange.IconPack -> json.put("kind", "iconPack").put("package", change.packageName)
+                // Deliberately without the image. A record is a description of what a package changed, not a
+                // second copy of it (STA-11). Base64 of a picture is 1.33x the picture, and the picture is already
+                // on disk where the host put it, so writing it here again cost a wallpaper 2.33x its own size for
+                // nothing. What the host needs to put it back is the id and the credit, which are here.
                 is PackageChange.Wallpaper -> json.put("kind", "wallpaper").put("path", change.path)
-                    .put("bytes", java.util.Base64.getEncoder().encodeToString(change.bytes))
+                    .put("id", change.id).put("title", change.title).put("artist", change.artist)
+                    .put("license", change.license).put("detail", change.detail).put("source", change.source)
+                    .put("sha256", change.pictureSha256)
+                is PackageChange.PageEffect -> json.put("kind", "pageEffect").put("id", change.id).put("name", change.name)
+                    .put("maxRotation", change.maxRotation.toDouble()).put("pivot", change.pivot)
+                    .put("shrink", change.shrink.toDouble()).put("cameraWidths", change.cameraWidths.toDouble())
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
                     "tweaks",
                     JSONArray().apply {
                         change.bundle.tweaks.forEach {
-                            put(JSONObject().put("id", it.id.id).put("enabled", it.enabled).put("cover", it.cover).put("inner", it.inner))
+                            put(JSONObject().put("id", it.id.id).put("enabled", it.enabled).put("cover", it.cover).put("inner", it.inner)
+                                .apply { if (it.options.isNotEmpty()) put("options", JSONObject(it.options)) })
                         }
                     },
                 )
@@ -669,9 +743,19 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 "theme" -> PackageChange.Theme(json.optString("json"))
                 "layout" -> PackageChange.Layout(json.optString("json"))
                 "iconPack" -> PackageChange.IconPack(json.optString("package"))
+                "pageEffect" -> PackageChange.PageEffect.parse(json.optString("id"), json.optString("name"), json.toString())
+                // A record written before wallpapers carried their credit decodes with blank fields, which
+                // PackageChange.Wallpaper.credited reads as "do not show", so an old record cannot smuggle an
+                // uncredited picture back in through a restore.
                 "wallpaper" -> PackageChange.Wallpaper(
                     json.optString("path"),
-                    runCatching { java.util.Base64.getDecoder().decode(json.optString("bytes")) }.getOrDefault(ByteArray(0)),
+                    // No bytes in a record, by design. An empty array means "the picture is wherever it was put",
+                    // which is true on the phone that installed it and false on a phone restoring someone else's
+                    // backup; the host is what tells those two apart.
+                    ByteArray(0),
+                    id = json.optString("id"), title = json.optString("title"), artist = json.optString("artist"),
+                    license = json.optString("license"), detail = json.optString("detail"),
+                    source = json.optString("source"), sha256 = json.optString("sha256"),
                 )
                 "tweaks" -> {
                     val list = json.optJSONArray("tweaks") ?: return@mapNotNull null
@@ -680,7 +764,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                             (0 until list.length()).mapNotNull { k ->
                                 val t = list.optJSONObject(k) ?: return@mapNotNull null
                                 TweakId.from(t.optString("id"))?.let {
-                                    TweakSetting(it, t.optBoolean("enabled"), t.optBoolean("cover", true), t.optBoolean("inner", true))
+                                    TweakSetting(it, t.optBoolean("enabled"), t.optBoolean("cover", true), t.optBoolean("inner", true),
+                                        t.optJSONObject("options")?.let(::readOptionRecord).orEmpty())
                                 }
                             },
                         ),
@@ -698,3 +783,15 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
         const val MAX_BACKUP_PACKAGES = 200
     }
 }
+
+/**
+ * A tweak's options as a record saved them: numbers come back as Double and strings as String, the two shapes
+ * [TweakOptions] allows. Anything else is from a newer format and is left out rather than turned into a string.
+ */
+internal fun readOptionRecord(o: JSONObject): Map<String, Any> = o.keys().asSequence().mapNotNull { key ->
+    when (val v = o.opt(key)) {
+        is Number -> key to v.toDouble()
+        is String -> key to v
+        else -> null
+    }
+}.toMap()

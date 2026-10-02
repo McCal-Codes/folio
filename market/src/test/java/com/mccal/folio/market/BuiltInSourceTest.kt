@@ -24,9 +24,9 @@ class BuiltInSourceTest {
     @Test fun `the bundled index lists every package Folio ships`() {
         val index = requireNotNull(source.index()) { "the bundled index is missing" }
         assertEquals("Folio", index.name.english)
-        assertEquals(9, index.packages.size)
+        assertEquals(10, index.packages.size)
         assertTrue("every package can be read", index.packages.all { it.manifest != null && it.needs.isEmpty() })
-        assertEquals(5, index.packages.count { it.manifest?.section == Section.TWEAKS })
+        assertEquals(6, index.packages.count { it.manifest?.section == Section.TWEAKS })
         assertEquals(4, index.packages.count { it.manifest?.section == Section.THEMES })
         // Built-in packages have nothing to download.
         assertTrue(index.packages.none { it.installable })
@@ -34,7 +34,7 @@ class BuiltInSourceTest {
 
     @Test fun `every package's files are there, and its id matches its manifest`() {
         val packages = source.packages()
-        assertEquals(9, packages.size)
+        assertEquals(10, packages.size)
         assertEquals(source.index()!!.packages.map { it.id }.toSet(), packages.keys)
         for ((id, files) in packages) {
             assertTrue("$id has a manifest", PackageArchive.MANIFEST in files)
