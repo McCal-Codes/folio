@@ -32,6 +32,8 @@ GUILD_ID = "1551382087985266838"
 ROLE_COFFEE = "1552857170033508472"
 ROLE_BACKER = "1552857199267545178"
 ROLE_BUILDER = "1552857224194560141"
+# The ping role the "Get release pings" button hands out and takes back.
+ROLE_UPDATES = "1553093586705449062"
 
 # The daily sweep that takes back roles whose codes have ended. 06:17 UTC, clear of the hour everyone else picks.
 [triggers]
