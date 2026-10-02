@@ -43,8 +43,9 @@ CREATE TABLE IF NOT EXISTS checks (
   at    TEXT NOT NULL
 );
 
--- Supporter roles handed out in Discord by Mr Folio's /redeem. One code, one person: the serial is the key, so a code
--- redeemed by someone else is refused rather than granted twice. The daily cron takes the role back after ends_on.
+-- Unused since 2 Oct 2026. Mr Folio's /redeem used to hand out supporter roles in Discord and record them here, one code to
+-- one person, with a daily cron taking the role back after ends_on. /redeem was removed (Ko-fi's own bot manages those
+-- roles), so nothing reads or writes this table now. It is kept, not dropped, in case a row is ever worth a look.
 CREATE TABLE IF NOT EXISTS discord_roles (
   serial     INTEGER PRIMARY KEY,
   user_id    TEXT NOT NULL,
