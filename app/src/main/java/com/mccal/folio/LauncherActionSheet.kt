@@ -37,9 +37,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
  * Handles Back on the ComponentDialog which owns a Material modal sheet. A regular Compose
  * BackHandler sees the activity owner inherited by the sheet composition, while platform Back is
  * dispatched to the dialog first.
+ *
+ * The one added last answers first, so something inside a sheet (Settings going up a page) is asked before the
+ * sheet itself (closing). [enabled] turns it off without taking it out, which would lose that place.
  */
 @Composable
-internal fun ModalDialogBackHandler(onBack: () -> Unit) {
+internal fun ModalDialogBackHandler(enabled: Boolean = true, onBack: () -> Unit) {
     val localView = androidx.compose.ui.platform.LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnBack by rememberUpdatedState(onBack)
@@ -47,13 +50,16 @@ internal fun ModalDialogBackHandler(onBack: () -> Unit) {
         val dialogWindow = (localView.parent as? DialogWindowProvider)?.window
         dialogWindow?.decorView?.findViewTreeOnBackPressedDispatcherOwner()
     }
-    DisposableEffect(dispatcherOwner, lifecycleOwner) {
-        val callback = object : OnBackPressedCallback(dispatcherOwner != null) {
+    val callback = remember {
+        object : OnBackPressedCallback(enabled) {
             // Predictive back: full-screen sheets follow the swipe (SheetBackProgress) before it commits or cancels.
             override fun handleOnBackProgressed(backEvent: androidx.activity.BackEventCompat) { SheetBackProgress.floatValue = backEvent.progress }
             override fun handleOnBackCancelled() { SheetBackProgress.floatValue = 0f }
             override fun handleOnBackPressed() { SheetBackProgress.floatValue = 0f; currentOnBack() }
         }
+    }
+    SideEffect { callback.isEnabled = enabled }
+    DisposableEffect(dispatcherOwner, lifecycleOwner) {
         dispatcherOwner?.onBackPressedDispatcher?.addCallback(lifecycleOwner, callback)
         onDispose { callback.remove() }
     }

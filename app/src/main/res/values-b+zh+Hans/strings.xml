@@ -1069,6 +1069,7 @@
     <string name="apps_that_android_already_pops_up_stay_w">Android 已经弹出通知的 App 仍由 Android 处理，这样你就不会看到两个横幅。“使用灵动岛”会关闭该 App 的 Android 弹出通知，改为在这里显示它的通知。</string>
     <string name="android_popup_title">Android 弹出通知</string>
     <string name="preview_of_home_on_the_inner_screen">内屏主屏幕预览</string>
+    <string name="preview_of_home">主屏幕预览</string>
     <string name="folio_version">Folio %1$s</string>
     <string name="coming_in">将在 %1$s 推出</string>
     <string name="before_restoring_a_backup_arrange_like_i">在恢复备份、“像 iPhone 一样排列”或恢复旧布局之前，Folio 会先把你的主屏幕保存在这里，以便你回退。这部手机上会保留最近 %1$s 个。</string>

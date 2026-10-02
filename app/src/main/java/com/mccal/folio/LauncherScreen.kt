@@ -1059,14 +1059,10 @@ fun LauncherScreen(
                 }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                     properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
                     containerColor = MaterialTheme.colorScheme.surface, fullScreen = sheet.startsWith("settings") || sheet == "market") {
+                    // Settings answers Back first while it's past its top page, here and in the Market's Settings tab
+                    // (CustomizationSheet); whatever reaches the sheet closes it.
                     ModalDialogBackHandler {
-                        if ((sheet == "settings" || sheet == "settings:wallpaper") &&
-                            activeCustomizationPage != CustomizationPage.OVERVIEW) {
-                            customizationPage = activeCustomizationPage.parent
-                            sheet = "settings"
-                        } else {
-                            sheet = ""; picker.packageName = null; picker.exactTarget = false
-                        }
+                        sheet = ""; picker.packageName = null; picker.exactTarget = false
                     }
                     when (sheet) {
                         "dock" -> AppPicker(pickerApps(state), dockSlot,
