@@ -2368,7 +2368,7 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             .padding(horizontal = 5.dp, vertical = 1.dp))
 }
 
-/** Layout History (Beta): automatic snapshots of Home before big changes, each restorable. */
+/** Layout History: automatic snapshots of Home before big changes, each restorable. */
 @Composable private fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { LayoutHistory.load(context) }
@@ -2376,7 +2376,7 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
     var confirm by remember { mutableStateOf<LayoutSnapshot?>(null) }
     SettingsCard(stringResource(R.string.layout_history)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.save_home_before_big_changes), Modifier.weight(1f, fill = false)); BetaTag() }
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.save_home_before_big_changes), Modifier.weight(1f, fill = false)) }
             IosSwitch(state.layoutHistory, model::setLayoutHistory, Modifier.testTag("layout-history-switch"))
         }
         if (state.layoutHistory) {
