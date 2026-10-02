@@ -1542,4 +1542,10 @@
     <string name="full_width_home">전체 너비 홈</string>
     <string name="full_width_home_note">Dock이 아래쪽에 놓이고 상태 사이드바가 사라져 홈이 화면 전체 너비를 사용합니다. 대부분의 휴대폰 런처와 같은 방식입니다. 사이드바 설정은 두 화면 모두에 적용됩니다. 끄면 이전에 쓰던 Dock과 사이드바로 돌아갑니다.</string>
     <string name="settings_keywords_afterglow">colored albums 앨범 아트 음악 색상 colorflow 재생 중</string>
+    <string name="tweak_opt_amount">강도</string>
+    <string name="tweak_opt_subtle">약하게</string>
+    <string name="tweak_opt_strong">강하게</string>
+    <string name="tweak_opt_tick">슬라이드할 때 틱 진동</string>
+    <string name="tweak_opt_music_card">음악 카드</string>
+    <string name="tweak_opt_island_bars">아일랜드 사운드 바</string>
 </resources>

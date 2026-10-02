@@ -107,6 +107,9 @@ internal fun DockAppColumn(
     onLaunch: (AppEntry, android.graphics.Rect?) -> Unit,
     onChoose: (Int) -> Unit,
     magnify: Boolean = false,
+    /** How far the icon under the finger swells at its peak (Harborline's Amount), and whether crossing apps ticks. */
+    magnifyAmount: Float = .38f,
+    magnifyTick: Boolean = true,
     leftHanded: Boolean = false,
     /** Lay the dock out left to right (the bottom bar) instead of top to bottom (the side rail). */
     horizontal: Boolean = false,
@@ -142,7 +145,7 @@ internal fun DockAppColumn(
     val haptic = LocalHapticFeedback.current
     fun along(position: Offset) = if (horizontal) position.x else position.y
     Box((if (horizontal) Modifier.fillMaxHeight().width((rowHeight * savedDock.size).dp) else Modifier.fillMaxWidth().height((rowHeight * savedDock.size).dp))
-        .then(if (!magnify) Modifier else Modifier.pointerInput(horizontal) {
+        .then(if (!magnify) Modifier else Modifier.pointerInput(horizontal, magnifyTick) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
             touchY = along(down.position)
@@ -153,7 +156,7 @@ internal fun DockAppColumn(
                 if (!change.pressed) break
                 touchY = along(change.position)
                 val row = (along(change.position) / rowHeightPx).toInt()
-                if (row != lastRow) { lastRow = row; haptic.perform(FolioHaptic.Scrub) }
+                if (row != lastRow) { lastRow = row; if (magnifyTick) haptic.perform(FolioHaptic.Scrub) }
             }
             touchY = null
         }
@@ -206,7 +209,7 @@ internal fun DockAppColumn(
                         .jiggle(id)) {
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
-                            1f + .38f * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
+                            1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
                         } ?: 1f, androidx.compose.animation.core.spring(dampingRatio = .75f, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium), label = "dock magnify $id")
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
                             val s = slotScales[renderIndex] * magnification; scaleX = s; scaleY = s

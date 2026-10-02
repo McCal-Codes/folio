@@ -273,6 +273,8 @@ data class LauncherState(
     val lockCover: Boolean = true,
     /** Per-screen overrides for tweaks: feature id → screen → "ON"/"OFF" (absent = follow the main switch). */
     val featureScopes: Map<String, Map<String, String>> = emptyMap(),
+    /** Settings a tweak offers on its own page: tweak id → option id → value (see [TweakOptions]). Absent = the default. */
+    val tweakOptions: Map<String, Map<String, String>> = emptyMap(),
     /** Axon-style app icon row above notifications. */
     val notificationAppRow: Boolean = true,
     /** Drag along the Search pill or page dots to scrub pages. */
@@ -1067,6 +1069,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setAppPanels(value: Boolean) = updateSettings(soon = false) { it.copy(appPanels = value) }
     fun setHaptics(value: Boolean) = updateSettings(soon = false) { it.copy(haptics = value) }
     fun setLockCover(value: Boolean) = updateSettings(soon = false) { it.copy(lockCover = value) }
+    fun setTweakOption(tweakId: String, optionId: String, value: String) =
+        updateSettings(soon = false) { it.copy(tweakOptions = TweakOptions.set(it.tweakOptions, tweakId, optionId, value)) }
     fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) =
         updateSettings(soon = false) { it.copy(featureScopes = FeatureScopes.set(it.featureScopes, id, screen, value)) }
     /** Tweak Library "Get": adds the tweak to Settings and turns it on. */
@@ -1078,12 +1082,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** "Remove": turns the tweak off, clears its per-screen settings and takes it out of Settings. */
     internal fun removeTweak(feature: TweakFeature) {
         feature.set(this, false)
-        updateSettings(soon = false) { it.copy(installedTweaks = it.installedTweaks - feature.id, featureScopes = it.featureScopes - feature.id) }
+        updateSettings(soon = false) { it.copy(installedTweaks = it.installedTweaks - feature.id, featureScopes = it.featureScopes - feature.id, tweakOptions = it.tweakOptions - feature.id) }
     }
 
     internal fun resetTweak(feature: TweakFeature) {
         feature.set(this, feature.default)
-        updateSettings(soon = false) { it.copy(featureScopes = it.featureScopes - feature.id) }
+        updateSettings(soon = false) { it.copy(featureScopes = it.featureScopes - feature.id, tweakOptions = it.tweakOptions - feature.id) }
     }
     fun setNotificationAppRow(value: Boolean) = updateSettings(soon = false) { it.copy(notificationAppRow = value) }
     fun setPageScrub(value: Boolean) = updateSettings(soon = false) { it.copy(pageScrub = value) }
@@ -1405,7 +1409,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("roundedCorners", s.roundedCorners).put("cornerRadius", s.cornerRadius.toDouble())
             .put("dimWallpaperDark", s.dimWallpaperDark).put("homeScrim", s.homeScrim).put("iconTintFromWallpaper", s.iconTintFromWallpaper)
             .put("tintNotifications", s.tintNotifications).put("tintMedia", s.tintMedia).put("dockMagnify", s.dockMagnify).put("appPanels", s.appPanels).put("haptics", s.haptics).put("lockCover", s.lockCover)
-            .put("featureScopes", JSONObject().apply { s.featureScopes.forEach { (id, m) -> put(id, JSONObject(m as Map<*, *>)) } }).put("notificationAppRow", s.notificationAppRow)
+            .put("featureScopes", JSONObject().apply { s.featureScopes.forEach { (id, m) -> put(id, JSONObject(m as Map<*, *>)) } })
+            .put("tweakOptions", JSONObject().apply { s.tweakOptions.forEach { (id, m) -> put(id, JSONObject(m as Map<*, *>)) } }).put("notificationAppRow", s.notificationAppRow)
             .put("pageScrub", s.pageScrub).put("wallpaperMotion", s.wallpaperMotion).put("liveIcons", s.liveIcons).put("liveIconLook", s.liveIconLook)
             .put("triggerActions", JSONObject().apply { s.triggerActions.forEach { (k, v) -> put(k, v) } })
             .put("todayWidgets", JSONArray().apply { s.todayWidgets.forEach { put(JSONObject().put("id", it.id).put("size", it.size.name)) } })
@@ -1687,6 +1692,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         featureScopes = j.optJSONObject("featureScopes")?.let { o -> o.keys().asSequence().associateWith { id ->
             o.optJSONObject(id)?.let { inner -> inner.keys().asSequence().associateWith { inner.getString(it) } }.orEmpty()
         } } ?: emptyMap(),
+        tweakOptions = TweakOptions.cleaned(j.optJSONObject("tweakOptions")?.let { o -> o.keys().asSequence().associateWith { id ->
+            o.optJSONObject(id)?.let { inner -> inner.keys().asSequence().associateWith { inner.optString(it) } }.orEmpty()
+        } } ?: emptyMap()),
         notificationAppRow = j.optBoolean("notificationAppRow", true), pageScrub = j.optBoolean("pageScrub", true),
         wallpaperMotion = j.optBoolean("wallpaperMotion", true), liveIcons = j.optBoolean("liveIcons", true),
         liveIconLook = j.optString("liveIconLook", "AUTO").takeIf { it in setOf("AUTO", "LIGHT", "DARK") } ?: "AUTO",

@@ -378,7 +378,7 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
             is IslandEvent.Notice -> Unit
         }
         is IslandContent.Live -> when (val a = content.activity) {
-            is IslandActivity.Media -> Bars(a.playing, if (LocalTintOptions.current.media) rememberAccent(a.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen else IslandGreen)
+            is IslandActivity.Media -> Bars(a.playing, if (LocalTintOptions.current.mediaIsland) rememberAccent(a.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen else IslandGreen)
             is IslandActivity.Progress -> Ring(a.fraction, size)
             is IslandActivity.Call -> Bars(playing = !a.incoming)
             is IslandActivity.Timer -> Chronometer(a.base, a.countDown, IslandOrange)

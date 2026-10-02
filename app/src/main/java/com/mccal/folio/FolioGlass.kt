@@ -72,7 +72,7 @@ internal val LocalFolderColors = androidx.compose.runtime.compositionLocalOf { e
 
 /** Velvet/ColorFlow tint options, provided from settings. */
 @androidx.compose.runtime.Immutable
-internal data class TintOptions(val notifications: Boolean = false, val media: Boolean = true, val notificationAppRow: Boolean = true)
+internal data class TintOptions(val notifications: Boolean = false, val media: Boolean = true, val notificationAppRow: Boolean = true, val mediaIsland: Boolean = true)
 internal val LocalTintOptions = androidx.compose.runtime.staticCompositionLocalOf { TintOptions() }
 
 /** How strong Home's glass is: widget frost and the outline around widgets and Side Bar capsules (Settings › Glass). */
