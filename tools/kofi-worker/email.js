@@ -25,9 +25,13 @@ export function codeLines(code) {
   return lines.map((line, index) => (index < lines.length - 1 ? `${line}-` : line))
 }
 
-/** Folio's own link for a code (RedeemActivity, since 0.6.5): on an Android phone with Folio it adds the code in one tap. */
+/**
+ * The link in the email: a page on the site that shows the code and, on Android, opens Folio's own redeem link
+ * (folio://redeem, handled by RedeemActivity since 0.6.5). The email cannot link to folio:// itself, because Gmail does
+ * nothing with a custom scheme. The code sits after the #, so a browser never sends it to a server.
+ */
 export function redeemLink(code) {
-  return `folio://redeem?c=${encodeURIComponent(String(code))}`
+  return `https://foliolauncher.com/redeem/#${encodeURIComponent(String(code))}`
 }
 
 const SUBJECT = 'Your Folio supporter code'
@@ -44,7 +48,7 @@ export function supporterEmail({ name = '', code, pool = '' }) {
     '',
     `    ${code}`,
     '',
-    'On your Android phone, this link adds it in one tap:',
+    'On your Android phone, this link opens a page that adds it to Folio:',
     `    ${redeemLink(code)}`,
     '',
     'In Folio: Settings › Supporter › Redeem a Code, and paste it in. It is checked on your phone, so it works',
@@ -109,10 +113,10 @@ export function supporterEmail({ name = '', code, pool = '' }) {
         <tr><td class="pad" style="padding:20px 32px 0">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
             <td class="btn" align="center" bgcolor="${TEAL}" style="background:${TEAL};border-radius:12px">
-              <a href="${link}" class="btntext" style="display:block;padding:15px 22px;font:600 16px/1.2 ${font};color:#ffffff;text-decoration:none">Open in Folio</a>
+              <a href="${link}" class="btntext" style="display:block;padding:15px 22px;font:600 16px/1.2 ${font};color:#ffffff;text-decoration:none">Add to Folio</a>
             </td>
           </tr></table>
-          <p class="dim" style="margin:10px 0 0;font:400 13px/1.5 ${font};color:#6c6c70;text-align:center">On your Android phone, this adds the code in one tap.</p>
+          <p class="dim" style="margin:10px 0 0;font:400 13px/1.5 ${font};color:#6c6c70;text-align:center">Opens a page that adds the code in Folio on your Android phone.</p>
         </td></tr>
         <tr><td class="pad" style="padding:22px 32px 4px">
           <p class="ink" style="margin:0 0 14px;font:400 16px/1.55 ${font};color:#1c1c1e">In Folio: <span class="path" style="background:#f2f2f7;color:#1c1c1e;border-radius:6px;padding:2px 7px;font-weight:600;white-space:nowrap">Settings › Supporter › Redeem a Code</span>, and paste it in. It is checked on your phone, so it works offline and tells nobody that you supported.</p>

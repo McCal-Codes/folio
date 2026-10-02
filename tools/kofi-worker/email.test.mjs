@@ -1,6 +1,6 @@
 /**
  * The supporter email: McCal's words kept as written, the HTML safe to build from a name anyone can type on Ko-fi, and
- * the "Open in Folio" link in the exact shape RedeemActivity (app/.../RedeemActivity.kt, since 0.6.5) accepts.
+ * the button's link to the redeem page on foliolauncher.com, which hands the code to Folio's RedeemActivity.
  * Run with `node --test email.test.mjs`; no network.
  */
 import assert from 'node:assert/strict'
@@ -53,14 +53,15 @@ test('the HTML has no script, no javascript: link, and reaches out to nowhere bu
   for (const line of codeLines(CODE)) assert.ok(html.includes(line))
 })
 
-test('the Open in Folio link is the one RedeemActivity reads', () => {
+test('the button opens the redeem page on the site, with the code after the # so it never reaches a server', () => {
   const link = redeemLink(CODE)
-  assert.equal(link, `folio://redeem?c=${CODE}`)
-  assert.ok(supporterEmail({ code: CODE, pool: 'm1' }).html.includes(`href="${link}"`))
-  assert.ok(supporterEmail({ code: CODE, pool: 'm1' }).text.includes(link))
-  // The app's redeemCode(): the prefix, a c= parameter, and 20 to 200 letters, digits and hyphens.
-  const query = link.slice('folio://redeem'.length).split('?')[1]
-  const code = decodeURIComponent(query.split('&').find((p) => p.startsWith('c=')).slice(2))
-  assert.ok(code.length >= 20 && code.length <= 200 && /^[A-Za-z0-9-]+$/.test(code))
-  assert.equal(code, CODE)
+  assert.equal(link, `https://foliolauncher.com/redeem/#${CODE}`)
+  const { html, text } = supporterEmail({ code: CODE, pool: 'm1' })
+  assert.ok(html.includes(`href="${link}"`))
+  assert.ok(text.includes(link))
+  assert.ok(!html.includes('folio://') && !text.includes('folio://'), 'Gmail does nothing with a custom scheme')
+  // The page (folio-site public/redeem.js) takes letters, digits and hyphens, 20 to 200 of them, from the fragment.
+  const fragment = decodeURIComponent(link.split('#')[1])
+  assert.ok(/^[A-Za-z0-9-]{20,200}$/.test(fragment))
+  assert.equal(fragment, CODE)
 })

@@ -198,6 +198,6 @@ test('the email goes to Resend as both HTML and plain text, with the link and th
   assert.equal(body.reply_to, 'me@example.com')
   assert.equal(body.subject, 'Your Folio supporter code')
   assert.ok(body.text.includes('CODE-1') && body.html.includes('CODE-1'))
-  assert.ok(body.html.includes('href="folio://redeem?c=CODE-1"'))
+  assert.ok(body.html.includes('href="https://foliolauncher.com/redeem/#CODE-1"'))
   assert.equal(DB.handled.get('m1').emailed, 1)
 })
