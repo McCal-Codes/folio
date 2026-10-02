@@ -3,7 +3,11 @@
 #
 #   bash tools/check-release-rules.sh [base-ref]        # default base: origin/main
 #
-# Three rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026:
+# Four rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026; REL-4b
+# became "the same app" on 2 Oct 2026, so a fix to a tool or a note no longer waits a whole release:
+#
+#   REL-4b  A stable ships the same app as the last beta of its version: what goes into the APK matches that beta's
+#           tag, apart from the version, the roadmap and the notes.
 #
 #   REL-5   No AI attribution: no co-author, credit line or robot footer in a commit or the description, and no
 #           branch named after a tool. Not waivable.
@@ -15,11 +19,12 @@
 #           doc. A pull request that moves folioVersion and changes code at the same time hides the release in a
 #           feature diff.
 #
-# Both can be waived by labelling the pull request, so the escape hatch is visible in the pull request rather than
-# hidden in someone's shell:
+# REL-7, REL-13 and REL-4b can be waived by labelling the pull request, so the escape hatch is visible in the pull
+# request rather than hidden in someone's shell:
 #
 #   no-changelog        this change is invisible to users (REL-9), so it gets no line
-#   release-exception   this really is a release and a change together, and that was deliberate
+#   release-exception   this really is a release and a change together, or a stable that differs from its beta,
+#                       and that was deliberate
 #
 # Locally, set them as environment variables: PR_LABELS="no-changelog" bash tools/check-release-rules.sh
 set -uo pipefail
@@ -129,6 +134,39 @@ else
         fail "REL-13 folioVersion moves to $new_version in a pull request that also changes:
 $(echo "$stray" | head -5 | sed 's/^/          /')
         Land the change first, then bump the version on its own, so the release is one reviewable diff."
+    fi
+fi
+
+# REL-4b: a stable ships the same app as the last beta of its version. Only what is built into the APK is compared:
+# the code and resources under app/ and market/, the Market's built-in source and the Gradle setup. The version, the roadmap and the notes move in
+# the bump itself (REL-13); docs, tools and tests may change after the beta, since nobody installs them.
+if [[ "$version_changed" != yes || "$new_version" == *-* ]]; then
+    skip "REL-4b not a stable release"
+else
+    tags=$(git tag -l --sort=-v:refname "v${new_version}-beta.*")
+    last_beta=${tags%%$'\n'*}
+    if [[ -z "$last_beta" ]]; then
+        skip "REL-4b no beta of $new_version is tagged to compare with"
+    elif has_label release-exception; then
+        skip "REL-4b waived by the release-exception label"
+    else
+        # docs/sdk/source is in the list because the APK bundles it: it is the Market's built-in source.
+        app_paths=(app/src/main app/src/release market/src/main docs/sdk/source app/build.gradle.kts market/build.gradle.kts
+            build.gradle.kts settings.gradle.kts gradle.properties gradle app/proguard-rules.pro)
+        moved=$(git diff --name-only "$last_beta" HEAD -- "${app_paths[@]}" \
+            | grep -vE '^(app/build\.gradle\.kts|app/src/main/assets/roadmap\.json)$' || true)
+        # The app's build file may differ from the beta's only in the version line.
+        build_lines=$(git diff -U0 "$last_beta" HEAD -- app/build.gradle.kts | grep -E '^[+-][^+-]' || true)
+        if [[ -n "$build_lines" ]] && grep -qvE '^[+-]val folioVersion = ' <<< "$build_lines"; then
+            moved=$(printf '%s\n%s' "$moved" "app/build.gradle.kts, beyond the version" | sed '/^$/d')
+        fi
+        if [[ -z "$moved" ]]; then
+            pass "REL-4b $new_version ships the same app as $last_beta"
+        else
+            fail "REL-4b $new_version would not ship the same app as $last_beta. Changed since it:
+$(echo "$moved" | head -5 | sed 's/^/          /')
+        Put it out as another beta first (REL-16), so what goes out stable has been out as a beta."
+        fi
     fi
 fi
 
