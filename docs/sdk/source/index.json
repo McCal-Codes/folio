@@ -159,12 +159,12 @@
     },
     {
       "id": "com.mccal.folio.colored-albums",
-      "version": "1.0.1",
+      "version": "1.0.0",
       "manifest": {
         "format": 1,
         "id": "com.mccal.folio.colored-albums",
         "name": "Afterglow",
-        "version": "1.0.1",
+        "version": "1.0.0",
         "author": {
           "name": "Folio",
           "url": "https://github.com/McCal-Codes/folio"

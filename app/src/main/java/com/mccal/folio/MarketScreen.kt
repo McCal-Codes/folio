@@ -54,6 +54,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1014,7 +1016,9 @@ private fun MarketRow(
     val appUpdate = if (external) appUpdateFor(entry) else null
     // Whether it can be had here, before the person taps. A package already on the phone has been through that, unless
     // this row offers a newer version of it: that version can need more than the one installed did.
-    val compat = if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    val compat = remember(entry, installed, update, MarketWork.busyId) {
+        if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    }
     Row(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
@@ -1063,6 +1067,8 @@ private fun MarketRow(
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
+            // Something installed keeps its Remove even when its newer listing can't be read.
+            entry.entry.needs.isNotEmpty() && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
             // The line under its name says why; there is nothing to install until that changes. What is already on the
             // phone can still be removed.
@@ -1222,7 +1228,9 @@ private fun MarketPackagePage(
     val onPhone = if (external) externalAppId(entry.manifest) else null
     // A newer listing of what is installed offers Update, and has to be checked like anything else being got.
     val updateAvailable = installed != null && entry.version > installed.version
-    val compat = if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    val compat = remember(entry, installed, updateAvailable, MarketWork.busyId) {
+        if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1275,7 +1283,7 @@ private fun MarketPackagePage(
                 // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
                 entry.needs.isNotEmpty() && installed == null ->
                     Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
-                updateAvailable && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
+                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
                 else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
@@ -1560,9 +1568,9 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
 
 /** The frame every screenshot sits in, still or moving: a fixed height, the picture's own width, rounded. */
 @Composable
-private fun ScreenshotFrame(height: androidx.compose.ui.unit.Dp, ratio: Float, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+private fun ScreenshotFrame(height: androidx.compose.ui.unit.Dp, ratio: Float, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
     Box(
-        Modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).width(height * ratio)
+        modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).width(height * ratio)
             .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
         content = content,
     )
@@ -1576,12 +1584,17 @@ private fun ScreenshotFrame(height: androidx.compose.ui.unit.Dp, ratio: Float, c
 private fun AnimatedScreenshot(drawable: android.graphics.drawable.AnimatedImageDrawable, height: androidx.compose.ui.unit.Dp) {
     val reduceMotion = LocalReduceMotion.current
     val ratio = if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight else 150f / 260f
-    DisposableEffect(drawable, reduceMotion) {
+    // A row of screenshots is not lazy, so a clip scrolled out of view is still composed: it only plays while it is on screen.
+    var onScreen by remember { mutableStateOf(true) }
+    val windowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
+    DisposableEffect(drawable, reduceMotion, onScreen) {
         drawable.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
-        if (!reduceMotion) drawable.start()
+        if (!reduceMotion && onScreen) drawable.start()
         onDispose { drawable.stop() }
     }
-    ScreenshotFrame(height, ratio) {
+    ScreenshotFrame(height, ratio, Modifier.onGloballyPositioned { coordinates ->
+        onScreen = coordinates.isAttached && coordinates.boundsInWindow().let { it.right > 0f && it.left < windowWidth }
+    }) {
         androidx.compose.ui.viewinterop.AndroidView(
             factory = { context ->
                 android.widget.ImageView(context).apply {
