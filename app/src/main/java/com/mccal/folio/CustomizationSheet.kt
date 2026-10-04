@@ -869,6 +869,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     var background by remember { mutableStateOf(marketPrefs.backgroundRefresh) }
                     var wifiOnly by remember { mutableStateOf(marketPrefs.refreshOnWifiOnly) }
                     var notifyUpdates by remember { mutableStateOf(marketPrefs.notifyUpdates) }
+                    var autoUpdate by remember { mutableStateOf(marketPrefs.autoUpdatePackages) }
                     val marketNotifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
                     SheetGroup {
                         SwitchRow(stringResource(R.string.refresh_in_the_background), stringResource(if (background) R.string.once_a_day else R.string.off), background) {
@@ -878,6 +879,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         if (background) {
                             MenuDivider()
+                            if (FeatureGate.MARKET_AUTO_UPDATE.isOpen(sheetContext)) {
+                                SwitchRow(stringResource(R.string.update_packages_in_background), stringResource(R.string.update_packages_in_background_detail), autoUpdate) {
+                                    autoUpdate = it
+                                    marketPrefs.autoUpdatePackages = it
+                                }
+                                MenuDivider()
+                            }
                             SwitchRow(stringResource(R.string.tell_me_about_updates), stringResource(R.string.market_updates_notice_detail), notifyUpdates) {
                                 notifyUpdates = it
                                 marketPrefs.notifyUpdates = it

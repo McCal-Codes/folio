@@ -1279,6 +1279,8 @@
     <string name="market_refreshing_section">새로고침</string>
     <string name="refresh_in_the_background">백그라운드에서 새로고침</string>
     <string name="tell_me_about_updates">업데이트 알림 받기</string>
+    <string name="update_packages_in_background">패키지를 백그라운드에서 업데이트</string>
+    <string name="update_packages_in_background_detail">설정을 건드리지 않는 변경이면 소스의 패키지가 스스로 업데이트됩니다</string>
     <string name="market_updates_notice_detail">설치한 항목의 새 버전이 소스에 올라오면 알림 한 번</string>
     <string name="market_updates_channel">마켓 업데이트</string>
     <string name="market_updates_channel_detail">마켓에서 설치한 패키지와 앱의 새 버전.</string>

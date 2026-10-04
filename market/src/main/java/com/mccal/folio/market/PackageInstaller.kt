@@ -292,6 +292,15 @@ class PackageInstaller(
         return true
     }
 
+    /**
+     * True when [bytes] is a package whose changes are exactly the ones the installed version applied: an update that
+     * touches none of the person's settings (new text, pictures, a version), so it can go in without undoing anything.
+     */
+    fun changesUnchanged(bytes: ByteArray, installed: InstalledPackage): Boolean {
+        val pkg = (read(bytes) as? ReadResult.Ok)?.pkg ?: return false
+        return pkg.id == installed.id && store.changesFor(installed.id, installed.version) == pkg.changes
+    }
+
     /** Undo right after an install: remove what went on, and put the previous version back if there was one. */
     fun undo(result: InstallResult.Installed): Boolean {
         val previous = result.replaced

@@ -1307,6 +1307,8 @@
     <string name="market_refreshing_section">Refreshing</string>
     <string name="refresh_in_the_background">Refresh in the background</string>
     <string name="tell_me_about_updates">Tell me about updates</string>
+    <string name="update_packages_in_background">Update packages in the background</string>
+    <string name="update_packages_in_background_detail">Packages from your sources update themselves when the change touches none of your settings</string>
     <string name="market_updates_notice_detail">One notice when a source has a newer version of something you installed</string>
     <string name="market_updates_channel">Market updates</string>
     <string name="market_updates_channel_detail">New versions of packages and apps you installed from the Market.</string>

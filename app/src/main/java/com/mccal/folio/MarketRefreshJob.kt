@@ -94,6 +94,14 @@ class MarketRefreshJob : JobService() {
         internal suspend fun refreshSources(context: Context) {
             val session = MarketSession(context, ReadOnlyLauncher)
             session.sources.refreshAll(force = false)
+            // Packages that update themselves (M1): stage the checked update, and apply it through the running app. With
+            // no running app it waits in the staging folder for the next start.
+            if (MarketAutoUpdate.enabled(context)) caught("Market: updating packages in the background") {
+                MarketAutoUpdate.stage(context, session)
+                FolioSettingsBridge.liveModel?.get()?.let { model ->
+                    MarketAutoUpdate.applyStaged(context, MarketSession(context, ModelLauncher(model, context)))
+                }
+            }
             // Tell the person, once per set of new versions, only if they asked to be told.
             val prefs = rememberedMarketPrefs(context)
             if (prefs.notifyUpdates) caught("Market: the update notice") {

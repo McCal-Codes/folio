@@ -134,6 +134,18 @@ internal class MarketSession(
 
     fun installed(): List<InstalledPackage> = store.installed()
 
+    /** A listing's bytes, downloaded and checked against what the source promised, with nothing applied (staging an update). */
+    suspend fun fetchBytes(entry: MarketEntry): ByteArray? = sources.fetchPackage(entry.entry, entry.source)
+
+    /** Whether [bytes] would update [installed] without changing any setting the old version applied (see [PackageInstaller.changesUnchanged]). */
+    fun updateKeepsSettings(bytes: ByteArray, installed: InstalledPackage): Boolean = installer.changesUnchanged(bytes, installed)
+
+    /** Installs bytes staged earlier, with every check a normal install makes (size, checksum, author, compatibility). */
+    suspend fun installStaged(entry: MarketEntry, bytes: ByteArray): InstallResult = withContext(io) {
+        if (entry.revokedReason != null || entry.clash != null) return@withContext InstallResult.Failed(InstallResult.Reason.REVOKED, "that listing can't be installed")
+        installer.install(bytes, expected = entry.entry, origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = entry.source.url)
+    }
+
     fun installed(id: String): InstalledPackage? = store.find(id)
 
     /** The page and payload for a package, without applying anything: what the package page shows. */

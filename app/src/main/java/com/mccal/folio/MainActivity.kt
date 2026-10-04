@@ -94,6 +94,11 @@ class MainActivity : ComponentActivity() {
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { syncStandByScreenSaver(this@MainActivity) }
         FocusScheduler.run(this)
+        // Updates staged by the daily refresh while Folio was not running go in a little after start, once Home is up.
+        if (MarketAutoUpdate.enabled(this)) lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.delay(20_000)
+            runCatching { MarketAutoUpdate.applyStaged(applicationContext, MarketSession(applicationContext, ModelLauncher(model, applicationContext))) }
+        }
         // USER_PRESENT is a protected system broadcast delivered to runtime receivers.
         androidx.core.content.ContextCompat.registerReceiver(this, unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)

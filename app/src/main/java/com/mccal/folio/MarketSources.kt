@@ -198,6 +198,18 @@ internal class MarketSources(
             (http.get(full, maxBytes, onProgress) as? HttpResult.Body)?.bytes
         }
 
+    /**
+     * Downloads a listing's bytes without applying anything, for staging an update: null when the list is too old, there
+     * is nowhere to download from, the download fails, or it is not the size and checksum the source promised.
+     */
+    suspend fun fetchPackage(entry: IndexPackage, source: Source): ByteArray? = withContext(io) {
+        if (stale(source)) return@withContext null
+        val url = entry.url ?: return@withContext null
+        val size = entry.size ?: return@withContext null
+        val full = if (url.startsWith("https://")) url else source.url + url
+        (http.get(full, size, { _, _ -> }) as? HttpResult.Body)?.bytes?.takeIf { entry.matches(it) }
+    }
+
     suspend fun download(
         entry: IndexPackage,
         source: Source,

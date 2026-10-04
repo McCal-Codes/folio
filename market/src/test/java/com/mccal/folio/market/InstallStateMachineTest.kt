@@ -114,4 +114,24 @@ class InstallStateMachineTest {
             holds(store, host, "undone (was off: $wasOff)")
         }
     }
+
+    private fun packChanged(): ByteArray {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            for (name in listOf("manifest.json", "depiction.json", "tweaks.json")) {
+                var text = File(cabinetDir, name).readText().replace("\"version\": \"1.0.0\"", "\"version\": \"1.1.0\"")
+                if (name == "tweaks.json") text = text.replace("\"inner\": true", "\"inner\": false")
+                zip.putNextEntry(ZipEntry(name)); zip.write(text.toByteArray()); zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    @Test fun `an update that changes no setting is told apart from one that does, so only the first installs itself`() {
+        val installer = PackageInstaller(InstalledStore(MemoryStore()), Host(), authors = AuthorTrust(MemoryStore()))
+        val installed = (installer.install(pack("1.0.0")) as InstallResult.Installed).installed
+        assertTrue("a new version with the same changes touches none of the person's settings", installer.changesUnchanged(pack("1.1.0"), installed))
+        assertTrue("a version that changes a setting must wait to be tapped", !installer.changesUnchanged(packChanged(), installed))
+        assertTrue("bytes that are not a package never qualify", !installer.changesUnchanged(ByteArray(8), installed))
+    }
 }

@@ -1219,6 +1219,8 @@
     <string name="market_refreshing_section">刷新</string>
     <string name="refresh_in_the_background">在后台刷新</string>
     <string name="tell_me_about_updates">更新时通知我</string>
+    <string name="update_packages_in_background">在后台更新包</string>
+    <string name="update_packages_in_background_detail">当更改不涉及你的任何设置时，来源中的包会自动更新</string>
     <string name="market_updates_notice_detail">来源有你已安装内容的新版本时通知一次</string>
     <string name="market_updates_channel">市场更新</string>
     <string name="market_updates_channel_detail">你从市场安装的包和应用的新版本。</string>

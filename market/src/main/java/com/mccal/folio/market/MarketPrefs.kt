@@ -50,6 +50,15 @@ class MarketPrefs(private val store: KeyValueStore) {
         set(value) { store.set(INSTALL_APPS, if (value) "1" else null) }
 
     /**
+     * Whether packages you installed from a source update in the background: the daily refresh downloads and checks a
+     * newer version, and it goes in when Folio is running (or at its next start). On by default; off means nothing is
+     * downloaded for you and an update waits for you to tap it.
+     */
+    var autoUpdatePackages: Boolean
+        get() = store.get(AUTO_UPDATE_PACKAGES) != "0"
+        set(value) { store.set(AUTO_UPDATE_PACKAGES, if (value) null else "0") }
+
+    /**
      * Whether Folio tells you when a refresh finds newer versions of what you installed. Off by default, and only
      * meaningful while [backgroundRefresh] is on: nothing is found in the background otherwise.
      */
@@ -72,6 +81,7 @@ class MarketPrefs(private val store: KeyValueStore) {
         const val INTRO_SEEN = "market:intro-seen"
         const val BACKGROUND_REFRESH = "market:background-refresh"
         const val NOTIFY_UPDATES = "market:notify-updates"
+        const val AUTO_UPDATE_PACKAGES = "market:auto-update-packages"
         const val LAST_NOTIFIED = "market:last-notified-updates"
         const val WIFI_ONLY = "market:wifi-only"
         const val INSTALL_APPS = "market:install-apps"
