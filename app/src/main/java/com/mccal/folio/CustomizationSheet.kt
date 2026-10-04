@@ -1709,7 +1709,10 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             CardNote(stringResource(R.string.focus_schedule_note, mode.name))
         }
     }
-    SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
+    // Supporters and Folio Dev first (FeatureGate.FOCUS_TRIGGERS); everyone from 0.6.9.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val triggersOpen = remember { FeatureGate.FOCUS_TRIGGERS.isOpen(gateContext) }
+    if (triggersOpen) SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
         val triggers = mode.triggers
         SettingsSwitch(stringResource(R.string.focus_trigger_folding), triggers.fold != null,
             { on -> model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = if (on) FoldState.UNFOLDED else null))) }, "focus-trigger-fold")

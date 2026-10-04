@@ -98,7 +98,8 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { syncStandByScreenSaver(this@MainActivity) }
         FocusScheduler.run(this)
         // Focus triggers (folding, charging, headphones): listen only while some Focus uses one.
-        lifecycleScope.launch {
+        // Gated (FeatureGate.FOCUS_TRIGGERS): a phone the feature is shut for never registers a listener.
+        if (FeatureGate.FOCUS_TRIGGERS.isOpen(this)) lifecycleScope.launch {
             model.state.map { st -> st.focusModes.any { it.triggers.any } }.distinctUntilChanged().collectLatest { listening ->
                 if (listening) focusSignals(this@MainActivity).collect { model.onFocusSignals(it) }
             }
