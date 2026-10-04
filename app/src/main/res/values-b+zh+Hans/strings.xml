@@ -469,6 +469,9 @@
     <string name="the_dock_sits_along_the_bottom_in_landsc">程序坞沿底部排列。在横屏和小窗口中会移到侧边栏，好让每一行 App 都能放下。</string>
     <string name="space_between_dock_apps">程序坞 App 间距</string>
     <string name="dock_height">程序坞高度</string>
+    <string name="move_dock">移动程序坞。上下拖动。</string>
+    <string name="move_dock_up">上移程序坞</string>
+    <string name="move_dock_down">下移程序坞</string>
     <string name="pages">页面</string>
     <string name="showing">正在显示</string>
     <string name="labels">标签</string>

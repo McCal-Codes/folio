@@ -468,6 +468,9 @@
     <string name="the_dock_sits_along_the_bottom_in_landsc">Dock은 화면 하단에 표시됩니다. 가로 모드나 작은 창에서는 앱의 모든 행이 들어가도록 사이드바로 이동합니다.</string>
     <string name="space_between_dock_apps">Dock 앱 간격</string>
     <string name="dock_height">Dock 높이</string>
+    <string name="move_dock">Dock 이동. 위아래로 끌어 주세요.</string>
+    <string name="move_dock_up">Dock 위로 이동</string>
+    <string name="move_dock_down">Dock 아래로 이동</string>
     <string name="pages">페이지</string>
     <string name="showing">표시 중</string>
     <string name="labels">이름 표시</string>

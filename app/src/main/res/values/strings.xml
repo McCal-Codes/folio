@@ -463,6 +463,9 @@
     <string name="the_dock_sits_along_the_bottom_in_landsc">The dock sits along the bottom. In landscape and small windows it moves to the Side Bar, so every row of apps fits.</string>
     <string name="space_between_dock_apps">Space between dock apps</string>
     <string name="dock_height">Dock height</string>
+    <string name="move_dock">Move dock. Drag up or down.</string>
+    <string name="move_dock_up">Move dock up</string>
+    <string name="move_dock_down">Move dock down</string>
     <string name="pages">Pages</string>
     <string name="showing">Showing</string>
     <string name="labels">Labels</string>
