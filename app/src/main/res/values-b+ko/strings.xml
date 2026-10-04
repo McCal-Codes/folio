@@ -224,6 +224,9 @@
     <string name="add_widgets_for_the_things_you_check_mos">자주 확인하는 항목의 위젯을 추가하세요.</string>
     <string name="add_widget_2">위젯 추가</string>
     <string name="suggestions">제안</string>
+    <string name="widget_shape_tiny">1 × 1</string>
+    <string name="widget_shape_row">가로 한 줄</string>
+    <string name="widget_shape_column">세로 한 줄</string>
     <string name="widget_unavailable">위젯을 사용할 수 없음</string>
     <string name="notification_center">알림 센터</string>
     <string name="no_notifications">알림 없음</string>

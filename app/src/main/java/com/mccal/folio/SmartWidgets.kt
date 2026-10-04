@@ -36,6 +36,25 @@ const val UP_NEXT_WIDGET = -6
 const val SUGGESTIONS_WIDGET = -7
 const val BIG_CLOCK_WIDGET = -8
 
+/** The size of a Home icon in dp, for widgets that show apps and must never draw them bigger than Home does. */
+internal val LocalHomeIconSize = staticCompositionLocalOf { 66f }
+
+/** How many icons the Suggestions widget shows, in how many columns and rows, and how big (dp). */
+internal data class SuggestionsLayout(val columns: Int, val rows: Int, val icon: Float)
+
+/**
+ * Suggestions for a box of [width] x [height] dp: as many icons as fit at the Home icon size ([homeIcon]), up to 4 across
+ * and 4 down, and smaller than that only when even one will not fit. Icons are never drawn bigger than Home's.
+ */
+internal fun suggestionsLayout(width: Float, height: Float, homeIcon: Float): SuggestionsLayout {
+    val gap = 12f
+    val wanted = homeIcon.coerceAtLeast(28f)
+    val columns = (width / (wanted + gap)).toInt().coerceIn(1, 4)
+    val rows = (height / (wanted + gap)).toInt().coerceIn(1, 4)
+    val icon = minOf(wanted, width / columns - gap, height / rows - gap).coerceAtLeast(28f)
+    return SuggestionsLayout(columns, rows, icon)
+}
+
 /** Apps and launching for built-in widgets that show apps (provided by Home). */
 internal class HomeApps(val apps: List<AppEntry>, val launch: (AppEntry) -> Unit)
 internal val LocalHomeApps = staticCompositionLocalOf { HomeApps(emptyList()) {} }
@@ -143,9 +162,10 @@ internal fun SuggestionsCard(onEdit: () -> Unit) {
     val apps by produceState(emptyList<AppEntry>(), home.apps, quarter) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps) } }
     GlassCard(onClick = onEdit) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val columns = if (maxWidth > maxHeight * 1.5f) 4 else 2
-            val rows = if (maxHeight > 140.dp) 2 else if (columns == 4) 1 else 2
-            val icon = minOf(maxWidth / columns - 12.dp, maxHeight / rows - 12.dp).coerceAtLeast(28.dp)
+            val layout = suggestionsLayout(maxWidth.value, maxHeight.value, LocalHomeIconSize.current)
+            val columns = layout.columns
+            val rows = layout.rows
+            val icon = layout.icon.dp
             if (apps.isEmpty()) Text(stringResource(R.string.suggestions_appear_as_you_use_your_apps), color = LocalHomeInk.current.secondary, fontSize = FolioType.FOOTNOTE.sp,
                 modifier = Modifier.align(Alignment.Center))
             else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
