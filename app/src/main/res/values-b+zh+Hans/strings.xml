@@ -1557,6 +1557,11 @@
     <string name="edit_icon_for_1">%1$s 的图标</string>
     <string name="like_other_icons">与其他图标相同</string>
     <string name="edit_icon_note">只更改此 App 的图标，Folio 显示它的所有位置都会生效。其余图标仍在“设置”›“图标与侧栏”中设定。</string>
+    <string name="your_picture">我的图片</string>
+    <string name="choose_picture">选择图片</string>
+    <string name="change_picture">更换图片</string>
+    <string name="remove_picture">移除图片</string>
+    <string name="edit_icon_picture_note">图片会复制到 Folio 并裁剪为正方形，所以即使删除原图也能继续使用。它只保存在这部手机上，不包含在备份中。</string>
     <string name="reset_icon">重置图标</string>
     <string name="custom_search_blank">在你输入地址之前，按回车搜索会使用 Google。</string>
     <string name="separate_upright_layout">竖屏时使用单独布局</string>

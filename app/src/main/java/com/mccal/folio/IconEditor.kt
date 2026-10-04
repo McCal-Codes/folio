@@ -6,7 +6,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +55,19 @@ internal fun AppIconEditor(app: AppEntry, current: AppIconOverride, onChange: (A
                 IosChip(current.shape == shape, { onChange(current.copy(shape = shape)) }, { Text(stringResource(shape.label)) }, Modifier.testTag("icon-shape-${shape.name.lowercase()}"))
             }
         }
+        // Your own picture: Android's photo picker (it hands over only the one picture), cropped to a square from its middle.
+        SheetGroupLabel(stringResource(R.string.your_picture))
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri != null) scope.launch { AppIconPictures.save(context, app.id, uri)?.let { stamp -> onChange(current.copy(picture = stamp)) } }
+        }
+        ChipRow {
+            IosChip(false, { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                { Text(stringResource(if (current.hasPicture) R.string.change_picture else R.string.choose_picture)) }, Modifier.testTag("icon-picture-choose"))
+            if (current.hasPicture) IosChip(false, { onChange(current.copy(picture = 0L)) }, { Text(stringResource(R.string.remove_picture)) }, Modifier.testTag("icon-picture-remove"))
+        }
+        CardNote(stringResource(R.string.edit_icon_picture_note))
         CardNote(stringResource(R.string.edit_icon_note))
         if (!current.isDefault) IosActionRow(stringResource(R.string.reset_icon), destructive = true, onClick = { onChange(AppIconOverride()) })
     }
