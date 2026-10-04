@@ -1016,11 +1016,29 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         persist()
         return true
     }
-    /** Turns a Focus on (or all off with null) and applies it to Android. */
+    /** Turns a Focus on (or all off with null) by hand and applies it to Android. A trigger that holds won't undo it until something changes. */
     fun setFocus(id: String?) {
+        val before = mutable.value.activeFocus
+        triggerState = if (id == null) FocusTriggers.onTurnedOffByHand(mutable.value.focusModes, triggerState, before) else FocusTriggers.onTurnedOnByHand(triggerState)
+        focusReasonState.value = null
+        applyFocus(id)
+    }
+    private fun applyFocus(id: String?) {
         updateSettings(soon = false) { it.copy(activeFocus = id?.takeIf { f -> it.focusModes.any { m -> m.id == f } }) }
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
+    }
+    private var triggerState = FocusTriggerState()
+    private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(null)
+    /** Why the Focus that is on turned on by itself (unfolded, charging, headphones), or null when it was turned on by hand. */
+    val focusReason: kotlinx.coroutines.flow.StateFlow<FocusReason?> get() = focusReasonState
+    /** The phone's folding, charging or headphones changed: turns a Focus on or off by its triggers (see [FocusTriggers]). */
+    fun onFocusSignals(signals: FocusSignals) {
+        val state = mutable.value
+        val result = FocusTriggers.onSignals(state.focusModes, state.activeFocus, triggerState, signals)
+        triggerState = result.state
+        focusReasonState.value = result.state.reason
+        if (result.changed) applyFocus(result.active)
     }
     fun updateFocusMode(mode: FocusMode) {
         updateSettings(soon = false) { it.copy(focusModes = FocusModes.update(it.focusModes, mode)) }

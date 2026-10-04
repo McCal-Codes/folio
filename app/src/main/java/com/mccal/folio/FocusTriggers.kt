@@ -89,3 +89,19 @@ internal object FocusTriggers {
     /** A Focus was turned on by hand: it is no longer "turned on by a trigger", so a trigger ending won't turn it off. */
     fun onTurnedOnByHand(state: FocusTriggerState) = state.copy(byTrigger = null, reason = null)
 }
+
+/** The words for a fold state in Settings. */
+@androidx.annotation.StringRes
+internal fun FoldState.label(): Int = when (this) {
+    FoldState.UNFOLDED -> R.string.focus_fold_unfolded
+    FoldState.COVER -> R.string.focus_fold_cover
+    FoldState.TENT -> R.string.focus_fold_tent
+}
+
+/** The words for why a Focus is on ("Unfolded", "Charging", "Headphones"), shown after "On ·". */
+@androidx.annotation.StringRes
+internal fun FocusReason.label(mode: FocusMode): Int = when (this) {
+    FocusReason.FOLD -> (mode.triggers.fold ?: FoldState.UNFOLDED).label()
+    FocusReason.CHARGING -> R.string.focus_trigger_charging
+    FocusReason.HEADPHONES -> R.string.focus_trigger_headphones
+}

@@ -388,6 +388,15 @@
     <string name="without_it_a_focus_still_changes_home_bu">Without it, a Focus still changes Home but can\'t silence notifications or change the look.</string>
     <string name="schedule">Schedule</string>
     <string name="turn_on_automatically">Turn On Automatically</string>
+    <string name="focus_also_turn_on_when">Also Turn On When</string>
+    <string name="focus_trigger_folding">Folding</string>
+    <string name="focus_trigger_charging">Charging</string>
+    <string name="focus_trigger_headphones">Headphones</string>
+    <string name="focus_fold_unfolded">Unfolded</string>
+    <string name="focus_fold_cover">Cover Screen</string>
+    <string name="focus_fold_tent">Tent</string>
+    <string name="focus_triggers_note">These only turn this Focus on and off. If you turn it off yourself, it stays off until the next change.</string>
+    <string name="focus_on_because">On · %1$s</string>
     <string name="from">From</string>
     <string name="silence_notifications">Silence Notifications</string>
     <string name="calls_and_people_allowed_in_android_s_do">Calls and people allowed in Android\'s Do Not Disturb settings still come through.</string>

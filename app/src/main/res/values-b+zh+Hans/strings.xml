@@ -394,6 +394,15 @@
     <string name="without_it_a_focus_still_changes_home_bu">没有它，专注模式仍会改变主屏幕，但无法将通知静音或更改外观。</string>
     <string name="schedule">排程</string>
     <string name="turn_on_automatically">自动开启</string>
+    <string name="focus_also_turn_on_when">在以下情况也开启</string>
+    <string name="focus_trigger_folding">折叠状态</string>
+    <string name="focus_trigger_charging">充电时</string>
+    <string name="focus_trigger_headphones">耳机</string>
+    <string name="focus_fold_unfolded">展开</string>
+    <string name="focus_fold_cover">外屏</string>
+    <string name="focus_fold_tent">帐篷</string>
+    <string name="focus_triggers_note">这些仅用于开启和关闭此专注模式。如果你手动关闭，它会保持关闭，直到下一次变化。</string>
+    <string name="focus_on_because">已开启 · %1$s</string>
     <string name="from">从</string>
     <string name="silence_notifications">将通知静音</string>
     <string name="calls_and_people_allowed_in_android_s_do">Android 勿扰模式设置中允许的来电和联系人仍然可以接通。</string>

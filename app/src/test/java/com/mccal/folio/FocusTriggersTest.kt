@@ -86,4 +86,17 @@ class FocusTriggersTest {
         val old = org.json.JSONArray().put(org.json.JSONObject().put("id", "work").put("name", "Work").put("color", 0).put("silence", true))
         assertEquals(FocusTriggerSet(), focusModesFromJson(old).first { it.id == "work" }.triggers)
     }
+
+    @Test fun `fold state is read from the window and only for a phone that folds`() {
+        assertEquals(FoldState.UNFOLDED, foldStateOf(hasFold = true, halfOpened = false, foldable = true))
+        assertEquals(FoldState.TENT, foldStateOf(hasFold = true, halfOpened = true, foldable = true))
+        assertEquals(FoldState.COVER, foldStateOf(hasFold = false, halfOpened = false, foldable = true))
+        assertNull(foldStateOf(hasFold = false, halfOpened = false, foldable = false))
+    }
+
+    @Test fun `headphones are headsets and speakers, not the phone's own speaker`() {
+        assertTrue(isHeadphoneType(android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP))
+        assertTrue(isHeadphoneType(android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET))
+        assertFalse(isHeadphoneType(android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER))
+    }
 }
