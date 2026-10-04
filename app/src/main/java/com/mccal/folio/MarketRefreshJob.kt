@@ -94,6 +94,15 @@ class MarketRefreshJob : JobService() {
         internal suspend fun refreshSources(context: Context) {
             val session = MarketSession(context, ReadOnlyLauncher)
             session.sources.refreshAll(force = false)
+            // Tell the person, once per set of new versions, only if they asked to be told.
+            val prefs = rememberedMarketPrefs(context)
+            if (prefs.notifyUpdates) caught("Market: the update notice") {
+                val updates = MarketUpdateNotice.pending(context, session)
+                if (MarketUpdateNotice.shouldNotify(updates, prefs.lastNotifiedUpdates)) {
+                    MarketUpdateNotice.post(context, updates)
+                    prefs.lastNotifiedUpdates = MarketUpdateNotice.signature(updates)
+                } else if (updates.isEmpty()) prefs.lastNotifiedUpdates = null
+            }
         }
     }
 }

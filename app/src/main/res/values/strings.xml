@@ -1306,6 +1306,15 @@
     <string name="market_page_intro">Themes and tweaks as packages you can get and remove. Folio\'s own come with the app; sources you add are signed by whoever publishes them.</string>
     <string name="market_refreshing_section">Refreshing</string>
     <string name="refresh_in_the_background">Refresh in the background</string>
+    <string name="tell_me_about_updates">Tell me about updates</string>
+    <string name="market_updates_notice_detail">One notice when a source has a newer version of something you installed</string>
+    <string name="market_updates_channel">Market updates</string>
+    <string name="market_updates_channel_detail">New versions of packages and apps you installed from the Market.</string>
+    <string name="market_updates_and_more">and %1$d more</string>
+    <plurals name="market_updates_notice">
+        <item quantity="one">%1$d update in the Market</item>
+        <item quantity="other">%1$d updates in the Market</item>
+    </plurals>
     <string name="once_a_day">Once a day</string>
     <string name="only_on_wifi">Only on Wi-Fi</string>
     <string name="never_uses_mobile_data">Never uses mobile data</string>

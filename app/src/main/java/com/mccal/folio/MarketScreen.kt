@@ -369,6 +369,7 @@ internal fun MarketScreen(
     LaunchedEffect(MarketLink.pending) {
         when (val link = MarketLink.pending) {
             is MarketLink.Package -> { tab = MarketTab.PACKAGES; openId = link.id }
+            MarketLink.Updates -> tab = MarketTab.INSTALLED
             is MarketLink.Source -> {
                 // What the format says a source link does: the Add Source sheet, filled in. The fingerprint still
                 // has to be confirmed, so a link can't add a source by itself.
@@ -1825,6 +1826,8 @@ private fun report(context: android.content.Context, issuesUrl: String?, entry: 
 internal sealed interface MarketLink {
     data class Package(val id: String) : MarketLink
     data class Source(val url: String) : MarketLink
+    /** The update notice: the store, on what is installed and has a newer version. */
+    data object Updates : MarketLink
 
     // A supporter's code is a link too, but it belongs to Settings rather than the store: see RedeemActivity.
 
@@ -1837,6 +1840,7 @@ internal sealed interface MarketLink {
             val host = rest.substringBefore('/')
             val value = rest.substringAfter('/', "").substringBefore('?').substringBefore('#')
             if (value.isEmpty()) return null
+            if (host == "market") return Updates.takeIf { value == "updates" }
             return when (host) {
                 "package" -> Package(value).takeIf { PackageManifest.ID.containsMatchIn(it.id) }
                 // The url is encoded, because it carries its own slashes.

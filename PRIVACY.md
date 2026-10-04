@@ -26,8 +26,8 @@ Android controls widget-binding approval and Home-app selection. Providers can r
 - **A source is only contacted once you add it.** Folio reads static files over HTTPS — a signed entry file, the
   package list, an optional revocation list, and any package you choose to get. It never calls a repository API.
 - **A refresh is at most five requests, no more often than every six hours**, and it sends `If-None-Match` so an
-  unchanged source answers with nothing. Background refreshing is **off** unless you turn it on, and waits for Wi-Fi
-  unless you say otherwise.
+  unchanged source answers with nothing. Background refreshing is **on** for sources you added, once a day at most, and waits
+  for Wi-Fi unless you say otherwise. You can turn it off in Settings, and a source is still only contacted once you add it.
 - **Nothing identifies you.** Requests carry `User-Agent: Folio` and nothing else: no account, no id, no cookies. A
   source can see that some copy of Folio asked for a file, the way any web server can.
 - **A package is data, not code.** It configures things Folio already does; it gets no Android permissions, and it

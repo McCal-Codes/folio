@@ -868,6 +868,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     SheetGroupLabel(stringResource(R.string.market_refreshing_section))
                     var background by remember { mutableStateOf(marketPrefs.backgroundRefresh) }
                     var wifiOnly by remember { mutableStateOf(marketPrefs.refreshOnWifiOnly) }
+                    var notifyUpdates by remember { mutableStateOf(marketPrefs.notifyUpdates) }
+                    val marketNotifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
                     SheetGroup {
                         SwitchRow(stringResource(R.string.refresh_in_the_background), stringResource(if (background) R.string.once_a_day else R.string.off), background) {
                             background = it
@@ -875,6 +877,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             MarketRefreshJob.schedule(sheetContext)
                         }
                         if (background) {
+                            MenuDivider()
+                            SwitchRow(stringResource(R.string.tell_me_about_updates), stringResource(R.string.market_updates_notice_detail), notifyUpdates) {
+                                notifyUpdates = it
+                                marketPrefs.notifyUpdates = it
+                                if (it && !SoftwareUpdate.canPostNotifications(sheetContext)) marketNotifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            }
                             MenuDivider()
                             SwitchRow(stringResource(R.string.only_on_wifi), stringResource(if (wifiOnly) R.string.never_uses_mobile_data else R.string.any_network), wifiOnly) {
                                 wifiOnly = it
