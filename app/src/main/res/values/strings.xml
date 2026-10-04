@@ -1057,6 +1057,7 @@
     <string name="hide_from_app_library">Hide from App Library</string>
     <string name="info_for_app">Info for App</string>
     <string name="share_diagnostics">Share Diagnostics</string>
+    <string name="diagnostics_copied">Copied</string>
     <string name="save_current_layout">Save Current Layout</string>
     <string name="saved_by_you">Saved by you</string>
     <string name="resize_on_home">Resize on Home</string>

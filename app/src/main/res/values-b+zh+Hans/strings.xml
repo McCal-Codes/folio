@@ -1007,6 +1007,7 @@
     <string name="hide_from_app_library">在 App 资源库中隐藏</string>
     <string name="info_for_app">App 信息</string>
     <string name="share_diagnostics">分享诊断信息</string>
+    <string name="diagnostics_copied">已复制</string>
     <string name="save_current_layout">存储当前布局</string>
     <string name="saved_by_you">由你存储</string>
     <string name="resize_on_home">在主屏幕上调整大小</string>

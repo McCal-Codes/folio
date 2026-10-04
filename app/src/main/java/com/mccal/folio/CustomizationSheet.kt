@@ -24,6 +24,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1420,6 +1422,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.save_backup to CustomizationPage.BACKUP,
     R.string.save_backup_to_files to CustomizationPage.BACKUP,
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
+    R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -1752,6 +1755,15 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
             shareScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = false)) } }
         }, modifier = Modifier.testTag("share-diagnostics"))
+        // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
+        var copied by remember { mutableStateOf(false) }
+        CardAction(stringResource(R.string.copy_diagnostics), onClick = {
+            shareScope.launch { runCatching { Diagnostics.copy(context); copied = true } }
+        }, modifier = Modifier.testTag("copy-diagnostics"))
+        if (copied) {
+            LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); copied = false }
+            Text(stringResource(R.string.diagnostics_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("diagnostics-copied").semantics { liveRegion = LiveRegionMode.Polite })
+        }
         CardNote(stringResource(R.string.diagnostics_file_note))
     }
 }
