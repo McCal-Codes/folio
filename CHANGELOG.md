@@ -10,7 +10,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Added
 - **Update notices from the Market:** Settings › Tweaks › Market › Refreshing has Tell me about updates (off until you turn it on, and it asks to send notifications). When the daily refresh finds newer versions of packages or apps you installed, one notice lists them (2 updates in the Market · Keyd 0.4.1, Duet 1.2), never the same set twice, and tapping it opens the Market on what is installed. Nothing is installed by the notice (M8).
 - **Add a source from its GitHub address:** Settings › Tweaks › Market › Sources accepts github.com/owner/repo and uses the repository's GitHub Pages site (owner.github.io/repo), reading static files only, never GitHub's API. Anything else you type is used as written (M4).
-- **Sources you added keep up to date by themselves:** Refresh in the background is now on for a source you added, once a day at most and on Wi-Fi unless you change that. Turn it off in Settings and it stays off (M3).
+- **Sources you added refresh themselves:** Refresh in the background is now on for a source you added, once a day at most and on Wi-Fi unless you change that. Turn it off in Settings and it stays off (M3).
 
 ## [0.6.8] - Unreleased
 
