@@ -713,6 +713,15 @@
     <string name="resize_folder">调整文件夹大小</string>
     <string name="folder_options">文件夹选项</string>
     <string name="sort_a_to_z">按字母排序</string>
+    <string name="customize">自定义</string>
+    <string name="clock_style">时钟样式</string>
+    <string name="color">颜色</string>
+    <string name="white">白色</string>
+    <string name="weight">粗细</string>
+    <string name="match_picture">匹配图片</string>
+    <string name="automatic_reads_the_picture_under_the_clock">自动会读取时钟下方的图片，因此移动时钟时颜色也会改变。</string>
+    <string name="wallpaper_from_folios_own_pictures_only">Android 不允许应用读取系统壁纸，因此壁纸和自定义颜色需要 Folio 自己的图片作为 Home 背景。</string>
+    <string name="suggested_from_the_picture">从图片中推荐（仅显示在此处仍可辨读的颜色）</string>
     <string name="text_1_s_unavailable">%1$s 不可用</string>
     <string name="headphones">耳机</string>
     <string name="fixes_and_improvements">修复与改进</string>

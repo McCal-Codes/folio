@@ -1805,6 +1805,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
+/** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
+internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -1815,7 +1818,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     /** The Side Bar (status, dock and search): off for the second page of an unfolded preview, which has one Side Bar. */
     sideBar: Boolean = true,
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
-    preset: LayoutPreset = state.compact) {
+    preset: LayoutPreset = state.compact,
+    /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
+    page: Int = LocalPreviewPage.current) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -1830,10 +1835,10 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
-    val placements = state.widgetPlacements.filter { it.page == 0 }
-    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
+    val placements = state.widgetPlacements.filter { it.page == page }
+    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
-    val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
+    val (iconSize, labels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
     val railAlign = if (left) Alignment.TopStart else Alignment.TopEnd
@@ -1871,7 +1876,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                             }
                         }
                         repeat(shownRows * GRID_COLUMNS) { local ->
-                            val id = state.homeSlots.getOrNull(local) ?: return@repeat
+                            val id = state.homeSlots.getOrNull(homeCellIndex(page, local)) ?: return@repeat
                             val app = apps[id]
                             val folder = if (app == null) state.folders.firstOrNull { it.id == id } ?: return@repeat else null
                             val row = local / GRID_COLUMNS
@@ -1939,8 +1944,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                     if (record.size != record.layer.size) record.size = record.layer.size
                 } else Modifier)) {
                 // Two Home pages with one Side Bar, on the right (on the left in left-handed layouts), like the open Fold.
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded)
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded, page = 0)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded, page = 0)
             }
         }
     }

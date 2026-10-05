@@ -289,6 +289,8 @@ data class LauncherState(
     val folderColors: Map<String, Long> = emptyMap(),
     /** Optional custom width/height per folder id, from dragging its resize handle; absent means automatic. */
     val folderSizes: Map<String, FolderSize> = emptyMap(),
+    /** Optional color/weight per Big Clock, keyed by its widget slot since more than one can be on Home. */
+    val bigClockStyles: Map<Int, BigClockStyle> = emptyMap(),
     /** Icon Stacks: anchor app id → the apps that fan out when you swipe down on it. */
     val iconStacks: Map<String, List<String>> = emptyMap(),
     /** Custom app names by app id; apps without an entry keep the name Android reports. */
@@ -1216,6 +1218,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
     fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
         it.copy(folderSizes = if (size == null) it.folderSizes - folderId else it.folderSizes + (folderId to size)) }
+    // soon = true: the weight slider's onValueChange fires on every pixel of drag, each one a call here - soon
+    // coalesces those into one write after they stop (persistSoon's own purpose), instead of a synchronous
+    // persist() blocking the UI thread on every tick, which is what made the slider look stuck.
+    fun setBigClockStyle(slot: Int, style: BigClockStyle?) = updateSettings(soon = true) {
+        it.copy(bigClockStyles = if (style == null) it.bigClockStyles - slot else it.bigClockStyles + (slot to style)) }
     fun setButtonBar(value: Boolean) = updateSettings(soon = false) { it.copy(buttonBar = value) }
     fun setButtonBarHeight(value: Float) = updateSettings(soon = false) { it.copy(buttonBarHeight = value.coerceIn(44f, 60f)) }
     fun setButtonBarWidth(value: Float) = updateSettings(soon = false) { it.copy(buttonBarWidth = value.coerceIn(.3f, .8f)) }
@@ -1428,6 +1435,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("todayWidgets", JSONArray().apply { s.todayWidgets.forEach { put(JSONObject().put("id", it.id).put("size", it.size.name)) } })
             .put("folderColors", JSONObject().apply { s.folderColors.forEach { (id, c) -> put(id, c) } })
             .put("folderSizes", JSONObject().apply { s.folderSizes.forEach { (id, sz) -> put(id, JSONObject().put("w", sz.width.toDouble()).put("h", sz.height.toDouble())) } })
+            .put("bigClockStyles", JSONObject().apply { s.bigClockStyles.forEach { (slot, st) ->
+                put(slot.toString(), JSONObject().put("mode", st.mode).put("customIndex", st.customIndex).put("weight", st.weight)) } })
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
             .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
@@ -1720,6 +1729,12 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folderSizes = j.optJSONObject("folderSizes")?.let { o -> o.keys().asSequence().mapNotNull { id ->
             val sz = o.optJSONObject(id) ?: return@mapNotNull null
             id to FolderSize(sz.optDouble("w", -1.0).toFloat().coerceIn(100f, 2000f), sz.optDouble("h", -1.0).toFloat().coerceIn(100f, 2000f))
+        }.toMap() } ?: emptyMap(),
+        bigClockStyles = j.optJSONObject("bigClockStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
+            val slot = key.toIntOrNull() ?: return@mapNotNull null
+            val st = o.optJSONObject(key) ?: return@mapNotNull null
+            val mode = st.optString("mode", "AUTO").takeIf { it in setOf("AUTO", "WALLPAPER", "WHITE", "CUSTOM") } ?: "AUTO"
+            slot to BigClockStyle(mode, st.optInt("customIndex", 0).coerceIn(0, 4), st.optInt("weight", 600).coerceIn(100, 900))
         }.toMap() } ?: emptyMap(),
         pageStyles = j.optJSONObject("pageStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val page = key.toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null

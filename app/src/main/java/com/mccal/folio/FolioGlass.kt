@@ -56,6 +56,10 @@ internal val SheetBackProgress = androidx.compose.runtime.mutableFloatStateOf(0f
 /** A Home layout slider being dragged in Settings, with its bounds in the Settings window (see [SettingsPeek]). */
 internal data class PeekSlider(val label: String, val valueLabel: String, val fraction: Float, val bounds: androidx.compose.ui.geometry.Rect)
 
+/** Set while a sheet is open that edits something visible on Home (the Big Clock's style): Home stays sharp and
+ * undimmed behind it, so the change can be watched live instead of through a blur. */
+internal val HomePeek = androidx.compose.runtime.mutableStateOf(false)
+
 /** Set while a Home layout slider is dragged: Settings fades so the real Home shows the change, like iOS. */
 internal val SettingsPeek = androidx.compose.runtime.mutableStateOf<PeekSlider?>(null)
 

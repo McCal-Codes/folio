@@ -281,7 +281,7 @@ class MainActivity : ComponentActivity() {
                     // Fixed radius while any overlay is showing: a constant blur is cached by the RenderThread,
                     // whereas animating the radius re-blurred the whole Home every frame (~14ms of GPU per
                     // frame). The overlay's scrim fades in over it, which hides the switch.
-                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && LauncherPagesOpen.intValue == 0 && SettingsPeek.value == null) backdropBlur else null
+                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && LauncherPagesOpen.intValue == 0 && SettingsPeek.value == null && !HomePeek.value) backdropBlur else null
                 }) {
                 LauncherScreen(state, model, widgets, homeRequests.intValue,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,

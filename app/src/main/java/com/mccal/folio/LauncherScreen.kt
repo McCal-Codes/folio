@@ -587,7 +587,9 @@ fun LauncherScreen(
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
+        val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
         CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+            LocalBigClockStyles provides bigClockStyles,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
@@ -1100,6 +1102,7 @@ fun LauncherScreen(
                         }
                         "settings", "settings:wallpaper", "market" -> {
                           val settingsSheet: @Composable (String) -> Unit = { host ->
+                            CompositionLocalProvider(LocalPreviewPage provides pager.currentPage.coerceIn(0, homePages - 1)) {
                             CustomizationSheet(state, wide, model, isDefaultHome,
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
@@ -1119,6 +1122,7 @@ fun LauncherScreen(
                             backgrounds = launcherActivity.backgrounds,
                             onOpenMarket = { customizationPage = CustomizationPage.OVERVIEW; sheet = "market" },
                             onWallpaperPreview = { sheet = ""; onWallpaperPreview() }, homePage = pager.currentPage.coerceIn(0, homePages - 1))
+                            }
                           }
                           if (sheet == "market") {
                               // The Market lives here, so its Settings tab is Folio's own Settings rather than a jump.
@@ -1165,8 +1169,12 @@ fun LauncherScreen(
                                     picker.exactTarget = false; sheet = "widgets"
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
-                                onClose = { sheet = "" })
+                                onClose = { sheet = "" },
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET) {{ sheet = "clockStyle" }} else null)
                         }
+                        "clockStyle" -> ClockStyleSheet(placement = model.placement(picker.slot),
+                            style = state.bigClockStyles[picker.slot], onStyle = { model.setBigClockStyle(picker.slot, it) },
+                            systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onClose = { sheet = "" })
                     }
                 }
             }
