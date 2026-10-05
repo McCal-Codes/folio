@@ -66,6 +66,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -629,7 +630,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
                     Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
                         val mode = current ?: focusModes.first()
-                        RoundToggle(mode.icon(), if (current != null) "Turn off ${mode.name}" else "Turn on ${mode.name}", current != null, Color(mode.color), cell * .7f) {
+                        RoundToggle(mode.icon(), stringResource(if (current != null) R.string.turn_off_mode else R.string.turn_on_mode, mode.name), current != null, Color(mode.color), cell * .7f) {
                             onFocus(if (current != null) null else mode.id)
                         }
                         Spacer(Modifier.width(12.dp))
@@ -764,8 +765,10 @@ private fun Module(modifier: Modifier, color: Color = ModuleGlass, content: @Com
 @Composable
 private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
     Box(Modifier.size(size).clip(CircleShape).background(if (on) accent else Color.White.copy(alpha = .16f))
-        .clickable { haptic.toggle(!on); onClick() }.semantics { contentDescription = "$label, ${if (on) "on" else "off"}" },
+        .clickable { haptic.toggle(!on); onClick() }
+        .semantics { contentDescription = label; stateDescription = stateText; role = androidx.compose.ui.semantics.Role.Switch },
         contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * .46f))
     }

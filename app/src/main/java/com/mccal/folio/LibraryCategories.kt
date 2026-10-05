@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.combinedClickable
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -72,6 +73,7 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
 /** iOS App Library tile: three big icons and a mini cluster that opens the whole category. */
 @Composable
 internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifier, labelColor: Color = Color.White, onLaunch: (AppEntry) -> Unit, onOpen: () -> Unit) {
+    val showAllText = stringResource(R.string.show_all_apps_in, apps.size, title)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioGlass.card)
             .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp)).padding(FolioSpace.MEDIUM.dp)) {
@@ -87,7 +89,7 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                             index < big.size -> AppIcon(big[index], big[index].label, Modifier.size(cell)
                                 .clickable { onLaunch(big[index]) }, shape = RoundedCornerShape(cell * .24f))
                             index == 3 && rest.isNotEmpty() -> Box(Modifier.size(cell).clip(RoundedCornerShape(cell * .24f))
-                                .clickable(onClick = onOpen).semantics { contentDescription = "Show all ${apps.size} $title apps" }) {
+                                .clickable(onClick = onOpen).semantics { contentDescription = showAllText }) {
                                 val mini = (cell - 4.dp) / 2
                                 Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                                     rest.take(4).chunked(2).forEach { pair ->
@@ -104,7 +106,8 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
             }
         }
         Text(title, color = labelColor, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = FolioSpace.SNUG.dp).clickable(onClick = onOpen))
+            modifier = Modifier.padding(top = FolioSpace.SNUG.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen)
+                .heightIn(min = FolioTouch.MIN.dp).wrapContentHeight(Alignment.CenterVertically))
     }
 }
 

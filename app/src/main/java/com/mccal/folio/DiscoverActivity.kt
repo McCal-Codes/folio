@@ -443,9 +443,9 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
             }
             Column(Modifier.align(Alignment.BottomEnd).padding(end = FolioSpace.MEDIUM.dp, bottom = FolioSpace.MEDIUM.dp).width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 // Home is physically to the right of Discover, matching our fixed page order.
-                FilledTonalIconButton(onClick = onHome, Modifier.testTag("discover-home")) { Icon(Icons.Rounded.ArrowForward, "Back to home") }
+                FilledTonalIconButton(onClick = onHome, Modifier.testTag("discover-home")) { Icon(Icons.Rounded.ArrowForward, stringResource(R.string.back_to_home)) }
                 Spacer(Modifier.height(8.dp))
-                FilledTonalIconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search apps") }
+                FilledTonalIconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, stringResource(R.string.search_apps)) }
             }
         }
     }

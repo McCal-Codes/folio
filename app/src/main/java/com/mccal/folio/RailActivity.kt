@@ -98,7 +98,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
                     (current.art ?: current.icon)?.let {
                         androidx.compose.foundation.Image(it.asImageBitmap(), current.title,
                             Modifier.size(glyph).clip(RoundedCornerShape((outer - inset).coerceAtMost(glyph * .3f)))
-                                .then(if (expanded) Modifier.clickable(onClickLabel = "Open ${current.title}", onClick = open) else Modifier),
+                                .then(if (expanded) Modifier.clickable(onClickLabel = stringResource(R.string.open_named, current.title), onClick = open) else Modifier),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                     }
                     if (!expanded) Box(Modifier.padding(bottom = FolioSpace.HAIR.dp).graphicsLayer { scaleX = 1.25f; scaleY = 1.25f }) { Bars(current.playing, accent) }
@@ -150,8 +150,9 @@ internal fun RailNowPlaying(media: IslandActivity.Media, accent: Color, width: a
             media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = 10.sp, maxLines = 1,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1400)) }
         }
+        val progressText = if (duration != null && position != null) stringResource(R.string.progress_of, formatClock(position), formatClock(duration)) else ""
         if (duration != null && position != null) Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .22f))
-            .semantics { contentDescription = "${formatClock(position)} of ${formatClock(duration)}" }) {
+            .semantics { contentDescription = progressText }) {
             Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent))
         }
         val controls = controller?.transportControls

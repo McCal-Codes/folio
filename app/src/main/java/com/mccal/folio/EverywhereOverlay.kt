@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
@@ -325,7 +326,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             if (apps.isNotEmpty()) HorizontalDivider(Modifier.width(40.dp), color = Color.White.copy(alpha = .2f))
                             Box(Modifier.size(50.dp).clip(RoundedCornerShape(13.dp)).background(Color.White.copy(alpha = .16f)).clickable {
                                 closeDock(); service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
-                            }, contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Home, "Home", tint = Color.White) }
+                            }, contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Home, stringResource(R.string.home_label), tint = Color.White) }
                         }
                     }
                 }
