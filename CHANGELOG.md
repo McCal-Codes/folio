@@ -5,6 +5,15 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.9] - Unreleased
+
+### Added
+- **Resize a folder by its corner:** drag a folder's bottom-right corner to make it bigger or smaller, the way Good Lock's Home Up does. Folio remembers the size you leave it at, up to a bigger ceiling on the unfolded inner screen than the cover, and a folder never shrinks past what its grid needs.
+- **Drop an app on another to make a folder:** drag one app's icon onto another's, on Home or in the dock, and the two become a new folder together, the way iOS and Android do. Dropping on a folder that already exists still just adds to it.
+
+### Changed
+- **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
+
 ## [0.6.8] - Unreleased
 
 ### Added
