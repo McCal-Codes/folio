@@ -408,6 +408,10 @@ data class PageStyle(val iconScale: Float = 1f, val labels: Boolean? = null) {
     }
 }
 
+/** A folder's own width and height (dp), set by dragging its resize handle; a folder without one sizes itself
+ * automatically. Free-form rather than grid-snapped, since a folder doesn't live on Home's app grid. */
+data class FolderSize(val width: Float, val height: Float)
+
 /**
  * iPhone Duo-style displacement around a horizontal fold (a half-open phone held upright): instead of leaving a row of
  * icons in the curve, that row and every row after it move down past the fold. A widget is never split: if one spans

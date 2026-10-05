@@ -459,9 +459,19 @@ fun LauncherScreen(
     } ?: session.targetIndex?.let { draftAt(it, session.span, session.slot) } }
     val dropHomePage = if (pager.currentPage >= visibleHomePages)
         lastHomePage.coerceIn(0, homePages - 1) else pager.currentPage.coerceIn(0, homePages)
+    // Dropping one app onto another creates a folder with both (like iOS/Android), not a reorder - a drag out of
+    // a folder is unaffected, that already goes through removeAppFromFolder in finishDrag regardless of target.
+    fun folderMergeTarget(sourceAppId: String?, index: Int): String? {
+        if (sourceAppId == null || drag.source?.folderId != null) return null
+        val occupant = state.layout.slotAt(index) ?: return null
+        return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
+    }
     val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows) {
         val id = drag.source?.appId
         when {
+            // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
+            // the target cell's own hover highlight is the only feedback until release, same as a real platform.
+            id != null && insertionTarget is DropTarget.Home && folderMergeTarget(id, insertionTarget.index) != null -> state.layout
             id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
@@ -502,6 +512,10 @@ fun LauncherScreen(
                 model.removeAppFromFolder(source.folderId, source.appId, destination)
             destination == DropTarget.Remove -> model.removePlacement(source.target)
             destination is DropTarget.Home && source.target is DropTarget.Widget -> model.moveWidgetTo(source.target.index, destination.index)
+            // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
+            // places. Dropping on an existing folder already goes through DropTarget.Folder above.
+            destination is DropTarget.Home && folderMergeTarget(source.appId, destination.index) != null ->
+                model.createFolder(source.appId!!, folderMergeTarget(source.appId, destination.index)!!, destination.index) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
@@ -1656,6 +1670,7 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
+                    size = state.folderSizes[id], onSize = { model.setFolderSize(id, it) },
                     // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
                     onLaunch = onLaunchFrom, onAddApps = if (focusLock == null) {{ overlays.addToFolder = id }} else null,
                     onMoveOut = { appId, destination ->
