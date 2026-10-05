@@ -235,7 +235,8 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
         val fill = Modifier.fillMaxSize().then(if (clipShape != null) Modifier.clip(clipShape) else Modifier)
         // App icon bitmaps carry a small transparent margin; inset the drawn live icons to the same visual size.
         when {
-            picture != null -> { val shown = remember(picture) { picture!!.asImageBitmap() }; Image(shown, null, fill) }
+            // Real icons come masked; a picture is a plain square, so with no shape to clip to it gets the usual rounded corners.
+            picture != null -> { val shown = remember(picture) { picture!!.asImageBitmap() }; Image(shown, null, if (clipShape != null) fill else Modifier.fillMaxSize().clip(RoundedCornerShape(22))) }
             liveKind == LiveIcons.Kind.CALENDAR -> BoxWithConstraints(Modifier.fillMaxSize()) { CalendarIcon(Modifier.fillMaxSize().padding(maxWidth * .035f).then(if (clipShape != null) Modifier.clip(clipShape) else Modifier), palette) }
             liveKind == LiveIcons.Kind.CLOCK -> BoxWithConstraints(Modifier.fillMaxSize()) { ClockIcon(Modifier.fillMaxSize().padding(maxWidth * .035f).then(if (clipShape != null) Modifier.clip(clipShape) else Modifier), palette) }
             look.style == IconStyle.CLEAR -> ClearIcon(app, packIcon, fill)

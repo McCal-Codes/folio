@@ -58,7 +58,12 @@ internal object AppIconPictures {
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             }
             val file = fileFor(context, appId).apply { parentFile?.mkdirs() }
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            // Written to a temporary file and moved into place, so a cancelled save or a full disk leaves the old picture, not half a PNG.
+            val temp = File(file.path + ".tmp")
+            try {
+                temp.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) { "could not write the picture" } }
+                check(temp.renameTo(file)) { "could not move the picture into place" }
+            } finally { temp.delete() }
             System.currentTimeMillis()
         }.getOrNull()
     }
