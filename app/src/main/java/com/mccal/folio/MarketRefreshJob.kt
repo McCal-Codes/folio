@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -36,7 +37,8 @@ class MarketRefreshJob : JobService() {
                     schedule(applicationContext)
                 }
             } finally {
-                jobFinished(params, false)
+                // Android already knows when it stopped the job itself; telling it again is only noise.
+                if (isActive) jobFinished(params, false)
             }
         }
         return true
