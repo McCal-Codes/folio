@@ -5,6 +5,11 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.9] - Unreleased
+
+### Fixed
+- **Arrange Like iPhone no longer crashes Folio:** Settings › Home Screen & Dock › Arrange Like iPhone closed Folio as soon as it found an app for any of the iPhone spots. It now lays out Home's first page and dock as it says.
+
 ## [0.6.8] - Unreleased
 
 ### Added
