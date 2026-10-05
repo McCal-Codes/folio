@@ -1630,4 +1630,10 @@
     <string name="roadmap_updated">%1$s更新</string>
     <string name="roadmap_saved_copy">保存于%1$s的副本</string>
     <string name="betas_are_for_supporters">测试版仅限支持者使用。没有支持者代码时，Folio 只会查找公开版本，因此即使已有测试版，也可能显示你已是最新。请在“设置 › 支持 Folio”中添加代码。</string>
+    <string name="look_stacked">堆叠</string>
+    <string name="hours">小时制</string>
+    <string name="hours_system">系统</string>
+    <string name="hours_12">12 小时</string>
+    <string name="hours_24">24 小时</string>
+    <string name="show_am_or_pm">显示上午或下午</string>
 </resources>

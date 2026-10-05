@@ -109,18 +109,19 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
     val tick by rememberMinuteTick()
     val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
     val now = displayNow(tick)
-    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val systemIs24 = android.text.format.DateFormat.is24HourFormat(context)
     val allowed = remember(tick) { UpNext.hasCalendar(context) }
     val event by produceState<UpNextEvent?>(null, tick, allowed, screenshot) {
         value = if (!allowed || screenshot) null else withContext(Dispatchers.IO) { UpNext.events(context, limit = 1).firstOrNull() }
     }
     val alarm = remember(tick, screenshot) { if (screenshot) null else UpNext.nextAlarm(context) }
+    val stored = LocalBigClockStyles.current.bySlot[slot]
+    val style = stored.orDefault()
+    val is24 = when (style.hours) { "24" -> true; "12" -> false; else -> systemIs24 }
     val today = now.toLocalDate()
     fun time(millis: Long) = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).let { t ->
         (if (t.toLocalDate() != today) t.format(DateTimeFormatter.ofPattern("EEE ")) else "") + t.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
     }
-    val stored = LocalBigClockStyles.current.bySlot[slot]
-    val style = stored.orDefault()
     var boxInWindow by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     val window = LocalWindowInfo.current.containerSize
     val fraction = remember(boxInWindow, window) {
@@ -161,9 +162,25 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
                 stringResource(if (style.date == "SHORT") R.string.eee_mmm_d_2 else R.string.eeee_mmmm_d))), color = textColor,
                 fontSize = (big.value * .2f).coerceIn(13f, 20f).sp, fontWeight = FontWeight.SemiBold, fontFamily = dateFamily,
                 style = androidx.compose.ui.text.TextStyle(shadow = shadow))
-            Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = textColor, fontSize = big,
-                fontWeight = FontWeight(animatedWeight.toInt().coerceIn(100, 900)), fontFamily = timeFamily, lineHeight = big * 1.02f, maxLines = 1,
-                style = androidx.compose.ui.text.TextStyle(shadow = shadow, fontFeatureSettings = "tnum"))
+            val clockStyle = androidx.compose.ui.text.TextStyle(shadow = shadow, fontFeatureSettings = "tnum")
+            val weight = FontWeight(animatedWeight.toInt().coerceIn(100, 900))
+            val suffix = if (!is24 && style.ampm) now.format(DateTimeFormatter.ofPattern("a")) else ""
+            if (style.stacked) {
+                val stackedSize = (big.value * .78f).sp
+                Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH" else "h")), color = textColor, fontSize = stackedSize, fontWeight = weight,
+                    fontFamily = timeFamily, lineHeight = stackedSize * .9f, maxLines = 1, style = clockStyle)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(now.format(DateTimeFormatter.ofPattern("mm")), color = textColor, fontSize = stackedSize, fontWeight = weight,
+                        fontFamily = timeFamily, lineHeight = stackedSize * .9f, maxLines = 1, style = clockStyle)
+                    if (suffix.isNotEmpty()) Text(suffix, color = secondaryColor, fontSize = (stackedSize.value * .28f).sp, fontWeight = FontWeight.SemiBold,
+                        fontFamily = dateFamily, modifier = Modifier.padding(start = 3.dp, bottom = 6.dp), style = androidx.compose.ui.text.TextStyle(shadow = shadow))
+                }
+            } else Row(verticalAlignment = Alignment.Bottom) {
+                Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = textColor, fontSize = big, fontWeight = weight,
+                    fontFamily = timeFamily, lineHeight = big * 1.02f, maxLines = 1, style = clockStyle)
+                if (suffix.isNotEmpty()) Text(suffix, color = secondaryColor, fontSize = (big.value * .28f).sp, fontWeight = FontWeight.SemiBold,
+                    fontFamily = dateFamily, modifier = Modifier.padding(start = 3.dp, bottom = (big.value * .12f).dp), style = androidx.compose.ui.text.TextStyle(shadow = shadow))
+            }
             val allDay = stringResource(R.string.all_day)
             val next = event?.let { e -> (if (e.allDay) allDay else time(e.begin)) + " · " + e.title }
                 ?: alarm?.let { "Alarm · " + time(it) }

@@ -1438,7 +1438,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("bigClockStyles", JSONObject().apply { s.bigClockStyles.forEach { (slot, st) ->
                 put(slot.toString(), JSONObject().put("mode", st.mode).put("customIndex", st.customIndex).put("weight", st.weight)
                     .put("size", st.size.toDouble()).put("face", st.face).put("shadow", st.shadow).put("date", st.date)
-                    .put("showNext", st.showNext).put("align", st.align)) } })
+                    .put("showNext", st.showNext).put("align", st.align)
+                    .put("stacked", st.stacked).put("hours", st.hours).put("ampm", st.ampm)) } })
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
             .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
@@ -1740,7 +1741,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             slot to BigClockStyle(mode, st.optInt("customIndex", 0).coerceIn(0, 4), st.optInt("weight", 600).coerceIn(100, 900),
                 st.optDouble("size", 1.0).toFloat().coerceIn(.7f, 1.3f), pick("face", setOf("SANS", "ROUNDED", "SERIF", "MONO"), "SANS"),
                 pick("shadow", setOf("OFF", "SOFT", "GLOW"), "SOFT"), pick("date", setOf("LONG", "SHORT", "OFF"), "LONG"),
-                st.optBoolean("showNext", true), pick("align", setOf("LEFT", "CENTER", "RIGHT"), "CENTER"))
+                st.optBoolean("showNext", true), pick("align", setOf("LEFT", "CENTER", "RIGHT"), "CENTER"),
+                st.optBoolean("stacked", false), pick("hours", setOf("SYSTEM", "12", "24"), "SYSTEM"), st.optBoolean("ampm", true))
         }.toMap() } ?: emptyMap(),
         pageStyles = j.optJSONObject("pageStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val page = key.toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null

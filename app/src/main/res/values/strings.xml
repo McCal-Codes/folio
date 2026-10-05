@@ -1678,4 +1678,10 @@
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="betas_are_for_supporters">Betas are for supporters. Without a supporter code, Folio only finds public releases, so it can say you\'re up to date while a beta is out. Add a code in Settings › Support Folio.</string>
+    <string name="look_stacked">Stacked</string>
+    <string name="hours">Hours</string>
+    <string name="hours_system">System</string>
+    <string name="hours_12">12-hour</string>
+    <string name="hours_24">24-hour</string>
+    <string name="show_am_or_pm">Show AM or PM</string>
 </resources>

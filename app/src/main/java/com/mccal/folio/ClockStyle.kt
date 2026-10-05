@@ -77,11 +77,13 @@ import kotlin.math.pow
  * `mode`: AUTO (white or dark, whichever holds more contrast under the clock), WALLPAPER (a vivid tint of the
  * picture under it), WHITE, or CUSTOM (one of the picture's readable colors, [customIndex]). `face`: SANS, ROUNDED,
  * SERIF, MONO (Android's own fonts). `shadow`: OFF, SOFT, GLOW. `date`: LONG, SHORT, OFF. `align`: LEFT, CENTER, RIGHT.
+ * `stacked`: hours over minutes. `hours`: SYSTEM (follow the phone), 12 or 24; `ampm`: show AM/PM in 12-hour.
  */
 data class BigClockStyle(
     val mode: String = "AUTO", val customIndex: Int = 0, val weight: Int = 600,
     val size: Float = 1f, val face: String = "SANS", val shadow: String = "SOFT",
     val date: String = "LONG", val showNext: Boolean = true, val align: String = "CENTER",
+    val stacked: Boolean = false, val hours: String = "SYSTEM", val ampm: Boolean = true,
 )
 
 internal fun BigClockStyle?.orDefault() = this ?: BigClockStyle()
@@ -231,7 +233,7 @@ internal fun rememberClockInkSample(box: Rect, enabled: Boolean): ClockInkSample
 }
 
 /** A one-tap look: a color mode, a weight, a typeface and a shadow, nothing else. */
-internal data class ClockLook(val id: String, val name: Int, val mode: String, val weight: Int, val face: String, val shadow: String)
+internal data class ClockLook(val id: String, val name: Int, val mode: String, val weight: Int, val face: String, val shadow: String, val stacked: Boolean = false)
 
 internal val ClockLooks = listOf(
     ClockLook("classic", R.string.classic, "AUTO", 600, "SANS", "SOFT"),
@@ -240,6 +242,7 @@ internal val ClockLooks = listOf(
     ClockLook("tinted", R.string.tinted, "WALLPAPER", 600, "SANS", "SOFT"),
     ClockLook("soft", R.string.soft, "AUTO", 700, "ROUNDED", "GLOW"),
     ClockLook("editorial", R.string.look_editorial, "AUTO", 400, "SERIF", "SOFT"),
+    ClockLook("stacked", R.string.look_stacked, "AUTO", 700, "SANS", "SOFT", stacked = true),
 )
 
 /**
@@ -281,7 +284,7 @@ internal fun ClockEditBar(
         BarLabel(stringResource(R.string.looks))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             ClockLooks.forEach { look ->
-                val on = s.mode == look.mode && s.weight == look.weight && s.face == look.face && s.shadow == look.shadow
+                val on = s.mode == look.mode && s.weight == look.weight && s.face == look.face && s.shadow == look.shadow && s.stacked == look.stacked
                 val unavailable = look.mode == "WALLPAPER" && (systemWallpaper || tint == null)
                 val name = stringResource(look.name)
                 val fill by animateFloatAsState(if (on) .22f else .12f, clockMotion(), label = "look fill")
@@ -289,12 +292,13 @@ internal fun ClockEditBar(
                 Column(Modifier.width(76.dp).heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                     .background(Color.White.copy(alpha = fill))
                     .border(2.dp, ring, RoundedCornerShape(FolioRadius.CONTROL.dp))
-                    .clickable(enabled = !unavailable) { push(s.copy(mode = look.mode, weight = look.weight, face = look.face, shadow = look.shadow)) }
+                    .clickable(enabled = !unavailable) { push(s.copy(mode = look.mode, weight = look.weight, face = look.face, shadow = look.shadow, stacked = look.stacked)) }
                     .semantics { role = Role.RadioButton; selected = on; contentDescription = name }.padding(FolioSpace.TINY.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     val sample10 = Color.White.copy(alpha = if (unavailable) .3f else 1f)
-                    Text("10:09", color = if (look.mode == "WALLPAPER" && tint != null) Color(tint) else sample10, fontSize = FolioType.BODY.sp,
+                    Text(if (look.stacked) "10\n09" else "10:09", color = if (look.mode == "WALLPAPER" && tint != null) Color(tint) else sample10, fontSize = FolioType.BODY.sp,
                         fontWeight = FontWeight(look.weight), fontFamily = clockFontFamily(look.face, look.weight),
+                        lineHeight = if (look.stacked) FolioType.BODY.sp * .9f else androidx.compose.ui.unit.TextUnit.Unspecified,
                         style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
                     Text(name, color = sample10, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
                 }
@@ -328,6 +332,11 @@ internal fun ClockEditBar(
             Choice(stringResource(R.string.style), s.face, listOf("SANS" to R.string.default_choice, "ROUNDED" to R.string.face_rounded, "SERIF" to R.string.face_serif, "MONO" to R.string.face_mono)) { push(s.copy(face = it)) }
             Choice(stringResource(R.string.shadow), s.shadow, listOf("OFF" to R.string.off, "SOFT" to R.string.soft, "GLOW" to R.string.glow)) { push(s.copy(shadow = it)) }
             Choice(stringResource(R.string.date), s.date, listOf("LONG" to R.string.date_long, "SHORT" to R.string.date_short, "OFF" to R.string.off)) { push(s.copy(date = it)) }
+            Choice(stringResource(R.string.hours), s.hours, listOf("SYSTEM" to R.string.hours_system, "12" to R.string.hours_12, "24" to R.string.hours_24)) { push(s.copy(hours = it)) }
+            if (s.hours != "24") Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.show_am_or_pm), Modifier.weight(1f), color = Color.White)
+                IosSwitch(s.ampm, { push(s.copy(ampm = it)) })
+            }
             Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.show_next_event), Modifier.weight(1f), color = Color.White)
                 IosSwitch(s.showNext, { push(s.copy(showNext = it)) })
