@@ -47,13 +47,25 @@ class FocusTriggersTest {
     @Test fun `turning it off by hand sticks until the next change`() {
         val on = FocusTriggers.onSignals(modes, null, FocusTriggerState(signals = cover), unfolded)
         val off = FocusTriggers.onTurnedOffByHand(modes, on.state, "work")
-        assertEquals(setOf("work"), off.suppressed)
+        assertEquals(setOf("work"), off.suppressed.keys)
         // Same signals again (no change): nothing happens.
         assertFalse(FocusTriggers.onSignals(modes, null, off, unfolded).changed)
         // Folded then unfolded: a change clears the memory, so it turns on again.
         val folded = FocusTriggers.onSignals(modes, null, off, cover)
         assertTrue(folded.state.suppressed.isEmpty())
         assertEquals("work", FocusTriggers.onSignals(modes, null, folded.state, unfolded).active)
+    }
+
+    @Test fun `an unrelated change does not bring back a Focus you turned off`() {
+        val on = FocusTriggers.onSignals(modes, null, FocusTriggerState(signals = cover), unfolded)
+        val off = FocusTriggers.onTurnedOffByHand(modes, on.state, "work")
+        // Still unfolded, but now charging: Work's trigger reads only the fold, which has not changed. Sleep (charging) does turn on.
+        val charging = FocusTriggers.onSignals(modes, null, off, unfolded.copy(charging = true))
+        assertEquals("sleep", charging.active)
+        assertEquals(setOf("work"), charging.state.suppressed.keys)
+        // Folding changes what Work reads, so the memory goes and it can come back.
+        val folded = FocusTriggers.onSignals(modes, "sleep", charging.state, cover.copy(charging = true))
+        assertTrue(folded.state.suppressed.isEmpty())
     }
 
     @Test fun `turning off a Focus whose trigger does not hold remembers nothing`() {

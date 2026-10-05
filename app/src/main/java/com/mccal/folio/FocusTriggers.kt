@@ -28,14 +28,23 @@ enum class FocusReason(val key: String) { FOLD("fold"), CHARGING("charging"), HE
 /**
  * What Folio remembers between signal changes: the last signals it saw, the Focus it turned on by itself (so it only
  * turns that one off, never one you turned on by hand), and Focuses you turned off by hand while their trigger still
- * held (they stay off until the next change, as on iOS).
+ * held (they stay off until what their own triggers read changes, as on iOS).
  */
 data class FocusTriggerState(
     val signals: FocusSignals? = null,
     val byTrigger: String? = null,
     val reason: FocusReason? = null,
-    val suppressed: Set<String> = emptySet(),
+    val suppressed: Map<String, TriggerSlice> = emptyMap(),
 )
+
+/**
+ * The part of the phone's state one Focus's triggers look at. A Focus you turned off stays off until this changes, not
+ * until any signal does: plugging in a charger must not bring back a Work Focus you turned off while you are still unfolded.
+ */
+data class TriggerSlice(val fold: FoldState?, val charging: Boolean, val headphones: Boolean)
+
+internal fun FocusTriggerSet.sliceOf(signals: FocusSignals) =
+    TriggerSlice(if (fold != null) signals.fold else null, charging && signals.charging, headphones && signals.headphones)
 
 /** What to do after a change: the Focus that should be on now, and the state to keep. [changed] is false when nothing needs doing. */
 data class FocusTriggerResult(val active: String?, val state: FocusTriggerState, val changed: Boolean)
@@ -65,8 +74,10 @@ internal object FocusTriggers {
      */
     fun onSignals(modes: List<FocusMode>, active: String?, state: FocusTriggerState, now: FocusSignals): FocusTriggerResult {
         if (state.signals == now) return FocusTriggerResult(active, state, false)
-        val fresh = state.copy(signals = now, suppressed = emptySet())
-        val hit = wanted(modes, now)
+        // A Focus you turned off stays off while the signals its own triggers read are as they were.
+        val stillOff = state.suppressed.filter { (id, slice) -> modes.firstOrNull { it.id == id }?.triggers?.sliceOf(now) == slice }
+        val fresh = state.copy(signals = now, suppressed = stillOff)
+        val hit = wanted(modes, now, stillOff.keys)
         return when {
             hit != null && hit.first.id != active -> FocusTriggerResult(hit.first.id, fresh.copy(byTrigger = hit.first.id, reason = hit.second), true)
             // Already on: if you turned it on yourself it stays yours, so it is not turned off when the trigger ends.
@@ -82,8 +93,10 @@ internal object FocusTriggers {
      */
     fun onTurnedOffByHand(modes: List<FocusMode>, state: FocusTriggerState, turnedOff: String?): FocusTriggerState {
         val signals = state.signals ?: return state.copy(byTrigger = null, reason = null)
-        val holds = modes.firstOrNull { it.id == turnedOff }?.let { reason(it.triggers, signals) != null } == true
-        return state.copy(byTrigger = null, reason = null, suppressed = if (holds && turnedOff != null) state.suppressed + turnedOff else state.suppressed)
+        val mode = modes.firstOrNull { it.id == turnedOff }
+        val holds = mode?.let { reason(it.triggers, signals) != null } == true
+        return state.copy(byTrigger = null, reason = null,
+            suppressed = if (holds && mode != null) state.suppressed + (mode.id to mode.triggers.sliceOf(signals)) else state.suppressed)
     }
 
     /** A Focus was turned on by hand: it is no longer "turned on by a trigger", so a trigger ending won't turn it off. */

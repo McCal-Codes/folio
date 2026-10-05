@@ -1021,6 +1021,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val before = mutable.value.activeFocus
         triggerState = if (id == null) FocusTriggers.onTurnedOffByHand(mutable.value.focusModes, triggerState, before) else FocusTriggers.onTurnedOnByHand(triggerState)
         focusReasonState.value = null
+        rememberTriggerState()
         applyFocus(id)
     }
     private fun applyFocus(id: String?) {
@@ -1028,8 +1029,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
     }
-    private var triggerState = FocusTriggerState()
-    private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(null)
+    // What turned the Focus on survives the app being closed, so a Focus a trigger turned on is still turned off when the trigger ends.
+    private var triggerState = FocusTriggerState(
+        byTrigger = triggerPrefs().getString("trigger_by", null),
+        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) })
+    private fun triggerPrefs() = getApplication<android.app.Application>().getSharedPreferences("focus_rules", 0)
+    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key).apply()
+    private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(triggerState.reason)
     /** Why the Focus that is on turned on by itself (unfolded, charging, headphones), or null when it was turned on by hand. */
     val focusReason: kotlinx.coroutines.flow.StateFlow<FocusReason?> get() = focusReasonState
     /** The phone's folding, charging or headphones changed: turns a Focus on or off by its triggers (see [FocusTriggers]). */
@@ -1038,6 +1044,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val result = FocusTriggers.onSignals(state.focusModes, state.activeFocus, triggerState, signals)
         triggerState = result.state
         focusReasonState.value = result.state.reason
+        rememberTriggerState()
         if (result.changed) applyFocus(result.active)
     }
     fun updateFocusMode(mode: FocusMode) {
