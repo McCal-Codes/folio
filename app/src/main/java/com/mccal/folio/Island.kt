@@ -162,6 +162,7 @@ class IslandListenerService : NotificationListenerService() {
 
     override fun onDestroy() {
         workerHandler.removeCallbacksAndMessages(null)
+        clearControllerCallbacks()
         worker.quitSafely()
         if (instance === this) instance = null
         super.onDestroy()
@@ -439,20 +440,23 @@ class IslandListenerService : NotificationListenerService() {
 
     private fun watch(controllers: List<MediaController>) {
         val tokens = controllers.map { it.sessionToken }.toSet()
-        controllerCallbacks.keys.filter { it !in tokens }.forEach { token ->
-            controllerCallbacks.remove(token)?.let { (controller, callback) -> controller.unregisterCallback(callback) }
-        }
-        controllers.filter { it.sessionToken !in controllerCallbacks }.forEach { controller ->
-            val callback = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
-                override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
+        // The worker thread changes this map and the main thread clears it when access goes, so both hold the same lock.
+        synchronized(controllerCallbacks) {
+            controllerCallbacks.keys.filter { it !in tokens }.forEach { token ->
+                controllerCallbacks.remove(token)?.let { (controller, callback) -> controller.unregisterCallback(callback) }
             }
-            controller.registerCallback(callback, workerHandler)
-            controllerCallbacks[controller.sessionToken] = controller to callback
+            controllers.filter { it.sessionToken !in controllerCallbacks }.forEach { controller ->
+                val callback = object : MediaController.Callback() {
+                    override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
+                    override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
+                }
+                controller.registerCallback(callback, workerHandler)
+                controllerCallbacks[controller.sessionToken] = controller to callback
+            }
         }
     }
 
-    private fun clearControllerCallbacks() {
+    private fun clearControllerCallbacks() = synchronized(controllerCallbacks) {
         controllerCallbacks.values.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
         controllerCallbacks.clear()
     }
