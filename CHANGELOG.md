@@ -12,6 +12,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Drop an app on another to make a folder:** drag one app's icon onto another's, on Home or in the dock, and the two become a new folder together, the way iOS and Android do. Dropping on a folder that already exists still just adds to it.
 - **Drag to reorder inside a folder:** hold and drag an app over another one in an open folder to put it there instead, the way reordering works everywhere else in Folio.
 - **Drag an app past the folder's edge:** hold an app in an open folder and drag it past the card's own border, and it lands on Home where there's room, the one-drag way to do what the "..." menu's Move options already did.
+- **Sort a folder A to Z:** a folder's options popup has a Sort A to Z row that puts its apps in alphabetical order in one tap.
 
 ### Changed
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.

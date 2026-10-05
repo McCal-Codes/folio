@@ -885,6 +885,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         commitLayout(com.mccal.folio.removeAppFromFolder(mutable.value.layout, folderId, appId, target, mutable.value.homeAppRows))
     fun moveFolderApp(folderId: String, appId: String, index: Int) =
         commitLayout(com.mccal.folio.moveFolderApp(mutable.value.layout, folderId, appId, index))
+    fun sortFolderAlphabetically(folderId: String): Boolean {
+        val folder = mutable.value.layout.folder(folderId) ?: return false
+        val labels = mutable.value.apps.associate { it.id to it.label }
+        val sorted = folder.appIds.sortedBy { labels[it]?.lowercase() ?: "" }
+        return commitLayout(com.mccal.folio.reorderFolder(mutable.value.layout, folderId, sorted))
+    }
     fun folder(id: String) = mutable.value.layout.folder(id)
 
     /**

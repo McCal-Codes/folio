@@ -45,6 +45,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.SortByAlpha
 import kotlinx.coroutines.launch
 
 @Composable
@@ -55,7 +56,7 @@ internal fun FolderPanel(
     onMoveOut: (String, DropTarget) -> Unit,
     color: Long? = null, onColor: (Long?) -> Unit = {}, onAddApps: (() -> Unit)? = null,
     size: FolderSize? = null, onSize: (FolderSize?) -> Unit = {},
-    onReorder: (String, Int) -> Unit = { _, _ -> },
+    onReorder: (String, Int) -> Unit = { _, _ -> }, onSortAlphabetically: (() -> Unit)? = null,
 ) {
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
@@ -187,6 +188,12 @@ internal fun FolderPanel(
                             }
                         }
                     }
+                    if (onSortAlphabetically != null) {
+                        MenuDivider()
+                        MenuRow(stringResource(R.string.sort_a_to_z), icon = Icons.Rounded.SortByAlpha, tag = "folder-sort") {
+                            folderMenu = false; onSortAlphabetically()
+                        }
+                    }
                     if (onAddApps != null) {
                         MenuDivider()
                         MenuRow(stringResource(R.string.add_apps), icon = Icons.Rounded.AddCircle, tag = "folder-add-apps") {
@@ -264,7 +271,12 @@ internal fun FolderPanel(
                                                     onReorder(appId, finalIndex); haptic.perform(FolioHaptic.Commit)
                                                 }
                                             },
-                                            onDragCancel = { draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false },
+                                            // A successful onDragEnd that removes this app from the folder (or any
+                                            // other state change) can tear down this item's composable before its
+                                            // own coroutine scope unwinds, which fires onDragCancel right after -
+                                            // only clear state here if nothing newer has already claimed it.
+                                            onDragCancel = { if (draggingAppId == appId) {
+                                                draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false } },
                                         ) { change, amount ->
                                             change.consume()
                                             dragOffset += amount
