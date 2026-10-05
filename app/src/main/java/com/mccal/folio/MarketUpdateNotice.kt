@@ -33,20 +33,20 @@ internal object MarketUpdateNotice {
         return if (updates.size > MAX_NAMED) shown + ", " + andMore(updates.size - MAX_NAMED) else shown
     }
 
-    /** Posts the notice, when notifications are allowed. Tapping it opens the Market's updates. */
-    fun post(context: Context, updates: List<PendingUpdate>) {
-        if (updates.isEmpty() || !SoftwareUpdate.canPostNotifications(context)) return
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    /** Posts the notice, when notifications are allowed, and says whether it did: a set that was not announced is not remembered as announced. Tapping it opens the Market's updates. */
+    fun post(context: Context, updates: List<PendingUpdate>): Boolean {
+        if (updates.isEmpty() || !SoftwareUpdate.canPostNotifications(context)) return false
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return false
         manager.createNotificationChannel(NotificationChannel(CHANNEL, context.getString(R.string.market_updates_channel), NotificationManager.IMPORTANCE_DEFAULT)
             .apply { description = context.getString(R.string.market_updates_channel_detail) })
         val open = PendingIntent.getActivity(context, 3, Intent(Intent.ACTION_VIEW, "folio://market/updates".toUri(), context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val title = context.resources.getQuantityString(R.plurals.market_updates_notice, updates.size, updates.size)
         val text = names(updates) { context.getString(R.string.market_updates_and_more, it) }
-        runCatching {
+        return runCatching {
             manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_launcher_monochrome)
                 .setContentTitle(title).setContentText(text).setContentIntent(open).setAutoCancel(true).build())
-        }
+        }.isSuccess
     }
 
     /**
@@ -56,7 +56,8 @@ internal object MarketUpdateNotice {
     fun pending(context: Context, session: MarketSession): List<PendingUpdate> {
         val installed = session.installed().associateBy { it.id }
         val entries = session.entries()
-        val packages = entries.filter { e -> installed[e.id]?.let { e.entry.version > it.version } == true }
+        // The same rules as an automatic update: never announce one the Market would refuse (pulled, clashing, needing another).
+        val packages = entries.filter { e -> e.revokedReason == null && e.clash == null && e.entry.needs.isEmpty() && installed[e.id]?.let { e.entry.version > it.version } == true }
         val apps = entries.filter { MarketAppUpdate.offered(context, it) != null }
         val locale = listOf(java.util.Locale.getDefault().toLanguageTag())
         return (packages + apps).distinctBy { it.id }.map { PendingUpdate(it.id, it.entry.manifest?.name?.resolve(locale) ?: it.id, it.entry.version.text) }

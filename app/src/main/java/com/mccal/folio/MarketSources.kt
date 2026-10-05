@@ -204,6 +204,8 @@ internal class MarketSources(
      */
     suspend fun fetchPackage(entry: IndexPackage, source: Source): ByteArray? = withContext(io) {
         if (stale(source)) return@withContext null
+        // A checksum is required too: staging and installing on its own with nothing to check against is not allowed.
+        if (entry.sha256 == null) return@withContext null
         val url = entry.url ?: return@withContext null
         val size = entry.size ?: return@withContext null
         val full = if (url.startsWith("https://")) url else source.url + url

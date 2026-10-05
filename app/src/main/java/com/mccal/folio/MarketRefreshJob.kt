@@ -88,8 +88,9 @@ class MarketRefreshJob : JobService() {
         }
 
         /**
-         * Refreshes every source, keeping the cached list when one fails. Nothing is installed: an update is something
-         * the user chooses, so this only makes the store know there is one.
+         * Refreshes every source, keeping the cached list when one fails. The refresh itself installs nothing. After it,
+         * with the beta feature on, a checked update that touches none of the person's settings is staged and installed
+         * (see [MarketAutoUpdate]); any other update is something the user chooses.
          */
         internal suspend fun refreshSources(context: Context) {
             val session = MarketSession(context, ReadOnlyLauncher)
@@ -107,8 +108,7 @@ class MarketRefreshJob : JobService() {
             if (prefs.notifyUpdates) caught("Market: the update notice") {
                 val updates = MarketUpdateNotice.pending(context, session)
                 if (MarketUpdateNotice.shouldNotify(updates, prefs.lastNotifiedUpdates)) {
-                    MarketUpdateNotice.post(context, updates)
-                    prefs.lastNotifiedUpdates = MarketUpdateNotice.signature(updates)
+                    if (MarketUpdateNotice.post(context, updates)) prefs.lastNotifiedUpdates = MarketUpdateNotice.signature(updates)
                 } else if (updates.isEmpty()) prefs.lastNotifiedUpdates = null
             }
         }

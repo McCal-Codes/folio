@@ -5,6 +5,7 @@ import com.mccal.folio.market.DebVersion
 import com.mccal.folio.market.InstallResult
 import com.mccal.folio.market.InstalledPackage
 import java.io.File
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Packages you installed from a source keep up to date by themselves (M1), in two halves so each does what it can:
@@ -18,6 +19,9 @@ import java.io.File
 internal object MarketAutoUpdate {
     private const val DIR = "market-staged"
 
+    /** One apply at a time: the daily job and the start-up check can both run it, and a staged file is installed once. */
+    private val applying = kotlinx.coroutines.sync.Mutex()
+
     /**
      * The rule for an update that may install itself: it came from the source that installed it, it is newer, the
      * package is on and from a source (not a file), and nothing about the listing says stop.
@@ -25,8 +29,10 @@ internal object MarketAutoUpdate {
     fun isCandidate(
         origin: InstalledPackage.Origin, enabled: Boolean, installedSource: String?, installedVersion: DebVersion,
         listingSource: String, listingVersion: DebVersion, revoked: Boolean, impostor: Boolean, needsAnother: Boolean,
+        /** The listing promises a size and a checksum. Without them nothing could be checked, so nothing installs by itself. */
+        installable: Boolean = true,
     ): Boolean = origin == InstalledPackage.Origin.FOLIO_SOURCE && enabled && installedSource == listingSource &&
-        listingVersion > installedVersion && !revoked && !impostor && !needsAnother
+        listingVersion > installedVersion && !revoked && !impostor && !needsAnother && installable
 
     /** The newest newer listing for each installed package, from the source that installed it. */
     fun candidates(session: MarketSession): List<Pair<InstalledPackage, MarketEntry>> {
@@ -34,7 +40,7 @@ internal object MarketAutoUpdate {
         return session.installed().mapNotNull { installed ->
             entries.filter { it.id == installed.id }.filter { e ->
                 isCandidate(installed.origin, installed.enabled, installed.sourceUrl, installed.version, e.source.url, e.entry.version,
-                    e.revokedReason != null, e.clash != null, e.entry.needs.isNotEmpty())
+                    e.revokedReason != null, e.clash != null, e.entry.needs.isNotEmpty(), e.entry.installable)
             }.maxByOrNull { it.entry.version }?.let { installed to it }
         }
     }
@@ -61,27 +67,29 @@ internal object MarketAutoUpdate {
      * Applies what is staged and still wanted, through [session] (built on the live launcher). A staged file that no
      * longer matches a candidate, or no longer matches the listing's checksum, is deleted unused. Returns the names updated.
      */
-    suspend fun applyStaged(context: Context, session: MarketSession): List<String> {
+    suspend fun applyStaged(context: Context, session: MarketSession): List<String> = applying.withLock {
         val dir = File(context.cacheDir, DIR)
-        if (!dir.isDirectory) return emptyList()
+        if (!dir.isDirectory) return@withLock emptyList()
         val wanted = candidates(session)
         val updated = mutableListOf<String>()
         val keep = mutableSetOf<File>()
         for ((installed, entry) in wanted) {
             val file = stagedFile(context, entry.id, entry.entry.version)
-            if (!file.exists()) continue
-            keep += file
-            val bytes = file.readBytes()
+            // Claimed by renaming, which is atomic, so even a second process could not install the same file twice.
+            val claimed = File(file.path + ".claimed")
+            if (!file.exists() || !file.renameTo(claimed)) continue
+            keep += claimed
+            val bytes = claimed.readBytes()
             val result = if (entry.entry.matches(bytes) && session.updateKeepsSettings(bytes, installed)) session.installStaged(entry, bytes) else null
-            file.delete()
+            claimed.delete()
             when (result) {
                 is InstallResult.Installed -> { updated += result.installed.name; Diagnostics.autoUpdated(result.installed.id, result.installed.version) }
                 null -> Diagnostics.autoUpdateStale(entry.id)
                 else -> Diagnostics.autoUpdateFailed(entry.id, result.javaClass.simpleName)
             }
         }
-        dir.listFiles()?.filter { it !in keep && it.exists() }?.forEach { it.delete() }
-        return updated
+        dir.listFiles()?.filter { it !in keep && it.exists() && !it.name.endsWith(".claimed") }?.forEach { it.delete() }
+        updated
     }
 
     /** Whether this phone does automatic package updates at all: the gate, and the person's switch. */

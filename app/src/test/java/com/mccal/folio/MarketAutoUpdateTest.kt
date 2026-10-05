@@ -11,8 +11,8 @@ class MarketAutoUpdateTest {
     private val newer = DebVersion.parse("1.1.0")!!
     private fun candidate(
         origin: Origin = Origin.FOLIO_SOURCE, enabled: Boolean = true, installedSource: String? = "https://a/", listingSource: String = "https://a/",
-        installed: DebVersion = old, listing: DebVersion = newer, revoked: Boolean = false, impostor: Boolean = false, needs: Boolean = false,
-    ) = MarketAutoUpdate.isCandidate(origin, enabled, installedSource, installed, listingSource, listing, revoked, impostor, needs)
+        installed: DebVersion = old, listing: DebVersion = newer, revoked: Boolean = false, impostor: Boolean = false, needs: Boolean = false, installable: Boolean = true,
+    ) = MarketAutoUpdate.isCandidate(origin, enabled, installedSource, installed, listingSource, listing, revoked, impostor, needs, installable)
 
     @Test fun `a newer version from the source that installed it is a candidate`() {
         assertTrue(candidate())
@@ -34,5 +34,9 @@ class MarketAutoUpdateTest {
         assertFalse(candidate(revoked = true))
         assertFalse(candidate(impostor = true))
         assertFalse(candidate(needs = true))
+    }
+
+    @Test fun `a listing with no size or checksum is never installed by itself`() {
+        assertFalse(candidate(installable = false))
     }
 }
