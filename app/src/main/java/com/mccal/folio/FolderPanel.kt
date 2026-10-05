@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +37,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -51,6 +55,7 @@ internal fun FolderPanel(
     onMoveOut: (String, DropTarget) -> Unit,
     color: Long? = null, onColor: (Long?) -> Unit = {}, onAddApps: (() -> Unit)? = null,
     size: FolderSize? = null, onSize: (FolderSize?) -> Unit = {},
+    onReorder: (String, Int) -> Unit = { _, _ -> },
 ) {
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
@@ -192,7 +197,23 @@ internal fun FolderPanel(
             }
         }
         Box {
+        // A small, self-contained drag system, separate from Home's own: a drag that starts here never has to
+        // leave this window (this panel is its own Dialog, see the comment above), so it doesn't need
+        // HomeDragState's cross-page, cross-window machinery - just a live local order, each child's and the
+        // card's own last-measured window bounds, and one commit when the finger lifts. Dragging past the
+        // card's own edge (not off into Home - that's a different window, see onReorder's call site comment)
+        // pops the app out to the nearest free Home slot, the one-gesture equivalent of the "..." menu's Move
+        // to page entries, the way carrying an icon out of an open iOS folder does.
+        val order = remember(folder.id) { mutableStateListOf<String>().apply { addAll(folder.appIds) } }
+        var draggingAppId by remember(folder.id) { mutableStateOf<String?>(null) }
+        var dragOffset by remember(folder.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+        var pulledOut by remember(folder.id) { mutableStateOf(false) }
+        var cardBounds by remember(folder.id) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+        val childBounds = remember(folder.id) { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
+        LaunchedEffect(folder.appIds) { if (draggingAppId == null) { order.clear(); order.addAll(folder.appIds) } }
+        val haptic = LocalHapticFeedback.current
         Surface(Modifier.width(folderW.dp).height(folderH.dp)
+            .onGloballyPositioned { cardBounds = it.boundsInWindow() }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -210,9 +231,59 @@ internal fun FolderPanel(
                 LazyVerticalGrid(if (folderLook.columns > 0) FolderColumns(folderLook.columns) else GridCells.Adaptive(84.dp), Modifier.fillMaxWidth().weight(1f).edgeFade(gridState), state = gridState,
                     contentPadding = PaddingValues(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
                     verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-                    items(folder.appIds, key = { it }) { appId ->
-                        apps[appId]?.let { app -> FolderChild(app, folder.id, drag, page, homeDestinations, dockVacancies,
-                            onLaunch = onLaunch, onMoveOut = onMoveOut) }
+                    items(order, key = { it }) { appId ->
+                        apps[appId]?.let { app ->
+                            val isDragging = appId == draggingAppId
+                            FolderChild(app, folder.id, drag, page, homeDestinations, dockVacancies,
+                                onLaunch = onLaunch, onMoveOut = onMoveOut,
+                                reorderModifier = Modifier
+                                    .onGloballyPositioned { childBounds[appId] = it.boundsInWindow() }
+                                    .graphicsLayer {
+                                        if (isDragging) {
+                                            translationX = dragOffset.x; translationY = dragOffset.y
+                                            val s = if (pulledOut) .78f else 1.06f
+                                            scaleX = s; scaleY = s; alpha = if (pulledOut) .7f else 1f
+                                            shadowElevation = 12f
+                                        }
+                                    }
+                                    .zIndex(if (isDragging) 1f else 0f)
+                                    .pointerInput(appId) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { draggingAppId = appId; dragOffset = androidx.compose.ui.geometry.Offset.Zero
+                                                pulledOut = false; haptic.perform(FolioHaptic.PickedUp) },
+                                            onDragEnd = {
+                                                val wasOut = pulledOut
+                                                val finalIndex = order.indexOf(appId)
+                                                draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false
+                                                if (wasOut) {
+                                                    val destination = homeDestinations.firstOrNull()
+                                                    if (destination != null) {
+                                                        onMoveOut(appId, DropTarget.Home(destination)); haptic.perform(FolioHaptic.Commit)
+                                                    } else haptic.perform(FolioHaptic.Refuse)
+                                                } else if (finalIndex >= 0 && finalIndex != folder.appIds.indexOf(appId)) {
+                                                    onReorder(appId, finalIndex); haptic.perform(FolioHaptic.Commit)
+                                                }
+                                            },
+                                            onDragCancel = { draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false },
+                                        ) { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount
+                                            val anchor = childBounds[appId] ?: return@detectDragGesturesAfterLongPress
+                                            val point = anchor.center + dragOffset
+                                            val nowOut = cardBounds != androidx.compose.ui.geometry.Rect.Zero && !cardBounds.contains(point)
+                                            if (nowOut != pulledOut) { pulledOut = nowOut; haptic.perform(FolioHaptic.Step) }
+                                            if (!nowOut) {
+                                                val target = childBounds.entries.firstOrNull { (id, bounds) -> id != appId && bounds.contains(point) }?.key
+                                                if (target != null) {
+                                                    val from = order.indexOf(appId); val to = order.indexOf(target)
+                                                    if (from >= 0 && to >= 0 && from != to) {
+                                                        order.removeAt(from); order.add(to, appId); haptic.perform(FolioHaptic.Step)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    })
+                        }
                     }
                 }
             }
@@ -256,9 +327,10 @@ private fun FolderChild(
     app: AppEntry, folderId: String, drag: HomeDragState, page: Int,
     homeDestinations: List<Int>, dockVacancies: List<Int>,
     onLaunch: (AppEntry, android.graphics.Rect?) -> Unit, onMoveOut: (String, DropTarget) -> Unit,
+    reorderModifier: Modifier = Modifier,
 ) {
     var menu by remember { mutableStateOf(false) }
-    Surface(Modifier.fillMaxWidth().testTag("folder-child-${app.id}"), color = Color.Transparent, contentColor = Color.White,
+    Surface(reorderModifier.fillMaxWidth().testTag("folder-child-${app.id}"), color = Color.Transparent, contentColor = Color.White,
         shape = RoundedCornerShape(18.dp)) {
         Box {
             Column(Modifier.fillMaxWidth().dropRegion(drag, DropTarget.Library(app.id), app.id, page,
