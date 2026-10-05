@@ -418,7 +418,14 @@ private fun NoticeCardContent(notice: IslandEvent.Notice, onHide: () -> Unit) {
         notice.appIcon?.let { Image(it.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))) }
             ?: Icon(Icons.Rounded.Info, null, tint = IslandBlue, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(12.dp))
-        Text(notice.text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp)
+        Text(notice.text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp,
+            modifier = Modifier.weight(1f))
+        // A button like Undo: its own 48 dp target, and the notice goes once it has run.
+        notice.action?.let { action ->
+            Text(action.label, color = IslandBlue, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.heightIn(min = FolioTouch.MIN.dp).clickable { action.run(); onHide() }.padding(start = FolioSpace.MEDIUM.dp, end = FolioSpace.SMALL.dp)
+                    .wrapContentHeight(Alignment.CenterVertically).testTag("island-notice-action"))
+        }
     }
 }
 

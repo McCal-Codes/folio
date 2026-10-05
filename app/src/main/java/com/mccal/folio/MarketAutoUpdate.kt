@@ -5,6 +5,7 @@ import com.mccal.folio.market.DebVersion
 import com.mccal.folio.market.InstallResult
 import com.mccal.folio.market.InstalledPackage
 import java.io.File
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 
 /**
@@ -35,10 +36,10 @@ internal object MarketAutoUpdate {
         listingVersion > installedVersion && !revoked && !impostor && !needsAnother && installable
 
     /** The newest newer listing for each installed package, from the source that installed it. */
-    fun candidates(session: MarketSession): List<Pair<InstalledPackage, MarketEntry>> {
+    fun candidates(session: MarketSession, skipped: Set<String> = emptySet()): List<Pair<InstalledPackage, MarketEntry>> {
         val entries = session.entries()
         return session.installed().mapNotNull { installed ->
-            entries.filter { it.id == installed.id }.filter { e ->
+            entries.filter { it.id == installed.id && "${it.id}@${it.entry.version}" !in skipped }.filter { e ->
                 isCandidate(installed.origin, installed.enabled, installed.sourceUrl, installed.version, e.source.url, e.entry.version,
                     e.revokedReason != null, e.clash != null, e.entry.needs.isNotEmpty(), e.entry.installable)
             }.maxByOrNull { it.entry.version }?.let { installed to it }
@@ -51,7 +52,7 @@ internal object MarketAutoUpdate {
     /** Downloads and checks each candidate not yet staged; only ones that would not touch the person's settings are kept. Returns how many were staged. */
     suspend fun stage(context: Context, session: MarketSession): Int {
         var staged = 0
-        for ((installed, entry) in candidates(session)) {
+        for ((installed, entry) in candidates(session, rememberedMarketPrefs(context).skippedUpdates)) {
             // A package turned off on its own page is never staged; the notice for it still comes from candidates().
             if (!session.prefs.autoUpdateFor(installed.id)) continue
             val file = stagedFile(context, entry.id, entry.entry.version)
@@ -79,7 +80,7 @@ internal object MarketAutoUpdate {
     }
 
     private suspend fun applyAll(context: Context, session: MarketSession, dir: File): List<String> {
-        val wanted = candidates(session).filter { (installed, _) -> session.prefs.autoUpdateFor(installed.id) }
+        val wanted = candidates(session, rememberedMarketPrefs(context).skippedUpdates).filter { (installed, _) -> session.prefs.autoUpdateFor(installed.id) }
         val updated = mutableListOf<String>()
         val keep = mutableSetOf<File>()
         for ((installed, entry) in wanted) {
@@ -93,8 +94,10 @@ internal object MarketAutoUpdate {
             claimed.delete()
             when (result) {
                 is InstallResult.Installed -> {
-                    updated += result.installed.name; Diagnostics.autoUpdated(result.installed.id, result.installed.version)
+                    updated += result.installed.name
+                    Diagnostics.autoUpdated(result.installed.id, result.installed.version)
                     result.replaced?.let { old -> session.autoUpdates.record(com.mccal.folio.market.AutoUpdate(result.installed.id, result.installed.name, old.version, result.installed.version, System.currentTimeMillis())) }
+                    announce(context, session, result)
                 }
                 null -> Diagnostics.autoUpdateStale(entry.id)
                 else -> Diagnostics.autoUpdateFailed(entry.id, result.javaClass.simpleName)
@@ -102,6 +105,24 @@ internal object MarketAutoUpdate {
         }
         dir.listFiles()?.filter { it !in keep && it.exists() && !it.name.endsWith(".claimed") }?.forEach { it.delete() }
         return updated
+    }
+
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+
+    /**
+     * Says in Home's island that a package updated, with Undo. Undo puts the old version back and remembers that this
+     * version is not wanted, so the next daily refresh does not just install it again.
+     */
+    private fun announce(context: Context, session: MarketSession, result: InstallResult.Installed) {
+        val installed = result.installed
+        val before = result.replaced ?: return
+        val update = com.mccal.folio.market.AutoUpdate(installed.id, installed.name, before.version, installed.version, System.currentTimeMillis())
+        IslandEvents.notice(context, context.getString(R.string.market_package_updated, installed.name), toastFallback = false,
+            action = NoticeAction(context.getString(R.string.undo)) {
+                // The same Undo as the Updated recently list: the earlier version goes back, Home is left alone, and this
+                // version is skipped so it isn't installed again at the next refresh. One package write at a time.
+                scope.launch { MarketWork.exclusive("undo:${installed.id}") { session.undoAutoUpdate(update) } }
+            })
     }
 
     /** Whether this phone does automatic package updates at all: the gate, and the person's switch. */

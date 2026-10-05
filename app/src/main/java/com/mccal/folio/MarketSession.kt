@@ -161,7 +161,13 @@ internal class MarketSession(
 
     /** Puts back the version an automatic update replaced, if it is still the one installed. Home is not touched. */
     suspend fun undoAutoUpdate(update: AutoUpdate): Boolean = withContext(io) {
-        installer.undoUpdateInPlace(update.id, update.from, update.to).also { if (it) autoUpdates.markUndone(update.id, update.to) }
+        installer.undoUpdateInPlace(update.id, update.from, update.to).also {
+            if (it) {
+                autoUpdates.markUndone(update.id, update.to)
+                // A version the person undid is not installed by itself again; a newer one still is.
+                prefs.skippedUpdates = prefs.skippedUpdates + "${update.id}@${update.to}"
+            }
+        }
     }
 
     /** The page and payload for a package, without applying anything: what the package page shows. */

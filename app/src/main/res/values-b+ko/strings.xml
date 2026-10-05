@@ -415,9 +415,11 @@
     <string name="focus_trigger_headphones">헤드폰</string>
     <string name="focus_fold_unfolded">펼침</string>
     <string name="focus_fold_cover">커버 화면</string>
-    <string name="focus_fold_tent">텐트</string>
+    <string name="focus_fold_tent">반쯤 펼침</string>
     <string name="focus_triggers_note">이 집중 모드를 켜고 끄는 데에만 쓰입니다. 직접 끄면 다음 변화가 있을 때까지 꺼진 상태로 유지됩니다.</string>
     <string name="focus_on_because">켜짐 · %1$s</string>
+    <string name="focus_island_on">%1$s 켜짐 · %2$s</string>
+    <string name="focus_island_off">%1$s 꺼짐</string>
     <string name="from">시작</string>
     <string name="silence_notifications">알림 무음 설정</string>
     <string name="calls_and_people_allowed_in_android_s_do">Android의 방해 금지 설정에서 허용한 전화와 연락처의 알림은 계속 수신됩니다.</string>
@@ -1346,6 +1348,7 @@
     <string name="refresh_in_the_background">백그라운드에서 새로고침</string>
     <string name="tell_me_about_updates">업데이트 알림 받기</string>
     <string name="update_packages_in_background">패키지를 백그라운드에서 업데이트</string>
+    <string name="market_package_updated">%1$s 업데이트됨</string>
     <string name="update_packages_in_background_detail">설정을 건드리지 않는 변경이면 소스의 패키지가 스스로 업데이트됩니다</string>
     <string name="market_updates_notice_detail">설치한 항목의 새 버전이 소스에 올라오면 알림 한 번</string>
     <string name="updates_question_title">패키지를 최신 상태로 유지할까요?</string>
@@ -1689,6 +1692,8 @@
     <string name="onboarding_tip_nav_gestures">화면 아래쪽 가장자리에서 위로 밀면 홈으로, 양쪽 가장자리에서 안쪽으로 밀면 뒤로 갑니다.</string>
     <string name="onboarding_tip_nav_buttons">홈 버튼을 누르면 홈으로, 뒤로 버튼을 누르면 이전 화면으로 갑니다.</string>
     <string name="finish_setting_up">원할 때 설정을 마무리하세요</string>
+    <string name="hint_hold">아이콘을 길게 누르면 홈을 편집하고 정리할 수 있습니다</string>
+    <string name="hint_unfold">펼치면 같은 홈이 더 넓게 보입니다</string>
     <string name="finish_notifications_detail">아일랜드, 알림 배지, 빠른 답장.</string>
     <string name="finish_panels_detail">화면 위쪽 모서리에서 알림 센터와 제어 센터.</string>
     <string name="set_up">설정</string>
