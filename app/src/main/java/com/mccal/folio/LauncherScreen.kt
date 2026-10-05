@@ -919,15 +919,20 @@ fun LauncherScreen(
                 val centerDp by rememberUpdatedState(dockTopShown + dockHeightShown / 2f)
                 val windowHeight = boxHeightDp
                 val currentPreset by rememberUpdatedState(preset)
+                // The drag is added up here from where it started, so two moves before the screen redraws are both counted.
+                var dragStartCenter by remember { mutableFloatStateOf(0f) }
+                var dragged by remember { mutableFloatStateOf(0f) }
                 val moveLabel = stringResource(R.string.move_dock)
                 val upLabel = stringResource(R.string.move_dock_up)
                 val downLabel = stringResource(R.string.move_dock_down)
                 Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
-                    .offset(y = (dockTopShown + dockHeightShown + 4f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
+                    // Under the dock, but never lower than a touch target above the bottom of the window.
+                    .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures { change, dy ->
+                        detectVerticalDragGestures(onDragStart = { dragStartCenter = centerDp; dragged = 0f }) { change, dy ->
                             change.consume()
-                            model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionForCenter(centerDp + dy / density.density, windowHeight)))
+                            dragged += dy / density.density
+                            model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionForCenter(dragStartCenter + dragged, windowHeight)))
                         }
                     }.semantics {
                         contentDescription = moveLabel

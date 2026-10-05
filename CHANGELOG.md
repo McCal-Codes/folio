@@ -5,11 +5,6 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.9] - Unreleased
-
-### Added
-- **Drag the dock in edit mode:** when you edit Home, a handle under the Side Bar dock moves it up or down with your finger, instead of the Dock Height slider. It stops at the safe edges, and TalkBack has Move dock up and down actions. Supporters have it first; it works where the dock follows its own height rather than the grid (#21).
-
 ## [0.6.8] - Unreleased
 
 ### Added
