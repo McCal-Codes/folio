@@ -961,9 +961,13 @@ fun LauncherScreen(
                     // iOS: drag sideways along the Search pill or the dots to scrub through Home pages, a tick per page.
                     var scrubbing by remember { mutableStateOf(false) }
                     val scrubStep = with(density) { 34.dp.toPx() }
-                    val showSearchPill = state.searchPill && !homeEdit.active && !drag.active && !scrubbing &&
+                    // Home is at rest on a page: the strip shows the Search button, nothing, or the dots, as chosen. Away from
+                    // rest the dots always show, so there is always a way to tell where you are.
+                    val atRest = !homeEdit.active && !drag.active && !scrubbing &&
                         !nativePager.isScrollInProgress && pager.currentPage in 0 until homePages
-                    androidx.compose.animation.AnimatedContent(showSearchPill, label = "search pill",
+                    val nothingOpen = remember(launcherActivity) { FeatureGate.HOME_STRIP_NOTHING.isOpen(launcherActivity) }
+                    val stripNow = stripView(state.homeStrip, atRest, nothingOpen)
+                    androidx.compose.animation.AnimatedContent(stripNow, label = "search pill",
                         // Cover screen only: unfolded, Home already shows two pages side by side.
                         modifier = if (geometry.expanded || homePages < 2 || !state.pageScrub) Modifier else Modifier.onGloballyPositioned { scrubberBounds = it.boundsInRoot() }.pointerInput(homePages) {
                             var startPage = 0
@@ -983,8 +987,11 @@ fun LauncherScreen(
                         }.description(R.string.page_scrubber),
                         transitionSpec = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) togetherWith
                             androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)) },
-                        contentAlignment = Alignment.Center) { pill ->
-                        if (pill) HomeSearchPill { if (!state.googleSearch || !onGoogleSearch(null)) launcherActivity.openSpotlight() }
+                        contentAlignment = Alignment.Center) { view ->
+                        if (view == StripView.PILL) HomeSearchPill { if (!state.googleSearch || !onGoogleSearch(null)) launcherActivity.openSpotlight() }
+                        // Nothing at rest, but the strip keeps its height and width so Home never shifts and dragging
+                        // along it still moves between pages.
+                        else if (view == StripView.EMPTY) Box(Modifier.height(FolioTouch.MIN.dp).widthIn(min = 120.dp))
                         // iOS's page control: the dots stay small and the strip around them takes the tap, so a
                         // finger has 48 dp of height without the dots spacing apart (A11Y-1).
                         else Box(Modifier.height(FolioTouch.MIN.dp), contentAlignment = Alignment.Center) {

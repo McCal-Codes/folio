@@ -58,7 +58,6 @@
     <string name="app_library">App Library</string>
     <string name="group_apps_into_categories">Group apps into categories</string>
     <string name="search">Search</string>
-    <string name="search_button_on_home">Search button on Home</string>
     <string name="swipe_down_on_home_for_spotlight">Swipe down on Home for Spotlight</string>
     <string name="drag_page_dots_to_flip_pages">Drag page dots to flip pages</string>
     <string name="haptic_feedback">Haptic feedback</string>
@@ -1670,4 +1669,11 @@
     <string name="choose_named">Choose %1$s</string>
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
+    <string name="home_strip">Bottom of Home</string>
+    <string name="home_strip_search">Search button</string>
+    <string name="home_strip_dots">Page dots</string>
+    <string name="home_strip_nothing">Nothing</string>
+    <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages.</string>
+    <string name="stronger_rings">Stronger rings</string>
+    <string name="stronger_rings_note">Thicker rings and a clearer track, easier to tell apart at a glance. Also on while Android’s Bold text is on.</string>
 </resources>

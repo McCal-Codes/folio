@@ -60,13 +60,15 @@ data class StatusStyle(
     val background: Boolean = true,
     /** Space between the status items (time, date, icons) in dp: [STANDARD_SPACING], or [COMPACT_SPACING] packed tight. */
     val spacing: Float = STANDARD_SPACING,
+    /** Thicker rings with a clearer track (also on while Android's Bold text is on, see [RingLook]). */
+    val strongRings: Boolean = false,
 ) {
     /** At or near Compact, text lines pack tight too, as the old Compact choice did. */
     val tight get() = spacing < (COMPACT_SPACING + STANDARD_SPACING) / 2f
     fun toJson(): org.json.JSONObject = org.json.JSONObject().put("showTime", showTime).put("showDate", showDate)
         .put("showBatteryPercent", showBatteryPercent).put("glyph", glyph.name).put("colorfulBattery", colorfulBattery)
         .put("railGlass", railGlass.toDouble()).put("showSilent", showSilent)
-        .put("background", background).put("spacing", spacing.toDouble())
+        .put("background", background).put("spacing", spacing.toDouble()).put("strongRings", strongRings)
 
     companion object {
         const val STANDARD_SPACING = 4f
@@ -79,6 +81,7 @@ data class StatusStyle(
             railGlass = j.optDouble("railGlass", .26).toFloat().coerceIn(0f, 1f),
             showSilent = j.optBoolean("showSilent", true),
             background = j.optBoolean("background", true),
+            strongRings = j.optBoolean("strongRings", false),
             // Before the slider, spacing was Standard or Compact.
             spacing = if (j.has("spacing")) j.optDouble("spacing", STANDARD_SPACING.toDouble()).toFloat().takeIf { it.isFinite() }?.coerceIn(0f, 16f) ?: STANDARD_SPACING
                 else if (j.optBoolean("compactSpacing", false)) COMPACT_SPACING else STANDARD_SPACING)
@@ -181,6 +184,7 @@ fun StatusRail(
     // Over light wallpapers (dark text) the frosted capsule is light too, so dim parts and colors need more weight to read.
     val onLight = homeInk.dark
     fun faint(alpha: Float) = if (onLight) (alpha * 1.6f).coerceAtMost(.6f) else alpha
+    val look = RingLook.of(style.strongRings, androidx.compose.ui.platform.LocalConfiguration.current.fontWeightAdjustment)
     val charging = if (onLight) BatteryChargingOnLight else BatteryCharging
     val low = if (onLight) BatteryLowOnLight else BatteryLow
     // Ticker, not a loop of its own: one clock for the whole app, stopped while nothing is watching (DYN-14).
@@ -259,7 +263,7 @@ fun StatusRail(
                         val wifiFraction = if (status.wifiConnected) ((status.wifiLevel ?: 4) / 4f).coerceIn(.08f, 1f) else 0f
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
-                            val stroke = w * .075f
+                            val stroke = w * .075f * look.strokeScale
                             listOf(
                                 .44f to (batteryRing to (status.battery?.div(100f) ?: 0f)),
                                 .30f to (wifiRing to wifiFraction),
@@ -268,7 +272,7 @@ fun StatusRail(
                                 val (color, fraction) = ring
                                 val radius = w * r
                                 val topLeft = Offset(w / 2 - radius, w / 2 - radius)
-                                drawCircle(color.copy(alpha = faint(.22f)), radius, Offset(w / 2, w / 2), style = Stroke(stroke))
+                                drawCircle(color.copy(alpha = faint(look.trackAlpha)), radius, Offset(w / 2, w / 2), style = Stroke(stroke))
                                 if (fraction > 0f) drawArc(color, -90f, 360f * fraction, false, topLeft, Size(radius * 2, radius * 2),
                                     style = Stroke(stroke, cap = StrokeCap.Round))
                             }
@@ -279,10 +283,10 @@ fun StatusRail(
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val radius = w * .44f
-                            drawCircle(ink.copy(alpha = faint(.22f)), radius, Offset(w / 2, w / 2), style = Stroke(w * .07f))
+                            drawCircle(ink.copy(alpha = faint(look.trackAlpha)), radius, Offset(w / 2, w / 2), style = Stroke(w * .07f * look.strokeScale))
                             status.battery?.let { level ->
                                 drawArc(batteryColor, -90f, 360f * level / 100, false, Offset(w / 2 - radius, w / 2 - radius),
-                                    Size(radius * 2, radius * 2), style = Stroke(width = w * .07f, cap = StrokeCap.Round))
+                                    Size(radius * 2, radius * 2), style = Stroke(width = w * .07f * look.strokeScale, cap = StrokeCap.Round))
                             }
                         }
                         Text(status.battery?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
@@ -300,10 +304,10 @@ fun StatusRail(
                             val center = Offset(w / 2, w / 2)
                             // Battery: one thin full ring, filled clockwise from the top.
                             val radius = w * .44f
-                            drawCircle(ink.copy(alpha = faint(.22f)), radius, center, style = Stroke(w * .06f))
+                            drawCircle(ink.copy(alpha = faint(look.trackAlpha)), radius, center, style = Stroke(w * .06f * look.strokeScale))
                             status.battery?.let { level ->
                                 drawArc(batteryColor, -90f, 360f * level / 100, false, Offset(center.x - radius, center.y - radius),
-                                    Size(radius * 2, radius * 2), style = Stroke(width = w * .06f, cap = StrokeCap.Round))
+                                    Size(radius * 2, radius * 2), style = Stroke(width = w * .06f * look.strokeScale, cap = StrokeCap.Round))
                             }
                             if (style.glyph == StatusGlyph.RING) when {
                                 wifiVisual is WifiSignalVisual.Connected -> {
@@ -356,8 +360,8 @@ fun StatusRail(
                             val radius = w * GAUGE_RADIUS
                             val corner = Offset(center.x - radius, center.y - radius)
                             val box = Size(radius * 2, radius * 2)
-                            val stroke = Stroke(width = w * .115f, cap = StrokeCap.Round)
-                            val track = ink.copy(alpha = faint(.22f))
+                            val stroke = Stroke(width = w * .115f * (if (look === RingLook.STRONG) RingLook.GAUGE_SCALE else 1f), cap = StrokeCap.Round)
+                            val track = ink.copy(alpha = faint(look.trackAlpha))
                             if (ring.topGap > 0f) {
                                 drawArc(track, ring.leftStart, ring.side, false, corner, box, style = stroke)
                                 drawArc(track, ring.rightStart, ring.side, false, corner, box, style = stroke)

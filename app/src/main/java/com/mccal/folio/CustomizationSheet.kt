@@ -490,7 +490,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.off_new_downloads_go_to_the_app_library))
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.search)) {
-                        SettingsSwitch(stringResource(R.string.search_button_on_home), state.searchPill, model::setSearchPill, "search-pill-switch")
+                        // One choice instead of a switch: what sits above the dock at rest. Nothing is still in beta.
+                        val stripContext = androidx.compose.ui.platform.LocalContext.current
+                        val nothingOpen = remember(stripContext) { FeatureGate.HOME_STRIP_NOTHING.isOpen(stripContext) }
+                        IosMenuRow(stringResource(R.string.home_strip), HomeStrip.entries.filter { it != HomeStrip.NOTHING || nothingOpen || state.homeStrip == it }
+                            .map { it to stringResource(it.label) }, state.homeStrip, model::setHomeStrip, tag = "home-strip")
+                        CardNote(stringResource(R.string.home_strip_note))
                         SettingsSwitch(stringResource(R.string.search_button_opens_the_google_app), state.googleSearch, model::setGoogleSearch, "google-search-switch")
                         CardNote(stringResource(R.string.when_off_the_search_button_opens_spotlig))
                     }
@@ -562,6 +567,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.show_status_in_the_rail), state.verticalStatus, model::setVerticalStatus, "status-switch")
                         if (state.verticalStatus) {
                             IosMenuRow(stringResource(R.string.icon_style), StatusGlyph.entries.map { it to stringResource(it.label) }, st.glyph, { model.setStatusStyle(st.copy(glyph = it)) }, tag = "status-glyph")
+                        if (st.glyph != StatusGlyph.ICONS && st.glyph != StatusGlyph.NONE) {
+                            SettingsSwitch(stringResource(R.string.stronger_rings), st.strongRings, { model.setStatusStyle(st.copy(strongRings = it)) }, "stronger-rings-switch")
+                            CardNote(stringResource(R.string.stronger_rings_note))
+                        }
                             SettingsSwitch(stringResource(R.string.time), st.showTime, { model.setStatusStyle(st.copy(showTime = it)) }, "status-time")
                             SettingsSwitch(stringResource(R.string.date), st.showDate, { model.setStatusStyle(st.copy(showDate = it)) }, "status-date")
                             SettingsSwitch(stringResource(R.string.battery_percentage), st.showBatteryPercent, { model.setStatusStyle(st.copy(showBatteryPercent = it)) }, "status-percent")
@@ -1337,7 +1346,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.add_new_apps_to_home_screen to CustomizationPage.SEARCH,
     R.string.group_apps_into_categories to CustomizationPage.SEARCH,
     R.string.message_contacts_with to CustomizationPage.SEARCH,
-    R.string.search_button_on_home to CustomizationPage.SEARCH,
+    R.string.home_strip to CustomizationPage.SEARCH,
+    R.string.stronger_rings to CustomizationPage.STATUS,
     R.string.search_button_opens_the_google_app to CustomizationPage.SEARCH,
     R.string.search_with_enter to CustomizationPage.SEARCH,
     R.string.work_apps to CustomizationPage.SEARCH,

@@ -63,7 +63,6 @@
     <string name="app_library">앱 보관함</string>
     <string name="group_apps_into_categories">앱을 카테고리별로 분류</string>
     <string name="search">검색</string>
-    <string name="search_button_on_home">홈 화면에 검색 버튼 표시</string>
     <string name="swipe_down_on_home_for_spotlight">홈 화면을 쓸어내려 Spotlight 열기</string>
     <string name="drag_page_dots_to_flip_pages">페이지 표시점을 드래그하여 페이지 전환</string>
     <string name="haptic_feedback">햅틱 피드백</string>
@@ -1643,4 +1642,11 @@
     <string name="choose_named">%1$s 선택</string>
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
+    <string name="home_strip">홈 하단</string>
+    <string name="home_strip_search">검색 버튼</string>
+    <string name="home_strip_dots">페이지 점</string>
+    <string name="home_strip_nothing">없음</string>
+    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다.</string>
+    <string name="stronger_rings">더 진한 링</string>
+    <string name="stronger_rings_note">링을 더 두껍게 하고 바탕을 선명하게 해 한눈에 구분하기 쉽습니다. Android의 굵은 글씨가 켜져 있을 때도 켜집니다.</string>
 </resources>

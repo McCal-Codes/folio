@@ -54,7 +54,13 @@ internal enum class FeatureGate(
      * changes the fact that this asks the GPU for more on exactly that frame. The beta is what decides whether both
      * effects are smooth enough to keep, and on which screens.
      */
-    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 });
+    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
+
+    /**
+     * Nothing as a choice for the strip above the dock, beside the Search button and the page dots. It changes what
+     * Home looks like at rest, so supporters try it first; Stronger rings is not gated, because it is off until asked.
+     */
+    HOME_STRIP_NOTHING("homeStripNothing", closedSince = "2026-10-05", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -74,6 +80,9 @@ internal enum class FeatureGate(
          * one per feature, because they open together: `FeatureGateTest` fails at 0.6.8 while this is still false.
          */
         private const val OPEN_IN_0_6_8 = true
+
+        /** The features built during 0.6.9 for supporters to try first, which open together in the 0.6.9 release. */
+        private const val OPEN_IN_0_6_9 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
