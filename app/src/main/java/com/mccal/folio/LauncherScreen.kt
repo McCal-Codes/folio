@@ -152,6 +152,8 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
+    // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
+    var clockEditSlot by remember { mutableStateOf<Int?>(null) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -1170,11 +1172,8 @@ fun LauncherScreen(
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
-                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET) {{ sheet = "clockStyle" }} else null)
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET) {{ clockEditSlot = placement.slot; sheet = "" }} else null)
                         }
-                        "clockStyle" -> ClockStyleSheet(placement = model.placement(picker.slot),
-                            style = state.bigClockStyles[picker.slot], onStyle = { model.setBigClockStyle(picker.slot, it) },
-                            systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onClose = { sheet = "" })
                     }
                 }
             }
@@ -1510,6 +1509,21 @@ fun LauncherScreen(
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Rounded.DeleteOutline, null)
                     Text(stringResource(R.string.remove), fontSize = 11.sp, maxLines = 1)
+                }
+            }
+        }
+        clockEditSlot?.let { slot ->
+            if (model.placement(slot) == null) clockEditSlot = null
+            else {
+                BackHandler { clockEditSlot = null }
+                val windowHeight = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height
+                // In the half of the screen the clock is not in, so the real clock stays in view.
+                val clockLow = (BigClockBounds.bySlot[slot]?.center?.y ?: 0f) > windowHeight / 2f
+                Box(Modifier.fillMaxSize(), contentAlignment = if (clockLow) Alignment.TopCenter else Alignment.BottomCenter) {
+                    ClockEditBar(slot, state.bigClockStyles[slot], { model.setBigClockStyle(slot, it) },
+                        systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onDone = { clockEditSlot = null },
+                        modifier = if (clockLow) Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
+                            else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
                 }
             }
         }

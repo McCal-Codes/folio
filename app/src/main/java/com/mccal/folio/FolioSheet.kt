@@ -110,7 +110,7 @@ internal fun ModalBottomSheet(
             onDismissRequest = onDismissRequest, modifier = modifier, sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             containerColor = FolioColors.SecondaryBackground.copy(alpha = .97f), contentColor = Color.White,
-            scrimColor = Color.Black.copy(alpha = if (HomePeek.value) 0f else .35f),
+            scrimColor = Color.Black.copy(alpha = .35f),
             dragHandle = { Box(Modifier.padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.SNUG.dp).size(width = 36.dp, height = 5.dp)
                 .background(Color.White.copy(alpha = .3f), RoundedCornerShape(3.dp))) },
             properties = properties, content = {

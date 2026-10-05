@@ -20,8 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.semantics
@@ -96,14 +95,13 @@ internal fun UpNextCard(onClick: () -> Unit) {
  * Big Clock, like the iPhone Lock Screen: a large time straight on the wallpaper, with the date and what's next (the next
  * event today, or the next alarm) underneath. Calendar details only show once calendar access is allowed.
  *
- * Color and weight can be customized per clock ([BigClockStyle], Settings via the widget's "Customize" row): Automatic
- * (this function's own default, below), Wallpaper (a vivid color sampled from the picture under the clock), White, or
- * Custom (one of the picture's own readable colors). All but Automatic/White need the real picture under this widget,
- * which only [rememberClockInkSample] can read (Android gives no API to read the system wallpaper's pixels), so those
- * modes quietly fall back to Automatic when a system wallpaper is behind Home instead - same ink as today, unchanged.
+ * Once customized ([BigClockStyle], from the widget's Customize row) it also takes a color, weight, size, typeface,
+ * shadow, date format and alignment. Reading the picture under the clock needs Folio's own picture behind Home (Android
+ * gives no API to read the system wallpaper's pixels), so Wallpaper and Custom fall back to the whole-wallpaper ink
+ * without one. A clock that was never customized draws exactly what it always did.
  */
 @Composable
-internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1) {
+internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = false) {
     val context = LocalContext.current
     val ink = LocalHomeInk.current
     val tick by rememberMinuteTick()
@@ -119,41 +117,54 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1) {
     fun time(millis: Long) = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).let { t ->
         (if (t.toLocalDate() != today) t.format(DateTimeFormatter.ofPattern("EEE ")) else "") + t.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
     }
-    val style = LocalBigClockStyles.current.bySlot[slot].orDefault()
+    val stored = LocalBigClockStyles.current.bySlot[slot]
+    val style = stored.orDefault()
     var boxInWindow by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    val screenPx = with(LocalDensity.current) {
-        androidx.compose.ui.geometry.Size(LocalConfiguration.current.screenWidthDp.dp.toPx(), LocalConfiguration.current.screenHeightDp.dp.toPx())
+    val window = LocalWindowInfo.current.containerSize
+    val fraction = remember(boxInWindow, window) {
+        if (boxInWindow.isEmpty || window.width <= 0 || window.height <= 0) androidx.compose.ui.geometry.Rect.Zero
+        else androidx.compose.ui.geometry.Rect(boxInWindow.left / window.width, boxInWindow.top / window.height,
+            boxInWindow.right / window.width, boxInWindow.bottom / window.height)
     }
-    val fraction = remember(boxInWindow, screenPx) {
-        if (boxInWindow.isEmpty || screenPx.width <= 0f || screenPx.height <= 0f) androidx.compose.ui.geometry.Rect.Zero
-        else androidx.compose.ui.geometry.Rect(boxInWindow.left / screenPx.width, boxInWindow.top / screenPx.height,
-            boxInWindow.right / screenPx.width, boxInWindow.bottom / screenPx.height)
-    }
-    val sample = rememberClockInkSample(fraction, enabled = style.mode != "AUTO" && launcherBackgroundEnabled(context))
-    val resolved = if (style.mode == "AUTO") null else resolveClockInk(style, sample, fallbackDark = ink.dark)
+    // Only a customized clock reads the picture; an untouched one keeps the whole-wallpaper ink it always had.
+    val sample = rememberClockInkSample(fraction, enabled = stored != null && launcherBackgroundEnabled(context))
+    val resolved = if (stored == null) null else resolveClockInk(style, sample, fallbackDark = ink.dark)
     val textColor = resolved?.color ?: ink.primary
     val secondaryColor = resolved?.color?.copy(alpha = .75f) ?: ink.secondary
-    val weight = FontWeight(style.weight.coerceIn(100, 900))
-    val shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = if (resolved?.color == Color.White || (resolved == null && !ink.dark)) .25f else 0f), blurRadius = 8f)
+    val lightInk = if (resolved != null) resolved.color == Color.White else !ink.dark
+    val shadow: androidx.compose.ui.graphics.Shadow? = when (style.shadow) {
+        "OFF" -> null
+        "GLOW" -> androidx.compose.ui.graphics.Shadow(Color.White.copy(alpha = if (lightInk) .6f else .75f), androidx.compose.ui.geometry.Offset.Zero, 28f)
+        else -> androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = if (lightInk) .25f else 0f), blurRadius = 8f)
+    }
+    val timeFamily = remember(style.face, style.weight) { clockFontFamily(style.face, style.weight) }
+    val dateFamily = remember(style.face) { clockFontFamily(style.face, 600) }
+    val align = when (style.align) { "LEFT" -> Alignment.Start; "RIGHT" -> Alignment.End; else -> Alignment.CenterHorizontally }
+    if (home && slot >= 0) {
+        LaunchedEffect(boxInWindow) { if (!boxInWindow.isEmpty) BigClockBounds.bySlot[slot] = boxInWindow }
+        androidx.compose.runtime.DisposableEffect(slot) { onDispose { BigClockBounds.bySlot.remove(slot) } }
+    }
     BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).widgetTap(onClick)
         .onGloballyPositioned { boxInWindow = it.boundsInWindow() }
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
-        val big = (maxHeight.value * .46f).coerceAtMost(maxWidth.value * .3f).sp
+        val big = (maxHeight.value * .46f * style.size).coerceAtMost(maxWidth.value * .34f).sp
         if (resolved?.shade == true) Box(Modifier.fillMaxSize().background(
             androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.Black.copy(alpha = .4f), Color.Transparent))))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = textColor, fontSize = (big.value * .2f).coerceIn(13f, 20f).sp,
-                fontWeight = FontWeight.SemiBold, style = androidx.compose.ui.text.TextStyle(shadow = shadow))
+        Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SMALL.dp), horizontalAlignment = align) {
+            if (style.date != "OFF") Text(now.format(DateTimeFormatter.ofPattern(
+                stringResource(if (style.date == "SHORT") R.string.eee_mmm_d_2 else R.string.eeee_mmmm_d))), color = textColor,
+                fontSize = (big.value * .2f).coerceIn(13f, 20f).sp, fontWeight = FontWeight.SemiBold, fontFamily = dateFamily,
+                style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = textColor, fontSize = big,
-                fontWeight = if (style.mode == "AUTO") FontWeight.SemiBold else weight, lineHeight = big * 1.02f, maxLines = 1,
+                fontWeight = FontWeight(style.weight.coerceIn(100, 900)), fontFamily = timeFamily, lineHeight = big * 1.02f, maxLines = 1,
                 style = androidx.compose.ui.text.TextStyle(shadow = shadow, fontFeatureSettings = "tnum"))
             val allDay = stringResource(R.string.all_day)
             val next = event?.let { e -> (if (e.allDay) allDay else time(e.begin)) + " · " + e.title }
                 ?: alarm?.let { "Alarm · " + time(it) }
-            if (next != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            if (next != null && style.showNext) Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (event != null) Icons.Rounded.CalendarToday else Icons.Rounded.Alarm, null, tint = secondaryColor, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(next, color = secondaryColor, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                Text(next, color = secondaryColor, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = dateFamily,
                     style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             }
         }

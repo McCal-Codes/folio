@@ -13,6 +13,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Drag to reorder inside a folder:** hold and drag an app over another one in an open folder to put it there instead, the way reordering works everywhere else in Folio.
 - **Drag an app past the folder's edge:** hold an app in an open folder and drag it past the card's own border, and it lands on Home where there's room, the one-drag way to do what the "..." menu's Move options already did.
 - **Sort a folder A to Z:** a folder's options popup has a Sort A to Z row that puts its apps in alphabetical order in one tap.
+- **Make the Big Clock your own:** long-press a Big Clock, then Customize, and the clock stays right where it is on Home while a bar lets you change it. Pick a Look (Classic, Thin, Bold, Tinted, Soft or Editorial), then a color from one row: Automatic, a tint of your picture, the picture's own colors that stay readable, or White. Fine tune, closed until you open it, has weight, size, typeface, shadow, date, whether to show the next event or alarm, alignment, and Reset. Automatic and White work on any wallpaper; the picture's colors need a Folio picture behind Home, since Android doesn't let an app read its own wallpaper. A clock you never customize draws exactly what it did before.
 
 ### Changed
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
