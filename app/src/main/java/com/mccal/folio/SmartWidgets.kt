@@ -4,6 +4,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -129,8 +131,12 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
     // Only a customized clock reads the picture; an untouched one keeps the whole-wallpaper ink it always had.
     val sample = rememberClockInkSample(fraction, enabled = stored != null && launcherBackgroundEnabled(context))
     val resolved = if (stored == null) null else resolveClockInk(style, sample, fallbackDark = ink.dark)
-    val textColor = resolved?.color ?: ink.primary
-    val secondaryColor = resolved?.color?.copy(alpha = .75f) ?: ink.secondary
+    // Everything about the clock eases to a new value instead of jumping, so the weight slider and a Look change glide.
+    val textColor by animateColorAsState(resolved?.color ?: ink.primary, clockMotion(), label = "clock ink")
+    val secondaryColor = if (resolved != null) textColor.copy(alpha = .75f) else ink.secondary
+    val animatedWeight by animateFloatAsState(style.weight.toFloat(), clockMotion(), label = "clock weight")
+    val animatedSize by animateFloatAsState(style.size, clockMotion(), label = "clock size")
+    val shadeAlpha by animateFloatAsState(if (resolved?.shade == true) .4f else 0f, clockMotion(), label = "clock shade")
     val lightInk = if (resolved != null) resolved.color == Color.White else !ink.dark
     val shadow: androidx.compose.ui.graphics.Shadow? = when (style.shadow) {
         "OFF" -> null
@@ -147,16 +153,16 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
     BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).widgetTap(onClick)
         .onGloballyPositioned { boxInWindow = it.boundsInWindow() }
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
-        val big = (maxHeight.value * .46f * style.size).coerceAtMost(maxWidth.value * .34f).sp
-        if (resolved?.shade == true) Box(Modifier.fillMaxSize().background(
-            androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.Black.copy(alpha = .4f), Color.Transparent))))
+        val big = (maxHeight.value * .46f * animatedSize).coerceAtMost(maxWidth.value * .34f).sp
+        if (shadeAlpha > 0f) Box(Modifier.fillMaxSize().background(
+            androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.Black.copy(alpha = shadeAlpha), Color.Transparent))))
         Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SMALL.dp), horizontalAlignment = align) {
             if (style.date != "OFF") Text(now.format(DateTimeFormatter.ofPattern(
                 stringResource(if (style.date == "SHORT") R.string.eee_mmm_d_2 else R.string.eeee_mmmm_d))), color = textColor,
                 fontSize = (big.value * .2f).coerceIn(13f, 20f).sp, fontWeight = FontWeight.SemiBold, fontFamily = dateFamily,
                 style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = textColor, fontSize = big,
-                fontWeight = FontWeight(style.weight.coerceIn(100, 900)), fontFamily = timeFamily, lineHeight = big * 1.02f, maxLines = 1,
+                fontWeight = FontWeight(animatedWeight.toInt().coerceIn(100, 900)), fontFamily = timeFamily, lineHeight = big * 1.02f, maxLines = 1,
                 style = androidx.compose.ui.text.TextStyle(shadow = shadow, fontFeatureSettings = "tnum"))
             val allDay = stringResource(R.string.all_day)
             val next = event?.let { e -> (if (e.allDay) allDay else time(e.begin)) + " · " + e.title }

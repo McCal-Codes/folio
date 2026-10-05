@@ -2,6 +2,15 @@ package com.mccal.folio
 
 import android.graphics.Bitmap
 import android.graphics.Typeface
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +41,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,6 +96,10 @@ internal val LocalBigClockStyles = androidx.compose.runtime.compositionLocalOf {
 /** Where each Big Clock on Home is on screen right now (window pixels), so the editing bar can sit clear of it and read
  * the picture under the same patch the clock does. Only the real Home clocks write here, never a preview. */
 internal object BigClockBounds { val bySlot = mutableStateMapOf<Int, Rect>() }
+
+/** How the clock and its bar ease to a new value: Folio's quick spring, or an instant change with Reduce Motion on. */
+@Composable
+internal fun <T> clockMotion(): androidx.compose.animation.core.FiniteAnimationSpec<T> = if (LocalReduceMotion.current) snap() else FolioMotion.spring(FolioMotion.Quick)
 
 internal fun clockFontFamily(face: String, weight: Int): FontFamily? = when (face) {
     "SERIF" -> FontFamily.Serif
@@ -235,9 +251,15 @@ internal val ClockLooks = listOf(
 @Composable
 internal fun ClockEditBar(
     slot: Int, style: BigClockStyle?, onStyle: (BigClockStyle?) -> Unit, systemWallpaper: Boolean,
-    onDone: () -> Unit, modifier: Modifier = Modifier,
+    onDone: () -> Unit, modifier: Modifier = Modifier, enterFromTop: Boolean = false,
 ) {
     val density = LocalDensity.current
+    val reduceMotion = LocalReduceMotion.current
+    val scope = rememberCoroutineScope()
+    // Slides in from the edge it sits on and out again, so Done is a motion and not a cut.
+    val appear = remember { Animatable(if (reduceMotion) 1f else 0f) }
+    LaunchedEffect(Unit) { if (!reduceMotion) appear.animateTo(1f, FolioMotion.spring(FolioMotion.Settle)) }
+    val close: () -> Unit = { scope.launch { if (!reduceMotion) appear.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)); onDone() } }
     val window = LocalWindowInfo.current.containerSize
     val bounds = BigClockBounds.bySlot[slot]
     val fraction = remember(bounds, window) {
@@ -251,8 +273,10 @@ internal fun ClockEditBar(
     val tint = sample?.wallpaperTint()
     val readable = remember(sample) { sample?.readableSuggestions() ?: emptyList() }
     val maxHeight = with(density) { (window.height * .5f).toDp() }
-    Column(modifier.padding(horizontal = FolioSpace.MEDIUM.dp).fillMaxWidth().heightIn(max = maxHeight)
-        .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
+    Column(modifier.padding(horizontal = FolioSpace.MEDIUM.dp).fillMaxWidth()
+        .graphicsLayer { alpha = appear.value; translationY = (1f - appear.value) * 56.dp.toPx() * (if (enterFromTop) -1f else 1f) }
+        .heightIn(max = maxHeight)
+        .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .985f))
         .verticalScroll(rememberScrollState()).padding(FolioSpace.MEDIUM.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
         BarLabel(stringResource(R.string.looks))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
@@ -260,9 +284,11 @@ internal fun ClockEditBar(
                 val on = s.mode == look.mode && s.weight == look.weight && s.face == look.face && s.shadow == look.shadow
                 val unavailable = look.mode == "WALLPAPER" && (systemWallpaper || tint == null)
                 val name = stringResource(look.name)
+                val fill by animateFloatAsState(if (on) .22f else .12f, clockMotion(), label = "look fill")
+                val ring by animateColorAsState(if (on) Color.White else Color.Transparent, clockMotion(), label = "look ring")
                 Column(Modifier.width(76.dp).heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-                    .background(Color.White.copy(alpha = if (on) .22f else .12f))
-                    .then(if (on) Modifier.border(2.dp, Color.White, RoundedCornerShape(FolioRadius.CONTROL.dp)) else Modifier)
+                    .background(Color.White.copy(alpha = fill))
+                    .border(2.dp, ring, RoundedCornerShape(FolioRadius.CONTROL.dp))
                     .clickable(enabled = !unavailable) { push(s.copy(mode = look.mode, weight = look.weight, face = look.face, shadow = look.shadow)) }
                     .semantics { role = Role.RadioButton; selected = on; contentDescription = name }.padding(FolioSpace.TINY.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -289,7 +315,9 @@ internal fun ClockEditBar(
             ColorDot(selected = s.mode == "WHITE", label = stringResource(R.string.white), color = Color.White, onClick = { push(s.copy(mode = "WHITE")) })
         }
         if (systemWallpaper) Text(stringResource(R.string.wallpaper_from_folios_own_pictures_only), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
-        if (fine) {
+        AnimatedVisibility(fine, enter = fadeIn(clockMotion<Float>()) + expandVertically(clockMotion<androidx.compose.ui.unit.IntSize>()),
+            exit = fadeOut(clockMotion<Float>()) + shrinkVertically(clockMotion<androidx.compose.ui.unit.IntSize>())) {
+          Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             BarLabel(stringResource(R.string.weight))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Slider(value = s.weight.toFloat(), onValueChange = { push(s.copy(weight = (it / 50f).toInt() * 50)) },
@@ -305,12 +333,13 @@ internal fun ClockEditBar(
                 IosSwitch(s.showNext, { push(s.copy(showNext = it)) })
             }
             Choice(stringResource(R.string.align), s.align, listOf("LEFT" to R.string.align_left, "CENTER" to R.string.align_center, "RIGHT" to R.string.align_right)) { push(s.copy(align = it)) }
+          }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             IosChip(selected = false, onClick = { fine = !fine }, label = { Text(stringResource(if (fine) R.string.hide_fine_tune else R.string.fine_tune)) })
             if (fine) IosChip(selected = false, onClick = { push(BigClockStyle()) }, label = { Text(stringResource(R.string.reset_style)) })
             Box(Modifier.weight(1f))
-            IosChip(selected = true, onClick = onDone, label = { Text(stringResource(R.string.done)) })
+            IosChip(selected = true, onClick = close, label = { Text(stringResource(R.string.done)) })
         }
     }
 }
@@ -321,10 +350,12 @@ private fun BarLabel(text: String) = Text(text, color = Color.White.copy(alpha =
 /** A 30 dp color dot inside a 48 dp target, ringed when chosen. */
 @Composable
 private fun ColorDot(selected: Boolean, label: String, color: Color, onClick: () -> Unit, content: (@Composable () -> Unit)? = null) {
+    val ring by animateColorAsState(if (selected) Color.White else Color.Transparent, clockMotion(), label = "dot ring")
+    val grow by animateFloatAsState(if (selected) 1f else .86f, clockMotion(), label = "dot size")
     Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClick = onClick).semantics { role = Role.RadioButton; this.selected = selected; contentDescription = label },
         contentAlignment = Alignment.Center) {
-        Box(Modifier.size(30.dp).clip(CircleShape).background(color).border(1.dp, Color.White.copy(alpha = .5f), CircleShape)
-            .then(if (selected) Modifier.border(3.dp, Color.White, CircleShape) else Modifier), contentAlignment = Alignment.Center) { content?.invoke() }
+        Box(Modifier.size(30.dp).graphicsLayer { scaleX = grow; scaleY = grow }.clip(CircleShape).background(color)
+            .border(1.dp, Color.White.copy(alpha = .5f), CircleShape).border(3.dp, ring, CircleShape), contentAlignment = Alignment.Center) { content?.invoke() }
     }
 }
 
