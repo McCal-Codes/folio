@@ -5,9 +5,20 @@ package com.mccal.folio
  * notification access, A2 is Folio's accessibility service. Higher tiers (Shizuku, root) are not used by Folio yet, so
  * they are not listed: a row here only ever says what is true now.
  */
-internal enum class CapabilityTier(val code: String) { STANDARD("A0"), NOTIFICATIONS("A1"), ACCESSIBILITY("A2") }
+internal enum class CapabilityTier(val code: String, val privilege: PrivilegeTier, val risk: OperationRisk) {
+    /** Home, folders, Focus and the Market: every change has an Undo. */
+    STANDARD("A0", PrivilegeTier.STANDARD, OperationRisk.REVERSIBLE),
+    /** Reads notifications; replying and dismissing one are changes that stay. */
+    NOTIFICATIONS("A1", PrivilegeTier.NOTIFICATIONS, OperationRisk.STATEFUL),
+    /** Global gestures and the shade over other apps: they end when you let go. */
+    ACCESSIBILITY("A2", PrivilegeTier.ACCESSIBILITY, OperationRisk.REVERSIBLE),
+}
 
-internal data class CapabilityRow(val tier: CapabilityTier, val on: Boolean)
+internal data class CapabilityRow(val tier: CapabilityTier, val on: Boolean) {
+    val status get() = BackendStatus.of(granted = on)
+    /** The most that Folio does with this tier. */
+    val risk get() = tier.risk
+}
 
 internal object Capabilities {
     /** The rows for this phone: Standard is always on; the other two follow what the person has allowed. */

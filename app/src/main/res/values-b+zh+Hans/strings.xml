@@ -1636,4 +1636,11 @@
     <string name="choose_named">选择%1$s</string>
     <string name="installing_percent">正在安装，%1$d%%</string>
     <string name="fix_saved_layout">修复已保存的布局</string>
+    <string name="capability_risk_line">用途：%1$s</string>
+    <string name="risk_observe">只读</string>
+    <string name="risk_reversible">易于撤销</string>
+    <string name="risk_stateful">更改会保留直到撤销</string>
+    <string name="risk_disruptive">可能打断 App</string>
+    <string name="risk_critical">可能影响 Android 本身</string>
+    <string name="risk_experimental">在此手机上可能无法使用</string>
 </resources>

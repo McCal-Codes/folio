@@ -1684,4 +1684,11 @@
     <string name="choose_named">Choose %1$s</string>
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
+    <string name="capability_risk_line">What it does: %1$s</string>
+    <string name="risk_observe">Read only</string>
+    <string name="risk_reversible">Easy to undo</string>
+    <string name="risk_stateful">Changes stay until undone</string>
+    <string name="risk_disruptive">Can interrupt apps</string>
+    <string name="risk_critical">Can affect Android itself</string>
+    <string name="risk_experimental">May not work on this phone</string>
 </resources>

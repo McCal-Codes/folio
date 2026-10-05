@@ -1657,4 +1657,11 @@
     <string name="choose_named">%1$s 선택</string>
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
+    <string name="capability_risk_line">하는 일: %1$s</string>
+    <string name="risk_observe">읽기 전용</string>
+    <string name="risk_reversible">쉽게 되돌릴 수 있음</string>
+    <string name="risk_stateful">되돌리기 전까지 유지됨</string>
+    <string name="risk_disruptive">앱을 방해할 수 있음</string>
+    <string name="risk_critical">Android 자체에 영향을 줄 수 있음</string>
+    <string name="risk_experimental">이 휴대전화에서 작동하지 않을 수 있음</string>
 </resources>

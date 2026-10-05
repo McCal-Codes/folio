@@ -1740,6 +1740,15 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
+private fun riskLabel(risk: OperationRisk) = when (risk) {
+    OperationRisk.OBSERVE -> R.string.risk_observe
+    OperationRisk.REVERSIBLE -> R.string.risk_reversible
+    OperationRisk.STATEFUL -> R.string.risk_stateful
+    OperationRisk.DISRUPTIVE -> R.string.risk_disruptive
+    OperationRisk.CRITICAL -> R.string.risk_critical
+    OperationRisk.EXPERIMENTAL -> R.string.risk_experimental
+}
+
 /** Advanced › Diagnostics: what this phone and your permissions allow, and why a feature might be off (A0 to A2, see Capabilities). */
 @Composable private fun CapabilitiesCard() {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1758,6 +1767,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                 Column(Modifier.weight(1f)) {
                     Text("${row.tier.code} · ${stringResource(name)}", style = MaterialTheme.typography.bodyLarge)
                     Text(stringResource(uses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.capability_risk_line, stringResource(riskLabel(row.risk))), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("capability-risk-${row.tier.code}"))
                 }
                 Text(stringResource(if (row.on) R.string.on else R.string.capability_off), style = MaterialTheme.typography.bodyMedium)
             }
