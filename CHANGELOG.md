@@ -83,6 +83,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
 - **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
 - **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
+- **Even rows at the top of Home:** on a page with no widget in the first two rows, the first rows sat closer together than the rest. Every row now has the same spacing, and the page keeps the height it had, so it still fits (#13).
 
 ## [0.6.7.3] - 2026-09-28
 

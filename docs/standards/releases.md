@@ -19,9 +19,20 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-1 MUST** keep `main` releasable. Every change lands as a topic branch and a squashed pull request, and
   `main` is the only branch anything is ever built from.
 - **REL-2 MUST NOT** let a topic branch live long enough to hold a release. A branch that cannot merge within about
-  a week is too big: split it, or merge the finished part behind a setting that is off.
-- **REL-3 SHOULD** merge `main` into a topic branch whenever `main` moves, not once at the end. A branch that is
-  both ahead and behind by double figures is a merge nobody can review.
+  two working days is too big: split it, or merge the finished part behind a gate that is closed (REL-4a). The limit
+  was a week; on 6 Oct 2026 sixteen branches of one session were all more than a day old, three were stacked on each
+  other, and `main` moved under them twice, which cost a day of rebasing that landing each one would not have.
+- **REL-2a MUST NOT** hold more than five open topic branches at once in one session (a person, or an agent working
+  in its own worktree). Three is the number the DORA research associates with teams that ship fast; five is the
+  most this project can review. At the limit, land one, or park one (delete the branch after writing down what is
+  left) before starting another. `bash tools/check-branches.sh` counts them and lists what has already landed.
+- **REL-3 MUST** bring a topic branch up to date with `main` whenever `main` moves, not once at the end, and MUST
+  NOT leave one behind `main` by ten commits or more: update it or close it. A branch that is both ahead and behind
+  by double figures is a merge nobody can review. A stack of branches is at most two deep, and the lower one lands
+  first.
+- **REL-3a MAY** build a throwaway integration branch that merges several topic branches, to check they work
+  together. It MUST NOT be built, tagged, published or handed out (REL-4), it is deleted once its topic branches land
+  or after two days, and topic branches never wait for it: each lands on `main` on its own, behind its own gate.
 - **REL-4 MUST NOT** build, tag or publish anything from a topic branch. If supporters need it, it goes to `main`
   first. There is no stable branch and no beta branch: one trunk, and the two audiences are separated by a gate in the
   build ([ADR 0007](../adr/0007-release-trains.md)).
@@ -41,6 +52,8 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-6 MUST** check [docs/in-flight.md](../in-flight.md), the other worktrees and the open pull requests before
   editing a file more than one change is likely to touch, and add a row there when starting on one: `CHANGELOG.md`, `app/src/main/assets/roadmap.json`, `strings.xml`, `app/build.gradle.kts`.
   Several sessions work on Folio at once.
+- **REL-6a SHOULD** run `bash tools/check-branches.sh` at the start and the end of a working session: at the start to
+  see what is already open before adding to it, at the end to delete the branches and worktrees that have landed.
 
 ### The changelog
 

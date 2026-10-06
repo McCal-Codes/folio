@@ -153,6 +153,26 @@ class LayoutModelTest {
         assertEquals(null, stacked.splitRow)
         assertEquals(portrait.widgetHeight + 18f + portrait.rowHeight, stacked.y(3), .01f)
     }
+    @Test fun `a stacked page with no widget up top has one pitch and the same height`() {
+        val g = homeGeometry(475f, 700f, LayoutPreset(), true)
+        val rows = visibleHomeRows(g.appRows)
+        val tight = HomeCellLayout.forPage(g, listOf(0 to 2), rows)
+        val empty = HomeCellLayout.forPage(g, emptyList(), rows)
+        // Every row has the same pitch, and the page is exactly as tall as before, so it still fits the window.
+        val pitches = (0 until rows).map { empty.pitch(it) }.toSet()
+        assertEquals(1, pitches.size)
+        assertEquals(tight.height(rows), empty.height(rows), .01f)
+        // No row gets less room than the tighter of the two pitches had.
+        assertTrue(empty.pitch(0) >= minOf(tight.topPitch, g.rowHeight) - .01f)
+        // Rows 1 and 2 are no closer together than rows 3 and 4 (the reported bug).
+        assertEquals(empty.y(2) - empty.y(1), empty.y(4) - empty.y(3), .01f)
+        // A widget in the first two rows keeps the half-height rows.
+        assertEquals(tight.topPitch, tight.pitch(0), .01f)
+        assertEquals(null, tight.evenPitch)
+        // Two-column pages are untouched.
+        val wide = homeGeometry(751f, 459f, LayoutPreset(), true, labelHeight = 21f)
+        assertEquals(null, HomeCellLayout.forPage(wide, emptyList()).evenPitch)
+    }
     @Test fun `expanded pane appears from actual window width`() {
         assertFalse(homeGeometry(475f, 700f, LayoutPreset(), true).expanded)
         assertTrue(homeGeometry(933f, 650f, LayoutPreset(), true).expanded)

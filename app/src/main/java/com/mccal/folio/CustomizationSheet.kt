@@ -1835,7 +1835,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
     val placements = state.widgetPlacements.filter { it.page == 0 }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
-    val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
+    val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY }, maxOf(shownRows, placements.maxOfOrNull { it.row + it.spanY } ?: 0))
     val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
