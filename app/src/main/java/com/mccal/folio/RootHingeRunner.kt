@@ -92,7 +92,7 @@ internal object RootHingeRunner {
                     SuLine.Eof -> {
                         val code = process.exitCode()
                         val why = process.errorText().lineSequence().firstOrNull { it.isNotBlank() }?.take(120).orEmpty()
-                        return report(if (code != null && code != 0) RootTestReport.Outcome.DENIED else RootTestReport.Outcome.FAILED, previous, su, version(launcher, su),
+                        return report(if (code != null && code != 0 && refusedRoot(why)) RootTestReport.Outcome.DENIED else RootTestReport.Outcome.FAILED, previous, su, version(launcher, su),
                             detail = "su ended (exit ${code ?: "?"})${if (why.isNotEmpty()) ": $why" else ""}")
                     }
                     is SuLine.Text -> when (val message = RootHingeProtocol.parse(line.line)) {
@@ -132,6 +132,14 @@ internal object RootHingeRunner {
             process.close()
         }
     }
+
+    /**
+     * Whether what `su` printed to stderr is a refusal. A root manager says so in words ("Permission denied", "not allowed"); a
+     * process that failed after getting root (a missing class, a crash) does not, and calling that "not allowed" would send the
+     * person to their root manager for a fault that is Folio's. Nothing printed at all counts as a refusal: some managers say nothing.
+     */
+    fun refusedRoot(stderr: String): Boolean =
+        stderr.isBlank() || Regex("denied|not allowed|permission|unauthori[sz]ed|not granted|refused|forbidden", RegexOption.IGNORE_CASE).containsMatchIn(stderr)
 
     /** Different angles (counted in half degrees) that make a feed continuous rather than stepped; the public sensor gives three. */
     const val MIN_CONTINUOUS_ANGLES = 8

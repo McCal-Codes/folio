@@ -76,6 +76,15 @@ class RootHingeRunnerTest {
         assertTrue(report.detail.contains("Permission denied")); assertTrue(report.detail.contains("exit 1"))
     }
 
+    @Test fun `a crash after root was given is FAILED with its words, not Not allowed`() {
+        val clock = Clock()
+        val report = run({ cmd -> if (cmd[1] == "-v") Scripted(clock, emptyList(), then = SuLine.Eof) else Scripted(clock, emptyList(), then = SuLine.Eof, code = 134, error = "Pending exception java.lang.ClassNotFoundException: com.mccal.folio.RootHingeHelper") }, clock)
+        assertEquals(RootTestReport.Outcome.FAILED, report.outcome); assertEquals(RootState.DENIED, report.state)
+        assertTrue(report.detail.contains("ClassNotFoundException"))
+        assertFalse(RootHingeRunner.refusedRoot("Pending exception java.lang.ClassNotFoundException"))
+        assertTrue(RootHingeRunner.refusedRoot("")); assertTrue(RootHingeRunner.refusedRoot("su: Permission denied")); assertTrue(RootHingeRunner.refusedRoot("Magisk: not allowed"))
+    }
+
     @Test fun `no su anywhere is NO_ROOT and every place was tried`() {
         val tried = mutableListOf<String>()
         val report = RootHingeRunner.run({ cmd -> tried += cmd[0]; throw IOException("not found") }, apk, now = { 0L })
