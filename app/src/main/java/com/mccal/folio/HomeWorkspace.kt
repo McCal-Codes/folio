@@ -415,7 +415,7 @@ internal fun SharedHomeGrid(
     val widgetRows = pageWidgets.map { displayRow(it.row) to it.spanY }
     val renderedRows = maxOf(shownRows, widgetRows.maxOfOrNull { it.first + it.second } ?: 0)
     // Stacked, or two columns side by side in a short, wide window (see HomeCellLayout).
-    val cells = remember(geometry, widgetRows) { HomeCellLayout.forPage(geometry, widgetRows) }
+    val cells = remember(geometry, widgetRows, renderedRows) { HomeCellLayout.forPage(geometry, widgetRows, renderedRows) }
     // Half folded like a laptop (phone upright): rows that would sit in the fold spring down past it, like iPhone Duo.
     val hinge = LocalHinge.current?.takeIf { it.active && !it.vertical }
     val density = LocalDensity.current
