@@ -23,4 +23,15 @@ class SystemBridgeTest {
         FolioCapability.entries.forEach { assertNotEquals(0, SystemBridge.capabilityName(it)) }
         AuditEvent.Outcome.entries.forEach { assertNotEquals(0, SystemBridge.outcomeLabel(it)) }
     }
+
+    @Test fun `the Root row follows the last root test, and the switch and Safe Mode still win`() {
+        assertEquals(R.string.bridge_state_available, SystemBridge.rootWayLabel(RootState.READY, off = false, safe = false))
+        assertEquals(R.string.bridge_state_not_tested, SystemBridge.rootWayLabel(RootState.UNKNOWN, off = false, safe = false))
+        assertEquals(R.string.bridge_state_not_allowed, SystemBridge.rootWayLabel(RootState.DENIED, off = false, safe = false))
+        assertEquals(R.string.bridge_state_no_root, SystemBridge.rootWayLabel(RootState.NO_ROOT, off = false, safe = false))
+        assertEquals(R.string.bridge_state_unsupported, SystemBridge.rootWayLabel(RootState.NO_SENSOR, off = false, safe = false))
+        assertEquals(R.string.bridge_state_lost, SystemBridge.rootWayLabel(RootState.LOST, off = false, safe = false))
+        assertEquals(R.string.bridge_state_off, SystemBridge.rootWayLabel(RootState.READY, off = true, safe = false))
+        assertEquals(R.string.bridge_state_safe, SystemBridge.rootWayLabel(RootState.READY, off = true, safe = true))
+    }
 }

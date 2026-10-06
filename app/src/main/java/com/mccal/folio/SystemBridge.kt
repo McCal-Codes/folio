@@ -27,7 +27,7 @@ internal object SystemBridge {
     fun broker(context: Context): CapabilityBroker {
         val app = context.applicationContext
         return CapabilityBroker(
-            providers = { listOf(HingeSensorProvider(app), NotificationAccessProvider(app), AccessibilityProvider()) },
+            providers = { listOf(HingeSensorProvider(app), NotificationAccessProvider(app), AccessibilityProvider(), RootHingeProvider { RootHingeStore.state(app) }) },
             integrationOff = { isOff(app) },
             safeMode = { SafeMode.active },
             audit = ::record,
@@ -50,6 +50,31 @@ internal object SystemBridge {
         safe -> R.string.bridge_state_safe
         off -> R.string.bridge_state_off
         else -> R.string.bridge_state_not_yet
+    }
+
+    /** What the Root row reads: the owner's last root test, unless the switch or Safe Mode has turned the tier off. */
+    @androidx.annotation.StringRes fun rootWayLabel(state: RootState, off: Boolean, safe: Boolean): Int = when {
+        safe -> R.string.bridge_state_safe
+        off -> R.string.bridge_state_off
+        else -> when (state) {
+            RootState.READY -> R.string.bridge_state_available
+            RootState.NO_ROOT -> R.string.bridge_state_no_root
+            RootState.NO_SENSOR -> R.string.bridge_state_unsupported
+            RootState.DENIED -> R.string.bridge_state_not_allowed
+            RootState.LOST -> R.string.bridge_state_lost
+            RootState.UNKNOWN -> R.string.bridge_state_not_tested
+        }
+    }
+
+    /** The sentence for what a root test found. Moving shows four numbers; every other result is a plain sentence. */
+    fun rootResult(context: Context, r: RootTestReport): String = when (r.outcome) {
+        RootTestReport.Outcome.MOVING -> context.getString(R.string.bridge_root_result_moving, r.readings, r.distinctAngles, r.minDegrees.toInt(), r.maxDegrees.toInt())
+        RootTestReport.Outcome.STILL -> context.getString(R.string.bridge_root_result_still)
+        RootTestReport.Outcome.NO_ROOT -> context.getString(R.string.bridge_root_result_no_root)
+        RootTestReport.Outcome.DENIED -> context.getString(R.string.bridge_root_result_denied)
+        RootTestReport.Outcome.NO_ANSWER -> context.getString(R.string.bridge_root_result_no_answer)
+        RootTestReport.Outcome.NO_SENSOR -> context.getString(R.string.bridge_root_result_no_sensor)
+        RootTestReport.Outcome.FAILED -> context.getString(R.string.bridge_root_result_failed)
     }
 
     @androidx.annotation.StringRes fun capabilityName(c: FolioCapability): Int = when (c) {

@@ -1431,6 +1431,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
     R.string.capability_open_settings to CustomizationPage.ADVANCED,
     R.string.allow_system_access to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -2823,6 +2825,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
     val broker = remember { SystemBridge.broker(context) }
     fun read() = broker.states()
     var states by remember { mutableStateOf(read()) }
+    var rootState by remember { mutableStateOf(RootHingeStore.state(context)) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle, off) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { states = read() } }
     LaunchedEffect(off) { states = read() }
@@ -2837,10 +2840,28 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         BridgeWay(PrivilegeTier.STANDARD, R.string.bridge_way_standard, R.string.bridge_way_standard_uses, R.string.bridge_state_always, "A0 to A2", "bridge-way-standard")
         val gated = SystemBridge.wayLabel(off, safe)
         BridgeWay(PrivilegeTier.SHIZUKU, R.string.bridge_way_shizuku, R.string.bridge_way_shizuku_uses, gated, "A3", "bridge-way-shizuku")
-        BridgeWay(PrivilegeTier.ROOT, R.string.bridge_way_root, R.string.bridge_way_root_uses, gated, "A4", "bridge-way-root")
+        BridgeWay(PrivilegeTier.ROOT, R.string.bridge_way_root, R.string.bridge_way_root_uses, SystemBridge.rootWayLabel(rootState, off, safe), "A4", "bridge-way-root")
         BridgeWay(PrivilegeTier.HOOKS, R.string.bridge_way_system, R.string.bridge_way_system_uses, gated, "A5", "bridge-way-system")
         BridgeWay(null, R.string.bridge_way_device, R.string.bridge_way_device_uses, gated, "", "bridge-way-device")
         CardNote(stringResource(R.string.bridge_knox))
+    }
+    SettingsCard(stringResource(R.string.bridge_root_title)) {
+        CardNote(stringResource(R.string.bridge_root_note))
+        val scope = rememberCoroutineScope()
+        var testing by remember { mutableStateOf(false) }
+        var found by remember { mutableStateOf<RootTestReport?>(null) }
+        found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
+        if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
+        CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe, onClick = {
+            testing = true; found = null
+            scope.launch {
+                found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { RootHingeStore.test(context).first }
+                testing = false; rootState = RootHingeStore.state(context); states = read()
+            }
+        })
+        if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_copy), Modifier.fillMaxWidth().testTag("bridge-root-copy"), onClick = {
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
+        })
     }
     SettingsCard(stringResource(R.string.bridge_does)) {
         states.forEach { s ->

@@ -14,6 +14,8 @@ internal enum class RootState {
     NO_ROOT,
     /** `su` exists but this app has not been enabled in the root manager (KernelSU, Magisk, APatch). */
     DENIED,
+    /** The test ran and root works, but this phone has no Samsung hinge angle sensor, or the sensor refused even root. */
+    NO_SENSOR,
     /** The test ran and the helper's readings arrived. */
     READY,
     /** It worked before and then did not: the helper died, or the grant was taken away. */
@@ -27,7 +29,7 @@ internal class RootHingeProvider(private val rootState: () -> RootState) : Capab
     override fun status() = when (rootState()) {
         RootState.READY -> BackendStatus.AVAILABLE
         RootState.LOST -> BackendStatus.LOST
-        RootState.NO_ROOT -> BackendStatus.UNSUPPORTED
+        RootState.NO_ROOT, RootState.NO_SENSOR -> BackendStatus.UNSUPPORTED
         // Not asked yet, or not enabled: the person can fix both, so it reads as "needs your permission".
         RootState.UNKNOWN, RootState.DENIED -> BackendStatus.NOT_GRANTED
     }
