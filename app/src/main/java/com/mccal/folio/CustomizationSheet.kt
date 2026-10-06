@@ -2848,18 +2848,15 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
     }
     SettingsCard(stringResource(R.string.bridge_root_title)) {
         CardNote(stringResource(R.string.bridge_root_note))
-        val scope = rememberCoroutineScope()
-        var testing by remember { mutableStateOf(false) }
-        var found by remember { mutableStateOf<RootTestReport?>(null) }
+        val status by RootHingeTester.status.collectAsState()
+        val testing = status is RootHingeTester.Status.Running
+        val found = (status as? RootHingeTester.Status.Done)?.report
+        // The result lands whichever screen is showing (the Fold swaps displays mid-test), so the saved state is read again when it does.
+        LaunchedEffect(status) { rootState = RootHingeStore.state(context); states = read() }
+        DisposableEffect(Unit) { onDispose { RootHingeTester.dismiss() } }
         found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
         if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
-        CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe, onClick = {
-            testing = true; found = null
-            scope.launch {
-                found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { RootHingeStore.test(context).first }
-                testing = false; rootState = RootHingeStore.state(context); states = read()
-            }
-        })
+        CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe, onClick = { RootHingeTester.start(context) })
         if (rootState == RootState.READY) {
             var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
             SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")

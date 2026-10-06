@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import android.content.Context
 import java.io.IOException
+import kotlinx.coroutines.launch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -51,7 +52,7 @@ internal data class RootTestReport(
 internal object RootHingeRunner {
     const val HELPER_CLASS = "com.mccal.folio.RootHingeHelper"
     const val READY_WAIT_MS = 20_000L
-    const val LISTEN_MS = 8_000L
+    const val LISTEN_MS = 12_000L
     /** The helper's own lifetime for a test: long enough for the wait and the listening, short enough to end by itself. */
     const val HELPER_SECONDS = 40
 
@@ -235,4 +236,32 @@ internal object RootHingeStore {
         save(context, report, text)
         return report to text
     }
+}
+
+/**
+ * Runs the owner's root test where a screen change cannot cancel it. Opening or closing the Fold swaps displays and rebuilds Folio's
+ * screen, and a test tied to that screen stopped halfway. This holder belongs to the app process: the page only watches [status].
+ */
+internal object RootHingeTester {
+    sealed interface Status {
+        data object Idle : Status
+        data object Running : Status
+        data class Done(val report: RootTestReport) : Status
+    }
+
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val _status = kotlinx.coroutines.flow.MutableStateFlow<Status>(Status.Idle)
+    val status: kotlinx.coroutines.flow.StateFlow<Status> = _status
+
+    /** Starts the test unless one is already running; the result lands in [status] whichever screen is showing. */
+    fun start(context: Context) {
+        if (!_status.compareAndSet(_status.value.takeIf { it !is Status.Running } ?: return, Status.Running)) return
+        val app = context.applicationContext
+        scope.launch {
+            _status.value = try { Status.Done(RootHingeStore.test(app).first) } catch (e: Exception) { Status.Idle }
+        }
+    }
+
+    /** Clears a shown result, so a page opened later starts clean. */
+    fun dismiss() { if (_status.value is Status.Done) _status.value = Status.Idle }
 }
