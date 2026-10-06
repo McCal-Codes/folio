@@ -1017,9 +1017,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return true
     }
     /** Turns a Focus on (or all off with null) and applies it to Android. */
-    fun setFocus(id: String?, byHand: Boolean = true) {
-        // Turned off by hand while its schedule covers now: it stays off until that window ends (see FocusDismissals).
-        if (byHand) FocusDismissals.record(getApplication(), mutable.value.focusModes, mutable.value.activeFocus, id)
+    fun setFocus(id: String?) {
         updateSettings(soon = false) { it.copy(activeFocus = id?.takeIf { f -> it.focusModes.any { m -> m.id == f } }) }
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
