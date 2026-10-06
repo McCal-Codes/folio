@@ -2,6 +2,15 @@ package com.mccal.folio
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -97,6 +106,30 @@ internal object DevBuild {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet(TICKS + sha, ticks.map(Int::toString).toSet()).apply()
     }
 
+    /** Which page this is: the first time Folio Dev has run here, a new build, or the same build opened again. */
+    enum class Kind { FIRST, NEW, REOPENED }
+
+    fun kind(info: DevBuildInfo, seen: DevBuildSeen) = when (seen.sha) { null -> Kind.FIRST; info.sha -> Kind.REOPENED; else -> Kind.NEW }
+
+    /** Rows shown up front; the rest sit behind "N more changes". */
+    const val LEAD_ROWS = 3
+    const val RECENT_SHOWN = 5
+
+    /** The commits to list: what is newer than the last build, or the latest few when the same build is opened again. */
+    fun listed(info: DevBuildInfo, seen: DevBuildSeen): List<DevCommit> =
+        if (kind(info, seen) == Kind.REOPENED) info.commits.take(RECENT_SHOWN) else changesSince(info, seen.sha)
+
+    /** The build file's ISO time in the phone's own style ("Oct 6, 2026, 3:26 PM" in English); the raw text if it cannot be read. */
+    fun shortTime(iso: String, locale: java.util.Locale = java.util.Locale.getDefault()): String = runCatching {
+        java.time.OffsetDateTime.parse(iso).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT).withLocale(locale))
+    }.getOrDefault(iso)
+
+    /** The quiet line under the rows: when it was built and, for a new build, which one it replaced. */
+    fun footer(info: DevBuildInfo, seen: DevBuildSeen, locale: java.util.Locale = java.util.Locale.getDefault()): String {
+        val built = "Built " + shortTime(info.builtAt, locale) + if (info.dirty) ", with uncommitted changes" else "" // english-only
+        return if (kind(info, seen) == Kind.NEW) built + " · replaced " + (seen.branch ?: "") + " " + seen.sha else built // english-only
+    }
+
     /** Text for an issue or a message: which build this is, with nothing about the person. */
     fun summary(info: DevBuildInfo): String = buildString {
         append("Folio Dev ").append(info.branch).append(' ').append(info.sha).append(if (info.dirty) " (uncommitted changes)" else "")
@@ -104,86 +137,111 @@ internal object DevBuild {
     }
 }
 
-private const val RECENT_SHOWN = 5
-
 /** Folio Dev's page is for the person who builds Folio, so its words stay English and are kept here, one per line, not in strings.xml. */
 private object DevText {
-    const val BADGE = "Folio Dev" // english-only
     const val WELCOME = "Welcome to Folio Dev" // english-only
     const val NEW_BUILD = "New build" // english-only
     const val THIS_BUILD = "This build" // english-only
-    const val WELCOME_BODY = "This copy is for testing. It is separate from your Folio, with its own settings, and a new build installs over it without wiping them." // english-only
+    const val WELCOME_BODY = "The amber copy of Folio for testing." // english-only
     const val REOPENED_BODY = "You are on this build now." // english-only
-    const val NEW_BODY = "This copy of Folio Dev was just replaced. Here is what is on it." // english-only
-    const val BRANCH = "Branch" // english-only
-    const val COMMIT = "Commit" // english-only
-    const val BUILT = "Built" // english-only
-    const val REPLACED = "Replaced" // english-only
-    const val RECENT = "Recent commits" // english-only
+    const val NEW_BODY = "Folio Dev was just replaced. Here is what is new on this phone." // english-only
     const val TRY = "What to try" // english-only
-    const val GOT_IT = "Got it" // english-only
+    const val CONTINUE = "Continue" // english-only
+    const val ALL_DONE = "All done" // english-only
+    const val DONE = "Done" // english-only
     const val COPY = "Copy build info" // english-only
     const val CLIP_LABEL = "Folio Dev build" // english-only
-    const val UNCOMMITTED = " + uncommitted changes" // english-only
-    fun changed(n: Int) = "What changed ($n)" // english-only
-    fun tried(done: Int, total: Int) = "$done of $total tried. Ticks stay on this phone and start over with the next build." // english-only
+    fun more(n: Int) = "$n more changes" // english-only
+    fun tried(done: Int, total: Int) = "$done of $total" // english-only
+    val first = listOf(
+        "Its own copy" to "Separate from your Folio, with its own Home and settings.", // english-only
+        "Updates keep your Home" to "A new build installs over it without wiping anything.", // english-only
+        "Shown once per build" to "Each new build says what changed and what to try.", // english-only
+    )
 }
 
-/** The page: which build, what changed, and the steps the person who made the build wrote (none is fine). */
+/** The page, in the style of What's New: one icon, a title, the build, three rows, the steps to try if there are any, and Continue. */
 @Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val kind = DevBuild.kind(info, seen)
     var ticks by remember { mutableStateOf(DevBuild.ticks(context, info.sha)) }
-    val reopened = seen.sha == info.sha
-    val changes = remember { if (reopened) info.commits.take(RECENT_SHOWN) else DevBuild.changesSince(info, seen.sha) }
-    val first = seen.sha == null
+    var moreOpen by remember { mutableStateOf(false) }
+    val changes = remember { DevBuild.listed(info, seen) }
+    val white = androidx.compose.ui.graphics.Color.White
+    val amber = androidx.compose.ui.graphics.Color(FolioColors.Value.Orange)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XXL.dp).testTag("dev-build"),
-            verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-            Text(DevText.BADGE, color = FolioColors.Cyan, style = MaterialTheme.typography.labelLarge)
-            Text(if (first) DevText.WELCOME else if (reopened) DevText.THIS_BUILD else DevText.NEW_BUILD, style = MaterialTheme.typography.headlineMedium)
-            Text(if (first) DevText.WELCOME_BODY else if (reopened) DevText.REOPENED_BODY else DevText.NEW_BODY, style = MaterialTheme.typography.bodyMedium)
-            BuildLine(DevText.BRANCH, info.branch, "dev-build-branch")
-            BuildLine(DevText.COMMIT, info.sha + if (info.dirty) DevText.UNCOMMITTED else "", "dev-build-sha")
-            BuildLine(DevText.BUILT, info.builtAt.substringBefore('.').replace('T', ' '), "dev-build-time")
-            if (seen.sha != null && !reopened) BuildLine(DevText.REPLACED, (seen.branch ?: "") + " " + seen.sha, "dev-build-replaced")
-            if (changes.isNotEmpty()) {
-                Text(if (reopened) DevText.RECENT else DevText.changed(changes.size), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
-                changes.forEach { c ->
-                    Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp)) {
-                        Text(c.subject, style = MaterialTheme.typography.bodyMedium)
-                        Text(c.sha, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.9f).padding(horizontal = FolioSpace.XXL.dp).testTag("dev-build")) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                Column(Modifier.fillMaxWidth().padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    androidx.compose.foundation.layout.Box(Modifier.size(72.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(amber), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Build, null, tint = white, modifier = Modifier.size(36.dp))
+                    }
+                    Text(when (kind) { DevBuild.Kind.FIRST -> DevText.WELCOME; DevBuild.Kind.NEW -> DevText.NEW_BUILD; DevBuild.Kind.REOPENED -> DevText.THIS_BUILD },
+                        color = white, fontSize = FolioType.TITLE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = FolioSpace.COMFY.dp))
+                    Text(info.branch + " · " + info.sha, color = FolioColors.Cyan, fontSize = FolioType.FOOTNOTE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
+                            .background(FolioColors.Cyan.copy(alpha = .16f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp).testTag("dev-build-sha"))
+                    Text(when (kind) { DevBuild.Kind.FIRST -> DevText.WELCOME_BODY; DevBuild.Kind.NEW -> DevText.NEW_BODY; DevBuild.Kind.REOPENED -> DevText.REOPENED_BODY },
+                        color = white.copy(alpha = .8f), fontSize = FolioType.SUBHEAD.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = FolioSpace.COMPACT.dp))
+                }
+                if (kind == DevBuild.Kind.FIRST) DevText.first.forEach { (title, detail) -> DevRow(androidx.compose.material.icons.Icons.Rounded.AutoAwesome, amber, title, detail) }
+                else {
+                    changes.take(DevBuild.LEAD_ROWS).forEach { c -> WhatsNew.symbol(c.subject).let { (icon, color) -> DevRow(icon, androidx.compose.ui.graphics.Color(color), c.subject, c.sha) } }
+                    val rest = changes.drop(DevBuild.LEAD_ROWS)
+                    if (rest.isNotEmpty() && !moreOpen) SheetGroup(Modifier.padding(top = FolioSpace.MEDIUM.dp)) {
+                        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { moreOpen = true }.padding(horizontal = FolioSpace.LARGE.dp)
+                            .testTag("dev-build-more"), verticalAlignment = Alignment.CenterVertically) {
+                            Text(DevText.more(rest.size), color = FolioColors.Cyan, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        }
+                    }
+                    if (moreOpen) rest.forEach { c -> WhatsNew.symbol(c.subject).let { (icon, color) -> DevRow(icon, androidx.compose.ui.graphics.Color(color), c.subject, c.sha) } }
+                }
+                if (kind != DevBuild.Kind.FIRST && info.notes.isNotEmpty()) {
+                    SheetGroupLabel(DevText.TRY + " · " + DevText.tried(ticks.size, info.notes.size))
+                    SheetGroup {
+                        info.notes.forEachIndexed { i, step ->
+                            if (i > 0) MenuDivider()
+                            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = i in ticks, onCheckedChange = { on ->
+                                    ticks = if (on) ticks + i else ticks - i
+                                    DevBuild.setTicks(context, info.sha, ticks)
+                                }, modifier = Modifier.semantics { contentDescription = step }.testTag("dev-build-step-$i"))
+                                Text(step, color = white, fontSize = FolioType.BODY.sp)
+                            }
+                        }
                     }
                 }
+                Text(DevBuild.footer(info, seen), color = white.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp, bottom = FolioSpace.MEDIUM.dp).testTag("dev-build-footer"))
             }
-            if (info.notes.isNotEmpty()) {
-                Text(DevText.TRY, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
-                info.notes.forEachIndexed { i, step ->
-                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = i in ticks, onCheckedChange = { on ->
-                            ticks = if (on) ticks + i else ticks - i
-                            DevBuild.setTicks(context, info.sha, ticks)
-                        }, modifier = Modifier.semantics { contentDescription = step }.testTag("dev-build-step-$i"))
-                        Text(step, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                Text(DevText.tried(ticks.size, info.notes.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val allDone = info.notes.isNotEmpty() && ticks.size == info.notes.size
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp).heightIn(min = 52.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
+                .clickable(onClick = onDismiss).testTag("dev-build-done"), contentAlignment = Alignment.Center) {
+                Text(if (allDone) DevText.ALL_DONE else if (kind == DevBuild.Kind.REOPENED) DevText.DONE else DevText.CONTINUE, color = white, fontSize = FolioType.BODY.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                androidx.compose.material3.Button(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).testTag("dev-build-done")) { Text(DevText.GOT_IT) }
-                TextButton(onClick = {
-                    val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    clip.setPrimaryClip(android.content.ClipData.newPlainText(DevText.CLIP_LABEL, DevBuild.summary(info)))
-                }, modifier = Modifier.heightIn(min = 48.dp).testTag("dev-build-copy")) { Text(DevText.COPY) }
-            }
+            TextButton(onClick = {
+                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clip.setPrimaryClip(android.content.ClipData.newPlainText(DevText.CLIP_LABEL, DevBuild.summary(info)))
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("dev-build-copy")) { Text(DevText.COPY, color = FolioColors.Cyan) }
         }
     }
 }
 
-@Composable private fun BuildLine(label: String, value: String, tag: String) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+/** One row like What's New's: a soft icon, a bold line and a smaller one under it. */
+@Composable private fun DevRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: androidx.compose.ui.graphics.Color, title: String, detail: String) {
+    Row(Modifier.fillMaxWidth().padding(top = FolioSpace.COMFY.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
+        androidx.compose.foundation.layout.Box(Modifier.size(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp)).background(tint.copy(alpha = .18f)), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+        }
+        Column(Modifier.padding(start = FolioSpace.COMFY.dp).weight(1f)) {
+            Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+            Text(detail, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
+        }
     }
 }

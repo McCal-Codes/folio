@@ -45,4 +45,28 @@ class DevBuildTest {
         assertTrue(DevBuild.summary(info().copy(dirty = true)).contains("uncommitted changes"))
         assertNotNull(info())
     }
+
+    @Test fun `the page knows whether it is the first run, a new build or the same one`() {
+        assertEquals(DevBuild.Kind.FIRST, DevBuild.kind(info(), DevBuildSeen(null, null)))
+        assertEquals(DevBuild.Kind.NEW, DevBuild.kind(info(), DevBuildSeen("159e9e75", "beta1-rehearsal")))
+        assertEquals(DevBuild.Kind.REOPENED, DevBuild.kind(info(), DevBuildSeen("465d9147", "capability-broker")))
+    }
+
+    @Test fun `a reopened page lists the latest commits instead of nothing`() {
+        assertEquals(3, DevBuild.listed(info(), DevBuildSeen("465d9147", "capability-broker")).size)
+        assertEquals(listOf("465d9147", "0dc168f9"), DevBuild.listed(info(), DevBuildSeen("6c16d5f8", "x")).map { it.sha })
+    }
+
+    // The formatter may put a narrow no-break space before PM on newer JDKs; compare with plain spaces.
+    private fun footer(i: DevBuildInfo, s: DevBuildSeen) = DevBuild.footer(i, s, java.util.Locale.US).replace('\u202f', ' ')
+
+    @Test fun `the footer says when it was built and what it replaced`() {
+        assertEquals("Built Oct 6, 2026, 3:05 PM · replaced beta1-rehearsal 159e9e75", footer(info(), DevBuildSeen("159e9e75", "beta1-rehearsal")))
+        assertEquals("Built Oct 6, 2026, 3:05 PM", footer(info(), DevBuildSeen("465d9147", "capability-broker")))
+        assertEquals("Built Oct 6, 2026, 3:05 PM, with uncommitted changes", footer(info().copy(dirty = true), DevBuildSeen(null, null)))
+    }
+
+    @Test fun `a time that cannot be read is shown as it is`() {
+        assertEquals("yesterday", DevBuild.shortTime("yesterday"))
+    }
 }
