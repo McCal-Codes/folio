@@ -44,7 +44,11 @@ off-by-default tier.
 - The threat model gains T20 to T26 and its "compromised phone: root" exclusion is narrowed.
 - Folio Studio, the Control Center composer and the shared media surface are configuration models rendered by Folio
   first. They do not need privilege and are not blocked by this record.
-- Claims about Fold8 hinge data, Samsung private interfaces and SystemUI hooks stay "unverified" in the capability
-  matrix until measured on a phone. The Fold8 is locked and not rooted, so A4 and A5 cannot be verified there.
+- Claims about Samsung private interfaces and SystemUI hooks stay "unverified" in the capability matrix until measured on a
+  phone. **Measured on the Fold8, 6 Oct 2026 (hinge moving, 25 s):** as the shell user (A3, what Shizuku runs code as),
+  Samsung's Folding Angle sensor (type 65686) is refused because `com.samsung.permission.SSENSOR` is not held; the public
+  sensor gives only 0, 90 and 180. As root (A4, KernelSU, enabled for the shell by the owner) the same sensor gives 157
+  readings and 89 distinct values from 0 to 179 degrees. So a continuous hinge angle is an A4 capability here, never A3, and a
+  `HingeProvider` for it belongs behind the root tier with the public sensor as the standard fallback.
 - **Cost:** a broker is more code than calling Shizuku directly. It is what lets every privileged feature have a
   tested fallback and one place to switch it off.
