@@ -539,7 +539,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             // Close first so the panel isn't in the screenshot.
             // (A main-thread post, not a composition scope: the panel leaves composition as it closes.)
             CcControl.SCREENSHOT -> { onClose(); android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT) }, 450) }
+                if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT))
+                    IslandEvents.notice(context, context.getString(R.string.needs_accessibility_service)) }, 450) }
             CcControl.LOCK -> { onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)) onSystem() }
             CcControl.WALLET -> launchFirst(CcControl.WALLETS)?.let(open)
             CcControl.NOTES -> launchFirst(CcControl.NOTE_APPS)?.let(open)

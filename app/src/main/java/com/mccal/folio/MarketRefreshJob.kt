@@ -30,7 +30,10 @@ class MarketRefreshJob : JobService() {
                 // The gate is asked again here, not only when the job was scheduled: a supporter's code can run out
                 // between one day and the next, and a phone that can't open the store shouldn't be going online for
                 // it. The setting is asked again for the same reason.
-                if (MarketAccess.isOpen(applicationContext) && prefs.backgroundRefresh) {
+                // Safe Mode pauses optional work, and a refresh that finds packages is not what a crash loop needs.
+                if (SafeMode.isOn(applicationContext)) {
+                    schedule(applicationContext)
+                } else if (MarketAccess.isOpen(applicationContext) && prefs.backgroundRefresh) {
                     refreshSources(applicationContext)
                 } else {
                     schedule(applicationContext)
