@@ -109,7 +109,7 @@
     <string name="standby_half_open_like_a_laptop">노트북처럼 반쯤 열었을 때</string>
     <string name="standby_while_charging_on_its_side">옆으로 세워 충전할 때</string>
     <string name="standby_standing_as_a_tent">텐트처럼 세웠을 때</string>
-    <string name="standby_ways_note">옆으로 세워 충전하기는 iPhone처럼 어떤 자세에서도 작동합니다. 충전기를 꽂고 옆으로 돌려 내려놓으세요. Fold는 앱에 닫힘, 반쯤 열림, 열림만 알려 주므로 텐트는 반 이상 열었을 때 인식됩니다.</string>
+    <string name="standby_ways_note">옆으로 세워 충전하기는 iPhone처럼 어떤 자세에서도 작동합니다. 충전기를 꽂고 옆으로 돌려 내려놓으세요. 텐트는 Android의 기기 상태에서 읽습니다. 이는 Fold가 앱에 허용하는 내부 인터페이스로, 업데이트로 바뀔 수 있습니다. 읽을 수 없으면 텐트는 반 이상 열었을 때 인식됩니다.</string>
     <string name="standby_on_the_lock_screen">잠금 화면에서</string>
     <string name="screen_saver">화면 보호기</string>
     <string name="not_set_up">설정 안 됨</string>

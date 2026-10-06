@@ -111,7 +111,7 @@
     <string name="standby_half_open_like_a_laptop">像笔记本电脑一样半开时</string>
     <string name="standby_while_charging_on_its_side">侧放充电时</string>
     <string name="standby_standing_as_a_tent">像帐篷一样立着时</string>
-    <string name="standby_ways_note">侧放充电在任何姿势下都能用，和 iPhone 一样：插上电源，横过来放下即可。Fold 只告诉应用合上、半开和打开三种状态，所以帐篷要打开超过一半才能识别。</string>
+    <string name="standby_ways_note">侧放充电在任何姿势下都能用，和 iPhone 一样：插上电源，横过来放下即可。帐篷姿势从 Android 的设备状态读取。这是 Fold 允许应用使用的内部接口，更新后可能改变。读取不到时，帐篷要打开超过一半才能识别。</string>
     <string name="standby_on_the_lock_screen">在锁屏上</string>
     <string name="screen_saver">屏幕保护程序</string>
     <string name="not_set_up">未设置</string>

@@ -104,7 +104,7 @@
     <string name="standby_half_open_like_a_laptop">Half-open, like a laptop</string>
     <string name="standby_while_charging_on_its_side">While charging on its side</string>
     <string name="standby_standing_as_a_tent">Standing as a tent</string>
-    <string name="standby_ways_note">Charging on its side works in any pose, as on iPhone: plugged in, turned sideways and set down. Your Fold tells apps only closed, halfway and open, so a tent shows up once it’s opened past halfway.</string>
+    <string name="standby_ways_note">Charging on its side works in any pose, as on iPhone: plugged in, turned sideways and set down. A tent is read from Android’s device state, an internal interface your Fold allows apps to use and updates can change. Without it, a tent shows up once it’s opened past halfway.</string>
     <string name="standby_on_the_lock_screen">On the Lock Screen</string>
     <string name="screen_saver">Screen Saver</string>
     <string name="not_set_up">Not Set Up</string>
