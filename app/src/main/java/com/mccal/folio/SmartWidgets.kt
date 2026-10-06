@@ -154,6 +154,8 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
     BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).widgetTap(onClick)
         .onGloballyPositioned { boxInWindow = it.boundsInWindow() }
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
+        val boxHeight = maxHeight.value
+        val boxWidth = maxWidth.value
         val big = (maxHeight.value * .46f * animatedSize).coerceAtMost(maxWidth.value * .34f).sp
         if (shadeAlpha > 0f) Box(Modifier.fillMaxSize().background(
             androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.Black.copy(alpha = shadeAlpha), Color.Transparent))))
@@ -166,7 +168,8 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
             val weight = FontWeight(animatedWeight.toInt().coerceIn(100, 900))
             val suffix = if (!is24 && style.ampm) now.format(DateTimeFormatter.ofPattern("a")) else ""
             if (style.stacked) {
-                val stackedSize = (big.value * .78f).sp
+                // Two lines plus the date and the next event have to fit the widget's height, so size from the height, not the one-line size.
+                val stackedSize = minOf(boxHeight * .27f * animatedSize, boxWidth * .3f).sp
                 Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH" else "h")), color = textColor, fontSize = stackedSize, fontWeight = weight,
                     fontFamily = timeFamily, lineHeight = stackedSize * .9f, maxLines = 1, style = clockStyle)
                 Row(verticalAlignment = Alignment.Bottom) {
