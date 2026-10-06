@@ -1605,8 +1605,6 @@
     <string name="roadmap_updated">%1$s更新</string>
     <string name="roadmap_saved_copy">保存于%1$s的副本</string>
     <string name="betas_are_for_supporters">测试版仅限支持者使用。没有支持者代码时，Folio 只会查找公开版本，因此即使已有测试版，也可能显示你已是最新。请在“设置 › 支持 Folio”中添加代码。</string>
-    <string name="turn_off_mode">关闭%1$s</string>
-    <string name="turn_on_mode">开启%1$s</string>
     <string name="reply_sent">已发送</string>
     <string name="reply_hint">回复</string>
     <string name="reply_to_name">回复%1$s</string>
