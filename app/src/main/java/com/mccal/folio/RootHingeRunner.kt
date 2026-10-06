@@ -206,7 +206,23 @@ internal object RootHingeStore {
     fun lastReport(context: Context): String? = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("report", null)
 
     fun save(context: Context, report: RootTestReport, text: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("state", report.state.name).putString("report", text).apply()
+        val edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("state", report.state.name).putString("report", text)
+        // Only a path that worked is remembered, so the live feed never has to look for su again.
+        if (report.state == RootState.READY && report.suPath != null) edit.putString("su", report.suPath) else edit.remove("su")
+        // A root that is not ready cannot feed the animation, and a fresh grant starts with the feed off again.
+        if (report.state != RootState.READY) edit.putBoolean("use", false)
+        edit.apply()
+    }
+
+    fun suPath(context: Context): String? = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("su", null)?.takeIf { it in RootHingeRunner.SU_CANDIDATES }
+
+    /** Whether the owner switched the live feed on for the fold animation. Off until they do. */
+    fun useInFold(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("use", false)
+    fun setUseInFold(context: Context, on: Boolean) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("use", on).apply() }
+
+    /** The feed stopped by itself: remember it, so the page says so and the animation uses the public sensor from now on. */
+    fun markLost(context: Context) {
+        if (state(context) == RootState.READY) context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("state", RootState.LOST.name).apply()
     }
 
     /** Forgets the result: back to "not tested". */

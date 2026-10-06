@@ -1433,6 +1433,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.allow_system_access to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -2859,6 +2860,11 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
                 testing = false; rootState = RootHingeStore.state(context); states = read()
             }
         })
+        if (rootState == RootState.READY) {
+            var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
+            SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")
+            CardNote(stringResource(R.string.bridge_root_use_note))
+        }
         if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_copy), Modifier.fillMaxWidth().testTag("bridge-root-copy"), onClick = {
             context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
         })

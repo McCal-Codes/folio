@@ -1724,6 +1724,8 @@
     <string name="bridge_root_note">Optional. With root, Folio can read Samsung\'s every-degree hinge angle for the fold animation. Without it Folio uses the usual 0°, 90° and 180° steps. Folio asks for root only when you press Test, and runs nothing else as root.</string>
     <string name="bridge_root_test">Test root hinge angle</string>
     <string name="bridge_root_testing">Testing… Allow root if your root manager asks, then slowly open and close the phone.</string>
+    <string name="bridge_root_use">Use in the fold animation</string>
+    <string name="bridge_root_use_note">Follows the every-degree angle while Folio is open. If root stops working, Folio goes back to the usual steps by itself.</string>
     <string name="bridge_root_copy">Copy test report</string>
     <string name="bridge_root_result_moving">Works: %1$d readings, %2$d different angles, from %3$d° to %4$d°.</string>
     <string name="bridge_root_result_still">Connected. Move the hinge while testing to see readings.</string>

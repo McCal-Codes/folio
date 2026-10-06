@@ -233,7 +233,7 @@ private fun SnapshotMorph(expanded: Boolean, coverShot: androidx.compose.ui.grap
 }
 
 /** Hinge steps + learned timing → target effect strength over time. */
-internal class FoldTimeline(context: Context) : SensorEventListener {
+internal class FoldTimeline(private val context: Context) : SensorEventListener {
     /** Rung whenever something happens that can start the effect, so the idle loop wakes at once. */
     val wake = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
     private val sensors = context.getSystemService(SensorManager::class.java)
@@ -248,8 +248,13 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
     // What this phone's hinge sensor reports, learned from its readings and remembered. The Fold8's public sensor is
     // stepped (0/90/180), so the motion between steps is predicted from learned timing; a continuous sensor is
     // followed directly.
-    private val tracker = HingeTracker(if (hinge == null) HingeCapability.POSTURE_ONLY
-        else if (prefs.getString(CAPABILITY_KEY, null) == HingeCapability.CONTINUOUS.name) HingeCapability.CONTINUOUS else HingeCapability.STEPPED)
+    private fun publicTracker() = HingeTracker(if (hinge == null) HingeCapability.POSTURE_ONLY
+        else if (prefs.getString(hingeCapabilityKey(HingeSource.PUBLIC_SENSOR), null) == HingeCapability.CONTINUOUS.name) HingeCapability.CONTINUOUS else HingeCapability.STEPPED)
+    private var tracker = publicTracker()
+    // Which feed the readings come from (ADR 0010): the public sensor, or the root helper when the owner has tested it and switched it on.
+    private var source = HingeSource.PUBLIC_SENSOR
+    private var rootFeed: RootHingeFeed? = null
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val continuous get() = tracker.capability == HingeCapability.CONTINUOUS
     private var angleAt = 0L
     // A real movement, not sensor jitter: what the stall checks measure from on continuous sensors.
@@ -290,8 +295,42 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
         private set
     val busy get() = morphFrom >= 0 || waitingForPanel || litAt >= 0 || closeStartAt >= 0 || reopenedAt >= 0 || coverLitAt >= 0 || coverOpeningAt >= 0
 
-    fun start() { hinge?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) } }
-    fun stop() { sensors?.unregisterListener(this) }
+    fun start() {
+        val apk = context.applicationInfo.sourceDir
+        val su = RootHingeStore.suPath(context)
+        if (su != null && RootHingeStore.useInFold(context) && hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER) {
+            // A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's.
+            useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
+            rootFeed = RootHingeFeed(ProcessSuLauncher, apk, su,
+                onSample = { s -> main.post { if (source == HingeSource.ROOT_HELPER) { onAngle(s.angleDegrees, s.timestampNanos, SystemClock.uptimeMillis()); wake.trySend(Unit) } } },
+                onLost = { main.post { rootLost() } }, now = { SystemClock.elapsedRealtime() }).also { it.start() }
+        } else registerPublic()
+    }
+
+    fun stop() {
+        rootFeed?.stop(); rootFeed = null
+        sensors?.unregisterListener(this)
+    }
+
+    private fun registerPublic() {
+        useSource(HingeSource.PUBLIC_SENSOR, null)
+        hinge?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+    }
+
+    /** The root feed ended by itself: say so, and carry on with the public sensor, whose stepped prediction always works. */
+    private fun rootLost() {
+        if (source != HingeSource.ROOT_HELPER) return
+        rootFeed?.stop(); rootFeed = null
+        RootHingeStore.markLost(context)
+        registerPublic()
+        wake.trySend(Unit)
+    }
+
+    private fun useSource(next: HingeSource, learned: HingeCapability?) {
+        if (source == next && learned == null) return
+        source = next
+        tracker = if (next == HingeSource.ROOT_HELPER) HingeTracker(learned ?: HingeCapability.CONTINUOUS) else publicTracker()
+    }
 
     fun onDisplaySwitched(now: Long) {
         switchedAt = now; waitingForPanel = true; opening = expanded
@@ -314,7 +353,7 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
         val previous = tracker.raw
         val wasFlat = tracker.flat
         val wasClosed = tracker.closed
-        if (tracker.feed(value, timestampNs)) prefs.edit().putString(CAPABILITY_KEY, tracker.capability.name).apply()
+        if (tracker.feed(value, timestampNs)) prefs.edit().putString(hingeCapabilityKey(source), tracker.capability.name).apply()
         angleAt = now
         if (previous == null) { peak = value; movedFrom = value; movedAt = now; return }
         if (previous == value) return
@@ -463,7 +502,6 @@ private const val IDLE_WAIT_MS = 500L
 private const val FOLD_SCALE = .03f
 private const val MOVE_DEG = 3f
 private const val REOPEN_DEG = 15f
-private const val CAPABILITY_KEY = "fold_hinge_capability"
 
 /**
  * The fold effect on a preview (Settings): [m] 0 is open and clear, 1 half folded. Same shader, sweep and scale as Home,

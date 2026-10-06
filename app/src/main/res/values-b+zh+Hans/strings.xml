@@ -1676,6 +1676,8 @@
     <string name="bridge_root_note">可选。有 root 时，Folio 可以为折叠动画读取三星逐度的铰链角度；没有时使用常见的 0°、90°、180° 三档。只有在你点按“测试”时 Folio 才会请求 root，并且不会以 root 运行其他任何内容。</string>
     <string name="bridge_root_test">测试 root 铰链角度</string>
     <string name="bridge_root_testing">正在测试… 如果 root 管理器询问，请允许，然后缓慢地打开和合上手机。</string>
+    <string name="bridge_root_use">用于折叠动画</string>
+    <string name="bridge_root_use_note">Folio 打开期间跟随逐度角度。如果 root 失效，Folio 会自动回到常见的三档。</string>
     <string name="bridge_root_copy">复制测试报告</string>
     <string name="bridge_root_result_moving">可用：%1$d 次读数，%2$d 个不同角度，从 %3$d° 到 %4$d°。</string>
     <string name="bridge_root_result_still">已连接。测试时请转动铰链以查看读数。</string>
