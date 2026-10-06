@@ -1840,7 +1840,7 @@ internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
     val placements = state.widgetPlacements.filter { it.page == page }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
-    val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY }, maxOf(shownRows, placements.maxOfOrNull { it.row + it.spanY } ?: 0))
+    val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
     val (iconSize, labels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
