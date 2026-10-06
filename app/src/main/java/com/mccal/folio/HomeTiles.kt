@@ -245,7 +245,11 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     }, horizontalAlignment = Alignment.CenterHorizontally) {
         val tint = LocalFolderColors.current[folder.id]?.let { Color(it) }
         val bounds = remember { android.graphics.Rect() }
-        Box(Modifier.size(size.dp)
+        // An app held over this folder says so before you let go: the folder lifts a little, and the drop is what adds it.
+        val hovered = drag.moved && drag.source?.appId?.let { !isFolderId(it) } == true &&
+            drag.destination(drag.pointer, setOf(page))?.target == DropTarget.Folder(folder.id)
+        val lift by animateFloatAsState(if (hovered) 1.12f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "folder hover ${folder.id}")
+        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift }
             .dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
             .onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(folder.id, bounds) }
             .jiggle(folder.id)) {
