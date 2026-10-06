@@ -260,19 +260,36 @@ internal object Diagnostics {
         val file = File(dir, "folio-report-$stamp-${(1000..9999).random()}.txt").apply { writeText(bundle(context)) }
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.reports", file)
         val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+        val send = Intent(Intent.ACTION_SEND).setType(mimeFor(email))
             .putExtra(Intent.EXTRA_STREAM, uri)
             .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.folio_bug_report_1, version))
             .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.report_email_body))
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         // The chooser only passes read access on if the file is also in clipData.
         send.clipData = ClipData.newRawUri("", uri)
-        if (email) {
-            send.putExtra(Intent.EXTRA_EMAIL, arrayOf(SUPPORT_EMAIL))
-            send.selector = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:"))
-        }
+        // No selector: a mail selector inside a chooser left Android's share sheet with "No apps can perform this action"
+        // on a phone with Gmail installed. The email type (message/rfc822) is the one every mail app declares, so the
+        // chooser lists mail apps only.
+        if (email) send.putExtra(Intent.EXTRA_EMAIL, arrayOf(SUPPORT_EMAIL))
         Intent.createChooser(send, context.getString(if (email) R.string.email_a_report else R.string.share_diagnostics))
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    /** The type a report is sent as: email apps declare message/rfc822, and anything else takes plain text. */
+    fun mimeFor(email: Boolean) = if (email) "message/rfc822" else "text/plain"
+
+    /** Whether any mail app can take a report. Needs the `<queries>` entry for SEND message/rfc822 in the manifest. */
+    fun hasMailApp(context: Context): Boolean = runCatching {
+        context.packageManager.queryIntentActivities(Intent(Intent.ACTION_SEND).setType(mimeFor(true)), 0).isNotEmpty()
+    }.getOrDefault(false)
+
+    /**
+     * Opens the report for sending. With [email] it goes to the mail apps; when this phone has none it opens the ordinary
+     * share sheet instead of one that says nothing can take it. Returns whether something opened.
+     */
+    suspend fun send(context: Context, email: Boolean): Boolean {
+        val asEmail = email && hasMailApp(context)
+        return runCatching { context.startActivity(reportIntent(context, asEmail)) }.isSuccess
     }
 
     suspend fun copy(context: Context) {

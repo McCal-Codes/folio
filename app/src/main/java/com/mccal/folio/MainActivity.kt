@@ -156,9 +156,8 @@ class MainActivity : ComponentActivity() {
                     val report = unreported.value
                     unreported.value = null
                     reportScope.launch {
-                        runCatching { startActivity(Diagnostics.reportIntent(this@MainActivity, email = true)) }
-                            .onSuccess { report?.let { Diagnostics.markAsked(this@MainActivity, it) } }
-                            .onFailure { IslandEvents.notice(this@MainActivity, getString(R.string.the_report_couldn_t_be_opened)) }
+                        if (Diagnostics.send(this@MainActivity, email = true)) report?.let { Diagnostics.markAsked(this@MainActivity, it) }
+                        else IslandEvents.notice(this@MainActivity, getString(R.string.the_report_couldn_t_be_opened))
                     }
                 }) { androidx.compose.material3.Text(stringResource(R.string.send_report)) } },
                 dismissButton = { androidx.compose.material3.TextButton(onClick = {
