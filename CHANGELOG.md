@@ -5,11 +5,6 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.9] - Unreleased
-
-### Fixed
-- **Arrange Like iPhone no longer crashes Folio:** Settings › Home Screen & Dock › Arrange Like iPhone closed Folio as soon as it found an app for any of the iPhone spots. It now lays out Home's first page and dock as it says.
-
 ## [0.6.8] - Unreleased
 
 ### Added
@@ -54,6 +49,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Layout History is out of beta:** the Beta label is gone from Settings › General › Backup › Layout History. It works as it did, and the snapshots you already have are still there.
 
 ### Fixed
+- **Arrange Like iPhone no longer crashes Folio:** Settings › Home Screen & Dock › Arrange Like iPhone closed Folio as soon as it found an app for any of the iPhone spots. It now lays out Home's first page and dock as it says.
 - **Beta Updates says it's for supporters:** Settings › Software Update › Beta Updates now says that betas are for supporters and that without a supporter code Folio only finds public releases, instead of saying you're up to date while a beta is out (#239).
 - **More of Folio in your language:** in Korean and Chinese, the setup card, What's New's headings, Settings' Location fields and its Top choice, the Home for tiny cover screens, Lock Cover's buttons, the headphones card and the folder panel are translated, and TalkBack reads the Side Bar, the island rail's call and music controls and the search field's clear button in your language. In English, What's New now says "1 more new feature".
 - **Dates and switches in your language:** in Korean and Chinese, StandBy, the Big Clock, Lock Cover, the Side Bar and Today View show the date in that language's order (10월 2일 금요일, 10月2日 星期五) instead of English order, and Control Center, the island, Settings and the dock chooser say On and Off, Airplane Mode, Cellular Data, Your Apps and Dock Position in your language instead of English.
