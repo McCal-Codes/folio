@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -963,12 +964,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** The look before the last theme was applied, so Undo can put it back. */
     var themeUndo: FolioTheme? = null
         private set
+    /** Applying and undoing a theme go one after another, in the order they were asked, even though each looks up icon packs off the main thread first. */
+    private val themeLock = kotlinx.coroutines.sync.Mutex()
     fun applyTheme(theme: FolioTheme) {
         themeUndo = FolioTheme.of(mutable.value, "Previous")
-        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } }
+        viewModelScope.launch { themeLock.withLock { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } } }
     }
     fun undoTheme() { themeUndo?.let { previous -> themeUndo = null
-        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } }
+        viewModelScope.launch { themeLock.withLock { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } } }
     /** The icon packs on this phone, asked of Android off the main thread. */
     private suspend fun installedPackNames() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         IconPacks.installed(getApplication()).mapTo(mutableSetOf()) { it.packageName }
