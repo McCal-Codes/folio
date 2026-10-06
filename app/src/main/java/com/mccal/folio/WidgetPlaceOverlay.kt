@@ -84,7 +84,10 @@ internal fun WidgetPlaceOverlay(
                 detectDragGestures { change, amount -> change.consume(); dx += amount.x; dy += amount.y }
             })
         val bottom = widgetBox.center.y < window.height / 2f
-        Row(Modifier.align(if (bottom) Alignment.BottomCenter else Alignment.TopCenter).padding(FolioSpace.MEDIUM.dp)
+        // Clear of the dock and its search pill, so none of the buttons sit on top of something else you could tap.
+        Row(Modifier.align(if (bottom) Alignment.BottomCenter else Alignment.TopCenter)
+            .padding(start = FolioSpace.MEDIUM.dp, end = FolioSpace.MEDIUM.dp, top = FolioSpace.MEDIUM.dp,
+                bottom = if (bottom) 120.dp else FolioSpace.MEDIUM.dp)
             .background(Glass.copy(alpha = .96f), RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)),
             verticalAlignment = Alignment.CenterVertically) {
             listOf(Triple(R.string.move_left, Icons.Rounded.ArrowBack, -1f to 0f), Triple(R.string.move_up, Icons.Rounded.ArrowUpward, 0f to -1f),
