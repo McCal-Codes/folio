@@ -42,4 +42,15 @@ class PlaceWidgetFreelyTest {
         assertEquals(0f, clock.offsetX, 0f); assertEquals(0f, clock.offsetY, 0f)
         assertEquals(clock, WidgetPlacement(0, BIG_CLOCK_WIDGET, 0, 0, 0, 4, 2))
     }
+
+    @Test fun `a placement with an offset is a different placement from the same cells without one`() {
+        assertTrue(clock.copy(offsetY = .25f) != clock)
+        assertEquals(clock, clock.copy(offsetX = 0f, offsetY = 0f))
+    }
+
+    @Test fun `an offset outside half a cell is not a valid placement and does not get saved`() {
+        val outside = clock.copy(offsetY = .75f)
+        val layout = layout()
+        assertEquals(layout, placeWidget(layout, outside))
+    }
 }

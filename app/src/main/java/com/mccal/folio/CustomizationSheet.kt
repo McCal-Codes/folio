@@ -1870,7 +1870,9 @@ internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass)) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
-                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)
+                            // A freely placed widget (Place Freely) is drawn a part of a cell from its cells, as on Home.
+                            val rowPitch = if (w.row + 1 < GRID_ROWS) cells.y(w.row + 1) - cells.y(w.row) else cells.y(w.row) - cells.y(w.row - 1)
+                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f + geometry.cellWidth * w.offsetX).dp, y = (cells.y(w.row) + rowPitch * w.offsetY).dp)
                                 .size((geometry.cellWidth * w.spanX - 10f).dp, (cells.spanHeight(w.row, w.spanY) - 18f).coerceAtLeast(48f).dp)) {
                                 if (w.id < 0) BuiltinWidgetCard(w.id, w.slot) {}
                                 else Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(glass.copy(alpha = LocalGlassLook.current.widget)), contentAlignment = Alignment.Center) {
