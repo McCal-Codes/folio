@@ -5,7 +5,7 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.8] - 2026-10-06
+## [0.6.8] - Unreleased
 
 ### Added
 - **Edit an app's icon on its own:** long-press an app, More › Edit Icon, and give that one icon its own style (Default, Dark, Tinted or Clear) and shape, or leave either like the other icons. It shows everywhere Folio draws the icon, Reset Icon puts it back, backups carry the choices, and the icon pictures Folio saves are untouched, so nothing can be left stale. Custom pictures and per-app icon-pack icons are not part of this yet.
