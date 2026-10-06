@@ -85,9 +85,24 @@ internal object SafeMode {
     @Volatile var active = false
         private set
 
+    private const val CRASHED_LAST_RUN = "crashedLastRun"
+    @Volatile private var crashedLastRun = false
+    private val crashTaken = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * True once per process, and only when the process before this one ended in an uncaught crash. Package Safe Mode
+     * counts a crash only then: asked on every Home composition (a fold, an unfold) it would blame a package for
+     * nothing.
+     */
+    fun takeCrashedLastRun(): Boolean = crashedLastRun && crashTaken.compareAndSet(false, true)
+
     fun onStart(context: Context) {
         startedAt = android.os.SystemClock.elapsedRealtime()
+        val prefs = context.getSharedPreferences(PREFS, 0)
         active = isOn(context)
+        crashTaken.set(false)
+        crashedLastRun = prefs.getBoolean(CRASHED_LAST_RUN, false)
+        if (crashedLastRun) prefs.edit().putBoolean(CRASHED_LAST_RUN, false).apply()
     }
 
     /**
@@ -99,7 +114,7 @@ internal object SafeMode {
     fun onCrash(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, 0)
         val quick = android.os.SystemClock.elapsedRealtime() - startedAt < WINDOW_MS
-        prefs.edit().putInt(QUICK_CRASHES, if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1).commit()
+        prefs.edit().putInt(QUICK_CRASHES, if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1).putBoolean(CRASHED_LAST_RUN, true).commit()
     }
 
     /** Folio ran a while without crashing: forget earlier quick crashes (called from Home). */

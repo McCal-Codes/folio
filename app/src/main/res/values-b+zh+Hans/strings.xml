@@ -1622,4 +1622,5 @@
     <string name="choose_named">选择%1$s</string>
     <string name="installing_percent">正在安装，%1$d%%</string>
     <string name="fix_saved_layout">修复已保存的布局</string>
+    <string name="market_install_put_back">%1$s 未能完成安装，Folio 已恢复原状</string>
 </resources>

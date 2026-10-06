@@ -171,9 +171,16 @@ fun LauncherScreen(
     }
     val launcherRootView = LocalView.current.rootView
     val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model, launcherActivity)) }
-    // Package Safe Mode: runs as Home starts, so a package that crashed Folio while it was being applied is turned off
-    // on the next launch. Asked only when the Market opened, the minute-long marker had always expired by then.
-    LaunchedEffect(marketSession) { marketSession.noteCrash() }
+    // Package recovery, as Home starts. First, an install the last process died in the middle of is put back. Then
+    // Package Safe Mode: a package that was applied just before Folio crashed twice is turned off, so a bad one cannot
+    // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold.
+    val recoveryContext = LocalContext.current
+    LaunchedEffect(marketSession) {
+        val interrupted = withContext(Dispatchers.IO) {
+            marketSession.recoverInterrupted().also { if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash() }
+        }
+        interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
+    }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"
         if (active) LiveDiscover.setExternalResultPending(launcherActivity, "main", "widget-picker", true)

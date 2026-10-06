@@ -83,6 +83,40 @@ class PackageInstaller(
     /** This build's release number, for a package's `minFolio`. Null skips that check, which only a test does. */
     private val folioVersion: FolioVersion? = null,
 ) {
+    private val journal = ApplyJournal(store)
+
+    /** An install that was cut short and put back. */
+    data class Interrupted(val id: String, val name: String)
+
+    /**
+     * Called at start. If the last process died part way through an install or update (the journal is still there),
+     * everything it had applied is put back, newest first, and an update's earlier version is put back on, so Home is
+     * what it was and the package list matches it. Does nothing while an install is running in this process, and
+     * nothing when the install had in fact finished.
+     */
+    fun recoverInterrupted(): Interrupted? = synchronized(LOCK) {
+        if (inFlight) return null
+        val entry = journal.read() ?: return null
+        val recorded = store.find(entry.id)
+        // Written down and then killed before the journal was cleared: the install finished, nothing to put back.
+        val finished = recorded != null && recorded.version.toString() == entry.version && entry.replacedVersion != entry.version
+        if (!finished) {
+            entry.changes.take(entry.snapshots.size).zip(entry.snapshots).reversed().forEach { (change, snapshot) ->
+                runCatching { host.restore(change, snapshot) }
+            }
+            if (recorded != null && recorded.version.toString() == entry.replacedVersion && entry.replacedEnabled) {
+                store.changesFor(recorded.id, recorded.version)?.let { previous ->
+                    val again = mutableListOf<String>()
+                    runCatching { previous.forEach { again += host.apply(it) } }
+                    store.put(recorded.copy(snapshots = again), previous)
+                }
+            }
+        }
+        journal.clear()
+        safeMode.endChange()
+        if (finished) null else Interrupted(entry.id, entry.name)
+    }
+
     /**
      * Reads [bytes] as a package and applies it. [expected] is the index entry it came from, when there was one: its
      * hash, size, id and version all have to match what's inside the file (T1, and the "no bait and switch" rule).
@@ -164,13 +198,33 @@ class PackageInstaller(
         // Applying starts here. Safe Mode watches from now until the marker is cleared, so a crash while a package is
         // being applied turns that package off instead of leaving Home unusable.
         val replaced = store.find(pkg.id)
+        // One change to Home at a time in this process, and a flag saying so, so recovering after a killed process
+        // can never roll back an install that is still running.
+        return synchronized(LOCK) {
+            inFlight = true
+            try { applyNow(pkg, origin, sourceUrl, pinning, replaced) } finally { inFlight = false }
+        }
+    }
+
+    private fun applyNow(
+        pkg: FolioPackage,
+        origin: InstalledPackage.Origin,
+        sourceUrl: String?,
+        pinning: Pair<String, String>?,
+        replaced: InstalledPackage?,
+    ): InstallResult {
         safeMode.beginChange(pkg.id)
+        journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced)
         val snapshots = mutableListOf<String>()
         try {
             // A version Safe Mode turned off has already had its changes taken off Home, so undoing them again
             // would put back what Home looked like before it, over whatever has happened since.
             replaced?.takeIf { it.enabled }?.let { undoChanges(it) }
-            for (change in pkg.changes) snapshots += host.apply(change)
+            for (change in pkg.changes) {
+                snapshots += host.apply(change)
+                // Written after each change, so a process that dies part way knows exactly what to put back.
+                journal.progress(snapshots)
+            }
         } catch (e: Exception) {
             // Put back everything this install had already changed, newest first.
             pkg.changes.take(snapshots.size).zip(snapshots).reversed().forEach { (change, snapshot) ->
@@ -186,6 +240,7 @@ class PackageInstaller(
                     store.put(old.copy(snapshots = again), previous)
                 }
             }
+            journal.clear()
             safeMode.endChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't apply that package, so nothing changed")
         }
@@ -204,11 +259,13 @@ class PackageInstaller(
             pkg.changes.zip(snapshots).reversed().forEach { (change, snapshot) ->
                 runCatching { host.restore(change, snapshot) }
             }
+            journal.clear()
             safeMode.endChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't save that package, so nothing changed")
         }
         // Only once the package is really on: a key remembered for an install that failed would own the id anyway.
         pinning?.let { (id, key) -> authors.remember(id, key) }
+        journal.clear()
         safeMode.endChange()
         return InstallResult.Installed(installed, replaced, pkg.notes)
     }
@@ -511,6 +568,10 @@ class PackageInstaller(
     }
 
     private companion object {
+        /** One change to Home at a time in this process, and whether one is running now (see [recoverInterrupted]). */
+        val LOCK = Any()
+        @Volatile var inFlight = false
+
         val ANDROID_PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+\\z")
 
         /** What a wallpaper picture can be, matching the archive's own list of allowed types. */
@@ -526,7 +587,15 @@ class PackageInstaller(
 class PackageSafeMode(private val store: KeyValueStore, private val clock: () -> Long = { System.currentTimeMillis() / 1000 }) {
     fun beginChange(id: String) = store.set(KEY, JSONObject().put("id", id).put("at", clock()).toString())
 
-    fun endChange() = store.set(KEY, null)
+    /**
+     * The change finished, but the marker stays for the same minute, with the time reset: a package that applies
+     * cleanly and then crashes Folio a moment later while Home draws it is the one to turn off, and a marker cleared
+     * here would never have blamed it. It is only ever read after a crash (see [noteCrash]), and it expires.
+     */
+    fun endChange() {
+        val marker = store.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
+        store.set(KEY, marker.put("at", clock()).put("done", true).toString())
+    }
 
     /**
      * Called when Folio starts after a crash. Returns the package to turn off, if a change was in flight recently and
@@ -552,6 +621,42 @@ class PackageSafeMode(private val store: KeyValueStore, private val clock: () ->
         const val KEY = "market:safe-mode"
         const val WINDOW_SECONDS = 60L
     }
+}
+
+/**
+ * What an install was about to do and has done so far, written before the first change and cleared when the install
+ * ends either way. If it is still there at the next start, the process died in the middle (S2 in the 5 Oct audit).
+ */
+internal class ApplyJournal(private val store: InstalledStore) {
+    data class Entry(
+        val id: String, val name: String, val version: String, val changes: List<PackageChange>, val snapshots: List<String>,
+        val replacedVersion: String?, val replacedEnabled: Boolean,
+    )
+
+    fun begin(id: String, name: String, version: String, changes: List<PackageChange>, replaced: InstalledPackage?) {
+        val json = JSONObject().put("id", id).put("name", name).put("version", version).put("changes", store.encodeChanges(changes))
+            .put("snapshots", JSONArray())
+        replaced?.let { json.put("replacedVersion", it.version.toString()).put("replacedEnabled", it.enabled) }
+        store.keyValue.set(KEY, json.toString())
+    }
+
+    fun progress(snapshots: List<String>) {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
+        store.keyValue.set(KEY, json.put("snapshots", JSONArray(snapshots)).toString())
+    }
+
+    fun clear() { store.keyValue.set(KEY, null) }
+
+    fun read(): Entry? {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return null
+        val changes = store.decodeChanges(json.optString("changes")) ?: return null
+        val snapshots = json.optJSONArray("snapshots")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+        val id = json.optString("id").takeIf { it.isNotEmpty() } ?: return null
+        return Entry(id, json.optString("name", id), json.optString("version"), changes, snapshots,
+            json.optString("replacedVersion").takeIf { it.isNotEmpty() }, json.optBoolean("replacedEnabled"))
+    }
+
+    private companion object { const val KEY = "market:apply-journal" }
 }
 
 /** What's installed, what each package changed, and what it replaced. */
@@ -701,7 +806,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
     }
 
     // Changes are stored as data, so Undo and Remove work after a restart without keeping the package file around.
-    private fun encodeChanges(changes: List<PackageChange>): String {
+    internal fun encodeChanges(changes: List<PackageChange>): String {
         val array = JSONArray()
         for (change in changes) {
             val json = JSONObject()
@@ -735,7 +840,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
         return array.toString()
     }
 
-    private fun decodeChanges(text: String): List<PackageChange>? {
+    internal fun decodeChanges(text: String): List<PackageChange>? {
         val array = runCatching { JSONArray(text) }.getOrNull() ?: return null
         return (0 until array.length()).mapNotNull { i ->
             val json = array.optJSONObject(i) ?: return@mapNotNull null

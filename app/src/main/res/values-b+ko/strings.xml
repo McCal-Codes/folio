@@ -1643,4 +1643,5 @@
     <string name="choose_named">%1$s 선택</string>
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
+    <string name="market_install_put_back">%1$s 설치가 끝나지 않아 Folio가 이전 상태로 되돌렸습니다</string>
 </resources>

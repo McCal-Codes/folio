@@ -1670,4 +1670,5 @@
     <string name="choose_named">Choose %1$s</string>
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
+    <string name="market_install_put_back">%1$s didn’t finish installing, so Folio put things back</string>
 </resources>
