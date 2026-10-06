@@ -446,6 +446,9 @@ def check_source(root: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
         manifest = entry.get("manifest", {})
         if manifest.get("id") and manifest["id"] != package_id:
             report.error(f"index.json: packages[{i}] is filed under {package_id} but its manifest says {manifest['id']}")
+        # The schema lets a listing be up to 100 MB because an app may be; a package may not be over 20 MB.
+        if isinstance(entry.get("size"), int) and entry["size"] > MAX_ZIP_COMPRESSED and "externalApp" not in manifest.get("kind", []):
+            report.error(f"index.json: packages[{i}] ({package_id}) is {entry['size']} bytes, over the 20 MB a package may be (only an app may be larger)")
         if manifest.get("version") and manifest["version"] != entry.get("version"):
             report.error(
                 f"index.json: {package_id} is listed as {entry.get('version')} "
