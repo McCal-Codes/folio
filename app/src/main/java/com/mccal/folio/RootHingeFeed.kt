@@ -60,7 +60,12 @@ internal class RootHingeFeed(
         }
     }
 
-    private fun finish(reason: String) { if (!stopped) onLost(reason) }
+    private fun finish(reason: String) {
+        if (stopped) return
+        // Logging must never get in the way of reporting the loss (and is not there at all in plain JVM tests).
+        runCatching { android.util.Log.w("FolioRootHinge", "Root hinge feed lost: $reason") }
+        onLost(reason)
+    }
 
     companion object {
         const val READY_WAIT_MS = 10_000L
