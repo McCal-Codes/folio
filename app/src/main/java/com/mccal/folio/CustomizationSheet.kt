@@ -754,6 +754,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         MenuDivider()
                         TweakRow(Icons.Rounded.NewReleases, FolioColors.Value.Green, stringResource(R.string.what_s_new), "customization-whats-new",
                             "v" + WhatsNew.currentVersion(generalContext)) { onClose(); onShowWhatsNew() }
+                        if (DevBuild.isDevApp(generalContext) && DevBuild.load(generalContext) != null) {
+                            MenuDivider()
+                            TweakRow(Icons.Rounded.Build, FolioColors.Value.Orange, DevBuild.THIS_BUILD_LABEL, "customization-dev-build",
+                                DevBuild.load(generalContext)?.sha) { onClose(); DevBuild.reopen.intValue++ }
+                        }
                     }
                     SheetGroup {
                         // Android's own per-app language screen (13+), which lists every language Folio ships, as iOS does.

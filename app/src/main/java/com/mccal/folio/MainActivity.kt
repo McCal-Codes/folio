@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private val showFirstRun = mutableStateOf(false)
     private val showWhatsNew = mutableStateOf(false)
     private val whatsNewRequested = mutableStateOf(false)
+    private val showDevBuild = mutableStateOf(false)
     /** A theme shared to Folio, waiting for Apply or Cancel. */
     private val sharedTheme = mutableStateOf<FolioTheme?>(null)
     private lateinit var setupExperience: SetupExperience
@@ -115,6 +116,8 @@ class MainActivity : ComponentActivity() {
         showFirstRun.value = setupExperience.entryDecision(SetupExperience.hadLauncherState(this)) ==
             SetupEntryDecision.SHOW
         showWhatsNew.value = savedInstanceState == null && WhatsNew.shouldShow(this, firstRun = showFirstRun.value)
+        // Folio Dev only: its builds keep one version name, so What's New never shows; this page is keyed to the commit.
+        showDevBuild.value = savedInstanceState == null && !showWhatsNew.value && DevBuild.shouldShow(this)
         returningFromShadeSettings = savedInstanceState?.getBoolean(SHADE_SETTINGS_PENDING) == true
         val restoreShadeDialog = savedInstanceState?.getBoolean(SHADE_DIALOG_VISIBLE) == true
         appearance = AppearanceStore(this)
@@ -343,6 +346,10 @@ class MainActivity : ComponentActivity() {
                             androidx.compose.material3.Text(getString(R.string.apply)) } },
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { sharedTheme.value = null }) {
                             androidx.compose.material3.Text(getString(R.string.cancel)) } })
+                }
+                if (showDevBuild.value || DevBuild.reopen.intValue > 0) DevBuild.load(this@MainActivity)?.let { dev ->
+                    val before = androidx.compose.runtime.remember { DevBuild.seen(this@MainActivity) }
+                    DevBuildSheet(dev, before) { showDevBuild.value = false; DevBuild.reopen.intValue = 0; DevBuild.markSeen(this@MainActivity, dev) }
                 }
                 if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
                 // With live activities in the side rail, the camera island on Home keeps only its brief events.
