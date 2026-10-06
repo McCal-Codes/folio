@@ -331,8 +331,10 @@ internal fun ClockEditBar(
             Choice(stringResource(R.string.size), s.size, listOf(.85f to R.string.small, 1f to R.string.default_choice, 1.15f to R.string.large)) { push(s.copy(size = it)) }
             Choice(stringResource(R.string.style), s.face, listOf("SANS" to R.string.default_choice, "ROUNDED" to R.string.face_rounded, "SERIF" to R.string.face_serif, "MONO" to R.string.face_mono)) { push(s.copy(face = it)) }
             Choice(stringResource(R.string.shadow), s.shadow, listOf("OFF" to R.string.off, "SOFT" to R.string.soft, "GLOW" to R.string.glow)) { push(s.copy(shadow = it)) }
+            FineNote(R.string.fine_tune_look_note)
             Choice(stringResource(R.string.date), s.date, listOf("LONG" to R.string.date_long, "SHORT" to R.string.date_short, "OFF" to R.string.off)) { push(s.copy(date = it)) }
             Choice(stringResource(R.string.hours), s.hours, listOf("SYSTEM" to R.string.hours_system, "12" to R.string.hours_12, "24" to R.string.hours_24)) { push(s.copy(hours = it)) }
+            FineNote(R.string.fine_tune_hours_note)
             if (s.hours != "24") Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.show_am_or_pm), Modifier.weight(1f), color = Color.White)
                 IosSwitch(s.ampm, { push(s.copy(ampm = it)) })
@@ -341,6 +343,7 @@ internal fun ClockEditBar(
                 Text(stringResource(R.string.show_next_event), Modifier.weight(1f), color = Color.White)
                 IosSwitch(s.showNext, { push(s.copy(showNext = it)) })
             }
+            FineNote(R.string.fine_tune_next_note)
             Choice(stringResource(R.string.align), s.align, listOf("LEFT" to R.string.align_left, "CENTER" to R.string.align_center, "RIGHT" to R.string.align_right)) { push(s.copy(align = it)) }
           }
         }
@@ -383,3 +386,8 @@ private fun <T> Choice(title: String, current: T, options: List<Pair<T, Int>>, o
         }
     }
 }
+
+/** One quiet line under a Fine tune group that says what it does, the way a tweak's settings pane explains itself. */
+@Composable
+private fun FineNote(@androidx.annotation.StringRes text: Int) =
+    Text(stringResource(text), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp))

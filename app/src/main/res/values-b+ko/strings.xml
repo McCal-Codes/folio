@@ -1679,4 +1679,7 @@
     <string name="choose_named">%1$s 선택</string>
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
+    <string name="fine_tune_look_note">룩은 굵기, 서체, 그림자를 한 번에 정해요. 하나만 바꾸면 나만의 스타일이 돼요.</string>
+    <string name="fine_tune_hours_note">시스템은 휴대전화의 12시간 또는 24시간 설정을 따라요.</string>
+    <string name="fine_tune_next_note">시간 아래에 다음 일정이나 알람을 보여줘요.</string>
 </resources>

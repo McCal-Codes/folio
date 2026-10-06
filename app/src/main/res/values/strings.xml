@@ -1706,4 +1706,7 @@
     <string name="choose_named">Choose %1$s</string>
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
+    <string name="fine_tune_look_note">Looks set weight, style and shadow together. Change one and it becomes your own.</string>
+    <string name="fine_tune_hours_note">System follows your phone\'s 12 or 24-hour setting.</string>
+    <string name="fine_tune_next_note">Your next calendar event or alarm, under the time.</string>
 </resources>
