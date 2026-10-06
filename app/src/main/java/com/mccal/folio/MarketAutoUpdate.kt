@@ -68,8 +68,15 @@ internal object MarketAutoUpdate {
      * longer matches a candidate, or no longer matches the listing's checksum, is deleted unused. Returns the names updated.
      */
     suspend fun applyStaged(context: Context, session: MarketSession): List<String> = applying.withLock {
+        // Safe Mode pauses optional work: the update may be the thing that is crashing.
+        if (SafeMode.isOn(context)) return@withLock emptyList()
         val dir = File(context.cacheDir, DIR)
         if (!dir.isDirectory) return@withLock emptyList()
+        // One install at a time, shared with the Get button; if one is running, the staged files wait for the next start.
+        MarketWork.exclusive("auto-update") { applyAll(context, session, dir) } ?: emptyList()
+    }
+
+    private suspend fun applyAll(context: Context, session: MarketSession, dir: File): List<String> {
         val wanted = candidates(session)
         val updated = mutableListOf<String>()
         val keep = mutableSetOf<File>()
@@ -89,7 +96,7 @@ internal object MarketAutoUpdate {
             }
         }
         dir.listFiles()?.filter { it !in keep && it.exists() && !it.name.endsWith(".claimed") }?.forEach { it.delete() }
-        updated
+        return updated
     }
 
     /** Whether this phone does automatic package updates at all: the gate, and the person's switch. */
