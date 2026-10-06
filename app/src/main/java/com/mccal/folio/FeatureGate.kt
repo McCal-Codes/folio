@@ -54,7 +54,14 @@ internal enum class FeatureGate(
      * changes the fact that this asks the GPU for more on exactly that frame. The beta is what decides whether both
      * effects are smooth enough to keep, and on which screens.
      */
-    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 });
+    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
+
+    /**
+     * A widget at the top of Home fills exactly two app rows, so every row has one pitch and the dock lines up with the
+     * rows on a page with a widget and on one without (issue #13). It changes how every stacked layout looks and
+     * retires Widget Size, so supporters try it first; opening the gate is what shipping it means.
+     */
+    WIDGETS_FILL_ROWS("widgetsFillRows", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -74,6 +81,9 @@ internal enum class FeatureGate(
          * one per feature, because they open together: `FeatureGateTest` fails at 0.6.8 while this is still false.
          */
         private const val OPEN_IN_0_6_8 = true
+
+        /** The features built during 0.6.9 for supporters to try first, which open together in the 0.6.9 release. */
+        private const val OPEN_IN_0_6_9 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }

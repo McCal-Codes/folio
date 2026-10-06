@@ -1832,7 +1832,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     // status rail, dock, search pill), then scaled down, so the preview matches Home instead of approximating it.
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
-        appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
+        appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
+        widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
     val placements = state.widgetPlacements.filter { it.page == 0 }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
@@ -2119,7 +2120,9 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         CustomizationSlider(stringResource(R.string.app_icon_size), stringResource(R.string.dp_value, p.iconSize.toInt()), p.iconSize, 40f..68f, d.iconSize, peek = true) { model.setPreset(screen, p.copy(iconSize = it)) }
         CustomizationSlider(stringResource(R.string.space_between_rows), stringResource(R.string.dp_value, p.rowGap.toInt()), p.rowGap, 0f..28f, d.rowGap, peek = true) { model.setPreset(screen, p.copy(rowGap = it)) }
         CustomizationSlider(stringResource(R.string.space_between_columns), stringResource(R.string.dp_value, p.columnGap.toInt()), p.columnGap, 8f..40f, d.columnGap, peek = true) { model.setPreset(screen, p.copy(columnGap = it)) }
-        CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
+        // With the gate open a widget is exactly two rows tall, so Widget Size has nothing to do (its saved value is kept).
+        if (!FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
+            CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
         // Automatic says which number it landed on, so the count is never a mystery.
         IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.homeAppRows), 4 to "4"), state.homeRows, model::setHomeRows, tag = "home-rows")
         CardNote(stringResource(R.string.automatic_adds_up_to_3_more_rows_of_apps))
