@@ -443,6 +443,8 @@
     <string name="unhide">숨기기 해제</string>
     <string name="arrange_like_iphone">iPhone처럼 정렬…</string>
     <string name="arrange_like_iphone_2">iPhone처럼 정렬할까요?</string>
+    <string name="needs_accessibility_service">이 기능을 쓰려면 Folio 접근성 서비스를 켜세요</string>
+    <string name="needs_dnd_access">먼저 Folio에 방해 금지 모드 접근을 허용하세요</string>
     <string name="arrange">정렬</string>
     <string name="layout">레이아웃</string>
     <string name="app_icon_size">앱 아이콘 크기</string>
@@ -1624,6 +1626,4 @@
     <string name="roadmap_updated">%1$s 업데이트됨</string>
     <string name="roadmap_saved_copy">%1$s에 저장된 사본</string>
     <string name="betas_are_for_supporters">베타는 후원자를 위한 기능입니다. 후원자 코드가 없으면 Folio는 공개 버전만 찾기 때문에 베타가 나와 있어도 최신 상태라고 표시할 수 있습니다. 설정 › Folio 후원에서 코드를 추가하세요.</string>
-    <string name="needs_accessibility_service">이 기능을 쓰려면 Folio 접근성 서비스를 켜세요</string>
-    <string name="needs_dnd_access">먼저 Folio에 방해 금지 모드 접근을 허용하세요</string>
 </resources>

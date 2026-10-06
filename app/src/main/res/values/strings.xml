@@ -438,6 +438,8 @@
     <string name="unhide">Unhide</string>
     <string name="arrange_like_iphone">Arrange Like iPhone…</string>
     <string name="arrange_like_iphone_2">Arrange Like iPhone?</string>
+    <string name="needs_accessibility_service">Turn on Folio’s accessibility service to do this</string>
+    <string name="needs_dnd_access">Allow Do Not Disturb access for Folio first</string>
     <string name="arrange">Arrange</string>
     <string name="layout">Layout</string>
     <string name="app_icon_size">App icon size</string>
@@ -1651,6 +1653,4 @@
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="betas_are_for_supporters">Betas are for supporters. Without a supporter code, Folio only finds public releases, so it can say you\'re up to date while a beta is out. Add a code in Settings › Support Folio.</string>
-    <string name="needs_accessibility_service">Turn on Folio’s accessibility service to do this</string>
-    <string name="needs_dnd_access">Allow Do Not Disturb access for Folio first</string>
 </resources>
