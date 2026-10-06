@@ -113,8 +113,6 @@ val generateDevBuildInfo = tasks.register<DevBuildInfoTask>("generateDevBuildInf
     notesFile.set(rootProject.layout.projectDirectory.file("docs/dev-notes.md"))
     outputDir.set(layout.buildDirectory.dir("generated/devbuild"))
 }
-// Only the two Folio Dev build types merge it; release assets never see the folder.
-tasks.matching { it.name == "mergeDebugAssets" || it.name == "mergeFastAssets" }.configureEach { dependsOn(generateDevBuildInfo) }
 /**
  * The profile is recorded from the "fast" build ("Folio Dev", debug-signed) because the release APK can't be
  * installed over the signed Folio on a test phone, and merged into main so the release build ships it.
@@ -131,6 +129,11 @@ baselineProfile {
  */
 androidComponents {
     onVariants { variant ->
+        // Only the two Folio Dev build types get dev-build.json; a release build never sees the folder. Registered through the
+        // variant API so everything that reads assets (merge, lint) depends on the task that writes it.
+        if (variant.buildType == "debug" || variant.buildType == "fast") {
+            variant.sources.assets?.addGeneratedSourceDirectory(generateDevBuildInfo, DevBuildInfoTask::outputDir)
+        }
         if (variant.buildType == "nonMinifiedRelease" || variant.buildType == "benchmarkRelease") {
             variant.applicationId.set("com.mccal.folio.profile")
         }
@@ -201,9 +204,9 @@ android {
     }
     // "fast" uses release's no-op tracing/diagnostic sources.
     sourceSets {
-        getByName("fast") { kotlin.directories.add("src/release/java"); res.directories.add("src/dev/res"); assets.srcDir(layout.buildDirectory.dir("generated/devbuild").get().asFile) }
+        getByName("fast") { kotlin.directories.add("src/release/java"); res.directories.add("src/dev/res") }
         // Folio Dev (debug and fast builds) gets an amber icon so it's easy to tell apart from the release.
-        getByName("debug") { res.directories.add("src/dev/res"); assets.srcDir(layout.buildDirectory.dir("generated/devbuild").get().asFile) }
+        getByName("debug") { res.directories.add("src/dev/res") }
         getByName("main") {
             assets.srcDir(layout.buildDirectory.dir("generated/changelog").get().asFile)
             assets.srcDir(layout.buildDirectory.dir("generated/market").get().asFile)
