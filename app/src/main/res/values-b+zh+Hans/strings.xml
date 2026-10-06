@@ -444,6 +444,8 @@
     <string name="unhide">取消隐藏</string>
     <string name="arrange_like_iphone">像 iPhone 一样排列…</string>
     <string name="arrange_like_iphone_2">要像 iPhone 一样排列吗？</string>
+    <string name="needs_accessibility_service">请先开启 Folio 的无障碍服务</string>
+    <string name="needs_dnd_access">请先允许 Folio 使用勿扰权限</string>
     <string name="arrange">排列</string>
     <string name="layout">布局</string>
     <string name="app_icon_size">App 图标大小</string>

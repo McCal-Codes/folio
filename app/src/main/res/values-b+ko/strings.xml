@@ -443,6 +443,8 @@
     <string name="unhide">숨기기 해제</string>
     <string name="arrange_like_iphone">iPhone처럼 정렬…</string>
     <string name="arrange_like_iphone_2">iPhone처럼 정렬할까요?</string>
+    <string name="needs_accessibility_service">이 기능을 쓰려면 Folio 접근성 서비스를 켜세요</string>
+    <string name="needs_dnd_access">먼저 Folio에 방해 금지 모드 접근을 허용하세요</string>
     <string name="arrange">정렬</string>
     <string name="layout">레이아웃</string>
     <string name="app_icon_size">앱 아이콘 크기</string>
