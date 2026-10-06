@@ -81,6 +81,8 @@ internal object SafeMode {
     private const val PREFS = "safe_mode"
     private const val QUICK_CRASHES = "quickCrashes"
     private const val WINDOW_MS = 30_000L
+    private const val LAST_START = "lastStartWall"
+    private const val EXITS_SEEN = "exitsSeenUntil"
     private var startedAt = 0L
     @Volatile var active = false
         private set
@@ -103,13 +105,30 @@ internal object SafeMode {
         return true
     }
 
-    fun onStart(context: Context) {
+    /**
+     * [exits] is how earlier processes ended, newest first; the default reads Android's record. A native crash, a freeze
+     * or a failed start in the first 30 seconds counts like an uncaught exception does (see [SafeModeExits]).
+     */
+    fun onStart(context: Context, exits: () -> List<ExitRecord> = { SafeModeExits.read(context) }) {
         startedAt = android.os.SystemClock.elapsedRealtime()
         val prefs = context.getSharedPreferences(PREFS, 0)
-        active = isOn(context)
+        val previousStart = prefs.getLong(LAST_START, 0L)
+        val seen = prefs.getLong(EXITS_SEEN, 0L)
+        val all = runCatching(exits).getOrDefault(emptyList())
+        val extra = SafeModeExits.quick(all, previousStart, seen, WINDOW_MS).size
+        val quickCrashes = prefs.getInt(QUICK_CRASHES, 0) + extra
+        val edit = prefs.edit().putLong(LAST_START, System.currentTimeMillis())
+        if (all.isNotEmpty()) edit.putLong(EXITS_SEEN, maxOf(seen, all.maxOf { it.timestampMs }))
+        if (extra > 0) edit.putInt(QUICK_CRASHES, quickCrashes)
+        active = quickCrashes >= 2
         crashTaken.set(false)
         appContext = context.applicationContext
-        crashedLastRun = prefs.getBoolean(CRASHED_LAST_RUN, false)
+        val nativeCrash = SafeModeExits.crashedLast(all, seen)
+        // A crash Android recorded is kept as the same saved flag, not just in memory: the exits are marked as seen
+        // above, so a background-only process that never reaches Home must not use the evidence up.
+        if (nativeCrash) edit.putBoolean(CRASHED_LAST_RUN, true)
+        crashedLastRun = prefs.getBoolean(CRASHED_LAST_RUN, false) || nativeCrash
+        edit.apply()
     }
 
     /**
