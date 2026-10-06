@@ -1041,6 +1041,7 @@
     <string name="hide_from_app_library">앱 보관함에서 숨기기</string>
     <string name="info_for_app">앱 정보</string>
     <string name="share_diagnostics">진단 정보 공유</string>
+    <string name="diagnostics_copied">복사했습니다</string>
     <string name="save_current_layout">현재 레이아웃 저장</string>
     <string name="saved_by_you">직접 저장함</string>
     <string name="resize_on_home">홈 화면에서 크기 조절</string>
