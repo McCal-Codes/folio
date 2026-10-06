@@ -117,7 +117,9 @@ class MainActivity : ComponentActivity() {
             SetupEntryDecision.SHOW
         showWhatsNew.value = savedInstanceState == null && WhatsNew.shouldShow(this, firstRun = showFirstRun.value)
         // Folio Dev only: its builds keep one version name, so What's New never shows; this page is keyed to the commit.
-        showDevBuild.value = savedInstanceState == null && !showWhatsNew.value && DevBuild.shouldShow(this)
+        // Not tied to savedInstanceState: after an install the app is killed and Android restores Home from saved state, which
+        // is exactly when a new build needs announcing. The commit check keeps it to once per build.
+        showDevBuild.value = DevBuild.shouldShow(this)
         returningFromShadeSettings = savedInstanceState?.getBoolean(SHADE_SETTINGS_PENDING) == true
         val restoreShadeDialog = savedInstanceState?.getBoolean(SHADE_DIALOG_VISIBLE) == true
         appearance = AppearanceStore(this)
@@ -347,7 +349,8 @@ class MainActivity : ComponentActivity() {
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { sharedTheme.value = null }) {
                             androidx.compose.material3.Text(getString(R.string.cancel)) } })
                 }
-                if (showDevBuild.value || DevBuild.reopen.intValue > 0) DevBuild.load(this@MainActivity)?.let { dev ->
+                // After What's New, not on top of it: the build page waits until that sheet has been closed.
+                if ((showDevBuild.value || DevBuild.reopen.intValue > 0) && !showWhatsNew.value && !whatsNewRequested.value) DevBuild.load(this@MainActivity)?.let { dev ->
                     val before = androidx.compose.runtime.remember { DevBuild.seen(this@MainActivity) }
                     DevBuildSheet(dev, before) { showDevBuild.value = false; DevBuild.reopen.intValue = 0; DevBuild.markSeen(this@MainActivity, dev) }
                 }
@@ -378,6 +381,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart(); widgets.host.startListening()
+        // A new build can also arrive while this activity is alive in a restored task, so look again each time it starts.
+        if (!showDevBuild.value && DevBuild.shouldShow(this)) showDevBuild.value = true
         if (!timeReceiverRegistered) {
             ContextCompat.registerReceiver(this, timeReceiver, IntentFilter().apply {
                 addAction(Intent.ACTION_TIME_TICK); addAction(Intent.ACTION_TIME_CHANGED)
