@@ -1,7 +1,7 @@
 # 0010: A continuous hinge angle is an optional root provider, behind the broker
 
-- **Status:** proposed (a sketch), 2026-10-06
-- **Extends:** [0009](0009-system-bridge.md). Nothing here is wired into the app yet.
+- **Status:** built and checked on a Galaxy Z Fold8, 2026-10-06 (proposed as a sketch earlier the same day). Off by default.
+- **Extends:** [0009](0009-system-bridge.md).
 
 ## Context
 
@@ -32,8 +32,9 @@ So a continuous angle is available to a root process and to nothing else on this
 4. **The pipe is the only channel.** The helper prints one line per message (`R`, `H <nanos> <degrees>`, `E <word>`) to
    the pipe of the `su` process Folio started. No socket, no Binder service, nothing another app can connect to.
    `RootHingeProtocol.parse` ignores anything else; a gate keeps readings in time order and at most 100 a second.
-5. **The helper runs only while something needs it.** The fold animation or StandBy starts it and stops it when done. It
-   also exits when its input closes (the app died) and after 60 seconds with no reader, so it cannot outlive Folio.
+5. **The helper runs only while Folio is in front.** The fold timeline starts it when Folio starts and stops it when Folio
+   stops. It also exits when its input closes (the app died) and ends by itself after 300 seconds, so it cannot outlive Folio;
+   the feed starts it again if the end was a normal one. Checked on the phone: force-stopping Folio ended it in under a second.
 6. **Losing root is an ordinary state.** `LOST` (helper died, grant removed) switches the source back to the public sensor
    at once and tells the owner in plain words. The kill switch and Safe Mode already turn the ROOT tier off; nothing new is
    needed for them.
@@ -42,20 +43,29 @@ So a continuous angle is available to a root process and to nothing else on this
 8. **Optional and labeled.** PRV-17: off by default, in the System Bridge tier, named as root, with the Knox note already on
    that page. No Folio feature needs it.
 
-## What the sketch contains
+## What is built
 
-`RootHinge.kt`: `RootState`, `RootHingeProvider`, the message format and its gate, `hingeSource` and `hingeCapabilityKey`,
-with `RootHingeTest`. `FolioCapability.HINGE_ANGLE_CONTINUOUS` and its name on the System Bridge page.
+- `RootHinge.kt`: `RootState`, `RootHingeProvider`, the message format and its gate, `hingeSource`, `hingeCapabilityKey`.
+- `RootHingeHelper.java`: the helper's `main`, in Folio's own APK, started as `su -c "CLASSPATH=<own APK> app_process /system/bin
+  com.mccal.folio.RootHingeHelper <seconds>"`. The R8 keep rule is in `app/proguard-rules.pro`.
+- `RootHingeRunner.kt`: the owner's test (the Test button), the `su` locations it tries, the report to copy. KernelSU,
+  Magisk and APatch behaviors (a prompt that waits, a refusal, no `su`) are played back in `RootHingeRunnerTest`.
+- `RootHingeTester`: runs the test where a screen change cannot cancel it. Found on the phone: opening the Fold rebuilds the screen,
+  and a test tied to the screen stopped halfway.
+- `RootHingeFeed.kt` and the `FoldTimeline` hook: the live feed, behind the "Use in the fold animation" switch (off by
+  default, offered only after a test reads READY). A lost feed marks the state LOST and the timeline carries on with the public sensor.
+- The Root card on the System Bridge page: the Test button, the result in words, the switch, Copy test report.
 
-## What it does not contain, and what is undecided
+Measured on the Fold8: the test gave 124 readings and 80 different angles from 0 to 179 degrees; the helper runs as root only
+while Folio is in front, stops when Folio goes behind another app, and starts again on return.
 
-- The helper's `main`, the code that starts `su`, the test button, and the hook into `FoldTimeline`. The probe in
-  `tools/hinge-probe` is the reference for the helper's core.
-- Whether the root manager's own listing of Folio is enough as the grant, or Folio should show its own explanation first.
-  I would show one.
-- Magisk and APatch. `su -c` is the same on all three; only KernelSU was tested.
-- Whether a continuous angle is worth a root dependency at all for what the fold animation gains. That is a product
-  question for the owner, not a technical one.
+## What is still undecided
+
+- Whether Folio shows its own explanation before the root manager's grant. I would.
+- Magisk and APatch: tested only by playback, never on a phone that has them.
+- Whether the optional root backend ships in 0.6.9 behind Developer settings or moves to 0.7.0 (the 0.6.9 plan lists
+  "root backend" under not in 0.6.9). McCal decides.
+- Whether the helper's cost (battery, CPU) while Folio is in front is acceptable. Not measured.
 
 ## Consequences
 
