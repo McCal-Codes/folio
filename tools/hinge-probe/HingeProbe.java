@@ -10,8 +10,13 @@ import java.util.*;
 public class HingeProbe {
     static final Map<Integer, TreeSet<Float>> seen = new LinkedHashMap<>();
     static final Map<Integer, Integer> count = new LinkedHashMap<>();
+    // Each change of value with the second it arrived, so a reading can be matched to what the phone was doing.
+    static final Map<Integer, java.util.List<String>> timeline = new LinkedHashMap<>();
+    static final Map<Integer, Float> last = new LinkedHashMap<>();
+    static long startedAt;
 
     public static void main(String[] args) throws Exception {
+        startedAt = System.nanoTime();
         int seconds = args.length > 0 ? Integer.parseInt(args[0]) : 6;
         Looper.prepare();
         Class<?> at = Class.forName("android.app.ActivityThread");
@@ -29,6 +34,9 @@ public class HingeProbe {
             public void onSensorChanged(SensorEvent e) {
                 int t = e.sensor.getType();
                 seen.computeIfAbsent(t, k -> new TreeSet<>()).add(e.values[0]);
+                Float before = last.put(t, e.values[0]);
+                if (before == null || before != e.values[0]) timeline.computeIfAbsent(t, k -> new java.util.ArrayList<>())
+                    .add(String.format(java.util.Locale.US, "%.1fs=%s", (System.nanoTime() - startedAt) / 1e9, e.values[0]));
                 count.merge(t, 1, Integer::sum);
             }
             public void onAccuracyChanged(Sensor s, int a) {}
@@ -51,6 +59,8 @@ public class HingeProbe {
             TreeSet<Float> v = seen.get(w);
             System.out.println("type " + w + ": " + count.getOrDefault(w, 0) + " events, " + (v == null ? 0 : v.size()) + " distinct values"
                 + (v == null || v.isEmpty() ? "" : " min=" + v.first() + " max=" + v.last()));
+            java.util.List<String> tl = timeline.get(w);
+            if (tl != null) System.out.println("  changes: " + (tl.size() > 70 ? tl.subList(0, 35) + " ... " + tl.subList(tl.size() - 35, tl.size()) : tl));
         }
         System.exit(0);
     }
