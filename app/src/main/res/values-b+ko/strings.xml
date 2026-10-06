@@ -443,6 +443,8 @@
     <string name="unhide">숨기기 해제</string>
     <string name="arrange_like_iphone">iPhone처럼 정렬…</string>
     <string name="arrange_like_iphone_2">iPhone처럼 정렬할까요?</string>
+    <string name="needs_accessibility_service">이 기능을 쓰려면 Folio 접근성 서비스를 켜세요</string>
+    <string name="needs_dnd_access">먼저 Folio에 방해 금지 모드 접근을 허용하세요</string>
     <string name="arrange">정렬</string>
     <string name="layout">레이아웃</string>
     <string name="app_icon_size">앱 아이콘 크기</string>
@@ -1660,4 +1662,21 @@
     <string name="place_freely">자유롭게 배치</string>
     <string name="snap_to_grid">격자에 맞추기</string>
     <string name="taken_by_apps">앱이 있는 자리예요</string>
+    <string name="turn_off_mode">%1$s 끄기</string>
+    <string name="turn_on_mode">%1$s 켜기</string>
+    <string name="reply_sent">전송됨</string>
+    <string name="reply_hint">답장</string>
+    <string name="reply_to_name">%1$s에게 답장</string>
+    <string name="send_action">보내기</string>
+    <string name="show_all_apps_in">%2$s 앱 %1$d개 모두 보기</string>
+    <string name="home_label">홈</string>
+    <string name="open_named">%1$s 열기</string>
+    <string name="progress_of">%2$s 중 %1$s</string>
+    <string name="new_badge">새로 설치됨</string>
+    <string name="clear_text">지우기</string>
+    <string name="focus_on_named">%1$s 켜짐</string>
+    <string name="moving_named">%1$s 이동 중</string>
+    <string name="choose_named">%1$s 선택</string>
+    <string name="installing_percent">설치 중, %1$d퍼센트</string>
+    <string name="fix_saved_layout">저장된 레이아웃 복구</string>
 </resources>

@@ -54,7 +54,20 @@ internal enum class FeatureGate(
      * changes the fact that this asks the GPU for more on exactly that frame. The beta is what decides whether both
      * effects are smooth enough to keep, and on which screens.
      */
-    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 });
+    PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
+
+    /**
+     * Folders you can shape: resize by the corner, drop an app on another to make a folder, drag to reorder inside
+     * an open folder or out past its edge, and Sort A to Z. Gesture work like this wants real hands on real Folds
+     * (the open folder is its own window, which is where the last three bugs were), so the beta gets it first.
+     */
+    FOLDER_EDITING("folderEditing", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Making the Big Clock your own: Customize (Looks, color, Fine tune) and Place Freely. A clock nobody customizes
+     * and nobody places is drawn exactly as before, so the only thing this holds back is the two menu rows.
+     */
+    CLOCK_CUSTOMIZE("clockCustomize", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -74,6 +87,9 @@ internal enum class FeatureGate(
          * one per feature, because they open together: `FeatureGateTest` fails at 0.6.8 while this is still false.
          */
         private const val OPEN_IN_0_6_8 = true
+
+        /** The 0.6.9 features that open together, the same way. Flip this when 0.6.9 ships. */
+        private const val OPEN_IN_0_6_9 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }

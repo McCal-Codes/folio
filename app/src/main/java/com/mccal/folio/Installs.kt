@@ -108,9 +108,10 @@ internal object NewApps {
 @androidx.compose.runtime.Composable
 internal fun NewAppDot(packageName: String, size: androidx.compose.ui.unit.Dp = 6.dp) {
     if (packageName !in LocalNewApps.current) return
+    val newText = androidx.compose.ui.res.stringResource(R.string.new_badge)
     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(end = 3.dp).size(size)
         .background(LocalAccent.current.fill, androidx.compose.foundation.shape.CircleShape)
-        .semantics { contentDescription = "New" })
+        .semantics { contentDescription = newText })
 }
 
 /** New apps still downloading, as waiting icons with their progress, at the top of the App Library. */

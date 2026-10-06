@@ -44,12 +44,21 @@ internal object IconPacks {
         }.getOrNull()?.also { icons.put(key, it) }
     }
 
-    @Synchronized private fun mapping(context: Context, pack: String): Map<String, String> = mappings.getOrPut(pack) {
-        runCatching {
+    /** A pack that couldn't be read is not remembered as empty, so a pack mid-update gets another try. */
+    @Synchronized private fun mapping(context: Context, pack: String): Map<String, String> {
+        mappings[pack]?.let { return it }
+        val read = runCatching { readMapping(context, pack) }.getOrNull() ?: return emptyMap()
+        mappings[pack] = read
+        return read
+    }
+
+    private fun readMapping(context: Context, pack: String): Map<String, String> {
             val res = context.packageManager.getResourcesForApplication(pack)
             val xmlId = res.getIdentifier("appfilter", "xml", pack)
+            val stream = if (xmlId == 0) res.assets.open("appfilter.xml") else null
             val parser: XmlPullParser = if (xmlId != 0) res.getXml(xmlId)
-                else Xml.newPullParser().apply { setInput(res.assets.open("appfilter.xml"), "UTF-8") }
+                else Xml.newPullParser().apply { setInput(stream, "UTF-8") }
+            try {
             val map = HashMap<String, String>()
             while (parser.next() != XmlPullParser.END_DOCUMENT) {
                 if (parser.eventType != XmlPullParser.START_TAG || parser.name != "item") continue
@@ -61,8 +70,11 @@ internal object IconPacks {
                 if (cls.startsWith(".")) cls = pkg + cls
                 map["$pkg/$cls"] = drawable
             }
-            map
-        }.getOrDefault(emptyMap())
+            return map
+            } finally {
+                stream?.close()
+                (parser as? android.content.res.XmlResourceParser)?.close()
+            }
     }
 
     fun clear() { icons.evictAll(); synchronized(this) { mappings.clear() } }

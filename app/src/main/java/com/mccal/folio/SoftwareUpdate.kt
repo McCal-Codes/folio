@@ -366,7 +366,7 @@ internal object SoftwareUpdate {
                     require(expected != null && expected.equals(sha256(apk), ignoreCase = true)) { context.getString(R.string.the_download_didn_t_match_its_checksum) }
                 }
                 require(sameSigner(context, apk)) { context.getString(R.string.the_update_isn_t_signed_with_folio_s_key) }
-                apk.renameTo(File(dir, "Folio-${release.version}.apk"))
+                check(apk.renameTo(File(dir, "Folio-${release.version}.apk"))) { context.getString(R.string.the_update_couldn_t_be_downloaded) }
                 File(dir, "release.json").writeText(JSONObject().put("version", release.version).put("notes", release.notes.take(4000))
                     .put("notesUrl", release.notesUrl).toString())
             }

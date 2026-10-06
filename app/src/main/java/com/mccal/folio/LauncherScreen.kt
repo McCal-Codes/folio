@@ -155,6 +155,10 @@ fun LauncherScreen(
     // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
     var clockEditSlot by remember { mutableStateOf<Int?>(null) }
     var placeSlot by remember { mutableStateOf<Int?>(null) }
+    // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -465,7 +469,7 @@ fun LauncherScreen(
     // Dropping one app onto another creates a folder with both (like iOS/Android), not a reorder - a drag out of
     // a folder is unaffected, that already goes through removeAppFromFolder in finishDrag regardless of target.
     fun folderMergeTarget(sourceAppId: String?, index: Int): String? {
-        if (sourceAppId == null || drag.source?.folderId != null) return null
+        if (!folderEditing || sourceAppId == null || drag.source?.folderId != null) return null
         val occupant = state.layout.slotAt(index) ?: return null
         return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
     }
@@ -1173,8 +1177,8 @@ fun LauncherScreen(
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
-                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
-                                onPlace = if (placement.id == BIG_CLOCK_WIDGET) {{ placeSlot = placement.slot; sheet = "" }} else null)
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
+                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ placeSlot = placement.slot; sheet = "" }} else null)
                         }
                     }
                 }
@@ -1465,7 +1469,7 @@ fun LauncherScreen(
             appsById[drag.source?.appId]?.let { app ->
                 val size = 66.dp
                 val px = with(LocalDensity.current) { size.toPx() }
-                AppIcon(app, "Moving ${app.label}", Modifier
+                AppIcon(app, stringResource(R.string.moving_named, app.label), Modifier
                     .offset { IntOffset((drag.pointer.x - drag.rootOrigin.x - px / 2).roundToInt(), (drag.pointer.y - drag.rootOrigin.y - px * .65f).roundToInt()) }
                     .size(size).shadow(16.dp, RoundedCornerShape(FolioRadius.GROUP.dp)).clip(RoundedCornerShape(FolioRadius.GROUP.dp)).testTag("drag-ghost"))
             }
@@ -1701,7 +1705,7 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
-                    size = state.folderSizes[id], onSize = { model.setFolderSize(id, it) },
+                    size = if (folderEditing) state.folderSizes[id] else null, onSize = { model.setFolderSize(id, it) }, editing = folderEditing,
                     onReorder = { appId, index -> model.moveFolderApp(id, appId, index) },
                     onSortAlphabetically = { model.sortFolderAlphabetically(id) },
                     // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.

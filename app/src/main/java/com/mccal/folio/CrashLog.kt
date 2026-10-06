@@ -87,8 +87,14 @@ internal object SafeMode {
 
     fun onStart(context: Context) {
         startedAt = android.os.SystemClock.elapsedRealtime()
-        active = context.getSharedPreferences(PREFS, 0).getInt(QUICK_CRASHES, 0) >= 2
+        active = isOn(context)
     }
+
+    /**
+     * Whether Folio is in Safe Mode right now, read from what was saved. For work that can start without the app being
+     * open (a background job), where [onStart] may not have run in this process yet.
+     */
+    fun isOn(context: Context): Boolean = context.getSharedPreferences(PREFS, 0).getInt(QUICK_CRASHES, 0) >= 2
 
     fun onCrash(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, 0)

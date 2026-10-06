@@ -92,7 +92,7 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
         }
         if (shown.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(MICRO_GAP.dp)) {
             shown.forEach { app ->
-                Box(Modifier.size(MICRO_ICON.dp).clickable(onClickLabel = "Open ${app.label}") { onLaunch(app) }) {
+                Box(Modifier.size(MICRO_ICON.dp).clickable(onClickLabel = stringResource(R.string.open_named, app.label)) { onLaunch(app) }) {
                     AppIcon(app, app.label, Modifier.size(MICRO_ICON.dp), shape = RoundedCornerShape(12.dp))
                 }
             }
@@ -110,7 +110,7 @@ private fun MicroNowPlaying(media: IslandActivity.Media) {
     val controls = runCatching { media.controller.transportControls }.getOrNull()
     val open = runCatching { media.controller.sessionActivity }.getOrNull()
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .14f))
-        .clickable(enabled = open != null, onClickLabel = "Open ${media.title}") { runCatching { open?.send() } }
+        .clickable(enabled = open != null, onClickLabel = stringResource(R.string.open_named, media.title)) { runCatching { open?.send() } }
         .padding(start = FolioSpace.SMALL.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         val art = media.art ?: media.icon
         if (art != null) Image(art.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)

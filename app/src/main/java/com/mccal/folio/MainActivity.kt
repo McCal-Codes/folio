@@ -361,7 +361,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
-        widgets.host.stopListening(); super.onStop()
+        widgets.host.stopListening(); model.flushPending(); super.onStop()
     }
     override fun onDestroy() {
         runCatching { unregisterReceiver(unlockReceiver) }

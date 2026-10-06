@@ -93,9 +93,11 @@ data class HomeGeometry(
  * rest on the right, like a stacked iOS layout rearranging into two columns when there's width for it.
  */
 data class HomeCellLayout(val cellWidth: Float, val topPitch: Float, val rowHeight: Float, val splitRow: Int?, val zoneGap: Float,
-    val widgetsOnTop: Boolean = true, val inset: Float = 0f) {
+    val widgetsOnTop: Boolean = true, val inset: Float = 0f,
+    /** A stacked page with no widget up top: every row has this one pitch, so app rows 1–2 aren't tighter than the rest. */
+    val evenPitch: Float? = null) {
     /** Rows 0–1 are widget-height halves, except on a two-column page with no widgets up there (then they're app rows). */
-    fun pitch(row: Int) = if (row < 2 && (splitRow == null || widgetsOnTop)) topPitch else rowHeight
+    fun pitch(row: Int) = evenPitch ?: if (row < 2 && (splitRow == null || widgetsOnTop)) topPitch else rowHeight
     private fun onRight(row: Int) = splitRow != null && row >= splitRow
     fun x(column: Int, row: Int) = inset + (if (onRight(row)) 4f * cellWidth + zoneGap else 0f) + column * cellWidth
     fun y(row: Int) = ((if (onRight(row)) splitRow!! else 0) until row).fold(0f) { sum, r -> sum + pitch(r) }
@@ -107,15 +109,25 @@ data class HomeCellLayout(val cellWidth: Float, val topPitch: Float, val rowHeig
          * [widgets] are (row, spanY) of the page's widgets; a widget is never cut across the two halves. Two columns keep
          * four app rows split between the halves; extra rows (More rows) continue in the right half after its rows.
          */
-        fun forPage(geometry: HomeGeometry, widgets: List<Pair<Int, Int>>): HomeCellLayout {
+        fun forPage(geometry: HomeGeometry, widgets: List<Pair<Int, Int>>, rows: Int = visibleHomeRows(geometry.appRows)): HomeCellLayout {
             val topPitch = (geometry.widgetHeight + 18f) / 2f
             val split = if (!geometry.splitColumns) null else
                 // Like iPhone Duo's Home: widgets top-left with two app rows under them, the other app rows on the right.
                 (if (widgets.any { it.first < 2 }) listOf(4, 2, 3) else listOf(3, 4, 2))
                     .firstOrNull { s -> widgets.none { (row, span) -> row < s && row + span > s } }
+            val widgetsOnTop = widgets.any { it.first < 2 }
             return HomeCellLayout(geometry.cellWidth, topPitch, geometry.rowHeight, split, geometry.zoneGap,
-                widgetsOnTop = widgets.any { it.first < 2 }, inset = geometry.columnsInset)
+                widgetsOnTop = widgetsOnTop, inset = geometry.columnsInset,
+                evenPitch = if (split == null && !widgetsOnTop) evenPitch(topPitch, geometry.rowHeight, rows) else null)
         }
+
+        /**
+         * The one pitch for a stacked page with no widget up top. The page keeps exactly the height it has with half-height
+         * top rows ([rows] rows: two at [topPitch], the rest at [rowHeight]), so it still fits the window, and the rows stop
+         * being tighter at the top. Never less than the tighter of the two pitches, so no icon gets less room than today.
+         */
+        fun evenPitch(topPitch: Float, rowHeight: Float, rows: Int): Float? =
+            if (rows <= 2) null else ((2 * topPitch + (rows - 2) * rowHeight) / rows).coerceAtLeast(minOf(topPitch, rowHeight))
     }
 }
 

@@ -444,6 +444,8 @@
     <string name="unhide">取消隐藏</string>
     <string name="arrange_like_iphone">像 iPhone 一样排列…</string>
     <string name="arrange_like_iphone_2">要像 iPhone 一样排列吗？</string>
+    <string name="needs_accessibility_service">请先开启 Folio 的无障碍服务</string>
+    <string name="needs_dnd_access">请先允许 Folio 使用勿扰权限</string>
     <string name="arrange">排列</string>
     <string name="layout">布局</string>
     <string name="app_icon_size">App 图标大小</string>
@@ -1639,4 +1641,21 @@
     <string name="place_freely">自由放置</string>
     <string name="snap_to_grid">对齐网格</string>
     <string name="taken_by_apps">已被应用占用</string>
+    <string name="turn_off_mode">关闭%1$s</string>
+    <string name="turn_on_mode">开启%1$s</string>
+    <string name="reply_sent">已发送</string>
+    <string name="reply_hint">回复</string>
+    <string name="reply_to_name">回复%1$s</string>
+    <string name="send_action">发送</string>
+    <string name="show_all_apps_in">显示全部 %1$d 个%2$s App</string>
+    <string name="home_label">主屏幕</string>
+    <string name="open_named">打开%1$s</string>
+    <string name="progress_of">%1$s，共 %2$s</string>
+    <string name="new_badge">新</string>
+    <string name="clear_text">清除</string>
+    <string name="focus_on_named">%1$s已开启</string>
+    <string name="moving_named">正在移动%1$s</string>
+    <string name="choose_named">选择%1$s</string>
+    <string name="installing_percent">正在安装，%1$d%%</string>
+    <string name="fix_saved_layout">修复已保存的布局</string>
 </resources>

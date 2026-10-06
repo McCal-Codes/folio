@@ -238,7 +238,7 @@ fun StatusRail(
                 // Standard (4) and Compact (0) keep their old padding; the slider moves between and past them.
                 .padding(vertical = if (compact) FolioSpace.SMALL.dp else (8f + style.spacing).coerceAtMost(12f).dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(style.spacing.dp)) {
-                focus?.let { Icon(it.icon(), "${it.name} on", tint = androidx.compose.ui.graphics.Color(it.color).let { c ->
+                focus?.let { Icon(it.icon(), stringResource(R.string.focus_on_named, it.name), tint = androidx.compose.ui.graphics.Color(it.color).let { c ->
                     if (LocalHomeInk.current.dark) c else androidx.compose.ui.graphics.lerp(c, androidx.compose.ui.graphics.Color.White, .35f) },
                     modifier = Modifier.size(if (compact) 14.dp else 16.dp).testTag("status-focus")) }
                 if (status.silent && style.showSilent) Icon(Icons.Rounded.NotificationsOff, null,
