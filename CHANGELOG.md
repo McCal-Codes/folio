@@ -80,7 +80,6 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Big theme files are refused:** choosing a file that isn't a Folio theme, but is very large, no longer reads it all into memory. It says it isn't a Folio theme, as before.
 - **Less waiting on the main thread:** looking up your icon packs for the Icons page and for a theme, and saving the trail Folio keeps for Diagnostics, now happen off the thread that draws Home. A pack that was updating when Folio read it is tried again instead of being treated as empty.
 - **An update that can't be saved says so:** if Folio can't put a checked update in place after downloading it, it says the update couldn't be downloaded instead of showing it as ready.
-- **Even rows at the top of Home:** on a page with no widget in the first two rows, the first rows sat closer together than the rest. Every row now has the same spacing, and the page keeps the height it had, so it still fits (#13).
 
 ## [0.6.7.3] - 2026-09-28
 
