@@ -22,7 +22,6 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `release-068-beta8` | Beta.8 is the 0.6.8 release candidate. Until the stable ships, nothing that goes into the APK merges to `main` (REL-4b, checked on the stable's bump): docs, tools and tests can. The stable's bump removes this row. | `app/`, `market/`, `docs/sdk/source/`, the Gradle files |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.
