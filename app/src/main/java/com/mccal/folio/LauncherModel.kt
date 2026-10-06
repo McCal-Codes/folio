@@ -1036,7 +1036,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun syncFocus() {
         val state = mutable.value
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus } ?: return
-        if (FocusController.isOnInAndroid(getApplication(), active) == false) updateSettings(soon = false) { it.copy(activeFocus = null) }
+        if (FocusController.isOnInAndroid(getApplication(), active) == false) {
+            // Turned off in Android: count it as turned off by hand, so its schedule doesn't switch it back on.
+            FocusDismissals.record(getApplication(), state.focusModes, state.activeFocus, null)
+            updateSettings(soon = false) { it.copy(activeFocus = null) }
+        }
     }
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
     fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }
