@@ -501,7 +501,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     if (page == CustomizationPage.STATUS) AppIconCard(state, model, onChanged = { model.refresh() })
                     if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.app_icons)) {
                         val iconContext = androidx.compose.ui.platform.LocalContext.current
-                        val packs = remember { IconPacks.installed(iconContext) }
+                        // Reading the installed icon packs asks Android about every pack, so it happens off the main thread.
+                        val packs by androidx.compose.runtime.produceState(emptyList<IconPacks.Pack>(), iconContext) {
+                            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { IconPacks.installed(iconContext) }
+                        }
                         // iOS Home Screen customization: Default, Dark and Tinted side by side.
                         Text(stringResource(R.string.style), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
                         IosSegmented(IconStyle.entries.map { it to stringResource(it.label) }, state.iconStyle, { model.setIconStyle(it, state.iconTint) }, Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "icon-style")
@@ -1590,7 +1593,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val open = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val theme = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().take(64_000).toByteArray().decodeToString() } }.getOrNull()?.let(FolioTheme::fromJson)
+                readThemeText(context, uri)?.let(FolioTheme::fromJson)
             }
             if (theme == null) message = context.getString(R.string.that_file_isn_t_a_folio_theme)
             else { model.applyTheme(theme); undo = true; message = context.getString(R.string.applied, theme.name) }
@@ -1832,7 +1835,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
     val placements = state.widgetPlacements.filter { it.page == 0 }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
-    val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
+    val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY }, maxOf(shownRows, placements.maxOfOrNull { it.row + it.spanY } ?: 0))
     val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
@@ -2714,3 +2717,25 @@ internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
     CardNote(stringResource(when { text.isBlank() -> R.string.custom_search_blank; valid -> R.string.custom_search_note; else -> R.string.custom_search_invalid }))
 }
 
+
+/** A theme file is small text; anything bigger than this is not one, and is never read whole into memory. */
+internal const val MAX_THEME_BYTES = 64_000
+
+internal fun readThemeText(context: android.content.Context, uri: android.net.Uri): String? = runCatching {
+    context.contentResolver.openInputStream(uri)?.use { readCapped(it, MAX_THEME_BYTES)?.decodeToString() }
+}.getOrNull()
+
+/** At most [limit] bytes of [input]; null when there is more than that. */
+internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
+    val out = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    var total = 0
+    while (true) {
+        val read = input.read(buffer, 0, minOf(buffer.size, limit + 1 - total))
+        if (read < 0) break
+        total += read
+        if (total > limit) return null
+        out.write(buffer, 0, read)
+    }
+    return out.toByteArray()
+}

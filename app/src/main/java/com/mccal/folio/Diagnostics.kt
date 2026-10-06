@@ -75,12 +75,21 @@ internal object Diagnostics {
 
     /** Saves the trail and a heartbeat, so the next start can tell what came before a freeze or restart. */
     fun checkpoint(context: Context, visible: Boolean) {
-        runCatching {
-            File(CrashLog.dir(context), TRAIL_FILE).writeText(trailText())
-            context.getSharedPreferences(PREFS, 0).edit().putLong(LAST_SEEN, System.currentTimeMillis())
-                .putBoolean(VISIBLE, visible).putInt(BOOT_COUNT, bootCount(context)).apply()
+        // The text is made here, where the trail is; the file write and the settings read happen on a thread of
+        // their own, so a slow flash write never lands on a frame (the fold pauses and resumes Home).
+        val trail = runCatching { trailText() }.getOrNull() ?: return
+        val now = System.currentTimeMillis()
+        val app = context.applicationContext
+        checkpointWriter.execute {
+            runCatching {
+                File(CrashLog.dir(app), TRAIL_FILE).writeText(trail)
+                app.getSharedPreferences(PREFS, 0).edit().putLong(LAST_SEEN, now)
+                    .putBoolean(VISIBLE, visible).putInt(BOOT_COUNT, bootCount(app)).apply()
+            }
         }
     }
+
+    private val checkpointWriter = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "folio-checkpoint").apply { isDaemon = true } }
 
     private fun bootCount(context: Context) =
         runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT) }.getOrDefault(-1)

@@ -1456,7 +1456,7 @@ fun LauncherScreen(
             appsById[drag.source?.appId]?.let { app ->
                 val size = 66.dp
                 val px = with(LocalDensity.current) { size.toPx() }
-                AppIcon(app, "Moving ${app.label}", Modifier
+                AppIcon(app, stringResource(R.string.moving_named, app.label), Modifier
                     .offset { IntOffset((drag.pointer.x - drag.rootOrigin.x - px / 2).roundToInt(), (drag.pointer.y - drag.rootOrigin.y - px * .65f).roundToInt()) }
                     .size(size).shadow(16.dp, RoundedCornerShape(FolioRadius.GROUP.dp)).clip(RoundedCornerShape(FolioRadius.GROUP.dp)).testTag("drag-ghost"))
             }

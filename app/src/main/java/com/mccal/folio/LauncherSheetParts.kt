@@ -122,7 +122,7 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
                     .padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(app, null, Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
                     Text(app.label, Modifier.padding(start = FolioSpace.LARGE.dp).weight(1f), maxLines = 2)
-                    if (dockSlot != null && enabled) Icon(Icons.Rounded.AddCircle, "Choose ${app.label}", tint = LocalAccent.current.ink)
+                    if (dockSlot != null && enabled) Icon(Icons.Rounded.AddCircle, stringResource(R.string.choose_named, app.label), tint = LocalAccent.current.ink)
                 }
             }
         }

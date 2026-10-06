@@ -54,8 +54,8 @@ internal object FolioActions {
             FolioAction.SPOTLIGHT -> showOnHome(context, ShadePanel.SEARCH)
             FolioAction.NOTIFICATIONS -> showOnHome(context, ShadePanel.NOTIFICATIONS)
             FolioAction.CONTROL_CENTER -> showOnHome(context, ShadePanel.QUICK_SETTINGS)
-            FolioAction.LOCK -> SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
-            FolioAction.SCREENSHOT -> SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+            FolioAction.LOCK -> needsService(context, SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN))
+            FolioAction.SCREENSHOT -> needsService(context, SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT))
             FolioAction.TORCH -> runCatching {
                 val camera = context.getSystemService(CameraManager::class.java)
                 val id = camera.cameraIdList.firstOrNull { camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
@@ -75,8 +75,14 @@ internal object FolioActions {
                 val notifications = context.getSystemService(NotificationManager::class.java)
                 if (notifications.isNotificationPolicyAccessGranted) notifications.setInterruptionFilter(
                     if (action == FolioAction.DND_ON) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL)
+                else IslandEvents.notice(context, context.getString(R.string.needs_dnd_access))
             }
         }
+    }
+
+    /** A gesture bound to an action that needs the accessibility service says so when the service is off, instead of doing nothing. */
+    private fun needsService(context: Context, done: Boolean) {
+        if (!done) IslandEvents.notice(context, context.getString(R.string.needs_accessibility_service))
     }
 
     private fun showOnHome(context: Context, panel: ShadePanel) {

@@ -266,7 +266,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         }))
                 }
                 if (query.isNotEmpty()) Box(Modifier.size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Cancel, "Clear", tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Cancel, stringResource(R.string.clear_text), tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 }
             }
             Text(stringResource(R.string.cancel), color = Color.White, fontSize = FolioType.BODY.sp,

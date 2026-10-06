@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.ui.res.stringResource
 import android.app.Notification
 import android.app.RemoteInput
 import android.content.Context
@@ -110,7 +111,7 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
     Row(modifier.fillMaxWidth().heightIn(min = 40.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f))
         .padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).padding(vertical = 9.dp)) {
-            if (text.isEmpty()) Text(if (sent) "Sent" else to?.let { "Reply to $it" } ?: "Reply", color = Color.White.copy(alpha = .5f),
+            if (text.isEmpty()) Text(if (sent) stringResource(R.string.reply_sent) else to?.let { stringResource(R.string.reply_to_name, it) } ?: stringResource(R.string.reply_hint), color = Color.White.copy(alpha = .5f),
                 fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
             BasicTextField(text, { if (!sent) text = it }, Modifier.fillMaxWidth().focusRequester(focus),
                 textStyle = TextStyle(color = Color.White, fontSize = FolioType.SUBHEAD.sp), cursorBrush = SolidColor(Color.White), maxLines = 4,
@@ -118,10 +119,15 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
                 keyboardActions = KeyboardActions(onSend = { submit() }))
         }
         val ready = text.isNotBlank() || sent
-        Box(Modifier.size(32.dp).clip(CircleShape).background(if (sent) FolioColors.Green else if (ready) LocalAccent.current.fill else Color.White.copy(alpha = .18f))
-            .clickable(enabled = ready && !sent) { submit() }.semantics { contentDescription = if (sent) "Sent" else "Send" },
+        val sendLabel = stringResource(if (sent) R.string.reply_sent else R.string.send_action)
+        // The circle is drawn at 32 dp; the tap is the full 48 dp.
+        Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape)
+            .clickable(enabled = ready && !sent) { submit() }.semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center) {
-            Icon(if (sent) Icons.Rounded.Check else Icons.Rounded.ArrowUpward, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Box(Modifier.size(32.dp).clip(CircleShape).background(if (sent) FolioColors.Green else if (ready) LocalAccent.current.fill else Color.White.copy(alpha = .18f)),
+                contentAlignment = Alignment.Center) {
+                Icon(if (sent) Icons.Rounded.Check else Icons.Rounded.ArrowUpward, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
         }
     }
     if (sent) LaunchedEffect(Unit) { text = "" }
@@ -130,9 +136,13 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
 /** Small glass action pill used under notifications ("Reply", "Mark as Read"). */
 @Composable
 internal fun MessageActionPill(label: String, onClick: () -> Unit) {
-    Box(Modifier.heightIn(min = 32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).clickable(onClick = onClick)
-        .padding(horizontal = FolioSpace.COMFY.dp), contentAlignment = Alignment.Center) {
-        Text(label, color = Color.White, fontSize = 14.sp)
+    // Drawn 32 dp tall; the tap is the full 48 dp.
+    Box(Modifier.heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center) {
+        Box(Modifier.heightIn(min = 32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).padding(horizontal = FolioSpace.COMFY.dp),
+            contentAlignment = Alignment.Center) {
+            Text(label, color = Color.White, fontSize = 14.sp)
+        }
     }
 }
 

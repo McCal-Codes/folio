@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -30,13 +31,17 @@ class MarketRefreshJob : JobService() {
                 // The gate is asked again here, not only when the job was scheduled: a supporter's code can run out
                 // between one day and the next, and a phone that can't open the store shouldn't be going online for
                 // it. The setting is asked again for the same reason.
-                if (MarketAccess.isOpen(applicationContext) && prefs.backgroundRefresh) {
+                // Safe Mode pauses optional work, and a refresh that finds packages is not what a crash loop needs.
+                if (SafeMode.isOn(applicationContext)) {
+                    schedule(applicationContext)
+                } else if (MarketAccess.isOpen(applicationContext) && prefs.backgroundRefresh) {
                     refreshSources(applicationContext)
                 } else {
                     schedule(applicationContext)
                 }
             } finally {
-                jobFinished(params, false)
+                // Android already knows when it stopped the job itself; telling it again is only noise.
+                if (isActive) jobFinished(params, false)
             }
         }
         return true

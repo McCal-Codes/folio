@@ -973,11 +973,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         private set
     fun applyTheme(theme: FolioTheme) {
         themeUndo = FolioTheme.of(mutable.value, "Previous")
-        val packs = IconPacks.installed(getApplication()).mapTo(mutableSetOf()) { it.packageName }
-        updateSettings(soon = false) { it.withTheme(theme, packs) }
+        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } }
     }
-    fun undoTheme() { themeUndo?.let { previous -> themeUndo = null; val packs = IconPacks.installed(getApplication()).mapTo(mutableSetOf()) { it.packageName }
-        updateSettings(soon = false) { it.withTheme(previous, packs) } } }
+    fun undoTheme() { themeUndo?.let { previous -> themeUndo = null
+        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } }
+    /** The icon packs on this phone, asked of Android off the main thread. */
+    private suspend fun installedPackNames() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        IconPacks.installed(getApplication()).mapTo(mutableSetOf()) { it.packageName }
+    }
     fun setPageStyle(page: Int, style: PageStyle) = updateSettings(soon = false) {
         it.copy(pageStyles = if (style.isDefault) it.pageStyles - page else it.pageStyles + (page to style))
     }
@@ -1022,7 +1025,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return true
     }
     /** Turns a Focus on (or all off with null) and applies it to Android. */
-    fun setFocus(id: String?) {
+    fun setFocus(id: String?, byHand: Boolean = true) {
+        // Turned off by hand while its schedule covers now: it stays off until that window ends (see FocusDismissals).
+        if (byHand) FocusDismissals.record(getApplication(), mutable.value.focusModes, mutable.value.activeFocus, id)
         updateSettings(soon = false) { it.copy(activeFocus = id?.takeIf { f -> it.focusModes.any { m -> m.id == f } }) }
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
@@ -1341,10 +1346,19 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var persistJob: kotlinx.coroutines.Job? = null
+    private var persistPending = false
     /** Coalesces rapid changes (sliders) into one write shortly after they stop. */
     private fun persistSoon() {
         persistJob?.cancel()
+        persistPending = true
         persistJob = viewModelScope.launch { kotlinx.coroutines.delay(300); persist() }
+    }
+
+    /** Writes a change that is still waiting out its delay, so leaving Home within that moment doesn't lose it. */
+    fun flushPending() {
+        if (!persistPending) return
+        persistJob?.cancel()
+        persist()
     }
 
     /** Whether the saved Home layout couldn't be read (it's kept untouched and editing is paused until the user decides). */
@@ -1365,6 +1379,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun persist() {
+        persistPending = false
         if (needsMigration || statePayloadInvalid) return
         traced("Folio.persist", ::writeState)
     }
@@ -1469,6 +1484,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     } }
 
     override fun onCleared() {
+        flushPending()
         launcherApps.unregisterCallback(callback)
         if (FolioSettingsBridge.liveModel?.get() === this) FolioSettingsBridge.liveModel = null
     }

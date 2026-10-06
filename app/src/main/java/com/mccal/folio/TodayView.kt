@@ -176,7 +176,7 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
 
 @Composable
 private fun TodayArrow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(36.dp).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, label, tint = Color.White, modifier = Modifier.size(22.dp))
     }
 }
