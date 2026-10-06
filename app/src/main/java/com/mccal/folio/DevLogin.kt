@@ -59,7 +59,6 @@ internal object DevLockSession {
 
 /** Developer's words stay English, one per line, like the rest of Folio Dev's page (DevBuild.kt). */
 private object DevLoginText {
-    const val TITLE = "Developer" // english-only
     const val LOCKED_LEAD = "Settings for testing Folio Dev. Locked until you set a passphrase." // english-only
     const val ENTER_LEAD = "Enter your passphrase." // english-only
     const val SET_LEAD = "At least 8 characters. It cannot be recovered: if you forget it, reinstall Folio Dev to clear it." // english-only
@@ -105,7 +104,6 @@ internal fun DeveloperPage(onShowBuild: () -> Unit) {
     val now by produceState(System.currentTimeMillis(), record) { while (true) { value = System.currentTimeMillis(); delay(1_000) } }
     val waitLeft = ((record?.lockedUntilMs ?: 0L) - now).coerceAtLeast(0L)
 
-    Text(DevLoginText.TITLE, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.testTag("developer-title"))
     when {
         record != null && unlocked && mode == DevMode.AUTO -> {
             Text(DevLoginText.UNLOCKED_LEAD, style = MaterialTheme.typography.bodyMedium)
