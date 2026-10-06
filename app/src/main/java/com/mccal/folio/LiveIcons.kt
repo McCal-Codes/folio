@@ -305,7 +305,8 @@ internal object ClearGlyphs {
 @Composable
 internal fun InstallRing(progress: Float, modifier: Modifier) {
     val shown by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0f, 1f), label = "install progress")
-    Canvas(modifier.semantics { contentDescription = "Installing, ${(progress * 100).toInt()} percent" }) {
+    val installingText = androidx.compose.ui.res.stringResource(R.string.installing_percent, (progress * 100).toInt())
+    Canvas(modifier.semantics { contentDescription = installingText }) {
         drawRect(Color.Black.copy(alpha = .45f))
         val r = size.minDimension * .22f
         val c = Offset(size.width / 2, size.height / 2)

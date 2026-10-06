@@ -342,7 +342,8 @@ internal fun HomePagePane(
                 onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }))
             if (!state.homeReady) LinearProgressIndicator(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp))
             if (state.error != null) Text(state.error, color = Color.White,
-                modifier = Modifier.clickable(onClick = onProblem).padding(FolioSpace.MEDIUM.dp))
+                modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = stringResource(R.string.fix_saved_layout), onClick = onProblem)
+                    .heightIn(min = FolioTouch.MIN.dp).padding(FolioSpace.MEDIUM.dp))
         }
     }
 }
