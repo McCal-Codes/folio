@@ -17,7 +17,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Changed
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
 
-## [0.6.8] - Unreleased
+## [0.6.8] - 2026-10-06
 
 ### Added
 - **Edit an app's icon on its own:** long-press an app, More › Edit Icon, and give that one icon its own style (Default, Dark, Tinted or Clear) and shape, or leave either like the other icons. It shows everywhere Folio draws the icon, Reset Icon puts it back, backups carry the choices, and the icon pictures Folio saves are untouched, so nothing can be left stale. Custom pictures and per-app icon-pack icons are not part of this yet.
@@ -92,10 +92,6 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Big theme files are refused:** choosing a file that isn't a Folio theme, but is very large, no longer reads it all into memory. It says it isn't a Folio theme, as before.
 - **Less waiting on the main thread:** looking up your icon packs for the Icons page and for a theme, and saving the trail Folio keeps for Diagnostics, now happen off the thread that draws Home. A pack that was updating when Folio read it is tried again instead of being treated as empty.
 - **An update that can't be saved says so:** if Folio can't put a checked update in place after downloading it, it says the update couldn't be downloaded instead of showing it as ready.
-- **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
-- **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
-- **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
-- **Even rows at the top of Home:** on a page with no widget in the first two rows, the first rows sat closer together than the rest. Every row now has the same spacing, and the page keeps the height it had, so it still fits (#13).
 
 ## [0.6.7.3] - 2026-09-28
 

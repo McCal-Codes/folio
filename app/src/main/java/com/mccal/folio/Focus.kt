@@ -155,65 +155,15 @@ internal object FocusSchedules {
             .filter { it.isAfter(now) }.minOrNull()
     }
 
-    /** The next time after [now] that [schedule]'s window ends, so a Focus you turned off by hand can stay off until then. */
-    fun windowEnd(schedule: FocusSchedule, now: java.time.LocalDateTime): java.time.LocalDateTime =
-        (0..1).map { day -> now.toLocalDate().plusDays(day.toLong()).atStartOfDay().plusMinutes(schedule.endMinute.toLong()) }.first { it.isAfter(now) }
-
     /**
-     * When the alarm for [next] (a local time) should fire: the earlier of the two instants a repeated hour (the clocks
-     * going back) gives it is already past, which would fire at once and reschedule itself again and again, so the
-     * later one is used, and a minute from now if even that is past.
+     * What the active Focus should be at a boundary: a scheduled Focus turns on; a Focus whose schedule just
+     * ended turns off; a Focus turned on by hand (no schedule, or outside it) is left alone.
      */
-    fun alarmAt(next: java.time.LocalDateTime, now: java.time.Instant, zone: java.time.ZoneId): java.time.Instant {
-        val zoned = next.atZone(zone)
-        val first = zoned.toInstant()
-        if (first.isAfter(now)) return first
-        val later = zoned.withLaterOffsetAtOverlap().toInstant()
-        return if (later.isAfter(now)) later else now.plusSeconds(60)
-    }
-
-    /**
-     * What the active Focus should be at a boundary: a scheduled Focus turns on, unless you turned it off by hand and
-     * its window ([dismissedUntil], by Focus id) has not ended; a Focus whose schedule just ended turns off; a Focus
-     * turned on by hand (no schedule, or outside it) is left alone.
-     */
-    fun activeAt(
-        modes: List<FocusMode>, active: String?, now: java.time.LocalDateTime, previous: java.time.LocalDateTime,
-        dismissedUntil: Map<String, java.time.LocalDateTime> = emptyMap(),
-    ): String? {
-        modes.firstOrNull { m -> m.schedule?.covers(now) == true && dismissedUntil[m.id]?.isAfter(now) != true }?.let { return it.id }
+    fun activeAt(modes: List<FocusMode>, active: String?, now: java.time.LocalDateTime, previous: java.time.LocalDateTime): String? {
+        scheduledNow(modes, now)?.let { return it.id }
         val current = modes.firstOrNull { it.id == active } ?: return active
         val schedule = current.schedule ?: return active
         return if (schedule.covers(previous) && !schedule.covers(now)) null else active
-    }
-}
-
-/**
- * A scheduled Focus you turned off by hand (or replaced with another) stays off until its window ends, instead of
- * switching itself back on the next time Home starts or another schedule's alarm goes off. Kept with the Focus rules.
- */
-internal object FocusDismissals {
-    private const val KEY = "dismissed_until"
-    private fun prefs(context: android.content.Context) = context.getSharedPreferences("focus_rules", 0)
-
-    fun load(context: android.content.Context): Map<String, java.time.LocalDateTime> = runCatching {
-        val o = org.json.JSONObject(prefs(context).getString(KEY, "{}") ?: "{}")
-        o.keys().asSequence().associateWith { java.time.LocalDateTime.parse(o.getString(it)) }
-    }.getOrDefault(emptyMap())
-
-    private fun save(context: android.content.Context, map: Map<String, java.time.LocalDateTime>) {
-        val o = org.json.JSONObject(); map.forEach { (id, until) -> o.put(id, until.toString()) }
-        prefs(context).edit().putString(KEY, o.toString()).apply()
-    }
-
-    /** [turnedOn] is the Focus the person chose now (null for off): a scheduled Focus that was on and is not any more is dismissed for this window. */
-    fun record(context: android.content.Context, modes: List<FocusMode>, wasOn: String?, turnedOn: String?, now: java.time.LocalDateTime = java.time.LocalDateTime.now()) {
-        val next = load(context).filterValues { it.isAfter(now) }.toMutableMap()
-        turnedOn?.let { next.remove(it) }
-        val before = modes.firstOrNull { it.id == wasOn }
-        val schedule = before?.schedule
-        if (before != null && schedule != null && before.id != turnedOn && schedule.covers(now)) next[before.id] = FocusSchedules.windowEnd(schedule, now)
-        save(context, next)
     }
 }
 
@@ -256,20 +206,17 @@ internal object FocusScheduler {
         val json = runCatching { org.json.JSONObject(prefs.getString(SettingKeys.STATE, null) ?: return) }.getOrNull() ?: return
         val modes = live?.state?.value?.focusModes ?: focusModesFromJson(json.optJSONArray("focusModes"))
         val active = live?.state?.value?.activeFocus ?: json.optString("activeFocus").takeIf { it.isNotEmpty() }
-        val wanted = FocusSchedules.activeAt(modes, active, local(now), local(since), FocusDismissals.load(context))
-        // The schedule's own change, not a hand: it must not count as turning a Focus off.
-        if (wanted != active) setActive(context, wanted, byHand = false)
+        val wanted = FocusSchedules.activeAt(modes, active, local(now), local(since))
+        if (wanted != active) setActive(context, wanted)
         schedule(context, modes, now)
     }
 
     /** Turns a Focus on (or all off) from anywhere: through Home when it's running, otherwise straight to the saved state. */
-    fun setActive(context: android.content.Context, id: String?, byHand: Boolean = true) {
-        FolioSettingsBridge.liveModel?.get()?.let { it.setFocus(id, byHand); return }
+    fun setActive(context: android.content.Context, id: String?) {
+        FolioSettingsBridge.liveModel?.get()?.let { it.setFocus(id); return }
         val prefs = context.getSharedPreferences(SettingKeys.PREFS, 0)
         val json = runCatching { org.json.JSONObject(prefs.getString(SettingKeys.STATE, null) ?: return) }.getOrNull() ?: return
         val modes = focusModesFromJson(json.optJSONArray("focusModes"))
-        // Home is not running to record it, so a Focus turned off by hand through here is dismissed from the saved state.
-        if (byHand) FocusDismissals.record(context, modes, json.optString("activeFocus").takeIf { it.isNotEmpty() }, id)
         prefs.edit().putString(SettingKeys.STATE, json.put("activeFocus", id ?: "").toString()).apply()
         FocusController.apply(context, modes, modes.firstOrNull { it.id == id })
     }
@@ -288,7 +235,7 @@ internal object FocusScheduler {
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
         val next = FocusSchedules.nextBoundary(modes, local(now))
         if (next == null) { alarms.cancel(pending); return }
-        val at = FocusSchedules.alarmAt(next, now, java.time.ZoneId.systemDefault()).toEpochMilli()
+        val at = next.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         // Inexact within a minute: no exact-alarm permission needed, and a Focus a few seconds late is fine.
         alarms.setWindow(android.app.AlarmManager.RTC_WAKEUP, at, 60_000, pending)
     }
