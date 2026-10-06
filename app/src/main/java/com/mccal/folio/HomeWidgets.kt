@@ -373,6 +373,7 @@ internal fun WidgetActions(
      * through [onConfigure] instead - that gate only ever fires for a real `AppWidgetProviderInfo`, which a
      * built-in widget's negative id never has, so this is a separate entry rather than folded into it. */
     onCustomize: (() -> Unit)? = null,
+    onPlace: (() -> Unit)? = null,
     stackCards: List<Int> = emptyList(),
     stackLabel: (Int) -> String? = { null },
     stackRotate: Boolean = true,
@@ -458,6 +459,7 @@ internal fun WidgetActions(
         SheetGroup {
             if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
             if (onCustomize != null) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette) { onCustomize() }; MenuDivider() }
+            if (onPlace != null) { MenuRow(stringResource(R.string.place_freely), Icons.Rounded.OpenWith) { onPlace() }; MenuDivider() }
             MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
             if (homePages > 1) {
                 MenuDivider()

@@ -1657,4 +1657,7 @@
     <string name="hours_12">12시간</string>
     <string name="hours_24">24시간</string>
     <string name="show_am_or_pm">오전/오후 표시</string>
+    <string name="place_freely">자유롭게 배치</string>
+    <string name="snap_to_grid">격자에 맞추기</string>
+    <string name="taken_by_apps">앱이 있는 자리예요</string>
 </resources>

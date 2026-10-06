@@ -1684,4 +1684,7 @@
     <string name="hours_12">12-hour</string>
     <string name="hours_24">24-hour</string>
     <string name="show_am_or_pm">Show AM or PM</string>
+    <string name="place_freely">Place Freely</string>
+    <string name="snap_to_grid">Snap to Grid</string>
+    <string name="taken_by_apps">Taken by apps</string>
 </resources>

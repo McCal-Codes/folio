@@ -69,6 +69,8 @@ fun encodeLayoutBackup(
         val descriptor = descriptorBySlot[placement.slot]
         val item = JSONObject().put("slot", placement.slot).put("page", placement.page)
             .put("column", placement.column).put("row", placement.row).put("spanX", placement.spanX).put("spanY", placement.spanY)
+        if (placement.offsetX != 0f) item.put("offsetX", placement.offsetX.toDouble())
+        if (placement.offsetY != 0f) item.put("offsetY", placement.offsetY.toDouble())
         when {
             placement.id in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET) -> item.put("builtinId", placement.id)
             saved != null -> item.put("provider", saved.providerComponent).put("userSerial", saved.userSerial)
@@ -195,7 +197,9 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
             require(builtin in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET)); builtin
         } else NEEDS_BINDING_WIDGET
         val placement = WidgetPlacement(slot, id, item.strictInt("page"), item.strictInt("column"), item.strictInt("row"),
-            item.strictInt("spanX"), item.strictInt("spanY")).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
+            item.strictInt("spanX"), item.strictInt("spanY"),
+            item.optDouble("offsetX", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f,
+            item.optDouble("offsetY", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
         require(validBackupPlacement(placement) && layout.widgetPlacements.none { backupOverlaps(it, placement) })
         require(placement.coveredIndices().none { layout.slotAt(it) != null })
         val restore = if (id == NEEDS_BINDING_WIDGET) {

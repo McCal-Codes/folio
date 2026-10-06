@@ -929,6 +929,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return moveWidgetTo(from, target.page * HOME_CELLS + target.row * GRID_COLUMNS + target.column)
     }
     fun moveWidgetTo(slot: Int, index: Int) = commitLayout(moveWidget(mutable.value.layout, slot, index))
+    fun placeWidgetFreely(slot: Int, column: Float, row: Float) = commitLayout(placeWidgetFreely(mutable.value.layout, slot, column, row))
     fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = commitLayout(resizeWidget(mutable.value.layout, slot, spanX, spanY))
     fun placeWidget(placement: WidgetPlacement) = commitLayout(placeWidget(mutable.value.layout, placement))
     fun placement(slot: Int) = mutable.value.layout.placement(slot)
@@ -1384,7 +1385,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop)
         val widgets = JSONArray().also { array -> s.widgetPlacements.forEach { w -> array.put(JSONObject()
             .put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
-            .put("spanX", w.spanX).put("spanY", w.spanY)) } }
+            .put("spanX", w.spanX).put("spanY", w.spanY)
+            .apply { if (w.offsetX != 0f) put("offsetX", w.offsetX.toDouble()); if (w.offsetY != 0f) put("offsetY", w.offsetY.toDouble()) }) } }
         val folders = JSONArray().also { array -> s.folders.forEach { folder -> array.put(JSONObject()
             .put("id", folder.id).put("title", folder.title).put("apps", JSONArray(folder.appIds))) } }
         val restores = JSONArray().also { array -> s.widgetRestores.forEach { restore -> array.put(JSONObject()
@@ -1553,7 +1555,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         List(widgetArray.length()) { index ->
             val w = widgetArray.getJSONObject(index)
             WidgetPlacement(strictInt(w, "slot"), strictInt(w, "id"), strictInt(w, "page"), strictInt(w, "column"), strictInt(w, "row"),
-                strictInt(w, "spanX"), strictInt(w, "spanY")).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
+                strictInt(w, "spanX"), strictInt(w, "spanY"),
+                w.optDouble("offsetX", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f,
+                w.optDouble("offsetY", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
         }.also { loaded ->
             require(loaded.map { it.slot }.distinct().size == loaded.size) { "Widget placement slots must be unique" }
             loaded.forEach { placement ->

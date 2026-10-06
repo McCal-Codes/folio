@@ -154,6 +154,7 @@ fun LauncherScreen(
     val resize = rememberWidgetResize()
     // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
     var clockEditSlot by remember { mutableStateOf<Int?>(null) }
+    var placeSlot by remember { mutableStateOf<Int?>(null) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -1172,7 +1173,8 @@ fun LauncherScreen(
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
-                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET) {{ clockEditSlot = placement.slot; sheet = "" }} else null)
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
+                                onPlace = if (placement.id == BIG_CLOCK_WIDGET) {{ placeSlot = placement.slot; sheet = "" }} else null)
                         }
                     }
                 }
@@ -1526,6 +1528,13 @@ fun LauncherScreen(
                             else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
                 }
             }
+        }
+        placeSlot?.let { slot ->
+            val placement = model.placement(slot)
+            val bounds = drag.regions[DropTarget.Widget(slot)]?.bounds
+            if (placement == null || bounds == null) LaunchedEffect(slot) { placeSlot = null }
+            else WidgetPlaceOverlay(placement, bounds, state.layout, resize.pitchX, if (placement.row < 2) resize.topPitch else resize.appPitch,
+                onApply = { column, row -> model.placeWidgetFreely(slot, column, row); placeSlot = null }, onClose = { placeSlot = null })
         }
         resize.slot?.let { slot ->
             val placement = model.placement(slot)

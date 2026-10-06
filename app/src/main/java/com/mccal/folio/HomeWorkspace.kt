@@ -508,8 +508,12 @@ internal fun SharedHomeGrid(
             key("widget-${placement.slot}") {
                 val width = (cellWidth * placement.spanX - 10.dp).coerceAtLeast(1.dp)
                 val row = displayRow(placement.row)
-                val x = cellX(placement.column, row) + 5.dp
-                val y = rowTop(row)
+                // A freely placed widget drifts part of a cell from the cells it keeps; the two-column and half-folded
+                // layouts move rows around, so there it stays on its cells.
+                val free = !geometry.splitColumns && hinge == null
+                val rowPitch = if (row + 1 < GRID_ROWS) rowTop(row + 1) - rowTop(row) else rowTop(row) - rowTop(row - 1)
+                val x = cellX(placement.column, row) + 5.dp + if (free) cellWidth * placement.offsetX else 0.dp
+                val y = rowTop(row) + if (free) rowPitch * placement.offsetY else 0f
                 val height = (cells.spanHeight(row, placement.spanY) - 18f).coerceAtLeast(48f)
                 if (placement == pending) {
                     // TalkBack names the widget by what its app calls it, not by the class behind it.

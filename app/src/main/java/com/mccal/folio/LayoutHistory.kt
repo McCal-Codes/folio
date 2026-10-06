@@ -67,7 +67,8 @@ internal object LayoutHistory {
         .put("slots", ids(l.slots)).put("leadingSlots", ids(l.leadingSlots)).put("dock", ids(l.dock)).put("minPages", l.minPages)
         .put("widgets", JSONArray().also { a -> l.widgetPlacements.forEach { w ->
             a.put(JSONObject().put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
-                .put("spanX", w.spanX).put("spanY", w.spanY)) } })
+                .put("spanX", w.spanX).put("spanY", w.spanY)
+                .apply { if (w.offsetX != 0f) put("offsetX", w.offsetX.toDouble()); if (w.offsetY != 0f) put("offsetY", w.offsetY.toDouble()) }) } })
         .put("folders", JSONArray().also { a -> l.folders.forEach { f ->
             a.put(JSONObject().put("id", f.id).put("title", f.title).put("apps", JSONArray(f.appIds))) } })
         .put("restores", JSONArray().also { a -> l.widgetRestores.forEach { r ->
@@ -82,7 +83,9 @@ internal object LayoutHistory {
             slots = idList(o.optJSONArray("slots")).let { if (legacy) migrateLegacyHomeSlots(it) else it },
             dock = idList(o.optJSONArray("dock")).let { d -> List(d.size.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { d.getOrNull(it) } },
             widgetPlacements = objects("widgets") { w -> WidgetPlacement(w.getInt("slot"), w.getInt("id"), w.getInt("page"), w.getInt("column"),
-                w.getInt("row"), w.getInt("spanX"), w.getInt("spanY")).let { if (legacy) migrateLegacyWidgetPlacement(it) else it } },
+                w.getInt("row"), w.getInt("spanX"), w.getInt("spanY"),
+                w.optDouble("offsetX", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f,
+                w.optDouble("offsetY", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f).let { if (legacy) migrateLegacyWidgetPlacement(it) else it } },
             folders = objects("folders") { f -> FolderEntry(f.getString("id"), f.optString("title"),
                 f.optJSONArray("apps")?.let { a -> List(a.length()) { a.getString(it) } }.orEmpty()) },
             widgetRestores = objects("restores") { r -> WidgetRestore(r.getInt("slot"), r.getString("provider"), r.getLong("userSerial"),
