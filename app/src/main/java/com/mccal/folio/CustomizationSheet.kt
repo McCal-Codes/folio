@@ -88,7 +88,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -100,6 +100,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         // The pages you open once live under General, as iOS keeps them under General › About.
         SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
+        SYSTEM_BRIDGE -> ADVANCED
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
         else -> OVERVIEW
@@ -129,6 +130,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         THEMES -> R.string.themes
         TWEAK, LIBRARY_TWEAK, FOLD_TWEAK -> R.string.tweak
         ADVANCED -> R.string.advanced
+        SYSTEM_BRIDGE -> R.string.system_bridge
         NOTIFICATIONS -> R.string.notifications_control_center
         SEARCH -> R.string.search_app_library
         TODAY -> R.string.today_view
@@ -826,6 +828,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(if (SafeMode.active) stringResource(R.string.folio_is_running_in_safe_mode_optional_f)
                             else stringResource(R.string.if_folio_closes_unexpectedly_twice_right))
                     }
+                    SettingsCard(null) {
+                        IosNavRow(stringResource(R.string.system_bridge), null, { onPage(CustomizationPage.SYSTEM_BRIDGE) }, "system-bridge-row")
+                    }
                     CapabilitiesCard()
                     RecentActivityCard()
                     CrashReportsCard()
@@ -914,6 +919,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.TWEAK_LIBRARY -> TweakLibraryPage(state, model) { tweakId = it.id; onPage(CustomizationPage.LIBRARY_TWEAK) }
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.SUPPORTER -> SupporterPage()
+                CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
                 CustomizationPage.FOCUS -> FocusListPage(state, model) { focusId = it; onPage(CustomizationPage.FOCUS_MODE) }
@@ -1290,6 +1296,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.privacy_permissions, R.string.settings_keywords_privacy_permissions, CustomizationPage.PERMISSIONS),
     Triple(R.string.settings_safe_mode_crash_reports, R.string.settings_keywords_safe_mode_crash_reports, CustomizationPage.ADVANCED),
     Triple(R.string.screenshot_mode, R.string.settings_keywords_screenshot_mode, CustomizationPage.ADVANCED),
+    Triple(R.string.system_bridge, R.string.settings_keywords_system_bridge, CustomizationPage.SYSTEM_BRIDGE),
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
@@ -1423,6 +1430,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.save_backup_to_files to CustomizationPage.BACKUP,
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
     R.string.capability_open_settings to CustomizationPage.ADVANCED,
+    R.string.allow_system_access to CustomizationPage.SYSTEM_BRIDGE,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -2805,4 +2813,67 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         out.write(buffer, 0, read)
     }
     return out.toByteArray()
+}
+
+/** Advanced › System Bridge (ADR 0009): the ways Folio can reach more of the system, what each lets it do, and the one switch that turns the extra ones off. */
+@Composable private fun SystemBridgePage() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var off by remember { mutableStateOf(SystemBridge.isOff(context)) }
+    val safe = SafeMode.active
+    val broker = remember { SystemBridge.broker(context) }
+    fun read() = broker.states()
+    var states by remember { mutableStateOf(read()) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, off) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { states = read() } }
+    LaunchedEffect(off) { states = read() }
+    Text(stringResource(R.string.system_bridge_intro), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp))
+    if (safe) CardNote(stringResource(R.string.system_bridge_safe_mode), Modifier.testTag("bridge-safe-mode"))
+    SettingsCard(null) {
+        SettingsSwitch(stringResource(R.string.allow_system_access), !off, { on -> off = !on; SystemBridge.setOff(context, off) }, "bridge-allow-switch")
+        CardNote(stringResource(R.string.allow_system_access_note))
+    }
+    SettingsCard(stringResource(R.string.bridge_ways)) {
+        BridgeWay(PrivilegeTier.STANDARD, R.string.bridge_way_standard, R.string.bridge_way_standard_uses, R.string.bridge_state_always, "A0 to A2", "bridge-way-standard")
+        val gated = SystemBridge.wayLabel(off, safe)
+        BridgeWay(PrivilegeTier.SHIZUKU, R.string.bridge_way_shizuku, R.string.bridge_way_shizuku_uses, gated, "A3", "bridge-way-shizuku")
+        BridgeWay(PrivilegeTier.ROOT, R.string.bridge_way_root, R.string.bridge_way_root_uses, gated, "A4", "bridge-way-root")
+        BridgeWay(PrivilegeTier.HOOKS, R.string.bridge_way_system, R.string.bridge_way_system_uses, gated, "A5", "bridge-way-system")
+        BridgeWay(null, R.string.bridge_way_device, R.string.bridge_way_device_uses, gated, "", "bridge-way-device")
+        CardNote(stringResource(R.string.bridge_knox))
+    }
+    SettingsCard(stringResource(R.string.bridge_does)) {
+        states.forEach { s ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-cap-${s.capability.id}"), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(SystemBridge.capabilityName(s.capability)), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(SystemBridge.stateLabel(s)), style = MaterialTheme.typography.bodyMedium,
+                    color = if (s.available) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        CardNote(stringResource(R.string.bridge_if_stops))
+    }
+    SettingsCard(stringResource(R.string.bridge_recent)) {
+        val calls = remember { SystemBridge.recentCalls() }
+        if (calls.isEmpty()) Text(stringResource(R.string.bridge_recent_none), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+        calls.forEach { e ->
+            Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp)) {
+                Text(stringResource(SystemBridge.capabilityName(e.capability)), style = MaterialTheme.typography.bodyMedium)
+                Text("${e.via?.code ?: "-"} · ${stringResource(SystemBridge.outcomeLabel(e.outcome))}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        CardNote(stringResource(R.string.bridge_recent_note))
+    }
+}
+
+/** One way of getting access: its tier code, what it is for and the state in words (never color alone). */
+@Composable private fun BridgeWay(tier: PrivilegeTier?, @androidx.annotation.StringRes name: Int, @androidx.annotation.StringRes uses: Int,
+    @androidx.annotation.StringRes state: Int, code: String, tag: String) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(vertical = FolioSpace.SMALL.dp).semantics(mergeDescendants = true) {}.testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(if (code.isEmpty()) stringResource(name) else "$code · ${stringResource(name)}", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(uses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(stringResource(state), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = FolioSpace.SMALL.dp),
+            color = if (tier == PrivilegeTier.STANDARD) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
