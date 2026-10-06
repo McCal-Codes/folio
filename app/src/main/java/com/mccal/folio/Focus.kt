@@ -268,6 +268,8 @@ internal object FocusScheduler {
         val prefs = context.getSharedPreferences(SettingKeys.PREFS, 0)
         val json = runCatching { org.json.JSONObject(prefs.getString(SettingKeys.STATE, null) ?: return) }.getOrNull() ?: return
         val modes = focusModesFromJson(json.optJSONArray("focusModes"))
+        // Home is not running to record it, so a Focus turned off by hand through here is dismissed from the saved state.
+        if (byHand) FocusDismissals.record(context, modes, json.optString("activeFocus").takeIf { it.isNotEmpty() }, id)
         prefs.edit().putString(SettingKeys.STATE, json.put("activeFocus", id ?: "").toString()).apply()
         FocusController.apply(context, modes, modes.firstOrNull { it.id == id })
     }

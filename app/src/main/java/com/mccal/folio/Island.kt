@@ -160,7 +160,11 @@ class IslandListenerService : NotificationListenerService() {
         notificationsMutable.value = emptyList() // don't keep other apps' content after access is gone
     }
 
+    /** Set before anything is torn down, so a pass already running on the worker cannot register callbacks afterwards. */
+    @Volatile private var destroyed = false
+
     override fun onDestroy() {
+        destroyed = true
         workerHandler.removeCallbacksAndMessages(null)
         clearControllerCallbacks()
         worker.quitSafely()
@@ -442,6 +446,7 @@ class IslandListenerService : NotificationListenerService() {
         val tokens = controllers.map { it.sessionToken }.toSet()
         // The worker thread changes this map and the main thread clears it when access goes, so both hold the same lock.
         synchronized(controllerCallbacks) {
+            if (destroyed) return
             controllerCallbacks.keys.filter { it !in tokens }.forEach { token ->
                 controllerCallbacks.remove(token)?.let { (controller, callback) -> controller.unregisterCallback(callback) }
             }
