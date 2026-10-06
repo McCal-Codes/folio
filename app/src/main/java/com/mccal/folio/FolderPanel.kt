@@ -57,6 +57,8 @@ internal fun FolderPanel(
     color: Long? = null, onColor: (Long?) -> Unit = {}, onAddApps: (() -> Unit)? = null,
     size: FolderSize? = null, onSize: (FolderSize?) -> Unit = {},
     onReorder: (String, Int) -> Unit = { _, _ -> }, onSortAlphabetically: (() -> Unit)? = null,
+    /** Resize, reorder by drag, drag out past the edge and Sort A to Z: [FeatureGate.FOLDER_EDITING]. */
+    editing: Boolean = true,
 ) {
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
@@ -188,7 +190,7 @@ internal fun FolderPanel(
                             }
                         }
                     }
-                    if (onSortAlphabetically != null) {
+                    if (editing && onSortAlphabetically != null) {
                         MenuDivider()
                         MenuRow(stringResource(R.string.sort_a_to_z), icon = Icons.Rounded.SortByAlpha, tag = "folder-sort") {
                             folderMenu = false; onSortAlphabetically()
@@ -254,7 +256,8 @@ internal fun FolderPanel(
                                         }
                                     }
                                     .zIndex(if (isDragging) 1f else 0f)
-                                    .pointerInput(appId) {
+                                    .pointerInput(appId, editing) {
+                                        if (!editing) return@pointerInput
                                         detectDragGesturesAfterLongPress(
                                             onDragStart = { draggingAppId = appId; dragOffset = androidx.compose.ui.geometry.Offset.Zero
                                                 pulledOut = false; haptic.perform(FolioHaptic.PickedUp) },
@@ -303,7 +306,7 @@ internal fun FolderPanel(
         // Resize, the same corner-drag gesture as a Home widget (LauncherScreen.kt's resize handle) - free-form
         // in dp rather than snapped to grid cells, since a folder doesn't live on Home's app grid. Committed once
         // on release, like the widget gesture, not on every frame; the box itself already tracks live during drag.
-        Box(Modifier.align(Alignment.BottomEnd).size(FolioTouch.MIN.dp)
+        if (editing) Box(Modifier.align(Alignment.BottomEnd).size(FolioTouch.MIN.dp)
             .pointerInput(folder.id, minFolderW, maxFolderW, minFolderH, maxFolderH) {
                 detectDragGestures(
                     onDragEnd = { onSize(FolderSize(folderW, folderH)) },

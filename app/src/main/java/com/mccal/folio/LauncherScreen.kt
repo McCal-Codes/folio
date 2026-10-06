@@ -152,6 +152,9 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
+    // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -462,7 +465,7 @@ fun LauncherScreen(
     // Dropping one app onto another creates a folder with both (like iOS/Android), not a reorder - a drag out of
     // a folder is unaffected, that already goes through removeAppFromFolder in finishDrag regardless of target.
     fun folderMergeTarget(sourceAppId: String?, index: Int): String? {
-        if (sourceAppId == null || drag.source?.folderId != null) return null
+        if (!folderEditing || sourceAppId == null || drag.source?.folderId != null) return null
         val occupant = state.layout.slotAt(index) ?: return null
         return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
     }
@@ -1670,7 +1673,7 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
-                    size = state.folderSizes[id], onSize = { model.setFolderSize(id, it) },
+                    size = if (folderEditing) state.folderSizes[id] else null, onSize = { model.setFolderSize(id, it) }, editing = folderEditing,
                     onReorder = { appId, index -> model.moveFolderApp(id, appId, index) },
                     onSortAlphabetically = { model.sortFolderAlphabetically(id) },
                     // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
