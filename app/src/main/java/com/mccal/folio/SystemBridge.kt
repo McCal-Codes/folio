@@ -56,6 +56,7 @@ internal object SystemBridge {
         FolioCapability.SHADE_OPEN -> R.string.bridge_cap_shade
         FolioCapability.NOTIFICATIONS_READ -> R.string.bridge_cap_notifications
         FolioCapability.HINGE_ANGLE -> R.string.bridge_cap_hinge
+        FolioCapability.HINGE_ANGLE_CONTINUOUS -> R.string.bridge_cap_hinge_continuous
         FolioCapability.SYSTEM_ACTIONS -> R.string.bridge_cap_actions
         FolioCapability.SYSTEM_STATUS_MODULES -> R.string.bridge_cap_status
         FolioCapability.SYSTEM_QUICK_SETTINGS_LAYOUT -> R.string.bridge_cap_quick_settings

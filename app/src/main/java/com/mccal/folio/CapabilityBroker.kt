@@ -13,6 +13,8 @@ internal enum class FolioCapability(val id: String, val minTier: PrivilegeTier, 
     SHADE_OPEN("system.shade.open", PrivilegeTier.ACCESSIBILITY, OperationRisk.REVERSIBLE),
     NOTIFICATIONS_READ("notification.metadata.read", PrivilegeTier.NOTIFICATIONS, OperationRisk.OBSERVE),
     HINGE_ANGLE("device.hinge.angle", PrivilegeTier.STANDARD, OperationRisk.OBSERVE),
+    /** Samsung's every-degree Folding Angle sensor. Measured on the Fold8 (6 Oct 2026): refused to the shell user, 89 distinct values as root. */
+    HINGE_ANGLE_CONTINUOUS("device.hinge.angle.continuous", PrivilegeTier.ROOT, OperationRisk.OBSERVE),
     SYSTEM_ACTIONS("system.actions", PrivilegeTier.SHIZUKU, OperationRisk.REVERSIBLE),
     SYSTEM_STATUS_MODULES("system.status.modules", PrivilegeTier.HOOKS, OperationRisk.EXPERIMENTAL),
     SYSTEM_QUICK_SETTINGS_LAYOUT("system.quicksettings.layout", PrivilegeTier.HOOKS, OperationRisk.EXPERIMENTAL);

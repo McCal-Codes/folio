@@ -1693,6 +1693,7 @@
     <string name="bridge_does">Folio가 할 수 있는 일</string>
     <string name="bridge_cap_shade">알림 창 열기</string>
     <string name="bridge_cap_notifications">알림 내용 읽기</string>
+    <string name="bridge_cap_hinge_continuous">실시간 힌지 각도 (루트)</string>
     <string name="bridge_cap_hinge">힌지 각도</string>
     <string name="bridge_cap_actions">시스템 동작</string>
     <string name="bridge_cap_status">상태 표시줄 모듈</string>

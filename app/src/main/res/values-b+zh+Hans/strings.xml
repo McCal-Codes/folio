@@ -1672,6 +1672,7 @@
     <string name="bridge_does">Folio 可以做什么</string>
     <string name="bridge_cap_shade">打开通知栏</string>
     <string name="bridge_cap_notifications">读取通知详情</string>
+    <string name="bridge_cap_hinge_continuous">实时铰链角度（root）</string>
     <string name="bridge_cap_hinge">铰链角度</string>
     <string name="bridge_cap_actions">系统操作</string>
     <string name="bridge_cap_status">状态栏模块</string>

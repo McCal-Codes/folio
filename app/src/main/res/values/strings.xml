@@ -1720,6 +1720,7 @@
     <string name="bridge_does">What it lets Folio do</string>
     <string name="bridge_cap_shade">Open the notification shade</string>
     <string name="bridge_cap_notifications">Read notification details</string>
+    <string name="bridge_cap_hinge_continuous">Live hinge angle (root)</string>
     <string name="bridge_cap_hinge">Hinge angle</string>
     <string name="bridge_cap_actions">System actions</string>
     <string name="bridge_cap_status">Status bar modules</string>
