@@ -1020,7 +1020,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return true
     }
     /** Turns a Focus on (or all off with null) and applies it to Android. */
-    fun setFocus(id: String?) {
+    fun setFocus(id: String?, byHand: Boolean = true) {
+        // Turned off by hand while its schedule covers now: it stays off until that window ends (see FocusDismissals).
+        if (byHand) FocusDismissals.record(getApplication(), mutable.value.focusModes, mutable.value.activeFocus, id)
         updateSettings(soon = false) { it.copy(activeFocus = id?.takeIf { f -> it.focusModes.any { m -> m.id == f } }) }
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
@@ -1034,7 +1036,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun syncFocus() {
         val state = mutable.value
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus } ?: return
-        if (FocusController.isOnInAndroid(getApplication(), active) == false) updateSettings(soon = false) { it.copy(activeFocus = null) }
+        if (FocusController.isOnInAndroid(getApplication(), active) == false) {
+            // Turned off in Android: count it as turned off by hand, so its schedule doesn't switch it back on.
+            FocusDismissals.record(getApplication(), state.focusModes, state.activeFocus, null)
+            updateSettings(soon = false) { it.copy(activeFocus = null) }
+        }
     }
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
     fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }

@@ -10,6 +10,11 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Added
 - **Copy Diagnostics beside Share:** Settings › Advanced › Diagnostics has Copy Diagnostics next to Share Diagnostics, so the report can be pasted into a form or a chat without going through a share sheet. It is the same text a shared report holds, and nothing leaves your phone.
 
+### Fixed
+- **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
+- **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
+- **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
+
 ## [0.6.8] - 2026-10-06
 
 ### Added
