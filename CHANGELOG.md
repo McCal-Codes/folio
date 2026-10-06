@@ -72,6 +72,10 @@ Folio shows the newest section on the phone after an update, and every version u
 - **TalkBack says what controls do:** the middle music button was read as "Play or pause"; it's Play or Pause now, whichever a tap will do. The widget gallery's close button is called Close instead of Back, a widget waiting to be set up is read by its name instead of a name from the app's code, and the Today View's Remove, Move Up and Move Down buttons are read in your language.
 - **Market clips only play on screen:** a clip scrolled out of view stops playing, and a still screenshot is no longer decoded twice.
 - **Remove stays on a package you have:** when its newer version is one Folio can't read, the row and the page still offer Remove, and neither offers an Update that can't work.
+- **A change right before you leave Home is kept:** a change to Home made in the last third of a second before you left Folio, or folded the phone, could be lost. Folio now saves it as Home stops.
+- **Big theme files are refused:** choosing a file that isn't a Folio theme, but is very large, no longer reads it all into memory. It says it isn't a Folio theme, as before.
+- **Less waiting on the main thread:** looking up your icon packs for the Icons page and for a theme, and saving the trail Folio keeps for Diagnostics, now happen off the thread that draws Home. A pack that was updating when Folio read it is tried again instead of being treated as empty.
+- **An update that can't be saved says so:** if Folio can't put a checked update in place after downloading it, it says the update couldn't be downloaded instead of showing it as ready.
 
 ## [0.6.7.3] - 2026-09-28
 
