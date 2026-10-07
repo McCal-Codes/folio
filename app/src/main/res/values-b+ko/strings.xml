@@ -1671,6 +1671,7 @@
     <string name="roadmap_all_done">%1$d개 모두 완료</string>
     <string name="roadmap_checking">업데이트 확인 중…</string>
     <string name="roadmap_offline">개발 계획에 연결할 수 없습니다. 이 휴대전화에 저장된 사본을 표시합니다.</string>
+    <string name="roadmap_offline_bundled">개발 계획에 연결할 수 없습니다. Folio와 함께 제공된 사본을 표시합니다.</string>
     <string name="roadmap_updated">%1$s 업데이트됨</string>
     <string name="roadmap_saved_copy">%1$s에 저장된 사본</string>
     <string name="betas_are_for_supporters">베타는 후원자를 위한 기능입니다. 후원자 코드가 없으면 Folio는 공개 버전만 찾기 때문에 베타가 나와 있어도 최신 상태라고 표시할 수 있습니다. 설정 › Folio 후원에서 코드를 추가하세요.</string>
