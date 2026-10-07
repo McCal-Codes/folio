@@ -94,7 +94,14 @@ internal enum class FeatureGate(
      * Making the Big Clock your own: Customize (Looks, color, Fine tune) and Place Freely. A clock nobody customizes
      * and nobody places is drawn exactly as before, so the only thing this holds back is the two menu rows.
      */
-    CLOCK_CUSTOMIZE("clockCustomize", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    CLOCK_CUSTOMIZE("clockCustomize", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * A widget at the top of Home fills exactly two app rows, so every row has one pitch and the dock lines up with the
+     * rows on a page with a widget and on one without (issue #13). It changes how every stacked layout looks and
+     * retires Widget Size, so supporters try it first; opening the gate is what shipping it means.
+     */
+    WIDGETS_FILL_ROWS("widgetsFillRows", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

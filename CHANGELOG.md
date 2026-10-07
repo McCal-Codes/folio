@@ -42,6 +42,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Less work while apps install and when offline:** while any app installs or updates, only that app's icon redraws instead of the whole of Home, the status rail no longer redraws its whole self every frame when there is no connection, and a clock icon on Home redraws its hands without rebuilding the icon each second.
 - **The Roadmap stops retrying offline:** when Folio can't reach GitHub, opening Settings › Roadmap no longer waits on the network every time; it tries again after an hour. With nothing downloaded yet, the note says the copy shown came with Folio instead of claiming it was saved on your phone.
 - **Dropping an app on a folder adds it:** holding an app over a folder on Home used to slide the folder out of the way, so letting go swapped the two places and the app never went in. The folder now stays where it is, lifts a little, and takes the app, whether it comes from Home, the dock or the App Library.
+- **Even rows under a widget (#13):** a widget at the top of Home now fills exactly two rows, so every row has the same spacing and the dock lines up with them, where the rows below a widget used to sit a little off. The Widget Size slider is hidden while this is on, because the widget's height is now set by the rows. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 
 ## [0.6.8] - 2026-10-06
 
