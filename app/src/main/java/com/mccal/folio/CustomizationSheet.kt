@@ -837,6 +837,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     CapabilitiesCard()
                     RecentActivityCard()
                     CrashReportsCard()
+                    PerformanceCard()
                 }
                 CustomizationPage.MARKET -> {
                     Text(stringResource(R.string.market_page_intro),
@@ -1454,6 +1455,11 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
     R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
+    R.string.performance_log to CustomizationPage.ADVANCED,
+    R.string.performance_start to CustomizationPage.ADVANCED,
+    R.string.performance_stop to CustomizationPage.ADVANCED,
+    R.string.performance_copy to CustomizationPage.ADVANCED,
+    R.string.performance_share to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
 

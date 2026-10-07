@@ -18,6 +18,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Fold motion:** on the open screen, icons ripple out from the hinge, the wallpaper and icons move with a little depth, and a faint light travels down the hinge. Each has its own switch in the Fold effect page and all stop with Reduce Motion.
 - **Smoother fold:** the fold effect follows the hinge back up after a partial close, and the cover builds smoothly as the Fold opens.
 - **StandBy tent** is detected from Android's device state on phones that report it.
+- **Performance log:** Settings › Advanced › Performance log can record Folio's own CPU, memory and battery use, so slowdowns and drain can be measured instead of guessed. It stays on the phone.
 
 ### Fixed
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
