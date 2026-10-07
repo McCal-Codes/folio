@@ -1,6 +1,10 @@
 package com.mccal.folio
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -102,6 +106,18 @@ private class FloatArrayList {
     operator fun get(i: Int) = data[i]
     fun clear() { size = 0 }
     fun add(v: Float) { if (size == data.size) data = data.copyOf(size * 2); data[size++] = v }
+}
+
+/** The one main action in a card: a filled button, so it reads as the thing to press and not as another link. */
+@Composable
+internal fun CardPrimaryAction(label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Box(modifier.then(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).heightIn(min = 48.dp))
+        .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.PANEL.dp))
+        .background(if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = .12f))
+        .settingsFocus(label).clickable(enabled = enabled, role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(label, color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = .6f),
+            fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+    }
 }
 
 /** A blue action row, like a button cell in iOS Settings: the text lines up with the other rows' labels. */

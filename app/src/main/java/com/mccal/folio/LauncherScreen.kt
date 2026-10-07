@@ -598,7 +598,7 @@ fun LauncherScreen(
         // and stands down where Home's text is dark ink and a dark scrim would take contrast away. See HomeScrim.
         val scrim = HomeScrim.of(state.homeScrim, homeInk.dark, dim)
         // The scrim rides inside the layer the background is already cached in, so it costs nothing per frame.
-        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(scrim = scrim)
+        if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(Modifier.foldMotionWallpaper(), scrim = scrim)
         else {
             if (backgroundMoves) SystemWallpaperParallax(nativePager)
             // Android's wallpaper is the system's to draw, so there is no cached layer of Folio's to bake the scrim

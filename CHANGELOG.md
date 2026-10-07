@@ -14,6 +14,10 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Your own picture for an app's icon:** long-press an app, More › Edit Icon › Your Picture › Choose Picture, and one icon shows a photo you pick, cropped to a square. Remove Picture or Reset Icon puts the normal icon back. The picture is copied into Folio, so it keeps working if the photo is deleted; it stays on this phone and is not part of a backup.
 - **Focus that turns on by itself:** each Focus has an Also Turn On When card with Folding (Unfolded, Cover Screen or Tent), Charging and Headphones. When one holds, the Focus turns on, the list says why, and it turns off again when the signal ends. If you turn it off yourself, it stays off until the signal changes. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 - **Drag the dock in edit mode:** with the dock on the Side Bar, a handle under it lets you drag the dock up or down instead of using the Dock Height slider, and the handle stays on screen. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+- **System Bridge:** Settings › Advanced › System Bridge has one switch that turns off every way Folio reaches past a normal app. Advanced options (off by default) add an optional root hinge angle for a smoother fold animation, with a Test button, and a one-time command to grant a settings permission.
+- **Fold motion:** on the open screen, icons ripple out from the hinge, the wallpaper and icons move with a little depth, and a faint light travels down the hinge. Each has its own switch in the Fold effect page and all stop with Reduce Motion.
+- **Smoother fold:** the fold effect follows the hinge back up after a partial close, and the cover builds smoothly as the Fold opens.
+- **StandBy tent** is detected from Android's device state on phones that report it.
 - **Performance log:** Settings › Advanced › Performance log can record Folio's own CPU, memory and battery use, so slowdowns and drain can be measured instead of guessed. It stays on the phone.
 
 ### Fixed
