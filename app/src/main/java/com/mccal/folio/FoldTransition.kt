@@ -198,6 +198,20 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
         // The still picture maps the cover 1:1 onto the inner half only in the natural orientation; rotated, the
         // pictures don't line up, so the blur carries the transition on its own.
         if (snapshotMorph && morph < 1f && rotation == android.view.Surface.ROTATION_0) SnapshotMorph(fold.expanded, coverShot, innerShot) { morph }
+        // A faint light along the hinge edge while the cover opens.
+        if (enabled && !fold.expanded && fold.opening && useBlurEffect() && !reduceMotion) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val a = coverLightAlpha(m, false)
+            if (a <= 0.002f) return@Canvas
+            val light = Color.White.copy(alpha = a)
+            val geometry = foldGeometry(rotation, hinge, size.width, size.height)
+            val brush = when (coverHingeEdge(geometry)) {
+                CoverEdge.LEFT -> Brush.horizontalGradient(0f to light, 1f to Color.Transparent, startX = 0f, endX = size.width * COVER_LIGHT_REACH)
+                CoverEdge.RIGHT -> Brush.horizontalGradient(0f to Color.Transparent, 1f to light, startX = size.width * (1f - COVER_LIGHT_REACH), endX = size.width)
+                CoverEdge.TOP -> Brush.verticalGradient(0f to light, 1f to Color.Transparent, startY = 0f, endY = size.height * COVER_LIGHT_REACH)
+                CoverEdge.BOTTOM -> Brush.verticalGradient(0f to Color.Transparent, 1f to light, startY = size.height * (1f - COVER_LIGHT_REACH), endY = size.height)
+            }
+            drawRect(brush)
+        }
         // Whole screen dims as it folds, like the display powering down with the hinge.
         if (enabled && direction.allows(false) && fold.closing) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM)))
@@ -284,6 +298,15 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     // Cover display after folding, and while starting to open from the cover.
     private var coverLitAt = -1L
     private var coverOpeningAt = -1L
+    /**
+     * The hinge angle for the cover, smoothed far less than [HingeTracker.visual]: the 70 ms filter trails a 300 deg/s opening by about 20
+     * degrees (traced 7 Oct 2026), so the cover blur reacted about 60 ms behind the hand. Only the cover uses it.
+     */
+    internal var coverAngle: Float? = null; private set
+    private var coverAngleNs = 0L
+    // The cover's effect can rise only so fast (see COVER_RISE_PER_S), and always falls as fast as the hand goes back.
+    private var coverTarget = 0f
+    private var coverTargetAt = 0L
     private val appContext = context.applicationContext
 
     /** Frame-by-frame log for tuning, read with logcat. Off unless `adb shell setprop log.tag.FolioFoldTrace DEBUG` was run. */
@@ -375,6 +398,12 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         val wasClosed = tracker.closed
         if (tracker.feed(value, timestampNs)) prefs.edit().putString(hingeCapabilityKey(source), tracker.capability.name).apply()
         angleAt = now
+        if (!expanded) {
+            val before = coverAngle
+            coverAngle = if (before == null || timestampNs <= coverAngleNs) value
+                else before + (1f - kotlin.math.exp(-((timestampNs - coverAngleNs) / 1e9f) / COVER_SMOOTH_S)) * (value - before)
+            coverAngleNs = timestampNs
+        } else coverAngle = null
         if (previous == null) { peak = value; movedFrom = value; movedAt = now; return }
         if (previous == value) return
         // A phone held still for a while starts a fresh reference, so an old maximum can't turn a small move into a fold.
@@ -413,8 +442,8 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         } else {
             when {
                 // Starting to open on the cover: blur the whole cover screen.
-                wasClosed && !tracker.closed -> { followMs = FOLLOW_MS; coverOpeningAt = now; opening = true; onOpeningStarted?.invoke() }
-                tracker.closed -> coverOpeningAt = -1L
+                wasClosed && !tracker.closed -> { followMs = FOLLOW_MS; coverOpeningAt = now; coverTarget = 0f; coverTargetAt = 0L; opening = true; onOpeningStarted?.invoke() }
+                tracker.closed -> { coverOpeningAt = -1L; coverTarget = 0f; coverTargetAt = 0L }
             }
         }
     }
@@ -483,8 +512,20 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         // Opening from the cover: quick whole-screen blur until the inner display takes over.
         !expanded && coverOpeningAt >= 0 -> {
             if (now - coverOpeningAt > COVER_OPEN_STALL_MS) { coverOpeningAt = -1L; 0f }
-            else if (continuous) coverBuildAtAngle(tracker.visual ?: 0f)
-            else easeInOutSine(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f))
+            else if (continuous) {
+                val want = coverBuildAtAngle(coverAngle ?: tracker.visual ?: 0f)
+                // Going up it may rise at most COVER_RISE_PER_S, so a flick still builds over a visible moment and never steps by a fifth in a frame;
+                // going back down it follows the hand at once.
+                coverTarget = if (coverTargetAt == 0L) minOf(want, COVER_FIRST_STEP) // the first frame starts gently
+                    else if (want <= coverTarget) want
+                    else minOf(want, coverTarget + COVER_RISE_PER_S * ((now - coverTargetAt).coerceIn(0L, 100L) / 1000f))
+                coverTargetAt = now
+                coverTarget
+            }
+            else easeInOutSine(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f)).also {
+                // Remembered, so a angle that turns out to be continuous carries on from here and not from nothing.
+                coverTarget = it; coverTargetAt = now
+            }
         }
 
         // Cover after folding: short focus-in.
@@ -512,6 +553,22 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
  */
 internal fun coverBuildAtAngle(angle: Float): Float =
     easeInOutSine(((angle - COVER_BUILD_START_DEG) / (COVER_BUILD_END_DEG - COVER_BUILD_START_DEG)).coerceIn(0f, 1f))
+
+/**
+ * A soft light along the cover's hinge edge while it opens: nothing at the start, strongest half way, gone by the handoff, like light
+ * spilling out of the gap. Kept faint on purpose; none under Reduce Motion.
+ */
+internal fun coverLightAlpha(m: Float, reduceMotion: Boolean): Float =
+    if (reduceMotion) 0f else kotlin.math.sin(Math.PI.toFloat() * m.coerceIn(0f, 1f)) * COVER_LIGHT
+
+/** Which edge of the cover is the hinge edge: left in the natural orientation, bottom at 90, right at 180, top at 270 (as [foldGeometry]). */
+internal enum class CoverEdge { LEFT, RIGHT, TOP, BOTTOM }
+internal fun coverHingeEdge(g: FoldGeometry): CoverEdge = when {
+    !g.horizontal && !g.movingAfterHinge -> CoverEdge.LEFT
+    !g.horizontal -> CoverEdge.RIGHT
+    !g.movingAfterHinge -> CoverEdge.TOP
+    else -> CoverEdge.BOTTOM
+}
 
 /** How far the cover content recedes while the effect is on, so the cover has depth and not only a blur; none under Reduce Motion. */
 internal fun coverSettleScale(m: Float, reduceMotion: Boolean): Float = if (reduceMotion) 1f else 1f - COVER_SCALE * m.coerceIn(0f, 1f)
@@ -541,11 +598,21 @@ private const val COVER_MS = 560f
 /** The cover lights right at closed, where the Duo outer screen is nearly clean: a light settle. */
 private const val START_M_ON_COVER = 1f
 private const val COVER_OPEN_MS = 300f
+/** The cover's own angle filter: about 7 degrees behind a 300 deg/s opening, against about 21 for the shared one. */
+private const val COVER_SMOOTH_S = .025f
+/** The cover effect rises by at most this much per second (a full build takes at least 0.2 s): traced flicks stepped 16 to 31% in one frame. */
+private const val COVER_RISE_PER_S = 5f
+/** The very first frame of a continuous opening can show at most this much, so the effect starts from nothing. */
+private const val COVER_FIRST_STEP = .02f
 /** The cover starts building a little before the hinge reads open (it leaves closed past 12 degrees) and is full by the handoff. */
 private const val COVER_BUILD_START_DEG = 8f
 private const val COVER_BUILD_END_DEG = 88f
 /** How much smaller the cover content gets at full effect (the open screen uses 3%); a little more, since the cover is the smaller screen. */
 private const val COVER_SCALE = .045f
+/** The brightest the hinge light gets (white at 14%): a hint of light, not a glow. */
+private const val COVER_LIGHT = .14f
+/** How far into the cover the light reaches from the hinge edge. */
+private const val COVER_LIGHT_REACH = .42f
 private const val COVER_OPEN_STALL_MS = 2_000L
 private const val FOLLOW_MS = 28f
 private const val TRACE_TAG = "FolioFoldTrace"

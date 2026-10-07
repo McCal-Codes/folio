@@ -177,4 +177,55 @@ class DuetFoldFixtureTest {
         assertEquals("never beyond the ends", coverSettleScale(1f, false), coverSettleScale(3f, false), 1e-6f)
         assertEquals(1f, coverSettleScale(1f, reduceMotion = true), 1e-6f)
     }
+
+    // Traced 7 Oct 2026: real openings average 300 deg/s, and the cover effect used to step 16 to 31% in a single frame at flick speeds.
+    @Test fun `a flick open builds over a visible moment and never steps by a fifth in a frame`() {
+        val fold = timeline(expanded = false)
+        val m = fold.play(listOf(0L to 0f) + sweep(100, 3f, 112f, 230), until = 700)
+        val tail = m.drop(8) // past the first few readings, which are what teach the timeline the angle is continuous
+        val steps = tail.zipWithNext { a, b -> b - a }
+        assertTrue("no step over 6% in 10 ms (largest ${steps.max()})", steps.all { it < .06f })
+        assertTrue("it still gets there: ${m.last()}", m.last() > .95f)
+    }
+
+    @Test fun `a slow open is not held back by the limit`() {
+        val fold = timeline(expanded = false)
+        val m = fold.play(listOf(0L to 0f) + sweep(100, 3f, 96f, 1_400), until = 1_500)
+        // At 66 degrees a second the curve is the limit, not the rise rate: every sample is the curve itself (within the filter's few degrees).
+        val late = m[110]
+        assertTrue("near the curve at 70 degrees: $late vs ${coverBuildAtAngle(70f)}", kotlin.math.abs(late - coverBuildAtAngle(70f)) < .12f)
+    }
+
+    @Test fun `going back down the cover follows the hand at once`() {
+        val fold = timeline(expanded = false)
+        val up = sweep(100, 3f, 70f, 300); val down = sweep(420, 70f, 25f, 200)
+        val m = fold.play(listOf(0L to 0f) + up + down, until = 700)
+        val peak = m.maxOrNull()!!
+        val drops = m.drop(m.indexOf(peak)).zipWithNext { a, b -> b - a }
+        assertTrue("it falls without being limited, and is well down by the end: ${m.last()} from $peak", m.last() < peak - .3f)
+        assertTrue("never rises again on the way back", drops.all { it <= .02f })
+    }
+
+    @Test fun `the cover angle trails the hand by only a few degrees`() {
+        val fold = timeline(expanded = false)
+        fold.play(listOf(0L to 0f) + sweep(100, 3f, 110f, 360), until = 460)
+        val lag = 110f - fold.coverAngle!!
+        assertTrue("about 7 degrees at 300 deg/s, was about 21: $lag", lag in 0f..12f)
+    }
+
+    @Test fun `the hinge light is faint, peaks half way, and is gone at the handoff`() {
+        assertEquals(0f, coverLightAlpha(0f, reduceMotion = false), 1e-6f)
+        assertEquals(0f, coverLightAlpha(1f, reduceMotion = false), 1e-3f)
+        assertEquals(.14f, coverLightAlpha(.5f, reduceMotion = false), 1e-3f)
+        assertTrue("never brighter than 14%", (0..100).all { coverLightAlpha(it / 100f, false) <= .1401f })
+        assertEquals("none under Reduce Motion", 0f, coverLightAlpha(.5f, reduceMotion = true), 1e-6f)
+    }
+
+    @Test fun `the light sits on the cover's hinge edge in every rotation`() {
+        fun edge(rotation: Int) = coverHingeEdge(foldGeometry(rotation, null, 100f, 200f))
+        assertEquals(CoverEdge.LEFT, edge(android.view.Surface.ROTATION_0))
+        assertEquals(CoverEdge.BOTTOM, edge(android.view.Surface.ROTATION_90))
+        assertEquals(CoverEdge.RIGHT, edge(android.view.Surface.ROTATION_180))
+        assertEquals(CoverEdge.TOP, edge(android.view.Surface.ROTATION_270))
+    }
 }
