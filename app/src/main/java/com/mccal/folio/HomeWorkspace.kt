@@ -426,6 +426,7 @@ internal fun SharedHomeGrid(
     val foldShift by animateFloatAsState(fold?.second ?: 0f, androidx.compose.animation.core.spring(dampingRatio = .85f, stiffness = 380f), label = "fold shift")
     val foldRow = fold?.first ?: Int.MAX_VALUE
     fun rowTop(row: Int) = cells.y(row) + if (row >= foldRow) foldShift else 0f
+    CompositionLocalProvider(LocalHomeIconSize provides geometry.iconSize) {
     Box(Modifier.fillMaxWidth().height((cells.height(renderedRows) + foldShift).dp)
         .onGloballyPositioned { gridTopDp = with(density) { it.boundsInWindow().top.toDp().value } }) {
         val cellWidth = cells.cellWidth.dp
@@ -534,6 +535,7 @@ internal fun SharedHomeGrid(
                     Modifier.offset(x = x, y = y.dp).width(width).height(height.dp), page = page) { onWidget(placement.slot) }
             }
         }
+    }
     }
 }
 

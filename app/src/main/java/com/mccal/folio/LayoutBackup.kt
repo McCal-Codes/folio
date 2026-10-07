@@ -97,7 +97,7 @@ fun encodeLayoutBackup(
     // The names people typed themselves (since 0.6.5): they exist nowhere else on the phone.
     root.put("appNames", JSONObject().apply { state.appNames.forEach { (id, name) -> put(id, name) } })
     // Only when there are some, so a backup from a phone that uses none is exactly what it was before this existed.
-    if (state.appIconStyles.isNotEmpty()) root.put("appIconStyles", appIconStylesToJson(state.appIconStyles))
+    withoutPictures(state.appIconStyles).let { styles -> if (styles.isNotEmpty()) root.put("appIconStyles", appIconStylesToJson(styles)) }
     // Added in 0.7.0, and deliberately not a new backup version: a Folio that has never heard of the Market reads
     // everything else in this file and ignores a key it doesn't know, so backups still travel backwards.
     packages?.let { root.put("packages", JSONObject(it)) }
