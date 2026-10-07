@@ -1623,6 +1623,11 @@
     <string name="edit_icon_for_1">Icon for %1$s</string>
     <string name="like_other_icons">Like other icons</string>
     <string name="edit_icon_note">Changes only this app\'s icon, here and everywhere Folio shows it. Settings › Icons &amp; Side Bar still sets the look for the rest.</string>
+    <string name="your_picture">Your Picture</string>
+    <string name="choose_picture">Choose Picture</string>
+    <string name="change_picture">Change Picture</string>
+    <string name="remove_picture">Remove Picture</string>
+    <string name="edit_icon_picture_note">The picture is copied into Folio and cropped to a square, so it keeps working if the photo is deleted. It stays on this phone and is not part of a backup.</string>
     <string name="reset_icon">Reset Icon</string>
     <string name="custom_search_blank">Until you type an address, Search with Enter uses Google.</string>
     <string name="separate_upright_layout">Separate layout when upright</string>
