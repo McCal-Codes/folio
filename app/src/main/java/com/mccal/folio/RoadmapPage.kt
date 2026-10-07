@@ -77,7 +77,8 @@ private enum class RoadmapPhase { Idle, Checking, Offline }
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             Icon(if (phase == RoadmapPhase.Checking) Icons.Rounded.Refresh else Icons.Rounded.CloudOff, null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-            Text(stringResource(if (phase == RoadmapPhase.Checking) R.string.roadmap_checking else R.string.roadmap_offline),
+            // With nothing downloaded yet, the copy shown is the one that came with Folio, not one "saved on this phone".
+            Text(stringResource(if (phase == RoadmapPhase.Checking) R.string.roadmap_checking else if (savedAt == null) R.string.roadmap_offline_bundled else R.string.roadmap_offline),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
