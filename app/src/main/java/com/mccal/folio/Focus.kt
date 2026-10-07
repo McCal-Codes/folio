@@ -45,6 +45,8 @@ data class FocusMode(
     val schedule: FocusSchedule? = null,
     /** Home pages shown while this Focus is on (iOS "Customize Screens"); null shows them all. */
     val pages: Set<Int>? = null,
+    /** Turns on and off by itself when the phone is folded a certain way, charging or has headphones connected. */
+    val triggers: FocusTriggerSet = FocusTriggerSet(),
 )
 
 /** Daily window in minutes after midnight (the end may be past midnight, e.g. 22:00–07:00), on ISO days 1 = Monday … 7 = Sunday. */
@@ -221,6 +223,8 @@ internal fun focusModesToJson(modes: List<FocusMode>) = org.json.JSONArray().app
     modes.forEach { m -> put(org.json.JSONObject().put("id", m.id).put("name", m.name).put("color", m.color)
         .put("silence", m.silence).put("homePage", m.homePage ?: -1).put("dim", m.dimWallpaper).put("gray", m.grayscale).put("dark", m.darkTheme)
         .apply { m.pages?.let { put("pages", org.json.JSONArray(it.sorted())) } }
+        .apply { if (m.triggers.any) put("triggers", org.json.JSONObject().put("fold", m.triggers.fold?.key ?: "")
+            .put("charging", m.triggers.charging).put("headphones", m.triggers.headphones)) }
         .apply { m.schedule?.let { put("schedule", org.json.JSONObject().put("start", it.startMinute).put("end", it.endMinute)
             .put("days", org.json.JSONArray(it.days.sorted()))) } }) }
 }
@@ -229,6 +233,7 @@ internal fun focusModesFromJson(array: org.json.JSONArray?): List<FocusMode> = F
     a.optJSONObject(i)?.let { o -> DEFAULT_FOCUS_MODES.firstOrNull { it.id == o.optString("id") }?.copy(
         silence = o.optBoolean("silence", true), homePage = o.optInt("homePage", -1).takeIf { it >= 0 },
         dimWallpaper = o.optBoolean("dim"), grayscale = o.optBoolean("gray"), darkTheme = o.optBoolean("dark"),
+        triggers = o.optJSONObject("triggers")?.let { t -> FocusTriggerSet(FoldState.parse(t.optString("fold")), t.optBoolean("charging"), t.optBoolean("headphones")) } ?: FocusTriggerSet(),
         pages = o.optJSONArray("pages")?.let { p -> (0 until p.length()).map { p.optInt(it) }.filter { it >= 0 }.toSet().ifEmpty { null } },
         schedule = o.optJSONObject("schedule")?.let { s -> FocusSchedule(s.optInt("start").coerceIn(0, 1439), s.optInt("end").coerceIn(0, 1439),
             s.optJSONArray("days")?.let { d -> (0 until d.length()).map { d.optInt(it) }.filter { it in 1..7 }.toSet() } ?: (1..7).toSet()) }) }
