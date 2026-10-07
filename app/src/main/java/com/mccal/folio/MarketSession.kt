@@ -140,10 +140,16 @@ internal class MarketSession(
     /** Whether [bytes] would update [installed] without changing any setting the old version applied (see [PackageInstaller.changesUnchanged]). */
     fun updateKeepsSettings(bytes: ByteArray, installed: InstalledPackage): Boolean = installer.changesUnchanged(bytes, installed)
 
-    /** Installs bytes staged earlier, with every check a normal install makes (size, checksum, author, compatibility). */
+    /**
+     * Installs bytes staged earlier, with every check a normal install makes (size, checksum, author, compatibility)
+     * and one more: the source's list must still be fresh, since staging can be days older than this moment and a list
+     * that has gone stale is browse-only. The update goes in without touching Home ([PackageInstaller.updateKeepingSettings]),
+     * so a setting changed since the install keeps its value.
+     */
     suspend fun installStaged(entry: MarketEntry, bytes: ByteArray): InstallResult = withContext(io) {
         if (entry.revokedReason != null || entry.clash != null) return@withContext InstallResult.Failed(InstallResult.Reason.REVOKED, "that listing can't be installed")
-        installer.install(bytes, expected = entry.entry, origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = entry.source.url)
+        if (sources.isStale(entry.source)) return@withContext InstallResult.Failed(InstallResult.Reason.ARCHIVE, "that source's list is too old to install from, so refresh it first")
+        installer.updateKeepingSettings(bytes, expected = entry.entry, origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = entry.source.url)
     }
 
     fun installed(id: String): InstalledPackage? = store.find(id)

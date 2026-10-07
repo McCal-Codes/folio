@@ -134,4 +134,29 @@ class InstallStateMachineTest {
         assertTrue("a version that changes a setting must wait to be tapped", !installer.changesUnchanged(packChanged(), installed))
         assertTrue("bytes that are not a package never qualify", !installer.changesUnchanged(ByteArray(8), installed))
     }
+
+    @Test fun `an automatic update does not touch Home, so a setting changed since the install keeps its value`() {
+        val host = Host()
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, host, authors = AuthorTrust(MemoryStore()))
+        val first = (installer.install(pack("1.0.0")) as InstallResult.Installed).installed
+        // The person changes something the package had set.
+        host.on += "changed-by-the-person"
+        val result = installer.updateKeepingSettings(pack("1.1.0")) as InstallResult.Installed
+        assertEquals("the record moves to the new version", DebVersion.parse("1.1.0"), store.find(id)?.version)
+        assertTrue("and Home is exactly as the person left it", "changed-by-the-person" in host.on)
+        assertEquals("the snapshots still describe what to put back", first.snapshots, store.find(id)?.snapshots)
+        assertEquals("the old version is reported as replaced", DebVersion.parse("1.0.0"), result.replaced?.version)
+    }
+
+    @Test fun `an update that changes a setting, or a package that is off, is refused for in-place updating`() {
+        val host = Host()
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, host, authors = AuthorTrust(MemoryStore()))
+        installer.install(pack("1.0.0"))
+        assertTrue("different changes wait for the person", installer.updateKeepingSettings(packChanged()) is InstallResult.Failed)
+        assertEquals("and nothing was updated", DebVersion.parse("1.0.0"), store.find(id)?.version)
+        installer.disable(id, "crashed")
+        assertTrue("a package that is off is not updated in place", installer.updateKeepingSettings(pack("1.1.0")) is InstallResult.Failed)
+    }
 }

@@ -186,6 +186,8 @@ internal class MarketSources(
      * installed from it: a host that simply stops answering would otherwise keep a frozen list, and every revocation
      * it never delivered, installable for ever.
      */
+    fun isStale(source: Source): Boolean = stale(source)
+
     private fun stale(source: Source): Boolean {
         if (source.kind == Source.Kind.BUILT_IN || source.kind == Source.Kind.LOCAL_DEV) return false
         return client.isStale(source.url)
