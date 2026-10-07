@@ -298,7 +298,7 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     fun start() {
         val apk = context.applicationInfo.sourceDir
         val su = RootHingeStore.suPath(context)
-        if (su != null && RootHingeStore.useInFold(context) && hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER) {
+        if (su != null && RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) && hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER) {
             // A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's.
             useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
             rootFeed = RootHingeFeed(ProcessSuLauncher, apk, su,

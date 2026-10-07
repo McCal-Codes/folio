@@ -211,8 +211,8 @@ internal object RootHingeStore {
         val edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("state", report.state.name).putString("report", text)
         // Only a path that worked is remembered, so the live feed never has to look for su again.
         if (report.state == RootState.READY && report.suPath != null) edit.putString("su", report.suPath) else edit.remove("su")
-        // A root that is not ready cannot feed the animation, and a fresh grant starts with the feed off again.
-        if (report.state != RootState.READY) edit.putBoolean("use", false)
+        // A root that is not ready cannot feed the animation or grant anything, so both approvals start over.
+        if (report.state != RootState.READY) edit.putBoolean("use", false).putBoolean("rootgrant", false)
         edit.apply()
     }
 
@@ -226,6 +226,14 @@ internal object RootHingeStore {
     fun markLost(context: Context) {
         if (state(context) == RootState.READY) context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("state", RootState.LOST.name).apply()
     }
+
+    /** Advanced options: root and computer commands, shown only after the owner turned this on and read the short warning. */
+    fun advanced(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("advanced", false)
+    fun setAdvanced(context: Context, on: Boolean) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("advanced", on).apply() }
+
+    /** Whether the owner allowed Folio to use root to give itself (or take away) the settings permission. Off until they turn it on. */
+    fun allowRootGrant(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("rootgrant", false)
+    fun setAllowRootGrant(context: Context, on: Boolean) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("rootgrant", on).apply() }
 
     /** Whether the owner has been through the explanation before a first test. */
     fun explained(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("explained", false)

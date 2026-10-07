@@ -1435,7 +1435,11 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_share to CustomizationPage.SYSTEM_BRIDGE,
-    R.string.bridge_root_about to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_details to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_advanced to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_rootgrant_allow to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_rootgrant_do to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_rootgrant_undo to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
     R.string.share_latest to CustomizationPage.ADVANCED,
@@ -2850,63 +2854,117 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         BridgeWay(null, R.string.bridge_way_device, R.string.bridge_way_device_uses, gated, "", "bridge-way-device")
         CardNote(stringResource(R.string.bridge_knox))
     }
-    SettingsCard(stringResource(R.string.bridge_root_title)) {
-        CardNote(stringResource(R.string.bridge_root_note))
-        val status by RootHingeTester.status.collectAsState()
-        val testing = status is RootHingeTester.Status.Running
-        val found = (status as? RootHingeTester.Status.Done)?.report
-        // The result lands whichever screen is showing (the Fold swaps displays mid-test), so the saved state is read again when it does.
-        LaunchedEffect(status) { rootState = RootHingeStore.state(context); states = read() }
-        DisposableEffect(Unit) { onDispose { RootHingeTester.dismiss() } }
-        found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
-        if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
-        // Before the first test the owner reads what Folio will and won't do as root; after that, a test just starts.
-        var explain by remember { mutableStateOf<String?>(null) }
-        CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe,
-            onClick = { if (RootHingeStore.explained(context)) RootHingeTester.start(context) else explain = "first" })
-        if (explain != null) AlertDialog(onDismissRequest = { explain = null },
-            title = { Text(stringResource(R.string.bridge_root_explain_title)) },
-            text = { Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                Text(stringResource(R.string.bridge_root_explain_1)); Text(stringResource(R.string.bridge_root_explain_2)); Text(stringResource(R.string.bridge_root_explain_3)) } },
-            confirmButton = { TextButton(onClick = { if (explain == "first") { RootHingeStore.setExplained(context); RootHingeTester.start(context) }; explain = null },
-                modifier = Modifier.testTag("bridge-root-explain-go")) { Text(stringResource(if (explain == "first") R.string.bridge_root_explain_continue else R.string.done)) } },
-            dismissButton = if (explain == "first") ({ TextButton(onClick = { explain = null }, modifier = Modifier.testTag("bridge-root-explain-no")) { Text(stringResource(R.string.not_now)) } }) else null)
-        if (rootState == RootState.READY) {
-            var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
-            SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")
-            CardNote(stringResource(R.string.bridge_root_use_note))
-        }
-        if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_copy), Modifier.fillMaxWidth().testTag("bridge-root-copy"), onClick = {
-            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
-        })
-        if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_share), Modifier.fillMaxWidth().testTag("bridge-root-share"), onClick = {
-            RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
-        })
-        CardAction(stringResource(R.string.bridge_root_about), Modifier.fillMaxWidth().testTag("bridge-root-about"), onClick = { explain = "info" })
+    // Root and computer commands sit behind one switch and a short warning. Details open the full disclosure.
+    var advanced by remember { mutableStateOf(RootHingeStore.advanced(context)) }
+    var dialog by remember { mutableStateOf<String?>(null) }
+    SettingsCard(null) {
+        SettingsSwitch(stringResource(R.string.bridge_advanced), advanced,
+            { on -> if (on) dialog = "adv" else { advanced = false; RootHingeStore.setAdvanced(context, false) } }, "bridge-advanced")
+        CardNote(stringResource(R.string.bridge_advanced_note))
+        val cd = stringResource(R.string.bridge_details_adv_cd)
+        CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cd }.testTag("bridge-details-adv"), onClick = { dialog = "details-adv" })
     }
-    SettingsCard(stringResource(R.string.bridge_grant_title)) {
-        CardNote(stringResource(R.string.bridge_grant_note))
-        var granted by remember { mutableStateOf(SecureSettingsGrant.isGranted(context)) }
-        // Checked again whenever the page comes back, since the owner grants it on a computer.
-        LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { granted = SecureSettingsGrant.isGranted(context); states = read() } }
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-grant-state"), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.bridge_grant_permission), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-            Text(stringResource(if (granted) R.string.bridge_grant_yes else R.string.bridge_grant_no), style = MaterialTheme.typography.bodyMedium,
-                color = if (granted) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        val command = if (granted) SecureSettingsGrant.revokeCommand(context.packageName) else SecureSettingsGrant.grantCommand(context.packageName)
-        if (!granted) { CardNote(stringResource(R.string.bridge_grant_step_1)); CardNote(stringResource(R.string.bridge_grant_step_2)) }
-        if (command != null) {
-            androidx.compose.foundation.text.selection.SelectionContainer {
-                Text(command, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).clip(RoundedCornerShape(10.dp))
-                    .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .08f)).padding(horizontal = 12.dp, vertical = 10.dp).testTag("bridge-grant-command"),
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
+    if (advanced) {
+        SettingsCard(stringResource(R.string.bridge_root_title)) {
+            CardNote(stringResource(R.string.bridge_root_note))
+            val status by RootHingeTester.status.collectAsState()
+            val testing = status is RootHingeTester.Status.Running
+            val found = (status as? RootHingeTester.Status.Done)?.report
+            // The result lands whichever screen is showing (the Fold swaps displays mid-test), so the saved state is read again when it does.
+            LaunchedEffect(status) { rootState = RootHingeStore.state(context); states = read() }
+            DisposableEffect(Unit) { onDispose { RootHingeTester.dismiss() } }
+            found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
+            if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
+            // Before the first test the owner sees a short note about what runs as root; after that, a test just starts.
+            CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe,
+                onClick = { if (RootHingeStore.explained(context)) RootHingeTester.start(context) else dialog = "first" })
+            if (rootState == RootState.READY) {
+                var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
+                SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")
+                CardNote(stringResource(R.string.bridge_root_use_note))
             }
-            CardNote(stringResource(if (granted) R.string.bridge_grant_revoke_note else R.string.bridge_grant_step_3))
-            CardAction(stringResource(if (granted) R.string.bridge_grant_copy_revoke else R.string.bridge_grant_copy), Modifier.fillMaxWidth().testTag("bridge-grant-copy"), onClick = {
-                context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio command", command))
+            if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_copy), Modifier.fillMaxWidth().testTag("bridge-root-copy"), onClick = {
+                context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
             })
+            if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_share), Modifier.fillMaxWidth().testTag("bridge-root-share"), onClick = {
+                RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
+            })
+            val cdRoot = stringResource(R.string.bridge_details_root_cd)
+            CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdRoot }.testTag("bridge-details-root"), onClick = { dialog = "details-root" })
         }
+        SettingsCard(stringResource(R.string.bridge_grant_title)) {
+            CardNote(stringResource(R.string.bridge_grant_note))
+            var granted by remember { mutableStateOf(SecureSettingsGrant.isGranted(context)) }
+            // Checked again whenever the page comes back, since the owner may grant it on a computer.
+            LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { granted = SecureSettingsGrant.isGranted(context); states = read() } }
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-grant-state"), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.bridge_grant_permission), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(if (granted) R.string.bridge_grant_yes else R.string.bridge_grant_no), style = MaterialTheme.typography.bodyMedium,
+                    color = if (granted) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val command = if (granted) SecureSettingsGrant.revokeCommand(context.packageName) else SecureSettingsGrant.grantCommand(context.packageName)
+            if (!granted) { CardNote(stringResource(R.string.bridge_grant_step_1)); CardNote(stringResource(R.string.bridge_grant_step_2)) }
+            if (command != null) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(command, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).clip(RoundedCornerShape(10.dp))
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .08f)).padding(horizontal = 12.dp, vertical = 10.dp).testTag("bridge-grant-command"),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
+                }
+                CardNote(stringResource(if (granted) R.string.bridge_grant_revoke_note else R.string.bridge_grant_step_3))
+                CardAction(stringResource(if (granted) R.string.bridge_grant_copy_revoke else R.string.bridge_grant_copy), Modifier.fillMaxWidth().testTag("bridge-grant-copy"), onClick = {
+                    context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio command", command))
+                })
+            }
+            // With root working, the owner may let Folio do the same command itself. Off until they turn it on, and only a button press runs it.
+            if (rootState == RootState.READY) {
+                var allow by remember { mutableStateOf(RootHingeStore.allowRootGrant(context)) }
+                SettingsSwitch(stringResource(R.string.bridge_rootgrant_allow), allow, { on -> allow = on; RootHingeStore.setAllowRootGrant(context, on) }, "bridge-rootgrant-allow")
+                CardNote(stringResource(R.string.bridge_rootgrant_note))
+                if (allow && !off && !safe) {
+                    val gs by RootSettingsGrantTester.status.collectAsState()
+                    val working = gs is RootSettingsGrantTester.Status.Running
+                    LaunchedEffect(gs) { granted = SecureSettingsGrant.isGranted(context); states = read() }
+                    DisposableEffect(Unit) { onDispose { RootSettingsGrantTester.dismiss() } }
+                    (gs as? RootSettingsGrantTester.Status.Done)?.let { d ->
+                        Text(stringResource(when {
+                            d.outcome == RootSettingsGrantRunner.Outcome.DONE && d.granted -> R.string.bridge_rootgrant_granted
+                            d.outcome == RootSettingsGrantRunner.Outcome.DONE -> R.string.bridge_rootgrant_removed
+                            d.outcome == RootSettingsGrantRunner.Outcome.DENIED -> R.string.bridge_rootgrant_denied
+                            else -> R.string.bridge_rootgrant_failed }),
+                            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-rootgrant-result"))
+                    }
+                    if (working) Text(stringResource(R.string.bridge_rootgrant_working), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+                    CardAction(stringResource(if (granted) R.string.bridge_rootgrant_undo else R.string.bridge_rootgrant_do), Modifier.fillMaxWidth().testTag("bridge-rootgrant-do"),
+                        enabled = !working, onClick = { RootSettingsGrantTester.start(context, grant = !granted) })
+                }
+            }
+            val cdGrant = stringResource(R.string.bridge_details_grant_cd)
+            CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdGrant }.testTag("bridge-details-grant"), onClick = { dialog = "details-grant" })
+        }
+    }
+    dialog?.let { d ->
+        val details = d.startsWith("details-")
+        val title = when (d) { "adv" -> R.string.bridge_adv_title; "first" -> R.string.bridge_root_explain_title; "details-adv" -> R.string.bridge_detail_adv_title
+            "details-root" -> R.string.bridge_root_about; else -> R.string.bridge_detail_grant_title }
+        val body = when (d) {
+            "adv" -> listOf(R.string.bridge_adv_text); "first" -> listOf(R.string.bridge_root_first_text)
+            "details-adv" -> listOf(R.string.bridge_detail_adv_1, R.string.bridge_detail_adv_2, R.string.bridge_detail_adv_3)
+            "details-root" -> listOf(R.string.bridge_root_explain_1, R.string.bridge_root_explain_2, R.string.bridge_root_explain_3)
+            else -> listOf(R.string.bridge_detail_grant_1, R.string.bridge_detail_grant_2, R.string.bridge_detail_grant_3) }
+        AlertDialog(onDismissRequest = { dialog = null },
+            title = { Text(stringResource(title)) },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) { body.forEach { Text(stringResource(it)) } } },
+            confirmButton = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // The two short warnings open the full text on request.
+                if (d == "adv" || d == "first") TextButton(onClick = { dialog = if (d == "adv") "details-adv" else "details-root" }, modifier = Modifier.testTag("bridge-dialog-details")) { Text(stringResource(R.string.bridge_details)) }
+                if (!details) TextButton(onClick = { dialog = null }, modifier = Modifier.testTag("bridge-dialog-no")) { Text(stringResource(R.string.not_now)) }
+                TextButton(onClick = {
+                    when (d) {
+                        "adv" -> { advanced = true; RootHingeStore.setAdvanced(context, true) }
+                        "first" -> { RootHingeStore.setExplained(context); RootHingeTester.start(context) }
+                    }
+                    dialog = null }, modifier = Modifier.testTag("bridge-dialog-go")) {
+                    Text(stringResource(when (d) { "adv" -> R.string.bridge_adv_know; "first" -> R.string.bridge_root_explain_continue; else -> R.string.done })) } } })
     }
     SettingsCard(stringResource(R.string.bridge_does)) {
         states.forEach { s ->
