@@ -179,7 +179,7 @@ data class LauncherState(
     /** Badge counts already seen, by package name: the count that was showing when the app was last opened. */
     val badgesSeen: Map<String, Int> = emptyMap(),
     /** iOS "Search" capsule on Home in place of the page dots. */
-    val searchPill: Boolean = true,
+    val homeStrip: HomeStrip = HomeStrip.SEARCH,
     /** Swipe down on Home (below the top edge) opens Spotlight. */
     /** Swipe down on Home: SPOTLIGHT, NOTIFICATIONS (Folio's or Android's, whichever the panels setting says) or OFF. */
     val swipeDownHome: String = "SPOTLIGHT",
@@ -1255,7 +1255,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val trimmed = BadgesWhenOpened.trimmed(counts, seen)
         if (trimmed != seen) updateSettings(soon = true) { it.copy(badgesSeen = trimmed) }
     }
-    fun setSearchPill(value: Boolean) = updateSettings(soon = false) { it.copy(searchPill = value) }
+    fun setHomeStrip(value: HomeStrip) = updateSettings(soon = false) { it.copy(homeStrip = value) }
     fun setSwipeDownHome(value: String) = updateSettings(soon = false) { it.copy(swipeDownHome = value) }
     fun setMessagesApp(pkg: String?) = updateSettings(soon = false) { it.copy(messagesApp = pkg) }
     fun setMessagesAvoidDouble(value: Boolean) = updateSettings(soon = false) { it.copy(messagesAvoidDouble = value) }
@@ -1477,7 +1477,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
-            .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
+            .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncSplit", s.ncSplit)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1738,7 +1738,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         badgeSize = runCatching { BadgeSize.valueOf(j.optString("badgeSize")) }.getOrDefault(BadgeSize.STANDARD),
         badgesWhenOpened = j.optBoolean("badgesWhenOpened", false),
         badgesSeen = j.optJSONObject("badgesSeen")?.let { o -> o.keys().asSequence().associateWith { o.getInt(it) }.filterValues { it > 0 } } ?: emptyMap(),
-        searchPill = j.optBoolean("searchPill", true),
+        homeStrip = HomeStrip.read(j.optString("homeStrip").takeIf { it.isNotEmpty() }, j.optBoolean("searchPill", true)),
         // Up to 0.6.0 this was a switch for Spotlight alone.
         swipeDownHome = j.optString("swipeDownHome", "").ifBlank { if (j.optBoolean("swipeDownSearch", true)) "SPOTLIGHT" else "OFF" },
         messagesApp = j.optString("messagesApp").takeIf { it.isNotBlank() && it != "null" },
