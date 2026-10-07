@@ -1,7 +1,7 @@
 package com.mccal.folio
 
 /**
- * A sketch of the root hinge provider (ADR 0010): the parts that need no root and no Android, so they can be tested.
+ * A sketch of the root hinge provider (ADR 0012): the parts that need no root and no Android, so they can be tested.
  * Nothing here runs `su`, starts a process or touches the phone. The helper process, the Settings switch and the wiring into
  * [FoldTimeline] come later, and only if McCal wants them.
  */

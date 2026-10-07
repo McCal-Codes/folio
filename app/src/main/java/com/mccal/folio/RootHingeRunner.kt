@@ -46,7 +46,7 @@ internal data class RootTestReport(
 }
 
 /**
- * The owner's one root test (ADR 0010): start the helper as root, wait for it to say it is ready, listen for a few seconds, and
+ * The owner's one root test (ADR 0012): start the helper as root, wait for it to say it is ready, listen for a few seconds, and
  * report. Written against [SuLauncher] so the way KernelSU, Magisk and APatch each behave (a prompt that waits, a refusal, no
  * `su` at all) can be played back in tests without any of them installed. All three take `su -c <command>`.
  */
@@ -199,7 +199,7 @@ internal object ProcessSuLauncher : SuLauncher {
 
 /** What the last root test found, kept on the phone so the System Bridge page and the broker agree. */
 internal object RootHingeStore {
-    private const val PREFS = "root_hinge"
+    internal const val PREFS = "root_hinge"
 
     fun state(context: Context): RootState = runCatching {
         RootState.valueOf(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("state", null) ?: return RootState.UNKNOWN)

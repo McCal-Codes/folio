@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import android.content.SharedPreferences
 import androidx.compose.ui.layout.onSizeChanged
 import android.content.Context
 import android.graphics.RenderEffect
@@ -287,7 +288,7 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     private fun publicTracker() = HingeTracker(if (hinge == null) HingeCapability.POSTURE_ONLY
         else if (prefs.getString(hingeCapabilityKey(HingeSource.PUBLIC_SENSOR), null) == HingeCapability.CONTINUOUS.name) HingeCapability.CONTINUOUS else HingeCapability.STEPPED)
     private var tracker = publicTracker()
-    // Which feed the readings come from (ADR 0010): the public sensor, or the root helper when the owner has tested it and switched it on.
+    // Which feed the readings come from (ADR 0012): the public sensor, or the root helper when the owner has tested it and switched it on.
     private var source = HingeSource.PUBLIC_SENSOR
     private var rootFeed: RootHingeFeed? = null
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
@@ -356,7 +357,9 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         tracing = runCatching { android.util.Log.isLoggable(TRACE_TAG, android.util.Log.DEBUG) }.getOrDefault(false)
         val apk = context.applicationInfo.sourceDir
         val su = RootHingeStore.suPath(context)
-        if (su != null && RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) && hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER) {
+        // The kill switch and the root options are read again whenever they change, so turning them off stops the helper at once.
+        listOf(SystemBridge.PREFS, RootHingeStore.PREFS).forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(rootGate) }
+        if (su != null && rootAllowed()) {
             // A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's.
             useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
             rootFeed = RootHingeFeed(ProcessSuLauncher, apk, su,
@@ -366,8 +369,23 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     }
 
     fun stop() {
+        listOf(SystemBridge.PREFS, RootHingeStore.PREFS).forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(rootGate) }
         rootFeed?.stop(); rootFeed = null
         sensors?.unregisterListener(this)
+    }
+
+    /** Whether the root hinge feed may run right now: the owner's options and the System Bridge switch. */
+    private fun rootAllowed() = RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) &&
+        hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER
+
+    private val rootGate = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        main.post {
+            if (rootFeed != null && !rootAllowed()) {
+                rootFeed?.stop(); rootFeed = null
+                registerPublic()
+                wake.trySend(Unit)
+            }
+        }
     }
 
     private fun registerPublic() {

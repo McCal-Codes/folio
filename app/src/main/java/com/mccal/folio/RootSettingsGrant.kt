@@ -5,7 +5,7 @@ import java.io.IOException
 import kotlinx.coroutines.launch
 
 /**
- * Giving Folio the settings permission with root (ADR 0010), when the owner allowed it in Settings. The command is `pm grant` or
+ * Giving Folio the settings permission with root (ADR 0012), when the owner allowed it in Settings. The command is `pm grant` or
  * `pm revoke`, built only from Folio's own package name (a plain one, or there is no command) and the one permission.
  */
 internal object RootSettingsGrantRunner {

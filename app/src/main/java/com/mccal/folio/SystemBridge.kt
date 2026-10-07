@@ -5,13 +5,13 @@ import android.hardware.Sensor
 import android.hardware.SensorManager
 
 /**
- * What Settings › Advanced › System Bridge shows (ADR 0009). The broker is wired to the three tiers Folio really uses
+ * What Settings › Advanced › System Bridge shows (ADR 0011). The broker is wired to the three tiers Folio really uses
  * today (A0 to A2); Shizuku, root and system integration have no provider yet, so they read "Not available yet" and
  * nothing is detected or probed. The switch is stored apart from the launcher state, so a backup or a layout restore
  * never turns system access back on.
  */
 internal object SystemBridge {
-    private const val PREFS = "system_bridge"
+    internal const val PREFS = "system_bridge"
     private const val OFF = "off"
     private const val RECENT = 20
 

@@ -1,4 +1,4 @@
-# 0009: The System Bridge is a broker, typed providers and a handshake, never a root shell
+# 0011: The System Bridge is a broker, typed providers and a handshake, never a root shell
 
 - **Status:** proposed, 2026-10-05
 - **Extends:** [0008](0008-platform-architecture.md) (tiers A0 to A5, the Capability Broker). Does not replace it.

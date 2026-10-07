@@ -2877,7 +2877,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
     return out.toByteArray()
 }
 
-/** Advanced › System Bridge (ADR 0009): the ways Folio can reach more of the system, what each lets it do, and the one switch that turns the extra ones off. */
+/** Advanced › System Bridge (ADR 0011): the ways Folio can reach more of the system, what each lets it do, and the one switch that turns the extra ones off. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable private fun SystemBridgePage() {
     val context = androidx.compose.ui.platform.LocalContext.current

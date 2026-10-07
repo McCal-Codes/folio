@@ -61,6 +61,6 @@
 
 ## Out of scope
 
-- **A compromised phone:** a malicious accessibility service, or root the user installed for something else. Root or Shizuku that the person grants *to Folio* is in scope from T20 on (ADR 0009); a phone already controlled by an attacker is not.
+- **A compromised phone:** a malicious accessibility service, or root the user installed for something else. Root or Shizuku that the person grants *to Folio* is in scope from T20 on (ADR 0011); a phone already controlled by an attacker is not.
 - **Apps installed from Play Store, F-Droid or Obtainium** after the Market hands off to them (later feature). Those stores' own protections apply.
 - **Sources the user explicitly trusts after the warning.** Folio still enforces everything above except the review.

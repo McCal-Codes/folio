@@ -1,7 +1,7 @@
-# 0010: A continuous hinge angle is an optional root provider, behind the broker
+# 0012: A continuous hinge angle is an optional root provider, behind the broker
 
 - **Status:** built and checked on a Galaxy Z Fold8, 2026-10-06 (proposed as a sketch earlier the same day). Off by default.
-- **Extends:** [0009](0009-system-bridge.md).
+- **Extends:** [0011](0011-system-bridge.md).
 
 ## Context
 

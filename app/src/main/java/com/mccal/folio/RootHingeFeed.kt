@@ -1,7 +1,7 @@
 package com.mccal.folio
 
 /**
- * The live root hinge feed (ADR 0010): runs the helper through `su` and hands each reading on, until [stop] or until it is lost.
+ * The live root hinge feed (ADR 0012): runs the helper through `su` and hands each reading on, until [stop] or until it is lost.
  * It starts only when the owner has tested root and switched the feed on, and runs only while the fold animation is listening.
  * [onSample] and [onLost] are called on the feed's own thread; the caller moves them to the thread it needs.
  */

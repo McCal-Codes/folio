@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The root hinge helper (ADR 0010). Folio starts it as root with {@code CLASSPATH=<its own APK> app_process /system/bin
+ * The root hinge helper (ADR 0012). Folio starts it as root with {@code CLASSPATH=<its own APK> app_process /system/bin
  * com.mccal.folio.RootHingeHelper <seconds>}, and it runs nothing else: it listens to Samsung's Folding Angle sensor and
  * prints one line per message to the pipe of the process that started it (see RootHingeProtocol):
  * {@code R} when the sensor is registered, {@code H <nanos> <degrees>} for each reading, {@code E <word>} when it stops.

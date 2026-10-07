@@ -1,7 +1,7 @@
 package com.mccal.folio
 
 /**
- * The Capability Broker (ADR 0008, ADR 0009): the one place that knows which way, if any, Folio can do something on
+ * The Capability Broker (ADR 0008, ADR 0011): the one place that knows which way, if any, Folio can do something on
  * this phone. Features ask "is this capability available" and never "is Shizuku running". Pure Kotlin with no Android
  * calls, so every rule below is a unit test. Nothing here asks Android for anything; providers do, behind this seam.
  *
@@ -139,7 +139,7 @@ internal class CapabilityBroker(
 }
 
 /**
- * What a bridge says about itself when Folio connects (ADR 0009). Folio reads it, decides what it may use, and carries
+ * What a bridge says about itself when Folio connects (ADR 0011). Folio reads it, decides what it may use, and carries
  * on if the answer is "nothing". Newer or older bridges are states, never crashes.
  */
 internal data class BridgeHello(
