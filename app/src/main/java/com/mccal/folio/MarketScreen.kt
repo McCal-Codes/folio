@@ -131,6 +131,8 @@ internal fun MarketScreen(
     var openSourceUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var introducing by rememberSaveable { mutableStateOf(!session.prefs.introductionSeen) }
     var style by rememberSaveable { mutableStateOf(session.prefs.featuredStyle) }
+    // The one question about keeping packages up to date, asked once after the welcome (see MarketPrefs.updatesQuestionSeen).
+    var askingUpdates by rememberSaveable { mutableStateOf(!session.prefs.updatesQuestionSeen) }
     var confirming by rememberSaveable { mutableStateOf<String?>(null) }
     var addingSource by rememberSaveable { mutableStateOf(false) }
     var sourceUrl by rememberSaveable { mutableStateOf("") }
@@ -369,6 +371,7 @@ internal fun MarketScreen(
     LaunchedEffect(MarketLink.pending) {
         when (val link = MarketLink.pending) {
             is MarketLink.Package -> { tab = MarketTab.PACKAGES; openId = link.id }
+            MarketLink.Updates -> tab = MarketTab.INSTALLED
             is MarketLink.Source -> {
                 // What the format says a source link does: the Add Source sheet, filled in. The fingerprint still
                 // has to be confirmed, so a link can't add a source by itself.
@@ -389,6 +392,25 @@ internal fun MarketScreen(
             onDone = { session.prefs.introductionSeen = true; introducing = false },
         )
         return
+    }
+    if (askingUpdates) {
+        val notifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) session.prefs.notifyUpdates = false
+        }
+        AlertDialog(onDismissRequest = { session.prefs.updatesQuestionSeen = true; askingUpdates = false },
+            title = { Text(stringResource(R.string.updates_question_title)) },
+            text = { Text(stringResource(R.string.updates_question_body)) },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { session.prefs.updatesQuestionSeen = true; askingUpdates = false }) { Text(stringResource(R.string.not_now)) } },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    session.prefs.backgroundRefresh = true
+                    session.prefs.notifyUpdates = true
+                    MarketRefreshJob.schedule(context)
+                    session.prefs.updatesQuestionSeen = true
+                    askingUpdates = false
+                    if (!SoftwareUpdate.canPostNotifications(context)) notifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.turn_on)) }
+            })
     }
 
     // Every row and page asks the same question about an external app, and re-asks it when Folio
@@ -465,6 +487,7 @@ internal fun MarketScreen(
                             onGet = { onExternalOrConfirm(it) },
                             onRemove = { id, name -> remove(id, name) },
                             onTryAgain = { id, name -> tryAgain(id, name) },
+                            onChanged = { refresh() },
                         )
                     }
                 }
@@ -855,11 +878,15 @@ private fun MarketList(
     onGet: (MarketEntry) -> Unit,
     onRemove: (String, String) -> Unit,
     onTryAgain: (String, String) -> Unit,
+    onChanged: () -> Unit = {},
 ) {
     // A package is an update when a source offers a higher version than the one installed. An app of its own is
     // never in [installed] - Android has it, not Folio - so its version is asked of Android, and only for the
     // listings that are apps.
     val context = androidx.compose.ui.platform.LocalContext.current
+    val listScope = rememberCoroutineScope()
+    // The last automatic updates, newest first; the newest of each package can be undone while it is still the installed version.
+    var autoUpdated by remember { mutableStateOf(session.autoUpdates.recent().filter { !it.undone }) }
     val appsChanged = LocalAppsChanged.current
     val appUpdates = remember(entries, appsChanged) { entries.filter { MarketAppUpdate.offered(context, it) != null } }
     val updates = entries.filter { entry ->
@@ -928,6 +955,32 @@ private fun MarketList(
                             onGet = { onGet(entry) },
                             onRemove = { onRemove(entry.id, entry.name) },
                         )
+                    }
+                }
+            }
+        }
+        if (tab == MarketTab.INSTALLED && autoUpdated.isNotEmpty()) {
+            item(key = "recent-label") { SheetGroupLabel(stringResource(R.string.updated_recently)) }
+            item(key = "recent") {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    autoUpdated.forEach { u ->
+                        // Undo only on a package's newest update, and only while the version it made is still the one installed.
+                        val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.let { it.version == u.to && it.enabled } == true
+                        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(u.name, color = Color.White, fontSize = FolioType.BODY.sp)
+                                Text(stringResource(R.string.version_from_to, u.from.text, u.to.text), color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                            }
+                            if (canUndo) androidx.compose.material3.TextButton(onClick = {
+                                listScope.launch {
+                                    // Through the same one-at-a-time slot as installs and automatic updates: both rewrite the whole list of installed packages.
+                                    if (MarketWork.exclusive("undo:${u.id}") { session.undoAutoUpdate(u) } == true) {
+                                        autoUpdated = session.autoUpdates.recent().filter { !it.undone }; onChanged()
+                                    }
+                                }
+                            }, modifier = Modifier.testTag("undo-auto-update-${u.id}")) { Text(stringResource(R.string.undo)) }
+                        }
                     }
                 }
             }
@@ -1309,6 +1362,21 @@ private fun MarketPackagePage(
                 },
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
+        }
+        // A package from a source can opt out of automatic updates on its own page; it follows the global switch until then.
+        // A built-in package has no source address to be updated from, so there is nothing for the switch to do.
+        if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl != null && source.kind != Source.Kind.BUILT_IN &&
+            FeatureGate.MARKET_AUTO_UPDATE.isOpen(androidx.compose.ui.platform.LocalContext.current)) {
+            var on by remember(installed.id) { mutableStateOf(!session.prefs.autoUpdateTurnedOff(installed.id)) }
+            val global = session.prefs.autoUpdatePackages
+            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).padding(top = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.update_automatically), color = Color.White, fontSize = FolioType.BODY.sp)
+                    Text(stringResource(if (global) R.string.update_automatically_follows else R.string.update_automatically_global_off),
+                        color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                }
+                IosSwitch(on, { on = it; session.prefs.setAutoUpdateFor(installed.id, it) }, Modifier.testTag("package-auto-update"))
+            }
         }
 
         if (host != null && !host.onPhone) NeedsHostNote(host, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
@@ -1825,6 +1893,8 @@ private fun report(context: android.content.Context, issuesUrl: String?, entry: 
 internal sealed interface MarketLink {
     data class Package(val id: String) : MarketLink
     data class Source(val url: String) : MarketLink
+    /** The update notice: the store, on what is installed and has a newer version. */
+    data object Updates : MarketLink
 
     // A supporter's code is a link too, but it belongs to Settings rather than the store: see RedeemActivity.
 
@@ -1837,6 +1907,7 @@ internal sealed interface MarketLink {
             val host = rest.substringBefore('/')
             val value = rest.substringAfter('/', "").substringBefore('?').substringBefore('#')
             if (value.isEmpty()) return null
+            if (host == "market") return Updates.takeIf { value == "updates" }
             return when (host) {
                 "package" -> Package(value).takeIf { PackageManifest.ID.containsMatchIn(it.id) }
                 // The url is encoded, because it carries its own slashes.

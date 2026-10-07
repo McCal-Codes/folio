@@ -45,6 +45,11 @@ internal object Diagnostics {
         while (trail.size > TRAIL_SIZE) trail.removeFirst()
     }
 
+    /** The automatic package updates (M1), in the trail so Recent Activity can say what happened in the background. */
+    fun autoUpdated(id: String, version: Any) = event("Updated $id to $version in the background")
+    fun autoUpdateStale(id: String) = event("A staged update for $id was no longer valid")
+    fun autoUpdateFailed(id: String, what: String) = event("The update for $id failed: $what")
+
     @Synchronized fun trailText(): String = trail.joinToString("\n")
 
     private var lastCaught: String? = null

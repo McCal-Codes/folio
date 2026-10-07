@@ -114,4 +114,73 @@ class InstallStateMachineTest {
             holds(store, host, "undone (was off: $wasOff)")
         }
     }
+
+    private fun packChanged(): ByteArray {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            for (name in listOf("manifest.json", "depiction.json", "tweaks.json")) {
+                var text = File(cabinetDir, name).readText().replace("\"version\": \"1.0.0\"", "\"version\": \"1.1.0\"")
+                if (name == "tweaks.json") text = text.replace("\"inner\": true", "\"inner\": false")
+                zip.putNextEntry(ZipEntry(name)); zip.write(text.toByteArray()); zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    @Test fun `an update that changes no setting is told apart from one that does, so only the first installs itself`() {
+        val installer = PackageInstaller(InstalledStore(MemoryStore()), Host(), authors = AuthorTrust(MemoryStore()))
+        val installed = (installer.install(pack("1.0.0")) as InstallResult.Installed).installed
+        assertTrue("a new version with the same changes touches none of the person's settings", installer.changesUnchanged(pack("1.1.0"), installed))
+        assertTrue("a version that changes a setting must wait to be tapped", !installer.changesUnchanged(packChanged(), installed))
+        assertTrue("bytes that are not a package never qualify", !installer.changesUnchanged(ByteArray(8), installed))
+    }
+
+    @Test fun `an automatic update does not touch Home, so a setting changed since the install keeps its value`() {
+        val host = Host()
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, host, authors = AuthorTrust(MemoryStore()))
+        val first = (installer.install(pack("1.0.0")) as InstallResult.Installed).installed
+        // The person changes something the package had set.
+        host.on += "changed-by-the-person"
+        val result = installer.updateKeepingSettings(pack("1.1.0")) as InstallResult.Installed
+        assertEquals("the record moves to the new version", DebVersion.parse("1.1.0"), store.find(id)?.version)
+        assertTrue("and Home is exactly as the person left it", "changed-by-the-person" in host.on)
+        assertEquals("the snapshots still describe what to put back", first.snapshots, store.find(id)?.snapshots)
+        assertEquals("the old version is reported as replaced", DebVersion.parse("1.0.0"), result.replaced?.version)
+    }
+
+    @Test fun `an update that changes a setting, or a package that is off, is refused for in-place updating`() {
+        val host = Host()
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, host, authors = AuthorTrust(MemoryStore()))
+        installer.install(pack("1.0.0"))
+        assertTrue("different changes wait for the person", installer.updateKeepingSettings(packChanged()) is InstallResult.Failed)
+        assertEquals("and nothing was updated", DebVersion.parse("1.0.0"), store.find(id)?.version)
+        installer.disable(id, "crashed")
+        assertTrue("a package that is off is not updated in place", installer.updateKeepingSettings(pack("1.1.0")) is InstallResult.Failed)
+    }
+
+    @Test fun `undoing an in-place update puts the old version back and leaves Home alone`() {
+        val host = Host()
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, host, authors = AuthorTrust(MemoryStore()))
+        installer.install(pack("1.0.0"))
+        val one = DebVersion.parse("1.0.0")!!; val two = DebVersion.parse("1.1.0")!!
+        installer.updateKeepingSettings(pack("1.1.0"))
+        host.on += "changed-by-the-person"
+        assertTrue(installer.undoUpdateInPlace(id, one, two))
+        assertEquals(one, store.find(id)?.version)
+        assertTrue("Home is as the person left it", "changed-by-the-person" in host.on)
+        assertTrue("it cannot be undone twice", !installer.undoUpdateInPlace(id, one, two))
+    }
+
+    @Test fun `an update that was replaced by a newer one, or removed, cannot be undone`() {
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, Host(), authors = AuthorTrust(MemoryStore()))
+        installer.install(pack("1.0.0"))
+        installer.updateKeepingSettings(pack("1.1.0"))
+        val one = DebVersion.parse("1.0.0")!!; val two = DebVersion.parse("1.1.0")!!
+        installer.remove(id)
+        assertTrue("removed: nothing to undo", !installer.undoUpdateInPlace(id, one, two))
+    }
 }

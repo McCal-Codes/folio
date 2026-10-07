@@ -10,6 +10,8 @@ import com.mccal.folio.market.FileStore
 import com.mccal.folio.market.FolioPackage
 import com.mccal.folio.market.FolioVersion
 import com.mccal.folio.market.IndexPackage
+import com.mccal.folio.market.AutoUpdate
+import com.mccal.folio.market.AutoUpdateLog
 import com.mccal.folio.market.InstallResult
 import com.mccal.folio.market.InstalledPackage
 import com.mccal.folio.market.InstalledStore
@@ -52,6 +54,9 @@ internal class MarketSession(
 
     /** How Featured looks, and whether the introduction has been seen. */
     val prefs = MarketPrefs(files)
+
+    /** The last few automatic updates, so a silent update leaves a trail and can be undone. */
+    val autoUpdates = AutoUpdateLog(files)
 
     private val store = InstalledStore(files)
     private val safeMode = PackageSafeMode(files)
@@ -134,7 +139,30 @@ internal class MarketSession(
 
     fun installed(): List<InstalledPackage> = store.installed()
 
+    /** A listing's bytes, downloaded and checked against what the source promised, with nothing applied (staging an update). */
+    suspend fun fetchBytes(entry: MarketEntry): ByteArray? = sources.fetchPackage(entry.entry, entry.source)
+
+    /** Whether [bytes] would update [installed] without changing any setting the old version applied (see [PackageInstaller.changesUnchanged]). */
+    fun updateKeepsSettings(bytes: ByteArray, installed: InstalledPackage): Boolean = installer.changesUnchanged(bytes, installed)
+
+    /**
+     * Installs bytes staged earlier, with every check a normal install makes (size, checksum, author, compatibility)
+     * and one more: the source's list must still be fresh, since staging can be days older than this moment and a list
+     * that has gone stale is browse-only. The update goes in without touching Home ([PackageInstaller.updateKeepingSettings]),
+     * so a setting changed since the install keeps its value.
+     */
+    suspend fun installStaged(entry: MarketEntry, bytes: ByteArray): InstallResult = withContext(io) {
+        if (entry.revokedReason != null || entry.clash != null) return@withContext InstallResult.Failed(InstallResult.Reason.REVOKED, "that listing can't be installed")
+        if (sources.isStale(entry.source)) return@withContext InstallResult.Failed(InstallResult.Reason.ARCHIVE, "that source's list is too old to install from, so refresh it first")
+        installer.updateKeepingSettings(bytes, expected = entry.entry, origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = entry.source.url)
+    }
+
     fun installed(id: String): InstalledPackage? = store.find(id)
+
+    /** Puts back the version an automatic update replaced, if it is still the one installed. Home is not touched. */
+    suspend fun undoAutoUpdate(update: AutoUpdate): Boolean = withContext(io) {
+        installer.undoUpdateInPlace(update.id, update.from, update.to).also { if (it) autoUpdates.markUndone(update.id, update.to) }
+    }
 
     /** The page and payload for a package, without applying anything: what the package page shows. */
     fun read(id: String): FolioPackage? {
