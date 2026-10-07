@@ -291,7 +291,8 @@ private fun StartingPointPage(state: LauncherState, model: LauncherModel, tick: 
         if (navOpen) {
             Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 IosChip(selected = true, onClick = { navOpen = false }, label = { Text(stringResource(R.string.navigation_keep)) }, modifier = Modifier.weight(1f))
-                IosChip(selected = false, onClick = { onShadeSetup() }, label = { Text(stringResource(R.string.navigation_big_buttons)) }, modifier = Modifier.weight(1f))
+                IosChip(selected = state.buttonBar, onClick = { model.setButtonBar(true); if (!SystemShadeAccessibilityService.isConnected()) onShadeSetup() },
+                    label = { Text(stringResource(R.string.navigation_big_buttons)) }, modifier = Modifier.weight(1f))
                 IosChip(selected = false, onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } },
                     label = { Text(stringResource(R.string.navigation_android_settings)) }, modifier = Modifier.weight(1f))
             }
