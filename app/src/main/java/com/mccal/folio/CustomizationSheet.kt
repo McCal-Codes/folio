@@ -1434,6 +1434,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_share to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_about to CustomizationPage.SYSTEM_BRIDGE,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -2856,7 +2858,17 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         DisposableEffect(Unit) { onDispose { RootHingeTester.dismiss() } }
         found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
         if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
-        CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe, onClick = { RootHingeTester.start(context) })
+        // Before the first test the owner reads what Folio will and won't do as root; after that, a test just starts.
+        var explain by remember { mutableStateOf<String?>(null) }
+        CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe,
+            onClick = { if (RootHingeStore.explained(context)) RootHingeTester.start(context) else explain = "first" })
+        if (explain != null) AlertDialog(onDismissRequest = { explain = null },
+            title = { Text(stringResource(R.string.bridge_root_explain_title)) },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                Text(stringResource(R.string.bridge_root_explain_1)); Text(stringResource(R.string.bridge_root_explain_2)); Text(stringResource(R.string.bridge_root_explain_3)) } },
+            confirmButton = { TextButton(onClick = { if (explain == "first") { RootHingeStore.setExplained(context); RootHingeTester.start(context) }; explain = null },
+                modifier = Modifier.testTag("bridge-root-explain-go")) { Text(stringResource(if (explain == "first") R.string.bridge_root_explain_continue else R.string.done)) } },
+            dismissButton = if (explain == "first") ({ TextButton(onClick = { explain = null }, modifier = Modifier.testTag("bridge-root-explain-no")) { Text(stringResource(R.string.not_now)) } }) else null)
         if (rootState == RootState.READY) {
             var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
             SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")
@@ -2865,6 +2877,10 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_copy), Modifier.fillMaxWidth().testTag("bridge-root-copy"), onClick = {
             context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
         })
+        if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_share), Modifier.fillMaxWidth().testTag("bridge-root-share"), onClick = {
+            RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
+        })
+        CardAction(stringResource(R.string.bridge_root_about), Modifier.fillMaxWidth().testTag("bridge-root-about"), onClick = { explain = "info" })
     }
     SettingsCard(stringResource(R.string.bridge_does)) {
         states.forEach { s ->

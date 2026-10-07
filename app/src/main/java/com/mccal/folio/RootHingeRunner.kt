@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import android.content.Context
+import android.content.Intent
 import java.io.IOException
 import kotlinx.coroutines.launch
 import java.util.concurrent.LinkedBlockingQueue
@@ -224,6 +225,22 @@ internal object RootHingeStore {
     /** The feed stopped by itself: remember it, so the page says so and the animation uses the public sensor from now on. */
     fun markLost(context: Context) {
         if (state(context) == RootState.READY) context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("state", RootState.LOST.name).apply()
+    }
+
+    /** Whether the owner has been through the explanation before a first test. */
+    fun explained(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("explained", false)
+    fun setExplained(context: Context) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("explained", true).apply() }
+
+    /**
+     * The test report as an ordinary text share, so the owner picks where it goes (a chat, a GitHub issue, a note). Plain text only:
+     * no file, no mail selector, and nothing in it but the result, `su`'s name, the root manager's version, counts and the phone model.
+     */
+    fun shareIntent(context: Context): Intent? {
+        val report = lastReport(context) ?: return null
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.bridge_root_share_subject))
+            .putExtra(Intent.EXTRA_TEXT, report)
+        return Intent.createChooser(send, context.getString(R.string.bridge_root_share)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     /** Forgets the result: back to "not tested". */

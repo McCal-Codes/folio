@@ -1678,6 +1678,14 @@
     <string name="bridge_root_testing">正在测试… 如果 root 管理器询问，请允许，然后缓慢地打开和合上手机。</string>
     <string name="bridge_root_use">用于折叠动画</string>
     <string name="bridge_root_use_note">Folio 打开期间跟随逐度角度。如果 root 失效，Folio 会自动回到常见的三档。</string>
+    <string name="bridge_root_share">分享测试报告</string>
+    <string name="bridge_root_share_subject">Folio root 测试报告</string>
+    <string name="bridge_root_about">Folio 以 root 做什么</string>
+    <string name="bridge_root_explain_title">测试 root 之前</string>
+    <string name="bridge_root_explain_1">Folio 会以 root 身份从自己的应用文件启动一个小助手，仅用于读取三星的铰链角度传感器。不会下载、安装或更改任何内容，也不会以 root 运行其他任何东西。</string>
+    <string name="bridge_root_explain_2">你的 root 管理器（KernelSU、Magisk 或 APatch）可能会询问是否允许 Folio。只有在你想使用此功能时才允许。</string>
+    <string name="bridge_root_explain_3">结果只保存在你的手机上。你可以随时在 Folio 中关闭此功能，或在 root 管理器中收回 Folio 的 root 权限，之后 Folio 会回到常见的三档。</string>
+    <string name="bridge_root_explain_continue">继续测试</string>
     <string name="bridge_root_copy">复制测试报告</string>
     <string name="bridge_root_result_moving">可用：%1$d 次读数，%2$d 个不同角度，从 %3$d° 到 %4$d°。</string>
     <string name="bridge_root_result_still">已连接。测试时请转动铰链以查看读数。</string>

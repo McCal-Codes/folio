@@ -1726,6 +1726,14 @@
     <string name="bridge_root_testing">Testing… Allow root if your root manager asks, then slowly open and close the phone.</string>
     <string name="bridge_root_use">Use in the fold animation</string>
     <string name="bridge_root_use_note">Follows the every-degree angle while Folio is open. If root stops working, Folio goes back to the usual steps by itself.</string>
+    <string name="bridge_root_share">Share test report</string>
+    <string name="bridge_root_share_subject">Folio root test report</string>
+    <string name="bridge_root_about">What Folio does as root</string>
+    <string name="bridge_root_explain_title">Before you test root</string>
+    <string name="bridge_root_explain_1">Folio starts a small helper from its own app file as root, only to read Samsung\u2019s hinge angle sensor. Nothing is downloaded, installed or changed, and nothing else runs as root.</string>
+    <string name="bridge_root_explain_2">Your root manager (KernelSU, Magisk or APatch) may ask you to allow Folio. Allow it only if you want this.</string>
+    <string name="bridge_root_explain_3">The result stays on your phone. You can switch the feed off in Folio, or take away Folio\u2019s root in your root manager, at any time. Folio then goes back to the usual steps.</string>
+    <string name="bridge_root_explain_continue">Continue to test</string>
     <string name="bridge_root_copy">Copy test report</string>
     <string name="bridge_root_result_moving">Works: %1$d readings, %2$d different angles, from %3$d° to %4$d°.</string>
     <string name="bridge_root_result_still">Connected. Move the hinge while testing to see readings.</string>
