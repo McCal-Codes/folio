@@ -73,3 +73,15 @@ while Folio is in front, stops when Folio goes behind another app, and starts ag
 - Threat model T27 to T31 cover the new trust boundary.
 - If this is never built, the finding stands: on this phone a live angle is root-only, and Folio's stepped prediction is the
   honest ceiling for everyone else.
+
+## Amendment, 6 Oct 2026: advanced options, and root can grant the settings permission
+
+- **Advanced options.** Root and computer-command options sit behind one switch on the System Bridge page, off by default, with a short
+  warning first ("leave it off if this isn't your phone or you're not comfortable") and an "I know" button. A Details button
+  opens the full disclosure. The root hinge feed also stops running while advanced options are off.
+- **A second thing Folio can do as root.** If the owner turns on "Allow Folio to use root for this" (off by default, offered only after a
+  root test works), a button runs `pm grant` or `pm revoke` of `WRITE_SECURE_SETTINGS` for Folio's own package. The command is built only from
+  that package name (checked as a plain name) and that one permission. It is safer than the owner pasting the command themselves, and
+  the same kill switch and Safe Mode turn it off.
+- **Why the manifest declares the permission.** `pm grant` ignores a permission an app has not declared. Declaring it is a visible change
+  (PERMISSIONS.md, row 15), made on purpose: nothing uses the permission yet.

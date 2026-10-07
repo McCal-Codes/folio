@@ -57,6 +57,7 @@
 | T30 | Folio asks for root without the owner knowing | E | It never asks in the background: root is found out only by the test the owner starts, and the root manager's own screen is what grants it | `RootHingeTest` (UNKNOWN is never available) |
 | T31 | A bad helper floods or lies to the animation | D | `RootHingeProtocol` accepts only 0 to 180 degrees in time order at most 100 a second and ignores every other line | `RootHingeTest` |
 | T32 | Folio's use of a hidden Android interface (the device-state service, for the StandBy tent) breaks or is refused | D | Every call is guarded and any failure reads as "can't tell", so StandBy goes on with the hinge and motion signals; the use is named in the StandBy note, off with the tent switch | `DeviceStateTentTest`, `StandByWaysTest` |
+| T33 | Folio gives itself the settings permission with root without the owner's say | E | Three things must all be on: advanced options, the "Allow Folio to use root for this" switch (off by default, shown only after a root test works), and the system-access switch (Safe Mode also turns it off). Only a button press runs it, and the command is built from Folio's own package name and one permission | `RootSettingsGrantTest` |
 
 ## Out of scope
 
