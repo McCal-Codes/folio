@@ -15,6 +15,8 @@ internal enum class FolioCapability(val id: String, val minTier: PrivilegeTier, 
     HINGE_ANGLE("device.hinge.angle", PrivilegeTier.STANDARD, OperationRisk.OBSERVE),
     /** Samsung's every-degree Folding Angle sensor. Measured on the Fold8 (6 Oct 2026): refused to the shell user, 89 distinct values as root. */
     HINGE_ANGLE_CONTINUOUS("device.hinge.angle.continuous", PrivilegeTier.ROOT, OperationRisk.OBSERVE),
+    /** Changing Android's protected settings, after the owner grants Folio WRITE_SECURE_SETTINGS once from a computer. Nothing in Folio uses it yet. */
+    SETTINGS_SECURE_WRITE("system.settings.secure.write", PrivilegeTier.SHIZUKU, OperationRisk.REVERSIBLE),
     SYSTEM_ACTIONS("system.actions", PrivilegeTier.SHIZUKU, OperationRisk.REVERSIBLE),
     SYSTEM_STATUS_MODULES("system.status.modules", PrivilegeTier.HOOKS, OperationRisk.EXPERIMENTAL),
     SYSTEM_QUICK_SETTINGS_LAYOUT("system.quicksettings.layout", PrivilegeTier.HOOKS, OperationRisk.EXPERIMENTAL);

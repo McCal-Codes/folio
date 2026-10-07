@@ -98,3 +98,27 @@ internal fun hingeCapabilityKey(source: HingeSource) = when (source) {
     HingeSource.PUBLIC_SENSOR -> "fold_hinge_capability"
     HingeSource.ROOT_HELPER -> "fold_hinge_capability_root"
 }
+
+/**
+ * The one-time permission that lets Folio change Android's protected settings. The owner grants it from a computer with adb
+ * (`pm grant`); Folio never grants it to itself, and nothing in Folio uses it yet. It sits at the shell tier, so the system-access switch and
+ * Safe Mode turn it off like every other provider above accessibility.
+ */
+internal object SecureSettingsGrant {
+    const val PERMISSION = "android.permission.WRITE_SECURE_SETTINGS"
+
+    /** Only a plain package name is put in a command the owner will run; anything else gets no command. */
+    private val PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
+
+    fun grantCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm grant $it $PERMISSION" }
+    fun revokeCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm revoke $it $PERMISSION" }
+
+    fun isGranted(context: android.content.Context): Boolean =
+        context.checkSelfPermission(PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+}
+
+internal class SecureSettingsGrantProvider(private val granted: () -> Boolean) : CapabilityProvider {
+    override val tier = PrivilegeTier.SHIZUKU
+    override val capabilities = setOf(FolioCapability.SETTINGS_SECURE_WRITE)
+    override fun status() = BackendStatus.of(granted())
+}

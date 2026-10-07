@@ -27,7 +27,7 @@ internal object SystemBridge {
     fun broker(context: Context): CapabilityBroker {
         val app = context.applicationContext
         return CapabilityBroker(
-            providers = { listOf(HingeSensorProvider(app), NotificationAccessProvider(app), AccessibilityProvider(), RootHingeProvider { RootHingeStore.state(app) }) },
+            providers = { listOf(HingeSensorProvider(app), NotificationAccessProvider(app), AccessibilityProvider(), RootHingeProvider { RootHingeStore.state(app) }, SecureSettingsGrantProvider { SecureSettingsGrant.isGranted(app) }) },
             integrationOff = { isOff(app) },
             safeMode = { SafeMode.active },
             audit = ::record,
@@ -82,6 +82,7 @@ internal object SystemBridge {
         FolioCapability.NOTIFICATIONS_READ -> R.string.bridge_cap_notifications
         FolioCapability.HINGE_ANGLE -> R.string.bridge_cap_hinge
         FolioCapability.HINGE_ANGLE_CONTINUOUS -> R.string.bridge_cap_hinge_continuous
+        FolioCapability.SETTINGS_SECURE_WRITE -> R.string.bridge_cap_secure_settings
         FolioCapability.SYSTEM_ACTIONS -> R.string.bridge_cap_actions
         FolioCapability.SYSTEM_STATUS_MODULES -> R.string.bridge_cap_status
         FolioCapability.SYSTEM_QUICK_SETTINGS_LAYOUT -> R.string.bridge_cap_quick_settings

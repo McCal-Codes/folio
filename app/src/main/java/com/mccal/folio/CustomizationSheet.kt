@@ -1436,6 +1436,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_share to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_about to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_grant_copy to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -2881,6 +2883,30 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
             RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
         })
         CardAction(stringResource(R.string.bridge_root_about), Modifier.fillMaxWidth().testTag("bridge-root-about"), onClick = { explain = "info" })
+    }
+    SettingsCard(stringResource(R.string.bridge_grant_title)) {
+        CardNote(stringResource(R.string.bridge_grant_note))
+        var granted by remember { mutableStateOf(SecureSettingsGrant.isGranted(context)) }
+        // Checked again whenever the page comes back, since the owner grants it on a computer.
+        LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { granted = SecureSettingsGrant.isGranted(context); states = read() } }
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-grant-state"), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.bridge_grant_permission), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(if (granted) R.string.bridge_grant_yes else R.string.bridge_grant_no), style = MaterialTheme.typography.bodyMedium,
+                color = if (granted) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val command = if (granted) SecureSettingsGrant.revokeCommand(context.packageName) else SecureSettingsGrant.grantCommand(context.packageName)
+        if (!granted) { CardNote(stringResource(R.string.bridge_grant_step_1)); CardNote(stringResource(R.string.bridge_grant_step_2)) }
+        if (command != null) {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(command, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).clip(RoundedCornerShape(10.dp))
+                    .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .08f)).padding(horizontal = 12.dp, vertical = 10.dp).testTag("bridge-grant-command"),
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
+            }
+            CardNote(stringResource(if (granted) R.string.bridge_grant_revoke_note else R.string.bridge_grant_step_3))
+            CardAction(stringResource(if (granted) R.string.bridge_grant_copy_revoke else R.string.bridge_grant_copy), Modifier.fillMaxWidth().testTag("bridge-grant-copy"), onClick = {
+                context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio command", command))
+            })
+        }
     }
     SettingsCard(stringResource(R.string.bridge_does)) {
         states.forEach { s ->
