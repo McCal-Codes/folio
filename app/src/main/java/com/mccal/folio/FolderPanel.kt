@@ -59,12 +59,28 @@ internal fun FolderPanel(
     onReorder: (String, Int) -> Unit = { _, _ -> }, onSortAlphabetically: (() -> Unit)? = null,
     /** Resize, reorder by drag, drag out past the edge and Sort A to Z: [FeatureGate.FOLDER_EDITING]. */
     editing: Boolean = true,
+    /**
+     * Carrying an app out of the folder, like iPhone: once it crosses the card's edge the folder steps aside and Home's own
+     * drag takes over, so the icon can be put on any cell, page or dock slot, with the others making room. [homeRootOnScreen]
+     * is where Home's coordinates start on the screen, since this panel is its own window. Null turns the hand-over off and
+     * the app lands on the first free cell instead.
+     */
+    onCarryStart: ((AppEntry) -> Unit)? = null, onCarryFinish: (cancelled: Boolean) -> Unit = {},
+    homeRootOnScreen: () -> androidx.compose.ui.geometry.Offset = { androidx.compose.ui.geometry.Offset.Zero },
 ) {
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
     val appear = remember(folder.id) { androidx.compose.animation.core.Animatable(0f) }
     val scope = rememberCoroutineScope()
     var closing by remember(folder.id) { mutableStateOf(false) }
+    // True from the moment an app is carried past the card's edge: the panel is drawn at zero opacity but stays, because
+    // it is the window that has the finger and has to keep receiving it until the app is let go.
+    var carrying by remember(folder.id) { mutableStateOf(false) }
+    // Home has been told the carried app was let go. A drag that ends can still be followed by its own cancel callback when the
+    // panel is torn down, and Home must hear about the end once, not twice.
+    val carryHandled = remember(folder.id) { booleanArrayOf(false) }
+    val carryFade by androidx.compose.animation.core.animateFloatAsState(if (carrying) 0f else 1f,
+        FolioMotion.spring(FolioMotion.Quick), label = "folder carry fade")
     val close: () -> Unit = {
         if (!closing) { closing = true; scope.launch {
             appear.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)); onDismiss()
@@ -115,7 +131,7 @@ internal fun FolderPanel(
                 }
             }
         }
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) }.background(FolioGlass.scrim)
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) * carryFade }.background(FolioGlass.scrim)
         .clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
@@ -216,6 +232,9 @@ internal fun FolderPanel(
         val order = remember(folder.id) { mutableStateListOf<String>().apply { addAll(folder.appIds) } }
         var draggingAppId by remember(folder.id) { mutableStateOf<String?>(null) }
         var dragOffset by remember(folder.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+        // Where the dragged app's cell was centered when it was picked up. The finger is that plus how far it has moved; the
+        // icon is drawn at the finger whatever cell it now belongs to, so a swap that moves its cell does not move the icon.
+        var dragStart by remember(folder.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
         var pulledOut by remember(folder.id) { mutableStateOf(false) }
         var cardBounds by remember(folder.id) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
         val childBounds = remember(folder.id) { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
@@ -228,6 +247,16 @@ internal fun FolderPanel(
         val latestDestinations by rememberUpdatedState(homeDestinations)
         val latestOnReorder by rememberUpdatedState(onReorder)
         val latestOnMoveOut by rememberUpdatedState(onMoveOut)
+        val latestCarryStart by rememberUpdatedState(onCarryStart)
+        val latestCarryFinish by rememberUpdatedState(onCarryFinish)
+        val latestHomeOrigin by rememberUpdatedState(homeRootOnScreen)
+        // A point in this window, in Home's coordinates (both windows are full screen, but not necessarily at the same origin).
+        fun toHome(windowPoint: androidx.compose.ui.geometry.Offset): androidx.compose.ui.geometry.Offset {
+            val onScreen = IntArray(2); val inWindow = IntArray(2)
+            view.getLocationOnScreen(onScreen); view.getLocationInWindow(inWindow)
+            return androidx.compose.ui.geometry.Offset((onScreen[0] - inWindow[0]).toFloat(), (onScreen[1] - inWindow[1]).toFloat()) +
+                windowPoint - latestHomeOrigin()
+        }
         Surface(Modifier.width(folderW.dp).height(folderH.dp)
             .onGloballyPositioned { cardBounds = it.boundsInWindow() }
             .clickable(
@@ -256,7 +285,8 @@ internal fun FolderPanel(
                                     .onGloballyPositioned { childBounds[appId] = it.boundsInWindow() }
                                     .graphicsLayer {
                                         if (isDragging) {
-                                            translationX = dragOffset.x; translationY = dragOffset.y
+                                            val cell = childBounds[appId]?.center ?: dragStart
+                                            translationX = dragStart.x + dragOffset.x - cell.x; translationY = dragStart.y + dragOffset.y - cell.y
                                             val s = if (pulledOut) .78f else 1.06f
                                             scaleX = s; scaleY = s; alpha = if (pulledOut) .7f else 1f
                                             shadowElevation = 12f
@@ -267,12 +297,15 @@ internal fun FolderPanel(
                                         if (!editing) return@pointerInput
                                         detectDragGesturesAfterLongPress(
                                             onDragStart = { draggingAppId = appId; dragOffset = androidx.compose.ui.geometry.Offset.Zero
+                                                dragStart = childBounds[appId]?.center ?: androidx.compose.ui.geometry.Offset.Zero
                                                 pulledOut = false; haptic.perform(FolioHaptic.PickedUp) },
                                             onDragEnd = {
+                                                val wasCarrying = carrying
+                                                if (wasCarrying) { carryHandled[0] = true; latestCarryFinish(false) }
                                                 val wasOut = pulledOut
                                                 val finalIndex = order.indexOf(appId)
                                                 draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false
-                                                if (wasOut) {
+                                                if (wasCarrying) { /* Home already took the drop */ } else if (wasOut) {
                                                     val destination = latestDestinations.firstOrNull()
                                                     if (destination != null) {
                                                         latestOnMoveOut(appId, DropTarget.Home(destination)); haptic.perform(FolioHaptic.Commit)
@@ -285,15 +318,28 @@ internal fun FolderPanel(
                                             // other state change) can tear down this item's composable before its
                                             // own coroutine scope unwinds, which fires onDragCancel right after -
                                             // only clear state here if nothing newer has already claimed it.
-                                            onDragCancel = { if (draggingAppId == appId) {
+                                            onDragCancel = { if (carrying) { if (!carryHandled[0]) { carryHandled[0] = true; latestCarryFinish(true) } } else if (draggingAppId == appId) {
                                                 draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false } },
                                         ) { change, amount ->
                                             change.consume()
                                             dragOffset += amount
                                             val anchor = childBounds[appId] ?: return@detectDragGesturesAfterLongPress
-                                            val point = anchor.center + dragOffset
+                                            val point = dragStart + dragOffset
                                             val nowOut = cardBounds != androidx.compose.ui.geometry.Rect.Zero && !cardBounds.contains(point)
+                                            if (carrying) { drag.pointer = toHome(point); return@detectDragGesturesAfterLongPress }
                                             if (nowOut != pulledOut) { pulledOut = nowOut; haptic.perform(FolioHaptic.Step) }
+                                            val carry = latestCarryStart
+                                            if (nowOut && carry != null) {
+                                                // Over the edge: hand the drag to Home, which draws the icon under the finger.
+                                                val root = toHome(point)
+                                                val chip = toHome(anchor.topLeft)
+                                                drag.source = DragRegion(DropTarget.Library(appId), androidx.compose.ui.geometry.Rect(chip, anchor.size),
+                                                    appId, page, folderId = latestFolder.id, scope = latestFolder.id)
+                                                drag.origin = root; drag.pointer = root; drag.originPage = page; drag.moved = true
+                                                carrying = true
+                                                apps[appId]?.let(carry)
+                                                return@detectDragGesturesAfterLongPress
+                                            }
                                             if (!nowOut) {
                                                 val target = childBounds.entries.firstOrNull { (id, bounds) -> id != appId && bounds.contains(point) }?.key
                                                 if (target != null) {

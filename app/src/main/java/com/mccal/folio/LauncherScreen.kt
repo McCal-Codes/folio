@@ -157,6 +157,7 @@ fun LauncherScreen(
     var placeSlot by remember { mutableStateOf<Int?>(null) }
     // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
     val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val homeView = androidx.compose.ui.platform.LocalView.current
     val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
     val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
@@ -437,7 +438,8 @@ fun LauncherScreen(
         if (focusLock != null && drag.active && drag.moved) { drag.clear(); overlays.menu = null; lockNotice++; return@LaunchedEffect }
         if (drag.active && drag.moved && id != null && overlays.menu == id) { overlays.menu = null; homeEdit.start() }
         // Dragging out of the App Library heads to Home only once the app actually moves (holding just shows the menu).
-        if (drag.active && drag.moved && source?.target is DropTarget.Library) {
+        // (An app carried out of an open folder has a Library target too, but it is already on Home: it must not move the page.)
+        if (drag.active && drag.moved && source?.target is DropTarget.Library && source.folderId == null) {
             withFrameNanos { }
             pager.scrollToPage(lastHomePage.coerceIn(0, homePages - 1))
         }
@@ -1720,6 +1722,13 @@ fun LauncherScreen(
                     size = if (folderEditing) state.folderSizes[id] else null, onSize = { model.setFolderSize(id, it) }, editing = folderEditing,
                     onReorder = { appId, index -> model.moveFolderApp(id, appId, index) },
                     onSortAlphabetically = { model.sortFolderAlphabetically(id) },
+                    onCarryStart = if (folderEditing) {{ app ->
+                        // The same pick-up as holding an app on Home: Home's own drag now has the icon, and Home goes into jiggle mode.
+                        focus.clearFocus(); keyboard?.hide(); haptic.perform(FolioHaptic.PickedUp)
+                        homeEdit.start()
+                    }} else null,
+                    onCarryFinish = { cancelled -> finishDrag(cancelled); overlays.folder = null },
+                    homeRootOnScreen = { val at = IntArray(2); homeView.getLocationOnScreen(at); androidx.compose.ui.geometry.Offset(at[0].toFloat(), at[1].toFloat()) },
                     // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
                     onLaunch = onLaunchFrom, onAddApps = if (focusLock == null) {{ overlays.addToFolder = id }} else null,
                     onMoveOut = { appId, destination ->
