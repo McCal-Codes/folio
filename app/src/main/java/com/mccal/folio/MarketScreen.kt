@@ -965,7 +965,7 @@ private fun MarketList(
                 SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     autoUpdated.forEach { u ->
                         // Undo only on a package's newest update, and only while the version it made is still the one installed.
-                        val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.version == u.to
+                        val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.let { it.version == u.to && it.enabled } == true
                         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -974,7 +974,10 @@ private fun MarketList(
                             }
                             if (canUndo) androidx.compose.material3.TextButton(onClick = {
                                 listScope.launch {
-                                    if (session.undoAutoUpdate(u)) { autoUpdated = session.autoUpdates.recent().filter { !it.undone }; onChanged() }
+                                    // Through the same one-at-a-time slot as installs and automatic updates: both rewrite the whole list of installed packages.
+                                    if (MarketWork.exclusive("undo:${u.id}") { session.undoAutoUpdate(u) } == true) {
+                                        autoUpdated = session.autoUpdates.recent().filter { !it.undone }; onChanged()
+                                    }
                                 }
                             }, modifier = Modifier.testTag("undo-auto-update-${u.id}")) { Text(stringResource(R.string.undo)) }
                         }
@@ -1361,7 +1364,9 @@ private fun MarketPackagePage(
             )
         }
         // A package from a source can opt out of automatic updates on its own page; it follows the global switch until then.
-        if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && FeatureGate.MARKET_AUTO_UPDATE.isOpen(androidx.compose.ui.platform.LocalContext.current)) {
+        // A built-in package has no source address to be updated from, so there is nothing for the switch to do.
+        if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl != null && source.kind != Source.Kind.BUILT_IN &&
+            FeatureGate.MARKET_AUTO_UPDATE.isOpen(androidx.compose.ui.platform.LocalContext.current)) {
             var on by remember(installed.id) { mutableStateOf(!session.prefs.autoUpdateTurnedOff(installed.id)) }
             val global = session.prefs.autoUpdatePackages
             Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).padding(top = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
