@@ -1,6 +1,9 @@
 package com.mccal.folio
 
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
 import android.app.role.RoleManager
@@ -94,6 +97,13 @@ class MainActivity : ComponentActivity() {
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { syncStandByScreenSaver(this@MainActivity) }
         FocusScheduler.run(this)
+        // Focus triggers (folding, charging, headphones): listen only while some Focus uses one.
+        // Gated (FeatureGate.FOCUS_TRIGGERS): a phone the feature is shut for never registers a listener.
+        if (FeatureGate.FOCUS_TRIGGERS.isOpen(this)) lifecycleScope.launch {
+            model.state.map { st -> st.focusModes.any { it.triggers.any } }.distinctUntilChanged().collectLatest { listening ->
+                if (listening) focusSignals(this@MainActivity).collect { model.onFocusSignals(it) }
+            }
+        }
         // Updates staged by the daily refresh while Folio was not running go in a little after start, once Home is up.
         if (MarketAutoUpdate.enabled(this)) lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             kotlinx.coroutines.delay(20_000)

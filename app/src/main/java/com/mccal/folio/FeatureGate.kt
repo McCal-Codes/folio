@@ -57,6 +57,14 @@ internal enum class FeatureGate(
     PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
 
     /**
+     * Focus triggers: a Focus that turns on by itself when the phone is unfolded, charging or has headphones
+     * connected. It listens for the phone's folding, power and audio devices, which is the kind of thing that needs
+     * real phones for a few days before everyone gets it, so supporters have it in the 0.6.9 betas. Flip
+     * [OPEN_IN_0_6_9] to true in the 0.6.9 release.
+     */
+    FOCUS_TRIGGERS("focusTriggers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
      * Packages from a source update by themselves in the background (M1): the daily refresh stages a checked update
      * and it goes in through the running app. Supporters and Folio Dev first, because it changes what is on Home
      * without the person tapping anything.
