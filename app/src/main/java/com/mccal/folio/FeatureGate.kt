@@ -68,7 +68,14 @@ internal enum class FeatureGate(
      * A grabber under the Side Bar dock in edit mode, to drag it up or down instead of using the Dock Height slider
      * (#21). It sits in the middle of Home's edit gestures, so supporters try it on real phones first.
      */
-    DOCK_GRABBERS("dockGrabbers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    DOCK_GRABBERS("dockGrabbers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Packages from a source update by themselves in the background (M1): the daily refresh stages a checked update
+     * and it goes in through the running app. Supporters and Folio Dev first, because it changes what is on Home
+     * without the person tapping anything.
+     */
+    MARKET_AUTO_UPDATE("marketAutoUpdate", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

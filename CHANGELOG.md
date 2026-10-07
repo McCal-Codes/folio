@@ -19,6 +19,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Smoother fold:** the fold effect follows the hinge back up after a partial close, and the cover builds smoothly as the Fold opens.
 - **StandBy tent** is detected from Android's device state on phones that report it.
 - **Performance log:** Settings › Advanced › Performance log can record Folio's own CPU, memory and battery use, so slowdowns and drain can be measured instead of guessed. It stays on the phone.
+- **The Market keeps your sources current:** Market settings has Refresh in the background (once a day, on Wi-Fi) and Tell me about updates, both off until you turn them on. The first time the Market opens it asks once, "Keep your packages up to date?", and Not Now is remembered and never asked again. A GitHub address works as a source, and one notice says how many updates the Market has.
+- **Packages update themselves:** with Update packages in the background on, a package from your sources updates itself when the change touches none of your settings. It waits in Safe Mode and never runs beside a tap on Get. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 
 ### Fixed
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
