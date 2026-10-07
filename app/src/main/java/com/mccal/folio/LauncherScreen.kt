@@ -1255,7 +1255,12 @@ fun LauncherScreen(
                         onWallpaper = { value ->
                             if (value != state.systemWallpaper) { model.setSystemWallpaper(value); launcherActivity.applyWallpaperWindow(value) }
                         },
-                        onFinish = onFinishFirstRun, state = state, model = model)
+                        onFinish = onFinishFirstRun, state = state, model = model,
+                        // The quiet step for a phone with Shizuku or root: setup closes and Settings opens on System Bridge.
+                        onOpenBridge = {
+                            customizationPage = CustomizationPage.SYSTEM_BRIDGE
+                            sheet = sheetForAppIcon(CustomizationPage.SYSTEM_BRIDGE, customizationPage, MarketAccess.isOpen(launcherActivity))
+                        })
                 }
             }
             if (sheet == "widgets") OwnMethod {

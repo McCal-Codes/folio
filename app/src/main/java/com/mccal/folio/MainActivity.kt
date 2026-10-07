@@ -323,7 +323,7 @@ class MainActivity : ComponentActivity() {
                     onAppearanceClear = { cancelAppearanceLocation(); appearance.clearLocation(systemDark()) },
                     showFirstRun = showFirstRun.value,
                     onFinishFirstRun = ::finishFirstRun,
-                    onShadeSetup = ::showShadeSetup, onShowWelcome = { showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
+                    onShadeSetup = ::showShadeSetup, onShowWelcome = { SetupReplay.active = true; showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
                 }
                 // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
                 // charging on its side and a tent on the cover.
@@ -522,6 +522,7 @@ class MainActivity : ComponentActivity() {
     private fun finishFirstRun() {
         setupExperience.finish()
         showFirstRun.value = false
+        SetupReplay.active = false
     }
 
     private fun ownShadeSetupExternally() {
