@@ -8,8 +8,8 @@
     tools/dev-builds.py where                  what is on the phone now, and whether something else replaced it
     tools/dev-builds.py source --base-url URL  write a signed Folio source for the kept builds (to host later)
 
-Why a script and not the Market: the Market reads at most 20 MiB for an app and a debug Folio is about 80, so it cannot
-carry these builds today. Folio also refuses to install an app from a local source on purpose (T19), and any other
+Why a script as well as a source: a debug Folio is about 80 MB, which the Market only accepts since its app limit went to
+100 MiB, and a phone-side list still needs somewhere to be hosted. Folio also refuses to install an app from a local source on purpose (T19), and any other
 source must be HTTPS with a key Folio pins, so a phone-side list needs somewhere to be hosted. `install` works today
 over wireless debugging; `source` makes the files for that later, and publishes nothing.
 
@@ -36,8 +36,8 @@ import zipfile
 APP_ID = "com.mccal.folio.dev"
 STORE = pathlib.Path(os.environ.get("FOLIO_DEV_BUILDS", "~/.folio-dev-builds")).expanduser()
 KEEP = 12
-# Folio's Market reads at most this much for one package or app (market/.../SourceFiles.kt MAX_PACKAGE_BYTES).
-MAX_APP_BYTES = 20 * 1024 * 1024
+# Folio's Market lists an app up to this size (market/.../SourceFiles.kt MAX_APP_BYTES, raised from 20 MiB on 2026-10-06).
+MAX_APP_BYTES = 100 * 1024 * 1024
 JAVA_HOME = os.environ.get("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
 TEMPLATE = pathlib.Path(os.environ.get("FOLIO_SOURCE_TEMPLATE", "~/dev/folio-source-template")).expanduser()
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -263,13 +263,17 @@ def cmd_source(args) -> int:
     if big:
         print(f"Skipping {len(big)} build(s) over Folio's {MAX_APP_BYTES // 1048576} MiB app limit: " + ", ".join(f"{b['name']} ({b['size'] / 1e6:.0f} MB)" for b in big))
     if not fits:
-        sys.exit("No kept build is small enough for the Market to install (it reads at most 20 MiB for an app), so a source "
-                 "cannot carry Folio Dev yet. Use `install`, or raise MAX_PACKAGE_BYTES in market/.../SourceFiles.kt on purpose.")
+        sys.exit(f"No kept build is small enough for the Market to install (the Market lists an app up to {MAX_APP_BYTES // 1048576} MiB), "
+                 "so a source cannot carry it. Use `install`.")
     index["builds"] = fits
     work = STORE / "source"
     shutil.rmtree(work / "packages", ignore_errors=True)
     for folder in ("tools", "schema", "assets"):
         shutil.copytree(TEMPLATE / folder, work / folder, dirs_exist_ok=True)
+    # The template's copy of the index schema still stops an app at 20 MiB; Folio's own now allows 100 MiB for an app.
+    schema = work / "schema/v1/index.schema.json"
+    if schema.exists():
+        schema.write_text(schema.read_text().replace("20971520", str(MAX_APP_BYTES)))
     (work / "packages").mkdir(parents=True, exist_ok=True)
     base = args.base_url.rstrip("/")
     for b in index["builds"]:
