@@ -65,7 +65,6 @@
     <string name="app_library">App 资源库</string>
     <string name="group_apps_into_categories">将 App 按类别分组</string>
     <string name="search">搜索</string>
-    <string name="search_button_on_home">主屏幕上的搜索按钮</string>
     <string name="swipe_down_on_home_for_spotlight">在主屏幕下滑打开聚焦搜索</string>
     <string name="drag_page_dots_to_flip_pages">拖动页面圆点翻页</string>
     <string name="haptic_feedback">触感反馈</string>
@@ -1684,6 +1683,13 @@
     <string name="choose_named">选择%1$s</string>
     <string name="installing_percent">正在安装，%1$d%%</string>
     <string name="fix_saved_layout">修复已保存的布局</string>
+    <string name="home_strip">主屏幕底部</string>
+    <string name="home_strip_search">搜索按钮</string>
+    <string name="home_strip_dots">页面圆点</string>
+    <string name="home_strip_nothing">无</string>
+    <string name="home_strip_note">滑动或编辑主屏幕时会显示页面圆点；沿底部拖动仍可切换页面。</string>
+    <string name="stronger_rings">更醒目的圆环</string>
+    <string name="stronger_rings_note">圆环更粗、轨道更清晰，一眼就能分辨。开启 Android 的粗体文字时也会自动开启。</string>
     <string name="capability_risk_line">用途：%1$s</string>
     <string name="risk_observe">只读</string>
     <string name="risk_reversible">易于撤销</string>
