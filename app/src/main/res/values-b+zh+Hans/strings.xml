@@ -1091,6 +1091,16 @@
     <string name="send_a_report_to_help_fix_it">报告有助于修复问题。它会在你的邮件 App 中打开，你可以先阅读全部内容，除非你发送，否则不会发送任何内容。</string>
     <string name="send_report">发送报告</string>
     <string name="diagnostics_file_note">手机和屏幕设置、最近的 Folio 事件、崩溃、卡死和重启报告，以及 Folio 自己的日志，合为一个文件。由你决定把它发到哪里。</string>
+    <string name="performance_log">性能记录</string>
+    <string name="performance_start">开始记录</string>
+    <string name="performance_stop">停止记录</string>
+    <string name="performance_copy">复制报告</string>
+    <string name="performance_share">分享报告</string>
+    <string name="performance_copied">报告已复制</string>
+    <string name="performance_status_off">已关闭。开启后会记录 Folio 的开销。</string>
+    <string name="performance_status_running">正在记录：%1$d 分钟，%2$d 次读数</string>
+    <string name="performance_status_done">已停止：已记录 %1$d 分钟</string>
+    <string name="performance_note">开启期间，每隔几秒读取一次 Folio 的 CPU 用量、内存、帧时间和电池，6 小时后自动停止。除非你复制或分享报告，否则不会有任何内容离开手机。</string>
     <string name="the_report_couldn_t_be_opened">无法打开报告。“设置 › 帮助 › 报告错误”中也有它。</string>
     <string name="what_s_new">新功能</string>
     <string name="support_folio">支持 Folio</string>
