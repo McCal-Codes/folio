@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -963,12 +964,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** The look before the last theme was applied, so Undo can put it back. */
     var themeUndo: FolioTheme? = null
         private set
+    /** Applying and undoing a theme go one after another, in the order they were asked, even though each looks up icon packs off the main thread first. */
+    private val themeLock = kotlinx.coroutines.sync.Mutex()
     fun applyTheme(theme: FolioTheme) {
         themeUndo = FolioTheme.of(mutable.value, "Previous")
-        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } }
+        viewModelScope.launch { themeLock.withLock { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } } }
     }
     fun undoTheme() { themeUndo?.let { previous -> themeUndo = null
-        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } }
+        viewModelScope.launch { themeLock.withLock { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } } }
     /** The icon packs on this phone, asked of Android off the main thread. */
     private suspend fun installedPackNames() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         IconPacks.installed(getApplication()).mapTo(mutableSetOf()) { it.packageName }
@@ -1017,7 +1020,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return true
     }
     /** Turns a Focus on (or all off with null) and applies it to Android. */
-    fun setFocus(id: String?) {
+    fun setFocus(id: String?, byHand: Boolean = true) {
+        // Turned off by hand while its schedule covers now: it stays off until that window ends (see FocusDismissals).
+        if (byHand) FocusDismissals.record(getApplication(), mutable.value.focusModes, mutable.value.activeFocus, id)
         updateSettings(soon = false) { it.copy(activeFocus = id?.takeIf { f -> it.focusModes.any { m -> m.id == f } }) }
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
@@ -1031,7 +1036,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun syncFocus() {
         val state = mutable.value
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus } ?: return
-        if (FocusController.isOnInAndroid(getApplication(), active) == false) updateSettings(soon = false) { it.copy(activeFocus = null) }
+        if (FocusController.isOnInAndroid(getApplication(), active) == false) {
+            // Turned off in Android: count it as turned off by hand, so its schedule doesn't switch it back on.
+            FocusDismissals.record(getApplication(), state.focusModes, state.activeFocus, null)
+            updateSettings(soon = false) { it.copy(activeFocus = null) }
+        }
     }
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
     fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }

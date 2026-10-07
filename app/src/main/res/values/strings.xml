@@ -1071,6 +1071,7 @@
     <string name="hide_from_app_library">Hide from App Library</string>
     <string name="info_for_app">Info for App</string>
     <string name="share_diagnostics">Share Diagnostics</string>
+    <string name="diagnostics_copied">Copied</string>
     <string name="save_current_layout">Save Current Layout</string>
     <string name="saved_by_you">Saved by you</string>
     <string name="resize_on_home">Resize on Home</string>
@@ -1667,8 +1668,6 @@
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="betas_are_for_supporters">Betas are for supporters. Without a supporter code, Folio only finds public releases, so it can say you\'re up to date while a beta is out. Add a code in Settings › Support Folio.</string>
-    <string name="turn_off_mode">Turn off %1$s</string>
-    <string name="turn_on_mode">Turn on %1$s</string>
     <string name="reply_sent">Sent</string>
     <string name="reply_hint">Reply</string>
     <string name="reply_to_name">Reply to %1$s</string>
