@@ -409,6 +409,15 @@
     <string name="without_it_a_focus_still_changes_home_bu">권한이 없어도 집중 모드로 홈 화면을 변경할 수 있지만, 알림을 무음으로 설정하거나 외관을 변경할 수는 없습니다.</string>
     <string name="schedule">일정</string>
     <string name="turn_on_automatically">자동으로 켜기</string>
+    <string name="focus_also_turn_on_when">다음일 때도 켜기</string>
+    <string name="focus_trigger_folding">접힘 상태</string>
+    <string name="focus_trigger_charging">충전 중</string>
+    <string name="focus_trigger_headphones">헤드폰</string>
+    <string name="focus_fold_unfolded">펼침</string>
+    <string name="focus_fold_cover">커버 화면</string>
+    <string name="focus_fold_tent">텐트</string>
+    <string name="focus_triggers_note">이 집중 모드를 켜고 끄는 데에만 쓰입니다. 직접 끄면 다음 변화가 있을 때까지 꺼진 상태로 유지됩니다.</string>
+    <string name="focus_on_because">켜짐 · %1$s</string>
     <string name="from">시작</string>
     <string name="silence_notifications">알림 무음 설정</string>
     <string name="calls_and_people_allowed_in_android_s_do">Android의 방해 금지 설정에서 허용한 전화와 연락처의 알림은 계속 수신됩니다.</string>
@@ -484,6 +493,9 @@
     <string name="the_dock_sits_along_the_bottom_in_landsc">Dock은 화면 하단에 표시됩니다. 가로 모드나 작은 창에서는 앱의 모든 행이 들어가도록 사이드바로 이동합니다.</string>
     <string name="space_between_dock_apps">Dock 앱 간격</string>
     <string name="dock_height">Dock 높이</string>
+    <string name="move_dock">Dock 이동. 위아래로 끌어 주세요.</string>
+    <string name="move_dock_up">Dock 위로 이동</string>
+    <string name="move_dock_down">Dock 아래로 이동</string>
     <string name="pages">페이지</string>
     <string name="showing">표시 중</string>
     <string name="labels">이름 표시</string>

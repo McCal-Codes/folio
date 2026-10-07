@@ -12,12 +12,15 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Capabilities and Recent Activity:** Settings › Advanced › Diagnostics shows what Folio can use on this phone (Standard, Notification access and Accessibility, each On or Off, and what it is for), with a button to Android's settings for the ones that are off, and Folio's own recent activity, newest first, with a Failed filter for problems it carried on from. Both are read-only and stay on the phone.
 - **Suggestions, any size:** the Suggestions widget now goes from one cell to the whole grid. Its size menu adds 1 × 1, Row (four across) and Column (four down), and the icons keep to the size of your Home icons instead of stretching to fill the card.
 - **Your own picture for an app's icon:** long-press an app, More › Edit Icon › Your Picture › Choose Picture, and one icon shows a photo you pick, cropped to a square. Remove Picture or Reset Icon puts the normal icon back. The picture is copied into Folio, so it keeps working if the photo is deleted; it stays on this phone and is not part of a backup.
+- **Focus that turns on by itself:** each Focus has an Also Turn On When card with Folding (Unfolded, Cover Screen or Tent), Charging and Headphones. When one holds, the Focus turns on, the list says why, and it turns off again when the signal ends. If you turn it off yourself, it stays off until the signal changes. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+- **Drag the dock in edit mode:** with the dock on the Side Bar, a handle under it lets you drag the dock up or down instead of using the Dock Height slider, and the handle stays on screen. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 - **Bottom of Home and stronger rings:** Settings has Bottom of Home with Search button, Page dots or Nothing (Nothing is for supporters and Folio Dev for now). Dragging along the bottom still moves between pages, and the dots appear while you swipe or edit. Stronger rings gives the status rings a thicker stroke and a clearer track, and turns on by itself with Android's Bold text.
 
 ### Fixed
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
 - **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
 - **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
+- **Less work while apps install and when offline:** while any app installs or updates, only that app's icon redraws instead of the whole of Home, the status rail no longer redraws its whole self every frame when there is no connection, and a clock icon on Home redraws its hands without rebuilding the icon each second.
 
 ## [0.6.8] - 2026-10-06
 
