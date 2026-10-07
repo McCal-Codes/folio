@@ -85,4 +85,14 @@ class RoadmapTest {
     @Test fun `ignores oversized files`() {
         assertNull(Roadmap.parse("""{"roadmap":1,"note":"${"x".repeat(70_000)}","sections":[]}"""))
     }
+
+    @Test fun `a failed fetch is not retried for an hour, and a fresh copy is not fetched at all`() {
+        val hour = 60 * 60 * 1000L
+        val day = 24 * hour
+        assertEquals("nothing saved and nothing failed: fetch", true, Roadmap.shouldFetch(null, null, day))
+        assertEquals("a copy from a minute ago: no fetch", false, Roadmap.shouldFetch(day - 60_000L, null, day))
+        assertEquals("an old copy: fetch", true, Roadmap.shouldFetch(0L, null, day))
+        assertEquals("an old copy but it failed ten minutes ago: wait", false, Roadmap.shouldFetch(0L, day - 10 * 60_000L, day))
+        assertEquals("an old copy and the failure was over an hour ago: fetch again", true, Roadmap.shouldFetch(0L, day - hour - 1L, day))
+    }
 }

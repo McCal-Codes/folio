@@ -17,6 +17,9 @@ internal object Roadmap {
     private const val CACHE = "roadmap.json"
     private const val MAX_BYTES = 64 * 1024
     private const val REFRESH_MS = 6 * 60 * 60 * 1000L
+    /** After a failed fetch, wait this long before trying again, so opening the page offline doesn't wait on the network every time. */
+    private const val RETRY_MS = 60 * 60 * 1000L
+    private const val FAILED = "roadmap.failed"
 
     enum class Status { DONE, BUILDING, PLANNED, EXPLORING }
     /** [beta] marks a [Status.BUILDING] item that is already in the current beta: "In beta" on the page, never "Done" before the stable. */
@@ -76,16 +79,25 @@ internal object Roadmap {
         return saved == null || now - saved >= REFRESH_MS
     }
 
+    /** Whether to ask GitHub now: the saved copy is old ([savedAt]) and the last failed try, if any ([failedAt]), was a while ago. */
+    internal fun shouldFetch(savedAt: Long?, failedAt: Long?, now: Long): Boolean =
+        (savedAt == null || now - savedAt >= REFRESH_MS) && (failedAt == null || now - failedAt >= RETRY_MS)
+
+    private fun failedAt(context: Context): Long? = File(context.filesDir, FAILED).takeIf { it.exists() }?.lastModified()
+
     /** Fetches the latest roadmap if the saved one is old. Call off the main thread. */
     fun refresh(context: Context, now: Long = System.currentTimeMillis()): Refresh {
         val cache = File(context.filesDir, CACHE)
         if (!isStale(context, now)) return Refresh.Recent
-        return runCatching {
+        // A recent failure: report it again without waiting on the network for up to 18 seconds.
+        if (!shouldFetch(savedAt(context), failedAt(context), now)) return Refresh.Failed
+        val marker = File(context.filesDir, FAILED)
+        val result = runCatching {
             val c = URL(URL).openConnection() as HttpURLConnection
             c.setRequestProperty("User-Agent", "Folio")
             c.connectTimeout = 8_000; c.readTimeout = 10_000; c.useCaches = false
             try {
-                if (c.responseCode != 200) return Refresh.Failed
+                if (c.responseCode != 200) return@runCatching Refresh.Failed
                 // Read at most one byte past the limit (readNBytes needs Android 13).
                 val bytes = c.inputStream.use { input ->
                     val out = java.io.ByteArrayOutputStream()
@@ -97,11 +109,13 @@ internal object Roadmap {
                     }
                     out.toByteArray()
                 }
-                if (bytes.size > MAX_BYTES) return Refresh.Failed
+                if (bytes.size > MAX_BYTES) return@runCatching Refresh.Failed
                 val raw = String(bytes, Charsets.UTF_8)
                 parse(raw)?.let { Refresh.Updated(it).also { _ -> cache.writeText(raw) } } ?: Refresh.Failed
             } finally { c.disconnect() }
         }.getOrDefault(Refresh.Failed)
+        if (result is Refresh.Failed) runCatching { marker.writeText(""); marker.setLastModified(now) } else runCatching { marker.delete() }
+        return result
     }
 
     /** A hotfix (0.6.7.1) or a beta (0.6.8-beta.5) belongs to its release's section: 0.6.7, 0.6.8. */
