@@ -24,6 +24,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -826,6 +828,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(if (SafeMode.active) stringResource(R.string.folio_is_running_in_safe_mode_optional_f)
                             else stringResource(R.string.if_folio_closes_unexpectedly_twice_right))
                     }
+                    CapabilitiesCard()
+                    RecentActivityCard()
                     CrashReportsCard()
                 }
                 CustomizationPage.MARKET -> {
@@ -1420,6 +1424,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.save_backup to CustomizationPage.BACKUP,
     R.string.save_backup_to_files to CustomizationPage.BACKUP,
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
+    R.string.capability_open_settings to CustomizationPage.ADVANCED,
+    R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -1737,6 +1743,70 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
+private fun riskLabel(risk: OperationRisk) = when (risk) {
+    OperationRisk.OBSERVE -> R.string.risk_observe
+    OperationRisk.REVERSIBLE -> R.string.risk_reversible
+    OperationRisk.STATEFUL -> R.string.risk_stateful
+    OperationRisk.DISRUPTIVE -> R.string.risk_disruptive
+    OperationRisk.CRITICAL -> R.string.risk_critical
+    OperationRisk.EXPERIMENTAL -> R.string.risk_experimental
+}
+
+/** Advanced › Diagnostics: what this phone and your permissions allow, and why a feature might be off (A0 to A2, see Capabilities). */
+@Composable private fun CapabilitiesCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun read() = Capabilities.rows(IslandListenerService.hasAccess(context), SystemShadeAccessibilityService.isConnected())
+    var rows by remember { mutableStateOf(read()) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { rows = read() } }
+    SettingsCard(stringResource(R.string.capabilities)) {
+        rows.forEach { row ->
+            val (name, uses) = when (row.tier) {
+                CapabilityTier.STANDARD -> R.string.capability_standard to R.string.capability_standard_uses
+                CapabilityTier.NOTIFICATIONS -> R.string.capability_notifications to R.string.capability_notifications_uses
+                CapabilityTier.ACCESSIBILITY -> R.string.capability_accessibility to R.string.capability_accessibility_uses
+            }
+            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).testTag("capability-${row.tier.code}"), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${row.tier.code} · ${stringResource(name)}", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(uses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.capability_risk_line, stringResource(riskLabel(row.risk))), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("capability-risk-${row.tier.code}"))
+                }
+                Text(stringResource(if (row.on) R.string.on else R.string.capability_off), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        if (Capabilities.needsPermission(rows).isNotEmpty()) CardAction(stringResource(R.string.capability_open_settings), onClick = {
+            val tier = Capabilities.needsPermission(rows).first()
+            val intent = if (tier == CapabilityTier.NOTIFICATIONS) IslandListenerService.accessSettingsIntent(context)
+                else android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+        }, modifier = Modifier.testTag("capability-open-settings"))
+        CardNote(stringResource(R.string.capabilities_note))
+    }
+}
+
+/** Advanced › Diagnostics: Folio's own recent activity, newest first, with the failures it carried on from. Kept only on the phone. */
+@Composable private fun RecentActivityCard() {
+    var failedOnly by remember { mutableStateOf(false) }
+    val entries = remember { Inspector.entries(Diagnostics.trailText()) }
+    val shown = Inspector.filter(entries, failedOnly).take(15)
+    SettingsCard(stringResource(R.string.recent_activity)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+            IosChip(!failedOnly, { failedOnly = false }, label = { Text(stringResource(R.string.all)) }, modifier = Modifier.testTag("activity-all"))
+            IosChip(failedOnly, { failedOnly = true }, label = { Text(stringResource(R.string.activity_failed)) }, modifier = Modifier.testTag("activity-failed"))
+        }
+        if (shown.isEmpty()) Text(stringResource(R.string.no_activity_to_show), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+        shown.forEach { e ->
+            Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp)) {
+                Text(e.text, style = MaterialTheme.typography.bodyMedium, color = if (e.failed) FolioColors.Red else androidx.compose.ui.graphics.Color.Unspecified)
+                if (e.time.isNotEmpty()) Text(e.time, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        CardNote(stringResource(R.string.recent_activity_note))
+    }
+}
+
 @Composable private fun CrashReportsCard() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var reports by remember { mutableStateOf(CrashLog.reports(context)) }
@@ -1752,6 +1822,15 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
             shareScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = false)) } }
         }, modifier = Modifier.testTag("share-diagnostics"))
+        // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
+        var copied by remember { mutableStateOf(false) }
+        CardAction(stringResource(R.string.copy_diagnostics), onClick = {
+            shareScope.launch { runCatching { Diagnostics.copy(context); copied = true } }
+        }, modifier = Modifier.testTag("copy-diagnostics"))
+        if (copied) {
+            LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); copied = false }
+            Text(stringResource(R.string.diagnostics_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("diagnostics-copied").semantics { liveRegion = LiveRegionMode.Polite })
+        }
         CardNote(stringResource(R.string.diagnostics_file_note))
     }
 }

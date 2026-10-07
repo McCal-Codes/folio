@@ -138,6 +138,20 @@
     <string name="double_press">두 번 누르기</string>
     <string name="like_double_clicking_the_side_button_for">Apple Pay를 사용하기 위해 측면 버튼을 두 번 누르는 것과 같습니다. Wallet이 목록에 없으면 “앱 열기”를 선택한 뒤 Wallet을 고르세요.</string>
     <string name="crash_reports">오류 보고서</string>
+    <string name="capabilities">기능 권한</string>
+    <string name="capability_standard">기본</string>
+    <string name="capability_standard_uses">홈, 폴더, 집중 모드, 마켓. 권한이 필요 없습니다.</string>
+    <string name="capability_notifications">알림 접근</string>
+    <string name="capability_notifications_uses">아일랜드, 알림 배지, 빠른 답장.</string>
+    <string name="capability_accessibility">접근성</string>
+    <string name="capability_accessibility_uses">끌어내리기 패널, 큰 버튼, 다른 앱 위의 알림창.</string>
+    <string name="capability_off">꺼짐</string>
+    <string name="capability_open_settings">Android 설정 열기</string>
+    <string name="capabilities_note">여기 있는 것은 사용자 동의 없이는 켜지지 않습니다. Folio는 허용한 것만 사용하며, 권한이 필요한 기능은 허용하기 전까지 꺼져 있습니다.</string>
+    <string name="recent_activity">최근 활동</string>
+    <string name="activity_failed">실패</string>
+    <string name="no_activity_to_show">아직 표시할 내용이 없습니다.</string>
+    <string name="recent_activity_note">Folio가 최근에 한 일을 최신순으로 보여 줍니다. 이 휴대전화에만 저장됩니다. 실패는 Folio가 넘어가고 계속 진행한 문제입니다.</string>
     <string name="share_latest">최신 보고서 공유</string>
     <string name="clear">지우기</string>
     <string name="thanks_to">도움을 주신 분들</string>
@@ -1041,6 +1055,7 @@
     <string name="hide_from_app_library">앱 보관함에서 숨기기</string>
     <string name="info_for_app">앱 정보</string>
     <string name="share_diagnostics">진단 정보 공유</string>
+    <string name="diagnostics_copied">복사했습니다</string>
     <string name="save_current_layout">현재 레이아웃 저장</string>
     <string name="saved_by_you">직접 저장함</string>
     <string name="resize_on_home">홈 화면에서 크기 조절</string>
@@ -1631,8 +1646,6 @@
     <string name="roadmap_updated">%1$s 업데이트됨</string>
     <string name="roadmap_saved_copy">%1$s에 저장된 사본</string>
     <string name="betas_are_for_supporters">베타는 후원자를 위한 기능입니다. 후원자 코드가 없으면 Folio는 공개 버전만 찾기 때문에 베타가 나와 있어도 최신 상태라고 표시할 수 있습니다. 설정 › Folio 후원에서 코드를 추가하세요.</string>
-    <string name="turn_off_mode">%1$s 끄기</string>
-    <string name="turn_on_mode">%1$s 켜기</string>
     <string name="reply_sent">전송됨</string>
     <string name="reply_hint">답장</string>
     <string name="reply_to_name">%1$s에게 답장</string>
@@ -1648,4 +1661,11 @@
     <string name="choose_named">%1$s 선택</string>
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
+    <string name="capability_risk_line">하는 일: %1$s</string>
+    <string name="risk_observe">읽기 전용</string>
+    <string name="risk_reversible">쉽게 되돌릴 수 있음</string>
+    <string name="risk_stateful">되돌리기 전까지 유지됨</string>
+    <string name="risk_disruptive">앱을 방해할 수 있음</string>
+    <string name="risk_critical">Android 자체에 영향을 줄 수 있음</string>
+    <string name="risk_experimental">이 휴대전화에서 작동하지 않을 수 있음</string>
 </resources>
