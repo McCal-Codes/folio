@@ -1697,6 +1697,15 @@
     <string name="roadmap_checking">正在检查更新…</string>
     <string name="roadmap_offline">无法连接路线图，正在显示此手机上保存的副本。</string>
     <string name="roadmap_offline_bundled">无法连接路线图，正在显示随 Folio 附带的副本。</string>
+    <string name="what_to_test">待测试项目</string>
+    <string name="what_to_test_note">测试版 %1$s。最可能出问题的排在前面。你的回答在你发送报告之前只保存在这部手机上。</string>
+    <string name="what_to_test_progress">已完成 %1$d/%2$d</string>
+    <string name="it_worked">正常</string>
+    <string name="something_is_wrong">有问题</string>
+    <string name="what_to_test_not_tried">尚未尝试</string>
+    <string name="open_the_new_setup">打开新的设置</string>
+    <string name="what_to_test_none">此版本没有需要测试的项目。</string>
+    <string name="settings_keywords_what_to_test">测试 测试版 测试员 清单 报告</string>
     <string name="roadmap_updated">%1$s更新</string>
     <string name="roadmap_saved_copy">保存于%1$s的副本</string>
     <string name="betas_are_for_supporters">测试版仅限支持者使用。没有支持者代码时，Folio 只会查找公开版本，因此即使已有测试版，也可能显示你已是最新。请在“设置 › 支持 Folio”中添加代码。</string>

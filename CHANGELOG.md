@@ -33,6 +33,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Changed
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
+- **What to Test:** on a beta build, Settings › Help › What to Test lists what to try, most likely broken first, with the steps. Tap It Worked, Something's Wrong (which opens a bug report with the item's name filled in) or Skip. Your answers stay on your phone.
 
 ### Fixed
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.

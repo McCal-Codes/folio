@@ -354,7 +354,12 @@ class MainActivity : ComponentActivity() {
                     val before = androidx.compose.runtime.remember { DevBuild.seen(this@MainActivity) }
                     DevBuildSheet(dev, before) { showDevBuild.value = false; DevBuild.reopen.intValue = 0; DevBuild.markSeen(this@MainActivity, dev) }
                 }
-                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
+                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet(
+                    // A beta build offers the testers' list from here; it closes this sheet and opens Settings on that page.
+                    onWhatToTest = if (WhatToTest.available(SoftwareUpdate.installedVersion(this@MainActivity), packageName)) ({
+                        showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity)
+                        SettingsLink.page = CustomizationPage.WHAT_TO_TEST; settingsRequests.intValue++
+                    }) else null) { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
                 // With live activities in the side rail, the camera island on Home keeps only its brief events.
                 if (state.island && !standByShowing.value) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
                     ?.takeUnless { it is IslandActivity.Call && "CALL" in state.islandEventsOff }

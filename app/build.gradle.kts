@@ -93,7 +93,7 @@ abstract class DevBuildInfoTask @Inject constructor(private val exec: ExecOperat
     private fun q(s: String) = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ").replace("\t", " ") + "\""
 
     @TaskAction fun write() {
-        val commits = git("log", "-15", "--format=%h%x09%s").lines().filter { it.contains('\t') }.map { it.substringBefore('\t') to it.substringAfter('\t') }
+        val commits = git("log", "-15", "--abbrev=8", "--format=%h%x09%s").lines().filter { it.contains('\t') }.map { it.substringBefore('\t') to it.substringAfter('\t') }
         val notes = notesFile.get().asFile.takeIf { it.isFile }?.readLines().orEmpty().map { it.trim() }.filter { it.startsWith("- ") }.map { it.removePrefix("- ").trim() }
         val json = buildString {
             append("{")
