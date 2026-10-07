@@ -1941,7 +1941,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                 // Drawn over the background rather than inside it, because the preview lays the chosen photo over the
                 // background; on Home the same scrim is baked into the background's cached layer.
                 HomeScrim.of(state.homeScrim, ink.dark, previewDim).let { if (it.draws) Box(Modifier.matchParentSize().homeScrim(it)) }
-                CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass)) {
+                CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
                             Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)

@@ -49,9 +49,10 @@ internal data class SuggestionsLayout(val columns: Int, val rows: Int, val icon:
 internal fun suggestionsLayout(width: Float, height: Float, homeIcon: Float): SuggestionsLayout {
     val gap = 12f
     val wanted = homeIcon.coerceAtLeast(28f)
-    val columns = (width / (wanted + gap)).toInt().coerceIn(1, 4)
-    val rows = (height / (wanted + gap)).toInt().coerceIn(1, 4)
-    val icon = minOf(wanted, width / columns - gap, height / rows - gap).coerceAtLeast(28f)
+    // n icons need n - 1 gaps between them, so one gap is added to the box before dividing.
+    val columns = ((width + gap) / (wanted + gap)).toInt().coerceIn(1, 4)
+    val rows = ((height + gap) / (wanted + gap)).toInt().coerceIn(1, 4)
+    val icon = minOf(wanted, (width + gap) / columns - gap, (height + gap) / rows - gap).coerceAtLeast(28f)
     return SuggestionsLayout(columns, rows, icon)
 }
 
@@ -159,7 +160,7 @@ internal fun SuggestionsCard(onEdit: () -> Unit) {
     val tick by rememberMinuteTick()
     // Re-rank every quarter hour, not every minute: suggestions shouldn't shuffle under a finger.
     val quarter = tick / 15
-    val apps by produceState(emptyList<AppEntry>(), home.apps, quarter) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps) } }
+    val apps by produceState(emptyList<AppEntry>(), home.apps, quarter) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps, limit = 16) } }
     GlassCard(onClick = onEdit) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val layout = suggestionsLayout(maxWidth.value, maxHeight.value, LocalHomeIconSize.current)

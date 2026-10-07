@@ -43,4 +43,10 @@ class SuggestionsLayoutTest {
         assertNull(builtinWidgetConstraints(CLOCK_WIDGET))
         assertNotNull(builtinWidgetConstraints(SUGGESTIONS_WIDGET))
     }
+
+    @Test fun gapsAreCountedBetweenIconsOnly() {
+        // Two 66 dp icons and one 12 dp gap fit in 144 dp.
+        assertEquals(2, suggestionsLayout(144f, 144f, 66f).columns)
+        assertEquals(2, suggestionsLayout(155.5f, 155.5f, 66f).rows)
+    }
 }
