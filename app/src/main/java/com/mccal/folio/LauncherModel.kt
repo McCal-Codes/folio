@@ -290,6 +290,8 @@ data class LauncherState(
     val folderColors: Map<String, Long> = emptyMap(),
     /** Optional custom width/height per folder id, from dragging its resize handle; absent means automatic. */
     val folderSizes: Map<String, FolderSize> = emptyMap(),
+    /** Optional color/weight per Big Clock, keyed by its widget slot since more than one can be on Home. */
+    val bigClockStyles: Map<Int, BigClockStyle> = emptyMap(),
     /** Icon Stacks: anchor app id → the apps that fan out when you swipe down on it. */
     val iconStacks: Map<String, List<String>> = emptyMap(),
     /** Custom app names by app id; apps without an entry keep the name Android reports. */
@@ -915,6 +917,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
+            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            bigClockStyles = old.bigClockStyles.filterKeys { slot ->
+                old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
             fullWidthRestore = emptyMap(),
@@ -928,12 +935,15 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return moveWidgetTo(from, target.page * HOME_CELLS + target.row * GRID_COLUMNS + target.column)
     }
     fun moveWidgetTo(slot: Int, index: Int) = commitLayout(moveWidget(mutable.value.layout, slot, index))
+    fun placeWidgetFreely(slot: Int, column: Float, row: Float) = commitLayout(placeWidgetFreely(mutable.value.layout, slot, column, row))
     fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = commitLayout(resizeWidget(mutable.value.layout, slot, spanX, spanY))
     fun placeWidget(placement: WidgetPlacement) = commitLayout(placeWidget(mutable.value.layout, placement))
     fun placement(slot: Int) = mutable.value.layout.placement(slot)
     // Never reuse a slot number that a (possibly undoable) stack still refers to.
+    // A slot that still has a stack or a Big Clock style (the widget may only have been removed, and removal is undoable) is
+    // not handed to a new widget, which would otherwise inherit the old one's look.
     fun nextWidgetSlot() = maxOf(mutable.value.widgetPlacements.maxOfOrNull { it.slot } ?: -1,
-        mutable.value.widgetStacks.keys.maxOrNull() ?: -1) + 1
+        mutable.value.widgetStacks.keys.maxOrNull() ?: -1, mutable.value.bigClockStyles.keys.maxOrNull() ?: -1) + 1
 
     fun stackCards(slot: Int): List<Int> = mutable.value.layout.placement(slot)
         ?.let { WidgetStacks.cards(it.id, mutable.value.widgetStacks[slot]) }.orEmpty()
@@ -1023,6 +1033,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in next.widgetPlacements.map { it.slot }.toSet() },
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -1177,6 +1188,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetRestores = next.widgetRestores,
             // Keep stacks of the undoable previous layout too, so undoing a removal brings the whole stack back.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, (next.widgetPlacements + old.widgetPlacements).map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in (next.widgetPlacements + old.widgetPlacements).map { it.slot }.toSet() },
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -1192,6 +1204,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
             googleSearch = settings?.googleSearch ?: old.googleSearch, verticalStatus = settings?.verticalStatus ?: old.verticalStatus,
@@ -1257,6 +1270,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
     fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
         it.copy(folderSizes = if (size == null) it.folderSizes - folderId else it.folderSizes + (folderId to size)) }
+    // soon = true: the weight slider's onValueChange fires on every pixel of drag, each one a call here - soon
+    // coalesces those into one write after they stop (persistSoon's own purpose), instead of a synchronous
+    // persist() blocking the UI thread on every tick, which is what made the slider look stuck.
+    fun setBigClockStyle(slot: Int, style: BigClockStyle?) = updateSettings(soon = true) {
+        it.copy(bigClockStyles = if (style == null) it.bigClockStyles - slot else it.bigClockStyles + (slot to style)) }
     fun setButtonBar(value: Boolean) = updateSettings(soon = false) { it.copy(buttonBar = value) }
     fun setButtonBarHeight(value: Float) = updateSettings(soon = false) { it.copy(buttonBarHeight = value.coerceIn(44f, 60f)) }
     fun setButtonBarWidth(value: Float) = updateSettings(soon = false) { it.copy(buttonBarWidth = value.coerceIn(.3f, .8f)) }
@@ -1432,7 +1450,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop)
         val widgets = JSONArray().also { array -> s.widgetPlacements.forEach { w -> array.put(JSONObject()
             .put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
-            .put("spanX", w.spanX).put("spanY", w.spanY)) } }
+            .put("spanX", w.spanX).put("spanY", w.spanY)
+            .apply { if (w.offsetX != 0f) put("offsetX", w.offsetX.toDouble()); if (w.offsetY != 0f) put("offsetY", w.offsetY.toDouble()) }) } }
         val folders = JSONArray().also { array -> s.folders.forEach { folder -> array.put(JSONObject()
             .put("id", folder.id).put("title", folder.title).put("apps", JSONArray(folder.appIds))) } }
         val restores = JSONArray().also { array -> s.widgetRestores.forEach { restore -> array.put(JSONObject()
@@ -1483,6 +1502,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("todayWidgets", JSONArray().apply { s.todayWidgets.forEach { put(JSONObject().put("id", it.id).put("size", it.size.name)) } })
             .put("folderColors", JSONObject().apply { s.folderColors.forEach { (id, c) -> put(id, c) } })
             .put("folderSizes", JSONObject().apply { s.folderSizes.forEach { (id, sz) -> put(id, JSONObject().put("w", sz.width.toDouble()).put("h", sz.height.toDouble())) } })
+            .put("bigClockStyles", JSONObject().apply { s.bigClockStyles.forEach { (slot, st) ->
+                put(slot.toString(), JSONObject().put("mode", st.mode).put("customIndex", st.customIndex).put("weight", st.weight)
+                    .put("size", st.size.toDouble()).put("face", st.face).put("shadow", st.shadow).put("date", st.date)
+                    .put("showNext", st.showNext).put("align", st.align)
+                    .put("stacked", st.stacked).put("hours", st.hours).put("ampm", st.ampm)) } })
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
             .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
@@ -1597,7 +1621,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         List(widgetArray.length()) { index ->
             val w = widgetArray.getJSONObject(index)
             WidgetPlacement(strictInt(w, "slot"), strictInt(w, "id"), strictInt(w, "page"), strictInt(w, "column"), strictInt(w, "row"),
-                strictInt(w, "spanX"), strictInt(w, "spanY")).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
+                strictInt(w, "spanX"), strictInt(w, "spanY"),
+                w.optDouble("offsetX", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f,
+                w.optDouble("offsetY", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
         }.also { loaded ->
             require(loaded.map { it.slot }.distinct().size == loaded.size) { "Widget placement slots must be unique" }
             loaded.forEach { placement ->
@@ -1776,6 +1802,17 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folderSizes = j.optJSONObject("folderSizes")?.let { o -> o.keys().asSequence().mapNotNull { id ->
             val sz = o.optJSONObject(id) ?: return@mapNotNull null
             id to FolderSize(sz.optDouble("w", -1.0).toFloat().coerceIn(100f, 2000f), sz.optDouble("h", -1.0).toFloat().coerceIn(100f, 2000f))
+        }.toMap() } ?: emptyMap(),
+        bigClockStyles = j.optJSONObject("bigClockStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
+            val slot = key.toIntOrNull() ?: return@mapNotNull null
+            val st = o.optJSONObject(key) ?: return@mapNotNull null
+            val mode = st.optString("mode", "AUTO").takeIf { it in setOf("AUTO", "WALLPAPER", "WHITE", "CUSTOM") } ?: "AUTO"
+            fun pick(key: String, allowed: Set<String>, fallback: String) = st.optString(key, fallback).takeIf { it in allowed } ?: fallback
+            slot to BigClockStyle(mode, st.optInt("customIndex", 0).coerceIn(0, 4), st.optInt("weight", 600).coerceIn(100, 900),
+                st.optDouble("size", 1.0).toFloat().coerceIn(.7f, 1.3f), pick("face", setOf("SANS", "ROUNDED", "SERIF", "MONO"), "SANS"),
+                pick("shadow", setOf("OFF", "SOFT", "GLOW"), "SOFT"), pick("date", setOf("LONG", "SHORT", "OFF"), "LONG"),
+                st.optBoolean("showNext", true), pick("align", setOf("LEFT", "CENTER", "RIGHT"), "CENTER"),
+                st.optBoolean("stacked", false), pick("hours", setOf("SYSTEM", "12", "24"), "SYSTEM"), st.optBoolean("ampm", false))
         }.toMap() } ?: emptyMap(),
         pageStyles = j.optJSONObject("pageStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val page = key.toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null

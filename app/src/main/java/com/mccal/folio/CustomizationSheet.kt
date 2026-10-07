@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -104,6 +104,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE -> ADVANCED
+        WHAT_TO_TEST -> HELP
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
         else -> OVERVIEW
@@ -147,6 +148,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         ACCESSIBILITY -> R.string.accessibility
         SUPPORT -> R.string.support_folio
         SUPPORTER -> R.string.supporter
+        WHAT_TO_TEST -> R.string.what_to_test
     }
 }
 
@@ -325,6 +327,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 // The old Setup Checklist lives on in Privacy & Permissions (one list of everything Folio can use).
                 CustomizationPage.SETUP -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.COMING_SOON -> ComingSoonPage()
+                CustomizationPage.WHAT_TO_TEST -> WhatToTestPage(onOpenSetup = { onClose(); onShowWelcome() })
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
                     // The order is the one every well-regarded product uses, sourced in docs/mockups/wallpaper-page.html:
@@ -821,6 +824,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         MenuDivider()
                         TweakRow(Icons.Rounded.WavingHand, FolioColors.Value.Orange, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
+                        // The testers' checklist: only on a beta build and Folio Dev.
+                        if (WhatToTest.available(SoftwareUpdate.installedVersion(helpContext), helpContext.packageName)) {
+                            MenuDivider()
+                            TweakRow(Icons.Rounded.Checklist, FolioColors.Value.Green, stringResource(R.string.what_to_test), "customization-what-to-test") { onPage(CustomizationPage.WHAT_TO_TEST) }
+                        }
                     }
                     CardNote(stringResource(R.string.report_a_bug_opens_github_in_your_browse), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                     LauncherHelp(
@@ -1336,6 +1344,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
+    Triple(R.string.what_to_test, R.string.settings_keywords_what_to_test, CustomizationPage.WHAT_TO_TEST),
     Triple(R.string.help, R.string.settings_keywords_help, CustomizationPage.HELP),
     Triple(R.string.credits, R.string.settings_keywords_credits, CustomizationPage.CREDITS),
     Triple(R.string.supporters, R.string.settings_keywords_supporters, CustomizationPage.SUPPORTERS),
@@ -1977,6 +1986,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     }
 }
 
+/** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
+internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -1987,7 +1999,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     /** The Side Bar (status, dock and search): off for the second page of an unfolded preview, which has one Side Bar. */
     sideBar: Boolean = true,
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
-    preset: LayoutPreset = state.compact) {
+    preset: LayoutPreset = state.compact,
+    /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
+    page: Int = LocalPreviewPage.current) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -2003,10 +2017,10 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
         widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
-    val placements = state.widgetPlacements.filter { it.page == 0 }
-    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
+    val placements = state.widgetPlacements.filter { it.page == page }
+    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
-    val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
+    val (iconSize, labels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
     val railAlign = if (left) Alignment.TopStart else Alignment.TopEnd
@@ -2035,7 +2049,10 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
-                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)
+                            // A freely placed widget (Place Freely) is drawn a part of a cell from its cells, as on Home.
+                            val rowPitch = if (w.offsetY < 0f && w.row > 0) cells.y(w.row) - cells.y(w.row - 1)
+                                else if (w.row + 1 < GRID_ROWS) cells.y(w.row + 1) - cells.y(w.row) else cells.y(w.row) - cells.y(w.row - 1)
+                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f + geometry.cellWidth * w.offsetX).dp, y = (cells.y(w.row) + rowPitch * w.offsetY).dp)
                                 .size((geometry.cellWidth * w.spanX - 10f).dp, (cells.spanHeight(w.row, w.spanY) - 18f).coerceAtLeast(48f).dp)) {
                                 if (w.id < 0) BuiltinWidgetCard(w.id, w.slot) {}
                                 else Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(glass.copy(alpha = LocalGlassLook.current.widget)), contentAlignment = Alignment.Center) {
@@ -2044,7 +2061,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                             }
                         }
                         repeat(shownRows * GRID_COLUMNS) { local ->
-                            val id = state.homeSlots.getOrNull(local) ?: return@repeat
+                            val id = state.homeSlots.getOrNull(homeCellIndex(page, local)) ?: return@repeat
                             val app = apps[id]
                             val folder = if (app == null) state.folders.firstOrNull { it.id == id } ?: return@repeat else null
                             val row = local / GRID_COLUMNS
@@ -2112,8 +2129,8 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                     if (record.size != record.layer.size) record.size = record.layer.size
                 } else Modifier)) {
                 // Two Home pages with one Side Bar, on the right (on the left in left-handed layouts), like the open Fold.
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded)
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded, page = 0)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded, page = 0)
             }
         }
     }
