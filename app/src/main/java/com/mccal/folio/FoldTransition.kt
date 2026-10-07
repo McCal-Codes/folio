@@ -148,7 +148,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 }
                 val target = fold.targetM(now)
                 // Follow the target closely but never jump: small time constant, frame-rate independent.
-                val next = m + (target - m) * (1f - exp(-dt / FOLLOW_MS))
+                val next = m + (target - m) * (1f - exp(-dt / fold.followMs))
+                fold.trace(now, target, next)
                 m = if (target == 0f && next < .003f) 0f else next
                 if (fold.morphFrom >= 0) {
                     val t = ((now - fold.morphFrom) / (if (fold.expanded) MORPH_UNFOLD_MS else MORPH_FOLD_MS)).coerceIn(0f, 1f)
@@ -281,6 +282,18 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     private var coverOpeningAt = -1L
     private val appContext = context.applicationContext
 
+    /** Frame-by-frame log for tuning, read with logcat. Off unless `adb shell setprop log.tag.FolioFoldTrace DEBUG` was run. */
+    private var tracing = false
+    fun trace(now: Long, target: Float, m: Float) {
+        if (!tracing) return
+        runCatching {
+            android.util.Log.d(TRACE_TAG, "t=$now src=$source cap=${tracker.capability} raw=${tracker.raw} vis=${tracker.visual?.let { "%.1f".format(it) }} " +
+                "exp=$expanded wait=$waitingForPanel close=${closeStartAt >= 0} reopen=${reopenedAt >= 0} coverOpen=${coverOpeningAt >= 0} lit=${litAt >= 0} " +
+                "target=${"%.3f".format(target)} m=${"%.3f".format(m)} follow=${followMs.toInt()}")
+        }
+    }
+    private fun traceEvent(text: String) { if (tracing) runCatching { android.util.Log.d(TRACE_TAG, "event $text raw=${tracker.raw} expanded=$expanded") } }
+
     var onOpeningStarted: (() -> Unit)? = null
     var onClosingStarted: (() -> Unit)? = null
     var onHalfway: (() -> Unit)? = null
@@ -296,6 +309,7 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     val busy get() = morphFrom >= 0 || waitingForPanel || litAt >= 0 || closeStartAt >= 0 || reopenedAt >= 0 || coverLitAt >= 0 || coverOpeningAt >= 0
 
     fun start() {
+        tracing = runCatching { android.util.Log.isLoggable(TRACE_TAG, android.util.Log.DEBUG) }.getOrDefault(false)
         val apk = context.applicationInfo.sourceDir
         val su = RootHingeStore.suPath(context)
         if (su != null && RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) && hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER) {
@@ -333,12 +347,14 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     }
 
     fun onDisplaySwitched(now: Long) {
+        traceEvent("display switched, now expanded=$expanded")
         switchedAt = now; waitingForPanel = true; opening = expanded
         wake.trySend(Unit)
         litAt = -1L; flatAt = -1L; closeStartAt = -1L; closedAt = -1L; reopenedAt = -1L; coverLitAt = -1L; coverOpeningAt = -1L
     }
 
     fun onPanelLit(now: Long) {
+        traceEvent("panel lit")
         waitingForPanel = false
         if (expanded) { litAt = now; litAngle = tracker.visual ?: HingeTracker.FLAT_ENTER_DEG; if (tracker.flat) flatAt = now } else coverLitAt = now
     }
@@ -384,6 +400,7 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
                 }
                 // Opened back up before closing.
                 closeStartAt >= 0 && value - trough >= REOPEN_DEG -> {
+                    followMs = FOLLOW_MS
                     closeStartAt = -1L; closedAt = -1L; reopenedAt = now; peak = value; opening = true
                     FoldBridgeActivity.cancel()
                 }
@@ -392,19 +409,27 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         } else {
             when {
                 // Starting to open on the cover: blur the whole cover screen.
-                wasClosed && !tracker.closed -> { coverOpeningAt = now; opening = true; onOpeningStarted?.invoke() }
+                wasClosed && !tracker.closed -> { followMs = FOLLOW_MS; coverOpeningAt = now; opening = true; onOpeningStarted?.invoke() }
                 tracker.closed -> coverOpeningAt = -1L
             }
         }
     }
 
     private fun startClosing(now: Long, value: Float) {
+        followMs = FOLLOW_MS
         closeStartAt = now; closedAt = -1L; reopenedAt = -1L; trough = value; opening = false
         onClosingStarted?.invoke()
         if (stayAwake) FoldBridgeActivity.start(appContext)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+
+    /** How fast the effect follows its target. Quick while it tracks the hand; slower when it lets go, so a release is not a snap. */
+    var followMs = FOLLOW_MS; private set
+
+    /** The effect strength for the hinge as it is now: nothing at flat, growing as the phone closes, a little short of full at closed. */
+    private fun foldStrengthAtAngle(): Float = easeInOutSine(((HingeTracker.FLAT_ENTER_DEG - (tracker.visual ?: HingeTracker.FLAT_ENTER_DEG)) /
+        (HingeTracker.FLAT_ENTER_DEG - HingeTracker.CLOSED_ENTER_DEG)).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
 
     fun targetM(now: Long): Float = when {
         waitingForPanel -> if (expanded) unfoldStart else START_M_ON_COVER
@@ -430,17 +455,26 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
             val since = (now - closeStartAt).toFloat()
             val stalled = closedAt < 0 && (if (continuous) now - movedAt > STALL_MS else now - angleAt > predictedCloseMs + STALL_MS)
             when {
-                stalled -> { closeStartAt = -1L; peak = tracker.raw ?: 0f; 0f } // deliberately half-open (flex mode): clear
+                stalled -> { closeStartAt = -1L; peak = tracker.raw ?: 0f; if (continuous) followMs = RELEASE_FOLLOW_MS; 0f } // deliberately half-open (flex mode): clear, gently on a continuous angle
                 closedAt >= 0 && now - closedAt > CLOSED_STALL_MS -> { closeStartAt = -1L; closedAt = -1L; 0f } // never stuck dimmed
                 closedAt >= 0 -> 1f
-                continuous -> easeInOutSine(((HingeTracker.FLAT_ENTER_DEG - (tracker.visual ?: HingeTracker.FLAT_ENTER_DEG)) /
-                    (HingeTracker.FLAT_ENTER_DEG - HingeTracker.CLOSED_ENTER_DEG)).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
+                continuous -> foldStrengthAtAngle()
                 else -> easeInOutSine((since / predictedCloseMs).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
             }
         }
 
-        // Reopened before closing: settle back.
-        expanded && reopenedAt >= 0 -> { if (now - reopenedAt > FINISH_MS * 2) reopenedAt = -1L; 0f }
+        // Reopened before closing. With a continuous angle the effect keeps following the hinge back up to flat, so closing
+        // halfway and opening again is one smooth motion in both directions; with steps it settles back.
+        expanded && reopenedAt >= 0 -> {
+            if (continuous) {
+                when {
+                    tracker.flat -> { reopenedAt = -1L; 0f }
+                    // Held part way (flex mode) or never reaching flat: let go, gently, rather than hold or snap.
+                    now - movedAt > STALL_MS || now - reopenedAt > REOPEN_FOLLOW_MS -> { reopenedAt = -1L; followMs = RELEASE_FOLLOW_MS; 0f }
+                    else -> foldStrengthAtAngle()
+                }
+            } else { if (now - reopenedAt > FINISH_MS * 2) reopenedAt = -1L; 0f }
+        }
 
         // Opening from the cover: quick whole-screen blur until the inner display takes over.
         !expanded && coverOpeningAt >= 0 -> {
@@ -494,6 +528,11 @@ private const val START_M_ON_COVER = 1f
 private const val COVER_OPEN_MS = 220f
 private const val COVER_OPEN_STALL_MS = 2_000L
 private const val FOLLOW_MS = 28f
+private const val TRACE_TAG = "FolioFoldTrace"
+/** Letting go of the effect (a held, half-open phone): a short, soft release instead of a snap. */
+private const val RELEASE_FOLLOW_MS = 150f
+/** After reopening, how long the effect may keep following the hinge before it lets go on its own. */
+private const val REOPEN_FOLLOW_MS = 4_000L
 private const val MIN_FOLD_DROP_DEG = 20f
 private const val CLOSED_STALL_MS = 1_800L
 private const val LIT_TIMEOUT_MS = 1_200L

@@ -70,4 +70,65 @@ class DuetFoldFixtureTest {
         fold.onDisplaySwitched(0)
         assertTrue(fold.wake.tryReceive().isSuccess)
     }
+
+    /** A hinge sweep every [stepMs]: straight from [from] to [to] degrees over [ms], starting at [startMs]. */
+    private fun sweep(startMs: Long, from: Float, to: Float, ms: Long, stepMs: Long = 20): List<Pair<Long, Float>> =
+        (0..(ms / stepMs)).map { i -> val f = i * stepMs / ms.toFloat(); (startMs + i * stepMs) to (from + (to - from) * f) }
+
+    /** Closing halfway and opening back up, on a continuous angle (the root feed), is one smooth motion, not a reset. */
+    @Test fun `closing halfway and opening again follows the hinge both ways with no snap`() {
+        val fold = timeline(expanded = true)
+        val closing = sweep(0, 180f, 70f, 1_100)
+        val opening = sweep(1_120, 70f, 180f, 1_100)
+        val m = fold.play(closing + opening, until = 2_400)
+        val steps = m.zipWithNext { a, b -> kotlin.math.abs(b - a) }
+        assertTrue("no jump anywhere (largest ${steps.max()}): $m", steps.all { it < .09f })
+        val peakAt = m.indices.maxByOrNull { m[it] }!!
+        assertTrue("it built while closing: ${m.max()}", m.max() > .5f)
+        assertTrue("and it eases back down while opening, not all at once", m.drop(peakAt).zipWithNext().count { (a, b) -> b < a } > 20)
+        assertEquals("clear once flat again", 0f, m.last(), 1e-4f)
+        assertTrue(fold.opening)
+    }
+
+    @Test fun `the effect on the way back up matches the effect at the same angle on the way down`() {
+        val fold = timeline(expanded = true)
+        var down = -1f; var up = -1f
+        val readings = sweep(0, 180f, 80f, 1_000) + sweep(1_020, 80f, 180f, 1_000)
+        fold.play(readings, until = 2_050) { t ->
+            // Sample at 130 degrees on each leg: 180 - 100 * (t / 1000) on the way down, 80 + 100 * ((t - 1020) / 1000) on the way up.
+            if (t == 500L) down = fold.targetM(t)
+            if (t == 1_520L) up = fold.targetM(t)
+        }
+        assertTrue("both legs measured ($down, $up)", down > 0f && up > 0f)
+        assertEquals("the same angle gives nearly the same strength", down, up, .12f)
+    }
+
+    @Test fun `closing again after reopening carries straight on`() {
+        val fold = timeline(expanded = true)
+        val readings = sweep(0, 180f, 90f, 800) + sweep(820, 90f, 150f, 600) + sweep(1_440, 150f, 40f, 900)
+        val m = fold.play(readings, until = 2_400)
+        val steps = m.zipWithNext { a, b -> kotlin.math.abs(b - a) }
+        assertTrue("no jump (largest ${steps.max()})", steps.all { it < .09f })
+        assertTrue("strong again by 40 degrees: ${m.last()}", m.last() > .6f)
+    }
+
+    @Test fun `holding it part way lets go gently, with a slower follow, not a snap`() {
+        val fold = timeline(expanded = true)
+        val closing = sweep(0, 180f, 100f, 700)
+        fold.play(closing, until = 700)
+        assertEquals("quick while following the hand", 28f, fold.followMs, 1e-3f)
+        // held still for well over STALL_MS
+        val held = (710L..2_000L step 10L).map { fold.targetM(it) }
+        assertEquals("then it lets go", 0f, held.last(), 1e-4f)
+        assertTrue("with a soft release: ${fold.followMs}", fold.followMs > 100f)
+    }
+
+    @Test fun `a new fold goes back to quick tracking after a release`() {
+        val fold = timeline(expanded = true)
+        fold.play(sweep(0, 180f, 100f, 700), until = 2_000)
+        assertTrue(fold.followMs > 100f)
+        fold.onAngle(180f, 3_000_000_000L, 3_000L)
+        fold.onAngle(120f, 3_100_000_000L, 3_100L)
+        assertEquals("quick again", 28f, fold.followMs, 1e-3f)
+    }
 }
