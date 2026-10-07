@@ -154,10 +154,14 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
-    // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder.
+    // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
+    var clockEditSlot by remember { mutableStateOf<Int?>(null) }
+    var placeSlot by remember { mutableStateOf<Int?>(null) }
+    // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
     val gateContext = androidx.compose.ui.platform.LocalContext.current
     val homeView = androidx.compose.ui.platform.LocalView.current
     val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -606,7 +610,9 @@ fun LauncherScreen(
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
+        val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
         CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+            LocalBigClockStyles provides bigClockStyles,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
@@ -1163,6 +1169,7 @@ fun LauncherScreen(
                         }
                         "settings", "settings:wallpaper", "market" -> {
                           val settingsSheet: @Composable (String) -> Unit = { host ->
+                            CompositionLocalProvider(LocalPreviewPage provides pager.currentPage.coerceIn(0, homePages - 1)) {
                             CustomizationSheet(state, wide, model, isDefaultHome,
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
@@ -1182,6 +1189,7 @@ fun LauncherScreen(
                             backgrounds = launcherActivity.backgrounds,
                             onOpenMarket = { customizationPage = CustomizationPage.OVERVIEW; sheet = "market" },
                             onWallpaperPreview = { sheet = ""; onWallpaperPreview() }, homePage = pager.currentPage.coerceIn(0, homePages - 1))
+                            }
                           }
                           if (sheet == "market") {
                               // The Market lives here, so its Settings tab is Folio's own Settings rather than a jump.
@@ -1228,7 +1236,9 @@ fun LauncherScreen(
                                     picker.exactTarget = false; sheet = "widgets"
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
-                                onClose = { sheet = "" })
+                                onClose = { sheet = "" },
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
+                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null)
                         }
                     }
                 }
@@ -1567,6 +1577,28 @@ fun LauncherScreen(
                     Text(stringResource(R.string.remove), fontSize = 11.sp, maxLines = 1)
                 }
             }
+        }
+        clockEditSlot?.let { slot ->
+            if (model.placement(slot) == null) clockEditSlot = null
+            else {
+                BackHandler { clockEditSlot = null }
+                val windowHeight = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height
+                // In the half of the screen the clock is not in, so the real clock stays in view.
+                val clockLow = (BigClockBounds.bySlot[slot]?.center?.y ?: 0f) > windowHeight / 2f
+                Box(Modifier.fillMaxSize(), contentAlignment = if (clockLow) Alignment.TopCenter else Alignment.BottomCenter) {
+                    ClockEditBar(slot, state.bigClockStyles[slot], { model.setBigClockStyle(slot, it) },
+                        systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onDone = { clockEditSlot = null }, enterFromTop = clockLow,
+                        modifier = if (clockLow) Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
+                            else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
+                }
+            }
+        }
+        placeSlot?.let { slot ->
+            val placement = model.placement(slot)
+            val bounds = drag.regions[DropTarget.Widget(slot)]?.bounds
+            if (placement == null || bounds == null) LaunchedEffect(slot) { placeSlot = null }
+            else WidgetPlaceOverlay(placement, bounds, state.layout, resize.pitchX, resize.topPitch, resize.appPitch,
+                onApply = { column, row -> model.placeWidgetFreely(slot, column, row); placeSlot = null }, onClose = { placeSlot = null })
         }
         resize.slot?.let { slot ->
             val placement = model.placement(slot)

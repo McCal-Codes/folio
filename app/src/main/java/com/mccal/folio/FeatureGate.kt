@@ -88,7 +88,13 @@ internal enum class FeatureGate(
      * an open folder or out past its edge, and Sort A to Z. Gesture work like this wants real hands on real Folds
      * (the open folder is its own window, which is where the last three bugs were), so the beta gets it first.
      */
-    FOLDER_EDITING("folderEditing", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    FOLDER_EDITING("folderEditing", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Making the Big Clock your own: Customize (Looks, color, Fine tune) and Place Freely. A clock nobody customizes
+     * and nobody places is drawn exactly as before, so the only thing this holds back is the two menu rows.
+     */
+    CLOCK_CUSTOMIZE("clockCustomize", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

@@ -1975,6 +1975,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     }
 }
 
+/** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
+internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -1985,7 +1988,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     /** The Side Bar (status, dock and search): off for the second page of an unfolded preview, which has one Side Bar. */
     sideBar: Boolean = true,
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
-    preset: LayoutPreset = state.compact) {
+    preset: LayoutPreset = state.compact,
+    /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
+    page: Int = LocalPreviewPage.current) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -2000,10 +2005,10 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
-    val placements = state.widgetPlacements.filter { it.page == 0 }
-    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
+    val placements = state.widgetPlacements.filter { it.page == page }
+    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
-    val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
+    val (iconSize, labels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
     val railAlign = if (left) Alignment.TopStart else Alignment.TopEnd
@@ -2032,7 +2037,10 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
-                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)
+                            // A freely placed widget (Place Freely) is drawn a part of a cell from its cells, as on Home.
+                            val rowPitch = if (w.offsetY < 0f && w.row > 0) cells.y(w.row) - cells.y(w.row - 1)
+                                else if (w.row + 1 < GRID_ROWS) cells.y(w.row + 1) - cells.y(w.row) else cells.y(w.row) - cells.y(w.row - 1)
+                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f + geometry.cellWidth * w.offsetX).dp, y = (cells.y(w.row) + rowPitch * w.offsetY).dp)
                                 .size((geometry.cellWidth * w.spanX - 10f).dp, (cells.spanHeight(w.row, w.spanY) - 18f).coerceAtLeast(48f).dp)) {
                                 if (w.id < 0) BuiltinWidgetCard(w.id, w.slot) {}
                                 else Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(glass.copy(alpha = LocalGlassLook.current.widget)), contentAlignment = Alignment.Center) {
@@ -2041,7 +2049,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                             }
                         }
                         repeat(shownRows * GRID_COLUMNS) { local ->
-                            val id = state.homeSlots.getOrNull(local) ?: return@repeat
+                            val id = state.homeSlots.getOrNull(homeCellIndex(page, local)) ?: return@repeat
                             val app = apps[id]
                             val folder = if (app == null) state.folders.firstOrNull { it.id == id } ?: return@repeat else null
                             val row = local / GRID_COLUMNS
@@ -2109,8 +2117,8 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                     if (record.size != record.layer.size) record.size = record.layer.size
                 } else Modifier)) {
                 // Two Home pages with one Side Bar, on the right (on the left in left-handed layouts), like the open Fold.
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded)
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded, page = 0)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded, page = 0)
             }
         }
     }
