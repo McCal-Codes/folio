@@ -17,6 +17,9 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Changed
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
 
+### Fixed
+- **Dropping an app on a folder adds it:** holding an app over a folder on Home used to slide the folder out of the way, so letting go swapped the two places and the app never went in. The folder now stays where it is, lifts a little, and takes the app, whether it comes from Home, the dock or the App Library.
+
 ## [0.6.8] - 2026-10-06
 
 ### Added

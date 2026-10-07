@@ -469,12 +469,21 @@ fun LauncherScreen(
         val occupant = state.layout.slotAt(index) ?: return null
         return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
     }
+    // An app held over a folder's cell goes into the folder. The cell has to stay put while it is held there: the live
+    // preview below would otherwise slide the folder out from under the finger, the folder's own drop target would move
+    // with it, and the release would land on the empty cell as a swap instead of a drop into the folder.
+    fun folderDropTarget(sourceAppId: String?, index: Int): String? {
+        if (sourceAppId == null || isFolderId(sourceAppId)) return null
+        val occupant = state.layout.slotAt(index) ?: return null
+        return occupant.takeIf { state.layout.folder(it) != null && drag.source?.folderId != it }
+    }
     val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows) {
         val id = drag.source?.appId
         when {
             // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
             // the target cell's own hover highlight is the only feedback until release, same as a real platform.
-            id != null && insertionTarget is DropTarget.Home && folderMergeTarget(id, insertionTarget.index) != null -> state.layout
+            id != null && insertionTarget is DropTarget.Home &&
+                (folderMergeTarget(id, insertionTarget.index) != null || folderDropTarget(id, insertionTarget.index) != null) -> state.layout
             id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
@@ -515,6 +524,8 @@ fun LauncherScreen(
                 model.removeAppFromFolder(source.folderId, source.appId, destination)
             destination == DropTarget.Remove -> model.removePlacement(source.target)
             destination is DropTarget.Home && source.target is DropTarget.Widget -> model.moveWidgetTo(source.target.index, destination.index)
+            destination is DropTarget.Home && folderDropTarget(source.appId, destination.index) != null ->
+                model.addAppToFolder(folderDropTarget(source.appId, destination.index)!!, source.appId!!)
             // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
             // places. Dropping on an existing folder already goes through DropTarget.Folder above.
             destination is DropTarget.Home && folderMergeTarget(source.appId, destination.index) != null ->
