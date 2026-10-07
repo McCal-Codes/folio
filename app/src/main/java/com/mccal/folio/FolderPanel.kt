@@ -283,16 +283,8 @@ internal fun FolderPanel(
                                 onLaunch = onLaunch, onMoveOut = onMoveOut,
                                 reorderModifier = Modifier
                                     .onGloballyPositioned { childBounds[appId] = it.boundsInWindow() }
-                                    .graphicsLayer {
-                                        if (isDragging) {
-                                            val cell = childBounds[appId]?.center ?: dragStart
-                                            translationX = dragStart.x + dragOffset.x - cell.x; translationY = dragStart.y + dragOffset.y - cell.y
-                                            val s = if (pulledOut) .78f else 1.06f
-                                            scaleX = s; scaleY = s; alpha = if (pulledOut) .7f else 1f
-                                            shadowElevation = 12f
-                                        }
-                                    }
-                                    .zIndex(if (isDragging) 1f else 0f)
+                                    // The gesture is measured in the cell's own, untransformed space: if it came after the graphicsLayer below, the icon
+                                    // moving to follow the finger would move the gesture's coordinates with it and swallow part of every move.
                                     .pointerInput(appId, editing) {
                                         if (!editing) return@pointerInput
                                         detectDragGesturesAfterLongPress(
@@ -350,7 +342,17 @@ internal fun FolderPanel(
                                                 }
                                             }
                                         }
-                                    })
+                                    }                                    .graphicsLayer {
+                                        if (isDragging) {
+                                            val cell = childBounds[appId]?.center ?: dragStart
+                                            translationX = dragStart.x + dragOffset.x - cell.x; translationY = dragStart.y + dragOffset.y - cell.y
+                                            val s = if (pulledOut) .78f else 1.06f
+                                            scaleX = s; scaleY = s; alpha = if (pulledOut) .7f else 1f
+                                            shadowElevation = 12f
+                                        }
+                                    }
+                                    .zIndex(if (isDragging) 1f else 0f)
+)
                         }
                     }
                 }
