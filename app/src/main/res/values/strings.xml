@@ -1169,6 +1169,16 @@
     <string name="send_a_report_to_help_fix_it">A report helps get it fixed. It opens in your mail app so you can read everything first, and nothing is sent unless you send it.</string>
     <string name="send_report">Send Report</string>
     <string name="diagnostics_file_note">Phone and screen settings, recent Folio events, crash, freeze and restart reports, and Folio\'s own log, as one file. You choose where it goes.</string>
+    <string name="performance_log">Performance log</string>
+    <string name="performance_start">Start recording</string>
+    <string name="performance_stop">Stop recording</string>
+    <string name="performance_copy">Copy Report</string>
+    <string name="performance_share">Share Report</string>
+    <string name="performance_copied">Report copied</string>
+    <string name="performance_status_off">Off. Start it to record what Folio costs.</string>
+    <string name="performance_status_running">Recording: %1$d min, %2$d readings</string>
+    <string name="performance_status_done">Stopped: %1$d min recorded</string>
+    <string name="performance_note">While on, this reads Folio\'s CPU use, memory, frame times and the battery every few seconds, and stops by itself after 6 hours. Nothing leaves the phone unless you copy or share the report.</string>
     <string name="the_report_couldn_t_be_opened">The report couldn\'t be opened. Settings › Help › Report a Bug has it too.</string>
     <string name="what_s_new">What\'s New</string>
     <string name="support_folio">Support Folio</string>
