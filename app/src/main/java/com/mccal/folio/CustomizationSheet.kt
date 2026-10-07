@@ -1355,6 +1355,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.reduce_transparency to CustomizationPage.WALLPAPER,
     R.string.when_unfolded to CustomizationPage.TODAY,
     R.string.turn_on_automatically to CustomizationPage.FOCUS,
+    R.string.focus_trigger_folding to CustomizationPage.FOCUS,
+    R.string.focus_trigger_charging to CustomizationPage.FOCUS,
+    R.string.focus_trigger_headphones to CustomizationPage.FOCUS,
     R.string.silence_notifications to CustomizationPage.FOCUS,
     R.string.when_you_hold_it to CustomizationPage.SIDE_KEY,
     R.string.fold_displays to CustomizationPage.FOLD,
@@ -1639,12 +1642,13 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var access by remember { mutableStateOf(FocusController.hasAccess(context)) }
+    val reason by model.focusReason.collectAsState()
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { access = FocusController.hasAccess(context) } }
     SheetGroup {
         state.focusModes.forEachIndexed { index, mode ->
             if (index > 0) MenuDivider()
-            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) stringResource(R.string.on) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
+            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) (reason?.let { stringResource(R.string.focus_on_because, stringResource(it.label(mode))) } ?: stringResource(R.string.on)) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -1710,6 +1714,27 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             }
             CardNote(stringResource(R.string.focus_schedule_note, mode.name))
         }
+    }
+    // Supporters and Folio Dev first (FeatureGate.FOCUS_TRIGGERS); everyone from 0.6.9.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val triggersOpen = remember { FeatureGate.FOCUS_TRIGGERS.isOpen(gateContext) }
+    if (triggersOpen) SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
+        val triggers = mode.triggers
+        SettingsSwitch(stringResource(R.string.focus_trigger_folding), triggers.fold != null,
+            { on -> model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = if (on) FoldState.UNFOLDED else null))) }, "focus-trigger-fold")
+        triggers.fold?.let { chosen ->
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                FoldState.entries.forEach { fold ->
+                    IosChip(chosen == fold, { model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = fold))) },
+                        label = { Text(stringResource(fold.label())) }, modifier = Modifier.testTag("focus-fold-${fold.key}"))
+                }
+            }
+        }
+        SettingsSwitch(stringResource(R.string.focus_trigger_charging), triggers.charging,
+            { model.updateFocusMode(mode.copy(triggers = triggers.copy(charging = it))) }, "focus-trigger-charging")
+        SettingsSwitch(stringResource(R.string.focus_trigger_headphones), triggers.headphones,
+            { model.updateFocusMode(mode.copy(triggers = triggers.copy(headphones = it))) }, "focus-trigger-headphones")
+        CardNote(stringResource(R.string.focus_triggers_note))
     }
     SettingsCard(stringResource(R.string.notifications_title)) {
         SettingsSwitch(stringResource(R.string.silence_notifications), mode.silence, { model.updateFocusMode(mode.copy(silence = it)) }, "focus-silence")

@@ -294,7 +294,7 @@ fun StatusRail(
                         val offline = !status.wifiConnected && cellularVisual !is CellularSignalVisual.Available && !status.airplane
                         // With Reduce Motion, a still fan with a slash instead.
                         val sweep = if (offline && style.glyph == StatusGlyph.RING && !LocalReduceMotion.current) rememberInfiniteTransition(label = "no connection")
-                            .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep").value else -1f
+                            .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep") else null
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val center = Offset(w / 2, w / 2)
@@ -314,7 +314,7 @@ fun StatusRail(
                                 }
                                 cellularVisual is CellularSignalVisual.Available -> drawCellBars(w, activeDots, ink, onLight)
                                 status.airplane -> Unit // the airplane icon draws on top
-                                else -> drawSearchingFan(w, sweep, ink, onLight)
+                                else -> drawSearchingFan(w, sweep?.value ?: -1f, ink, onLight)
                             } else status.battery?.let { level ->
                                 // Minimal: nothing inside the ring but a small charge dot when charging.
                                 if (status.charging) drawCircle(batteryColor, w * .06f, center)
@@ -349,7 +349,7 @@ fun StatusRail(
                             if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "gauge color")
                         val searching = !status.wifiConnected && cellularVisual !is CellularSignalVisual.Available && !status.airplane
                         val sweep = if (searching && !still) rememberInfiniteTransition(label = "no connection")
-                            .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep").value else -1f
+                            .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep") else null
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val center = Offset(w / 2, w * ringCenter)
@@ -377,7 +377,7 @@ fun StatusRail(
                             when {
                                 wifiVisual is WifiSignalVisual.Connected -> centred(GAUGE_FAN_ORIGIN) { drawWifiFan(w, wifiVisual, ink = ink, onLight = onLight) }
                                 cellularVisual is CellularSignalVisual.Available -> centred(GAUGE_FAN_ORIGIN) { drawCellBars(w, activeDots, ink, onLight) }
-                                searching -> centred(GAUGE_SEARCH_ORIGIN) { drawSearchingFan(w, sweep, ink, onLight) }
+                                searching -> centred(GAUGE_SEARCH_ORIGIN) { drawSearchingFan(w, sweep?.value ?: -1f, ink, onLight) }
                                 else -> Unit
                             }
                             // Cellular strength as a row of dots under the ring, where the lower break opens.
