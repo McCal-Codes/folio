@@ -1522,7 +1522,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val context = androidx.compose.ui.platform.LocalContext.current
     val resources = context.resources
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
-        SettingsEntries.map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
+        // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
+        SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
     val results = index.filter { settingsMatches(query, it.title, it.keywords) }

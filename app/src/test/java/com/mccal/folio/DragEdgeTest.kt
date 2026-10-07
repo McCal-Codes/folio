@@ -41,6 +41,39 @@ class FolderDragTest {
         assertEquals(DropTarget.Home(5), drag.destination(Offset(50f, 50f), setOf(0))?.target)
     }
 
+    @Test fun `an app from the dock, the App Library or another page drops into a folder that already exists`() {
+        for (source in listOf(
+            DragRegion(DropTarget.Dock(1), Rect.Zero, "pkg/.Dock", null),
+            DragRegion(DropTarget.Library("pkg/.Lib"), Rect.Zero, "pkg/.Lib", null),
+            DragRegion(DropTarget.Home(40), Rect.Zero, "pkg/.Far", 1),
+        )) {
+            val drag = state().apply { this.source = source }
+            assertEquals(DropTarget.Folder(folder), drag.destination(Offset(50f, 50f), setOf(0))?.target)
+        }
+    }
+
+    @Test fun `an app dragged out of one folder drops into another`() {
+        val other = newFolderId()
+        val drag = HomeDragState().apply {
+            register("cell", DragRegion(DropTarget.Home(9), Rect(0f, 0f, 100f, 100f), null, 0))
+            register("tile", DragRegion(DropTarget.Folder(other), Rect(0f, 0f, 100f, 100f), null, 0, folderId = other))
+            source = DragRegion(DropTarget.Library("pkg/.InFolder"), Rect.Zero, "pkg/.InFolder", 0, folderId = folder)
+        }
+        assertEquals(DropTarget.Folder(other), drag.destination(Offset(50f, 50f), setOf(0))?.target)
+    }
+
+    @Test fun `an app carried out of an open folder lands on the Home cell under the finger or the dock slot`() {
+        val drag = HomeDragState().apply {
+            register("cell", DragRegion(DropTarget.Home(9), Rect(0f, 0f, 100f, 100f), null, 0))
+            register("dock", DragRegion(DropTarget.Dock(2), Rect(200f, 0f, 300f, 100f), null, null))
+            // The same kind of source the open folder hands over: the app, with the folder it is leaving.
+            source = DragRegion(DropTarget.Library("pkg/.InFolder"), Rect.Zero, "pkg/.InFolder", 0, folderId = folder, scope = folder)
+        }
+        assertEquals(DropTarget.Home(9), drag.destination(Offset(50f, 50f), setOf(0))?.target)
+        assertEquals(DropTarget.Dock(2), drag.destination(Offset(250f, 50f), setOf(0))?.target)
+        assertEquals(null, drag.destination(Offset(500f, 500f), setOf(0)))
+    }
+
     @Test fun `an app still drops into a folder`() {
         val drag = state().apply { source = DragRegion(DropTarget.Home(3), Rect.Zero, "pkg/.App", 0) }
         assertEquals(DropTarget.Folder(folder), drag.destination(Offset(50f, 50f), setOf(0))?.target)

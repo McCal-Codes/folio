@@ -297,7 +297,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         // Other short windows: tighten row spacing, then icons, then the widget row, so the four app rows fit the
         // height instead of running under the controls. Rows stay at least 48dp tall.
         if (needed() > fitHeight) gap = 0f
-        if (needed() > fitHeight) icon = minOf(icon, ((fitHeight - widget - 18f) / 4f - labelSpace).coerceAtLeast(40f))
+        // Filled widgets are two rows tall whatever Widget Size says, so the page is six rows and the old scale is left out of the fit.
+        if (needed() > fitHeight) icon = minOf(icon, (if (widgetsFillRows) fitHeight / (BASE_APP_ROWS + 2f) - labelSpace
+            else (fitHeight - widget - 18f) / 4f - labelSpace).coerceAtLeast(40f))
         if (!widgetsFillRows && needed() > fitHeight) widget = minOf(widget, (fitHeight - 18f - 4f * rowFor(icon, gap)).coerceAtLeast(88f))
         // Laid out for the rows shown, so Rows › 4 looks exactly like before; switching the setting re-centers the page.
         layoutRows = rows
@@ -419,6 +421,10 @@ data class PageStyle(val iconScale: Float = 1f, val labels: Boolean? = null) {
         val SIZES = listOf("Small" to .82f, "Default" to 1f, "Large" to 1.14f)
     }
 }
+
+/** A folder's own width and height (dp), set by dragging its resize handle; a folder without one sizes itself
+ * automatically. Free-form rather than grid-snapped, since a folder doesn't live on Home's app grid. */
+data class FolderSize(val width: Float, val height: Float)
 
 /**
  * iPhone Duo-style displacement around a horizontal fold (a half-open phone held upright): instead of leaving a row of

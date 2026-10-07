@@ -72,6 +72,14 @@ fun moveFolderApp(layout: HomeLayout, folderId: String, appId: String, index: In
     return layout.copy(folders = layout.folders.map { if (it.id == folderId) it.copy(appIds = members) else it })
 }
 
+/** Replaces a folder's whole member order at once, e.g. for a "Sort A-Z" action - [appIds] must be exactly the
+ * folder's own members, reordered, so this can never add, drop, or duplicate one. */
+fun reorderFolder(layout: HomeLayout, folderId: String, appIds: List<String>): HomeLayout {
+    val folder = layout.folder(folderId) ?: return layout
+    if (appIds.size != folder.appIds.size || appIds.toSet() != folder.appIds.toSet()) return layout
+    return layout.copy(folders = layout.folders.map { if (it.id == folderId) it.copy(appIds = appIds) else it })
+}
+
 fun removeAppFromFolder(layout: HomeLayout, folderId: String, appId: String, target: DropTarget, appRows: Int = MAX_APP_ROWS): HomeLayout {
     val folder = layout.folder(folderId) ?: return layout
     if (appId !in folder.appIds || target is DropTarget.Widget || target is DropTarget.Library) return layout

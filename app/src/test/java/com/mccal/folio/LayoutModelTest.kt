@@ -287,4 +287,12 @@ class LayoutModelTest {
         val large = homeGeometry(411f, 891f, LayoutPreset(widgetScale = 1.25f), true, widgetsFillRows = true)
         assertEquals(small.widgetHeight, large.widgetHeight, 0.01f)
     }
+
+    @Test fun `with filled widgets the old Widget Size does not change the icons in a short window`() {
+        for ((w, h) in listOf(360f to 560f, 411f to 640f, 475f to 600f)) {
+            val small = homeGeometry(w, h, LayoutPreset(widgetScale = .8f), true, widgetsFillRows = true)
+            val large = homeGeometry(w, h, LayoutPreset(widgetScale = 1.25f), true, widgetsFillRows = true)
+            assertEquals("icons at ${w}x$h", small.iconSize, large.iconSize, .001f)
+        }
+    }
 }

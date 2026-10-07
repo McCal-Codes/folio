@@ -734,6 +734,9 @@
     <string name="close_folder">Close folder</string>
     <string name="no_folder_color">No folder color</string>
     <string name="folder_color">Folder color</string>
+    <string name="resize_folder">Resize folder</string>
+    <string name="folder_options">Folder options</string>
+    <string name="sort_a_to_z">Sort A to Z</string>
     <string name="text_1_s_unavailable">%1$s unavailable</string>
     <string name="headphones">Headphones</string>
     <string name="fixes_and_improvements">Fixes and Improvements</string>

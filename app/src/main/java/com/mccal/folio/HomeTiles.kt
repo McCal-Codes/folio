@@ -240,13 +240,18 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     val unread = folder.appIds.mapNotNull { apps[it]?.packageName }.distinct().sumOf { counts0[it] ?: 0 }
     val folderApps = pluralStringResource(R.plurals.folder_apps, folder.appIds.size, folder.title, folder.appIds.size)
     val folderLabel = if (unread > 0) pluralStringResource(R.plurals.folder_unread, unread, folderApps, unread) else folderApps
-    Column(modifier.clickable(onClick = onClick).semantics(mergeDescendants = true) {
+    // The whole cell takes the drop, not just the icon, so an app held near a folder's label still goes in.
+    Column(modifier.clickable(onClick = onClick).dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
+        .semantics(mergeDescendants = true) {
         contentDescription = folderLabel
     }, horizontalAlignment = Alignment.CenterHorizontally) {
         val tint = LocalFolderColors.current[folder.id]?.let { Color(it) }
         val bounds = remember { android.graphics.Rect() }
-        Box(Modifier.size(size.dp)
-            .dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
+        // An app held over this folder says so before you let go: the folder lifts a little, and the drop is what adds it.
+        val hovered = drag.moved && drag.source?.appId?.let { !isFolderId(it) } == true &&
+            drag.destination(drag.pointer, setOf(page))?.target == DropTarget.Folder(folder.id)
+        val lift by animateFloatAsState(if (hovered) 1.12f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "folder hover")
+        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift }
             .onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(folder.id, bounds) }
             .jiggle(folder.id).foldMotionIcon()) {
             // Like iOS: a folder's badge is the total of its apps' badges (each app counted once).

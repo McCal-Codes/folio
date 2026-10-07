@@ -84,6 +84,13 @@ internal enum class FeatureGate(
     HOME_STRIP_NOTHING("homeStripNothing", closedSince = "2026-10-05", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * Folders you can shape: resize by the corner, drop an app on another to make a folder, drag to reorder inside
+     * an open folder or out past its edge, and Sort A to Z. Gesture work like this wants real hands on real Folds
+     * (the open folder is its own window, which is where the last three bugs were), so the beta gets it first.
+     */
+    FOLDER_EDITING("folderEditing", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
      * A widget at the top of Home fills exactly two app rows, so every row has one pitch and the dock lines up with the
      * rows on a page with a widget and on one without (issue #13). It changes how every stacked layout looks and
      * retires Widget Size, so supporters try it first; opening the gate is what shipping it means.
