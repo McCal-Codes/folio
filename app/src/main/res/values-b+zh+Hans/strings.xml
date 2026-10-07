@@ -65,7 +65,6 @@
     <string name="app_library">App 资源库</string>
     <string name="group_apps_into_categories">将 App 按类别分组</string>
     <string name="search">搜索</string>
-    <string name="search_button_on_home">主屏幕上的搜索按钮</string>
     <string name="swipe_down_on_home_for_spotlight">在主屏幕下滑打开聚焦搜索</string>
     <string name="drag_page_dots_to_flip_pages">拖动页面圆点翻页</string>
     <string name="haptic_feedback">触感反馈</string>
@@ -1261,6 +1260,24 @@
     <string name="market_page_intro">以软件包形式提供的主题和插件，可以获取和移除。Folio 自己的软件包随 App 一起提供；你添加的源由其发布者签名。</string>
     <string name="market_refreshing_section">刷新</string>
     <string name="refresh_in_the_background">在后台刷新</string>
+    <string name="tell_me_about_updates">更新时通知我</string>
+    <string name="update_packages_in_background">在后台更新包</string>
+    <string name="update_packages_in_background_detail">当更改不涉及你的任何设置时，来源中的包会自动更新</string>
+    <string name="market_updates_notice_detail">来源有你已安装内容的新版本时通知一次</string>
+    <string name="updates_question_title">让软件包保持最新？</string>
+    <string name="updates_question_body">Folio 会在 Wi-Fi 下每天检查一次你的来源，有新版本时通知你。除非你开启“在后台更新软件包”，否则不会自动安装任何内容。</string>
+    <string name="updates_notice_refused">已关闭：Android 不允许 Folio 显示通知。更新仍会显示在市场中。</string>
+    <string name="updated_recently">最近已更新</string>
+    <string name="version_from_to">%1$s 到 %2$s</string>
+    <string name="update_automatically">自动更新</string>
+    <string name="update_automatically_follows">跟随“在后台更新软件包”</string>
+    <string name="update_automatically_global_off">市场设置中的“在后台更新软件包”已关闭</string>
+    <string name="market_updates_channel">市场更新</string>
+    <string name="market_updates_channel_detail">你从市场安装的包和应用的新版本。</string>
+    <string name="market_updates_and_more">另外 %1$d 个</string>
+    <plurals name="market_updates_notice">
+        <item quantity="other">市场有 %1$d 个更新</item>
+    </plurals>
     <string name="once_a_day">每天一次</string>
     <string name="only_on_wifi">仅限无线局域网</string>
     <string name="never_uses_mobile_data">从不使用移动数据</string>
@@ -1674,6 +1691,13 @@
     <string name="choose_named">选择%1$s</string>
     <string name="installing_percent">正在安装，%1$d%%</string>
     <string name="fix_saved_layout">修复已保存的布局</string>
+    <string name="home_strip">主屏幕底部</string>
+    <string name="home_strip_search">搜索按钮</string>
+    <string name="home_strip_dots">页面圆点</string>
+    <string name="home_strip_nothing">无</string>
+    <string name="home_strip_note">滑动或编辑主屏幕时会显示页面圆点；沿底部拖动仍可切换页面。</string>
+    <string name="stronger_rings">更醒目的圆环</string>
+    <string name="stronger_rings_note">圆环更粗、轨道更清晰，一眼就能分辨。开启 Android 的粗体文字时也会自动开启。</string>
     <string name="capability_risk_line">用途：%1$s</string>
     <string name="risk_observe">只读</string>
     <string name="risk_reversible">易于撤销</string>

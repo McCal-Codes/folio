@@ -495,7 +495,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.off_new_downloads_go_to_the_app_library))
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.search)) {
-                        SettingsSwitch(stringResource(R.string.search_button_on_home), state.searchPill, model::setSearchPill, "search-pill-switch")
+                        // One choice instead of a switch: what sits above the dock at rest. Nothing is still in beta.
+                        val stripContext = androidx.compose.ui.platform.LocalContext.current
+                        val nothingOpen = remember(stripContext) { FeatureGate.HOME_STRIP_NOTHING.isOpen(stripContext) }
+                        IosMenuRow(stringResource(R.string.home_strip), HomeStrip.entries.filter { it != HomeStrip.NOTHING || nothingOpen || state.homeStrip == it }
+                            .map { it to stringResource(it.label) }, state.homeStrip, model::setHomeStrip, tag = "home-strip")
+                        CardNote(stringResource(R.string.home_strip_note))
                         SettingsSwitch(stringResource(R.string.search_button_opens_the_google_app), state.googleSearch, model::setGoogleSearch, "google-search-switch")
                         CardNote(stringResource(R.string.when_off_the_search_button_opens_spotlig))
                     }
@@ -567,6 +572,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.show_status_in_the_rail), state.verticalStatus, model::setVerticalStatus, "status-switch")
                         if (state.verticalStatus) {
                             IosMenuRow(stringResource(R.string.icon_style), StatusGlyph.entries.map { it to stringResource(it.label) }, st.glyph, { model.setStatusStyle(st.copy(glyph = it)) }, tag = "status-glyph")
+                        if (st.glyph != StatusGlyph.ICONS && st.glyph != StatusGlyph.NONE) {
+                            SettingsSwitch(stringResource(R.string.stronger_rings), st.strongRings, { model.setStatusStyle(st.copy(strongRings = it)) }, "stronger-rings-switch")
+                            CardNote(stringResource(R.string.stronger_rings_note))
+                        }
                             SettingsSwitch(stringResource(R.string.time), st.showTime, { model.setStatusStyle(st.copy(showTime = it)) }, "status-time")
                             SettingsSwitch(stringResource(R.string.date), st.showDate, { model.setStatusStyle(st.copy(showDate = it)) }, "status-date")
                             SettingsSwitch(stringResource(R.string.battery_percentage), st.showBatteryPercent, { model.setStatusStyle(st.copy(showBatteryPercent = it)) }, "status-percent")
@@ -879,6 +888,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     SheetGroupLabel(stringResource(R.string.market_refreshing_section))
                     var background by remember { mutableStateOf(marketPrefs.backgroundRefresh) }
                     var wifiOnly by remember { mutableStateOf(marketPrefs.refreshOnWifiOnly) }
+                    var notifyUpdates by remember { mutableStateOf(marketPrefs.notifyUpdates) }
+                    var autoUpdate by remember { mutableStateOf(marketPrefs.autoUpdatePackages) }
+                    var notifyRefused by remember { mutableStateOf(false) }
+                    val marketNotifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+                        // Android said no: the switch goes back off instead of staying on and never showing anything.
+                        if (!granted) { notifyUpdates = false; marketPrefs.notifyUpdates = false; notifyRefused = true }
+                    }
                     SheetGroup {
                         SwitchRow(stringResource(R.string.refresh_in_the_background), stringResource(if (background) R.string.once_a_day else R.string.off), background) {
                             background = it
@@ -886,6 +902,20 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             MarketRefreshJob.schedule(sheetContext)
                         }
                         if (background) {
+                            MenuDivider()
+                            if (FeatureGate.MARKET_AUTO_UPDATE.isOpen(sheetContext)) {
+                                SwitchRow(stringResource(R.string.update_packages_in_background), stringResource(R.string.update_packages_in_background_detail), autoUpdate) {
+                                    autoUpdate = it
+                                    marketPrefs.autoUpdatePackages = it
+                                }
+                                MenuDivider()
+                            }
+                            SwitchRow(stringResource(R.string.tell_me_about_updates), stringResource(R.string.market_updates_notice_detail), notifyUpdates) {
+                                notifyUpdates = it
+                                marketPrefs.notifyUpdates = it
+                                notifyRefused = false
+                                if (it && !SoftwareUpdate.canPostNotifications(sheetContext)) marketNotifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            }
                             MenuDivider()
                             SwitchRow(stringResource(R.string.only_on_wifi), stringResource(if (wifiOnly) R.string.never_uses_mobile_data else R.string.any_network), wifiOnly) {
                                 wifiOnly = it
@@ -896,6 +926,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     Text(stringResource(R.string.with_this_off_folio_only_goes_online),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp))
+                    if (notifyRefused) Text(stringResource(R.string.updates_notice_refused),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp, vertical = FolioSpace.TINY.dp))
                 }
                 CustomizationPage.TWEAKS -> {
                     CardNote(stringResource(R.string.features_inspired_by_ios_jailbreak_tweak), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -1350,7 +1382,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.add_new_apps_to_home_screen to CustomizationPage.SEARCH,
     R.string.group_apps_into_categories to CustomizationPage.SEARCH,
     R.string.message_contacts_with to CustomizationPage.SEARCH,
-    R.string.search_button_on_home to CustomizationPage.SEARCH,
+    R.string.home_strip to CustomizationPage.SEARCH,
+    R.string.stronger_rings to CustomizationPage.STATUS,
     R.string.search_button_opens_the_google_app to CustomizationPage.SEARCH,
     R.string.search_with_enter to CustomizationPage.SEARCH,
     R.string.work_apps to CustomizationPage.SEARCH,

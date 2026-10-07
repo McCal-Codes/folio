@@ -92,10 +92,22 @@ class PackageInstaller(
         expected: IndexPackage? = null,
         origin: InstalledPackage.Origin = InstalledPackage.Origin.FOLIO_SOURCE,
         sourceUrl: String? = null,
-    ): InstallResult {
-        expected?.size?.let { if (bytes.size != it) return InstallResult.Failed(InstallResult.Reason.SIZE, "that download isn't the size the source listed") }
+    ): InstallResult = when (val v = verify(bytes, expected)) {
+        is Verified.Stop -> v.result
+        is Verified.Ok -> apply(v.pkg, origin, sourceUrl, pinning = v.pinning)
+    }
+
+    /** What [verify] found: a package that passed every check on the bytes, or the result to give instead. */
+    private sealed interface Verified {
+        data class Ok(val pkg: FolioPackage, val pinning: Pair<String, String>?) : Verified
+        data class Stop(val result: InstallResult) : Verified
+    }
+
+    /** Every check an install makes on the bytes themselves: size, checksum, author, the archive, and that it is the package the source listed. */
+    private fun verify(bytes: ByteArray, expected: IndexPackage?): Verified {
+        expected?.size?.let { if (bytes.size != it) return Verified.Stop(InstallResult.Failed(InstallResult.Reason.SIZE, "that download isn't the size the source listed")) }
         expected?.sha256?.let {
-            if (sha256Hex(bytes) != it) return InstallResult.Failed(InstallResult.Reason.HASH, "that download doesn't match the source's checksum")
+            if (sha256Hex(bytes) != it) return Verified.Stop(InstallResult.Failed(InstallResult.Reason.HASH, "that download doesn't match the source's checksum"))
         }
         // Who wrote it, which is a different question from who handed it over. Checked here, against the bytes that
         // actually arrived, so a mirror can carry a package but can't alter it or publish under its author's name.
@@ -104,14 +116,14 @@ class PackageInstaller(
             when (val author = authors.check(expected.id, expected.version, expected.sha256, expected.signedBy)) {
                 is AuthorTrust.Result.FirstTime -> pinning = expected.id to author.keyBase64
                 else -> if (!author.installable) {
-                    return InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message)
+                    return Verified.Stop(InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message))
                 }
             }
         }
         val pkg = when (val read = read(bytes)) {
             is ReadResult.Ok -> read.pkg
-            is ReadResult.NeedsNewerFolio -> return InstallResult.NeedsNewerFolio(read.missing)
-            is ReadResult.Failed -> return InstallResult.Failed(read.reason, read.message)
+            is ReadResult.NeedsNewerFolio -> return Verified.Stop(InstallResult.NeedsNewerFolio(read.missing))
+            is ReadResult.Failed -> return Verified.Stop(InstallResult.Failed(read.reason, read.message))
         }
         // A package shared as a file has no index to carry a signature, so it carries its own. The same rules
         // apply: a name that already belongs to another key is refused, whichever way the package arrived.
@@ -119,7 +131,7 @@ class PackageInstaller(
             when (val author = authors.checkFiles(pkg.id, pkg.version, pkg.files)) {
                 is AuthorTrust.Result.FirstTime -> pinning = pkg.id to author.keyBase64
                 else -> if (!author.installable) {
-                    return InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message)
+                    return Verified.Stop(InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message))
                 }
             }
         }
@@ -127,12 +139,77 @@ class PackageInstaller(
         // copy said: a mirror could otherwise label a tweak bundle "Appearance only" and have it applied anyway.
         val shown = expected?.manifest
         if (shown != null && (shown.kinds != pkg.manifest.kinds || shown.permissions != pkg.manifest.permissions)) {
-            return InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed")
+            return Verified.Stop(InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed"))
         }
         if (expected != null && (expected.id != pkg.id || expected.version != pkg.version)) {
-            return InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed")
+            return Verified.Stop(InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed"))
         }
-        return apply(pkg, origin, sourceUrl, pinning = pinning)
+        return Verified.Ok(pkg, pinning)
+    }
+
+    /** What stops [pkg] from going on this phone, as the result an install gives, or null when nothing does. */
+    private fun compatStop(pkg: FolioPackage, builtIn: Boolean): InstallResult? {
+        // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
+        // page would have said before the person tapped Get, in the same order.
+        val already = store.installed()
+        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
+        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+            is CompatCheck.Kinds -> InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
+            is CompatCheck.Features -> InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
+            // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
+            // needs a later Folio's behaviour without naming anything. Both mean the same thing to the user.
+            is CompatCheck.Release -> InstallResult.NeedsNewerFolio(listOf("Folio ${stop.needs}"))
+            // An add-on without its host would sit on the phone doing nothing, so the host comes first.
+            is CompatCheck.Hosts -> InstallResult.NeedsHost(stop.missing)
+            is CompatCheck.Replaces -> InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
+            // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
+            is CompatCheck.Needs -> InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
+            else -> null
+        }
+    }
+
+    /**
+     * Updates an installed package's record to a new version that changes exactly the same things, without touching
+     * Home: nothing is undone and nothing is applied again, so a setting changed since the install keeps its value. The
+     * snapshots are kept as they are, because they still describe what to put back. It is for automatic updates, which
+     * must never change a setting; anything else (the changes differ, the package is off, it is not installed) is
+     * refused so the caller can leave it for the person to tap.
+     */
+    fun updateKeepingSettings(
+        bytes: ByteArray,
+        expected: IndexPackage? = null,
+        origin: InstalledPackage.Origin = InstalledPackage.Origin.FOLIO_SOURCE,
+        sourceUrl: String? = null,
+    ): InstallResult {
+        val verified = when (val v = verify(bytes, expected)) {
+            is Verified.Stop -> return v.result
+            is Verified.Ok -> v
+        }
+        val pkg = verified.pkg
+        val old = store.find(pkg.id)?.takeIf { it.enabled }
+            ?: return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package isn't installed and on, so it can't be updated in place")
+        if (store.changesFor(old.id, old.version) != pkg.changes) {
+            return InstallResult.Failed(InstallResult.Reason.MISMATCH, "that update changes settings, so it needs the person to apply it")
+        }
+        compatStop(pkg, builtIn = false)?.let { return it }
+        val updated = old.copy(version = pkg.version, name = pkg.manifest.name.english, origin = origin, sourceUrl = sourceUrl, installedAt = clock())
+        if (!store.put(updated, changes = pkg.changes)) {
+            return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't save that update, so nothing changed")
+        }
+        verified.pinning?.let { (id, key) -> authors.remember(id, key) }
+        return InstallResult.Installed(updated, old, pkg.notes)
+    }
+
+    /**
+     * Puts back the version an in-place update ([updateKeepingSettings]) replaced. The update never touched Home, so
+     * neither does this: the record goes back to [from], whose changes are still stored under its own version. It only
+     * works while the installed version is still [to] and on, and the old version's changes are still there; otherwise
+     * it says no and nothing changes.
+     */
+    fun undoUpdateInPlace(id: String, from: DebVersion, to: DebVersion): Boolean {
+        val current = store.find(id)?.takeIf { it.enabled && it.version == to } ?: return false
+        val changes = store.changesFor(id, from) ?: return false
+        return store.put(current.copy(version = from), changes)
     }
 
     private fun apply(
@@ -143,23 +220,7 @@ class PackageInstaller(
         /** The id and author key to remember, once this package is really on. */
         pinning: Pair<String, String>? = null,
     ): InstallResult {
-        // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
-        // page would have said before the person tapped Get, in the same order.
-        val already = store.installed()
-        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
-        when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
-            is CompatCheck.Kinds -> return InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
-            is CompatCheck.Features -> return InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
-            // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
-            // needs a later Folio's behaviour without naming anything. Both mean the same thing to the user.
-            is CompatCheck.Release -> return InstallResult.NeedsNewerFolio(listOf("Folio ${stop.needs}"))
-            // An add-on without its host would sit on the phone doing nothing, so the host comes first.
-            is CompatCheck.Hosts -> return InstallResult.NeedsHost(stop.missing)
-            is CompatCheck.Replaces -> return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
-            // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
-            is CompatCheck.Needs -> return InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
-            else -> Unit
-        }
+        compatStop(pkg, builtIn)?.let { return it }
 
         // Applying starts here. Safe Mode watches from now until the marker is cleared, so a crash while a package is
         // being applied turns that package off instead of leaving Home unusable.
@@ -290,6 +351,15 @@ class PackageInstaller(
         store.remove(id)
         safeMode.endChange()
         return true
+    }
+
+    /**
+     * True when [bytes] is a package whose changes are exactly the ones the installed version applied: an update that
+     * touches none of the person's settings (new text, pictures, a version), so it can go in without undoing anything.
+     */
+    fun changesUnchanged(bytes: ByteArray, installed: InstalledPackage): Boolean {
+        val pkg = (read(bytes) as? ReadResult.Ok)?.pkg ?: return false
+        return pkg.id == installed.id && store.changesFor(installed.id, installed.version) == pkg.changes
     }
 
     /** Undo right after an install: remove what went on, and put the previous version back if there was one. */
