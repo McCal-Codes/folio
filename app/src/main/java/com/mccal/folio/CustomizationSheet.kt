@@ -1432,6 +1432,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
     R.string.capability_open_settings to CustomizationPage.ADVANCED,
     R.string.allow_system_access to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
+    R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
+    R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
@@ -2082,6 +2085,15 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     SettingsCard(stringResource(R.string.duet_direction)) {
         IosSegmented(com.mccal.folio.duet.DuetDirection.entries.map { it to stringResource(it.label) }, duet.plays,
             { model.setDuet(duet.copy(direction = it.id)) }, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "duet-direction")
+    }
+    val motionContext = androidx.compose.ui.platform.LocalContext.current
+    val motion by rememberFoldMotionOptions(motionContext)
+    SettingsCard(stringResource(R.string.fold_motion)) {
+        val prefs = remember { FoldMotionOptions.prefs(motionContext) }
+        SettingsSwitch(stringResource(R.string.fold_motion_ripple), motion.ripple, { FoldMotionOptions.write(prefs, motion.copy(ripple = it)) }, "fold-motion-ripple")
+        SettingsSwitch(stringResource(R.string.fold_motion_depth), motion.depth, { FoldMotionOptions.write(prefs, motion.copy(depth = it)) }, "fold-motion-depth")
+        SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
+        CardNote(stringResource(R.string.fold_motion_note))
     }
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),

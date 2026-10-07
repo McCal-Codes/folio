@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.ui.layout.onSizeChanged
 import android.content.Context
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
@@ -91,7 +92,6 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
         if (Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.SEGMENT_TICK else android.view.HapticFeedbackConstants.CLOCK_TICK) }
     // m: 0 = clean, 1 = fully half-folded look. cover = whole-screen mode on the cover display.
     var m by remember { mutableFloatStateOf(0f) }
-
     // Screenshot morph (fallback style): snapshots of Folio's own screen taken the moment the hinge
     // starts moving, drawn over the new display and melted into the live UI. Memory only, never saved.
     val contentLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
@@ -164,9 +164,22 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // Opening only or closing only: the other way plays nothing. Read per frame, since the way can change mid-fold.
     val plays by androidx.compose.runtime.rememberUpdatedState(direction)
     fun useBlurEffect() = enabled && plays.allows(fold.opening)
+    fun useMotion() = useBlurEffect()
+    // Fold motion (ripple, depth, light) on the open screen: follows m, both ways, off under Reduce Motion.
+    val motionOptions by rememberFoldMotionOptions(context)
+    var hostSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val motion = remember(motionOptions, rotation, hinge, hostSize, enabled, reduceMotion) {
+        if (!enabled || reduceMotion || !motionOptions.any || hostSize.width == 0) null
+        else {
+            val g = foldGeometry(rotation, hinge, hostSize.width.toFloat(), hostSize.height.toFloat())
+            val extent = (if (g.horizontal) hostSize.height else hostSize.width).toFloat()
+            FoldMotionScope({ if (fold.expanded && useMotion()) m else 0f }, motionOptions, g.horizontal, g.hingePx, maxOf(g.hingePx, extent - g.hingePx))
+        }
+    }
+
     // The Duo effect wraps both the live screen and the still picture (so the cover's blur applies to both),
     // while the recording below it captures the clean screen (a snapshot must never have blur baked in).
-    Box(Modifier.fillMaxSize().then(
+    Box(Modifier.fillMaxSize().onSizeChanged { hostSize = it }.then(
         if (shader != null) Modifier.graphicsLayer {
             renderEffect = if (useBlurEffect() && m > 0f && Build.VERSION.SDK_INT >= 33) shader.effect(size.width, size.height, (m * intensity).coerceIn(0f, 1.5f),
                 cover = !fold.expanded, geometry = foldGeometry(rotation, hinge, size.width, size.height), style = style,
@@ -194,7 +207,11 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             .then(if (enabled && snapshotMorph) Modifier.drawWithContent {
                 contentLayer.record { this@drawWithContent.drawContent() }
                 drawLayer(contentLayer)
-            } else Modifier)) { content() }
+            } else Modifier)) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalFoldMotion provides motion) { content() }
+        }
+        // A faint light travelling down the hinge as the open screen unfolds or folds.
+        motion?.takeIf { it.options.light }?.let { FoldMotionLight(it) }
         // The still picture maps the cover 1:1 onto the inner half only in the natural orientation; rotated, the
         // pictures don't line up, so the blur carries the transition on its own.
         if (snapshotMorph && morph < 1f && rotation == android.view.Surface.ROTATION_0) SnapshotMorph(fold.expanded, coverShot, innerShot) { morph }

@@ -1555,6 +1555,11 @@
     <string name="duet_minimal_no_frost">미니멀에는 서리 효과가 없습니다.</string>
     <string name="duet_reset_style">스타일 기본값으로</string>
     <string name="duet_handover">화면 전환</string>
+    <string name="fold_motion">접기 모션</string>
+    <string name="fold_motion_ripple">힌지에서 아이콘이 물결처럼 퍼짐</string>
+    <string name="fold_motion_depth">배경화면과 아이콘 사이의 깊이감</string>
+    <string name="fold_motion_light">힌지의 빛</string>
+    <string name="fold_motion_note">힌지가 움직일 때 펼친 화면에서 양방향으로 재생됩니다. 동작 줄이기를 켜면 꺼집니다.</string>
     <string name="duet_moved_note">접기 애니메이션은 이제 Duet 트윅이며, 스타일과 슬라이더는 Duet 페이지에 있습니다.</string>
     <string name="tweak_duet_detail">접기 애니메이션이 힌지를 따라 열리고 닫힙니다. 움직이는 쪽은 서리 낀 유리가 되고, 안쪽 화면에서는 커버 화면이 기다립니다.</string>
     <string name="tweak_duet_credit">스타일에 joeconsorti와 기여자들의 Duo Fold Live, Ant-lib의 hingewave, Gary Keeler의 FoldFX 코드를 사용했으며 모두 MIT입니다. Duo Open에서 영감을 받았습니다.</string>

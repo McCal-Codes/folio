@@ -1567,6 +1567,11 @@
     <string name="duet_minimal_no_frost">Minimal has no frost.</string>
     <string name="duet_reset_style">Reset to Style</string>
     <string name="duet_handover">Handover</string>
+    <string name="fold_motion">Fold motion</string>
+    <string name="fold_motion_ripple">Icons ripple from the hinge</string>
+    <string name="fold_motion_depth">Depth between wallpaper and icons</string>
+    <string name="fold_motion_light">Light on the hinge</string>
+    <string name="fold_motion_note">Plays on the open screen as the hinge moves, both ways. Off with Reduce Motion.</string>
     <string name="duet_moved_note">The fold animation is the Duet tweak now, with its styles and sliders on its own page.</string>
     <string name="tweak_duet_detail">The fold animation follows your hinge as you open and close: frosted glass on the moving half, and your cover screen waiting on the inner one.</string>
     <string name="tweak_duet_credit">Styles use code from Duo Fold Live by joeconsorti and contributors, hingewave by Ant-lib and FoldFX by Gary Keeler, all MIT. Inspired by Duo Open.</string>

@@ -1534,6 +1534,11 @@
     <string name="duet_minimal_no_frost">“极简”没有磨砂。</string>
     <string name="duet_reset_style">恢复样式默认值</string>
     <string name="duet_handover">交接</string>
+    <string name="fold_motion">折叠动效</string>
+    <string name="fold_motion_ripple">图标从铰链处依次荡开</string>
+    <string name="fold_motion_depth">壁纸与图标之间的层次感</string>
+    <string name="fold_motion_light">铰链上的光</string>
+    <string name="fold_motion_note">铰链转动时在展开的屏幕上双向播放。开启“减弱动态效果”时关闭。</string>
     <string name="duet_moved_note">折叠动画现在是 Duet 调整，样式和滑块都在它自己的页面上。</string>
     <string name="tweak_duet_detail">折叠动画会随铰链开合而变化：移动的一半是磨砂玻璃，内屏上等着你的是外屏的内容。</string>
     <string name="tweak_duet_credit">样式使用了 joeconsorti 及贡献者的 Duo Fold Live、Ant-lib 的 hingewave 和 Gary Keeler 的 FoldFX 的代码，均为 MIT 许可。灵感来自 Duo Open。</string>
