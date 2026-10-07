@@ -184,7 +184,7 @@ class DuetFoldFixtureTest {
         val m = fold.play(listOf(0L to 0f) + sweep(100, 3f, 112f, 230), until = 700)
         val tail = m.drop(8) // past the first few readings, which are what teach the timeline the angle is continuous
         val steps = tail.zipWithNext { a, b -> b - a }
-        assertTrue("no step over 6% in 10 ms (largest ${steps.max()})", steps.all { it < .06f })
+        assertTrue("no step over 6.5% in 10 ms (largest ${steps.max()})", steps.all { it < .065f })
         assertTrue("it still gets there: ${m.last()}", m.last() > .95f)
     }
 

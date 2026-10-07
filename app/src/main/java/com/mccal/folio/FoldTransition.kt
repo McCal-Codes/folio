@@ -600,8 +600,11 @@ private const val START_M_ON_COVER = 1f
 private const val COVER_OPEN_MS = 300f
 /** The cover's own angle filter: about 7 degrees behind a 300 deg/s opening, against about 21 for the shared one. */
 private const val COVER_SMOOTH_S = .025f
-/** The cover effect rises by at most this much per second (a full build takes at least 0.2 s): traced flicks stepped 16 to 31% in one frame. */
-private const val COVER_RISE_PER_S = 5f
+/**
+ * The cover effect rises by at most this much per second (a full build takes at least 0.17 s): traced flicks stepped 16 to 31% in one frame. At 5 a
+ * 557 deg/s flick reached only 85% before the inner screen took over (traced 7 Oct 2026), so 6, which reaches full in time.
+ */
+private const val COVER_RISE_PER_S = 6f
 /** The very first frame of a continuous opening can show at most this much, so the effect starts from nothing. */
 private const val COVER_FIRST_STEP = .02f
 /** The cover starts building a little before the hinge reads open (it leaves closed past 12 degrees) and is full by the handoff. */
