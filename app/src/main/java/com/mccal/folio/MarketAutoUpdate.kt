@@ -52,6 +52,8 @@ internal object MarketAutoUpdate {
     suspend fun stage(context: Context, session: MarketSession): Int {
         var staged = 0
         for ((installed, entry) in candidates(session)) {
+            // A package turned off on its own page is never staged; the notice for it still comes from candidates().
+            if (!session.prefs.autoUpdateFor(installed.id)) continue
             val file = stagedFile(context, entry.id, entry.entry.version)
             if (file.exists()) continue
             val bytes = session.fetchBytes(entry) ?: continue
@@ -77,7 +79,7 @@ internal object MarketAutoUpdate {
     }
 
     private suspend fun applyAll(context: Context, session: MarketSession, dir: File): List<String> {
-        val wanted = candidates(session)
+        val wanted = candidates(session).filter { (installed, _) -> session.prefs.autoUpdateFor(installed.id) }
         val updated = mutableListOf<String>()
         val keep = mutableSetOf<File>()
         for ((installed, entry) in wanted) {
@@ -90,7 +92,10 @@ internal object MarketAutoUpdate {
             val result = if (entry.entry.matches(bytes) && session.updateKeepsSettings(bytes, installed)) session.installStaged(entry, bytes) else null
             claimed.delete()
             when (result) {
-                is InstallResult.Installed -> { updated += result.installed.name; Diagnostics.autoUpdated(result.installed.id, result.installed.version) }
+                is InstallResult.Installed -> {
+                    updated += result.installed.name; Diagnostics.autoUpdated(result.installed.id, result.installed.version)
+                    result.replaced?.let { old -> session.autoUpdates.record(com.mccal.folio.market.AutoUpdate(result.installed.id, result.installed.name, old.version, result.installed.version, System.currentTimeMillis())) }
+                }
                 null -> Diagnostics.autoUpdateStale(entry.id)
                 else -> Diagnostics.autoUpdateFailed(entry.id, result.javaClass.simpleName)
             }

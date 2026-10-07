@@ -10,6 +10,8 @@ import com.mccal.folio.market.FileStore
 import com.mccal.folio.market.FolioPackage
 import com.mccal.folio.market.FolioVersion
 import com.mccal.folio.market.IndexPackage
+import com.mccal.folio.market.AutoUpdate
+import com.mccal.folio.market.AutoUpdateLog
 import com.mccal.folio.market.InstallResult
 import com.mccal.folio.market.InstalledPackage
 import com.mccal.folio.market.InstalledStore
@@ -52,6 +54,9 @@ internal class MarketSession(
 
     /** How Featured looks, and whether the introduction has been seen. */
     val prefs = MarketPrefs(files)
+
+    /** The last few automatic updates, so a silent update leaves a trail and can be undone. */
+    val autoUpdates = AutoUpdateLog(files)
 
     private val store = InstalledStore(files)
     private val safeMode = PackageSafeMode(files)
@@ -153,6 +158,11 @@ internal class MarketSession(
     }
 
     fun installed(id: String): InstalledPackage? = store.find(id)
+
+    /** Puts back the version an automatic update replaced, if it is still the one installed. Home is not touched. */
+    suspend fun undoAutoUpdate(update: AutoUpdate): Boolean = withContext(io) {
+        installer.undoUpdateInPlace(update.id, update.from, update.to).also { if (it) autoUpdates.markUndone(update.id, update.to) }
+    }
 
     /** The page and payload for a package, without applying anything: what the package page shows. */
     fun read(id: String): FolioPackage? {

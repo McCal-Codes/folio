@@ -159,4 +159,28 @@ class InstallStateMachineTest {
         installer.disable(id, "crashed")
         assertTrue("a package that is off is not updated in place", installer.updateKeepingSettings(pack("1.1.0")) is InstallResult.Failed)
     }
+
+    @Test fun `undoing an in-place update puts the old version back and leaves Home alone`() {
+        val host = Host()
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, host, authors = AuthorTrust(MemoryStore()))
+        installer.install(pack("1.0.0"))
+        val one = DebVersion.parse("1.0.0")!!; val two = DebVersion.parse("1.1.0")!!
+        installer.updateKeepingSettings(pack("1.1.0"))
+        host.on += "changed-by-the-person"
+        assertTrue(installer.undoUpdateInPlace(id, one, two))
+        assertEquals(one, store.find(id)?.version)
+        assertTrue("Home is as the person left it", "changed-by-the-person" in host.on)
+        assertTrue("it cannot be undone twice", !installer.undoUpdateInPlace(id, one, two))
+    }
+
+    @Test fun `an update that was replaced by a newer one, or removed, cannot be undone`() {
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, Host(), authors = AuthorTrust(MemoryStore()))
+        installer.install(pack("1.0.0"))
+        installer.updateKeepingSettings(pack("1.1.0"))
+        val one = DebVersion.parse("1.0.0")!!; val two = DebVersion.parse("1.1.0")!!
+        installer.remove(id)
+        assertTrue("removed: nothing to undo", !installer.undoUpdateInPlace(id, one, two))
+    }
 }

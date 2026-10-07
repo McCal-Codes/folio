@@ -59,6 +59,19 @@ class MarketPrefs(private val store: KeyValueStore) {
         get() = store.get(AUTO_UPDATE_PACKAGES) == "1"
         set(value) { store.set(AUTO_UPDATE_PACKAGES, if (value) "1" else null) }
 
+    /** Packages the person turned automatic updates off for, one id per line. The global switch ([autoUpdatePackages]) is checked first. */
+    private var autoUpdateOff: Set<String>
+        get() = store.get(AUTO_UPDATE_OFF)?.split('\n')?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+        set(value) { store.set(AUTO_UPDATE_OFF, value.takeIf { it.isNotEmpty() }?.joinToString("\n")) }
+
+    /** Whether [id] updates itself: the global switch is on and this package has not been turned off. */
+    fun autoUpdateFor(id: String): Boolean = autoUpdatePackages && id !in autoUpdateOff
+
+    /** Whether this package has been turned off on its own page, whatever the global switch says. */
+    fun autoUpdateTurnedOff(id: String): Boolean = id in autoUpdateOff
+
+    fun setAutoUpdateFor(id: String, on: Boolean) { autoUpdateOff = if (on) autoUpdateOff - id else autoUpdateOff + id }
+
     /**
      * Whether Folio tells you when a refresh finds newer versions of what you installed. Off by default, and only
      * meaningful while [backgroundRefresh] is on: nothing is found in the background otherwise.
@@ -91,6 +104,7 @@ class MarketPrefs(private val store: KeyValueStore) {
         const val BACKGROUND_REFRESH = "market:background-refresh"
         const val NOTIFY_UPDATES = "market:notify-updates"
         const val AUTO_UPDATE_PACKAGES = "market:auto-update-packages"
+        const val AUTO_UPDATE_OFF = "market:auto-update-off"
         const val UPDATES_QUESTION_SEEN = "market:updates-question-seen"
         const val LAST_NOTIFIED = "market:last-notified-updates"
         const val WIFI_ONLY = "market:wifi-only"

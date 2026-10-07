@@ -154,6 +154,14 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
+    // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
+    var clockEditSlot by remember { mutableStateOf<Int?>(null) }
+    var placeSlot by remember { mutableStateOf<Int?>(null) }
+    // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val homeView = androidx.compose.ui.platform.LocalView.current
+    val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -432,7 +440,8 @@ fun LauncherScreen(
         if (focusLock != null && drag.active && drag.moved) { drag.clear(); overlays.menu = null; lockNotice++; return@LaunchedEffect }
         if (drag.active && drag.moved && id != null && overlays.menu == id) { overlays.menu = null; homeEdit.start() }
         // Dragging out of the App Library heads to Home only once the app actually moves (holding just shows the menu).
-        if (drag.active && drag.moved && source?.target is DropTarget.Library) {
+        // (An app carried out of an open folder has a Library target too, but it is already on Home: it must not move the page.)
+        if (drag.active && drag.moved && source?.target is DropTarget.Library && source.folderId == null) {
             withFrameNanos { }
             pager.scrollToPage(lastHomePage.coerceIn(0, homePages - 1))
         }
@@ -461,9 +470,29 @@ fun LauncherScreen(
     } ?: session.targetIndex?.let { draftAt(it, session.span, session.slot) } }
     val dropHomePage = if (pager.currentPage >= visibleHomePages)
         lastHomePage.coerceIn(0, homePages - 1) else pager.currentPage.coerceIn(0, homePages)
+    // Dropping one app onto another creates a folder with both (like iOS/Android), not a reorder - a drag out of
+    // a folder is unaffected, that already goes through removeAppFromFolder in finishDrag regardless of target.
+    fun folderMergeTarget(sourceAppId: String?, index: Int): String? {
+        // A folder being carried never becomes part of another one (folders do not nest), so it falls through to a move.
+        if (!folderEditing || sourceAppId == null || isFolderId(sourceAppId) || drag.source?.folderId != null) return null
+        val occupant = state.layout.slotAt(index) ?: return null
+        return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
+    }
+    // An app held over a folder's cell goes into the folder. The cell has to stay put while it is held there: the live
+    // preview below would otherwise slide the folder out from under the finger, the folder's own drop target would move
+    // with it, and the release would land on the empty cell as a swap instead of a drop into the folder.
+    fun folderDropTarget(sourceAppId: String?, index: Int): String? {
+        if (sourceAppId == null || isFolderId(sourceAppId)) return null
+        val occupant = state.layout.slotAt(index) ?: return null
+        return occupant.takeIf { state.layout.folder(it) != null && drag.source?.folderId != it }
+    }
     val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows) {
         val id = drag.source?.appId
         when {
+            // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
+            // the target cell's own hover highlight is the only feedback until release, same as a real platform.
+            id != null && insertionTarget is DropTarget.Home &&
+                (folderMergeTarget(id, insertionTarget.index) != null || folderDropTarget(id, insertionTarget.index) != null) -> state.layout
             id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
@@ -504,6 +533,12 @@ fun LauncherScreen(
                 model.removeAppFromFolder(source.folderId, source.appId, destination)
             destination == DropTarget.Remove -> model.removePlacement(source.target)
             destination is DropTarget.Home && source.target is DropTarget.Widget -> model.moveWidgetTo(source.target.index, destination.index)
+            destination is DropTarget.Home && folderDropTarget(source.appId, destination.index) != null ->
+                model.addAppToFolder(folderDropTarget(source.appId, destination.index)!!, source.appId!!)
+            // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
+            // places. Dropping on an existing folder already goes through DropTarget.Folder above.
+            destination is DropTarget.Home && folderMergeTarget(source.appId, destination.index) != null ->
+                model.createFolder(source.appId!!, folderMergeTarget(source.appId, destination.index)!!, destination.index) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
@@ -575,7 +610,9 @@ fun LauncherScreen(
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
+        val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
         CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+            LocalBigClockStyles provides bigClockStyles,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
@@ -1000,9 +1037,13 @@ fun LauncherScreen(
                     // iOS: drag sideways along the Search pill or the dots to scrub through Home pages, a tick per page.
                     var scrubbing by remember { mutableStateOf(false) }
                     val scrubStep = with(density) { 34.dp.toPx() }
-                    val showSearchPill = state.searchPill && !homeEdit.active && !drag.active && !scrubbing &&
+                    // Home is at rest on a page: the strip shows the Search button, nothing, or the dots, as chosen. Away from
+                    // rest the dots always show, so there is always a way to tell where you are.
+                    val atRest = !homeEdit.active && !drag.active && !scrubbing &&
                         !nativePager.isScrollInProgress && pager.currentPage in 0 until homePages
-                    androidx.compose.animation.AnimatedContent(showSearchPill, label = "search pill",
+                    val nothingOpen = remember(launcherActivity) { FeatureGate.HOME_STRIP_NOTHING.isOpen(launcherActivity) }
+                    val stripNow = stripView(state.homeStrip, atRest, nothingOpen)
+                    androidx.compose.animation.AnimatedContent(stripNow, label = "search pill",
                         // Cover screen only: unfolded, Home already shows two pages side by side.
                         modifier = if (geometry.expanded || homePages < 2 || !state.pageScrub) Modifier else Modifier.onGloballyPositioned { scrubberBounds = it.boundsInRoot() }.pointerInput(homePages) {
                             var startPage = 0
@@ -1022,8 +1063,11 @@ fun LauncherScreen(
                         }.description(R.string.page_scrubber),
                         transitionSpec = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) togetherWith
                             androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)) },
-                        contentAlignment = Alignment.Center) { pill ->
-                        if (pill) HomeSearchPill { if (!state.googleSearch || !onGoogleSearch(null)) launcherActivity.openSpotlight() }
+                        contentAlignment = Alignment.Center) { view ->
+                        if (view == StripView.PILL) HomeSearchPill { if (!state.googleSearch || !onGoogleSearch(null)) launcherActivity.openSpotlight() }
+                        // Nothing at rest, but the strip keeps its height and width so Home never shifts and dragging
+                        // along it still moves between pages.
+                        else if (view == StripView.EMPTY) Box(Modifier.height(FolioTouch.MIN.dp).widthIn(min = 120.dp))
                         // iOS's page control: the dots stay small and the strip around them takes the tap, so a
                         // finger has 48 dp of height without the dots spacing apart (A11Y-1).
                         else Box(Modifier.height(FolioTouch.MIN.dp), contentAlignment = Alignment.Center) {
@@ -1125,6 +1169,7 @@ fun LauncherScreen(
                         }
                         "settings", "settings:wallpaper", "market" -> {
                           val settingsSheet: @Composable (String) -> Unit = { host ->
+                            CompositionLocalProvider(LocalPreviewPage provides pager.currentPage.coerceIn(0, homePages - 1)) {
                             CustomizationSheet(state, wide, model, isDefaultHome,
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
@@ -1144,6 +1189,7 @@ fun LauncherScreen(
                             backgrounds = launcherActivity.backgrounds,
                             onOpenMarket = { customizationPage = CustomizationPage.OVERVIEW; sheet = "market" },
                             onWallpaperPreview = { sheet = ""; onWallpaperPreview() }, homePage = pager.currentPage.coerceIn(0, homePages - 1))
+                            }
                           }
                           if (sheet == "market") {
                               // The Market lives here, so its Settings tab is Folio's own Settings rather than a jump.
@@ -1190,7 +1236,9 @@ fun LauncherScreen(
                                     picker.exactTarget = false; sheet = "widgets"
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
-                                onClose = { sheet = "" })
+                                onClose = { sheet = "" },
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
+                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null)
                         }
                     }
                 }
@@ -1530,6 +1578,28 @@ fun LauncherScreen(
                 }
             }
         }
+        clockEditSlot?.let { slot ->
+            if (model.placement(slot) == null) clockEditSlot = null
+            else {
+                BackHandler { clockEditSlot = null }
+                val windowHeight = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height
+                // In the half of the screen the clock is not in, so the real clock stays in view.
+                val clockLow = (BigClockBounds.bySlot[slot]?.center?.y ?: 0f) > windowHeight / 2f
+                Box(Modifier.fillMaxSize(), contentAlignment = if (clockLow) Alignment.TopCenter else Alignment.BottomCenter) {
+                    ClockEditBar(slot, state.bigClockStyles[slot], { model.setBigClockStyle(slot, it) },
+                        systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onDone = { clockEditSlot = null }, enterFromTop = clockLow,
+                        modifier = if (clockLow) Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
+                            else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
+                }
+            }
+        }
+        placeSlot?.let { slot ->
+            val placement = model.placement(slot)
+            val bounds = drag.regions[DropTarget.Widget(slot)]?.bounds
+            if (placement == null || bounds == null) LaunchedEffect(slot) { placeSlot = null }
+            else WidgetPlaceOverlay(placement, bounds, state.layout, resize.pitchX, resize.topPitch, resize.appPitch,
+                onApply = { column, row -> model.placeWidgetFreely(slot, column, row); placeSlot = null }, onClose = { placeSlot = null })
+        }
         resize.slot?.let { slot ->
             val placement = model.placement(slot)
             val bounds = drag.regions[DropTarget.Widget(slot)]?.bounds
@@ -1695,6 +1765,16 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
+                    size = if (folderEditing) state.folderSizes[id] else null, onSize = { model.setFolderSize(id, it) }, editing = folderEditing,
+                    onReorder = { appId, index -> model.moveFolderApp(id, appId, index) },
+                    onSortAlphabetically = { model.sortFolderAlphabetically(id) },
+                    onCarryStart = if (folderEditing) {{ app ->
+                        // The same pick-up as holding an app on Home: Home's own drag now has the icon, and Home goes into jiggle mode.
+                        focus.clearFocus(); keyboard?.hide(); haptic.perform(FolioHaptic.PickedUp)
+                        homeEdit.start()
+                    }} else null,
+                    onCarryFinish = { cancelled -> finishDrag(cancelled); overlays.folder = null },
+                    homeRootOnScreen = { val at = IntArray(2); homeView.getLocationOnScreen(at); androidx.compose.ui.geometry.Offset(at[0].toFloat(), at[1].toFloat()) },
                     // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
                     onLaunch = onLaunchFrom, onAddApps = if (focusLock == null) {{ overlays.addToFolder = id }} else null,
                     onMoveOut = { appId, destination ->

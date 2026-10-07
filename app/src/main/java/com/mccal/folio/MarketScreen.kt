@@ -487,6 +487,7 @@ internal fun MarketScreen(
                             onGet = { onExternalOrConfirm(it) },
                             onRemove = { id, name -> remove(id, name) },
                             onTryAgain = { id, name -> tryAgain(id, name) },
+                            onChanged = { refresh() },
                         )
                     }
                 }
@@ -877,11 +878,15 @@ private fun MarketList(
     onGet: (MarketEntry) -> Unit,
     onRemove: (String, String) -> Unit,
     onTryAgain: (String, String) -> Unit,
+    onChanged: () -> Unit = {},
 ) {
     // A package is an update when a source offers a higher version than the one installed. An app of its own is
     // never in [installed] - Android has it, not Folio - so its version is asked of Android, and only for the
     // listings that are apps.
     val context = androidx.compose.ui.platform.LocalContext.current
+    val listScope = rememberCoroutineScope()
+    // The last automatic updates, newest first; the newest of each package can be undone while it is still the installed version.
+    var autoUpdated by remember { mutableStateOf(session.autoUpdates.recent().filter { !it.undone }) }
     val appsChanged = LocalAppsChanged.current
     val appUpdates = remember(entries, appsChanged) { entries.filter { MarketAppUpdate.offered(context, it) != null } }
     val updates = entries.filter { entry ->
@@ -950,6 +955,32 @@ private fun MarketList(
                             onGet = { onGet(entry) },
                             onRemove = { onRemove(entry.id, entry.name) },
                         )
+                    }
+                }
+            }
+        }
+        if (tab == MarketTab.INSTALLED && autoUpdated.isNotEmpty()) {
+            item(key = "recent-label") { SheetGroupLabel(stringResource(R.string.updated_recently)) }
+            item(key = "recent") {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    autoUpdated.forEach { u ->
+                        // Undo only on a package's newest update, and only while the version it made is still the one installed.
+                        val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.let { it.version == u.to && it.enabled } == true
+                        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(u.name, color = Color.White, fontSize = FolioType.BODY.sp)
+                                Text(stringResource(R.string.version_from_to, u.from.text, u.to.text), color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                            }
+                            if (canUndo) androidx.compose.material3.TextButton(onClick = {
+                                listScope.launch {
+                                    // Through the same one-at-a-time slot as installs and automatic updates: both rewrite the whole list of installed packages.
+                                    if (MarketWork.exclusive("undo:${u.id}") { session.undoAutoUpdate(u) } == true) {
+                                        autoUpdated = session.autoUpdates.recent().filter { !it.undone }; onChanged()
+                                    }
+                                }
+                            }, modifier = Modifier.testTag("undo-auto-update-${u.id}")) { Text(stringResource(R.string.undo)) }
+                        }
                     }
                 }
             }
@@ -1331,6 +1362,21 @@ private fun MarketPackagePage(
                 },
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
+        }
+        // A package from a source can opt out of automatic updates on its own page; it follows the global switch until then.
+        // A built-in package has no source address to be updated from, so there is nothing for the switch to do.
+        if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl != null && source.kind != Source.Kind.BUILT_IN &&
+            FeatureGate.MARKET_AUTO_UPDATE.isOpen(androidx.compose.ui.platform.LocalContext.current)) {
+            var on by remember(installed.id) { mutableStateOf(!session.prefs.autoUpdateTurnedOff(installed.id)) }
+            val global = session.prefs.autoUpdatePackages
+            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).padding(top = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.update_automatically), color = Color.White, fontSize = FolioType.BODY.sp)
+                    Text(stringResource(if (global) R.string.update_automatically_follows else R.string.update_automatically_global_off),
+                        color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                }
+                IosSwitch(on, { on = it; session.prefs.setAutoUpdateFor(installed.id, it) }, Modifier.testTag("package-auto-update"))
+            }
         }
 
         if (host != null && !host.onPhone) NeedsHostNote(host, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))

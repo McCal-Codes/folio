@@ -200,6 +200,18 @@ class PackageInstaller(
         return InstallResult.Installed(updated, old, pkg.notes)
     }
 
+    /**
+     * Puts back the version an in-place update ([updateKeepingSettings]) replaced. The update never touched Home, so
+     * neither does this: the record goes back to [from], whose changes are still stored under its own version. It only
+     * works while the installed version is still [to] and on, and the old version's changes are still there; otherwise
+     * it says no and nothing changes.
+     */
+    fun undoUpdateInPlace(id: String, from: DebVersion, to: DebVersion): Boolean {
+        val current = store.find(id)?.takeIf { it.enabled && it.version == to } ?: return false
+        val changes = store.changesFor(id, from) ?: return false
+        return store.put(current.copy(version = from), changes)
+    }
+
     private fun apply(
         pkg: FolioPackage,
         origin: InstalledPackage.Origin,

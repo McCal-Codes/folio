@@ -495,7 +495,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.off_new_downloads_go_to_the_app_library))
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.search)) {
-                        SettingsSwitch(stringResource(R.string.search_button_on_home), state.searchPill, model::setSearchPill, "search-pill-switch")
+                        // One choice instead of a switch: what sits above the dock at rest. Nothing is still in beta.
+                        val stripContext = androidx.compose.ui.platform.LocalContext.current
+                        val nothingOpen = remember(stripContext) { FeatureGate.HOME_STRIP_NOTHING.isOpen(stripContext) }
+                        IosMenuRow(stringResource(R.string.home_strip), HomeStrip.entries.filter { it != HomeStrip.NOTHING || nothingOpen || state.homeStrip == it }
+                            .map { it to stringResource(it.label) }, state.homeStrip, model::setHomeStrip, tag = "home-strip")
+                        CardNote(stringResource(R.string.home_strip_note))
                         SettingsSwitch(stringResource(R.string.search_button_opens_the_google_app), state.googleSearch, model::setGoogleSearch, "google-search-switch")
                         CardNote(stringResource(R.string.when_off_the_search_button_opens_spotlig))
                     }
@@ -567,6 +572,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.show_status_in_the_rail), state.verticalStatus, model::setVerticalStatus, "status-switch")
                         if (state.verticalStatus) {
                             IosMenuRow(stringResource(R.string.icon_style), StatusGlyph.entries.map { it to stringResource(it.label) }, st.glyph, { model.setStatusStyle(st.copy(glyph = it)) }, tag = "status-glyph")
+                        if (st.glyph != StatusGlyph.ICONS && st.glyph != StatusGlyph.NONE) {
+                            SettingsSwitch(stringResource(R.string.stronger_rings), st.strongRings, { model.setStatusStyle(st.copy(strongRings = it)) }, "stronger-rings-switch")
+                            CardNote(stringResource(R.string.stronger_rings_note))
+                        }
                             SettingsSwitch(stringResource(R.string.time), st.showTime, { model.setStatusStyle(st.copy(showTime = it)) }, "status-time")
                             SettingsSwitch(stringResource(R.string.date), st.showDate, { model.setStatusStyle(st.copy(showDate = it)) }, "status-date")
                             SettingsSwitch(stringResource(R.string.battery_percentage), st.showBatteryPercent, { model.setStatusStyle(st.copy(showBatteryPercent = it)) }, "status-percent")
@@ -1373,7 +1382,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.add_new_apps_to_home_screen to CustomizationPage.SEARCH,
     R.string.group_apps_into_categories to CustomizationPage.SEARCH,
     R.string.message_contacts_with to CustomizationPage.SEARCH,
-    R.string.search_button_on_home to CustomizationPage.SEARCH,
+    R.string.home_strip to CustomizationPage.SEARCH,
+    R.string.stronger_rings to CustomizationPage.STATUS,
     R.string.search_button_opens_the_google_app to CustomizationPage.SEARCH,
     R.string.search_with_enter to CustomizationPage.SEARCH,
     R.string.work_apps to CustomizationPage.SEARCH,
@@ -1965,6 +1975,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     }
 }
 
+/** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
+internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -1975,7 +1988,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     /** The Side Bar (status, dock and search): off for the second page of an unfolded preview, which has one Side Bar. */
     sideBar: Boolean = true,
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
-    preset: LayoutPreset = state.compact) {
+    preset: LayoutPreset = state.compact,
+    /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
+    page: Int = LocalPreviewPage.current) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -1990,10 +2005,10 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
-    val placements = state.widgetPlacements.filter { it.page == 0 }
-    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
+    val placements = state.widgetPlacements.filter { it.page == page }
+    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
-    val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
+    val (iconSize, labels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
     val railAlign = if (left) Alignment.TopStart else Alignment.TopEnd
@@ -2022,7 +2037,10 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
-                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)
+                            // A freely placed widget (Place Freely) is drawn a part of a cell from its cells, as on Home.
+                            val rowPitch = if (w.offsetY < 0f && w.row > 0) cells.y(w.row) - cells.y(w.row - 1)
+                                else if (w.row + 1 < GRID_ROWS) cells.y(w.row + 1) - cells.y(w.row) else cells.y(w.row) - cells.y(w.row - 1)
+                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f + geometry.cellWidth * w.offsetX).dp, y = (cells.y(w.row) + rowPitch * w.offsetY).dp)
                                 .size((geometry.cellWidth * w.spanX - 10f).dp, (cells.spanHeight(w.row, w.spanY) - 18f).coerceAtLeast(48f).dp)) {
                                 if (w.id < 0) BuiltinWidgetCard(w.id, w.slot) {}
                                 else Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(glass.copy(alpha = LocalGlassLook.current.widget)), contentAlignment = Alignment.Center) {
@@ -2031,7 +2049,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                             }
                         }
                         repeat(shownRows * GRID_COLUMNS) { local ->
-                            val id = state.homeSlots.getOrNull(local) ?: return@repeat
+                            val id = state.homeSlots.getOrNull(homeCellIndex(page, local)) ?: return@repeat
                             val app = apps[id]
                             val folder = if (app == null) state.folders.firstOrNull { it.id == id } ?: return@repeat else null
                             val row = local / GRID_COLUMNS
@@ -2099,8 +2117,8 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                     if (record.size != record.layer.size) record.size = record.layer.size
                 } else Modifier)) {
                 // Two Home pages with one Side Bar, on the right (on the left in left-handed layouts), like the open Fold.
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded)
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded, page = 0)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded, page = 0)
             }
         }
     }
