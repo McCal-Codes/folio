@@ -11,87 +11,77 @@
           "color": "#30D158",
           "title": "More dock apps",
           "detail": "The dock grows from four to six apps as you fill it.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "badge",
           "color": "#FF3B30",
           "title": "Clear badges when opened",
           "detail": "Optionally hide an app's badge once you open it.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "clock",
           "color": "#FF9F0A",
           "title": "StandBy without the fold",
           "detail": "StandBy as a screen saver, so it turns on while the phone charges instead of only when it is set down half open. Chosen in Android’s Settings › Display › Screen saver.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "pages",
           "color": "#32ADE6",
           "title": "Flipbook",
           "detail": "Home pages turn in 3D as you swipe, inspired by Barrel. Supporters have it in the Market now, and everyone gets it in 0.6.8.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "rings",
           "color": "#BF5AF2",
           "title": "Duet",
           "detail": "The fold animation as a tweak, with six looks including iPhone Duo. Based on Duo Fold Live.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "search",
           "color": "#0A84FF",
           "title": "Your own search engine",
           "detail": "Bing, Brave, Ecosia and more, or any address you type.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "language",
           "color": "#0A84FF",
           "title": "Language in Settings",
           "detail": "Choose Folio's language in Settings › General, with more of Folio in Korean and Chinese.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "tune",
           "color": "#8E8E93",
           "title": "A shorter Settings list",
           "detail": "Ten fewer rows on the first screen: a General page for what you open once, and one Support Folio row.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "grid",
           "color": "#5E5CE6",
           "title": "Cleaner widget picker",
           "detail": "Find a widget without scrolling past one app's hundreds: a row of app icons narrows the gallery to the one you want, and each app shows a single row until you ask for more.",
-          "status": "building",
-          "beta": true
+          "status": "done"
         },
         {
           "icon": "speed",
           "color": "#FF9F0A",
           "title": "Faster Folio",
-          "detail": "Quicker start, smoother swipes and less memory, on every phone.",
-          "status": "building",
-          "beta": true
+          "detail": "Home and the App Library are ready sooner after Folio starts.",
+          "status": "done"
         },
         {
           "icon": "history",
           "color": "#8E8E93",
           "title": "Layout History",
           "detail": "Out of beta: go back to how Home looked before a big change.",
-          "status": "building"
+          "status": "done"
         }
       ]
     },
