@@ -131,6 +131,8 @@ internal fun MarketScreen(
     var openSourceUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var introducing by rememberSaveable { mutableStateOf(!session.prefs.introductionSeen) }
     var style by rememberSaveable { mutableStateOf(session.prefs.featuredStyle) }
+    // The one question about keeping packages up to date, asked once after the welcome (see MarketPrefs.updatesQuestionSeen).
+    var askingUpdates by rememberSaveable { mutableStateOf(!session.prefs.updatesQuestionSeen) }
     var confirming by rememberSaveable { mutableStateOf<String?>(null) }
     var addingSource by rememberSaveable { mutableStateOf(false) }
     var sourceUrl by rememberSaveable { mutableStateOf("") }
@@ -390,6 +392,25 @@ internal fun MarketScreen(
             onDone = { session.prefs.introductionSeen = true; introducing = false },
         )
         return
+    }
+    if (askingUpdates) {
+        val notifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) session.prefs.notifyUpdates = false
+        }
+        AlertDialog(onDismissRequest = { session.prefs.updatesQuestionSeen = true; askingUpdates = false },
+            title = { Text(stringResource(R.string.updates_question_title)) },
+            text = { Text(stringResource(R.string.updates_question_body)) },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { session.prefs.updatesQuestionSeen = true; askingUpdates = false }) { Text(stringResource(R.string.not_now)) } },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    session.prefs.backgroundRefresh = true
+                    session.prefs.notifyUpdates = true
+                    MarketRefreshJob.schedule(context)
+                    session.prefs.updatesQuestionSeen = true
+                    askingUpdates = false
+                    if (!SoftwareUpdate.canPostNotifications(context)) notifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.turn_on)) }
+            })
     }
 
     // Every row and page asks the same question about an external app, and re-asks it when Folio

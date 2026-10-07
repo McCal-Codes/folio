@@ -25,13 +25,13 @@ class MarketPrefs(private val store: KeyValueStore) {
         set(value) { store.set(FEATURED_STYLE, value.id) }
 
     /**
-     * Whether Folio checks the sources you added in the background. On by default, so a package you got keeps up to
-     * date without you opening the store; it only ever asks sources you added, at most once a day, and waits for
-     * Wi-Fi ([refreshOnWifiOnly]). Turning it off is remembered as off, so a phone that chose that stays off.
+     * Whether Folio checks the sources you added in the background. Off until someone turns it on, by the switch or by
+     * answering the first-use question ([updatesQuestionSeen]): nothing goes online by itself. It only ever asks sources
+     * you added, at most once a day, and waits for Wi-Fi ([refreshOnWifiOnly]).
      */
     var backgroundRefresh: Boolean
-        get() = store.get(BACKGROUND_REFRESH) != "0"
-        set(value) { store.set(BACKGROUND_REFRESH, if (value) null else "0") }
+        get() = store.get(BACKGROUND_REFRESH) == "1"
+        set(value) { store.set(BACKGROUND_REFRESH, if (value) "1" else null) }
 
     /** Whether a background refresh waits for an unmetered network. On by default, so it never spends mobile data. */
     var refreshOnWifiOnly: Boolean
@@ -51,12 +51,13 @@ class MarketPrefs(private val store: KeyValueStore) {
 
     /**
      * Whether packages you installed from a source update in the background: the daily refresh downloads and checks a
-     * newer version, and it goes in when Folio is running (or at its next start). On by default; off means nothing is
-     * downloaded for you and an update waits for you to tap it.
+     * newer version, and it goes in when Folio is running (or at its next start). Off until someone turns it on, and
+     * the first-use question never turns it on; off means nothing is downloaded for you and an update waits for you to
+     * tap it.
      */
     var autoUpdatePackages: Boolean
-        get() = store.get(AUTO_UPDATE_PACKAGES) != "0"
-        set(value) { store.set(AUTO_UPDATE_PACKAGES, if (value) null else "0") }
+        get() = store.get(AUTO_UPDATE_PACKAGES) == "1"
+        set(value) { store.set(AUTO_UPDATE_PACKAGES, if (value) "1" else null) }
 
     /**
      * Whether Folio tells you when a refresh finds newer versions of what you installed. Off by default, and only
@@ -65,6 +66,14 @@ class MarketPrefs(private val store: KeyValueStore) {
     var notifyUpdates: Boolean
         get() = store.get(NOTIFY_UPDATES) == "1"
         set(value) { store.set(NOTIFY_UPDATES, if (value) "1" else null) }
+
+    /**
+     * Whether the one first-use question ("Keep your packages up to date?") has been answered, either way. Once it has,
+     * Folio never asks again; the switches in Market settings are how to change it.
+     */
+    var updatesQuestionSeen: Boolean
+        get() = store.get(UPDATES_QUESTION_SEEN) == "1"
+        set(value) { store.set(UPDATES_QUESTION_SEEN, if (value) "1" else null) }
 
     /** What the last update notice listed, so the same updates are never announced twice. */
     var lastNotifiedUpdates: String?
@@ -82,6 +91,7 @@ class MarketPrefs(private val store: KeyValueStore) {
         const val BACKGROUND_REFRESH = "market:background-refresh"
         const val NOTIFY_UPDATES = "market:notify-updates"
         const val AUTO_UPDATE_PACKAGES = "market:auto-update-packages"
+        const val UPDATES_QUESTION_SEEN = "market:updates-question-seen"
         const val LAST_NOTIFIED = "market:last-notified-updates"
         const val WIFI_ONLY = "market:wifi-only"
         const val INSTALL_APPS = "market:install-apps"

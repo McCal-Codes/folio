@@ -874,7 +874,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     var wifiOnly by remember { mutableStateOf(marketPrefs.refreshOnWifiOnly) }
                     var notifyUpdates by remember { mutableStateOf(marketPrefs.notifyUpdates) }
                     var autoUpdate by remember { mutableStateOf(marketPrefs.autoUpdatePackages) }
-                    val marketNotifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+                    var notifyRefused by remember { mutableStateOf(false) }
+                    val marketNotifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+                        // Android said no: the switch goes back off instead of staying on and never showing anything.
+                        if (!granted) { notifyUpdates = false; marketPrefs.notifyUpdates = false; notifyRefused = true }
+                    }
                     SheetGroup {
                         SwitchRow(stringResource(R.string.refresh_in_the_background), stringResource(if (background) R.string.once_a_day else R.string.off), background) {
                             background = it
@@ -893,6 +897,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             SwitchRow(stringResource(R.string.tell_me_about_updates), stringResource(R.string.market_updates_notice_detail), notifyUpdates) {
                                 notifyUpdates = it
                                 marketPrefs.notifyUpdates = it
+                                notifyRefused = false
                                 if (it && !SoftwareUpdate.canPostNotifications(sheetContext)) marketNotifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                             }
                             MenuDivider()
@@ -905,6 +910,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     Text(stringResource(R.string.with_this_off_folio_only_goes_online),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp))
+                    if (notifyRefused) Text(stringResource(R.string.updates_notice_refused),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp, vertical = FolioSpace.TINY.dp))
                 }
                 CustomizationPage.TWEAKS -> {
                     CardNote(stringResource(R.string.features_inspired_by_ios_jailbreak_tweak), Modifier.padding(horizontal = FolioSpace.TINY.dp))

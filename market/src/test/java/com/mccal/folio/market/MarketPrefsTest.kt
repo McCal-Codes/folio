@@ -28,14 +28,24 @@ class MarketPrefsTest {
         assertTrue("the choice is written to a file", dir.isDirectory && dir.list()!!.isNotEmpty())
     }
 
-    @Test fun `background refresh is on, and waits for Wi-Fi when it's on`() {
+    @Test fun `nothing goes online by itself until someone says so`() {
         val prefs = MarketPrefs(MemoryStore())
-        assertTrue("a source you added is kept up to date unless you say otherwise", prefs.backgroundRefresh)
-        assertTrue("and never spends mobile data by default", prefs.refreshOnWifiOnly)
+        assertTrue("background refresh starts off", !prefs.backgroundRefresh)
+        assertTrue("so do automatic updates", !prefs.autoUpdatePackages)
+        assertTrue("and update notices", !prefs.notifyUpdates)
+        assertTrue("when it is turned on it waits for Wi-Fi, never spending mobile data", prefs.refreshOnWifiOnly)
         prefs.backgroundRefresh = true
         prefs.refreshOnWifiOnly = false
         assertTrue(prefs.backgroundRefresh && !prefs.refreshOnWifiOnly)
         prefs.backgroundRefresh = false
         assertTrue(!prefs.backgroundRefresh)
+    }
+
+    @Test fun `the first-use question is asked once`() {
+        val store = MemoryStore()
+        assertTrue(!MarketPrefs(store).updatesQuestionSeen)
+        MarketPrefs(store).updatesQuestionSeen = true
+        assertTrue("remembered, so it is never asked again", MarketPrefs(store).updatesQuestionSeen)
+        assertTrue("and answering it turns nothing on by itself", !MarketPrefs(store).backgroundRefresh)
     }
 }

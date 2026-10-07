@@ -1249,6 +1249,9 @@
     <string name="update_packages_in_background">在后台更新包</string>
     <string name="update_packages_in_background_detail">当更改不涉及你的任何设置时，来源中的包会自动更新</string>
     <string name="market_updates_notice_detail">来源有你已安装内容的新版本时通知一次</string>
+    <string name="updates_question_title">让软件包保持最新？</string>
+    <string name="updates_question_body">Folio 会在 Wi-Fi 下每天检查一次你的来源，有新版本时通知你。除非你开启“在后台更新软件包”，否则不会自动安装任何内容。</string>
+    <string name="updates_notice_refused">已关闭：Android 不允许 Folio 显示通知。更新仍会显示在市场中。</string>
     <string name="market_updates_channel">市场更新</string>
     <string name="market_updates_channel_detail">你从市场安装的包和应用的新版本。</string>
     <string name="market_updates_and_more">另外 %1$d 个</string>
