@@ -33,6 +33,23 @@ class StandByWaysTest {
         assertNull("off by default", standByWay(all.copy(tent = false), tent))
     }
 
+    // The Fold8 reports the pose by name through Android's device state (measured 6 Oct 2026), including the narrow tent the hinge misses.
+    @Test fun `when the phone says tent, that decides, not the hinge`() {
+        val tent = StandBySignals(sideways = true, still = true, hingeHalfway = false, onCover = true, tentState = true)
+        assertEquals("a narrow tent the hinge misses", StandByWay.TENT, standByWay(all, tent))
+        assertNull("the phone says it is not a tent", standByWay(all, tent.copy(hingeHalfway = true, tentState = false)))
+        assertEquals("a phone that does not say falls back to the hinge", StandByWay.TENT, standByWay(all, tent.copy(hingeHalfway = true, tentState = null)))
+        assertNull("and without the hinge too", standByWay(all, tent.copy(tentState = null)))
+    }
+
+    @Test fun `a tent the phone reports still needs everything else`() {
+        val tent = StandBySignals(sideways = true, still = true, onCover = true, tentState = true)
+        assertNull("on the inner screen", standByWay(all, tent.copy(onCover = false)))
+        assertNull("held in the air", standByWay(all, tent.copy(still = false)))
+        assertNull("upright", standByWay(all, tent.copy(sideways = false)))
+        assertNull("off by default", standByWay(all.copy(tent = false), tent))
+    }
+
     // Ready is everything but settling: while it holds, a bump doesn't hide StandBy and a dismissal sticks.
     @Test fun `a phone that's only moving is still ready`() {
         val moving = onStand.copy(still = false)

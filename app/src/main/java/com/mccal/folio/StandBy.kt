@@ -76,6 +76,8 @@ internal data class StandBySignals(
     val still: Boolean = false,
     val hingeHalfway: Boolean = false,
     val onCover: Boolean = false,
+    /** Android's own device state says tent (true) or something else (false); null when the phone does not say, then [hingeHalfway] decides. */
+    val tentState: Boolean? = null,
 )
 
 /**
@@ -83,14 +85,15 @@ internal data class StandBySignals(
  *
  * iPhone's own rule, charging, on its side and still, is the one that works in any pose. On the Fold8 the posture a
  * tent really is (TENT) isn't open to apps, and a narrow tent reads 0° on the hinge, the same as closed (measured on
- * the phone, 1 Oct 2026). So the laptop pose comes from WindowManager on the inner screen, as before, and a tent off
- * the charger needs the hinge at its middle step with Folio on the cover. Pass `still = true` to ask whether a way is
+ * the phone, 1 Oct 2026). So the laptop pose comes from WindowManager on the inner screen, as before. A tent off the
+ * charger needs Folio on the cover and the phone to say tent: Android's device state when it reports one (a Fold8 does,
+ * [DeviceStateTent]), otherwise the hinge at its middle step. Pass `still = true` to ask whether a way is
  * ready apart from the phone settling: dismissing StandBy holds until that changes, not until the next tap jiggles it.
  */
 internal fun standByWay(ways: StandByWays, s: StandBySignals): StandByWay? = when {
     ways.halfOpen && s.halfOpen -> StandByWay.HALF_OPEN
     ways.charging && s.plugged && s.sideways && s.still -> StandByWay.CHARGING
-    ways.tent && s.onCover && s.hingeHalfway && s.sideways && s.still -> StandByWay.TENT
+    ways.tent && s.onCover && (s.tentState ?: s.hingeHalfway) && s.sideways && s.still -> StandByWay.TENT
     else -> null
 }
 
@@ -133,7 +136,15 @@ internal fun rememberStandBySignals(activity: Activity, ways: StandByWays, plugg
     val onCover = !LocalConfiguration.current.fitsRegularHomeLayout()
     val started = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.STARTED)
     val wantMotion = started && ((ways.charging && plugged) || (ways.tent && onCover))
-    val wantHinge = started && ways.tent && onCover
+    // The phone's own word for the pose, while a tent could begin. Null until it speaks, or for good when it cannot.
+    var tentState by remember { mutableStateOf<Boolean?>(null) }
+    val wantTentState = started && ways.tent && onCover
+    DisposableEffect(wantTentState) {
+        val watcher = if (wantTentState) DeviceStateWatcher(activity) { tentState = it }.also { it.start() } else null
+        onDispose { watcher?.stop(); tentState = null }
+    }
+    // The hinge sensor is only the way back for a phone that does not report the pose.
+    val wantHinge = wantTentState && tentState == null
     var motion by remember { mutableStateOf(MotionState()) }
     var hinge by remember { mutableStateOf<Float?>(null) }
     DisposableEffect(wantMotion, wantHinge) {
@@ -156,7 +167,7 @@ internal fun rememberStandBySignals(activity: Activity, ways: StandByWays, plugg
         onDispose { sensors?.unregisterListener(listener); motion = MotionState(); hinge = null }
     }
     return StandBySignals(halfOpen = halfOpen, plugged = plugged, sideways = motion.sideways, still = motion.still,
-        hingeHalfway = hinge?.let { it in 30f..150f } == true, onCover = onCover)
+        hingeHalfway = hinge?.let { it in 30f..150f } == true, onCover = onCover, tentState = tentState)
 }
 
 /**

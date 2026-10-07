@@ -1,5 +1,7 @@
 package com.mccal.folio
 
+import android.content.SharedPreferences
+import androidx.compose.ui.layout.onSizeChanged
 import android.content.Context
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
@@ -91,7 +93,6 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
         if (Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.SEGMENT_TICK else android.view.HapticFeedbackConstants.CLOCK_TICK) }
     // m: 0 = clean, 1 = fully half-folded look. cover = whole-screen mode on the cover display.
     var m by remember { mutableFloatStateOf(0f) }
-
     // Screenshot morph (fallback style): snapshots of Folio's own screen taken the moment the hinge
     // starts moving, drawn over the new display and melted into the live UI. Memory only, never saved.
     val contentLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
@@ -148,7 +149,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 }
                 val target = fold.targetM(now)
                 // Follow the target closely but never jump: small time constant, frame-rate independent.
-                val next = m + (target - m) * (1f - exp(-dt / FOLLOW_MS))
+                val next = m + (target - m) * (1f - exp(-dt / fold.followMs))
+                fold.trace(now, target, next)
                 m = if (target == 0f && next < .003f) 0f else next
                 if (fold.morphFrom >= 0) {
                     val t = ((now - fold.morphFrom) / (if (fold.expanded) MORPH_UNFOLD_MS else MORPH_FOLD_MS)).coerceIn(0f, 1f)
@@ -163,15 +165,32 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // Opening only or closing only: the other way plays nothing. Read per frame, since the way can change mid-fold.
     val plays by androidx.compose.runtime.rememberUpdatedState(direction)
     fun useBlurEffect() = enabled && plays.allows(fold.opening)
+    fun useMotion() = useBlurEffect()
+    // Fold motion (ripple, depth, light) on the open screen: follows m, both ways, off under Reduce Motion.
+    val motionOptions by rememberFoldMotionOptions(context)
+    var hostSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val motion = remember(motionOptions, rotation, hinge, hostSize, enabled, reduceMotion) {
+        if (!enabled || reduceMotion || !motionOptions.any || hostSize.width == 0) null
+        else {
+            val g = foldGeometry(rotation, hinge, hostSize.width.toFloat(), hostSize.height.toFloat())
+            val extent = (if (g.horizontal) hostSize.height else hostSize.width).toFloat()
+            FoldMotionScope({ if (fold.expanded && useMotion()) m else 0f }, motionOptions, g.horizontal, g.hingePx, maxOf(g.hingePx, extent - g.hingePx))
+        }
+    }
+
     // The Duo effect wraps both the live screen and the still picture (so the cover's blur applies to both),
     // while the recording below it captures the clean screen (a snapshot must never have blur baked in).
-    Box(Modifier.fillMaxSize().then(
+    Box(Modifier.fillMaxSize().onSizeChanged { hostSize = it }.then(
         if (shader != null) Modifier.graphicsLayer {
             renderEffect = if (useBlurEffect() && m > 0f && Build.VERSION.SDK_INT >= 33) shader.effect(size.width, size.height, (m * intensity).coerceIn(0f, 1.5f),
                 cover = !fold.expanded, geometry = foldGeometry(rotation, hinge, size.width, size.height), style = style,
                 cornerPx = cornerPx) else null
             // The open screen settles up to full size as it clears, and eases back down as it folds.
-            val settle = if (useBlurEffect() && fold.expanded && !reduceMotion) 1f - FOLD_SCALE * m.coerceIn(0f, 1f) else 1f
+            val settle = when {
+                !useBlurEffect() -> 1f
+                fold.expanded -> if (reduceMotion) 1f else 1f - FOLD_SCALE * m.coerceIn(0f, 1f)
+                else -> coverSettleScale(m, reduceMotion)
+            }
             scaleX = settle; scaleY = settle
             // Shrunk, the screen's square edges would show inside the panel's rounded ones.
             clip = settle < 1f
@@ -189,10 +208,28 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             .then(if (enabled && snapshotMorph) Modifier.drawWithContent {
                 contentLayer.record { this@drawWithContent.drawContent() }
                 drawLayer(contentLayer)
-            } else Modifier)) { content() }
+            } else Modifier)) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalFoldMotion provides motion) { content() }
+        }
+        // A faint light travelling down the hinge as the open screen unfolds or folds.
+        motion?.takeIf { it.options.light }?.let { FoldMotionLight(it) }
         // The still picture maps the cover 1:1 onto the inner half only in the natural orientation; rotated, the
         // pictures don't line up, so the blur carries the transition on its own.
         if (snapshotMorph && morph < 1f && rotation == android.view.Surface.ROTATION_0) SnapshotMorph(fold.expanded, coverShot, innerShot) { morph }
+        // A faint light along the hinge edge while the cover opens.
+        if (enabled && !fold.expanded && fold.opening && useBlurEffect() && !reduceMotion) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val a = coverLightAlpha(m, false)
+            if (a <= 0.002f) return@Canvas
+            val light = Color.White.copy(alpha = a)
+            val geometry = foldGeometry(rotation, hinge, size.width, size.height)
+            val brush = when (coverHingeEdge(geometry)) {
+                CoverEdge.LEFT -> Brush.horizontalGradient(0f to light, 1f to Color.Transparent, startX = 0f, endX = size.width * COVER_LIGHT_REACH)
+                CoverEdge.RIGHT -> Brush.horizontalGradient(0f to Color.Transparent, 1f to light, startX = size.width * (1f - COVER_LIGHT_REACH), endX = size.width)
+                CoverEdge.TOP -> Brush.verticalGradient(0f to light, 1f to Color.Transparent, startY = 0f, endY = size.height * COVER_LIGHT_REACH)
+                CoverEdge.BOTTOM -> Brush.verticalGradient(0f to Color.Transparent, 1f to light, startY = size.height * (1f - COVER_LIGHT_REACH), endY = size.height)
+            }
+            drawRect(brush)
+        }
         // Whole screen dims as it folds, like the display powering down with the hinge.
         if (enabled && direction.allows(false) && fold.closing) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM)))
@@ -233,7 +270,7 @@ private fun SnapshotMorph(expanded: Boolean, coverShot: androidx.compose.ui.grap
 }
 
 /** Hinge steps + learned timing → target effect strength over time. */
-internal class FoldTimeline(context: Context) : SensorEventListener {
+internal class FoldTimeline(private val context: Context) : SensorEventListener {
     /** Rung whenever something happens that can start the effect, so the idle loop wakes at once. */
     val wake = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
     private val sensors = context.getSystemService(SensorManager::class.java)
@@ -248,8 +285,13 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
     // What this phone's hinge sensor reports, learned from its readings and remembered. The Fold8's public sensor is
     // stepped (0/90/180), so the motion between steps is predicted from learned timing; a continuous sensor is
     // followed directly.
-    private val tracker = HingeTracker(if (hinge == null) HingeCapability.POSTURE_ONLY
-        else if (prefs.getString(CAPABILITY_KEY, null) == HingeCapability.CONTINUOUS.name) HingeCapability.CONTINUOUS else HingeCapability.STEPPED)
+    private fun publicTracker() = HingeTracker(if (hinge == null) HingeCapability.POSTURE_ONLY
+        else if (prefs.getString(hingeCapabilityKey(HingeSource.PUBLIC_SENSOR), null) == HingeCapability.CONTINUOUS.name) HingeCapability.CONTINUOUS else HingeCapability.STEPPED)
+    private var tracker = publicTracker()
+    // Which feed the readings come from (ADR 0012): the public sensor, or the root helper when the owner has tested it and switched it on.
+    private var source = HingeSource.PUBLIC_SENSOR
+    private var rootFeed: RootHingeFeed? = null
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val continuous get() = tracker.capability == HingeCapability.CONTINUOUS
     private var angleAt = 0L
     // A real movement, not sensor jitter: what the stall checks measure from on continuous sensors.
@@ -274,7 +316,28 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
     // Cover display after folding, and while starting to open from the cover.
     private var coverLitAt = -1L
     private var coverOpeningAt = -1L
+    /**
+     * The hinge angle for the cover, smoothed far less than [HingeTracker.visual]: the 70 ms filter trails a 300 deg/s opening by about 20
+     * degrees (traced 7 Oct 2026), so the cover blur reacted about 60 ms behind the hand. Only the cover uses it.
+     */
+    internal var coverAngle: Float? = null; private set
+    private var coverAngleNs = 0L
+    // The cover's effect can rise only so fast (see COVER_RISE_PER_S), and always falls as fast as the hand goes back.
+    private var coverTarget = 0f
+    private var coverTargetAt = 0L
     private val appContext = context.applicationContext
+
+    /** Frame-by-frame log for tuning, read with logcat. Off unless `adb shell setprop log.tag.FolioFoldTrace DEBUG` was run. */
+    private var tracing = false
+    fun trace(now: Long, target: Float, m: Float) {
+        if (!tracing) return
+        runCatching {
+            android.util.Log.d(TRACE_TAG, "t=$now src=$source cap=${tracker.capability} raw=${tracker.raw} vis=${tracker.visual?.let { "%.1f".format(it) }} " +
+                "exp=$expanded wait=$waitingForPanel close=${closeStartAt >= 0} reopen=${reopenedAt >= 0} coverOpen=${coverOpeningAt >= 0} lit=${litAt >= 0} " +
+                "target=${"%.3f".format(target)} m=${"%.3f".format(m)} follow=${followMs.toInt()}")
+        }
+    }
+    private fun traceEvent(text: String) { if (tracing) runCatching { android.util.Log.d(TRACE_TAG, "event $text raw=${tracker.raw} expanded=$expanded") } }
 
     var onOpeningStarted: (() -> Unit)? = null
     var onClosingStarted: (() -> Unit)? = null
@@ -290,16 +353,70 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
         private set
     val busy get() = morphFrom >= 0 || waitingForPanel || litAt >= 0 || closeStartAt >= 0 || reopenedAt >= 0 || coverLitAt >= 0 || coverOpeningAt >= 0
 
-    fun start() { hinge?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) } }
-    fun stop() { sensors?.unregisterListener(this) }
+    fun start() {
+        tracing = runCatching { android.util.Log.isLoggable(TRACE_TAG, android.util.Log.DEBUG) }.getOrDefault(false)
+        val apk = context.applicationInfo.sourceDir
+        val su = RootHingeStore.suPath(context)
+        // The kill switch and the root options are read again whenever they change, so turning them off stops the helper at once.
+        listOf(SystemBridge.PREFS, RootHingeStore.PREFS).forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(rootGate) }
+        if (su != null && rootAllowed()) {
+            // A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's.
+            useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
+            rootFeed = RootHingeFeed(ProcessSuLauncher, apk, su,
+                onSample = { s -> main.post { if (source == HingeSource.ROOT_HELPER) { onAngle(s.angleDegrees, s.timestampNanos, SystemClock.uptimeMillis()); wake.trySend(Unit) } } },
+                onLost = { main.post { rootLost() } }, now = { SystemClock.elapsedRealtime() }).also { it.start() }
+        } else registerPublic()
+    }
+
+    fun stop() {
+        listOf(SystemBridge.PREFS, RootHingeStore.PREFS).forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(rootGate) }
+        rootFeed?.stop(); rootFeed = null
+        sensors?.unregisterListener(this)
+    }
+
+    /** Whether the root hinge feed may run right now: the owner's options and the System Bridge switch. */
+    private fun rootAllowed() = RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) &&
+        hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER
+
+    private val rootGate = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        main.post {
+            if (rootFeed != null && !rootAllowed()) {
+                rootFeed?.stop(); rootFeed = null
+                registerPublic()
+                wake.trySend(Unit)
+            }
+        }
+    }
+
+    private fun registerPublic() {
+        useSource(HingeSource.PUBLIC_SENSOR, null)
+        hinge?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+    }
+
+    /** The root feed ended by itself: say so, and carry on with the public sensor, whose stepped prediction always works. */
+    private fun rootLost() {
+        if (source != HingeSource.ROOT_HELPER) return
+        rootFeed?.stop(); rootFeed = null
+        RootHingeStore.markLost(context)
+        registerPublic()
+        wake.trySend(Unit)
+    }
+
+    private fun useSource(next: HingeSource, learned: HingeCapability?) {
+        if (source == next && learned == null) return
+        source = next
+        tracker = if (next == HingeSource.ROOT_HELPER) HingeTracker(learned ?: HingeCapability.CONTINUOUS) else publicTracker()
+    }
 
     fun onDisplaySwitched(now: Long) {
+        traceEvent("display switched, now expanded=$expanded")
         switchedAt = now; waitingForPanel = true; opening = expanded
         wake.trySend(Unit)
         litAt = -1L; flatAt = -1L; closeStartAt = -1L; closedAt = -1L; reopenedAt = -1L; coverLitAt = -1L; coverOpeningAt = -1L
     }
 
     fun onPanelLit(now: Long) {
+        traceEvent("panel lit")
         waitingForPanel = false
         if (expanded) { litAt = now; litAngle = tracker.visual ?: HingeTracker.FLAT_ENTER_DEG; if (tracker.flat) flatAt = now } else coverLitAt = now
     }
@@ -314,8 +431,14 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
         val previous = tracker.raw
         val wasFlat = tracker.flat
         val wasClosed = tracker.closed
-        if (tracker.feed(value, timestampNs)) prefs.edit().putString(CAPABILITY_KEY, tracker.capability.name).apply()
+        if (tracker.feed(value, timestampNs)) prefs.edit().putString(hingeCapabilityKey(source), tracker.capability.name).apply()
         angleAt = now
+        if (!expanded) {
+            val before = coverAngle
+            coverAngle = if (before == null || timestampNs <= coverAngleNs) value
+                else before + (1f - kotlin.math.exp(-((timestampNs - coverAngleNs) / 1e9f) / COVER_SMOOTH_S)) * (value - before)
+            coverAngleNs = timestampNs
+        } else coverAngle = null
         if (previous == null) { peak = value; movedFrom = value; movedAt = now; return }
         if (previous == value) return
         // A phone held still for a while starts a fresh reference, so an old maximum can't turn a small move into a fold.
@@ -345,6 +468,7 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
                 }
                 // Opened back up before closing.
                 closeStartAt >= 0 && value - trough >= REOPEN_DEG -> {
+                    followMs = FOLLOW_MS
                     closeStartAt = -1L; closedAt = -1L; reopenedAt = now; peak = value; opening = true
                     FoldBridgeActivity.cancel()
                 }
@@ -353,19 +477,27 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
         } else {
             when {
                 // Starting to open on the cover: blur the whole cover screen.
-                wasClosed && !tracker.closed -> { coverOpeningAt = now; opening = true; onOpeningStarted?.invoke() }
-                tracker.closed -> coverOpeningAt = -1L
+                wasClosed && !tracker.closed -> { followMs = FOLLOW_MS; coverOpeningAt = now; coverTarget = 0f; coverTargetAt = 0L; opening = true; onOpeningStarted?.invoke() }
+                tracker.closed -> { coverOpeningAt = -1L; coverTarget = 0f; coverTargetAt = 0L }
             }
         }
     }
 
     private fun startClosing(now: Long, value: Float) {
+        followMs = FOLLOW_MS
         closeStartAt = now; closedAt = -1L; reopenedAt = -1L; trough = value; opening = false
         onClosingStarted?.invoke()
         if (stayAwake) FoldBridgeActivity.start(appContext)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+
+    /** How fast the effect follows its target. Quick while it tracks the hand; slower when it lets go, so a release is not a snap. */
+    var followMs = FOLLOW_MS; private set
+
+    /** The effect strength for the hinge as it is now: nothing at flat, growing as the phone closes, a little short of full at closed. */
+    private fun foldStrengthAtAngle(): Float = easeInOutSine(((HingeTracker.FLAT_ENTER_DEG - (tracker.visual ?: HingeTracker.FLAT_ENTER_DEG)) /
+        (HingeTracker.FLAT_ENTER_DEG - HingeTracker.CLOSED_ENTER_DEG)).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
 
     fun targetM(now: Long): Float = when {
         waitingForPanel -> if (expanded) unfoldStart else START_M_ON_COVER
@@ -391,23 +523,44 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
             val since = (now - closeStartAt).toFloat()
             val stalled = closedAt < 0 && (if (continuous) now - movedAt > STALL_MS else now - angleAt > predictedCloseMs + STALL_MS)
             when {
-                stalled -> { closeStartAt = -1L; peak = tracker.raw ?: 0f; 0f } // deliberately half-open (flex mode): clear
+                stalled -> { closeStartAt = -1L; peak = tracker.raw ?: 0f; if (continuous) followMs = RELEASE_FOLLOW_MS; 0f } // deliberately half-open (flex mode): clear, gently on a continuous angle
                 closedAt >= 0 && now - closedAt > CLOSED_STALL_MS -> { closeStartAt = -1L; closedAt = -1L; 0f } // never stuck dimmed
                 closedAt >= 0 -> 1f
-                continuous -> easeInOutSine(((HingeTracker.FLAT_ENTER_DEG - (tracker.visual ?: HingeTracker.FLAT_ENTER_DEG)) /
-                    (HingeTracker.FLAT_ENTER_DEG - HingeTracker.CLOSED_ENTER_DEG)).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
+                continuous -> foldStrengthAtAngle()
                 else -> easeInOutSine((since / predictedCloseMs).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
             }
         }
 
-        // Reopened before closing: settle back.
-        expanded && reopenedAt >= 0 -> { if (now - reopenedAt > FINISH_MS * 2) reopenedAt = -1L; 0f }
+        // Reopened before closing. With a continuous angle the effect keeps following the hinge back up to flat, so closing
+        // halfway and opening again is one smooth motion in both directions; with steps it settles back.
+        expanded && reopenedAt >= 0 -> {
+            if (continuous) {
+                when {
+                    tracker.flat -> { reopenedAt = -1L; 0f }
+                    // Held part way (flex mode) or never reaching flat: let go, gently, rather than hold or snap.
+                    now - movedAt > STALL_MS || now - reopenedAt > REOPEN_FOLLOW_MS -> { reopenedAt = -1L; followMs = RELEASE_FOLLOW_MS; 0f }
+                    else -> foldStrengthAtAngle()
+                }
+            } else { if (now - reopenedAt > FINISH_MS * 2) reopenedAt = -1L; 0f }
+        }
 
         // Opening from the cover: quick whole-screen blur until the inner display takes over.
         !expanded && coverOpeningAt >= 0 -> {
             if (now - coverOpeningAt > COVER_OPEN_STALL_MS) { coverOpeningAt = -1L; 0f }
-            else if (continuous) easeOutCubic(((tracker.visual ?: 0f) / HingeTracker.HALFWAY_DEG).coerceIn(0f, 1f))
-            else easeOutCubic(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f))
+            else if (continuous) {
+                val want = coverBuildAtAngle(coverAngle ?: tracker.visual ?: 0f)
+                // Going up it may rise at most COVER_RISE_PER_S, so a flick still builds over a visible moment and never steps by a fifth in a frame;
+                // going back down it follows the hand at once.
+                coverTarget = if (coverTargetAt == 0L) minOf(want, COVER_FIRST_STEP) // the first frame starts gently
+                    else if (want <= coverTarget) want
+                    else minOf(want, coverTarget + COVER_RISE_PER_S * ((now - coverTargetAt).coerceIn(0L, 100L) / 1000f))
+                coverTargetAt = now
+                coverTarget
+            }
+            else easeInOutSine(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f)).also {
+                // Remembered, so a angle that turns out to be continuous carries on from here and not from nothing.
+                coverTarget = it; coverTargetAt = now
+            }
         }
 
         // Cover after folding: short focus-in.
@@ -428,6 +581,33 @@ internal class FoldTimeline(context: Context) : SensorEventListener {
         prefs.edit().putFloat("fold_close_ms", predictedCloseMs).apply()
     }
 }
+/**
+ * How far along the cover's opening is, at a hinge angle: a straight ramp from closed to the handoff. The Duo shader eases it once (a
+ * smoothstep, as Apple's outer screen does with angle / 90), so this must stay linear: an ease here as well stacked a second one on
+ * top and made the frost appear late and rush in through the middle (found 7 Oct 2026, comparing with the Duo model).
+ */
+internal fun coverBuildAtAngle(angle: Float): Float =
+    ((angle - COVER_BUILD_START_DEG) / (COVER_BUILD_END_DEG - COVER_BUILD_START_DEG)).coerceIn(0f, 1f)
+
+/**
+ * A soft light along the cover's hinge edge while it opens: nothing at the start, strongest half way, gone by the handoff, like light
+ * spilling out of the gap. Kept faint on purpose; none under Reduce Motion.
+ */
+internal fun coverLightAlpha(m: Float, reduceMotion: Boolean): Float =
+    if (reduceMotion) 0f else kotlin.math.sin(Math.PI.toFloat() * m.coerceIn(0f, 1f)) * COVER_LIGHT
+
+/** Which edge of the cover is the hinge edge: left in the natural orientation, bottom at 90, right at 180, top at 270 (as [foldGeometry]). */
+internal enum class CoverEdge { LEFT, RIGHT, TOP, BOTTOM }
+internal fun coverHingeEdge(g: FoldGeometry): CoverEdge = when {
+    !g.horizontal && !g.movingAfterHinge -> CoverEdge.LEFT
+    !g.horizontal -> CoverEdge.RIGHT
+    !g.movingAfterHinge -> CoverEdge.TOP
+    else -> CoverEdge.BOTTOM
+}
+
+/** How far the cover content recedes while the effect is on, so the cover has depth and not only a blur; none under Reduce Motion. */
+internal fun coverSettleScale(m: Float, reduceMotion: Boolean): Float = if (reduceMotion) 1f else 1f - COVER_SCALE * m.coerceIn(0f, 1f)
+
 private fun easeOutCubic(t: Float): Float { val u = 1f - t; return 1f - u * u * u }
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
@@ -452,9 +632,32 @@ private const val STALL_MS = 900f
 private const val COVER_MS = 560f
 /** The cover lights right at closed, where the Duo outer screen is nearly clean: a light settle. */
 private const val START_M_ON_COVER = 1f
-private const val COVER_OPEN_MS = 220f
+private const val COVER_OPEN_MS = 300f
+/** The cover's own angle filter: about 7 degrees behind a 300 deg/s opening, against about 21 for the shared one. */
+private const val COVER_SMOOTH_S = .025f
+/**
+ * The cover effect rises by at most this much per second (a full build takes at least 0.17 s): traced flicks stepped 16 to 31% in one frame. At 5 a
+ * 557 deg/s flick reached only 85% before the inner screen took over (traced 7 Oct 2026), so 6, which reaches full in time.
+ */
+private const val COVER_RISE_PER_S = 6f
+/** The very first frame of a continuous opening can show at most this much, so the effect starts from nothing. */
+private const val COVER_FIRST_STEP = .02f
+/** From the closed threshold to 90 degrees, as the Duo model (angle / 90): the cover reads open past 12 degrees and is full by the handoff. */
+private const val COVER_BUILD_START_DEG = 5f
+private const val COVER_BUILD_END_DEG = 90f
+/** How much smaller the cover content gets at full effect (the open screen uses 3%); a little more, since the cover is the smaller screen. */
+private const val COVER_SCALE = .045f
+/** The brightest the hinge light gets (white at 14%): a hint of light, not a glow. */
+private const val COVER_LIGHT = .14f
+/** How far into the cover the light reaches from the hinge edge. */
+private const val COVER_LIGHT_REACH = .42f
 private const val COVER_OPEN_STALL_MS = 2_000L
 private const val FOLLOW_MS = 28f
+private const val TRACE_TAG = "FolioFoldTrace"
+/** Letting go of the effect (a held, half-open phone): a short, soft release instead of a snap. */
+private const val RELEASE_FOLLOW_MS = 150f
+/** After reopening, how long the effect may keep following the hinge before it lets go on its own. */
+private const val REOPEN_FOLLOW_MS = 4_000L
 private const val MIN_FOLD_DROP_DEG = 20f
 private const val CLOSED_STALL_MS = 1_800L
 private const val LIT_TIMEOUT_MS = 1_200L
@@ -463,7 +666,6 @@ private const val IDLE_WAIT_MS = 500L
 private const val FOLD_SCALE = .03f
 private const val MOVE_DEG = 3f
 private const val REOPEN_DEG = 15f
-private const val CAPABILITY_KEY = "fold_hinge_capability"
 
 /**
  * The fold effect on a preview (Settings): [m] 0 is open and clear, 1 half folded. Same shader, sweep and scale as Home,
