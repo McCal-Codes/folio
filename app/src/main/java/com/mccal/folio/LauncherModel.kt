@@ -288,6 +288,8 @@ data class LauncherState(
     val liveIconLook: String = "AUTO",
     /** Optional tint per folder id (ARGB). */
     val folderColors: Map<String, Long> = emptyMap(),
+    /** Optional custom width/height per folder id, from dragging its resize handle; absent means automatic. */
+    val folderSizes: Map<String, FolderSize> = emptyMap(),
     /** Icon Stacks: anchor app id → the apps that fan out when you swipe down on it. */
     val iconStacks: Map<String, List<String>> = emptyMap(),
     /** Custom app names by app id; apps without an entry keep the name Android reports. */
@@ -884,6 +886,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         commitLayout(com.mccal.folio.removeAppFromFolder(mutable.value.layout, folderId, appId, target, mutable.value.homeAppRows))
     fun moveFolderApp(folderId: String, appId: String, index: Int) =
         commitLayout(com.mccal.folio.moveFolderApp(mutable.value.layout, folderId, appId, index))
+    fun sortFolderAlphabetically(folderId: String): Boolean {
+        val folder = mutable.value.layout.folder(folderId) ?: return false
+        val labels = mutable.value.apps.associate { it.id to it.label }
+        val sorted = folder.appIds.sortedBy { labels[it]?.lowercase() ?: "" }
+        return commitLayout(com.mccal.folio.reorderFolder(mutable.value.layout, folderId, sorted))
+    }
     fun folder(id: String) = mutable.value.layout.folder(id)
 
     /**
@@ -1247,6 +1255,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setNcSplit(value: Boolean) = updateSettings(soon = false) { it.copy(ncSplit = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
+    fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
+        it.copy(folderSizes = if (size == null) it.folderSizes - folderId else it.folderSizes + (folderId to size)) }
     fun setButtonBar(value: Boolean) = updateSettings(soon = false) { it.copy(buttonBar = value) }
     fun setButtonBarHeight(value: Float) = updateSettings(soon = false) { it.copy(buttonBarHeight = value.coerceIn(44f, 60f)) }
     fun setButtonBarWidth(value: Float) = updateSettings(soon = false) { it.copy(buttonBarWidth = value.coerceIn(.3f, .8f)) }
@@ -1472,6 +1482,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("triggerActions", JSONObject().apply { s.triggerActions.forEach { (k, v) -> put(k, v) } })
             .put("todayWidgets", JSONArray().apply { s.todayWidgets.forEach { put(JSONObject().put("id", it.id).put("size", it.size.name)) } })
             .put("folderColors", JSONObject().apply { s.folderColors.forEach { (id, c) -> put(id, c) } })
+            .put("folderSizes", JSONObject().apply { s.folderSizes.forEach { (id, sz) -> put(id, JSONObject().put("w", sz.width.toDouble()).put("h", sz.height.toDouble())) } })
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
             .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
@@ -1761,6 +1772,11 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             a.optJSONObject(i)?.let { o -> runCatching { TodayWidget(o.getInt("id"), TodaySize.valueOf(o.getString("size"))) }.getOrNull() }
         } } ?: DEFAULT_TODAY_WIDGETS,
         folderColors = j.optJSONObject("folderColors")?.let { o -> o.keys().asSequence().associateWith { o.getLong(it) } } ?: emptyMap(),
+        // Defensive against a hand-edited or older-build settings file, the same way pageStyles coerces iconScale.
+        folderSizes = j.optJSONObject("folderSizes")?.let { o -> o.keys().asSequence().mapNotNull { id ->
+            val sz = o.optJSONObject(id) ?: return@mapNotNull null
+            id to FolderSize(sz.optDouble("w", -1.0).toFloat().coerceIn(100f, 2000f), sz.optDouble("h", -1.0).toFloat().coerceIn(100f, 2000f))
+        }.toMap() } ?: emptyMap(),
         pageStyles = j.optJSONObject("pageStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val page = key.toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null
             val style = o.optJSONObject(key) ?: return@mapNotNull null

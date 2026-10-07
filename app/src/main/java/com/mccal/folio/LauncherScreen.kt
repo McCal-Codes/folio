@@ -154,6 +154,10 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
+    // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val homeView = androidx.compose.ui.platform.LocalView.current
+    val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -432,7 +436,8 @@ fun LauncherScreen(
         if (focusLock != null && drag.active && drag.moved) { drag.clear(); overlays.menu = null; lockNotice++; return@LaunchedEffect }
         if (drag.active && drag.moved && id != null && overlays.menu == id) { overlays.menu = null; homeEdit.start() }
         // Dragging out of the App Library heads to Home only once the app actually moves (holding just shows the menu).
-        if (drag.active && drag.moved && source?.target is DropTarget.Library) {
+        // (An app carried out of an open folder has a Library target too, but it is already on Home: it must not move the page.)
+        if (drag.active && drag.moved && source?.target is DropTarget.Library && source.folderId == null) {
             withFrameNanos { }
             pager.scrollToPage(lastHomePage.coerceIn(0, homePages - 1))
         }
@@ -461,9 +466,29 @@ fun LauncherScreen(
     } ?: session.targetIndex?.let { draftAt(it, session.span, session.slot) } }
     val dropHomePage = if (pager.currentPage >= visibleHomePages)
         lastHomePage.coerceIn(0, homePages - 1) else pager.currentPage.coerceIn(0, homePages)
+    // Dropping one app onto another creates a folder with both (like iOS/Android), not a reorder - a drag out of
+    // a folder is unaffected, that already goes through removeAppFromFolder in finishDrag regardless of target.
+    fun folderMergeTarget(sourceAppId: String?, index: Int): String? {
+        // A folder being carried never becomes part of another one (folders do not nest), so it falls through to a move.
+        if (!folderEditing || sourceAppId == null || isFolderId(sourceAppId) || drag.source?.folderId != null) return null
+        val occupant = state.layout.slotAt(index) ?: return null
+        return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
+    }
+    // An app held over a folder's cell goes into the folder. The cell has to stay put while it is held there: the live
+    // preview below would otherwise slide the folder out from under the finger, the folder's own drop target would move
+    // with it, and the release would land on the empty cell as a swap instead of a drop into the folder.
+    fun folderDropTarget(sourceAppId: String?, index: Int): String? {
+        if (sourceAppId == null || isFolderId(sourceAppId)) return null
+        val occupant = state.layout.slotAt(index) ?: return null
+        return occupant.takeIf { state.layout.folder(it) != null && drag.source?.folderId != it }
+    }
     val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows) {
         val id = drag.source?.appId
         when {
+            // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
+            // the target cell's own hover highlight is the only feedback until release, same as a real platform.
+            id != null && insertionTarget is DropTarget.Home &&
+                (folderMergeTarget(id, insertionTarget.index) != null || folderDropTarget(id, insertionTarget.index) != null) -> state.layout
             id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
@@ -504,6 +529,12 @@ fun LauncherScreen(
                 model.removeAppFromFolder(source.folderId, source.appId, destination)
             destination == DropTarget.Remove -> model.removePlacement(source.target)
             destination is DropTarget.Home && source.target is DropTarget.Widget -> model.moveWidgetTo(source.target.index, destination.index)
+            destination is DropTarget.Home && folderDropTarget(source.appId, destination.index) != null ->
+                model.addAppToFolder(folderDropTarget(source.appId, destination.index)!!, source.appId!!)
+            // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
+            // places. Dropping on an existing folder already goes through DropTarget.Folder above.
+            destination is DropTarget.Home && folderMergeTarget(source.appId, destination.index) != null ->
+                model.createFolder(source.appId!!, folderMergeTarget(source.appId, destination.index)!!, destination.index) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
@@ -1702,6 +1733,16 @@ fun LauncherScreen(
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
                     onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
+                    size = if (folderEditing) state.folderSizes[id] else null, onSize = { model.setFolderSize(id, it) }, editing = folderEditing,
+                    onReorder = { appId, index -> model.moveFolderApp(id, appId, index) },
+                    onSortAlphabetically = { model.sortFolderAlphabetically(id) },
+                    onCarryStart = if (folderEditing) {{ app ->
+                        // The same pick-up as holding an app on Home: Home's own drag now has the icon, and Home goes into jiggle mode.
+                        focus.clearFocus(); keyboard?.hide(); haptic.perform(FolioHaptic.PickedUp)
+                        homeEdit.start()
+                    }} else null,
+                    onCarryFinish = { cancelled -> finishDrag(cancelled); overlays.folder = null },
+                    homeRootOnScreen = { val at = IntArray(2); homeView.getLocationOnScreen(at); androidx.compose.ui.geometry.Offset(at[0].toFloat(), at[1].toFloat()) },
                     // A Focus that hides Home pages locks editing, so there is nothing for Add Apps to do then.
                     onLaunch = onLaunchFrom, onAddApps = if (focusLock == null) {{ overlays.addToFolder = id }} else null,
                     onMoveOut = { appId, destination ->

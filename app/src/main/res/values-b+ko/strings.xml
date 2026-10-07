@@ -739,6 +739,9 @@
     <string name="close_folder">폴더 닫기</string>
     <string name="no_folder_color">폴더 색상 없음</string>
     <string name="folder_color">폴더 색상</string>
+    <string name="resize_folder">폴더 크기 조절</string>
+    <string name="folder_options">폴더 옵션</string>
+    <string name="sort_a_to_z">가나다순 정렬</string>
     <string name="text_1_s_unavailable">%1$s 사용 불가</string>
     <string name="headphones">헤드폰</string>
     <string name="fixes_and_improvements">수정 및 개선 사항</string>
