@@ -115,3 +115,14 @@ fun widgetSpanConstraints(provider: WidgetProviderSizing, grid: WidgetGridSizing
 
 private fun spanForSize(sizeDp: Float, cellDp: Float, gapDp: Float): Int =
     ceil(((sizeDp.coerceAtLeast(0f) + gapDp) / cellDp).toDouble()).toInt().coerceAtLeast(1)
+
+/**
+ * Size limits for Folio's own widgets, which have no provider to ask. Suggestions resizes freely, from one cell to the
+ * whole 4 x 4 grid; the others keep the defaults (null).
+ */
+fun builtinWidgetConstraints(id: Int): WidgetSpanConstraints? = when (id) {
+    SUGGESTIONS_WIDGET -> WidgetSpanConstraints(
+        preferred = WidgetSpan(2, 2), minimum = WidgetSpan(1, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
+        canResizeHorizontally = true, canResizeVertically = true)
+    else -> null
+}

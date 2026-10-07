@@ -5,6 +5,24 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.9] - Unreleased
+
+### Added
+- **Copy Diagnostics beside Share:** Settings › Advanced › Diagnostics has Copy Diagnostics next to Share Diagnostics, so the report can be pasted into a form or a chat without going through a share sheet. It is the same text a shared report holds, and nothing leaves your phone.
+- **Capabilities and Recent Activity:** Settings › Advanced › Diagnostics shows what Folio can use on this phone (Standard, Notification access and Accessibility, each On or Off, and what it is for), with a button to Android's settings for the ones that are off, and Folio's own recent activity, newest first, with a Failed filter for problems it carried on from. Both are read-only and stay on the phone.
+- **Suggestions, any size:** the Suggestions widget now goes from one cell to the whole grid. Its size menu adds 1 × 1, Row (four across) and Column (four down), and the icons keep to the size of your Home icons instead of stretching to fill the card.
+- **Your own picture for an app's icon:** long-press an app, More › Edit Icon › Your Picture › Choose Picture, and one icon shows a photo you pick, cropped to a square. Remove Picture or Reset Icon puts the normal icon back. The picture is copied into Folio, so it keeps working if the photo is deleted; it stays on this phone and is not part of a backup.
+- **Focus that turns on by itself:** each Focus has an Also Turn On When card with Folding (Unfolded, Cover Screen or Tent), Charging and Headphones. When one holds, the Focus turns on, the list says why, and it turns off again when the signal ends. If you turn it off yourself, it stays off until the signal changes. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+- **Drag the dock in edit mode:** with the dock on the Side Bar, a handle under it lets you drag the dock up or down instead of using the Dock Height slider, and the handle stays on screen. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+- **Performance log:** Settings › Advanced › Performance log can record Folio's own CPU, memory and battery use, so slowdowns and drain can be measured instead of guessed. It stays on the phone.
+
+### Fixed
+- **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
+- **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
+- **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
+- **Less work while apps install and when offline:** while any app installs or updates, only that app's icon redraws instead of the whole of Home, the status rail no longer redraws its whole self every frame when there is no connection, and a clock icon on Home redraws its hands without rebuilding the icon each second.
+- **Even rows under a widget (#13):** a widget at the top of Home now fills exactly two rows, so every row has the same spacing and the dock lines up with them, where the rows below a widget used to sit a little off. The Widget Size slider is hidden while this is on, because the widget's height is now set by the rows. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+
 ## [0.6.8] - 2026-10-06
 
 ### Added
@@ -67,6 +85,9 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Opening a package file shows it again:** opening a `.foliopkg` from Files or a download opened the Market and nothing else, so the package couldn't be installed. Its install sheet comes up now, opening one while the Market is already open no longer lands on Settings, and a package installed from a file is listed under Installed (Opened from Files), where it can be removed. If Safe Mode turned one off after a crash, its row says so and offers Try Again, as a listed package's page does.
 - **Flipbook turns the way it was designed to:** Cube and Carousel drew with their camera about six times too close, so a page shrank to a sliver partway through a swipe instead of turning like the side of a box. The camera sits where it was meant to now, and a page effect looks the same on every phone, whatever its screen density.
 - **Hidden apps stay hidden:** the dock's app chooser and the list of apps for a new folder offered every app, including the ones hidden in Settings. They leave hidden apps out now, as the App Library and search do. Searching the dock's chooser or Stack Apps also finds an app you renamed by its original name, and a Chinese name by its pinyin.
+- **An icon pack Folio can't read doesn't slow the App Library:** a pack with no usable list of icons was read again for every icon. It is left alone for half a minute after it fails, then tried again, so a pack that was updating still comes back.
+- **Apply and Undo for a theme go in order:** choosing a theme and then Undo within a moment of each other could end with the theme applied instead of undone.
+- **TalkBack reads the Focus switch once:** in Control Center it read "Turn off Focus, On, Switch". It reads the Focus's name and whether it is on.
 - **Settings keeps your place on Back:** going back to a list, like Tweaks from one of its tweaks, always showed it from the top. It opens where you left it now. Back names the page it returns to, and next to the Settings list the pages under General, Support Folio and Wallpaper & Appearance have a Back, as the pages under Tweaks do.
 - **Tapping a clock or a date opens its app:** tapping Folio's Clock, Big Clock, Date or Up Next widget opened the widget's options, which holding it already does, and in the Today View it started editing. A tap opens Clock or your calendar now, and in the Today View holding a widget starts editing. While you're editing Home, a tap still opens a widget's options.
 - **Problem messages in your language:** in Korean and Chinese, the alert for apps that couldn't be loaded told you to tap to retry, beside its own Try Again button, and a saved Home layout that couldn't be read was reported in English. Both are in your language now. Tapping that layout message on Home brings back the choices to restore it or start fresh; it used to reload your apps, which can't repair a layout.

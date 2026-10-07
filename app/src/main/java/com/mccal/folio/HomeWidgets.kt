@@ -422,6 +422,16 @@ internal fun WidgetActions(
                         modifier = Modifier.weight(1f).testTag("widget-size-${label.lowercase()}-${placement.slot}"))
                 }
             }
+            // Shapes beyond Small, Medium and Large, for a widget whose limits allow them (Suggestions: one cell, a row, a column).
+            val extraSizes = listOf(Triple(stringResource(R.string.widget_shape_tiny), 1, 1), Triple(stringResource(R.string.widget_shape_row), GRID_COLUMNS, 1),
+                Triple(stringResource(R.string.widget_shape_column), 1, 4)).filter { (_, w, h) -> constraints != null && fits(w, h) || (placement.spanX == w && placement.spanY == h) }
+            if (extraSizes.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.MEDIUM.dp).padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                extraSizes.forEach { (label, w, h) ->
+                    IosChip(selected = placement.spanX == w && placement.spanY == h,
+                        onClick = { if (placement.spanX != w || placement.spanY != h) { onResize(w, h); onClose() } },
+                        label = { Text(label) }, modifier = Modifier.weight(1f).testTag("widget-size-${w}x$h-${placement.slot}"))
+                }
+            }
             MenuDivider()
             MenuRow(stringResource(R.string.resize_on_home), Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
             MenuDivider()

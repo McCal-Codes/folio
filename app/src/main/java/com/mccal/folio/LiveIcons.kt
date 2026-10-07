@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -82,19 +83,29 @@ enum class IconShape(@androidx.annotation.StringRes val label: Int) { DEFAULT(R.
  * One app's own icon look, over the launcher's: a null part follows it. Applied when the icon is drawn, never in the
  * saved or cached icon pictures, so changing or clearing it can't leave a stale icon behind.
  */
-data class AppIconOverride(val style: IconStyle? = null, val shape: IconShape? = null) {
-    val isDefault: Boolean get() = style == null && shape == null
+data class AppIconOverride(val style: IconStyle? = null, val shape: IconShape? = null, val picture: Long = 0L) {
+    val isDefault: Boolean get() = style == null && shape == null && picture == 0L
+
+    /** Whether the app has a picture of its own ([picture] is the time it was set, so a new one redraws). */
+    val hasPicture: Boolean get() = picture > 0L
 
     internal fun applyTo(look: IconLook): IconLook = look.copy(style = style ?: look.style, shape = shape ?: look.shape)
 
-    fun toJson(): org.json.JSONObject = org.json.JSONObject().also { o -> style?.let { o.put("style", it.name) }; shape?.let { o.put("shape", it.name) } }
+    fun toJson(): org.json.JSONObject = org.json.JSONObject().also { o ->
+        style?.let { o.put("style", it.name) }; shape?.let { o.put("shape", it.name) }; if (hasPicture) o.put("picture", picture)
+    }
 
     companion object {
         fun fromJson(o: org.json.JSONObject?): AppIconOverride = AppIconOverride(
             style = o?.optString("style")?.let { n -> IconStyle.entries.firstOrNull { it.name == n } },
-            shape = o?.optString("shape")?.let { n -> IconShape.entries.firstOrNull { it.name == n } })
+            shape = o?.optString("shape")?.let { n -> IconShape.entries.firstOrNull { it.name == n } },
+            picture = o?.optLong("picture", 0L)?.coerceAtLeast(0L) ?: 0L)
     }
 }
+
+/** Backups carry the style and shape choices but not the pictures, which stay on this phone, so no stamp is left pointing at nothing. */
+fun withoutPictures(map: Map<String, AppIconOverride>): Map<String, AppIconOverride> =
+    map.mapValues { it.value.copy(picture = 0L) }.filterValues { !it.isDefault }
 
 /** [override] for [id] in [map], or no entry at all when it follows the launcher, so the map holds only real choices. */
 fun editAppIcon(map: Map<String, AppIconOverride>, id: String, override: AppIconOverride): Map<String, AppIconOverride> =
@@ -201,7 +212,12 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
         })
     }
     val packIcon = packLookup?.icon
-    val liveKind = kind.takeIf { packLookup != null && packIcon == null }
+    // Your own picture for this app wins over every other look. Until it loads, the last one drawn at this stamp is used, so it doesn't flash.
+    val stamp = override?.picture ?: 0L
+    val picture by androidx.compose.runtime.produceState(if (stamp > 0L) AppIconPictures.cached(app.id, stamp) else null, app.id, stamp) {
+        value = if (stamp > 0L) AppIconPictures.load(context, app.id, stamp) else null
+    }
+    val liveKind = kind.takeIf { packLookup != null && packIcon == null && picture == null }
     // Default style follows the app's real icon: a dark system icon theme (like iDark through Theme Park) gets the dark
     // live icon, so Clock and Calendar match the icons around them.
     // Automatic follows the other icons on Home (an icon theme often leaves Calendar and Clock alone), falling back
@@ -220,6 +236,8 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
         val fill = Modifier.fillMaxSize().then(if (clipShape != null) Modifier.clip(clipShape) else Modifier)
         // App icon bitmaps carry a small transparent margin; inset the drawn live icons to the same visual size.
         when {
+            // Real icons come masked; a picture is a plain square, so with no shape to clip to it gets the usual rounded corners.
+            picture != null -> { val shown = remember(picture) { picture!!.asImageBitmap() }; Image(shown, null, if (clipShape != null) fill else Modifier.fillMaxSize().clip(RoundedCornerShape(22))) }
             liveKind == LiveIcons.Kind.CALENDAR -> BoxWithConstraints(Modifier.fillMaxSize()) { CalendarIcon(Modifier.fillMaxSize().padding(maxWidth * .035f).then(if (clipShape != null) Modifier.clip(clipShape) else Modifier), palette) }
             liveKind == LiveIcons.Kind.CLOCK -> BoxWithConstraints(Modifier.fillMaxSize()) { ClockIcon(Modifier.fillMaxSize().padding(maxWidth * .035f).then(if (clipShape != null) Modifier.clip(clipShape) else Modifier), palette) }
             look.style == IconStyle.CLEAR -> ClearIcon(app, packIcon, fill)
@@ -249,7 +267,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
             IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale)
         }
         // Updating: the icon dims under an iOS-style progress ring until the installer finishes.
-        LocalInstallProgress.current[app.component.packageName]?.let { progress -> InstallRing(progress, fill) }
+        installProgressFor(app.component.packageName)?.let { progress -> InstallRing(progress, fill) }
     }
 }
 
@@ -334,10 +352,13 @@ private fun CalendarIcon(modifier: Modifier, palette: LivePalette) {
 
 @Composable
 private fun ClockIcon(modifier: Modifier, palette: LivePalette) {
-    val tick by rememberSecondTick()
-    val now = displayNow(tick).toLocalTime()
+    // The tick is read while drawing, so a second redraws the hands without recomposing the icon.
+    val tick = rememberSecondTick()
+    val screenshot by ScreenshotMode.on.collectAsState()
     Box(modifier.clip(RoundedCornerShape(22)).background(palette.clockBackground)) {
         Canvas(Modifier.fillMaxSize()) {
+            tick.value // subscribes this draw to the second tick
+            val now = ScreenshotMode.now(screenshot).toLocalTime()
             val c = Offset(size.width / 2, size.height / 2)
             val r = size.minDimension * .42f
             drawCircle(palette.clockFace, r, c)

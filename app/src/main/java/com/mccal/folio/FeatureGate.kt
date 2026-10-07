@@ -57,6 +57,20 @@ internal enum class FeatureGate(
     PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
 
     /**
+     * Focus triggers: a Focus that turns on by itself when the phone is unfolded, charging or has headphones
+     * connected. It listens for the phone's folding, power and audio devices, which is the kind of thing that needs
+     * real phones for a few days before everyone gets it, so supporters have it in the 0.6.9 betas. Flip
+     * [OPEN_IN_0_6_9] to true in the 0.6.9 release.
+     */
+    FOCUS_TRIGGERS("focusTriggers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * A grabber under the Side Bar dock in edit mode, to drag it up or down instead of using the Dock Height slider
+     * (#21). It sits in the middle of Home's edit gestures, so supporters try it on real phones first.
+     */
+    DOCK_GRABBERS("dockGrabbers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
      * A widget at the top of Home fills exactly two app rows, so every row has one pitch and the dock lines up with the
      * rows on a page with a widget and on one without (issue #13). It changes how every stacked layout looks and
      * retires Widget Size, so supporters try it first; opening the gate is what shipping it means.

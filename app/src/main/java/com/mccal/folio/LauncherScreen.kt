@@ -18,6 +18,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -86,6 +87,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -627,7 +629,9 @@ fun LauncherScreen(
             }
             val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
             val wide = maxWidth.value * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && maxHeight.value * classScale >= HOME_REGULAR_MIN_HEIGHT_DP
-            val preset = state.presetFor(layoutScreenFor(maxWidth.value, maxHeight.value, classScale))
+            val layoutScreen = layoutScreenFor(maxWidth.value, maxHeight.value, classScale)
+            val boxHeightDp = maxHeight.value
+            val preset = state.presetFor(layoutScreen)
             val density = LocalDensity.current
             val inLibrary = pager.currentPage == visibleHomePages
             var statusHeight by remember { mutableFloatStateOf(0f) }
@@ -909,6 +913,41 @@ fun LauncherScreen(
             val dockAwayForToday by remember(dockStepsAsideForToday, nativePager) {
                 derivedStateOf { dockStepsAsideForToday && nativePager.currentPage + nativePager.currentPageOffsetFraction <= .02f }
             }
+            // Edit mode: a grabber under the Side Bar dock to drag it up or down (#21). Only where the dock follows a saved
+            // position rather than the grid, and below the dock so it never takes a drag meant for a dock app.
+            if (homeEdit.active && sheet.isEmpty() && !geometry.horizontalDock && !geometry.dockBesideRail && !geometry.splitColumns &&
+                !preset.dockAlignToGrid && FeatureGate.DOCK_GRABBERS.isOpen(launcherActivity)) {
+                // Read through updated state: folding, unfolding or resizing keeps edit mode, and the drag below must use the new screen and height.
+                val grabScreen by rememberUpdatedState(layoutScreen)
+                val centerDp by rememberUpdatedState(dockTopShown + dockHeightShown / 2f)
+                val windowHeight by rememberUpdatedState(boxHeightDp)
+                val currentPreset by rememberUpdatedState(preset)
+                // The drag is added up here from where it started, so two moves before the screen redraws are both counted.
+                var dragStartCenter by remember { mutableFloatStateOf(0f) }
+                var dragged by remember { mutableFloatStateOf(0f) }
+                val moveLabel = stringResource(R.string.move_dock)
+                val upLabel = stringResource(R.string.move_dock_up)
+                val downLabel = stringResource(R.string.move_dock_down)
+                Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
+                    // Under the dock, but never lower than a touch target above the bottom of the window.
+                    .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(onDragStart = { dragStartCenter = centerDp; dragged = 0f }) { change, dy ->
+                            change.consume()
+                            dragged += dy / density.density
+                            model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionForCenter(dragStartCenter + dragged, windowHeight)))
+                        }
+                    }.semantics {
+                        contentDescription = moveLabel
+                        customActions = listOf(
+                            androidx.compose.ui.semantics.CustomAccessibilityAction(upLabel) { model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionStepFrom(centerDp, windowHeight, -1))); true },
+                            androidx.compose.ui.semantics.CustomAccessibilityAction(downLabel) { model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionStepFrom(centerDp, windowHeight, 1))); true })
+                    }.testTag("dock-grabber"), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(width = 56.dp, height = 28.dp).background(Glass.copy(alpha = .9f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.UnfoldMore, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
             if (!dockAwayForToday) Box((if (geometry.horizontalDock) (if (hinge?.active == true && hinge.vertical)
                     // Half folded like a book: the bar sits centered on the trailing half, off the hinge.
                     Modifier.align(Alignment.BottomEnd).padding(end = ((contentWidth / 2 - dockBarWidthShown) / 2).coerceAtLeast(0.dp))
@@ -1121,7 +1160,7 @@ fun LauncherScreen(
                             val gridSizing = WidgetGridSizing(GRID_COLUMNS, pageRows(placement.page).coerceAtLeast(visibleRows), geometry.cellWidth,
                                 minOf(topPitch, geometry.rowHeight), maxOf(topPitch, geometry.rowHeight), 10f, 18f,
                                 topRowHeightDp = topPitch, appRowHeightDp = geometry.rowHeight)
-                            val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) }
+                            val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) } ?: builtinWidgetConstraints(placement.id)
                             WidgetActions(placement, constraints, rows = pageRows(placement.page),
                                 stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets) },
                                 stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
