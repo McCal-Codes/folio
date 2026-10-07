@@ -1773,7 +1773,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
                 st.optDouble("size", 1.0).toFloat().coerceIn(.7f, 1.3f), pick("face", setOf("SANS", "ROUNDED", "SERIF", "MONO"), "SANS"),
                 pick("shadow", setOf("OFF", "SOFT", "GLOW"), "SOFT"), pick("date", setOf("LONG", "SHORT", "OFF"), "LONG"),
                 st.optBoolean("showNext", true), pick("align", setOf("LEFT", "CENTER", "RIGHT"), "CENTER"),
-                st.optBoolean("stacked", false), pick("hours", setOf("SYSTEM", "12", "24"), "SYSTEM"), st.optBoolean("ampm", true))
+                st.optBoolean("stacked", false), pick("hours", setOf("SYSTEM", "12", "24"), "SYSTEM"), st.optBoolean("ampm", false))
         }.toMap() } ?: emptyMap(),
         pageStyles = j.optJSONObject("pageStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val page = key.toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null

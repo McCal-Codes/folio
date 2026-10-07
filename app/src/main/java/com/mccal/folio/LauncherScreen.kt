@@ -1190,7 +1190,7 @@ fun LauncherScreen(
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
                                 onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
-                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ placeSlot = placement.slot; sheet = "" }} else null)
+                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null)
                         }
                     }
                 }
@@ -1549,7 +1549,7 @@ fun LauncherScreen(
             val placement = model.placement(slot)
             val bounds = drag.regions[DropTarget.Widget(slot)]?.bounds
             if (placement == null || bounds == null) LaunchedEffect(slot) { placeSlot = null }
-            else WidgetPlaceOverlay(placement, bounds, state.layout, resize.pitchX, if (placement.row < 2) resize.topPitch else resize.appPitch,
+            else WidgetPlaceOverlay(placement, bounds, state.layout, resize.pitchX, resize.topPitch, resize.appPitch,
                 onApply = { column, row -> model.placeWidgetFreely(slot, column, row); placeSlot = null }, onClose = { placeSlot = null })
         }
         resize.slot?.let { slot ->

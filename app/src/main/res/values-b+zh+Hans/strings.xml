@@ -1691,4 +1691,5 @@
     <string name="risk_disruptive">可能打断 App</string>
     <string name="risk_critical">可能影响 Android 本身</string>
     <string name="risk_experimental">在此手机上可能无法使用</string>
+    <string name="picture_color_n">图片颜色 %1$d</string>
 </resources>

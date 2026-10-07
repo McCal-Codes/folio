@@ -1712,4 +1712,5 @@
     <string name="risk_disruptive">앱을 방해할 수 있음</string>
     <string name="risk_critical">Android 자체에 영향을 줄 수 있음</string>
     <string name="risk_experimental">이 휴대전화에서 작동하지 않을 수 있음</string>
+    <string name="picture_color_n">사진 색상 %1$d</string>
 </resources>

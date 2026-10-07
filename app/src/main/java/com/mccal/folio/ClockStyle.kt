@@ -77,13 +77,13 @@ import kotlin.math.pow
  * `mode`: AUTO (white or dark, whichever holds more contrast under the clock), WALLPAPER (a vivid tint of the
  * picture under it), WHITE, or CUSTOM (one of the picture's readable colors, [customIndex]). `face`: SANS, ROUNDED,
  * SERIF, MONO (Android's own fonts). `shadow`: OFF, SOFT, GLOW. `date`: LONG, SHORT, OFF. `align`: LEFT, CENTER, RIGHT.
- * `stacked`: hours over minutes. `hours`: SYSTEM (follow the phone), 12 or 24; `ampm`: show AM/PM in 12-hour.
+ * `stacked`: hours over minutes. `hours`: SYSTEM (follow the phone), 12 or 24; `ampm`: show AM/PM in 12-hour (off unless asked for, so an untouched clock reads as it always did).
  */
 data class BigClockStyle(
     val mode: String = "AUTO", val customIndex: Int = 0, val weight: Int = 600,
     val size: Float = 1f, val face: String = "SANS", val shadow: String = "SOFT",
     val date: String = "LONG", val showNext: Boolean = true, val align: String = "CENTER",
-    val stacked: Boolean = false, val hours: String = "SYSTEM", val ampm: Boolean = true,
+    val stacked: Boolean = false, val hours: String = "SYSTEM", val ampm: Boolean = false,
 )
 
 internal fun BigClockStyle?.orDefault() = this ?: BigClockStyle()
@@ -313,7 +313,7 @@ internal fun ClockEditBar(
             if (tint != null) ColorDot(selected = s.mode == "WALLPAPER", label = stringResource(R.string.wallpaper), color = Color(tint),
                 onClick = { push(s.copy(mode = "WALLPAPER")) })
             readable.forEachIndexed { i, argb ->
-                ColorDot(selected = s.mode == "CUSTOM" && s.customIndex == i, label = stringResource(R.string.custom), color = Color(argb),
+                ColorDot(selected = s.mode == "CUSTOM" && s.customIndex == i, label = stringResource(R.string.picture_color_n, i + 1), color = Color(argb),
                     onClick = { push(s.copy(mode = "CUSTOM", customIndex = i)) })
             }
             ColorDot(selected = s.mode == "WHITE", label = stringResource(R.string.white), color = Color.White, onClick = { push(s.copy(mode = "WHITE")) })
@@ -322,10 +322,11 @@ internal fun ClockEditBar(
         AnimatedVisibility(fine, enter = fadeIn(clockMotion<Float>()) + expandVertically(clockMotion<androidx.compose.ui.unit.IntSize>()),
             exit = fadeOut(clockMotion<Float>()) + shrinkVertically(clockMotion<androidx.compose.ui.unit.IntSize>())) {
           Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-            BarLabel(stringResource(R.string.weight))
+            val weightLabel = stringResource(R.string.weight)
+            BarLabel(weightLabel)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Slider(value = s.weight.toFloat(), onValueChange = { push(s.copy(weight = (it / 50f).toInt() * 50)) },
-                    valueRange = 100f..900f, steps = 15, modifier = Modifier.weight(1f).heightIn(min = FolioTouch.MIN.dp))
+                    valueRange = 100f..900f, steps = 15, modifier = Modifier.weight(1f).heightIn(min = FolioTouch.MIN.dp).semantics { contentDescription = weightLabel })
                 Text(s.weight.toString(), color = Color.White, modifier = Modifier.width(44.dp), textAlign = TextAlign.End)
             }
             Choice(stringResource(R.string.size), s.size, listOf(.85f to R.string.small, 1f to R.string.default_choice, 1.15f to R.string.large)) { push(s.copy(size = it)) }
@@ -349,7 +350,7 @@ internal fun ClockEditBar(
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             IosChip(selected = false, onClick = { fine = !fine }, label = { Text(stringResource(if (fine) R.string.hide_fine_tune else R.string.fine_tune)) })
-            if (fine) IosChip(selected = false, onClick = { push(BigClockStyle()) }, label = { Text(stringResource(R.string.reset_style)) })
+            if (fine) IosChip(selected = false, onClick = { s = BigClockStyle(); onStyle(null) }, label = { Text(stringResource(R.string.reset_style)) })
             Box(Modifier.weight(1f))
             IosChip(selected = true, onClick = close, label = { Text(stringResource(R.string.done)) })
         }

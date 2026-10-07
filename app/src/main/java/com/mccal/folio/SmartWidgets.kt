@@ -176,7 +176,9 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
         .semantics(mergeDescendants = true) {}, contentAlignment = Alignment.Center) {
         val boxHeight = maxHeight.value
         val boxWidth = maxWidth.value
-        val big = (maxHeight.value * .46f * animatedSize).coerceAtMost(maxWidth.value * .34f).sp
+        // The width cap only widens when there is an AM or PM to make room for; without one it is the cap it always had.
+        val meridiem = !is24 && style.ampm
+        val big = (maxHeight.value * .46f * animatedSize).coerceAtMost(maxWidth.value * (if (meridiem) .34f else .3f)).sp
         if (shadeAlpha > 0f) Box(Modifier.fillMaxSize().background(
             androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.Black.copy(alpha = shadeAlpha), Color.Transparent))))
         Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SMALL.dp), horizontalAlignment = align) {

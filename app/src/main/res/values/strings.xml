@@ -1739,4 +1739,5 @@
     <string name="risk_disruptive">Can interrupt apps</string>
     <string name="risk_critical">Can affect Android itself</string>
     <string name="risk_experimental">May not work on this phone</string>
+    <string name="picture_color_n">Picture color %1$d</string>
 </resources>

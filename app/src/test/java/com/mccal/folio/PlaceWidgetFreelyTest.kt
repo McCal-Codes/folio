@@ -53,4 +53,14 @@ class PlaceWidgetFreelyTest {
         val layout = layout()
         assertEquals(layout, placeWidget(layout, outside))
     }
+
+    @Test fun `the half height top rows and the app rows below them are measured in their own pitch`() {
+        val top = 100f; val app = 200f
+        assertEquals(100f, placeRowToPx(1f, top, app), 0f)
+        assertEquals(200f, placeRowToPx(2f, top, app), 0f)
+        assertEquals(400f, placeRowToPx(3f, top, app), 0f)
+        for (r in listOf(0f, .5f, 1.5f, 2f, 2.25f, 5f)) assertEquals(r, placePxToRow(placeRowToPx(r, top, app), top, app), .0001f)
+        // 250 px down from the top of row 1 is the rest of row 1 (100) and then 150 px of an app row.
+        assertEquals(2.75f, placePxToRow(placeRowToPx(1f, top, app) + 250f, top, app), .0001f)
+    }
 }

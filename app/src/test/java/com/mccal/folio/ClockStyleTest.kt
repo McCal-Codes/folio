@@ -54,7 +54,9 @@ class ClockStyleTest {
         assertEquals("AUTO", d.mode); assertEquals(600, d.weight); assertEquals(1f, d.size, 0f)
         assertEquals("SANS", d.face); assertEquals("SOFT", d.shadow); assertEquals("LONG", d.date)
         assertTrue(d.showNext); assertEquals("CENTER", d.align)
-        assertFalse(d.stacked); assertEquals("SYSTEM", d.hours); assertTrue(d.ampm)
+        assertFalse(d.stacked); assertEquals("SYSTEM", d.hours)
+        // An untouched clock must read exactly as it always did, and main never showed AM or PM beside the time.
+        assertFalse(d.ampm)
     }
 
     @Test fun `every look is a distinct combination, and Tinted is the only one that needs a picture`() {
