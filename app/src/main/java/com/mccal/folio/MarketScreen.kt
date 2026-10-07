@@ -131,6 +131,8 @@ internal fun MarketScreen(
     var openSourceUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var introducing by rememberSaveable { mutableStateOf(!session.prefs.introductionSeen) }
     var style by rememberSaveable { mutableStateOf(session.prefs.featuredStyle) }
+    // The one question about keeping packages up to date, asked once after the welcome (see MarketPrefs.updatesQuestionSeen).
+    var askingUpdates by rememberSaveable { mutableStateOf(!session.prefs.updatesQuestionSeen) }
     var confirming by rememberSaveable { mutableStateOf<String?>(null) }
     var addingSource by rememberSaveable { mutableStateOf(false) }
     var sourceUrl by rememberSaveable { mutableStateOf("") }
@@ -369,6 +371,7 @@ internal fun MarketScreen(
     LaunchedEffect(MarketLink.pending) {
         when (val link = MarketLink.pending) {
             is MarketLink.Package -> { tab = MarketTab.PACKAGES; openId = link.id }
+            MarketLink.Updates -> tab = MarketTab.INSTALLED
             is MarketLink.Source -> {
                 // What the format says a source link does: the Add Source sheet, filled in. The fingerprint still
                 // has to be confirmed, so a link can't add a source by itself.
@@ -389,6 +392,25 @@ internal fun MarketScreen(
             onDone = { session.prefs.introductionSeen = true; introducing = false },
         )
         return
+    }
+    if (askingUpdates) {
+        val notifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) session.prefs.notifyUpdates = false
+        }
+        AlertDialog(onDismissRequest = { session.prefs.updatesQuestionSeen = true; askingUpdates = false },
+            title = { Text(stringResource(R.string.updates_question_title)) },
+            text = { Text(stringResource(R.string.updates_question_body)) },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { session.prefs.updatesQuestionSeen = true; askingUpdates = false }) { Text(stringResource(R.string.not_now)) } },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    session.prefs.backgroundRefresh = true
+                    session.prefs.notifyUpdates = true
+                    MarketRefreshJob.schedule(context)
+                    session.prefs.updatesQuestionSeen = true
+                    askingUpdates = false
+                    if (!SoftwareUpdate.canPostNotifications(context)) notifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.turn_on)) }
+            })
     }
 
     // Every row and page asks the same question about an external app, and re-asks it when Folio
@@ -1825,6 +1847,8 @@ private fun report(context: android.content.Context, issuesUrl: String?, entry: 
 internal sealed interface MarketLink {
     data class Package(val id: String) : MarketLink
     data class Source(val url: String) : MarketLink
+    /** The update notice: the store, on what is installed and has a newer version. */
+    data object Updates : MarketLink
 
     // A supporter's code is a link too, but it belongs to Settings rather than the store: see RedeemActivity.
 
@@ -1837,6 +1861,7 @@ internal sealed interface MarketLink {
             val host = rest.substringBefore('/')
             val value = rest.substringAfter('/', "").substringBefore('?').substringBefore('#')
             if (value.isEmpty()) return null
+            if (host == "market") return Updates.takeIf { value == "updates" }
             return when (host) {
                 "package" -> Package(value).takeIf { PackageManifest.ID.containsMatchIn(it.id) }
                 // The url is encoded, because it carries its own slashes.

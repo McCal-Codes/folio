@@ -1345,6 +1345,20 @@
     <string name="market_page_intro">Themes and tweaks as packages you can get and remove. Folio\'s own come with the app; sources you add are signed by whoever publishes them.</string>
     <string name="market_refreshing_section">Refreshing</string>
     <string name="refresh_in_the_background">Refresh in the background</string>
+    <string name="tell_me_about_updates">Tell me about updates</string>
+    <string name="update_packages_in_background">Update packages in the background</string>
+    <string name="update_packages_in_background_detail">Packages from your sources update themselves when the change touches none of your settings</string>
+    <string name="market_updates_notice_detail">One notice when a source has a newer version of something you installed</string>
+    <string name="updates_question_title">Keep your packages up to date?</string>
+    <string name="updates_question_body">Folio can check your sources once a day, on Wi-Fi, and tell you when something has a new version. Nothing is installed for you unless you turn on Update packages in the background.</string>
+    <string name="updates_notice_refused">Turned off: Android isn\'t letting Folio show notices. Updates still appear in the Market.</string>
+    <string name="market_updates_channel">Market updates</string>
+    <string name="market_updates_channel_detail">New versions of packages and apps you installed from the Market.</string>
+    <string name="market_updates_and_more">and %1$d more</string>
+    <plurals name="market_updates_notice">
+        <item quantity="one">%1$d update in the Market</item>
+        <item quantity="other">%1$d updates in the Market</item>
+    </plurals>
     <string name="once_a_day">Once a day</string>
     <string name="only_on_wifi">Only on Wi-Fi</string>
     <string name="never_uses_mobile_data">Never uses mobile data</string>

@@ -12,7 +12,13 @@ internal data class RingLook(val strokeScale: Float, val trackAlpha: Float) {
         /** Used where the stroke is already wide (the Gauge), so it cannot grow into its neighbors. */
         const val GAUGE_SCALE = 1.25f
 
+        /**
+         * Bold text is on for a defined adjustment above zero. `Configuration.FONT_WEIGHT_ADJUSTMENT_UNDEFINED` is
+         * `Int.MAX_VALUE`, which a device or preview can report when it doesn't know, and is not Bold text.
+         */
+        fun boldTextOn(fontWeightAdjustment: Int) = fontWeightAdjustment in 1 until android.content.res.Configuration.FONT_WEIGHT_ADJUSTMENT_UNDEFINED
+
         /** [fontWeightAdjustment] is `Configuration.fontWeightAdjustment`: above zero while Bold text is on. */
-        fun of(strongRings: Boolean, fontWeightAdjustment: Int) = if (strongRings || fontWeightAdjustment > 0) STRONG else NORMAL
+        fun of(strongRings: Boolean, fontWeightAdjustment: Int) = if (strongRings || boldTextOn(fontWeightAdjustment)) STRONG else NORMAL
     }
 }

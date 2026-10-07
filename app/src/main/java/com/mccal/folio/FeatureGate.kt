@@ -71,6 +71,13 @@ internal enum class FeatureGate(
     DOCK_GRABBERS("dockGrabbers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * Packages from a source update by themselves in the background (M1): the daily refresh stages a checked update
+     * and it goes in through the running app. Supporters and Folio Dev first, because it changes what is on Home
+     * without the person tapping anything.
+     */
+    MARKET_AUTO_UPDATE("marketAutoUpdate", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
      * Nothing as a choice for the strip above the dock, beside the Search button and the page dots. It changes what
      * Home looks like at rest, so supporters try it first; Stronger rings is not gated, because it is off until asked.
      */

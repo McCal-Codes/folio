@@ -44,6 +44,8 @@ class HomeStripAndRingsTest {
         assertEquals(RingLook.NORMAL, RingLook.of(strongRings = false, fontWeightAdjustment = 0))
         assertEquals(RingLook.STRONG, RingLook.of(strongRings = true, fontWeightAdjustment = 0))
         assertEquals(RingLook.STRONG, RingLook.of(strongRings = false, fontWeightAdjustment = 300))
+        assertEquals("an undefined adjustment is not Bold text", RingLook.NORMAL, RingLook.of(strongRings = false, fontWeightAdjustment = Int.MAX_VALUE))
+        assertEquals("nor is a negative one", RingLook.NORMAL, RingLook.of(strongRings = false, fontWeightAdjustment = -100))
     }
 
     @Test fun `the biggest ring still fits inside its box when strong`() {

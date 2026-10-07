@@ -110,6 +110,10 @@ data class IndexPackage(
     /** The author's own signature over this package's id, version and bytes, when they published one. */
     val signedBy: AuthorSignature? = null,
 ) {
+    /** True when [bytes] are the size and checksum this listing promised (a missing size or checksum promises nothing). */
+    fun matches(bytes: ByteArray): Boolean =
+        (size == null || bytes.size == size) && (sha256 == null || sha256Hex(bytes) == sha256)
+
     /** True when Folio has everything it needs to download and install this package. */
     val installable: Boolean get() = manifest != null && url != null && sha256 != null && size != null
 

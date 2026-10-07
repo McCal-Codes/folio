@@ -115,5 +115,22 @@ class SourceStore(private val store: KeyValueStore) {
     private fun key(url: String, part: String) = "source:${normalizeSourceUrl(url)}:$part"
 }
 
-/** A source is identified by its base URL, with one trailing slash, so `…/repo` and `…/repo/` are the same source. */
-fun normalizeSourceUrl(url: String): String = url.trim().trimEnd('/') + "/"
+/**
+ * A source is identified by its base URL, with one trailing slash, so `…/repo` and `…/repo/` are the same source.
+ * A GitHub repository address (`github.com/owner/repo`, with or without `https://`) is the repository's GitHub Pages
+ * site, `https://owner.github.io/repo/`: Folio reads static files only and never calls GitHub's API. Anything else, a
+ * path inside the repository included, is left exactly as typed.
+ */
+fun normalizeSourceUrl(url: String): String = githubPagesUrl(url) ?: (url.trim().trimEnd('/') + "/")
+
+private val GITHUB_REPO = Regex("""^(?:https://)?(?:www\.)?github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))/([A-Za-z0-9_.-]+?)(?:\.git)?/?$""", RegexOption.IGNORE_CASE)
+
+/** The GitHub Pages site for a `github.com/owner/repo` address, or null for anything that isn't exactly that. */
+fun githubPagesUrl(input: String): String? {
+    val match = GITHUB_REPO.matchEntire(input.trim()) ?: return null
+    val owner = match.groupValues[1].lowercase()
+    val repo = match.groupValues[2]
+    if (repo == "." || repo == ".." || repo.isEmpty()) return null
+    // A repository named owner.github.io is the owner's own site, at the root.
+    return if (repo.equals("$owner.github.io", ignoreCase = true)) "https://$owner.github.io/" else "https://$owner.github.io/$repo/"
+}
