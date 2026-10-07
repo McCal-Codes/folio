@@ -628,7 +628,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
                         dock = trimmedDock(reconciled.dock), folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
-                        appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds,
+                        appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds.also { gone -> AppIconPictures.deleteAll(getApplication(), gone.filter { old.appIconStyles[it]?.hasPicture == true }) },
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
                         error = if (statePayloadInvalid) old.error else null)
                 }
@@ -1281,7 +1281,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setIsland(value: Boolean) = updateSettings(soon = false) { it.copy(island = value) }
     fun setHidden(id: String, hidden: Boolean) = updateSettings(soon = false) { it.copy(hiddenApps = if (hidden) it.hiddenApps + id else it.hiddenApps - id) }
     /** Renames one app everywhere it appears; a blank name puts the name Android reports back. */
-    fun setAppIconStyle(id: String, override: AppIconOverride) = updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
+    fun setAppIconStyle(id: String, override: AppIconOverride) {
+        // A picture that is no longer chosen (Reset Icon, Remove Picture) is deleted, so nothing stale is kept.
+        if (!override.hasPicture && mutable.value.appIconStyles[id]?.hasPicture == true) AppIconPictures.delete(getApplication(), id)
+        updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
+    }
     fun renameApp(id: String, name: String) = updateSettings(soon = false) { s ->
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))
