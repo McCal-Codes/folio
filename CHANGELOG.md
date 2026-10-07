@@ -14,6 +14,11 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Your own picture for an app's icon:** long-press an app, More › Edit Icon › Your Picture › Choose Picture, and one icon shows a photo you pick, cropped to a square. Remove Picture or Reset Icon puts the normal icon back. The picture is copied into Folio, so it keeps working if the photo is deleted; it stays on this phone and is not part of a backup.
 - **Focus that turns on by itself:** each Focus has an Also Turn On When card with Folding (Unfolded, Cover Screen or Tent), Charging and Headphones. When one holds, the Focus turns on, the list says why, and it turns off again when the signal ends. If you turn it off yourself, it stays off until the signal changes. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 - **Drag the dock in edit mode:** with the dock on the Side Bar, a handle under it lets you drag the dock up or down instead of using the Dock Height slider, and the handle stays on screen. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+- **System Bridge:** Settings › Advanced › System Bridge has one switch that turns off every way Folio reaches past a normal app. Advanced options (off by default) add an optional root hinge angle for a smoother fold animation, with a Test button, and a one-time command to grant a settings permission.
+- **Fold motion:** on the open screen, icons ripple out from the hinge, the wallpaper and icons move with a little depth, and a faint light travels down the hinge. Each has its own switch in the Fold effect page and all stop with Reduce Motion.
+- **Smoother fold:** the fold effect follows the hinge back up after a partial close, and the cover builds smoothly as the Fold opens.
+- **StandBy tent** is detected from Android's device state on phones that report it.
+- **Performance log:** Settings › Advanced › Performance log can record Folio's own CPU, memory and battery use, so slowdowns and drain can be measured instead of guessed. It stays on the phone.
 - **Bottom of Home and stronger rings:** Settings has Bottom of Home with Search button, Page dots or Nothing (Nothing is for supporters and Folio Dev for now). Dragging along the bottom still moves between pages, and the dots appear while you swipe or edit. Stronger rings gives the status rings a thicker stroke and a clearer track, and turns on by itself with Android's Bold text.
 
 ### Fixed
@@ -21,6 +26,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
 - **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
 - **Less work while apps install and when offline:** while any app installs or updates, only that app's icon redraws instead of the whole of Home, the status rail no longer redraws its whole self every frame when there is no connection, and a clock icon on Home redraws its hands without rebuilding the icon each second.
+- **The Roadmap stops retrying offline:** when Folio can't reach GitHub, opening Settings › Roadmap no longer waits on the network every time; it tries again after an hour. With nothing downloaded yet, the note says the copy shown came with Folio instead of claiming it was saved on your phone.
 
 ## [0.6.8] - 2026-10-06
 
