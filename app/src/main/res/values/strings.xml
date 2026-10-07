@@ -233,6 +233,9 @@
     <string name="add_widgets_for_the_things_you_check_mos">Add widgets for the things you check most.</string>
     <string name="add_widget_2">Add Widget</string>
     <string name="suggestions">Suggestions</string>
+    <string name="widget_shape_tiny">1 × 1</string>
+    <string name="widget_shape_row">Row</string>
+    <string name="widget_shape_column">Column</string>
     <string name="widget_unavailable">Widget unavailable</string>
     <string name="notification_center">Notification Center</string>
     <string name="no_notifications">No Notifications</string>

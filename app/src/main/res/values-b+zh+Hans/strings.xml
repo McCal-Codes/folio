@@ -239,6 +239,9 @@
     <string name="add_widgets_for_the_things_you_check_mos">为你最常查看的内容添加小组件。</string>
     <string name="add_widget_2">添加小组件</string>
     <string name="suggestions">建议</string>
+    <string name="widget_shape_tiny">1 × 1</string>
+    <string name="widget_shape_row">横排</string>
+    <string name="widget_shape_column">竖排</string>
     <string name="widget_unavailable">小组件不可用</string>
     <string name="notification_center">通知中心</string>
     <string name="no_notifications">没有通知</string>
