@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -104,6 +104,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE -> ADVANCED
+        WHAT_TO_TEST -> HELP
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
         else -> OVERVIEW
@@ -147,6 +148,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         ACCESSIBILITY -> R.string.accessibility
         SUPPORT -> R.string.support_folio
         SUPPORTER -> R.string.supporter
+        WHAT_TO_TEST -> R.string.what_to_test
     }
 }
 
@@ -325,6 +327,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 // The old Setup Checklist lives on in Privacy & Permissions (one list of everything Folio can use).
                 CustomizationPage.SETUP -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.COMING_SOON -> ComingSoonPage()
+                CustomizationPage.WHAT_TO_TEST -> WhatToTestPage(onOpenSetup = { onClose(); onShowWelcome() })
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
                     // The order is the one every well-regarded product uses, sourced in docs/mockups/wallpaper-page.html:
@@ -821,6 +824,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         MenuDivider()
                         TweakRow(Icons.Rounded.WavingHand, FolioColors.Value.Orange, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
+                        // The testers' checklist: only on a beta build and Folio Dev.
+                        if (WhatToTest.available(SoftwareUpdate.installedVersion(helpContext), helpContext.packageName)) {
+                            MenuDivider()
+                            TweakRow(Icons.Rounded.Checklist, FolioColors.Value.Green, stringResource(R.string.what_to_test), "customization-what-to-test") { onPage(CustomizationPage.WHAT_TO_TEST) }
+                        }
                     }
                     CardNote(stringResource(R.string.report_a_bug_opens_github_in_your_browse), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                     LauncherHelp(
@@ -1336,6 +1344,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
+    Triple(R.string.what_to_test, R.string.settings_keywords_what_to_test, CustomizationPage.WHAT_TO_TEST),
     Triple(R.string.help, R.string.settings_keywords_help, CustomizationPage.HELP),
     Triple(R.string.credits, R.string.settings_keywords_credits, CustomizationPage.CREDITS),
     Triple(R.string.supporters, R.string.settings_keywords_supporters, CustomizationPage.SUPPORTERS),

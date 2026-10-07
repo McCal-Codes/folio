@@ -1,0 +1,29 @@
+{
+  "release": "0.6.9-beta.1",
+  "items": [
+    { "id": "bottom-of-home", "title": "Bottom of Home", "where": "Settings > Home Screen & Dock",
+      "steps": ["Switch between Search button, Page dots and Nothing.", "Home should not shift between them.", "With Nothing, drag along the empty strip: it should still change pages."] },
+    { "id": "stronger-rings", "title": "Stronger rings", "where": "Settings > Icons & Side Bar > Status",
+      "steps": ["Turn on Stronger rings with a ring glyph and look at the Side Bar on the cover and the inner screen.", "Try a light and a dark wallpaper.", "Turn on Android's Bold text: it should turn on by itself, and off again."] },
+    { "id": "widget-rows", "title": "Rows under a widget", "where": "Home",
+      "steps": ["Put a widget at the top of a page.", "The rows below it should have the same spacing as the rest, and the dock should line up with them.", "Look on the cover, the inner screen and half folded."] },
+    { "id": "focus-triggers", "title": "Focus that turns on by itself", "where": "Settings > Focus > a Focus > Also Turn On When",
+      "steps": ["Turn on Charging for a Focus and plug the phone in: the Focus should turn on and say why.", "Unplug it: the Focus should turn off.", "Plug in again, turn the Focus off yourself and leave it plugged in: it should stay off."] },
+    { "id": "drag-dock", "title": "Drag the dock", "where": "Edit Home, with the dock on the Side Bar",
+      "steps": ["Drag the handle under the dock up and down.", "Fold or unfold while editing: the handle should still move the dock."] },
+    { "id": "market-updates", "title": "The Market keeps itself current", "where": "Market > Settings > Refreshing",
+      "steps": ["Nothing should be on to start with.", "The first time the Market opens, it asks once to keep packages up to date.", "Turn on Refresh in the background and Tell me about updates, and see whether Android asks to show notices."] },
+    { "id": "market-undo", "title": "Updated recently and Undo", "where": "Market > Installed",
+      "steps": ["After a package updates by itself, it should be listed under Updated recently.", "Undo should put the earlier version back and leave Home as it is.", "A package's own page has an Update automatically switch."] },
+    { "id": "safe-mode-market", "title": "Safe Mode and the Market", "where": "Safe Mode",
+      "steps": ["With Safe Mode on, background refresh and automatic updates should do nothing."] },
+    { "id": "install-smooth", "title": "Installing an app", "where": "Home",
+      "steps": ["Install or update an app from Play while Home is open: only that app's icon should show progress and Home should stay smooth.", "Turn Wi-Fi off with the Side Bar showing: Home should stay smooth."] },
+    { "id": "small-additions", "title": "Smaller additions", "where": "Several places",
+      "steps": ["Suggestions widget: resize it from 1 x 1 to the whole grid.", "Edit Icon on an app: choose your own picture.", "Settings > Advanced > Diagnostics: Capabilities, Recent Activity and Copy Diagnostics."] },
+    { "id": "language", "title": "Korean or Chinese with TalkBack", "where": "Android language settings",
+      "steps": ["With the phone in Korean or Chinese and TalkBack on, check Control Center toggles, the Market question and the notices.", "Tell us about any English you still see."] },
+    { "id": "new-setup", "title": "The new setup (optional)", "where": "Optional", "action": "setup",
+      "steps": ["Open the new setup from here. Nothing changes unless you choose something.", "Look at the starting-point choices, and leave without changing anything if you like."] }
+  ]
+}

@@ -1719,6 +1719,15 @@
     <string name="roadmap_checking">Checking for updates…</string>
     <string name="roadmap_offline">Can\'t reach the roadmap. Showing the copy saved on this phone.</string>
     <string name="roadmap_offline_bundled">Can\'t reach the roadmap. Showing the copy that came with Folio.</string>
+    <string name="what_to_test">What to Test</string>
+    <string name="what_to_test_note">Beta %1$s. Most likely broken first. Your answers stay on this phone until you send a report.</string>
+    <string name="what_to_test_progress">%1$d of %2$d done</string>
+    <string name="it_worked">It Worked</string>
+    <string name="something_is_wrong">Something\'s Wrong</string>
+    <string name="what_to_test_not_tried">Not tried yet</string>
+    <string name="open_the_new_setup">Open the New Setup</string>
+    <string name="what_to_test_none">Nothing to test in this build.</string>
+    <string name="settings_keywords_what_to_test">what to test beta tester testing checklist report</string>
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="betas_are_for_supporters">Betas are for supporters. Without a supporter code, Folio only finds public releases, so it can say you\'re up to date while a beta is out. Add a code in Settings › Support Folio.</string>
