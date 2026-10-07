@@ -11,7 +11,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.CompositionLocalProvider
@@ -59,11 +58,10 @@ internal fun AppIconEditor(app: AppEntry, current: AppIconOverride, onChange: (A
         // Your own picture: Android's photo picker (it hands over only the one picture), cropped to a square from its middle.
         SheetGroupLabel(stringResource(R.string.your_picture))
         val context = LocalContext.current
-        val scope = rememberCoroutineScope()
         // The choice as it is when the save finishes, not when the picker opened: a style or shape changed meanwhile is kept.
         val latest by androidx.compose.runtime.rememberUpdatedState(current)
         val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            if (uri != null) scope.launch { AppIconPictures.save(context, app.id, uri)?.let { stamp -> onChange(latest.copy(picture = stamp)) } }
+            if (uri != null) AppIconPictures.saveScope.launch { AppIconPictures.save(context, app.id, uri)?.let { stamp -> onChange(latest.copy(picture = stamp)) } }
         }
         ChipRow {
             IosChip(false, { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },

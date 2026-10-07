@@ -255,7 +255,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
                 liveKind == LiveIcons.Kind.CALENDAR -> if (look.badgeColor == BadgeColor.SOFT) Color(softened(IconRed.toArgb())) else IconRed
                 liveKind == LiveIcons.Kind.CLOCK -> if (look.badgeColor == BadgeColor.SOFT) Color(softened(IconOrange.toArgb())) else IconOrange
                 else -> {
-                    val source = packIcon ?: app.icon
+                    val source = picture ?: packIcon ?: app.icon
                     val soft = look.badgeColor == BadgeColor.SOFT
                     val accent by produceState(BadgeAccents.cached(source, soft), source, soft) {
                         if (value == null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { BadgeAccents.of(source, soft) }

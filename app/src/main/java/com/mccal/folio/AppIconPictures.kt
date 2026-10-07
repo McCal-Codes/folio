@@ -21,6 +21,9 @@ import java.security.MessageDigest
 internal object AppIconPictures {
     const val SIZE = 192
 
+    /** Saves started from the icon editor run here, so closing the editor mid-save doesn't cancel the write or lose the choice. */
+    val saveScope by lazy { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Main.immediate) }
+
     /** How to scale and crop a [width] x [height] picture to a [size] square, from its middle: the scaled size and the crop. */
     data class Crop(val scaledWidth: Int, val scaledHeight: Int, val left: Int, val top: Int)
 
