@@ -62,7 +62,13 @@ internal enum class FeatureGate(
      * real phones for a few days before everyone gets it, so supporters have it in the 0.6.9 betas. Flip
      * [OPEN_IN_0_6_9] to true in the 0.6.9 release.
      */
-    FOCUS_TRIGGERS("focusTriggers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    FOCUS_TRIGGERS("focusTriggers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * A grabber under the Side Bar dock in edit mode, to drag it up or down instead of using the Dock Height slider
+     * (#21). It sits in the middle of Home's edit gestures, so supporters try it on real phones first.
+     */
+    DOCK_GRABBERS("dockGrabbers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
