@@ -131,4 +131,50 @@ class DuetFoldFixtureTest {
         fold.onAngle(120f, 3_100_000_000L, 3_100L)
         assertEquals("quick again", 28f, fold.followMs, 1e-3f)
     }
+
+    // The cover opening, as traced on the Fold8 on 7 Oct 2026: the old curve was already 31% at 14 degrees and popped in within two frames.
+    @Test fun `the cover builds from nothing as it leaves closed`() {
+        assertEquals(0f, coverBuildAtAngle(0f), 1e-6f)
+        assertEquals(0f, coverBuildAtAngle(8f), 1e-6f)
+        assertTrue("barely anything at 14 degrees (was .31): ${coverBuildAtAngle(14f)}", coverBuildAtAngle(14f) < .03f)
+    }
+
+    @Test fun `the cover never hits suddenly and is full by the handoff`() {
+        val curve = (0..96).map { coverBuildAtAngle(it.toFloat()) }
+        assertTrue("only ever grows", curve.zipWithNext().all { (a, b) -> b >= a - 1e-6f })
+        assertTrue("no degree adds more than 4%: ${curve.zipWithNext { a, b -> b - a }.max()}", curve.zipWithNext { a, b -> b - a }.max() < .04f)
+        assertEquals("full at the handoff", 1f, coverBuildAtAngle(88f), 1e-6f)
+        assertEquals(1f, coverBuildAtAngle(96f), 1e-6f)
+        assertTrue("about half way up at the middle of the range: ${coverBuildAtAngle(48f)}", coverBuildAtAngle(48f) in 0.4f..0.6f)
+    }
+
+    @Test fun `on a continuous angle the cover follows the hinge up to the handoff without a jump`() {
+        val fold = timeline(expanded = false)
+        // Closed, then a slow open: the first few in-between readings teach the timeline the angle is continuous.
+        val readings = listOf(0L to 0f) + sweep(100, 3f, 96f, 1_000, stepMs = 20)
+        val m = fold.play(readings, until = 1_200)
+        val tail = m.drop(25) // after it has learned the angle is continuous
+        val steps = tail.zipWithNext { a, b -> kotlin.math.abs(b - a) }
+        assertTrue("no jump (largest ${steps.max()})", steps.all { it < .06f })
+        assertTrue("it only grows while opening", tail.zipWithNext().all { (a, b) -> b >= a - 1e-4f })
+        assertTrue("and is full at the handoff: ${m.last()}", m.last() > .97f)
+    }
+
+    @Test fun `when only steps are known the cover eases in and out over a short time`() {
+        val fold = timeline(expanded = false)
+        fold.play(listOf(0L to 0f), until = 50)
+        fold.onAngle(90f, 100_000_000L, 100L)
+        val m = (100L..500L step 10L).map { fold.targetM(it) }
+        assertTrue("starts gently: ${m[1]}", m[1] < .08f)
+        assertTrue("only grows", m.zipWithNext().all { (a, b) -> b >= a - 1e-4f })
+        assertEquals("full by 300 ms", 1f, m.last(), 1e-3f)
+    }
+
+    @Test fun `the cover recedes a little with the effect and not at all under Reduce Motion`() {
+        assertEquals(1f, coverSettleScale(0f, reduceMotion = false), 1e-6f)
+        assertEquals(.955f, coverSettleScale(1f, reduceMotion = false), 1e-3f)
+        assertTrue(coverSettleScale(.5f, false) in .955f..1f)
+        assertEquals("never beyond the ends", coverSettleScale(1f, false), coverSettleScale(3f, false), 1e-6f)
+        assertEquals(1f, coverSettleScale(1f, reduceMotion = true), 1e-6f)
+    }
 }

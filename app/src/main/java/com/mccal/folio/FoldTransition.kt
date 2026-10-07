@@ -172,7 +172,11 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 cover = !fold.expanded, geometry = foldGeometry(rotation, hinge, size.width, size.height), style = style,
                 cornerPx = cornerPx) else null
             // The open screen settles up to full size as it clears, and eases back down as it folds.
-            val settle = if (useBlurEffect() && fold.expanded && !reduceMotion) 1f - FOLD_SCALE * m.coerceIn(0f, 1f) else 1f
+            val settle = when {
+                !useBlurEffect() -> 1f
+                fold.expanded -> if (reduceMotion) 1f else 1f - FOLD_SCALE * m.coerceIn(0f, 1f)
+                else -> coverSettleScale(m, reduceMotion)
+            }
             scaleX = settle; scaleY = settle
             // Shrunk, the screen's square edges would show inside the panel's rounded ones.
             clip = settle < 1f
@@ -479,8 +483,8 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         // Opening from the cover: quick whole-screen blur until the inner display takes over.
         !expanded && coverOpeningAt >= 0 -> {
             if (now - coverOpeningAt > COVER_OPEN_STALL_MS) { coverOpeningAt = -1L; 0f }
-            else if (continuous) easeOutCubic(((tracker.visual ?: 0f) / HingeTracker.HALFWAY_DEG).coerceIn(0f, 1f))
-            else easeOutCubic(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f))
+            else if (continuous) coverBuildAtAngle(tracker.visual ?: 0f)
+            else easeInOutSine(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f))
         }
 
         // Cover after folding: short focus-in.
@@ -501,6 +505,17 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         prefs.edit().putFloat("fold_close_ms", predictedCloseMs).apply()
     }
 }
+/**
+ * How much of the effect the cover shows while opening, at a hinge angle: nothing as it leaves closed, building in and out of
+ * ease so it never hits suddenly, and full just as the inner screen takes over (about 90 degrees on a Fold8). Measured 7 Oct 2026:
+ * the old curve (ease-out on angle / 90) was already 31% at 14 degrees and popped in within two frames.
+ */
+internal fun coverBuildAtAngle(angle: Float): Float =
+    easeInOutSine(((angle - COVER_BUILD_START_DEG) / (COVER_BUILD_END_DEG - COVER_BUILD_START_DEG)).coerceIn(0f, 1f))
+
+/** How far the cover content recedes while the effect is on, so the cover has depth and not only a blur; none under Reduce Motion. */
+internal fun coverSettleScale(m: Float, reduceMotion: Boolean): Float = if (reduceMotion) 1f else 1f - COVER_SCALE * m.coerceIn(0f, 1f)
+
 private fun easeOutCubic(t: Float): Float { val u = 1f - t; return 1f - u * u * u }
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
@@ -525,7 +540,12 @@ private const val STALL_MS = 900f
 private const val COVER_MS = 560f
 /** The cover lights right at closed, where the Duo outer screen is nearly clean: a light settle. */
 private const val START_M_ON_COVER = 1f
-private const val COVER_OPEN_MS = 220f
+private const val COVER_OPEN_MS = 300f
+/** The cover starts building a little before the hinge reads open (it leaves closed past 12 degrees) and is full by the handoff. */
+private const val COVER_BUILD_START_DEG = 8f
+private const val COVER_BUILD_END_DEG = 88f
+/** How much smaller the cover content gets at full effect (the open screen uses 3%); a little more, since the cover is the smaller screen. */
+private const val COVER_SCALE = .045f
 private const val COVER_OPEN_STALL_MS = 2_000L
 private const val FOLLOW_MS = 28f
 private const val TRACE_TAG = "FolioFoldTrace"
