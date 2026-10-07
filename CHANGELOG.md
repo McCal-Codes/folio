@@ -15,7 +15,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Resize a folder by its corner:** drag a folder's bottom-right corner to make it bigger or smaller, the way Good Lock's Home Up does. Folio remembers the size you leave it at, up to a bigger ceiling on the unfolded inner screen than the cover, and a folder never shrinks past what its grid needs.
 - **Drop an app on another to make a folder:** drag one app's icon onto another's, on Home or in the dock, and the two become a new folder together, the way iOS and Android do. Dropping on a folder that already exists still just adds to it.
 - **Drag to reorder inside a folder:** hold and drag an app over another one in an open folder to put it there instead, the way reordering works everywhere else in Folio.
-- **Drag an app past the folder's edge:** hold an app in an open folder and drag it past the card's own border, and it lands on Home where there's room, the one-drag way to do what the "..." menu's Move options already did.
+- **Drag an app out of a folder, like iPhone:** hold an app in an open folder and drag it past the card's edge, and the folder steps aside while you carry the icon to any spot: any cell, another page (hold at the screen's edge), the dock, or onto another app or folder. The other icons make room as you go, and the folder closes when you let go.
 - **Sort a folder A to Z:** a folder's options popup has a Sort A to Z row that puts its apps in alphabetical order in one tap.
 
 ### Changed
