@@ -1119,7 +1119,7 @@ fun LauncherScreen(
                             val gridSizing = WidgetGridSizing(GRID_COLUMNS, pageRows(placement.page).coerceAtLeast(visibleRows), geometry.cellWidth,
                                 minOf(topPitch, geometry.rowHeight), maxOf(topPitch, geometry.rowHeight), 10f, 18f,
                                 topRowHeightDp = topPitch, appRowHeightDp = geometry.rowHeight)
-                            val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) }
+                            val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) } ?: builtinWidgetConstraints(placement.id)
                             WidgetActions(placement, constraints, rows = pageRows(placement.page),
                                 stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets) },
                                 stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
