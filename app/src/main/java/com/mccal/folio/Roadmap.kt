@@ -75,13 +75,15 @@ internal object Roadmap {
 
     /** True when the saved copy is old enough that opening the Roadmap checks GitHub. */
     fun isStale(context: Context, now: Long = System.currentTimeMillis()): Boolean {
-        val saved = savedAt(context)
-        return saved == null || now - saved >= REFRESH_MS
+        return stale(savedAt(context), REFRESH_MS, now)
     }
 
     /** Whether to ask GitHub now: the saved copy is old ([savedAt]) and the last failed try, if any ([failedAt]), was a while ago. */
     internal fun shouldFetch(savedAt: Long?, failedAt: Long?, now: Long): Boolean =
-        (savedAt == null || now - savedAt >= REFRESH_MS) && (failedAt == null || now - failedAt >= RETRY_MS)
+        stale(savedAt, REFRESH_MS, now) && stale(failedAt, RETRY_MS, now)
+
+    /** True with no timestamp, a timestamp older than [limit], or one in the future (the clock was set back): a wrong clock must not block a fetch for days. */
+    private fun stale(at: Long?, limit: Long, now: Long): Boolean = at == null || at > now || now - at >= limit
 
     private fun failedAt(context: Context): Long? = File(context.filesDir, FAILED).takeIf { it.exists() }?.lastModified()
 

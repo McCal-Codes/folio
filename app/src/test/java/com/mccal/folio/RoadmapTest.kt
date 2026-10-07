@@ -95,4 +95,11 @@ class RoadmapTest {
         assertEquals("an old copy but it failed ten minutes ago: wait", false, Roadmap.shouldFetch(0L, day - 10 * 60_000L, day))
         assertEquals("an old copy and the failure was over an hour ago: fetch again", true, Roadmap.shouldFetch(0L, day - hour - 1L, day))
     }
+
+    @Test fun `a clock set back does not block a fetch`() {
+        val hour = 60 * 60 * 1000L
+        val now = 10 * hour
+        assertEquals("a failure stamped in the future counts as expired", true, Roadmap.shouldFetch(0L, now + 5 * hour, now))
+        assertEquals("a saved copy stamped in the future counts as stale", true, Roadmap.shouldFetch(now + 5 * hour, null, now))
+    }
 }
