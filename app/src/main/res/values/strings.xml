@@ -133,6 +133,20 @@
     <string name="double_press">Double Press</string>
     <string name="like_double_clicking_the_side_button_for">Like double-clicking the side button for Apple Pay. If Wallet isn’t listed, choose “Open app” and pick Wallet.</string>
     <string name="crash_reports">Crash Reports</string>
+    <string name="capabilities">Capabilities</string>
+    <string name="capability_standard">Standard</string>
+    <string name="capability_standard_uses">Home, folders, Focus and the Market. Needs nothing.</string>
+    <string name="capability_notifications">Notification access</string>
+    <string name="capability_notifications_uses">The island, badges from notifications and quick reply.</string>
+    <string name="capability_accessibility">Accessibility</string>
+    <string name="capability_accessibility_uses">Pull-down panels, Big Buttons and the Notification Shade over other apps.</string>
+    <string name="capability_off">Off</string>
+    <string name="capability_open_settings">Open Android Settings</string>
+    <string name="capabilities_note">Nothing here turns on without you. Folio only uses what you allow, and a feature that needs one of these stays off until you do.</string>
+    <string name="recent_activity">Recent Activity</string>
+    <string name="activity_failed">Failed</string>
+    <string name="no_activity_to_show">Nothing to show yet.</string>
+    <string name="recent_activity_note">What Folio did lately, newest first, kept only on this phone. A failure is something Folio carried on from.</string>
     <string name="share_latest">Share Latest</string>
     <string name="clear">Clear</string>
     <string name="thanks_to">Thanks to</string>
@@ -219,6 +233,9 @@
     <string name="add_widgets_for_the_things_you_check_mos">Add widgets for the things you check most.</string>
     <string name="add_widget_2">Add Widget</string>
     <string name="suggestions">Suggestions</string>
+    <string name="widget_shape_tiny">1 × 1</string>
+    <string name="widget_shape_row">Row</string>
+    <string name="widget_shape_column">Column</string>
     <string name="widget_unavailable">Widget unavailable</string>
     <string name="notification_center">Notification Center</string>
     <string name="no_notifications">No Notifications</string>
@@ -1060,6 +1077,7 @@
     <string name="hide_from_app_library">Hide from App Library</string>
     <string name="info_for_app">Info for App</string>
     <string name="share_diagnostics">Share Diagnostics</string>
+    <string name="diagnostics_copied">Copied</string>
     <string name="save_current_layout">Save Current Layout</string>
     <string name="saved_by_you">Saved by you</string>
     <string name="resize_on_home">Resize on Home</string>
@@ -1608,6 +1626,11 @@
     <string name="edit_icon_for_1">Icon for %1$s</string>
     <string name="like_other_icons">Like other icons</string>
     <string name="edit_icon_note">Changes only this app\'s icon, here and everywhere Folio shows it. Settings › Icons &amp; Side Bar still sets the look for the rest.</string>
+    <string name="your_picture">Your Picture</string>
+    <string name="choose_picture">Choose Picture</string>
+    <string name="change_picture">Change Picture</string>
+    <string name="remove_picture">Remove Picture</string>
+    <string name="edit_icon_picture_note">The picture is copied into Folio and cropped to a square, so it keeps working if the photo is deleted. It stays on this phone and is not part of a backup.</string>
     <string name="reset_icon">Reset Icon</string>
     <string name="custom_search_blank">Until you type an address, Search with Enter uses Google.</string>
     <string name="separate_upright_layout">Separate layout when upright</string>
@@ -1656,8 +1679,6 @@
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="betas_are_for_supporters">Betas are for supporters. Without a supporter code, Folio only finds public releases, so it can say you\'re up to date while a beta is out. Add a code in Settings › Support Folio.</string>
-    <string name="turn_off_mode">Turn off %1$s</string>
-    <string name="turn_on_mode">Turn on %1$s</string>
     <string name="reply_sent">Sent</string>
     <string name="reply_hint">Reply</string>
     <string name="reply_to_name">Reply to %1$s</string>
@@ -1673,4 +1694,11 @@
     <string name="choose_named">Choose %1$s</string>
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
+    <string name="capability_risk_line">What it does: %1$s</string>
+    <string name="risk_observe">Read only</string>
+    <string name="risk_reversible">Easy to undo</string>
+    <string name="risk_stateful">Changes stay until undone</string>
+    <string name="risk_disruptive">Can interrupt apps</string>
+    <string name="risk_critical">Can affect Android itself</string>
+    <string name="risk_experimental">May not work on this phone</string>
 </resources>
