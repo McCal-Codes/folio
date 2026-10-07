@@ -23,6 +23,14 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Packages update themselves:** with Update packages in the background on, a package from your sources updates itself when the change touches none of your settings. It waits in Safe Mode and never runs beside a tap on Get. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 - **Bottom of Home and stronger rings:** Settings has Bottom of Home with Search button, Page dots or Nothing (Nothing is for supporters and Folio Dev for now). Dragging along the bottom still moves between pages, and the dots appear while you swipe or edit. Stronger rings gives the status rings a thicker stroke and a clearer track, and turns on by itself with Android's Bold text.
 - **Updated recently, with Undo:** the Market's Installed tab lists the last packages Folio updated by itself, with Undo on each package's newest update while it is still the one installed. Undo puts the earlier version back and leaves Home exactly as it is. A package's own page has an Update automatically switch, so one package can opt out while the rest keep updating.
+- **Resize a folder by its corner:** drag a folder's bottom-right corner to make it bigger or smaller, the way Good Lock's Home Up does. Folio remembers the size you leave it at, up to a bigger ceiling on the unfolded inner screen than the cover, and a folder never shrinks past what its grid needs.
+- **Drop an app on another to make a folder:** drag one app's icon onto another's, on Home or in the dock, and the two become a new folder together, the way iOS and Android do. Dropping on a folder that already exists still just adds to it.
+- **Drag to reorder inside a folder:** hold and drag an app over another one in an open folder to put it there instead, the way reordering works everywhere else in Folio.
+- **Drag an app out of a folder, like iPhone:** hold an app in an open folder and drag it past the card's edge, and the folder steps aside while you carry the icon to any spot: any cell, another page (hold at the screen's edge), the dock, or onto another app or folder. The other icons make room as you go, and the folder closes when you let go.
+- **Sort a folder A to Z:** a folder's options popup has a Sort A to Z row that puts its apps in alphabetical order in one tap.
+
+### Changed
+- **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
 
 ### Fixed
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
@@ -30,6 +38,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
 - **Less work while apps install and when offline:** while any app installs or updates, only that app's icon redraws instead of the whole of Home, the status rail no longer redraws its whole self every frame when there is no connection, and a clock icon on Home redraws its hands without rebuilding the icon each second.
 - **The Roadmap stops retrying offline:** when Folio can't reach GitHub, opening Settings › Roadmap no longer waits on the network every time; it tries again after an hour. With nothing downloaded yet, the note says the copy shown came with Folio instead of claiming it was saved on your phone.
+- **Dropping an app on a folder adds it:** holding an app over a folder on Home used to slide the folder out of the way, so letting go swapped the two places and the app never went in. The folder now stays where it is, lifts a little, and takes the app, whether it comes from Home, the dock or the App Library.
 
 ## [0.6.8] - 2026-10-06
 
