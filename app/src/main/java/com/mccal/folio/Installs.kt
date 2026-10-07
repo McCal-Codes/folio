@@ -73,8 +73,19 @@ internal object Installs {
     }
 }
 
-/** Install progress by package for icon rings (provided at the root of Folio's UI). */
-internal val LocalInstallProgress = staticCompositionLocalOf { emptyMap<String, Float>() }
+/**
+ * Install progress by package for icon rings (provided at the root of Folio's UI). The State itself never changes, so
+ * the local can be static; only a reader of its value is invalidated by a tick, and [installProgressFor] reads it per
+ * package so a tick for one app doesn't recompose the others.
+ */
+internal val LocalInstallProgress = staticCompositionLocalOf<androidx.compose.runtime.State<Map<String, Float>>> { androidx.compose.runtime.mutableStateOf(emptyMap()) }
+
+/** The install progress of [packageName], or null when it isn't installing. Recomposes the caller only when that value changes. */
+@androidx.compose.runtime.Composable
+internal fun installProgressFor(packageName: String): Float? {
+    val all = LocalInstallProgress.current
+    return androidx.compose.runtime.remember(all, packageName) { androidx.compose.runtime.derivedStateOf { all.value[packageName] } }.value
+}
 /** Packages installed recently and not opened yet: they get iOS's blue dot beside their name. */
 internal val LocalNewApps = staticCompositionLocalOf { emptySet<String>() }
 

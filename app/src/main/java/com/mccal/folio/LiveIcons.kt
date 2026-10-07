@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -266,7 +267,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
             IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale)
         }
         // Updating: the icon dims under an iOS-style progress ring until the installer finishes.
-        LocalInstallProgress.current[app.component.packageName]?.let { progress -> InstallRing(progress, fill) }
+        installProgressFor(app.component.packageName)?.let { progress -> InstallRing(progress, fill) }
     }
 }
 
@@ -351,10 +352,13 @@ private fun CalendarIcon(modifier: Modifier, palette: LivePalette) {
 
 @Composable
 private fun ClockIcon(modifier: Modifier, palette: LivePalette) {
-    val tick by rememberSecondTick()
-    val now = displayNow(tick).toLocalTime()
+    // The tick is read while drawing, so a second redraws the hands without recomposing the icon.
+    val tick = rememberSecondTick()
+    val screenshot by ScreenshotMode.on.collectAsState()
     Box(modifier.clip(RoundedCornerShape(22)).background(palette.clockBackground)) {
         Canvas(Modifier.fillMaxSize()) {
+            tick.value // subscribes this draw to the second tick
+            val now = ScreenshotMode.now(screenshot).toLocalTime()
             val c = Offset(size.width / 2, size.height / 2)
             val r = size.minDimension * .42f
             drawCircle(palette.clockFace, r, c)

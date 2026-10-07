@@ -57,6 +57,20 @@ internal enum class FeatureGate(
     PAGE_EFFECTS("pageEffects", closedSince = "2026-09-24", opensIn = "0.6.8", { OPEN_IN_0_6_8 }),
 
     /**
+     * Focus triggers: a Focus that turns on by itself when the phone is unfolded, charging or has headphones
+     * connected. It listens for the phone's folding, power and audio devices, which is the kind of thing that needs
+     * real phones for a few days before everyone gets it, so supporters have it in the 0.6.9 betas. Flip
+     * [OPEN_IN_0_6_9] to true in the 0.6.9 release.
+     */
+    FOCUS_TRIGGERS("focusTriggers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * A grabber under the Side Bar dock in edit mode, to drag it up or down instead of using the Dock Height slider
+     * (#21). It sits in the middle of Home's edit gestures, so supporters try it on real phones first.
+     */
+    DOCK_GRABBERS("dockGrabbers", closedSince = "2026-10-04", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
      * Folders you can shape: resize by the corner, drop an app on another to make a folder, drag to reorder inside
      * an open folder or out past its edge, and Sort A to Z. Gesture work like this wants real hands on real Folds
      * (the open folder is its own window, which is where the last three bugs were), so the beta gets it first.
@@ -88,7 +102,7 @@ internal enum class FeatureGate(
          */
         private const val OPEN_IN_0_6_8 = true
 
-        /** The 0.6.9 features that open together, the same way. Flip this when 0.6.9 ships. */
+        /** The features built during 0.6.9 for supporters to try first, which open together in the 0.6.9 release. */
         private const val OPEN_IN_0_6_9 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
