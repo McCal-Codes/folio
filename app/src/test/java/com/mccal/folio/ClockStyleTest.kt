@@ -64,4 +64,13 @@ class ClockStyleTest {
         assertEquals(keys.size, keys.toSet().size)
         assertEquals(listOf("tinted"), ClockLooks.filter { it.mode == "WALLPAPER" }.map { it.id })
     }
+
+    @Test fun `a picture wider or taller than the window is center-cropped the way Home draws it`() {
+        // A wide picture in a tall window loses its left and right; a tall one loses its top and bottom; a match loses nothing.
+        assertEquals(CropRect(350, 0, 300, 800), centerCropRect(1000, 800, 300f / 800f))
+        assertEquals(CropRect(0, 100, 600, 800), centerCropRect(600, 1000, 600f / 800f))
+        assertEquals(CropRect(0, 0, 600, 800), centerCropRect(600, 800, 600f / 800f))
+        assertEquals(CropRect(0, 0, 600, 800), centerCropRect(600, 800, 0f))
+        assertEquals(CropRect(0, 0, 600, 800), centerCropRect(600, 800, Float.NaN))
+    }
 }

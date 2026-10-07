@@ -150,7 +150,8 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
             boxInWindow.right / window.width, boxInWindow.bottom / window.height)
     }
     // Only a customized clock reads the picture; an untouched one keeps the whole-wallpaper ink it always had.
-    val sample = rememberClockInkSample(fraction, enabled = stored != null && launcherBackgroundEnabled(context))
+    val sample = rememberClockInkSample(fraction, enabled = stored != null && launcherBackgroundEnabled(context),
+        windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
     val resolved = if (stored == null) null else resolveClockInk(style, sample, fallbackDark = ink.dark)
     // Everything about the clock eases to a new value instead of jumping, so the weight slider and a Look change glide.
     val textColor by animateColorAsState(resolved?.color ?: ink.primary, clockMotion(), label = "clock ink")

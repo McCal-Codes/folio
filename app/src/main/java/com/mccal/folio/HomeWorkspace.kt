@@ -513,7 +513,9 @@ internal fun SharedHomeGrid(
                 // A freely placed widget drifts part of a cell from the cells it keeps; the two-column and half-folded
                 // layouts move rows around, so there it stays on its cells.
                 val free = !geometry.splitColumns && hinge == null
-                val rowPitch = if (row + 1 < GRID_ROWS) rowTop(row + 1) - rowTop(row) else rowTop(row) - rowTop(row - 1)
+                // The distance a whole row is on the side the offset goes: a clock nudged up from row 2 sits in the half-height rows above it.
+                val rowPitch = if (placement.offsetY < 0f && row > 0) rowTop(row) - rowTop(row - 1)
+                    else if (row + 1 < GRID_ROWS) rowTop(row + 1) - rowTop(row) else rowTop(row) - rowTop(row - 1)
                 val x = cellX(placement.column, row) + 5.dp + if (free) cellWidth * placement.offsetX else 0.dp
                 val y = rowTop(row) + if (free) rowPitch * placement.offsetY else 0f
                 val height = (cells.spanHeight(row, placement.spanY) - 18f).coerceAtLeast(48f)

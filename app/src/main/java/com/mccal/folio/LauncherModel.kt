@@ -917,6 +917,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
+            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            bigClockStyles = old.bigClockStyles.filterKeys { slot ->
+                old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
             fullWidthRestore = emptyMap(),
@@ -935,8 +940,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun placeWidget(placement: WidgetPlacement) = commitLayout(placeWidget(mutable.value.layout, placement))
     fun placement(slot: Int) = mutable.value.layout.placement(slot)
     // Never reuse a slot number that a (possibly undoable) stack still refers to.
+    // A slot that still has a stack or a Big Clock style (the widget may only have been removed, and removal is undoable) is
+    // not handed to a new widget, which would otherwise inherit the old one's look.
     fun nextWidgetSlot() = maxOf(mutable.value.widgetPlacements.maxOfOrNull { it.slot } ?: -1,
-        mutable.value.widgetStacks.keys.maxOrNull() ?: -1) + 1
+        mutable.value.widgetStacks.keys.maxOrNull() ?: -1, mutable.value.bigClockStyles.keys.maxOrNull() ?: -1) + 1
 
     fun stackCards(slot: Int): List<Int> = mutable.value.layout.placement(slot)
         ?.let { WidgetStacks.cards(it.id, mutable.value.widgetStacks[slot]) }.orEmpty()
@@ -1026,6 +1033,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in next.widgetPlacements.map { it.slot }.toSet() },
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -1180,6 +1188,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetRestores = next.widgetRestores,
             // Keep stacks of the undoable previous layout too, so undoing a removal brings the whole stack back.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, (next.widgetPlacements + old.widgetPlacements).map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in (next.widgetPlacements + old.widgetPlacements).map { it.slot }.toSet() },
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -1195,6 +1204,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
             googleSearch = settings?.googleSearch ?: old.googleSearch, verticalStatus = settings?.verticalStatus ?: old.verticalStatus,

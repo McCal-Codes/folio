@@ -133,17 +133,37 @@ internal fun pickInk(region: RegionStats): Pair<Boolean, Float> {
     return (dark > white) to max(white, dark)
 }
 
+/** The part of a [width] by [height] picture that a window of [windowAspect] (width over height) shows when it is center-cropped. */
+internal data class CropRect(val left: Int, val top: Int, val width: Int, val height: Int)
+
+internal fun centerCropRect(width: Int, height: Int, windowAspect: Float): CropRect {
+    if (windowAspect <= 0f || !windowAspect.isFinite() || width <= 0 || height <= 0) return CropRect(0, 0, width, height)
+    val sourceAspect = width.toFloat() / height
+    val w: Int; val h: Int
+    if (sourceAspect > windowAspect) { h = height; w = (h * windowAspect).toInt().coerceIn(1, width) }
+    else { w = width; h = (w / windowAspect).toInt().coerceIn(1, height) }
+    return CropRect((width - w) / 2, (height - h) / 2, w, h)
+}
+
 /**
  * Downsamples [bitmap] to a small grid once and reads back stats for the part of it under [box] (fractions 0..1 of the
- * whole picture) and for the whole picture, plus up to five suggested colors: the most common vivid-enough buckets in
+ * picture as shown) and for the whole picture, plus up to five suggested colors: the most common vivid-enough buckets in
  * the whole picture, each lifted to [vividTint]'s saturation and brightness floor.
+ *
+ * Home draws the picture center-cropped to the window (drawLauncherBackground), so when [windowAspect] (width over
+ * height) is given the same center crop is taken first and [box] is a fraction of what is on screen, not of the whole
+ * file. Without it the bitmap is read as it is.
  */
-internal fun sampleClockRegion(bitmap: Bitmap, box: Rect): ClockInkSample {
+internal fun sampleClockRegion(bitmap: Bitmap, box: Rect, windowAspect: Float = 0f): ClockInkSample {
     val cw = 72; val ch = 128
-    val small = Bitmap.createScaledBitmap(bitmap, cw, ch, true)
+    val crop = centerCropRect(bitmap.width, bitmap.height, windowAspect)
+    val visible = if (crop.width == bitmap.width && crop.height == bitmap.height) bitmap
+        else Bitmap.createBitmap(bitmap, crop.left, crop.top, crop.width, crop.height)
+    val small = Bitmap.createScaledBitmap(visible, cw, ch, true)
     val pixels = IntArray(cw * ch)
     small.getPixels(pixels, 0, cw, 0, 0, cw, ch)
-    if (small !== bitmap) small.recycle()
+    if (small !== visible) small.recycle()
+    if (visible !== bitmap) visible.recycle()
 
     fun stats(x0: Int, y0: Int, x1: Int, y1: Int): RegionStats {
         var sumR = 0f; var sumG = 0f; var sumB = 0f; var n = 0
@@ -218,15 +238,15 @@ internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fall
  * pixels, so Wallpaper and Custom need a Folio picture and this returns null without one.
  */
 @Composable
-internal fun rememberClockInkSample(box: Rect, enabled: Boolean): ClockInkSample? {
+internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: Float = 0f): ClockInkSample? {
     val context = LocalContext.current
     val revision = LauncherBackgroundCache.revision.intValue
     var sample by remember { mutableStateOf<ClockInkSample?>(null) }
-    LaunchedEffect(box, revision, enabled) {
+    LaunchedEffect(box, revision, enabled, windowAspect) {
         if (!enabled || box.isEmpty) { sample = null; return@LaunchedEffect }
         sample = withContext(Dispatchers.Default) {
             val bitmap = loadLauncherBackground(context) ?: return@withContext null
-            runCatching { sampleClockRegion(bitmap, box) }.getOrNull()
+            runCatching { sampleClockRegion(bitmap, box, windowAspect) }.getOrNull()
         }
     }
     return sample
@@ -269,7 +289,7 @@ internal fun ClockEditBar(
         if (bounds == null || window.width <= 0 || window.height <= 0) Rect.Zero
         else Rect(bounds.left / window.width, bounds.top / window.height, bounds.right / window.width, bounds.bottom / window.height)
     }
-    val sample = rememberClockInkSample(fraction, enabled = !systemWallpaper)
+    val sample = rememberClockInkSample(fraction, enabled = !systemWallpaper, windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
     var s by remember(slot) { mutableStateOf(style.orDefault()) }
     var fine by remember(slot) { mutableStateOf(false) }
     fun push(next: BigClockStyle) { s = next; onStyle(next) }
