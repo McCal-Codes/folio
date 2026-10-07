@@ -134,16 +134,19 @@ class DuetFoldFixtureTest {
 
     // The cover opening, as traced on the Fold8 on 7 Oct 2026: the old curve was already 31% at 14 degrees and popped in within two frames.
     @Test fun `the cover builds from nothing as it leaves closed`() {
+        // The shader eases the ramp once (smoothstep), so what shows at an angle is shaderEase(coverBuildAtAngle(angle)).
+        fun shaderEase(x: Float) = x * x * (3f - 2f * x)
         assertEquals(0f, coverBuildAtAngle(0f), 1e-6f)
-        assertEquals(0f, coverBuildAtAngle(8f), 1e-6f)
-        assertTrue("barely anything at 14 degrees (was .31): ${coverBuildAtAngle(14f)}", coverBuildAtAngle(14f) < .03f)
+        assertEquals(0f, coverBuildAtAngle(5f), 1e-6f)
+        assertTrue("barely anything shows at 14 degrees (was .31): ${shaderEase(coverBuildAtAngle(14f))}", shaderEase(coverBuildAtAngle(14f)) < .05f)
+        assertTrue("and it is a straight ramp, so the shader's single ease is the only one: ${coverBuildAtAngle(47.5f)}", kotlin.math.abs(coverBuildAtAngle(47.5f) - .5f) < 1e-3f)
     }
 
     @Test fun `the cover never hits suddenly and is full by the handoff`() {
         val curve = (0..96).map { coverBuildAtAngle(it.toFloat()) }
         assertTrue("only ever grows", curve.zipWithNext().all { (a, b) -> b >= a - 1e-6f })
         assertTrue("no degree adds more than 4%: ${curve.zipWithNext { a, b -> b - a }.max()}", curve.zipWithNext { a, b -> b - a }.max() < .04f)
-        assertEquals("full at the handoff", 1f, coverBuildAtAngle(88f), 1e-6f)
+        assertEquals("full at 90 degrees, the handoff", 1f, coverBuildAtAngle(90f), 1e-6f)
         assertEquals(1f, coverBuildAtAngle(96f), 1e-6f)
         assertTrue("about half way up at the middle of the range: ${coverBuildAtAngle(48f)}", coverBuildAtAngle(48f) in 0.4f..0.6f)
     }

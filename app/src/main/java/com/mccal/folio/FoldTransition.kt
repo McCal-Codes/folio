@@ -547,12 +547,12 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
     }
 }
 /**
- * How much of the effect the cover shows while opening, at a hinge angle: nothing as it leaves closed, building in and out of
- * ease so it never hits suddenly, and full just as the inner screen takes over (about 90 degrees on a Fold8). Measured 7 Oct 2026:
- * the old curve (ease-out on angle / 90) was already 31% at 14 degrees and popped in within two frames.
+ * How far along the cover's opening is, at a hinge angle: a straight ramp from closed to the handoff. The Duo shader eases it once (a
+ * smoothstep, as Apple's outer screen does with angle / 90), so this must stay linear: an ease here as well stacked a second one on
+ * top and made the frost appear late and rush in through the middle (found 7 Oct 2026, comparing with the Duo model).
  */
 internal fun coverBuildAtAngle(angle: Float): Float =
-    easeInOutSine(((angle - COVER_BUILD_START_DEG) / (COVER_BUILD_END_DEG - COVER_BUILD_START_DEG)).coerceIn(0f, 1f))
+    ((angle - COVER_BUILD_START_DEG) / (COVER_BUILD_END_DEG - COVER_BUILD_START_DEG)).coerceIn(0f, 1f)
 
 /**
  * A soft light along the cover's hinge edge while it opens: nothing at the start, strongest half way, gone by the handoff, like light
@@ -607,9 +607,9 @@ private const val COVER_SMOOTH_S = .025f
 private const val COVER_RISE_PER_S = 6f
 /** The very first frame of a continuous opening can show at most this much, so the effect starts from nothing. */
 private const val COVER_FIRST_STEP = .02f
-/** The cover starts building a little before the hinge reads open (it leaves closed past 12 degrees) and is full by the handoff. */
-private const val COVER_BUILD_START_DEG = 8f
-private const val COVER_BUILD_END_DEG = 88f
+/** From the closed threshold to 90 degrees, as the Duo model (angle / 90): the cover reads open past 12 degrees and is full by the handoff. */
+private const val COVER_BUILD_START_DEG = 5f
+private const val COVER_BUILD_END_DEG = 90f
 /** How much smaller the cover content gets at full effect (the open screen uses 3%); a little more, since the cover is the smaller screen. */
 private const val COVER_SCALE = .045f
 /** The brightest the hinge light gets (white at 14%): a hint of light, not a glow. */
