@@ -495,6 +495,9 @@
     <string name="the_dock_sits_along_the_bottom_in_landsc">程序坞沿底部排列。在横屏和小窗口中会移到侧边栏，好让每一行 App 都能放下。</string>
     <string name="space_between_dock_apps">程序坞 App 间距</string>
     <string name="dock_height">程序坞高度</string>
+    <string name="move_dock">移动程序坞。上下拖动。</string>
+    <string name="move_dock_up">上移程序坞</string>
+    <string name="move_dock_down">下移程序坞</string>
     <string name="pages">页面</string>
     <string name="showing">正在显示</string>
     <string name="labels">标签</string>
@@ -1088,6 +1091,16 @@
     <string name="send_a_report_to_help_fix_it">报告有助于修复问题。它会在你的邮件 App 中打开，你可以先阅读全部内容，除非你发送，否则不会发送任何内容。</string>
     <string name="send_report">发送报告</string>
     <string name="diagnostics_file_note">手机和屏幕设置、最近的 Folio 事件、崩溃、卡死和重启报告，以及 Folio 自己的日志，合为一个文件。由你决定把它发到哪里。</string>
+    <string name="performance_log">性能记录</string>
+    <string name="performance_start">开始记录</string>
+    <string name="performance_stop">停止记录</string>
+    <string name="performance_copy">复制报告</string>
+    <string name="performance_share">分享报告</string>
+    <string name="performance_copied">报告已复制</string>
+    <string name="performance_status_off">已关闭。开启后会记录 Folio 的开销。</string>
+    <string name="performance_status_running">正在记录：%1$d 分钟，%2$d 次读数</string>
+    <string name="performance_status_done">已停止：已记录 %1$d 分钟</string>
+    <string name="performance_note">开启期间，每隔几秒读取一次 Folio 的 CPU 用量、内存、帧时间和电池，6 小时后自动停止。除非你复制或分享报告，否则不会有任何内容离开手机。</string>
     <string name="the_report_couldn_t_be_opened">无法打开报告。“设置 › 帮助 › 报告错误”中也有它。</string>
     <string name="what_s_new">新功能</string>
     <string name="support_folio">支持 Folio</string>
@@ -1647,6 +1660,7 @@
     <string name="roadmap_all_done">全部 %1$d 项已完成</string>
     <string name="roadmap_checking">正在检查更新…</string>
     <string name="roadmap_offline">无法连接路线图，正在显示此手机上保存的副本。</string>
+    <string name="roadmap_offline_bundled">无法连接路线图，正在显示随 Folio 附带的副本。</string>
     <string name="roadmap_updated">%1$s更新</string>
     <string name="roadmap_saved_copy">保存于%1$s的副本</string>
     <string name="betas_are_for_supporters">测试版仅限支持者使用。没有支持者代码时，Folio 只会查找公开版本，因此即使已有测试版，也可能显示你已是最新。请在“设置 › 支持 Folio”中添加代码。</string>

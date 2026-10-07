@@ -451,3 +451,20 @@ fun uiScale(widthDp: Float, heightDp: Float, classScale: Float = 1f): Float {
     val short = minOf(widthDp, heightDp) * classScale
     return minOf(long / 960f, short / 700f).coerceIn(1f, 1.45f)
 }
+
+/**
+ * Edit-mode grabbers: the saved dock position that puts the dock's middle at [centerY] dp in a window [height] dp tall.
+ * [homeGeometry] clamps whatever is saved to the safe edges, so any drag ends somewhere safe and the grabber can't lose
+ * the dock off screen. Inverse of `height * dockPosition - dockHeight / 2` there.
+ */
+fun dockPositionForCenter(centerY: Float, height: Float): Float =
+    if (height <= 0f) LayoutPreset().dockPosition else (centerY / height).coerceIn(0f, 1f)
+
+/**
+ * A keyboard or TalkBack step: the position that puts the dock [steps] of 5% of the window height above (negative) or
+ * below where it is drawn now ([visibleCenter]). It starts from the drawn place, not the saved one, because a drag to an
+ * edge saves 0 or 1 while the dock stops at the safe edge: stepping from the saved value would do nothing visible for
+ * several steps.
+ */
+fun dockPositionStepFrom(visibleCenter: Float, height: Float, steps: Int): Float =
+    dockPositionForCenter(visibleCenter + steps * 0.05f * height, height)

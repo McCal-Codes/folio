@@ -212,8 +212,15 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.ui.graphics.BlurEffect(backdropBlurPx, backdropBlurPx, androidx.compose.ui.graphics.TileMode.Clamp)
             }
             DuoTheme(appearance.state.dark) { val notificationItems = IslandListenerService.notifications.collectAsStateWithLifecycle().value
-            val installSessions = Installs.active.collectAsStateWithLifecycle().value
-            val installProgress = androidx.compose.runtime.remember(installSessions) { installSessions.values.associate { it.packageName to it.progress } }
+            // Progress ticks for every install session on the phone. Kept as a State that nothing here reads, so a tick
+            // reaches only the icons that are installing (see LocalInstallProgress) instead of recomposing all of Home.
+            val installProgress = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyMap<String, Float>()) }
+            // Only while Folio is on screen (STARTED), as collectAsStateWithLifecycle was: a tick the UI can't draw costs nothing.
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                    Installs.active.collect { sessions -> installProgress.value = sessions.values.associate { it.packageName to it.progress } }
+                }
+            }
             val newApps = NewApps.packages.collectAsStateWithLifecycle().value
             // The Discover host is a not-touchable window stacked above the keyboard; Android drops every key
             // tap "due to occlusion" while it exists. Remove it whenever a keyboard can be up.
