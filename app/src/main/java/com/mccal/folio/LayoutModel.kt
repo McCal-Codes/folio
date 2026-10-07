@@ -460,5 +460,11 @@ fun uiScale(widthDp: Float, heightDp: Float, classScale: Float = 1f): Float {
 fun dockPositionForCenter(centerY: Float, height: Float): Float =
     if (height <= 0f) LayoutPreset().dockPosition else (centerY / height).coerceIn(0f, 1f)
 
-/** A keyboard or TalkBack step: move the dock position by [steps] of 5%, staying inside 0 to 1. */
-fun dockPositionStep(position: Float, steps: Int): Float = (position + steps * 0.05f).coerceIn(0f, 1f)
+/**
+ * A keyboard or TalkBack step: the position that puts the dock [steps] of 5% of the window height above (negative) or
+ * below where it is drawn now ([visibleCenter]). It starts from the drawn place, not the saved one, because a drag to an
+ * edge saves 0 or 1 while the dock stops at the safe edge: stepping from the saved value would do nothing visible for
+ * several steps.
+ */
+fun dockPositionStepFrom(visibleCenter: Float, height: Float, steps: Int): Float =
+    dockPositionForCenter(visibleCenter + steps * 0.05f * height, height)

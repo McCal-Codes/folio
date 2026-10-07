@@ -915,9 +915,10 @@ fun LauncherScreen(
             // position rather than the grid, and below the dock so it never takes a drag meant for a dock app.
             if (homeEdit.active && sheet.isEmpty() && !geometry.horizontalDock && !geometry.dockBesideRail && !geometry.splitColumns &&
                 !preset.dockAlignToGrid && FeatureGate.DOCK_GRABBERS.isOpen(launcherActivity)) {
-                val grabScreen = layoutScreen
+                // Read through updated state: folding, unfolding or resizing keeps edit mode, and the drag below must use the new screen and height.
+                val grabScreen by rememberUpdatedState(layoutScreen)
                 val centerDp by rememberUpdatedState(dockTopShown + dockHeightShown / 2f)
-                val windowHeight = boxHeightDp
+                val windowHeight by rememberUpdatedState(boxHeightDp)
                 val currentPreset by rememberUpdatedState(preset)
                 // The drag is added up here from where it started, so two moves before the screen redraws are both counted.
                 var dragStartCenter by remember { mutableFloatStateOf(0f) }
@@ -937,8 +938,8 @@ fun LauncherScreen(
                     }.semantics {
                         contentDescription = moveLabel
                         customActions = listOf(
-                            androidx.compose.ui.semantics.CustomAccessibilityAction(upLabel) { model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionStep(currentPreset.dockPosition, -1))); true },
-                            androidx.compose.ui.semantics.CustomAccessibilityAction(downLabel) { model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionStep(currentPreset.dockPosition, 1))); true })
+                            androidx.compose.ui.semantics.CustomAccessibilityAction(upLabel) { model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionStepFrom(centerDp, windowHeight, -1))); true },
+                            androidx.compose.ui.semantics.CustomAccessibilityAction(downLabel) { model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionStepFrom(centerDp, windowHeight, 1))); true })
                     }.testTag("dock-grabber"), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(width = 56.dp, height = 28.dp).background(Glass.copy(alpha = .9f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.UnfoldMore, null, tint = Color.White, modifier = Modifier.size(20.dp))

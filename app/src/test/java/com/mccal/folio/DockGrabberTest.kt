@@ -32,10 +32,18 @@ class DockGrabberTest {
         assertEquals(LayoutPreset().dockPosition, dockPositionForCenter(100f, 0f), 0f)
     }
 
-    @Test fun `TalkBack steps move the position by five percent and stop at the ends`() {
-        assertEquals(.61f, dockPositionStep(.56f, 1), .001f)
-        assertEquals(.51f, dockPositionStep(.56f, -1), .001f)
-        assertEquals(0f, dockPositionStep(.02f, -1), 0f)
-        assertEquals(1f, dockPositionStep(.98f, 1), 0f)
+    @Test fun `TalkBack steps move five percent of the window from where the dock is drawn, and stop at the ends`() {
+        // A 700 dp window: 5% is 35 dp.
+        assertEquals((392f + 35f) / 700f, dockPositionStepFrom(392f, 700f, 1), .001f)
+        assertEquals((392f - 35f) / 700f, dockPositionStepFrom(392f, 700f, -1), .001f)
+        assertEquals(0f, dockPositionStepFrom(10f, 700f, -1), 0f)
+        assertEquals(1f, dockPositionStepFrom(690f, 700f, 1), 0f)
+    }
+
+    @Test fun `a step from the dock's edge moves it at once, even after a drag saved exactly 0 or 1`() {
+        // The dock is drawn with its middle at 132 dp (the safe edge, 19% of 700) though 0 was saved.
+        val saved = dockPositionStepFrom(132f, 700f, 1)
+        assertEquals((132f + 35f) / 700f, saved, .001f)
+        assertEquals("one step is already a visible move", true, saved * 700f > 132f + 30f)
     }
 }
