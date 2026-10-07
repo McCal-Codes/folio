@@ -23,6 +23,9 @@ internal object IconPacks {
         "ch.deletescape.lawnchair.ICONPACK").map(::Intent) +
         listOf("com.anddoes.launcher.THEME", "com.fede.launcher.THEME_ICONPACK").map { Intent(Intent.ACTION_MAIN).addCategory(it) }
     private val mappings = HashMap<String, Map<String, String>>()
+    /** When a pack last failed to read, so a pack with no usable list isn't re-read for every icon. */
+    private val failedAt = HashMap<String, Long>()
+    private const val RETRY_AFTER_MS = 30_000L
     private val icons = LruCache<String, Bitmap>(160)
 
     fun installed(context: Context): List<Pack> {
@@ -44,10 +47,17 @@ internal object IconPacks {
         }.getOrNull()?.also { icons.put(key, it) }
     }
 
-    /** A pack that couldn't be read is not remembered as empty, so a pack mid-update gets another try. */
+    /**
+     * A pack that couldn't be read is not remembered as empty for good, so a pack mid-update gets another try, but not
+     * for every icon: it is left alone for [RETRY_AFTER_MS] first.
+     */
     @Synchronized private fun mapping(context: Context, pack: String): Map<String, String> {
         mappings[pack]?.let { return it }
-        val read = runCatching { readMapping(context, pack) }.getOrNull() ?: return emptyMap()
+        val now = android.os.SystemClock.elapsedRealtime()
+        failedAt[pack]?.let { if (now - it < RETRY_AFTER_MS) return emptyMap() }
+        val read = runCatching { readMapping(context, pack) }.getOrNull()
+        if (read == null) { failedAt[pack] = now; return emptyMap() }
+        failedAt.remove(pack)
         mappings[pack] = read
         return read
     }
@@ -77,5 +87,5 @@ internal object IconPacks {
             }
     }
 
-    fun clear() { icons.evictAll(); synchronized(this) { mappings.clear() } }
+    fun clear() { icons.evictAll(); synchronized(this) { mappings.clear(); failedAt.clear() } }
 }

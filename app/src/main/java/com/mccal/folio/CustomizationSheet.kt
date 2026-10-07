@@ -24,6 +24,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1361,6 +1363,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.reduce_transparency to CustomizationPage.WALLPAPER,
     R.string.when_unfolded to CustomizationPage.TODAY,
     R.string.turn_on_automatically to CustomizationPage.FOCUS,
+    R.string.focus_trigger_folding to CustomizationPage.FOCUS,
+    R.string.focus_trigger_charging to CustomizationPage.FOCUS,
+    R.string.focus_trigger_headphones to CustomizationPage.FOCUS,
     R.string.silence_notifications to CustomizationPage.FOCUS,
     R.string.when_you_hold_it to CustomizationPage.SIDE_KEY,
     R.string.fold_displays to CustomizationPage.FOLD,
@@ -1447,6 +1452,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_rootgrant_undo to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
@@ -1660,12 +1666,13 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var access by remember { mutableStateOf(FocusController.hasAccess(context)) }
+    val reason by model.focusReason.collectAsState()
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { access = FocusController.hasAccess(context) } }
     SheetGroup {
         state.focusModes.forEachIndexed { index, mode ->
             if (index > 0) MenuDivider()
-            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) stringResource(R.string.on) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
+            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) (reason?.let { stringResource(R.string.focus_on_because, stringResource(it.label(mode))) } ?: stringResource(R.string.on)) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -1731,6 +1738,27 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             }
             CardNote(stringResource(R.string.focus_schedule_note, mode.name))
         }
+    }
+    // Supporters and Folio Dev first (FeatureGate.FOCUS_TRIGGERS); everyone from 0.6.9.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val triggersOpen = remember { FeatureGate.FOCUS_TRIGGERS.isOpen(gateContext) }
+    if (triggersOpen) SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
+        val triggers = mode.triggers
+        SettingsSwitch(stringResource(R.string.focus_trigger_folding), triggers.fold != null,
+            { on -> model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = if (on) FoldState.UNFOLDED else null))) }, "focus-trigger-fold")
+        triggers.fold?.let { chosen ->
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                FoldState.entries.forEach { fold ->
+                    IosChip(chosen == fold, { model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = fold))) },
+                        label = { Text(stringResource(fold.label())) }, modifier = Modifier.testTag("focus-fold-${fold.key}"))
+                }
+            }
+        }
+        SettingsSwitch(stringResource(R.string.focus_trigger_charging), triggers.charging,
+            { model.updateFocusMode(mode.copy(triggers = triggers.copy(charging = it))) }, "focus-trigger-charging")
+        SettingsSwitch(stringResource(R.string.focus_trigger_headphones), triggers.headphones,
+            { model.updateFocusMode(mode.copy(triggers = triggers.copy(headphones = it))) }, "focus-trigger-headphones")
+        CardNote(stringResource(R.string.focus_triggers_note))
     }
     SettingsCard(stringResource(R.string.notifications_title)) {
         SettingsSwitch(stringResource(R.string.silence_notifications), mode.silence, { model.updateFocusMode(mode.copy(silence = it)) }, "focus-silence")
@@ -1843,6 +1871,15 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
             shareScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = false)) } }
         }, modifier = Modifier.testTag("share-diagnostics"))
+        // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
+        var copied by remember { mutableStateOf(false) }
+        CardAction(stringResource(R.string.copy_diagnostics), onClick = {
+            shareScope.launch { runCatching { Diagnostics.copy(context); copied = true } }
+        }, modifier = Modifier.testTag("copy-diagnostics"))
+        if (copied) {
+            LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); copied = false }
+            Text(stringResource(R.string.diagnostics_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("diagnostics-copied").semantics { liveRegion = LiveRegionMode.Polite })
+        }
         CardNote(stringResource(R.string.diagnostics_file_note))
     }
 }
@@ -1953,7 +1990,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
                 // Drawn over the background rather than inside it, because the preview lays the chosen photo over the
                 // background; on Home the same scrim is baked into the background's cached layer.
                 HomeScrim.of(state.homeScrim, ink.dark, previewDim).let { if (it.draws) Box(Modifier.matchParentSize().homeScrim(it)) }
-                CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass)) {
+                CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
                             Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)

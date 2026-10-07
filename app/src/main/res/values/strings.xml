@@ -233,6 +233,9 @@
     <string name="add_widgets_for_the_things_you_check_mos">Add widgets for the things you check most.</string>
     <string name="add_widget_2">Add Widget</string>
     <string name="suggestions">Suggestions</string>
+    <string name="widget_shape_tiny">1 × 1</string>
+    <string name="widget_shape_row">Row</string>
+    <string name="widget_shape_column">Column</string>
     <string name="widget_unavailable">Widget unavailable</string>
     <string name="notification_center">Notification Center</string>
     <string name="no_notifications">No Notifications</string>
@@ -402,6 +405,15 @@
     <string name="without_it_a_focus_still_changes_home_bu">Without it, a Focus still changes Home but can\'t silence notifications or change the look.</string>
     <string name="schedule">Schedule</string>
     <string name="turn_on_automatically">Turn On Automatically</string>
+    <string name="focus_also_turn_on_when">Also Turn On When</string>
+    <string name="focus_trigger_folding">Folding</string>
+    <string name="focus_trigger_charging">Charging</string>
+    <string name="focus_trigger_headphones">Headphones</string>
+    <string name="focus_fold_unfolded">Unfolded</string>
+    <string name="focus_fold_cover">Cover Screen</string>
+    <string name="focus_fold_tent">Tent</string>
+    <string name="focus_triggers_note">These only turn this Focus on and off. If you turn it off yourself, it stays off until the next change.</string>
+    <string name="focus_on_because">On · %1$s</string>
     <string name="from">From</string>
     <string name="silence_notifications">Silence Notifications</string>
     <string name="calls_and_people_allowed_in_android_s_do">Calls and people allowed in Android\'s Do Not Disturb settings still come through.</string>
@@ -477,6 +489,9 @@
     <string name="the_dock_sits_along_the_bottom_in_landsc">The dock sits along the bottom. In landscape and small windows it moves to the Side Bar, so every row of apps fits.</string>
     <string name="space_between_dock_apps">Space between dock apps</string>
     <string name="dock_height">Dock height</string>
+    <string name="move_dock">Move dock. Drag up or down.</string>
+    <string name="move_dock_up">Move dock up</string>
+    <string name="move_dock_down">Move dock down</string>
     <string name="pages">Pages</string>
     <string name="showing">Showing</string>
     <string name="labels">Labels</string>
@@ -1071,6 +1086,7 @@
     <string name="hide_from_app_library">Hide from App Library</string>
     <string name="info_for_app">Info for App</string>
     <string name="share_diagnostics">Share Diagnostics</string>
+    <string name="diagnostics_copied">Copied</string>
     <string name="save_current_layout">Save Current Layout</string>
     <string name="saved_by_you">Saved by you</string>
     <string name="resize_on_home">Resize on Home</string>
@@ -1624,6 +1640,11 @@
     <string name="edit_icon_for_1">Icon for %1$s</string>
     <string name="like_other_icons">Like other icons</string>
     <string name="edit_icon_note">Changes only this app\'s icon, here and everywhere Folio shows it. Settings › Icons &amp; Side Bar still sets the look for the rest.</string>
+    <string name="your_picture">Your Picture</string>
+    <string name="choose_picture">Choose Picture</string>
+    <string name="change_picture">Change Picture</string>
+    <string name="remove_picture">Remove Picture</string>
+    <string name="edit_icon_picture_note">The picture is copied into Folio and cropped to a square, so it keeps working if the photo is deleted. It stays on this phone and is not part of a backup.</string>
     <string name="reset_icon">Reset Icon</string>
     <string name="custom_search_blank">Until you type an address, Search with Enter uses Google.</string>
     <string name="separate_upright_layout">Separate layout when upright</string>
@@ -1672,8 +1693,6 @@
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="betas_are_for_supporters">Betas are for supporters. Without a supporter code, Folio only finds public releases, so it can say you\'re up to date while a beta is out. Add a code in Settings › Support Folio.</string>
-    <string name="turn_off_mode">Turn off %1$s</string>
-    <string name="turn_on_mode">Turn on %1$s</string>
     <string name="reply_sent">Sent</string>
     <string name="reply_hint">Reply</string>
     <string name="reply_to_name">Reply to %1$s</string>
