@@ -1734,9 +1734,9 @@
     <string name="bridge_root_explain_2">Your root manager (KernelSU, Magisk or APatch) may ask you to allow Folio. Allow it only if you want this.</string>
     <string name="bridge_root_explain_3">The result stays on your phone. You can switch the feed off in Folio, or take away Folio\u2019s root in your root manager, at any time. Folio then goes back to the usual steps.</string>
     <string name="bridge_root_explain_continue">Continue to test</string>
-    <string name="bridge_grant_title">Change settings, granted once</string>
-    <string name="bridge_grant_note">Optional. Lets Folio change protected settings after you grant this once. Nothing uses it yet.</string>
-    <string name="bridge_grant_permission">Permission</string>
+    <string name="bridge_grant_title">Settings permission</string>
+    <string name="bridge_grant_note">Optional. Lets Folio change Android settings once you grant this. Nothing uses it yet.</string>
+    <string name="bridge_grant_permission">Status</string>
     <string name="bridge_grant_yes">Granted</string>
     <string name="bridge_grant_no">Not granted</string>
     <string name="bridge_grant_step_1">1. Turn on Wireless debugging in Developer options.</string>
@@ -1745,7 +1745,7 @@
     <string name="bridge_grant_revoke_note">To take it away, run the command above. Folio only uses it for a feature you turn on.</string>
     <string name="bridge_grant_copy">Copy command</string>
     <string name="bridge_grant_copy_revoke">Copy the command to take it away</string>
-    <string name="bridge_cap_secure_settings">Change protected settings</string>
+    <string name="bridge_cap_secure_settings">Settings permission</string>
     <string name="bridge_advanced">Advanced options</string>
     <string name="bridge_advanced_note">Root and computer commands. For people who know what they are doing.</string>
     <string name="bridge_details">Details</string>
@@ -1773,6 +1773,12 @@
     <string name="bridge_rootgrant_removed">Taken away.</string>
     <string name="bridge_rootgrant_denied">Root did not allow that. Turn Folio on in your root manager, then try again.</string>
     <string name="bridge_rootgrant_failed">That did not work. Test root again, then try again.</string>
+    <string name="bridge_root_report">Test report</string>
+    <string name="bridge_not_yet_group">Not available yet (%1$d)</string>
+    <string name="bridge_not_yet_ways_cd">Ways to connect that are not available yet, %1$d</string>
+    <string name="bridge_not_yet_caps_cd">Features that are not available yet, %1$d</string>
+    <string name="bridge_paused_off">Paused. Turn system access back on to use this.</string>
+    <string name="bridge_paused_safe">Paused by Safe Mode.</string>
     <string name="bridge_root_copy">Copy test report</string>
     <string name="bridge_root_result_moving">Works: %1$d readings, %2$d different angles, from %3$d° to %4$d°.</string>
     <string name="bridge_root_result_still">Connected. Move the hinge while testing to see readings.</string>

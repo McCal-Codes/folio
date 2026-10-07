@@ -1686,9 +1686,9 @@
     <string name="bridge_root_explain_2">你的 root 管理器（KernelSU、Magisk 或 APatch）可能会询问是否允许 Folio。只有在你想使用此功能时才允许。</string>
     <string name="bridge_root_explain_3">结果只保存在你的手机上。你可以随时在 Folio 中关闭此功能，或在 root 管理器中收回 Folio 的 root 权限，之后 Folio 会回到常见的三档。</string>
     <string name="bridge_root_explain_continue">继续测试</string>
-    <string name="bridge_grant_title">更改设置，只授权一次</string>
-    <string name="bridge_grant_note">可选。授予一次后，Folio 就能更改受保护的设置。目前没有功能使用它。</string>
-    <string name="bridge_grant_permission">权限</string>
+    <string name="bridge_grant_title">设置权限</string>
+    <string name="bridge_grant_note">可选。授予后，Folio 就能更改 Android 设置。目前没有功能使用它。</string>
+    <string name="bridge_grant_permission">状态</string>
     <string name="bridge_grant_yes">已授予</string>
     <string name="bridge_grant_no">未授予</string>
     <string name="bridge_grant_step_1">1. 在开发者选项中打开无线调试。</string>
@@ -1697,7 +1697,7 @@
     <string name="bridge_grant_revoke_note">要收回权限，请运行上面的命令。Folio 只会在你开启的功能中使用它。</string>
     <string name="bridge_grant_copy">复制命令</string>
     <string name="bridge_grant_copy_revoke">复制收回权限的命令</string>
-    <string name="bridge_cap_secure_settings">更改受保护的设置</string>
+    <string name="bridge_cap_secure_settings">设置权限</string>
     <string name="bridge_advanced">高级选项</string>
     <string name="bridge_advanced_note">root 和电脑命令。适合清楚自己在做什么的人。</string>
     <string name="bridge_details">详情</string>
@@ -1725,6 +1725,12 @@
     <string name="bridge_rootgrant_removed">已收回。</string>
     <string name="bridge_rootgrant_denied">root 未允许。请在 root 管理器中开启 Folio，然后重试。</string>
     <string name="bridge_rootgrant_failed">没有成功。请重新测试 root，然后重试。</string>
+    <string name="bridge_root_report">测试报告</string>
+    <string name="bridge_not_yet_group">暂不可用 (%1$d)</string>
+    <string name="bridge_not_yet_ways_cd">暂不可用的连接方式，共 %1$d 项</string>
+    <string name="bridge_not_yet_caps_cd">暂不可用的功能，共 %1$d 项</string>
+    <string name="bridge_paused_off">已暂停。要使用它，请重新开启系统访问。</string>
+    <string name="bridge_paused_safe">已被安全模式暂停。</string>
     <string name="bridge_root_copy">复制测试报告</string>
     <string name="bridge_root_result_moving">可用：%1$d 次读数，%2$d 个不同角度，从 %3$d° 到 %4$d°。</string>
     <string name="bridge_root_result_still">已连接。测试时请转动铰链以查看读数。</string>

@@ -48,6 +48,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
@@ -1436,6 +1437,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_share to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_details to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_report to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_advanced to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_rootgrant_allow to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_rootgrant_do to CustomizationPage.SYSTEM_BRIDGE,
@@ -2827,6 +2829,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
 }
 
 /** Advanced › System Bridge (ADR 0009): the ways Folio can reach more of the system, what each lets it do, and the one switch that turns the extra ones off. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable private fun SystemBridgePage() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var off by remember { mutableStateOf(SystemBridge.isOff(context)) }
@@ -2846,14 +2849,21 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         CardNote(stringResource(R.string.allow_system_access_note))
     }
     SettingsCard(stringResource(R.string.bridge_ways)) {
-        BridgeWay(PrivilegeTier.STANDARD, R.string.bridge_way_standard, R.string.bridge_way_standard_uses, R.string.bridge_state_always, "A0 to A2", "bridge-way-standard")
         val gated = SystemBridge.wayLabel(off, safe)
-        BridgeWay(PrivilegeTier.SHIZUKU, R.string.bridge_way_shizuku, R.string.bridge_way_shizuku_uses, gated, "A3", "bridge-way-shizuku")
-        BridgeWay(PrivilegeTier.ROOT, R.string.bridge_way_root, R.string.bridge_way_root_uses, SystemBridge.rootWayLabel(rootState, off, safe), "A4", "bridge-way-root")
-        BridgeWay(PrivilegeTier.HOOKS, R.string.bridge_way_system, R.string.bridge_way_system_uses, gated, "A5", "bridge-way-system")
-        BridgeWay(null, R.string.bridge_way_device, R.string.bridge_way_device_uses, gated, "", "bridge-way-device")
-        CardNote(stringResource(R.string.bridge_knox))
+        val ways = listOf(
+            BridgeWayRow(PrivilegeTier.STANDARD, R.string.bridge_way_standard, R.string.bridge_way_standard_uses, R.string.bridge_state_always, "A0 to A2", "bridge-way-standard"),
+            BridgeWayRow(PrivilegeTier.SHIZUKU, R.string.bridge_way_shizuku, R.string.bridge_way_shizuku_uses, gated, "A3", "bridge-way-shizuku"),
+            BridgeWayRow(PrivilegeTier.ROOT, R.string.bridge_way_root, R.string.bridge_way_root_uses, SystemBridge.rootWayLabel(rootState, off, safe), "A4", "bridge-way-root"),
+            BridgeWayRow(PrivilegeTier.HOOKS, R.string.bridge_way_system, R.string.bridge_way_system_uses, gated, "A5", "bridge-way-system"),
+            BridgeWayRow(null, R.string.bridge_way_device, R.string.bridge_way_device_uses, gated, "", "bridge-way-device"),
+        )
+        val (now, later) = SystemBridge.splitNotYet(ways) { it.state }
+        now.forEach { BridgeWay(it.tier, it.name, it.uses, it.state, it.code, it.tag) }
+        if (later.isNotEmpty()) BridgeNotYet(later.size, R.string.bridge_not_yet_ways_cd, "bridge-ways-later") {
+            later.forEach { BridgeWay(it.tier, it.name, it.uses, it.state, it.code, it.tag) }
+        }
     }
+    BridgeWarning(stringResource(R.string.bridge_knox))
     // Root and computer commands sit behind one switch and a short warning. Details open the full disclosure.
     var advanced by remember { mutableStateOf(RootHingeStore.advanced(context)) }
     var dialog by remember { mutableStateOf<String?>(null) }
@@ -2867,33 +2877,46 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
     if (advanced) {
         SettingsCard(stringResource(R.string.bridge_root_title)) {
             CardNote(stringResource(R.string.bridge_root_note))
+            SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-root-paused")) }
             val status by RootHingeTester.status.collectAsState()
             val testing = status is RootHingeTester.Status.Running
             val found = (status as? RootHingeTester.Status.Done)?.report
             // The result lands whichever screen is showing (the Fold swaps displays mid-test), so the saved state is read again when it does.
             LaunchedEffect(status) { rootState = RootHingeStore.state(context); states = read() }
             DisposableEffect(Unit) { onDispose { RootHingeTester.dismiss() } }
+            // Before the first test the owner sees a short note about what runs as root; after that, a test just starts.
+            CardPrimaryAction(stringResource(R.string.bridge_root_test), Modifier.testTag("bridge-root-test"), enabled = !testing && !off && !safe,
+                onClick = { if (RootHingeStore.explained(context)) RootHingeTester.start(context) else dialog = "first" })
             found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
             if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
-            // Before the first test the owner sees a short note about what runs as root; after that, a test just starts.
-            CardAction(stringResource(R.string.bridge_root_test), Modifier.fillMaxWidth().testTag("bridge-root-test"), enabled = !testing && !off && !safe,
-                onClick = { if (RootHingeStore.explained(context)) RootHingeTester.start(context) else dialog = "first" })
             if (rootState == RootState.READY) {
                 var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
                 SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")
                 CardNote(stringResource(R.string.bridge_root_use_note))
             }
-            if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_copy), Modifier.fillMaxWidth().testTag("bridge-root-copy"), onClick = {
-                context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
-            })
-            if (RootHingeStore.lastReport(context) != null) CardAction(stringResource(R.string.bridge_root_share), Modifier.fillMaxWidth().testTag("bridge-root-share"), onClick = {
-                RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
-            })
+            if (RootHingeStore.lastReport(context) != null) {
+                // Copy and Share live under one row, so the card has one main action and a few quiet ones.
+                var reportMenu by remember { mutableStateOf(false) }
+                Box {
+                    CardAction(stringResource(R.string.bridge_root_report), Modifier.fillMaxWidth().testTag("bridge-root-report"), onClick = { reportMenu = true })
+                    DropdownMenu(expanded = reportMenu, onDismissRequest = { reportMenu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.bridge_root_copy)) }, modifier = Modifier.testTag("bridge-root-copy"), onClick = {
+                            reportMenu = false
+                            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
+                        })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.bridge_root_share)) }, modifier = Modifier.testTag("bridge-root-share"), onClick = {
+                            reportMenu = false
+                            RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
+                        })
+                    }
+                }
+            }
             val cdRoot = stringResource(R.string.bridge_details_root_cd)
             CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdRoot }.testTag("bridge-details-root"), onClick = { dialog = "details-root" })
         }
         SettingsCard(stringResource(R.string.bridge_grant_title)) {
             CardNote(stringResource(R.string.bridge_grant_note))
+            SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-grant-paused")) }
             var granted by remember { mutableStateOf(SecureSettingsGrant.isGranted(context)) }
             // Checked again whenever the page comes back, since the owner may grant it on a computer.
             LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { granted = SecureSettingsGrant.isGranted(context); states = read() } }
@@ -2906,7 +2929,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
             if (!granted) { CardNote(stringResource(R.string.bridge_grant_step_1)); CardNote(stringResource(R.string.bridge_grant_step_2)) }
             if (command != null) {
                 androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(command, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).clip(RoundedCornerShape(10.dp))
+                    Text(command, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                         .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .08f)).padding(horizontal = 12.dp, vertical = 10.dp).testTag("bridge-grant-command"),
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
                 }
@@ -2946,34 +2969,47 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         val details = d.startsWith("details-")
         val title = when (d) { "adv" -> R.string.bridge_adv_title; "first" -> R.string.bridge_root_explain_title; "details-adv" -> R.string.bridge_detail_adv_title
             "details-root" -> R.string.bridge_root_about; else -> R.string.bridge_detail_grant_title }
-        val body = when (d) {
-            "adv" -> listOf(R.string.bridge_adv_text); "first" -> listOf(R.string.bridge_root_first_text)
-            "details-adv" -> listOf(R.string.bridge_detail_adv_1, R.string.bridge_detail_adv_2, R.string.bridge_detail_adv_3)
-            "details-root" -> listOf(R.string.bridge_root_explain_1, R.string.bridge_root_explain_2, R.string.bridge_root_explain_3)
-            else -> listOf(R.string.bridge_detail_grant_1, R.string.bridge_detail_grant_2, R.string.bridge_detail_grant_3) }
-        AlertDialog(onDismissRequest = { dialog = null },
-            title = { Text(stringResource(title)) },
-            text = { Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) { body.forEach { Text(stringResource(it)) } } },
-            confirmButton = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // The two short warnings open the full text on request.
-                if (d == "adv" || d == "first") TextButton(onClick = { dialog = if (d == "adv") "details-adv" else "details-root" }, modifier = Modifier.testTag("bridge-dialog-details")) { Text(stringResource(R.string.bridge_details)) }
-                if (!details) TextButton(onClick = { dialog = null }, modifier = Modifier.testTag("bridge-dialog-no")) { Text(stringResource(R.string.not_now)) }
-                TextButton(onClick = {
+        if (details) {
+            // The full disclosure is a Folio sheet (a handle on the cover, a form sheet on the open screen), not a cramped alert.
+            val body = when (d) {
+                "details-adv" -> listOf(R.string.bridge_detail_adv_1, R.string.bridge_detail_adv_2, R.string.bridge_detail_adv_3)
+                "details-root" -> listOf(R.string.bridge_root_explain_1, R.string.bridge_root_explain_2, R.string.bridge_root_explain_3)
+                else -> listOf(R.string.bridge_detail_grant_1, R.string.bridge_detail_grant_2, R.string.bridge_detail_grant_3) }
+            ModalBottomSheet(onDismissRequest = { dialog = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XXL.dp).padding(bottom = FolioSpace.XXL.dp),
+                    verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                    Text(stringResource(title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                    body.forEach { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium) }
+                    CardPrimaryAction(stringResource(R.string.done), Modifier.testTag("bridge-dialog-go"), onClick = { dialog = null })
+                }
+            }
+        } else {
+            // The short warnings are alerts: the preferred action first and bold, then Details, then the way out.
+            val message = if (d == "adv") R.string.bridge_adv_text else R.string.bridge_root_first_text
+            AlertDialog(onDismissRequest = { dialog = null },
+                title = { Text(stringResource(title)) },
+                text = { Text(stringResource(message)) },
+                confirmButton = { TextButton(onClick = {
                     when (d) {
                         "adv" -> { advanced = true; RootHingeStore.setAdvanced(context, true) }
                         "first" -> { RootHingeStore.setExplained(context); RootHingeTester.start(context) }
                     }
-                    dialog = null }, modifier = Modifier.testTag("bridge-dialog-go")) {
-                    Text(stringResource(when (d) { "adv" -> R.string.bridge_adv_know; "first" -> R.string.bridge_root_explain_continue; else -> R.string.done })) } } })
+                    dialog = null }, modifier = Modifier.testTag("bridge-dialog-go")) { Text(stringResource(if (d == "adv") R.string.bridge_adv_know else R.string.bridge_root_explain_continue)) } },
+                neutralButton = { TextButton(onClick = { dialog = if (d == "adv") "details-adv" else "details-root" }, modifier = Modifier.testTag("bridge-dialog-details")) { Text(stringResource(R.string.bridge_details)) } },
+                dismissButton = { TextButton(onClick = { dialog = null }, modifier = Modifier.testTag("bridge-dialog-no")) { Text(stringResource(R.string.not_now)) } })
+        }
     }
     SettingsCard(stringResource(R.string.bridge_does)) {
-        states.forEach { s ->
+        val (now, later) = SystemBridge.splitNotYet(states) { SystemBridge.stateLabel(it) }
+        @Composable fun CapRow(s: CapabilityState) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-cap-${s.capability.id}"), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(SystemBridge.capabilityName(s.capability)), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Text(stringResource(SystemBridge.stateLabel(s)), style = MaterialTheme.typography.bodyMedium,
                     color = if (s.available) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        now.forEach { CapRow(it) }
+        if (later.isNotEmpty()) BridgeNotYet(later.size, R.string.bridge_not_yet_caps_cd, "bridge-caps-later") { later.forEach { CapRow(it) } }
         CardNote(stringResource(R.string.bridge_if_stops))
     }
     SettingsCard(stringResource(R.string.bridge_recent)) {
@@ -2990,6 +3026,29 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
 }
 
 /** One way of getting access: its tier code, what it is for and the state in words (never color alone). */
+private data class BridgeWayRow(val tier: PrivilegeTier?, @androidx.annotation.StringRes val name: Int, @androidx.annotation.StringRes val uses: Int,
+    @androidx.annotation.StringRes val state: Int, val code: String, val tag: String)
+
+/** One row that stands for the things that are not available yet; it opens to list them. */
+@Composable private fun BridgeNotYet(count: Int, @androidx.annotation.StringRes description: Int, tag: String, content: @Composable () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val spoken = stringResource(description, count)
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = !open }
+        .semantics { contentDescription = spoken; stateDescription = if (open) "expanded" else "collapsed" }.testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.bridge_not_yet_group, count), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Icon(if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (open) content()
+}
+
+/** The Knox note: the most important sentence on the page, so it gets a card of its own instead of small print. */
+@Composable private fun BridgeWarning(text: String) {
+    val shape = RoundedCornerShape(FolioRadius.CARD.dp)
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth().clip(shape).background(FolioColors.Orange.copy(alpha = .14f)).border(1.dp, FolioColors.Orange.copy(alpha = .45f), shape)
+            .padding(12.dp).testTag("bridge-knox"))
+}
+
 @Composable private fun BridgeWay(tier: PrivilegeTier?, @androidx.annotation.StringRes name: Int, @androidx.annotation.StringRes uses: Int,
     @androidx.annotation.StringRes state: Int, code: String, tag: String) {
     Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(vertical = FolioSpace.SMALL.dp).semantics(mergeDescendants = true) {}.testTag(tag), verticalAlignment = Alignment.CenterVertically) {

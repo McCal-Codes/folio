@@ -46,6 +46,16 @@ internal object SystemBridge {
     }
 
     /** What a way above Standard reads: no provider exists, so the only things to say are off, Safe Mode or not yet. */
+    /** Rows that read "Not available yet" are folded into one row, so the page lists only what is real or can be set up. Order is kept. */
+    fun <T> splitNotYet(items: List<T>, label: (T) -> Int): Pair<List<T>, List<T>> = items.partition { label(it) != R.string.bridge_state_not_yet }
+
+    /** The line an advanced card shows first while system access is paused, or null when it is not. */
+    @androidx.annotation.StringRes fun pausedNote(off: Boolean, safe: Boolean): Int? = when {
+        safe -> R.string.bridge_paused_safe
+        off -> R.string.bridge_paused_off
+        else -> null
+    }
+
     @androidx.annotation.StringRes fun wayLabel(off: Boolean, safe: Boolean): Int = when {
         safe -> R.string.bridge_state_safe
         off -> R.string.bridge_state_off

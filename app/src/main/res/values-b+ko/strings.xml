@@ -1707,9 +1707,9 @@
     <string name="bridge_root_explain_2">루트 관리자(KernelSU, Magisk 또는 APatch)가 Folio를 허용할지 물을 수 있습니다. 이 기능을 원할 때만 허용하세요.</string>
     <string name="bridge_root_explain_3">결과는 휴대폰에만 남습니다. 언제든 Folio에서 이 기능을 끄거나 루트 관리자에서 Folio의 루트 권한을 회수할 수 있으며, 그러면 Folio는 기존 단계로 돌아갑니다.</string>
     <string name="bridge_root_explain_continue">계속해서 테스트</string>
-    <string name="bridge_grant_title">설정 변경, 한 번만 허용</string>
-    <string name="bridge_grant_note">선택 사항입니다. 이 권한을 한 번 허용하면 Folio가 보호된 설정을 바꿀 수 있습니다. 아직 쓰는 기능은 없습니다.</string>
-    <string name="bridge_grant_permission">권한</string>
+    <string name="bridge_grant_title">설정 권한</string>
+    <string name="bridge_grant_note">선택 사항입니다. 이 권한을 허용하면 Folio가 Android 설정을 바꿀 수 있습니다. 아직 쓰는 기능은 없습니다.</string>
+    <string name="bridge_grant_permission">상태</string>
     <string name="bridge_grant_yes">허용됨</string>
     <string name="bridge_grant_no">허용 안 됨</string>
     <string name="bridge_grant_step_1">1. 개발자 옵션에서 무선 디버깅을 켜세요.</string>
@@ -1718,7 +1718,7 @@
     <string name="bridge_grant_revoke_note">권한을 없애려면 위 명령을 실행하세요. Folio는 사용자가 켠 기능에만 이 권한을 사용합니다.</string>
     <string name="bridge_grant_copy">명령 복사</string>
     <string name="bridge_grant_copy_revoke">권한을 없애는 명령 복사</string>
-    <string name="bridge_cap_secure_settings">보호된 설정 변경</string>
+    <string name="bridge_cap_secure_settings">설정 권한</string>
     <string name="bridge_advanced">고급 옵션</string>
     <string name="bridge_advanced_note">루트와 컴퓨터 명령입니다. 무엇을 하는지 아는 사람을 위한 기능입니다.</string>
     <string name="bridge_details">자세히</string>
@@ -1746,6 +1746,12 @@
     <string name="bridge_rootgrant_removed">권한을 없앴습니다.</string>
     <string name="bridge_rootgrant_denied">루트가 허용하지 않았습니다. 루트 관리자에서 Folio를 켠 뒤 다시 시도하세요.</string>
     <string name="bridge_rootgrant_failed">작동하지 않았습니다. 루트를 다시 테스트한 뒤 다시 시도하세요.</string>
+    <string name="bridge_root_report">테스트 보고서</string>
+    <string name="bridge_not_yet_group">아직 사용할 수 없음 (%1$d)</string>
+    <string name="bridge_not_yet_ways_cd">아직 사용할 수 없는 연결 방법, %1$d개</string>
+    <string name="bridge_not_yet_caps_cd">아직 사용할 수 없는 기능, %1$d개</string>
+    <string name="bridge_paused_off">일시 중지됨. 사용하려면 시스템 접근을 다시 켜세요.</string>
+    <string name="bridge_paused_safe">안전 모드로 일시 중지되었습니다.</string>
     <string name="bridge_root_copy">테스트 보고서 복사</string>
     <string name="bridge_root_result_moving">작동함: 측정값 %1$d개, 서로 다른 각도 %2$d개, %3$d°에서 %4$d°까지.</string>
     <string name="bridge_root_result_still">연결됨. 테스트 중에 힌지를 움직여 측정값을 확인하세요.</string>

@@ -247,7 +247,9 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
  */
 @Composable
 internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable () -> Unit, modifier: Modifier = Modifier,
-    dismissButton: (@Composable () -> Unit)? = null, title: (@Composable () -> Unit)? = null, text: (@Composable () -> Unit)? = null) {
+    dismissButton: (@Composable () -> Unit)? = null, title: (@Composable () -> Unit)? = null, text: (@Composable () -> Unit)? = null,
+    /** A third choice between the two: with it the buttons stack, the preferred one first and in bold, like iOS. */
+    neutralButton: (@Composable () -> Unit)? = null) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = .3f)
@@ -270,6 +272,21 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center)) { Box(Modifier.heightIn(max = 420.dp)) { it() } } }
                     }
                     androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .16f), thickness = .5.dp)
+                    if (neutralButton != null) {
+                        // Three choices stack, each a full-width 48 dp cell split by hairlines.
+                        @Composable fun cell(weight: androidx.compose.ui.text.font.FontWeight, content: @Composable () -> Unit) {
+                            Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = buttons(weight), content = content)
+                            }
+                        }
+                        cell(androidx.compose.ui.text.font.FontWeight.SemiBold, confirmButton)
+                        androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .16f), thickness = .5.dp)
+                        cell(androidx.compose.ui.text.font.FontWeight.Normal, neutralButton)
+                        dismissButton?.let { dismiss ->
+                            androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha = .16f), thickness = .5.dp)
+                            cell(androidx.compose.ui.text.font.FontWeight.Normal, dismiss)
+                        }
+                    } else
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
                         dismissButton?.let { dismiss ->
                             Box(Modifier.weight(1f).heightIn(min = 44.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
