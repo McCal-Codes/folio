@@ -1325,6 +1325,11 @@
     <string name="updates_question_title">패키지를 최신 상태로 유지할까요?</string>
     <string name="updates_question_body">Folio가 Wi-Fi에서 하루에 한 번 소스를 확인하고 새 버전이 있으면 알려 드립니다. 백그라운드에서 패키지 업데이트를 켜지 않는 한 자동으로 설치되지 않습니다.</string>
     <string name="updates_notice_refused">꺼짐: Android에서 Folio의 알림을 허용하지 않았습니다. 업데이트는 마켓에 계속 표시됩니다.</string>
+    <string name="updated_recently">최근 업데이트됨</string>
+    <string name="version_from_to">%1$s에서 %2$s로</string>
+    <string name="update_automatically">자동으로 업데이트</string>
+    <string name="update_automatically_follows">백그라운드에서 패키지 업데이트 설정을 따릅니다</string>
+    <string name="update_automatically_global_off">마켓 설정에서 백그라운드 패키지 업데이트가 꺼져 있습니다</string>
     <string name="market_updates_channel">마켓 업데이트</string>
     <string name="market_updates_channel_detail">마켓에서 설치한 패키지와 앱의 새 버전.</string>
     <string name="market_updates_and_more">외 %1$d개</string>

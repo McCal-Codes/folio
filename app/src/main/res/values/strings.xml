@@ -1353,6 +1353,11 @@
     <string name="updates_question_title">Keep your packages up to date?</string>
     <string name="updates_question_body">Folio can check your sources once a day, on Wi-Fi, and tell you when something has a new version. Nothing is installed for you unless you turn on Update packages in the background.</string>
     <string name="updates_notice_refused">Turned off: Android isn\'t letting Folio show notices. Updates still appear in the Market.</string>
+    <string name="updated_recently">Updated recently</string>
+    <string name="version_from_to">%1$s to %2$s</string>
+    <string name="update_automatically">Update automatically</string>
+    <string name="update_automatically_follows">Follows Update packages in the background</string>
+    <string name="update_automatically_global_off">Update packages in the background is off in Market settings</string>
     <string name="market_updates_channel">Market updates</string>
     <string name="market_updates_channel_detail">New versions of packages and apps you installed from the Market.</string>
     <string name="market_updates_and_more">and %1$d more</string>
