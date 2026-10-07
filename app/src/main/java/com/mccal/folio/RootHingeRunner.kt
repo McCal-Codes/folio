@@ -36,7 +36,7 @@ internal data class RootTestReport(
 
     /** Plain text for a bug report: the result, which `su` answered, and the counts. Nothing about the person. */
     fun text(device: String, androidVersion: String, folioVersion: String): String = buildString {
-        appendLine("Folio root hinge test")
+        appendLine("Folio root hinge test") // english-only
         appendLine("Result: $outcome ($state)")
         appendLine("su: ${suPath ?: "none found"}   root manager: ${rootManager ?: "unknown"}")
         appendLine("Readings: $readings, different angles: $distinctAngles, range: $minDegrees to $maxDegrees")
@@ -76,19 +76,19 @@ internal object RootHingeRunner {
         now: () -> Long, readyWaitMs: Long = READY_WAIT_MS, listenMs: Long = LISTEN_MS,
     ): RootTestReport {
         val command = shellCommand(apkPath, HELPER_SECONDS)
-            ?: return report(RootTestReport.Outcome.FAILED, previous, null, null, detail = "Folio's own app file was not where Android said.")
+            ?: return report(RootTestReport.Outcome.FAILED, previous, null, null, detail = "Folio's own app file was not where Android said.") // english-only
         var process: SuProcess? = null
         var su: String? = null
         for (candidate in SU_CANDIDATES) {
             try { process = launcher.start(listOf(candidate, "-c", command)); su = candidate; break } catch (_: IOException) { /* not here */ }
         }
-        if (process == null) return report(RootTestReport.Outcome.NO_ROOT, previous, null, null, detail = "No su program was found.")
+        if (process == null) return report(RootTestReport.Outcome.NO_ROOT, previous, null, null, detail = "No su program was found.") // english-only
         try {
             val deadline = now() + readyWaitMs
             var ready = false
             while (!ready) {
                 val left = deadline - now()
-                if (left <= 0) return report(RootTestReport.Outcome.NO_ANSWER, previous, su, version(launcher, su), detail = "No answer in ${readyWaitMs / 1000} seconds. A root prompt may be waiting.")
+                if (left <= 0) return report(RootTestReport.Outcome.NO_ANSWER, previous, su, version(launcher, su), detail = "No answer in ${readyWaitMs / 1000} seconds. A root prompt may be waiting.") // english-only
                 when (val line = process.next(minOf(left, 1_000L))) {
                     SuLine.Timeout -> Unit
                     SuLine.Eof -> {
@@ -102,7 +102,7 @@ internal object RootHingeRunner {
                         is RootHingeProtocol.Message.Reading -> ready = true
                         is RootHingeProtocol.Message.Stopped -> return report(
                             when (message.reason) { "no-sensor", "denied" -> RootTestReport.Outcome.NO_SENSOR; else -> RootTestReport.Outcome.FAILED },
-                            previous, su, version(launcher, su), detail = "The helper stopped: ${message.reason}.")
+                            previous, su, version(launcher, su), detail = "The helper stopped: ${message.reason}.") // english-only
                         null -> Unit // shell noise, such as a banner
                     }
                 }
