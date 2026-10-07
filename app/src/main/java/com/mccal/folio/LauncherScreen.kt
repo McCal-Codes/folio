@@ -465,7 +465,8 @@ fun LauncherScreen(
     // Dropping one app onto another creates a folder with both (like iOS/Android), not a reorder - a drag out of
     // a folder is unaffected, that already goes through removeAppFromFolder in finishDrag regardless of target.
     fun folderMergeTarget(sourceAppId: String?, index: Int): String? {
-        if (!folderEditing || sourceAppId == null || drag.source?.folderId != null) return null
+        // A folder being carried never becomes part of another one (folders do not nest), so it falls through to a move.
+        if (!folderEditing || sourceAppId == null || isFolderId(sourceAppId) || drag.source?.folderId != null) return null
         val occupant = state.layout.slotAt(index) ?: return null
         return occupant.takeIf { it != sourceAppId && state.layout.folder(it) == null }
     }

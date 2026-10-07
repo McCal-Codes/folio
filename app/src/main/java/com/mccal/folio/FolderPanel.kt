@@ -221,6 +221,13 @@ internal fun FolderPanel(
         val childBounds = remember(folder.id) { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
         LaunchedEffect(folder.appIds) { if (draggingAppId == null) { order.clear(); order.addAll(folder.appIds) } }
         val haptic = LocalHapticFeedback.current
+        // The drag gesture below is started once per app, so what it reads at the end of a drag has to be what is true
+        // then, not what was true when it began: after one reorder commits, the same app dragged again must compare
+        // against the new order, and a pull-out must pick a Home cell that is still free.
+        val latestFolder by rememberUpdatedState(folder)
+        val latestDestinations by rememberUpdatedState(homeDestinations)
+        val latestOnReorder by rememberUpdatedState(onReorder)
+        val latestOnMoveOut by rememberUpdatedState(onMoveOut)
         Surface(Modifier.width(folderW.dp).height(folderH.dp)
             .onGloballyPositioned { cardBounds = it.boundsInWindow() }
             .clickable(
@@ -266,12 +273,12 @@ internal fun FolderPanel(
                                                 val finalIndex = order.indexOf(appId)
                                                 draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false
                                                 if (wasOut) {
-                                                    val destination = homeDestinations.firstOrNull()
+                                                    val destination = latestDestinations.firstOrNull()
                                                     if (destination != null) {
-                                                        onMoveOut(appId, DropTarget.Home(destination)); haptic.perform(FolioHaptic.Commit)
+                                                        latestOnMoveOut(appId, DropTarget.Home(destination)); haptic.perform(FolioHaptic.Commit)
                                                     } else haptic.perform(FolioHaptic.Refuse)
-                                                } else if (finalIndex >= 0 && finalIndex != folder.appIds.indexOf(appId)) {
-                                                    onReorder(appId, finalIndex); haptic.perform(FolioHaptic.Commit)
+                                                } else if (finalIndex >= 0 && finalIndex != latestFolder.appIds.indexOf(appId)) {
+                                                    latestOnReorder(appId, finalIndex); haptic.perform(FolioHaptic.Commit)
                                                 }
                                             },
                                             // A successful onDragEnd that removes this app from the folder (or any
