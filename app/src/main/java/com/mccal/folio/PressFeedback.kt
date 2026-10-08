@@ -49,7 +49,7 @@ internal object PressFeedback {
     fun shadowDp(lifted: Boolean, reduceMotion: Boolean, v2: Boolean = true): Float = if (v2 && lifted && !reduceMotion) LIFT_SHADOW_DP else 0f
 
     /** The spring token: the new pass follows the finger on Quick; the old feel kept an app's bounce (.55) and a dock icon's plain settle. */
-    fun spring(kind: Kind, v2: Boolean): Pair<Float, Float> = when {
+    fun springFor(kind: Kind, v2: Boolean): Pair<Float, Float> = when {
         v2 -> FolioMotion.Quick
         kind == Kind.APP -> .55f to 1500f
         else -> FolioMotion.Snap
@@ -64,7 +64,7 @@ internal val LocalOpenMenuId = compositionLocalOf<String?> { null }
 internal fun Modifier.pressFeedback(pressed: Boolean, lifted: Boolean = false, cornerDp: Float = 0f, dimOnly: Boolean = false, kind: PressFeedback.Kind = PressFeedback.Kind.APP): Modifier {
     val reduce = LocalReduceMotion.current
     val v2 = FolioMotion.v2
-    val spec = FolioMotion.spring<Float>(PressFeedback.spring(kind, v2))
+    val spec = FolioMotion.spring<Float>(PressFeedback.springFor(kind, v2))
     val scale = animateFloatAsState(PressFeedback.scale(pressed, lifted, reduce || dimOnly, kind, v2), spec, label = "icon press scale")
     val alpha = animateFloatAsState(PressFeedback.alpha(pressed, lifted, kind, v2), spec, label = "icon press alpha")
     val shadow = animateFloatAsState(PressFeedback.shadowDp(lifted, reduce || dimOnly, v2), spec, label = "icon lift shadow")

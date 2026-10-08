@@ -142,11 +142,11 @@ internal fun DockAppColumn(
     LaunchedEffect(launchingSlot) { if (launchingSlot >= 0) { delay(PressFeedback.HOLD_MS); launchingSlot = -1 } }
     val slotScales = savedDock.indices.map { index ->
         val pressed by interactions[index].collectIsPressedAsState()
-        animateFloatAsState(PressFeedback.scale(pressed || launchingSlot == index, false, reduceMotion, PressFeedback.Kind.DOCK, FolioMotion.v2), FolioMotion.spring(PressFeedback.spring(PressFeedback.Kind.DOCK, FolioMotion.v2)), label = "dock press $index")
+        animateFloatAsState(PressFeedback.scale(pressed || launchingSlot == index, false, reduceMotion, PressFeedback.Kind.DOCK, FolioMotion.v2), FolioMotion.spring(PressFeedback.springFor(PressFeedback.Kind.DOCK, FolioMotion.v2)), label = "dock press $index")
     }
     val slotAlphas = savedDock.indices.map { index ->
         val pressed by interactions[index].collectIsPressedAsState()
-        animateFloatAsState(PressFeedback.alpha(pressed || launchingSlot == index, false, PressFeedback.Kind.DOCK, FolioMotion.v2), FolioMotion.spring(PressFeedback.spring(PressFeedback.Kind.DOCK, FolioMotion.v2)), label = "dock press alpha")
+        animateFloatAsState(PressFeedback.alpha(pressed || launchingSlot == index, false, PressFeedback.Kind.DOCK, FolioMotion.v2), FolioMotion.spring(PressFeedback.springFor(PressFeedback.Kind.DOCK, FolioMotion.v2)), label = "dock press alpha")
     }
     val density = LocalDensity.current
     val rowHeightPx = with(density) { rowHeight.dp.toPx() }

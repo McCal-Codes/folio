@@ -51,8 +51,8 @@ class PressFeedbackTest {
     }
 
     @Test fun `the old springs are kept with the pass off and the new one follows the finger`() {
-        assertEquals(.55f to 1500f, PressFeedback.spring(PressFeedback.Kind.APP, v2 = false))
-        assertEquals(FolioMotion.Snap, PressFeedback.spring(PressFeedback.Kind.DOCK, v2 = false))
-        PressFeedback.Kind.entries.forEach { assertEquals(FolioMotion.Quick, PressFeedback.spring(it, v2 = true)) }
+        assertEquals(.55f to 1500f, PressFeedback.springFor(PressFeedback.Kind.APP, v2 = false))
+        assertEquals(FolioMotion.Snap, PressFeedback.springFor(PressFeedback.Kind.DOCK, v2 = false))
+        PressFeedback.Kind.entries.forEach { assertEquals(FolioMotion.Quick, PressFeedback.springFor(it, v2 = true)) }
     }
 }
