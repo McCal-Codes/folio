@@ -1962,4 +1962,9 @@
     <string name="bridge_outcome_fell_back">Used the standard way instead</string>
     <string name="bridge_outcome_failed">Failed, used the standard way instead</string>
     <string name="market_install_put_back">%1$s didn’t finish installing, so Folio put things back</string>
+    <string name="icon_action_swipe_up">Swipe up</string>
+    <string name="icon_action_swipe_down">Swipe down</string>
+    <string name="icon_action_double_tap">Double tap</string>
+    <!-- The TalkBack action on an icon: the gesture, then what it does. -->
+    <string name="icon_action_talkback">%1$s: %2$s</string>
 </resources>
