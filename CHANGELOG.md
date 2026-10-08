@@ -45,6 +45,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Dropping an app on a folder adds it:** holding an app over a folder on Home used to slide the folder out of the way, so letting go swapped the two places and the app never went in. The folder now stays where it is, lifts a little, and takes the app, whether it comes from Home, the dock or the App Library.
 - **Even rows under a widget (#13):** a widget at the top of Home now fills exactly two rows, so every row has the same spacing and the dock lines up with them, where the rows below a widget used to sit a little off. The Widget Size slider is hidden while this is on, because the widget's height is now set by the rows. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 - **An install cut short is put back:** if Folio is killed while a package is being installed or updated, the next start puts things back as they were and says which package didn't finish installing, instead of leaving it half applied. Safe Mode now counts only real crashes, not Android closing Folio for memory.
+- **Native crashes and freezes count toward Safe Mode:** a crash in Folio's own native code, or a freeze right at the start, now counts the same as any other quick crash, so Folio offers Safe Mode instead of starting the same way again.
 
 ## [0.6.8] - 2026-10-06
 
