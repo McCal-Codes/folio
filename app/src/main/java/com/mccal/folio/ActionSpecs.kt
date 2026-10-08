@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
@@ -21,8 +22,8 @@ internal object ActionSpecs {
 
     val all: List<ActionSpec> by lazy {
         listOf(
-            spec("app.open", R.string.action_app_open, OperationRisk.OBSERVE, "open") { c, a -> openApp(c, a["pkg"]) },
-            spec("shortcut.open", R.string.action_shortcut_open, OperationRisk.OBSERVE, "open") { c, a -> openShortcut(c, a["pkg"], a["id"]) },
+            spec("app.open", R.string.action_app_open, OperationRisk.OBSERVE, "open") { c, a -> openApp(c, a["pkg"], a["component"], a["user"]) },
+            spec("shortcut.open", R.string.action_shortcut_open, OperationRisk.OBSERVE, "open") { c, a -> openShortcut(c, a["pkg"], a["id"], a["user"]) },
             spec("media.playpause", R.string.action_media_playpause, OperationRisk.REVERSIBLE, "media") { c, _ -> mediaKey(c, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) },
             spec("media.next", R.string.action_media_next, OperationRisk.REVERSIBLE, "media") { c, _ -> mediaKey(c, KeyEvent.KEYCODE_MEDIA_NEXT) },
             spec("media.prev", R.string.action_media_prev, OperationRisk.REVERSIBLE, "media") { c, _ -> mediaKey(c, KeyEvent.KEYCODE_MEDIA_PREVIOUS) },
@@ -52,24 +53,45 @@ internal object ActionSpecs {
         run = { _, _ -> SystemShadeAccessibilityService.global(action) }, group = "system",
     )
 
-    /** Launches an installed app by package name; false for a missing, blank or unknown package. */
-    internal fun openApp(context: Context, pkg: String?): Boolean {
+    /**
+     * Launches an app. With a [component] it starts that exact activity for the profile in [userSerial] (a work app, or an
+     * app with more than one launcher activity); with only [pkg] it uses the package's default launcher activity. False for
+     * a missing app, a profile this phone no longer has, or nothing to launch. A profile that is gone never falls back to
+     * the personal copy of the same package.
+     */
+    internal fun openApp(context: Context, pkg: String?, component: String? = null, userSerial: String? = null): Boolean {
+        val user = userFor(context, userSerial) ?: return false
+        val name = component?.let(ComponentName::unflattenFromString)
+        if (name != null) {
+            val apps = context.getSystemService(LauncherApps::class.java) ?: return false
+            if (!apps.isActivityEnabled(name, user)) return false
+            apps.startMainActivity(name, user, null, null)
+            return true
+        }
         if (pkg.isNullOrBlank()) return false
         val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: return false
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         return true
     }
 
-    /** Starts one of an app's shortcuts; false when the shortcut is gone or Folio is not the default Home. */
-    internal fun openShortcut(context: Context, pkg: String?, id: String?): Boolean {
+    /** Starts one of an app's shortcuts for the profile in [userSerial]; false when the shortcut is gone or Folio is not the default Home. */
+    internal fun openShortcut(context: Context, pkg: String?, id: String?, userSerial: String? = null): Boolean {
         if (pkg.isNullOrBlank() || id.isNullOrBlank()) return false
+        val user = userFor(context, userSerial) ?: return false
         val apps = context.getSystemService(LauncherApps::class.java) ?: return false
         val query = LauncherApps.ShortcutQuery()
             .setPackage(pkg).setShortcutIds(listOf(id))
             .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST)
-        if (apps.getShortcuts(query, Process.myUserHandle()).isNullOrEmpty()) return false
-        apps.startShortcut(pkg, id, null, null, Process.myUserHandle())
+        if (apps.getShortcuts(query, user).isNullOrEmpty()) return false
+        apps.startShortcut(pkg, id, null, null, user)
         return true
+    }
+
+    /** The profile an action names by its serial number: this one when none is named, null when that profile is gone. */
+    private fun userFor(context: Context, serial: String?): android.os.UserHandle? {
+        if (serial.isNullOrBlank()) return Process.myUserHandle()
+        val number = serial.toLongOrNull() ?: return null
+        return context.getSystemService(android.os.UserManager::class.java)?.getUserForSerialNumber(number)
     }
 
     private fun mediaKey(context: Context, code: Int): Boolean {

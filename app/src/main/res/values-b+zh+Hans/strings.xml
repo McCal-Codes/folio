@@ -1913,4 +1913,25 @@
     <string name="bridge_outcome_fell_back">改用了标准方式</string>
     <string name="bridge_outcome_failed">失败，已改用标准方式</string>
     <string name="market_install_put_back">%1$s 未能完成安装，Folio 已恢复原状</string>
+    <string name="bridge_cap_global_actions">返回、主屏幕、最近使用及其他系统按键</string>
+    <string name="action_app_open">打开 App</string>
+    <string name="action_shortcut_open">打开 App 快捷方式</string>
+    <string name="action_media_playpause">播放或暂停</string>
+    <string name="action_media_next">下一首</string>
+    <string name="action_media_prev">上一首</string>
+    <string name="action_volume_up">调高音量</string>
+    <string name="action_volume_down">调低音量</string>
+    <string name="action_volume_mute">静音或取消静音</string>
+    <string name="action_panel_wifi">无线局域网面板</string>
+    <string name="action_panel_bluetooth">蓝牙设置</string>
+    <string name="action_a11y_back">返回</string>
+    <string name="action_a11y_home">主屏幕</string>
+    <string name="action_a11y_recents">最近使用的 App</string>
+    <string name="action_a11y_quicksettings">Android 快捷设置</string>
+    <string name="action_a11y_allapps">Android 所有 App</string>
+    <string name="action_a11y_dismissshade">关闭通知栏</string>
+    <string name="action_a11y_power">电源菜单</string>
+    <string name="action_a11y_shade">Android 通知栏</string>
+    <string name="action_a11y_splitscreen">分屏</string>
+    <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
 </resources>

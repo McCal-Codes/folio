@@ -79,6 +79,18 @@ class ActionSpecsTest {
         assertFalse(ActionSpecs.openShortcut(context, "no.such.app", "gone"))
     }
 
+    @Test fun `an action that names a profile this phone does not have never falls back to the personal copy`() {
+        assertFalse(ActionSpecs.openApp(context, "com.example", "com.example/.Main", "987654"))
+        assertFalse(ActionSpecs.openApp(context, "com.example", null, "987654"))
+        assertFalse(ActionSpecs.openApp(context, "com.example", null, "not a number"))
+        assertFalse(ActionSpecs.openShortcut(context, "com.example", "x", "987654"))
+    }
+
+    @Test fun `a component that is not on the phone does not launch`() {
+        assertFalse(ActionSpecs.openApp(context, "no.such.app", "no.such.app/.Main"))
+        assertFalse("a damaged component is not a launch", ActionSpecs.openApp(context, null, "not a component"))
+    }
+
     private fun fakeRegistry(run: () -> Boolean, needs: ActionNeeds = ActionNeeds.NONE) =
         ActionRegistry(listOf(ActionSpec("test.one", R.string.action_volume_up, OperationRisk.OBSERVE, needs, run = { _, _ -> run() })))
 
