@@ -378,9 +378,11 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     private fun rootAllowed() = RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) &&
         hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER
 
-    private val rootGate = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+    private val rootGate = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         main.post {
+            traceEvent("root gate: $key changed, feed=${rootFeed != null} allowed=${rootAllowed()} off=${SystemBridge.isOff(context)} advanced=${RootHingeStore.advanced(context)} use=${RootHingeStore.useInFold(context)}")
             if (rootFeed != null && !rootAllowed()) {
+                traceEvent("root feed stopped by the gate")
                 rootFeed?.stop(); rootFeed = null
                 registerPublic()
                 wake.trySend(Unit)
