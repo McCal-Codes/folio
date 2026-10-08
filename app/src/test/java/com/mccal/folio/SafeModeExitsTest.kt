@@ -66,4 +66,20 @@ class SafeModeExitsTest {
         SafeMode.onStart(context) { exits }
         assertFalse("and it is gone once Home has read it", SafeMode.takeCrashedLastRun())
     }
+
+    @Test fun `a failed start counts without an earlier start marker, once, and only while it is recent`() {
+        val init = ApplicationExitInfo.REASON_INITIALIZATION_FAILURE
+        val now = 1_000_000L
+        val recent = listOf(ExitRecord(init, now - 20_000), ExitRecord(init, now - 40_000))
+        assertEquals("two quick failures, though the last recorded start is long before and older", 2,
+            SafeModeExits.quick(recent, previousStartMs = 5_000, seenUntilMs = 0, windowMs = 30_000, nowMs = now).size)
+        assertEquals("no recorded start at all still counts them", 2,
+            SafeModeExits.quick(recent, previousStartMs = 0, seenUntilMs = 0, windowMs = 30_000, nowMs = now).size)
+        assertEquals("one already counted is not counted again", 1,
+            SafeModeExits.quick(recent, previousStartMs = 5_000, seenUntilMs = now - 30_000, windowMs = 30_000, nowMs = now).size)
+        assertEquals("an old failure is history", 0,
+            SafeModeExits.quick(listOf(ExitRecord(init, now - 3_600_000)), previousStartMs = 5_000, seenUntilMs = 0, windowMs = 30_000, nowMs = now).size)
+        assertEquals("and a native crash still needs an earlier start to measure against", 0,
+            SafeModeExits.quick(listOf(ExitRecord(native, now - 1_000)), previousStartMs = 0, seenUntilMs = 0, windowMs = 30_000, nowMs = now).size)
+    }
 }

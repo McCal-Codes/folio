@@ -128,7 +128,9 @@ internal object SafeMode {
         // above, so a background-only process that never reaches Home must not use the evidence up.
         if (nativeCrash) edit.putBoolean(CRASHED_LAST_RUN, true)
         crashedLastRun = prefs.getBoolean(CRASHED_LAST_RUN, false) || nativeCrash
-        edit.apply()
+        // Synchronously: a crash right after this returns must find the start time, the exits seen and the count on disk,
+        // or a fast startup loop would never add up to two. A few small values, once per process.
+        edit.commit()
     }
 
     /**
