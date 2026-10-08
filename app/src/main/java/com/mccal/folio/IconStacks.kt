@@ -100,7 +100,7 @@ internal fun IconStackFan(anchor: AppEntry, apps: List<AppEntry>, onDismiss: () 
     LaunchedEffect(Unit) {
         kotlinx.coroutines.coroutineScope {
             progress.forEachIndexed { i, p ->
-                launch { kotlinx.coroutines.delay(i * 35L); p.animateTo(1f, spring(dampingRatio = .68f, stiffness = 520f)) }
+                launch { kotlinx.coroutines.delay(i * 35L); p.animateTo(1f, FolioMotion.spring(FolioMotion.Bounce)) }
             }
         }
     }

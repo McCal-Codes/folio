@@ -77,7 +77,7 @@ class AssistPickerActivity : ComponentActivity() {
             LaunchedEffect(searchOnly) { if (searchOnly) { kotlinx.coroutines.delay(250); runCatching { focus.requestFocus() } } }
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .35f))
                 .clickable(remember { MutableInteractionSource() }, null) { finish() }, contentAlignment = Alignment.BottomCenter) {
-                AnimatedVisibility(shown, enter = fadeIn() + slideInVertically(spring(dampingRatio = .82f, stiffness = Spring.StiffnessMediumLow)) { it / 3 }) {
+                AnimatedVisibility(shown, enter = fadeIn() + slideInVertically(FolioMotion.spring(FolioMotion.Appear)) { it / 3 }) {
                     Column(Modifier.navigationBarsPadding().windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(FolioSpace.LARGE.dp).widthIn(max = 520.dp).fillMaxWidth()
                         .clip(RoundedCornerShape(30.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
                         .clickable(remember { MutableInteractionSource() }, null) {}.padding(18.dp),
