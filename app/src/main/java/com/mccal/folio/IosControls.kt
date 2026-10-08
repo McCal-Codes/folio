@@ -50,7 +50,7 @@ private val IosTrackOff = Color(0xFF39393D)
 internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptic = LocalHapticFeedback.current
     val track by animateColorAsState(if (checked) FolioColors.GreenLight else IosTrackOff, label = "switch track")
-    val offset by animateDpAsState(if (checked) 20.dp else 0.dp, spring(dampingRatio = .7f, stiffness = Spring.StiffnessMedium), label = "switch thumb")
+    val offset by animateDpAsState(if (checked) 20.dp else 0.dp, FolioMotion.spring(FolioMotion.Control), label = "switch thumb")
     Box(modifier.minimumInteractiveComponentSize()
         .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = {
             haptic.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff); onCheckedChange(it)
@@ -332,7 +332,7 @@ internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSel
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(9.dp))
         .background(Color.White.copy(alpha = .12f)).padding(FolioSpace.HAIR.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier)) {
         val segment = maxWidth / options.size
-        val x by animateDpAsState(segment * index, spring(dampingRatio = .85f, stiffness = Spring.StiffnessMedium), label = "segment")
+        val x by animateDpAsState(segment * index, FolioMotion.spring(FolioMotion.Control), label = "segment")
         Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).fillMaxHeight()
             .shadow(2.dp, RoundedCornerShape(7.dp)).clip(RoundedCornerShape(7.dp)).background(Color(0xFF636366)))
         Row(Modifier.fillMaxSize()) {

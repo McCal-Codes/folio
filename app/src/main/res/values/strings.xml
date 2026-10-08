@@ -1967,4 +1967,25 @@
     <string name="icon_action_double_tap">Double tap</string>
     <!-- The TalkBack action on an icon: the gesture, then what it does. -->
     <string name="icon_action_talkback">%1$s: %2$s</string>
+    <string name="bridge_cap_global_actions">Back, Home, Recents and other system buttons</string>
+    <string name="action_app_open">Open an app</string>
+    <string name="action_shortcut_open">Open an app shortcut</string>
+    <string name="action_media_playpause">Play or pause</string>
+    <string name="action_media_next">Next track</string>
+    <string name="action_media_prev">Previous track</string>
+    <string name="action_volume_up">Volume up</string>
+    <string name="action_volume_down">Volume down</string>
+    <string name="action_volume_mute">Mute or unmute</string>
+    <string name="action_panel_wifi">Wi-Fi panel</string>
+    <string name="action_panel_bluetooth">Bluetooth settings</string>
+    <string name="action_a11y_back">Back</string>
+    <string name="action_a11y_home">Home</string>
+    <string name="action_a11y_recents">Recent apps</string>
+    <string name="action_a11y_quicksettings">Android quick settings</string>
+    <string name="action_a11y_allapps">Android app drawer</string>
+    <string name="action_a11y_dismissshade">Close the notification shade</string>
+    <string name="action_a11y_power">Power menu</string>
+    <string name="action_a11y_shade">Android notification shade</string>
+    <string name="action_a11y_splitscreen">Split screen</string>
+    <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
 </resources>

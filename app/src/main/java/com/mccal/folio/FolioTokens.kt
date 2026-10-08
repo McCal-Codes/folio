@@ -195,5 +195,13 @@ internal object FolioMotion {
     val Quick = .8f to 700f
     /** Firm, no-bounce snaps (dismissals). */
     val Firm = 1f to 700f
+    /** A panel, island or overlay appearing or resizing: a little overshoot, unhurried. */
+    val Appear = .78f to 400f
+    /** Small controls answering a finger (switch thumbs, segments, a pressed card, a released pull): quick and a touch bouncy. */
+    val Control = .75f to 1500f
+    /** A set of icons fanning out: the most overshoot Folio has. */
+    val Bounce = .68f to 520f
+    /** A value following another with no overshoot (gauges, progress). */
+    val Snap = 1f to 1500f
     fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
 }

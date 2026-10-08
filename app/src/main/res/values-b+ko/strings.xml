@@ -1938,4 +1938,25 @@
     <string name="icon_action_swipe_down">아래로 쓸어내리기</string>
     <string name="icon_action_double_tap">두 번 탭하기</string>
     <string name="icon_action_talkback">%1$s: %2$s</string>
+    <string name="bridge_cap_global_actions">뒤로, 홈, 최근 앱 및 기타 시스템 버튼</string>
+    <string name="action_app_open">앱 열기</string>
+    <string name="action_shortcut_open">앱 바로가기 열기</string>
+    <string name="action_media_playpause">재생 또는 일시 정지</string>
+    <string name="action_media_next">다음 곡</string>
+    <string name="action_media_prev">이전 곡</string>
+    <string name="action_volume_up">음량 높이기</string>
+    <string name="action_volume_down">음량 낮추기</string>
+    <string name="action_volume_mute">음소거 또는 해제</string>
+    <string name="action_panel_wifi">Wi-Fi 패널</string>
+    <string name="action_panel_bluetooth">Bluetooth 설정</string>
+    <string name="action_a11y_back">뒤로</string>
+    <string name="action_a11y_home">홈</string>
+    <string name="action_a11y_recents">최근 앱</string>
+    <string name="action_a11y_quicksettings">Android 빠른 설정</string>
+    <string name="action_a11y_allapps">Android 앱 목록</string>
+    <string name="action_a11y_dismissshade">알림 창 닫기</string>
+    <string name="action_a11y_power">전원 메뉴</string>
+    <string name="action_a11y_shade">Android 알림 창</string>
+    <string name="action_a11y_splitscreen">화면 분할</string>
+    <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
 </resources>
