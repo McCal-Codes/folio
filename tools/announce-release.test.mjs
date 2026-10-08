@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMessage, kindOf, sections, shorten, splitWebhooks, tagline, wallOf } from './announce-release.mjs'
+import { BLOCKED_TERMS, buildMessage, isBeta, kindOf, problemsWith, sections, shorten, splitWebhooks, tagline, wallOf } from './announce-release.mjs'
 
 const release = {
   tag_name: 'v0.6.6',
@@ -197,4 +197,59 @@ test('two servers each receive their own ping, and the wall is downloaded once',
   assert.deepEqual(mmd.message.allowed_mentions.roles, ['999'])
   assert.doesNotMatch(mmd.message.content, /1553093586705449062/)
   assert.ok(mmd.hasFile)
+})
+
+test('a bullet or summary that wraps in the notes is read whole, not cut at the line break', () => {
+  const body = [
+    '# Folio 1.0',
+    '',
+    'The first line of the summary runs on',
+    'to a second line. A second sentence.',
+    '',
+    '## Added',
+    '',
+    '- **Dock handle:** drag it up or',
+    '  down in edit mode. Extra detail.',
+    '- **Rings:** stronger by default.',
+  ].join('\n')
+  assert.equal(tagline(body), 'The first line of the summary runs on to a second line.')
+  assert.deepEqual(sections(body)[0].bullets, [
+    '**Dock handle:** drag it up or down in edit mode. Extra detail.',
+    '**Rings:** stronger by default.',
+  ])
+})
+
+test('a post is refused for every blocked term, with no term spelled out in this file', () => {
+  for (const term of BLOCKED_TERMS) {
+    const sample = term.replace('\\.?', '').replace('\\d+', '1')
+    assert.equal(problemsWith(`Notes: ${sample} here.`).length, 1, `not refused: ${term}`)
+  }
+})
+
+test('ordinary release wording and Discord syntax are not mistaken for a problem', () => {
+  const fine = 'Fixes a crash. Drag the handle to wait, again, or paid: <@&123> <#456> <:ok:789> <a:go:12> v0.6.9-beta.1'
+  assert.deepEqual(problemsWith(fine), [])
+  assert.deepEqual(problemsWith(buildMessage({ release }).content), [])
+})
+
+test('a placeholder left in from a template is refused', () => {
+  assert.equal(problemsWith('Names in <fill in> go here.').length, 1)
+})
+
+test('a beta links only to pages the public can open', () => {
+  const beta = {
+    ...release,
+    tag_name: 'v0.6.9-beta.1',
+    prerelease: true,
+    html_url: 'https://github.com/McCal-Codes/folio-beta/releases/tag/v0.6.9-beta.1',
+  }
+  assert.equal(isBeta(beta), true)
+  assert.equal(isBeta({ html_url: 'https://github.com/McCal-Codes/folio-beta/releases/tag/x' }), true)
+  assert.equal(isBeta(release), false)
+  const { content } = buildMessage({ release: beta })
+  assert.doesNotMatch(content, /github\.com/)
+  assert.doesNotMatch(content, /\/changelog\//)
+  assert.doesNotMatch(content, /Download the APK/)
+  assert.match(content, /\[Folio Launcher 0\.6\.9-beta\.1\]\(https:\/\/foliolauncher\.com\/download\/\)/)
+  assert.match(content, /foliolauncher\.com\/roadmap\//)
 })

@@ -51,11 +51,16 @@ export function kindOf(body = '') {
   return 'Update'
 }
 
-/** The line under the heading: the release's own one-sentence summary, if it wrote one. */
+/**
+ * The line under the heading: the first sentence of the release's opening paragraph, if it wrote one. A paragraph
+ * wraps across lines in the file, so it is joined first; cutting at the first physical line left sentences hanging.
+ */
 export function tagline(body = '') {
   const afterTitle = body.replace(/\r/g, '').replace(/^\s*#\s+[^\n]*\n+/, '')
-  const first = afterTitle.split('\n').find((line) => line.trim() && !line.startsWith('#'))
-  return first && !first.trim().startsWith('-') ? first.trim() : ''
+  const paragraph = afterTitle.split(/\n\s*\n/).find((block) => block.trim())
+  if (!paragraph || paragraph.trim().startsWith('#') || paragraph.trim().startsWith('-')) return ''
+  const text = paragraph.replace(/\s+/g, ' ').trim()
+  return /^(.{20,}?[.!?])(\s|$)/.exec(text)?.[1] ?? text
 }
 
 /**
@@ -67,11 +72,14 @@ export function sections(body = '') {
   const found = []
   for (const block of body.replace(/\r/g, '').split(/^#{2,3}\s+/m).slice(1)) {
     const name = block.slice(0, block.indexOf('\n')).trim()
-    const bullets = block
-      .split('\n')
-      .filter((line) => line.startsWith('- '))
-      .map((line) => shorten(line.slice(2).trim()))
-      .filter(Boolean)
+    // A bullet wraps onto the lines under it until a blank line or the next bullet, so those lines belong to it.
+    const joined = []
+    for (const line of block.split('\n').slice(1)) {
+      if (line.startsWith('- ')) joined.push(line.slice(2))
+      else if (joined.length && joined[joined.length - 1] !== null && line.trim() && !line.startsWith('#')) joined[joined.length - 1] += ` ${line.trim()}`
+      else if (!line.trim()) joined.push(null)
+    }
+    const bullets = joined.filter(Boolean).map((line) => shorten(line.trim())).filter(Boolean)
     if (bullets.length) found.push({ name, bullets })
   }
   return found
@@ -86,23 +94,67 @@ export function shorten(text, limit = BULLET_LIMIT) {
   return cut
 }
 
+/**
+ * Words that must never reach the channel: tooling, drafting and authorship notes belong in the repo, not in a post
+ * to the community. The list is data so the tests can walk it without spelling any of it out.
+ */
+export const BLOCKED_TERMS = [
+  'claude',
+  'anthropic',
+  'chatgpt',
+  'openai',
+  'copilot',
+  'gemini',
+  'llm',
+  'a\\.?i',
+  'artificial intelligence',
+  'generated',
+  'co-authored',
+  'draft',
+  'rel-\\d+',
+]
+
+/** What is wrong with a finished message, if anything. A post with a problem is never sent, not even in a dry run. */
+export function problemsWith(content = '') {
+  const found = []
+  for (const term of BLOCKED_TERMS) {
+    const hit = new RegExp(`(?<![\\w-])${term}(?![\\w-])`, 'i').exec(content)
+    if (hit) found.push(`mentions "${hit[0]}"`)
+  }
+  // A <name> left in from a template, but not a Discord mention: <@...>, <#...> or an emoji, <:x:> and <a:x:>.
+  const placeholder = /<(?![@#:!]|a:)[A-Za-z][^>\n]{0,40}>/.exec(content)
+  if (placeholder) found.push(`has a placeholder, ${placeholder[0]}`)
+  return found
+}
+
+/** A pre-release, or anything published in the private beta repo. */
+export function isBeta(release) {
+  return release.prerelease === true || /\/folio-beta\//.test(release.html_url ?? '')
+}
+
 export function buildMessage({ release, roleId, site = SITE }) {
   const version = String(release.tag_name ?? '').replace(/^v/, '')
-  const apk = (release.assets ?? []).find((asset) => asset.name?.endsWith('.apk'))
+  // A beta is published in the private supporters' repo, so its release page and APK are links nobody else can open,
+  // and the site builds no changelog page for it. It links only to pages the public can reach.
+  const beta = isBeta(release)
+  const apk = beta ? undefined : (release.assets ?? []).find((asset) => asset.name?.endsWith('.apk'))
   const kind = kindOf(release.body)
 
   const head = [
     roleId ? `<@&${roleId}>` : '',
     // The version links to the release, the way the channel's other posts link their version line.
-    `**[Folio Launcher ${version}](${release.html_url})**${kind ? ` · ${kind}` : ''}`,
+    `**[Folio Launcher ${version}](${beta ? `${site}/download/` : release.html_url})**${kind ? ` · ${kind}` : ''}`,
     tagline(release.body),
   ].filter(Boolean)
 
-  const links = [
-    apk ? `[Download the APK](${apk.browser_download_url})` : `[The release](${release.html_url})`,
-    `[How to install it](${site}/download/)`,
-    `[Everything that changed](${site}/changelog/${version}/)`,
-  ].join(' · ')
+  const links = (beta
+    ? [`[How to install it](${site}/download/)`, `[What is coming](${site}/roadmap/)`]
+    : [
+        apk ? `[Download the APK](${apk.browser_download_url})` : `[The release](${release.html_url})`,
+        `[How to install it](${site}/download/)`,
+        `[Everything that changed](${site}/changelog/${version}/)`,
+      ]
+  ).join(' · ')
   const size = apk ? `${(apk.size / 1048576).toFixed(1)} MB` : ''
   const tail = `${links}\n${[size, 'Android 12 and up', 'free and open source, no ads'].filter(Boolean).join(' · ')}`
 
@@ -130,7 +182,7 @@ export function buildMessage({ release, roleId, site = SITE }) {
     budget -= block.length + 2
     middle.push(block)
   }
-  if (trimmed) middle.push(`The rest is in [the full notes](${release.html_url}).`)
+  if (trimmed && !beta) middle.push(`The rest is in [the full notes](${release.html_url}).`)
 
   const content = [head.join('\n'), middle.join('\n\n'), tail].filter(Boolean).join('\n\n').trim()
   const message = {
@@ -235,6 +287,8 @@ async function main() {
   const roles = rolesFor(webhooks, process.env.DISCORD_ROLE_ID)
   if (dryRun || !webhooks.length) {
     const message = buildMessage({ release, roleId: roles[0] || process.env.DISCORD_ROLE_ID?.split(',')[0]?.trim() })
+    const problems = problemsWith(message.content)
+    if (problems.length) throw new Error(`Not posting: the message ${problems.join(' and ')}.`)
     console.log(dryRun ? 'Dry run. This is the message:' : 'No DISCORD_WEBHOOK_URL set, so nothing is sent:')
     console.log('-'.repeat(60))
     console.log(message.content)
@@ -245,6 +299,11 @@ async function main() {
 
   // Each webhook gets its own attempt. One channel refusing a post is not a reason for the others to miss it, so
   // a failure is reported at the end rather than thrown in the middle.
+  // Checked before anything goes out: one bad message means no server gets a post.
+  for (const [index] of webhooks.entries()) {
+    const problems = problemsWith(buildMessage({ release, roleId: roles[index] }).content)
+    if (problems.length) throw new Error(`Not posting: the message ${problems.join(' and ')}.`)
+  }
   const loaded = await loadWall(wall)
   const failures = []
   for (const [index, one] of webhooks.entries()) {
