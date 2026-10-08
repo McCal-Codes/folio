@@ -15,6 +15,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Installed-app catalog | `LauncherModel` (from `PackageManager` / `LauncherApps`) | `app_catalog` prefs as a cache | Rebuilt from the system |
 | Home layout, dock, folders, widget placements | `LauncherModel` | `launcher/state` JSON, schema 9, with migration backups | Everything; exported by Layout Backup |
 | Widget bindings | Android (`AppWidgetHost`) + Folio's slot mapping | System + layout JSON | Reconnected on import, not copied |
+| Icon actions (a swipe up, swipe down or double tap per app) | `LauncherModel` | `launcher/state` JSON, key `iconActions`, only when some are set | Everything; exported by Layout Backup |
 | Appearance | `AppearanceStore` | `appearance` prefs | Everything; not in Layout Backup |
 | What is behind Home | `LauncherModel` (see Gap below: three owners today) | `launcher/state` JSON, mirrored to `launcher_background` prefs for the wallpaper service | Everything; the picked photo itself stays out of Layout Backup |
 | Focus modes and rules | `FocusController` | `focus_rules` prefs | Everything |
@@ -39,6 +40,9 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 
 - **STA-5 MUST** version every saved format (`STATE_SCHEMA`, `LAYOUT_BACKUP_VERSION`, `"folioTheme": 1`) and migrate
   forward with a one-time backup of the old data before the first write.
+  A new optional key in an existing format needs no version bump when an older save simply lacks it, an older build
+  ignores it, and an unknown value in it is kept as it is. It does need a load test for the older save (STA-7). The Market's
+  `packages` key and Icon Actions' `iconActions` key are the precedents.
 - **STA-6 MUST** fail visibly: a layout that can't be read keeps a `state_damaged_backup` and tells the user, never
   silently resets.
 - **STA-7 MUST** have a load test for each schema step (`LayoutLoadTest`) when the format changes.
