@@ -56,6 +56,10 @@ export function kindOf(body = '') {
  * wraps across lines in the file, so it is joined first; cutting at the first physical line left sentences hanging.
  */
 export function tagline(body = '') {
+  // A release that heads its list with a bold "Folio 0.6.8: Your language, your Home, and Smooth" has already said it in
+  // one line; that beats a personal opening paragraph, which is a greeting rather than a summary.
+  const headline = /^\*\*Folio [^:*\n]+:\s*([^*\n]+?)\*\*[ \t]*$/m.exec(body.replace(/\r/g, ''))
+  if (headline) return headline[1].trim()
   const afterTitle = body.replace(/\r/g, '').replace(/^\s*#\s+[^\n]*\n+/, '')
   const paragraph = afterTitle.split(/\n\s*\n/).find((block) => block.trim())
   if (!paragraph || paragraph.trim().startsWith('#') || paragraph.trim().startsWith('-')) return ''
@@ -70,8 +74,12 @@ export function tagline(body = '') {
  */
 export function sections(body = '') {
   const found = []
-  for (const block of body.replace(/\r/g, '').split(/^#{2,3}\s+/m).slice(1)) {
+  // Some notes head their list with a bold line instead of a "##": treat that line as a heading too.
+  const headed = body.replace(/\r/g, '').replace(/^\*\*([^*\n]+)\*\*[ \t]*$/gm, '## $1')
+  for (const block of headed.split(/^#{2,3}\s+/m).slice(1)) {
     const name = block.slice(0, block.indexOf('\n')).trim()
+    // How to check the download is not a change, even though it is a bulleted list.
+    if (/^download/i.test(name)) continue
     // A bullet wraps onto the lines under it until a blank line or the next bullet, so those lines belong to it.
     const joined = []
     for (const line of block.split('\n').slice(1)) {

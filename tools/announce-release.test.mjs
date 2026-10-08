@@ -253,3 +253,28 @@ test('a beta links only to pages the public can open', () => {
   assert.match(content, /\[Folio Launcher 0\.6\.9-beta\.1\]\(https:\/\/foliolauncher\.com\/download\/\)/)
   assert.match(content, /foliolauncher\.com\/roadmap\//)
 })
+
+test('notes that head their list with a bold line read as a feature list, not a greeting', () => {
+  const body = [
+    'Welcome back, and sorry about the delay! Thanks for waiting.',
+    '',
+    '**Folio 0.6.8: Your language, your Home, and Smooth**',
+    '',
+    '- **A dock that grows to six:** drag an app onto a full dock and another place opens.',
+    '- **Edit one app\'s icon:** its own style and shape.',
+    '',
+    'Everything else is in the [changelog](https://example.invalid/c).',
+    '',
+    '**Download and check**',
+    '',
+    '- `Folio-0.6.8.apk`, SHA-256 `abc`',
+  ].join('\n')
+  assert.equal(tagline(body), 'Your language, your Home, and Smooth')
+  const found = sections(body)
+  assert.equal(found.length, 1)
+  assert.equal(found[0].bullets.length, 2)
+  const { content } = buildMessage({ release: { ...release, body } })
+  assert.match(content, /^- \*\*A dock that grows to six/m)
+  assert.doesNotMatch(content, /SHA-256/)
+  assert.doesNotMatch(content, /Welcome back/)
+})
