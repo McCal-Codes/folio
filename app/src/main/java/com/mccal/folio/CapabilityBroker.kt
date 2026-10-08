@@ -11,6 +11,8 @@ package com.mccal.folio
 /** What a feature can ask for. A capability is a thing Folio can do, not a technology; several providers may offer one. */
 internal enum class FolioCapability(val id: String, val minTier: PrivilegeTier, val risk: OperationRisk) {
     SHADE_OPEN("system.shade.open", PrivilegeTier.ACCESSIBILITY, OperationRisk.REVERSIBLE),
+    /** Back, Home, Recents, the power menu and the other accessibility global actions, one performGlobalAction each. */
+    SYSTEM_GLOBAL_ACTIONS("system.global.actions", PrivilegeTier.ACCESSIBILITY, OperationRisk.REVERSIBLE),
     NOTIFICATIONS_READ("notification.metadata.read", PrivilegeTier.NOTIFICATIONS, OperationRisk.OBSERVE),
     HINGE_ANGLE("device.hinge.angle", PrivilegeTier.STANDARD, OperationRisk.OBSERVE),
     /** Samsung's every-degree Folding Angle sensor. Measured on the Fold8 (6 Oct 2026): refused to the shell user, 89 distinct values as root. */
