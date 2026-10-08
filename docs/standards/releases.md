@@ -121,7 +121,7 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 ### Dependencies
 
-- **REL-31 MUST** keep the roadmap's marks in step with the tags. A release section whose items are all `done` names a release that has its stable tag, and an item marked `beta` belongs to a release that has a `-beta.N` tag. Every install reads `roadmap.json` from `main`, so "done" for a release nobody can install is a promise the page cannot keep: shipped means tagged, not merged. `tools/check-release-rules.sh` checks it whenever a pull request changes the roadmap; the `release-exception` label waives it.
+- **REL-31 MUST** keep the roadmap's marks in step with the tags. A release section whose items are all `done` names a release that has its stable tag (except the stable the same pull request is bumping, whose tag follows the merge), and an item marked `beta` says which beta it is in (`"inBeta": N`, ignored by the app) and that beta's tag exists, so a feature meant for beta.2 cannot be called "in beta" while only beta.1 is out. Every install reads `roadmap.json` from `main`, so "done" for a release nobody can install is a promise the page cannot keep: shipped means tagged, not merged. `tools/check-release-rules.sh` checks it whenever a pull request changes the roadmap; the `release-exception` label waives it.
 - **REL-27 MUST NOT** take a dependency bump that reaches the APK into a release already carrying a lot. Test-only
   dependencies (`baselineprofile`, `androidTest`) are safe whenever, because they never ship.
 - **REL-28 MUST** bump the Android Gradle plugins together. `com.android.application` and `com.android.library` are
