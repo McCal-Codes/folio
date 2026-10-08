@@ -129,8 +129,8 @@ class IslandEvents private constructor(private val context: Context) {
 
         /**
          * How long [event] stays up: the times above, or longer for someone who has asked Android for more time to
-         * read and act (A11Y-19), as the Market's banners do. A message can be opened or answered, so it counts as
-         * having controls too.
+         * read and act (A11Y-19), as the Market's banners do. A message can be opened or answered, and a notice with Undo
+         * has a button, so both count as having controls too.
          */
         fun showMs(context: Context, event: IslandEvent): Long {
             val shown = when (event) {
@@ -140,7 +140,7 @@ class IslandEvents private constructor(private val context: Context) {
                 else -> SHOW_MS
             }
             val content = AccessibilityManager.FLAG_CONTENT_TEXT or AccessibilityManager.FLAG_CONTENT_ICONS or
-                (if (event is IslandEvent.Message) AccessibilityManager.FLAG_CONTENT_CONTROLS else 0)
+                (if (event is IslandEvent.Message || (event is IslandEvent.Notice && event.action != null)) AccessibilityManager.FLAG_CONTENT_CONTROLS else 0)
             return context.getSystemService(AccessibilityManager::class.java)
                 ?.getRecommendedTimeoutMillis(shown.toInt(), content)?.toLong() ?: shown
         }

@@ -1258,7 +1258,12 @@ fun LauncherScreen(
                 else if (!showFirstRun && sheet.isEmpty()) { kotlinx.coroutines.delay(2_500); FirstUseHints.show(launcherActivity, FirstUseHint.HOLD) }
             }
             LaunchedEffect(wide, showFirstRun) {
-                if (wide && !showFirstRun && FirstUseHints.pending(launcherActivity, FirstUseHint.UNFOLD)) { kotlinx.coroutines.delay(2_500); FirstUseHints.show(launcherActivity, FirstUseHint.UNFOLD) }
+                if (wide && !showFirstRun && FirstUseHints.pending(launcherActivity, FirstUseHint.UNFOLD)) {
+                    kotlinx.coroutines.delay(2_500)
+                    // The island holds one notice, so the unfold hint waits out the hold hint instead of replacing it.
+                    if (FirstUseHints.pending(launcherActivity, FirstUseHint.HOLD)) kotlinx.coroutines.delay(IslandEvents.NOTICE_SHOW_MS + 1_000)
+                    FirstUseHints.show(launcherActivity, FirstUseHint.UNFOLD)
+                }
             }
             // iOS-style notice when editing is locked by a Focus.
             FocusLockNotice(lockNotice, focusLock?.mode, Modifier.align(Alignment.TopCenter))

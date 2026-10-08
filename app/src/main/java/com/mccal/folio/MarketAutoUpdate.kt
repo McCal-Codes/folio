@@ -107,6 +107,7 @@ internal object MarketAutoUpdate {
         return updated
     }
 
+    private const val UNDO_WAIT_TRIES = 120
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
     /**
@@ -121,7 +122,13 @@ internal object MarketAutoUpdate {
             action = NoticeAction(context.getString(R.string.undo)) {
                 // The same Undo as the Updated recently list: the earlier version goes back, Home is left alone, and this
                 // version is skipped so it isn't installed again at the next refresh. One package write at a time.
-                scope.launch { MarketWork.exclusive("undo:${installed.id}") { session.undoAutoUpdate(update) } }
+                // If a later package in the same batch holds the slot, wait for it instead of dropping the tap.
+                scope.launch {
+                    repeat(UNDO_WAIT_TRIES) {
+                        if (MarketWork.exclusive("undo:${installed.id}") { session.undoAutoUpdate(update) } != null) return@launch
+                        kotlinx.coroutines.delay(1_000)
+                    }
+                }
             })
     }
 
