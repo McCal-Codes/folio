@@ -129,10 +129,17 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
         var litFrames = 0
         var lastFrame = 0L
+        // The Performance log counts the fold animation as one thing, with its own frame timing.
+        var measuring = false
+        try {
         while (true) {
             // Idle: sleep until the hinge moves or the display switches, so a fold starts on its first frame rather
             // than up to one poll later. The timeout is only a backstop.
-            if (!fold.busy && m == 0f) { animating(false); lastFrame = 0L; kotlinx.coroutines.withTimeoutOrNull(IDLE_WAIT_MS) { fold.wake.receive() }; continue }
+            if (!fold.busy && m == 0f) {
+                if (measuring) { PerfLog.end(PerfScenario.FOLD); measuring = false }
+                animating(false); lastFrame = 0L; kotlinx.coroutines.withTimeoutOrNull(IDLE_WAIT_MS) { fold.wake.receive() }; continue
+            }
+            if (!measuring) { PerfLog.noteFold(); PerfLog.begin(PerfScenario.FOLD); measuring = true }
             animating(enabled)
             if (cornerPx == 0f) cornerPx = screenCornerPx(view)
             withFrameNanos { frame ->
@@ -159,6 +166,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 }
             }
         }
+        } finally { if (measuring) PerfLog.end(PerfScenario.FOLD) }
     } }
 
     // The Duo shader always drives the rotating half; the iPhone Duo style adds the still right half on top.
