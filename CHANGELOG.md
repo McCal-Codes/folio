@@ -35,6 +35,11 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
 - **What to Test:** on a beta build, Settings › Help › What to Test lists what to try, most likely broken first, with the steps. Tap It Worked, Something's Wrong (which opens a bug report with the item's name filled in) or Skip. Your answers stay on your phone.
 - **A setup that asks where you are from:** setup now asks whether you are coming from iPhone or Android and starts Folio looking like it, with a How do you move around? page when you choose Android, a quiet extra step only on a phone that already has Shizuku or a root manager, and the rest under Finish setting up. Open it again from Settings › Help › Show Welcome Again, where Keep Things as They Are changes nothing.
+- **Notices that fit and stay clear:** the notices in the Dynamic Island size themselves to their text (up to three lines) and stay clear of the camera and of the fold, on the cover, the open screen and half folded.
+- **Undo from the update notice:** when Folio updates a package by itself, the notice says so with an Undo. Undo puts the earlier version back, leaves Home alone, and that version is not installed again by itself.
+- **Two first-use hints:** once, Folio tells you to press and hold an icon to rearrange or edit Home, and, unfolded, that it is the same Home with more room.
+- **Focus says when it turns itself on:** when a trigger turns a Focus on or off, a notice in the island says which Focus and why, and nothing is shown when Home is not on screen. The half-open fold pose is called Half Open, for a tent or a laptop.
+- **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
 - **System Bridge changes take effect at once:** turning "Allow system access" off stops the root hinge feed right away, and turning it (or the root options) back on starts it again, instead of waiting for Folio to restart.
@@ -45,6 +50,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **The Roadmap stops retrying offline:** when Folio can't reach GitHub, opening Settings › Roadmap no longer waits on the network every time; it tries again after an hour. With nothing downloaded yet, the note says the copy shown came with Folio instead of claiming it was saved on your phone.
 - **Dropping an app on a folder adds it:** holding an app over a folder on Home used to slide the folder out of the way, so letting go swapped the two places and the app never went in. The folder now stays where it is, lifts a little, and takes the app, whether it comes from Home, the dock or the App Library.
 - **Even rows under a widget (#13):** a widget at the top of Home now fills exactly two rows, so every row has the same spacing and the dock lines up with them, where the rows below a widget used to sit a little off. The Widget Size slider is hidden while this is on, because the widget's height is now set by the rows. For supporters and Folio Dev for now, and for everyone in 0.6.9.
+- **An install cut short is put back:** if Folio is killed while a package is being installed or updated, the next start puts things back as they were and says which package didn't finish installing, instead of leaving it half applied. Safe Mode now counts only real crashes, not Android closing Folio for memory.
+- **Native crashes and freezes count toward Safe Mode:** a crash in Folio's own native code, or a freeze right at the start, now counts the same as any other quick crash, so Folio offers Safe Mode instead of starting the same way again.
 
 ## [0.6.8] - 2026-10-06
 

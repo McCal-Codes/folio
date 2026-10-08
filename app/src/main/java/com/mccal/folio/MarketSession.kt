@@ -161,7 +161,13 @@ internal class MarketSession(
 
     /** Puts back the version an automatic update replaced, if it is still the one installed. Home is not touched. */
     suspend fun undoAutoUpdate(update: AutoUpdate): Boolean = withContext(io) {
-        installer.undoUpdateInPlace(update.id, update.from, update.to).also { if (it) autoUpdates.markUndone(update.id, update.to) }
+        installer.undoUpdateInPlace(update.id, update.from, update.to).also {
+            if (it) {
+                autoUpdates.markUndone(update.id, update.to)
+                // A version the person undid is not installed by itself again; a newer one still is.
+                prefs.skippedUpdates = prefs.skippedUpdates + "${update.id}@${update.to}"
+            }
+        }
     }
 
     /** The page and payload for a package, without applying anything: what the package page shows. */
@@ -232,6 +238,14 @@ internal class MarketSession(
     fun undo(result: InstallResult.Installed): Boolean = installer.undo(result).also {
         Diagnostics.marketUndone(result.installed.id, it)
         if (it) pruneArt()
+    }
+
+    /**
+     * Called as Home starts: if the last process died part way through an install, what it had applied is put back.
+     * Returns the package that did not finish, so Home can say so.
+     */
+    fun recoverInterrupted(): PackageInstaller.Interrupted? = installer.recoverInterrupted()?.also {
+        Diagnostics.event("Market: put back an install that did not finish: ${it.id}")
     }
 
     /**

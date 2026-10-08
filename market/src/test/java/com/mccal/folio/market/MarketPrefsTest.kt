@@ -49,3 +49,14 @@ class MarketPrefsTest {
         assertTrue("and answering it turns nothing on by itself", !MarketPrefs(store).backgroundRefresh)
     }
 }
+
+class SkippedUpdatesTest {
+    @Test fun `an update you undid is remembered and cleared when emptied`() {
+        val prefs = MarketPrefs(MemoryStore())
+        org.junit.Assert.assertTrue(prefs.skippedUpdates.isEmpty())
+        prefs.skippedUpdates = setOf("a@1.1.0", "b@2.0.0")
+        org.junit.Assert.assertEquals(setOf("a@1.1.0", "b@2.0.0"), prefs.skippedUpdates)
+        prefs.skippedUpdates = emptySet()
+        org.junit.Assert.assertTrue(prefs.skippedUpdates.isEmpty())
+    }
+}

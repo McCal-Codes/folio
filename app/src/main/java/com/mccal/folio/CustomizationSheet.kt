@@ -1927,14 +1927,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
             shareScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = false)) } }
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
-        var copied by remember { mutableStateOf(false) }
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {
-            shareScope.launch { runCatching { Diagnostics.copy(context); copied = true } }
+            shareScope.launch { runCatching { Diagnostics.copy(context); IslandEvents.notice(context, context.getString(R.string.diagnostics_copied)) } }
         }, modifier = Modifier.testTag("copy-diagnostics"))
-        if (copied) {
-            LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); copied = false }
-            Text(stringResource(R.string.diagnostics_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("diagnostics-copied").semantics { liveRegion = LiveRegionMode.Polite })
-        }
         CardNote(stringResource(R.string.diagnostics_file_note))
     }
 }

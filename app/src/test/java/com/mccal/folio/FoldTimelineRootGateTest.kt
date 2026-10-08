@@ -142,6 +142,9 @@ class FoldTimelineRootGateTest {
     @Test fun `after the timeline stops, a changed switch does nothing more`() {
         val t = running()
         t.stop()
+        // The feed's own thread closes the helper once more as it ends; wait for it, or that late close lands after the reset below.
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (Thread.getAllStackTraces().keys.any { it.name == "folio-root-hinge" && it.isAlive } && System.nanoTime() < deadline) Thread.sleep(5)
         process.closed = false
         SystemBridge.setOff(context, true)
         settle()

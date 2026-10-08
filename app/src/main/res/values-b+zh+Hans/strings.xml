@@ -416,9 +416,11 @@
     <string name="focus_trigger_headphones">耳机</string>
     <string name="focus_fold_unfolded">展开</string>
     <string name="focus_fold_cover">外屏</string>
-    <string name="focus_fold_tent">帐篷</string>
+    <string name="focus_fold_tent">半开</string>
     <string name="focus_triggers_note">这些仅用于开启和关闭此专注模式。如果你手动关闭，它会保持关闭，直到下一次变化。</string>
     <string name="focus_on_because">已开启 · %1$s</string>
+    <string name="focus_island_on">%1$s 已开启 · %2$s</string>
+    <string name="focus_island_off">%1$s 已关闭</string>
     <string name="from">从</string>
     <string name="silence_notifications">将通知静音</string>
     <string name="calls_and_people_allowed_in_android_s_do">Android 勿扰模式设置中允许的来电和联系人仍然可以接通。</string>
@@ -1286,6 +1288,7 @@
     <string name="refresh_in_the_background">在后台刷新</string>
     <string name="tell_me_about_updates">更新时通知我</string>
     <string name="update_packages_in_background">在后台更新包</string>
+    <string name="market_package_updated">%1$s 已更新</string>
     <string name="update_packages_in_background_detail">当更改不涉及你的任何设置时，来源中的包会自动更新</string>
     <string name="market_updates_notice_detail">来源有你已安装内容的新版本时通知一次</string>
     <string name="updates_question_title">让软件包保持最新？</string>
@@ -1668,6 +1671,8 @@
     <string name="onboarding_tip_nav_gestures">从屏幕底部边缘向上滑回到主屏幕，从左右边缘向内滑返回。</string>
     <string name="onboarding_tip_nav_buttons">点按主页按钮回到主屏幕，点按返回按钮返回。</string>
     <string name="finish_setting_up">随时完成其余设置</string>
+    <string name="hint_hold">长按图标即可整理或编辑主屏幕</string>
+    <string name="hint_unfold">展开后，还是同一个主屏幕，只是空间更大</string>
     <string name="finish_notifications_detail">灵动岛、通知角标和快速回复。</string>
     <string name="finish_panels_detail">从屏幕上方角落打开通知中心和控制中心。</string>
     <string name="set_up">设置</string>
@@ -1907,4 +1912,5 @@
     <string name="bridge_outcome_ran">已运行</string>
     <string name="bridge_outcome_fell_back">改用了标准方式</string>
     <string name="bridge_outcome_failed">失败，已改用标准方式</string>
+    <string name="market_install_put_back">%1$s 未能完成安装，Folio 已恢复原状</string>
 </resources>

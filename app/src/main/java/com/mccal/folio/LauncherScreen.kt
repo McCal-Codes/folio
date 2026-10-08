@@ -181,9 +181,16 @@ fun LauncherScreen(
     }
     val launcherRootView = LocalView.current.rootView
     val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model, launcherActivity)) }
-    // Package Safe Mode: runs as Home starts, so a package that crashed Folio while it was being applied is turned off
-    // on the next launch. Asked only when the Market opened, the minute-long marker had always expired by then.
-    LaunchedEffect(marketSession) { marketSession.noteCrash() }
+    // Package recovery, as Home starts. First, an install the last process died in the middle of is put back. Then
+    // Package Safe Mode: a package that was applied just before Folio crashed twice is turned off, so a bad one cannot
+    // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold.
+    val recoveryContext = LocalContext.current
+    LaunchedEffect(marketSession) {
+        val interrupted = withContext(Dispatchers.IO) {
+            marketSession.recoverInterrupted().also { if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash() }
+        }
+        interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
+    }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"
         if (active) LiveDiscover.setExternalResultPending(launcherActivity, "main", "widget-picker", true)
@@ -1245,6 +1252,19 @@ fun LauncherScreen(
                     }
                 }
             }
+            // One-time hints (FirstUseHints): the first Home after setup, and the first unfolded one. Doing the thing counts as having seen it.
+            LaunchedEffect(showFirstRun, homeEdit.active, overlays.menu) {
+                if (homeEdit.active || overlays.menu != null) FirstUseHints.done(launcherActivity, FirstUseHint.HOLD)
+                else if (!showFirstRun && sheet.isEmpty()) { kotlinx.coroutines.delay(2_500); FirstUseHints.show(launcherActivity, FirstUseHint.HOLD) }
+            }
+            LaunchedEffect(wide, showFirstRun) {
+                if (wide && !showFirstRun && FirstUseHints.pending(launcherActivity, FirstUseHint.UNFOLD)) {
+                    kotlinx.coroutines.delay(2_500)
+                    // The island holds one notice, so the unfold hint waits out the hold hint instead of replacing it.
+                    if (FirstUseHints.pending(launcherActivity, FirstUseHint.HOLD)) kotlinx.coroutines.delay(IslandEvents.NOTICE_SHOW_MS + 1_000)
+                    FirstUseHints.show(launcherActivity, FirstUseHint.UNFOLD)
+                }
+            }
             // iOS-style notice when editing is locked by a Focus.
             FocusLockNotice(lockNotice, focusLock?.mode, Modifier.align(Alignment.TopCenter))
             if (showFirstRun) {
@@ -1808,7 +1828,12 @@ fun LauncherScreen(
                 modifier = Modifier.testTag("background-picker-resume")) { Text(stringResource(R.string.resume)) } },
             dismissButton = { TextButton(onClick = launcherActivity.backgrounds::cancelPendingSelection,
                 modifier = Modifier.testTag("background-picker-cancel")) { Text(stringResource(R.string.cancel)) } })
-        (launcherActivity.backups.errorMessage ?: launcherActivity.backups.successMessage)?.let { message ->
+        // A short confirmation ("Layout backup saved.") is a notice in Home's island, which nothing has to dismiss; a problem,
+        // or a long message the person has to read (what a restore did, which widgets to reconnect), keeps its dialog.
+        launcherActivity.backups.successMessage?.takeIf { launcherActivity.backups.errorMessage == null && it.length <= SHORT_CONFIRMATION }?.let { message ->
+            LaunchedEffect(message) { IslandEvents.notice(launcherActivity, message); launcherActivity.backups.clearMessage() }
+        }
+        (launcherActivity.backups.errorMessage ?: launcherActivity.backups.successMessage)?.takeIf { it.length > SHORT_CONFIRMATION || launcherActivity.backups.errorMessage != null }?.let { message ->
             AlertDialog(onDismissRequest = launcherActivity.backups::clearMessage,
                 title = { Text(if (launcherActivity.backups.errorMessage != null) stringResource(R.string.layout_backup_problem) else stringResource(R.string.layout_backup)) },
                 text = { Text(message) }, confirmButton = { TextButton(onClick = launcherActivity.backups::clearMessage) { Text(stringResource(R.string.ok)) } })
@@ -1868,3 +1893,6 @@ private fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
         }
     }
 }
+
+/** A backup message this short is shown as an island notice; longer ones stay a dialog, because they have to be read. */
+private const val SHORT_CONFIRMATION = 48
