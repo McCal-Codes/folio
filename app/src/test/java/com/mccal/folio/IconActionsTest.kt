@@ -91,4 +91,12 @@ class IconActionsTest {
         // An older build runs this same check against a schema 10 save: its newest is 9, so it refuses the file visibly.
         assertThrows(Exception::class.java) { decodeLauncherState(saved.put("schema", STATE_SCHEMA + 1).toString(), legacyRaw = null) }
     }
+
+    @Test fun `the first save that writes schema 10 keeps the schema 9 file once`() {
+        assertTrue(v9BackupNeeded(sourceSchema = 9, writtenSchema = 10, hasBackup = false))
+        assertTrue("an older source still counts", v9BackupNeeded(sourceSchema = 8, writtenSchema = 10, hasBackup = false))
+        assertFalse("kept once, never overwritten", v9BackupNeeded(9, 10, hasBackup = true))
+        assertFalse("a save that stays schema 9 has nothing to keep", v9BackupNeeded(9, 9, hasBackup = false))
+        assertFalse("a file that is already schema 10 has nothing older to keep", v9BackupNeeded(10, 10, hasBackup = false))
+    }
 }

@@ -419,6 +419,9 @@ const val STATE_SCHEMA = 10
  */
 internal fun stateSchemaFor(s: LauncherState) = if (s.iconActions.isNotEmpty()) 10 else 9
 
+/** Whether this save should keep the schema 9 file it is about to replace: it writes schema 10 over an older read and no copy exists yet. */
+internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 10 && writtenSchema >= 10 && !hasBackup
+
 /**
  * The schema that brought More rows. A save older than this was arranged in four rows, and keeps them; anything
  * from this schema on already had Automatic. Pinned to 9 rather than following [STATE_SCHEMA], or the next schema
@@ -1563,6 +1566,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editor.putString("state_v7_backup", legacyRaw)
         if (legacyRaw != null && sourceSchema < 9 && !prefs.contains("state_v8_backup"))
             editor.putString("state_v8_backup", legacyRaw)
+        // The first save that writes schema 10 (one with icon actions) keeps the schema 9 file it replaces, like every step before it.
+        if (legacyRaw != null && v9BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v9_backup")))
+            editor.putString("state_v9_backup", legacyRaw)
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()

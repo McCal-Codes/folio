@@ -13,7 +13,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Drag position, magnification, press | The composable doing it | None | Nothing; cancelled on any interruption |
 | Open folder, open Settings page, search query | Screen UI (`rememberSaveable`) | Saved instance state | Rotation, fold, process death |
 | Installed-app catalog | `LauncherModel` (from `PackageManager` / `LauncherApps`) | `app_catalog` prefs as a cache | Rebuilt from the system |
-| Home layout, dock, folders, widget placements | `LauncherModel` | `launcher/state` JSON, schema 9, with migration backups | Everything; exported by Layout Backup |
+| Home layout, dock, folders, widget placements | `LauncherModel` | `launcher/state` JSON, schema 10 when icon actions are set and 9 otherwise (`stateSchemaFor`), with migration backups | Everything; exported by Layout Backup |
 | Widget bindings | Android (`AppWidgetHost`) + Folio's slot mapping | System + layout JSON | Reconnected on import, not copied |
 | Icon actions (a swipe up, swipe down or double tap per app) | `LauncherModel` | `launcher/state` JSON, key `iconActions`, only when some are set | Everything; exported by Layout Backup |
 | Appearance | `AppearanceStore` | `appearance` prefs | Everything; not in Layout Backup |
@@ -70,7 +70,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 
 Good:
 
-- A single `StateFlow<LauncherState>`, a JSON state with schema 9, one-time backups per migration step, a damaged
+- A single `StateFlow<LauncherState>`, a JSON state with schema 10 (9 for a phone with no icon actions), one-time backups per migration step, a damaged
   backup, and `LayoutLoadTest`.
 - Profile-aware identities; paused profiles keep placements.
 - Layout Backup at version 3 with legacy migrations, Market records reapplied on restore.
