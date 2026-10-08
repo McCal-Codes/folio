@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BLOCKED_TERMS, buildMessage, isBeta, kindOf, problemsWith, sections, shorten, splitWebhooks, tagline, wallOf } from './announce-release.mjs'
+import { BLOCKED_TERMS, buildMessage, firstSentence, isBeta, kindOf, problemsWith, sections, shorten, splitWebhooks, stripPrivateLinks, tagline, wallOf } from './announce-release.mjs'
 
 const release = {
   tag_name: 'v0.6.6',
@@ -299,4 +299,43 @@ test('a manual re-post reads the release from RELEASE_FILE, which is the release
   assert.equal(out.code, 0)
   assert.match(out.text, /Dry run\. This is the message:/)
   assert.match(out.text, /v0\.6\.6|0\.6\.6/)
+})
+
+test('a short opening sentence is the summary, and a paragraph with no end is cut to fit', () => {
+  assert.equal(tagline('# T\n\nSmall fix. A long explanation follows, with a good deal more to say than the channel has room for.'), 'Small fix.')
+  assert.equal(firstSentence('Adds e.g. Keyd to the Market. Then more.'), 'Adds e.g. Keyd to the Market.')
+  assert.equal(firstSentence('Version 0.6.9 is here. More.'), 'Version 0.6.9 is here.')
+  const endless = `${'word '.repeat(200)}`.trim()
+  const cut = tagline(`# T\n\n${endless}`)
+  assert.ok(cut.length <= 220, `tagline ran to ${cut.length}`)
+  assert.match(cut, /…$/)
+  // The links at the bottom survive a release whose opening paragraph never stops.
+  const { content } = buildMessage({ release: { ...release, body: `# T\n\n${endless}\n\n## What's new\n\n- **One:** a thing.` } })
+  assert.match(content, /\[How to install it\]/)
+})
+
+test('links in angle brackets and ordinary HTML are not placeholders, but a template blank still is', () => {
+  const fine = 'See <https://foliolauncher.com> or <mailto:hi@foliolauncher.com>.<br>Line two <b>bold</b> <details><summary>More</summary></details> <a href="https://x.co">x</a>'
+  assert.deepEqual(problemsWith(fine), [])
+  assert.equal(problemsWith('Names in <fill in> go here.').length, 1)
+  assert.equal(problemsWith('Version <version> is out.').length, 1)
+})
+
+test('a beta never carries a link into the private repo, in the summary or the bullets', () => {
+  const private1 = 'https://github.com/McCal-Codes/folio-beta/releases/download/v0.6.9-beta.2/notes.md'
+  assert.equal(stripPrivateLinks(`See [the notes](${private1}) for more, or <${private1}> or ${private1} itself.`), 'See the notes for more, or or itself.')
+  assert.equal(stripPrivateLinks('See [the site](https://foliolauncher.com/download/).'), 'See [the site](https://foliolauncher.com/download/).')
+  const beta = {
+    ...release,
+    tag_name: 'v0.6.9-beta.2',
+    prerelease: true,
+    html_url: 'https://github.com/McCal-Codes/folio-beta/releases/tag/v0.6.9-beta.2',
+    body: `# Folio 0.6.9-beta.2\n\nTry [the new tabs](${private1}) first.\n\n## What's new\n\n- **Tabs:** glide, as shown in [this clip](${private1}).`,
+  }
+  const { content } = buildMessage({ release: beta })
+  assert.doesNotMatch(content, /folio-beta/)
+  assert.match(content, /the new tabs/)
+  assert.match(content, /this clip/)
+  // And if one ever gets through, the post is refused rather than sent.
+  assert.equal(problemsWith(`Look: ${private1}`).length, 1)
 })

@@ -51,6 +51,42 @@ export function kindOf(body = '') {
   return 'Update'
 }
 
+/** The most the line under the heading may run to, so a paragraph with no full stop cannot push the links off the post. */
+const TAGLINE_LIMIT = 220
+
+/**
+ * Links into the private supporters' repo (folio-beta) cannot be opened by anyone else, and a copied sentence or
+ * bullet can carry one. A Markdown link keeps its words and loses its address; a bare address or `<address>` goes.
+ */
+export function stripPrivateLinks(text = '') {
+  return text
+    .replace(/\[([^\]]*)\]\(\s*<?https?:\/\/github\.com\/[^\s)>]*folio-beta[^\s)>]*>?\s*\)/gi, '$1')
+    .replace(/<https?:\/\/github\.com\/[^\s>]*folio-beta[^\s>]*>/gi, '')
+    .replace(/https?:\/\/github\.com\/[^\s)>\]]*folio-beta[^\s)>\]]*/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+const ABBREVIATIONS = /(?:\be\.g|\bi\.e|\betc|\bvs|\bapprox|\bno|\bca|\bcf)\.$/i
+
+/**
+ * The first sentence of a paragraph, however short: "Small fix." is a sentence. A full stop that ends an abbreviation
+ * ("e.g.") or sits inside a number ("0.6.9") is not the end. With no end in sight the paragraph is cut at a word,
+ * so the result always fits.
+ */
+export function firstSentence(text, limit = TAGLINE_LIMIT) {
+  const ends = /[.!?](?=\s|$)/g
+  for (let hit = ends.exec(text); hit; hit = ends.exec(text)) {
+    const candidate = text.slice(0, hit.index + 1)
+    if (ABBREVIATIONS.test(candidate)) continue
+    if (candidate.length <= limit) return candidate
+    break
+  }
+  if (text.length <= limit) return text
+  const cut = text.slice(0, limit - 1)
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), limit / 2)).trimEnd()}…`
+}
+
 /**
  * The line under the heading: the first sentence of the release's opening paragraph, if it wrote one. A paragraph
  * wraps across lines in the file, so it is joined first; cutting at the first physical line left sentences hanging.
@@ -59,12 +95,12 @@ export function tagline(body = '') {
   // A release that heads its list with a bold "Folio 0.6.8: Your language, your Home, and Smooth" has already said it in
   // one line; that beats a personal opening paragraph, which is a greeting rather than a summary.
   const headline = /^\*\*Folio [^:*\n]+:\s*([^*\n]+?)\*\*[ \t]*$/m.exec(body.replace(/\r/g, ''))
-  if (headline) return headline[1].trim()
+  if (headline) return firstSentence(stripPrivateLinks(headline[1].trim()))
   const afterTitle = body.replace(/\r/g, '').replace(/^\s*#\s+[^\n]*\n+/, '')
   const paragraph = afterTitle.split(/\n\s*\n/).find((block) => block.trim())
   if (!paragraph || paragraph.trim().startsWith('#') || paragraph.trim().startsWith('-')) return ''
-  const text = paragraph.replace(/\s+/g, ' ').trim()
-  return /^(.{20,}?[.!?])(\s|$)/.exec(text)?.[1] ?? text
+  const text = stripPrivateLinks(paragraph.replace(/\s+/g, ' ').trim())
+  return firstSentence(text)
 }
 
 /**
@@ -87,7 +123,7 @@ export function sections(body = '') {
       else if (joined.length && joined[joined.length - 1] !== null && line.trim() && !line.startsWith('#')) joined[joined.length - 1] += ` ${line.trim()}`
       else if (!line.trim()) joined.push(null)
     }
-    const bullets = joined.filter(Boolean).map((line) => shorten(line.trim())).filter(Boolean)
+    const bullets = joined.filter(Boolean).map((line) => shorten(stripPrivateLinks(line.trim()))).filter(Boolean)
     if (bullets.length) found.push({ name, bullets })
   }
   return found
@@ -122,6 +158,9 @@ export const BLOCKED_TERMS = [
   'rel-\\d+',
 ]
 
+/** HTML a release's notes may use, which is markup and not a placeholder. */
+const HTML_TAGS = 'br|hr|b|i|u|s|em|strong|code|kbd|p|a|img|sup|sub|small|details|summary|ul|ol|li|blockquote|pre|h[1-6]'
+
 /** What is wrong with a finished message, if anything. A post with a problem is never sent, not even in a dry run. */
 export function problemsWith(content = '') {
   const found = []
@@ -129,9 +168,12 @@ export function problemsWith(content = '') {
     const hit = new RegExp(`(?<![\\w-])${term}(?![\\w-])`, 'i').exec(content)
     if (hit) found.push(`mentions "${hit[0]}"`)
   }
-  // A <name> left in from a template, but not a Discord mention: <@...>, <#...> or an emoji, <:x:> and <a:x:>.
-  const placeholder = /<(?![@#:!]|a:|https?:)[A-Za-z][^>\n]{0,40}>/.exec(content)
+  // A <name> left in from a template. Not a placeholder: a Discord mention (<@...>, <#...>), an emoji (<:x:>, <a:x:>),
+  // a link in angle brackets (any <scheme:...>, such as <https://x.co> or <mailto:a@b.c>), or an ordinary HTML tag.
+  const placeholder = new RegExp(`<(?![@#:!]|[A-Za-z][A-Za-z0-9+.-]*:|(?:${HTML_TAGS})(?:[\\s/>]))[A-Za-z][^>\\n]{0,40}>`).exec(content)
   if (placeholder) found.push(`has a placeholder, ${placeholder[0]}`)
+  const privateLink = /https?:\/\/github\.com\/[^\s)>\]]*folio-beta[^\s)>\]]*/i.exec(content)
+  if (privateLink) found.push(`links to the private beta repo, ${privateLink[0]}`)
   return found
 }
 
