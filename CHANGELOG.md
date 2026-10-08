@@ -38,6 +38,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Notices that fit and stay clear:** the notices in the Dynamic Island size themselves to their text (up to three lines) and stay clear of the camera and of the fold, on the cover, the open screen and half folded.
 - **Undo from the update notice:** when Folio updates a package by itself, the notice says so with an Undo. Undo puts the earlier version back, leaves Home alone, and that version is not installed again by itself.
 - **Two first-use hints:** once, Folio tells you to press and hold an icon to rearrange or edit Home, and, unfolded, that it is the same Home with more room.
+- **Focus says when it turns itself on:** when a trigger turns a Focus on or off, a notice in the island says which Focus and why, and nothing is shown when Home is not on screen. The half-open fold pose is called Half Open, for a tent or a laptop.
+- **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
