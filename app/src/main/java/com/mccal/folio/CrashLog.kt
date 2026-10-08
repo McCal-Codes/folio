@@ -87,6 +87,7 @@ internal object SafeMode {
 
     private const val CRASHED_LAST_RUN = "crashedLastRun"
     @Volatile private var crashedLastRun = false
+    @Volatile private var appContext: Context? = null
     private val crashTaken = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /**
@@ -94,15 +95,21 @@ internal object SafeMode {
      * counts a crash only then: asked on every Home composition (a fold, an unfold) it would blame a package for
      * nothing.
      */
-    fun takeCrashedLastRun(): Boolean = crashedLastRun && crashTaken.compareAndSet(false, true)
+    fun takeCrashedLastRun(): Boolean {
+        if (!crashedLastRun || !crashTaken.compareAndSet(false, true)) return false
+        // Cleared only now that Home has read it: a background job that starts the process after a crash, and is then
+        // killed before Home exists, must not use the flag up.
+        appContext?.getSharedPreferences(PREFS, 0)?.edit()?.putBoolean(CRASHED_LAST_RUN, false)?.apply()
+        return true
+    }
 
     fun onStart(context: Context) {
         startedAt = android.os.SystemClock.elapsedRealtime()
         val prefs = context.getSharedPreferences(PREFS, 0)
         active = isOn(context)
         crashTaken.set(false)
+        appContext = context.applicationContext
         crashedLastRun = prefs.getBoolean(CRASHED_LAST_RUN, false)
-        if (crashedLastRun) prefs.edit().putBoolean(CRASHED_LAST_RUN, false).apply()
     }
 
     /**

@@ -29,4 +29,17 @@ class SafeModeCrashFlagTest {
         assertFalse(SafeMode.takeCrashedLastRun())
         assertFalse(SafeMode.takeCrashedLastRun())
     }
+
+    @Test fun `a process that ends before Home reads the flag does not use it up`() {
+        SafeMode.onStart(context)
+        SafeMode.onCrash(context)
+        // A background job starts the process and it is killed before Home ever asks.
+        SafeMode.onStart(context)
+        // The next process, which does show Home, still sees the crash.
+        SafeMode.onStart(context)
+        assertTrue(SafeMode.takeCrashedLastRun())
+        assertFalse(SafeMode.takeCrashedLastRun())
+        SafeMode.onStart(context)
+        assertFalse("and once it has been read, it is gone", SafeMode.takeCrashedLastRun())
+    }
 }

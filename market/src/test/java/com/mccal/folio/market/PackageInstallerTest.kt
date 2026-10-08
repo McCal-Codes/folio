@@ -36,7 +36,11 @@ class PackageInstallerTest {
         /** Throws an Error, which the installer's `catch (Exception)` does not catch: what a killed process looks like. */
         var dieOn: ((PackageChange) -> Boolean)? = null
         var whileApplying: (() -> Unit)? = null
+        /** Throws an Error after the change has taken effect and before the installer notes its snapshot: a kill at the worst moment. */
+        var dieAfter: ((PackageChange) -> Boolean)? = null
         var state = "tweaks off"
+
+        override fun snapshotBefore(change: PackageChange): String = state
 
         override fun apply(change: PackageChange): String {
             if (failOn?.invoke(change) == true) error("the launcher refused that change")
@@ -45,6 +49,7 @@ class PackageInstallerTest {
             applied += change
             val before = state
             state = "applied ${describe(change)}"
+            if (dieAfter?.invoke(change) == true) throw AssertionError("the process died here, after the change")
             return before
         }
 
@@ -626,5 +631,36 @@ class PackageInstallerTest {
         t += 120
         assertNull(safe.noteCrash())
         assertNull(safe.noteCrash())
+    }
+
+    @Test fun `a kill after a change took effect but before its snapshot was noted still puts that change back`() {
+        val pkg = cabinet()
+        host.dieAfter = { true }
+        try { installer.install(pack(), origin = InstalledPackage.Origin.FILE) } catch (e: AssertionError) { /* the process died */ }
+        host.dieAfter = null
+        assertTrue("the change is on Home", host.state.startsWith("applied"))
+        val recovered = PackageInstaller(store, host, clock = { now }).recoverInterrupted()
+        assertEquals(pkg.id, recovered?.id)
+        assertEquals("tweaks off", host.state)
+        assertTrue(host.restored.isNotEmpty())
+    }
+
+    @Test fun `an install that cannot write its journal does not start`() {
+        val failing = object : KeyValueStore by store.keyValue {
+            override fun set(key: String, value: String?): Boolean = if (key == "market:apply-journal" && value != null) false else store.keyValue.set(key, value)
+        }
+        val blocked = PackageInstaller(InstalledStore(failing), host, clock = { now })
+        val result = blocked.install(pack(), origin = InstalledPackage.Origin.FILE)
+        assertTrue("$result", result is InstallResult.Failed)
+        assertTrue("nothing was applied", host.applied.isEmpty())
+        assertNull("and no package was recorded", store.installed().firstOrNull())
+    }
+
+    @Test fun `a failed install leaves no marker for Safe Mode to blame`() {
+        host.failOn = { true }
+        assertTrue(installer.install(pack(), origin = InstalledPackage.Origin.FILE) is InstallResult.Failed)
+        val safeMode = PackageSafeMode(store.keyValue) { now }
+        assertNull(safeMode.noteCrash())
+        assertNull("not even on the second crash", safeMode.noteCrash())
     }
 }

@@ -26,6 +26,13 @@ interface PackageHost {
      * a host says otherwise, so a host that forgets to answer refuses add-ons rather than installing them bare.
      */
     fun hasTweak(id: String): Boolean = false
+
+    /**
+     * What [change] would replace, read without applying it: the same text [apply] would return. The installer writes it
+     * down before the change, so a process killed between the change taking effect and the installer noting its snapshot
+     * can still be put back. Null when it can't be read ahead of time, which leaves that one change as it was.
+     */
+    fun snapshotBefore(change: PackageChange): String? = null
 }
 
 /** A package Folio has installed, and what it replaced. */
@@ -101,6 +108,9 @@ class PackageInstaller(
         // Written down and then killed before the journal was cleared: the install finished, nothing to put back.
         val finished = recorded != null && recorded.version.toString() == entry.version && entry.replacedVersion != entry.version
         if (!finished) {
+            // The change that was being applied when the process died has no snapshot in the list yet; the one written
+            // before it was applied puts it back, newest first like the rest.
+            entry.pending?.let { before -> entry.changes.getOrNull(entry.snapshots.size)?.let { runCatching { host.restore(it, before) } } }
             entry.changes.take(entry.snapshots.size).zip(entry.snapshots).reversed().forEach { (change, snapshot) ->
                 runCatching { host.restore(change, snapshot) }
             }
@@ -113,7 +123,8 @@ class PackageInstaller(
             }
         }
         journal.clear()
-        safeMode.endChange()
+        // Put back, or already finished: either way nothing of this install is left to blame.
+        if (finished) safeMode.endChange() else safeMode.abandonChange()
         if (finished) null else Interrupted(entry.id, entry.name)
     }
 
@@ -275,16 +286,24 @@ class PackageInstaller(
         replaced: InstalledPackage?,
     ): InstallResult {
         safeMode.beginChange(pkg.id)
-        journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced)
+        // Nothing is changed that Folio couldn't first write down how to put back: a store that won't take the journal
+        // means the install doesn't start.
+        if (!journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced)) {
+            safeMode.abandonChange()
+            return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't write down what it was about to do, so nothing changed")
+        }
         val snapshots = mutableListOf<String>()
         try {
             // A version Safe Mode turned off has already had its changes taken off Home, so undoing them again
             // would put back what Home looked like before it, over whatever has happened since.
             replaced?.takeIf { it.enabled }?.let { undoChanges(it) }
             for (change in pkg.changes) {
+                // Where Home is right now, written before the change: a process killed after the change takes effect
+                // but before its snapshot is noted can still put it back.
+                check(journal.pending(snapshots, host.snapshotBefore(change))) { "the journal can't be written" }
                 snapshots += host.apply(change)
                 // Written after each change, so a process that dies part way knows exactly what to put back.
-                journal.progress(snapshots)
+                check(journal.progress(snapshots)) { "the journal can't be written" }
             }
         } catch (e: Exception) {
             // Put back everything this install had already changed, newest first.
@@ -302,7 +321,7 @@ class PackageInstaller(
                 }
             }
             journal.clear()
-            safeMode.endChange()
+            safeMode.abandonChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't apply that package, so nothing changed")
         }
         val installed = InstalledPackage(
@@ -321,7 +340,7 @@ class PackageInstaller(
                 runCatching { host.restore(change, snapshot) }
             }
             journal.clear()
-            safeMode.endChange()
+            safeMode.abandonChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't save that package, so nothing changed")
         }
         // Only once the package is really on: a key remembered for an install that failed would own the id anyway.
@@ -668,6 +687,13 @@ class PackageSafeMode(private val store: KeyValueStore, private val clock: () ->
     }
 
     /**
+     * The change was put back (it failed, or it was interrupted and recovered), so there is nothing left applied to blame:
+     * the marker goes, instead of staying for a minute as [endChange] leaves it. Otherwise two crashes soon after could
+     * turn off the earlier version that was just restored.
+     */
+    fun abandonChange() { store.set(KEY, null) }
+
+    /**
      * Called when Folio starts after a crash. Returns the package to turn off, if a change was in flight recently and
      * this is the second crash.
      */
@@ -701,18 +727,31 @@ internal class ApplyJournal(private val store: InstalledStore) {
     data class Entry(
         val id: String, val name: String, val version: String, val changes: List<PackageChange>, val snapshots: List<String>,
         val replacedVersion: String?, val replacedEnabled: Boolean,
+        /** What the change being applied when the process died would have replaced, written just before it ran; null if it could not be read ahead. */
+        val pending: String? = null,
     )
 
-    fun begin(id: String, name: String, version: String, changes: List<PackageChange>, replaced: InstalledPackage?) {
+    /** Each write says whether the store really took it: an install that can't be written down must not go on. */
+    fun begin(id: String, name: String, version: String, changes: List<PackageChange>, replaced: InstalledPackage?): Boolean {
         val json = JSONObject().put("id", id).put("name", name).put("version", version).put("changes", store.encodeChanges(changes))
             .put("snapshots", JSONArray())
         replaced?.let { json.put("replacedVersion", it.version.toString()).put("replacedEnabled", it.enabled) }
-        store.keyValue.set(KEY, json.toString())
+        return store.keyValue.set(KEY, json.toString())
     }
 
-    fun progress(snapshots: List<String>) {
-        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
-        store.keyValue.set(KEY, json.put("snapshots", JSONArray(snapshots)).toString())
+    /** Written before a change is applied. [before] is null when the host can't read it ahead of time. */
+    fun pending(snapshots: List<String>, before: String?): Boolean {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return false
+        json.put("snapshots", JSONArray(snapshots))
+        if (before != null) json.put("pending", before) else json.remove("pending")
+        return store.keyValue.set(KEY, json.toString())
+    }
+
+    /** Written after a change: the change is in the list now, so the pending one is no longer needed. */
+    fun progress(snapshots: List<String>): Boolean {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return false
+        json.remove("pending")
+        return store.keyValue.set(KEY, json.put("snapshots", JSONArray(snapshots)).toString())
     }
 
     fun clear() { store.keyValue.set(KEY, null) }
@@ -723,7 +762,8 @@ internal class ApplyJournal(private val store: InstalledStore) {
         val snapshots = json.optJSONArray("snapshots")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
         val id = json.optString("id").takeIf { it.isNotEmpty() } ?: return null
         return Entry(id, json.optString("name", id), json.optString("version"), changes, snapshots,
-            json.optString("replacedVersion").takeIf { it.isNotEmpty() }, json.optBoolean("replacedEnabled"))
+            json.optString("replacedVersion").takeIf { it.isNotEmpty() }, json.optBoolean("replacedEnabled"),
+            if (json.has("pending")) json.optString("pending") else null)
     }
 
     private companion object { const val KEY = "market:apply-journal" }
