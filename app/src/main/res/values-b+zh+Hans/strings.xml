@@ -1913,6 +1913,10 @@
     <string name="bridge_outcome_fell_back">改用了标准方式</string>
     <string name="bridge_outcome_failed">失败，已改用标准方式</string>
     <string name="market_install_put_back">%1$s 未能完成安装，Folio 已恢复原状</string>
+    <string name="icon_action_swipe_up">向上轻扫</string>
+    <string name="icon_action_swipe_down">向下轻扫</string>
+    <string name="icon_action_double_tap">连点两下</string>
+    <string name="icon_action_talkback">%1$s：%2$s</string>
     <string name="bridge_cap_global_actions">返回、主屏幕、最近使用及其他系统按键</string>
     <string name="action_app_open">打开 App</string>
     <string name="action_shortcut_open">打开 App 快捷方式</string>

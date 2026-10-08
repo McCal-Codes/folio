@@ -68,6 +68,11 @@ internal fun FolderPanel(
     onCarryStart: ((AppEntry) -> Unit)? = null, onCarryFinish: (cancelled: Boolean) -> Unit = {},
     homeRootOnScreen: () -> androidx.compose.ui.geometry.Offset = { androidx.compose.ui.geometry.Offset.Zero },
 ) {
+    // The Performance log counts the frames while the folder opens (its entrance runs well inside this).
+    LaunchedEffect(Unit) {
+        PerfLog.begin(PerfScenario.FOLDER)
+        try { kotlinx.coroutines.delay(700) } finally { PerfLog.end(PerfScenario.FOLDER) }
+    }
     var title by rememberSaveable(folder.id) { mutableStateOf(folder.title) }
     // Zoom in from the folder's tile on Home and back into it on close, like iPhone folders.
     val appear = remember(folder.id) { androidx.compose.animation.core.Animatable(0f) }
