@@ -1934,4 +1934,8 @@
     <string name="bridge_outcome_fell_back">대신 기본 방식을 사용함</string>
     <string name="bridge_outcome_failed">실패하여 기본 방식을 사용함</string>
     <string name="market_install_put_back">%1$s 설치가 끝나지 않아 Folio가 이전 상태로 되돌렸습니다</string>
+    <string name="icon_action_swipe_up">위로 쓸어올리기</string>
+    <string name="icon_action_swipe_down">아래로 쓸어내리기</string>
+    <string name="icon_action_double_tap">두 번 탭하기</string>
+    <string name="icon_action_talkback">%1$s: %2$s</string>
 </resources>
