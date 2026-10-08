@@ -65,4 +65,27 @@ class PerfScenariosTest {
         assertEquals(without, PerfReport.build(header, samples, all, PerfScenarios()))
         assertFalse("Frames by what Folio was doing" in without)
     }
+
+    @Test fun `sheets and menus are scenarios of their own, named in the report`() {
+        val all = FrameHistogram().also { it.record(8_000_000L, false) }
+        val s = PerfScenarios()
+        s.begin(PerfScenario.SHEET); s.record(12_000_000L, false); s.end(PerfScenario.SHEET)
+        s.begin(PerfScenario.MENU); s.record(9_000_000L, false); s.record(9_000_000L, false); s.end(PerfScenario.MENU)
+        val text = PerfReport.build(header, listOf(sample(0, 0), sample(60_000, 3_000)), all, s)
+        assertTrue(text, "Page or sheet sliding in: 1 frames" in text)
+        assertTrue(text, "Menu or alert opening: 2 frames" in text)
+    }
+
+    /** A new sheet or menu entrance that forgets its scenario would be invisible in the report; this keeps them all counted. */
+    @Test fun `every sheet and menu entrance names its scenario`() {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val calls = java.io.File(root, "app/src/main/java").walkTopDown().filter { it.extension == "kt" }.flatMap { f ->
+            f.readLines().withIndex().filter { (_, l) -> "rememberEntrance(" in l && !l.trim().startsWith("*") && !l.trim().startsWith("//") && !l.contains("fun rememberEntrance") &&
+                !l.contains("rememberEntrance(stiffness = spring.second") }
+                .map { "${f.name}:${it.index + 1} ${it.value.trim()}" }
+        }.toList()
+        val missing = calls.filter { "scenario =" !in it }
+        assertTrue("These entrances do not say what they are: $missing", missing.isEmpty() || missing.all { it.startsWith("FolioSheet.kt") && "rememberEntrance(spring" in it })
+        assertTrue("There should be sheet and menu entrances to check: $calls", calls.size >= 4)
+    }
 }

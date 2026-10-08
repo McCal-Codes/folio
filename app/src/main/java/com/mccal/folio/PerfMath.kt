@@ -111,7 +111,7 @@ internal class FrameHistogram {
 }
 
 /** What Folio is doing that a frame belongs to, so a report can say how smooth each thing was and not only the whole run. */
-internal enum class PerfScenario { FOLD, HOME_SWIPE, FOLDER, WIDGET_RESIZE }
+internal enum class PerfScenario { FOLD, HOME_SWIPE, FOLDER, WIDGET_RESIZE, SHEET, MENU }
 
 /**
  * Counts which scenarios are going on and gives each its own frame histogram. [begin] and [end] nest and may repeat, so two things at once,
@@ -169,6 +169,8 @@ internal object PerfReport {
         PerfScenario.HOME_SWIPE -> "Home swipe" // english-only
         PerfScenario.FOLDER -> "Folder opening" // english-only
         PerfScenario.WIDGET_RESIZE -> "Widget resize" // english-only
+        PerfScenario.SHEET -> "Page or sheet sliding in" // english-only
+        PerfScenario.MENU -> "Menu or alert opening" // english-only
     }
 
     fun build(header: PerfHeader, samples: List<PerfSample>, histogram: FrameHistogram, scenarios: PerfScenarios? = null): String {
