@@ -45,12 +45,12 @@ internal object FolioActions {
     fun onTrigger(context: Context, trigger: FolioTrigger) {
         if (SafeMode.active) return
         val action = actionFor(context, trigger)
-        if (action != FolioAction.NONE) run(context.applicationContext, action)
+        if (action != FolioAction.NONE) run(context.applicationContext, action, ActionSource.TRIGGER)
     }
 
     /** Runs [action] the way every caller always has; the registry adds the verdict and the trail line. */
-    fun run(context: Context, action: FolioAction) {
-        if (action != FolioAction.NONE) ActionRunner.run(context, ActionRef.of(action), ActionSource.DIRECT)
+    fun run(context: Context, action: FolioAction, source: ActionSource = ActionSource.DIRECT) {
+        if (action != FolioAction.NONE) ActionRunner.run(context, ActionRef.of(action), source)
     }
 
     /**
@@ -65,25 +65,29 @@ internal object FolioActions {
             FolioAction.CONTROL_CENTER -> showOnHome(context, ShadePanel.QUICK_SETTINGS)
             FolioAction.LOCK -> return SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
             FolioAction.SCREENSHOT -> return SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
-            FolioAction.TORCH -> runCatching {
+            FolioAction.TORCH -> return runCatching {
                 val camera = context.getSystemService(CameraManager::class.java)
                 val id = camera.cameraIdList.firstOrNull { camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
-                if (id != null) camera.registerTorchCallback(object : CameraManager.TorchCallback() {
-                    override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
-                        if (cameraId != id) return
-                        camera.unregisterTorchCallback(this)
-                        runCatching { camera.setTorchMode(id, !enabled) }
-                    }
-                }, android.os.Handler(android.os.Looper.getMainLooper()))
-            }
+                // No flash on this phone is not a success: the trail should say it did not run.
+                if (id == null) false else {
+                    camera.registerTorchCallback(object : CameraManager.TorchCallback() {
+                        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+                            if (cameraId != id) return
+                            camera.unregisterTorchCallback(this)
+                            runCatching { camera.setTorchMode(id, !enabled) }
+                        }
+                    }, android.os.Handler(android.os.Looper.getMainLooper()))
+                    true
+                }
+            }.getOrDefault(false)
             FolioAction.FOCUS_SLEEP -> FocusScheduler.toggle(context, "sleep")
             FolioAction.FOCUS_WORK -> FocusScheduler.toggle(context, "work")
             FolioAction.FOCUS_PERSONAL -> FocusScheduler.toggle(context, "personal")
             FolioAction.FOCUS_OFF -> FocusScheduler.setActive(context, null)
-            FolioAction.DND_ON, FolioAction.DND_OFF -> runCatching {
+            FolioAction.DND_ON, FolioAction.DND_OFF -> return runCatching {
                 context.getSystemService(NotificationManager::class.java).setInterruptionFilter(
                     if (action == FolioAction.DND_ON) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL)
-            }
+            }.isSuccess
         }
         return true
     }

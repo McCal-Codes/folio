@@ -146,6 +146,19 @@ class ActionRegistryTest {
         assertEquals(listOf(R.string.needs_accessibility_service), seen.notices)
     }
 
+    @Test fun `the flashlight on a phone with no flash did not run, and the trail says so with where it came from`() {
+        // Robolectric has no camera, which is a phone with no flash.
+        assertFalse(FolioActions.perform(context, FolioAction.TORCH))
+        FolioActions.run(context, FolioAction.TORCH, ActionSource.TRIGGER)
+        val trail = Diagnostics.trailText()
+        assertTrue(trail.contains("Action TORCH (trigger) did not run"))
+    }
+
+    @Test fun `an older caller is recorded as a button press`() {
+        FolioActions.run(context, FolioAction.TORCH)
+        assertTrue(Diagnostics.trailText().contains("Action TORCH (button) did not run"))
+    }
+
     // Saving an action.
 
     @Test fun `an action with arguments round trips`() {
