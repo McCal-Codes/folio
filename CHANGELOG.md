@@ -33,6 +33,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A Market tab bar that glides:** the highlight slides to the tab you pick instead of jumping, in the bar, the side rail and the sidebar. Supporters on the beta see it first.
 - **Badge counts that roll:** when an app's badge number changes it rolls up or down instead of swapping. Supporters on the beta see it first.
 - **Installs that finish with a pop:** when a package finishes installing, a green check pops in where the ring was, then the row settles to its button. Supporters on the beta see it first.
+- **Animation Speed reaches sheets:** Settings › Gestures › Animation Speed now also speeds up or slows a page sliding in, an alert, a form sheet and the Library popup. Supporters on the beta see it first.
 - **Smoother sheets and menus:** a page sliding in, a menu or alert opening, and the Library's category popup now settle on the same springs, a touch softer for pages and with a hint of life for menus. Supporters on the beta see it first.
 
 ### Changed

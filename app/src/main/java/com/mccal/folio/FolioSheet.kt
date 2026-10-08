@@ -53,7 +53,9 @@ internal fun rememberEntrance(stiffness: Float, dampingRatio: Float = 1f, from: 
     val entrance = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) to else from) }
     // The animation runs in the composition, which is where the frame clock lives.
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        entrance.animateTo(to, androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness))
+        // With the motion pass on, an entrance follows Settings › Gestures › Animation Speed like every other spring.
+        entrance.animateTo(to, if (FolioMotion.v2) MotionSpeed.spring(dampingRatio, stiffness)
+            else androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness))
     }
     // The timeout must not depend on frames, so it runs on the main thread alone. Snapping cancels the animation.
     DisposableEffect(Unit) {

@@ -76,7 +76,7 @@ class DuoApplication : Application() {
         CrashLog.install(this)
         DiscoverEmbedding.initialize(this)
         DiscoverBounds.initialize(this)
-        FolioMotion.v2 = FeatureGate.MOTION_V2.isOpen(this)
+        FolioMotion.initialize(this)
         // Matches the Market's background-refresh setting to reality, so turning it off really stops it.
         MarketRefreshJob.schedule(this)
     }

@@ -205,8 +205,38 @@ internal object FolioMotion {
     /** A settle that starts with the finger's speed (a flick, a drop): visibly passes the line and eases back. Never for a tap. */
     val Bounce = .7f to 480f
 
-    /** True while the 0.6.9 motion pass is on for this phone ([FeatureGate.MOTION_V2]); set once when the app starts. */
-    @Volatile var v2 = false
+    /**
+     * True while the 0.6.9 motion pass is on for this phone. It follows [FeatureGate.MOTION_V2] when the app starts, and
+     * on a beta or Folio Dev build a switch in Settings › Advanced can override it, to compare the old motion with the
+     * new. It is Compose state, so a screen that reads it redraws the moment the switch is flipped.
+     */
+    private val v2State = androidx.compose.runtime.mutableStateOf(false)
+    val v2: Boolean get() = v2State.value
+
+    /** What the switch says, if it was ever used: on, off, or null for "follow the gate". */
+    fun resolve(override: Boolean?, gateOpen: Boolean) = override ?: gateOpen
+
+    private const val PREFS = "folio_motion"
+    private const val OVERRIDE = "motionPassOverride"
+
+    /** Sets [v2] from the gate and the saved switch; called once when the app starts. */
+    fun initialize(context: android.content.Context) {
+        val saved = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        val override = if (saved.contains(OVERRIDE)) saved.getBoolean(OVERRIDE, false) else null
+        use(resolve(override, FeatureGate.MOTION_V2.isOpen(context)))
+    }
+
+    /** The switch in Settings › Advanced. Takes effect at once for what is on screen and for everything opened after. */
+    fun setEnabled(context: android.content.Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean(OVERRIDE, on).apply()
+        use(on)
+    }
+
+    /** Turns the pass on or off in memory only. The switch and the tests both go through here. */
+    internal fun use(on: Boolean) { v2State.value = on }
+
+    /** Whether the switch is shown: only while the pass is still on trial, on a beta or Folio Dev build. */
+    fun switchVisible(context: android.content.Context) = !FeatureGate.MOTION_V2.open && FeatureGate.MOTION_V2.isOpen(context)
 
     /** The new spring when the motion pass is on, and the numbers the caller used before it when it is not. */
     fun pick(old: Pair<Float, Float>, new: Pair<Float, Float>) = if (v2) new else old
