@@ -1722,8 +1722,8 @@
     <string name="edit_icon_picture_note">사진은 Folio 안으로 복사되어 정사각형으로 잘리므로, 원본을 지워도 계속 쓸 수 있습니다. 이 휴대전화에만 저장되며 백업에는 포함되지 않습니다.</string>
     <string name="reset_icon">아이콘 초기화</string>
     <string name="custom_search_blank">주소를 입력하기 전에는 Enter 검색에 Google이 사용됩니다.</string>
-    <string name="separate_upright_layout">세로로 들 때 별도 레이아웃</string>
-    <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 레이아웃을 줍니다. 처음에는 가로 레이아웃을 복사해 시작하며, 끄면 다시 공유합니다.</string>
+    <string name="separate_upright_layout">세로로 들 때 별도 크기</string>
+    <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 크기와 간격(아이콘, 행, Dock)을 줍니다. 어떤 앱이 어디에 있는지는 가로 화면과 계속 공유합니다. 처음에는 가로 크기를 복사해 시작하며, 끄면 다시 공유합니다.</string>
     <string name="sideways">가로</string>
     <string name="upright">세로</string>
     <string name="full_width_home">전체 너비 홈</string>
