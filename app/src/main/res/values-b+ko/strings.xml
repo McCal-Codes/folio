@@ -363,6 +363,8 @@
     <string name="restore_from_backup">백업에서 복원…</string>
     <string name="include_diagnostics">진단 정보를 포함할까요?</string>
     <string name="just_open_form">양식만 열기</string>
+    <string name="motion_pass">새 모션</string>
+    <string name="motion_pass_note">0.6.9 모션 개선: 시트, 메뉴, 알림이 같은 스프링으로 움직이고, 마켓 탭이 미끄러지듯 이동하며, 배지 숫자가 굴러가고, 설치가 끝나면 체크 표시가 튀어 오릅니다. 끄면 이전 움직임과 비교할 수 있습니다. 애니메이션 속도를 따르며 동작 줄이기가 우선합니다. 베타 빌드와 Folio Dev에서만 표시됩니다.</string>
     <string name="screenshot_mode">스크린샷 모드</string>
     <string name="safe_mode">안전 모드</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio가 안전 모드로 실행 중입니다. 이번 실행에서는 선택적 기능이 일시 중지됩니다.</string>

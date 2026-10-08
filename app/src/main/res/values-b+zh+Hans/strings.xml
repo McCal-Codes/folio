@@ -364,6 +364,8 @@
     <string name="restore_from_backup">从备份恢复…</string>
     <string name="include_diagnostics">包含诊断信息吗？</string>
     <string name="just_open_form">仅打开表单</string>
+    <string name="motion_pass">新动效</string>
+    <string name="motion_pass_note">0.6.9 动效改进：面板、菜单和提示框使用同一组弹簧动画，市场标签页平滑滑动，角标数字滚动变化，安装完成时对勾弹出。关闭后可与之前的动效对比。它遵循动画速度设置，并且减少动态效果优先。仅在测试版和 Folio Dev 中显示。</string>
     <string name="screenshot_mode">截图模式</string>
     <string name="safe_mode">安全模式</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio 正在安全模式下运行：本次会话中可选功能已暂停。</string>
