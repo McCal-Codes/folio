@@ -154,6 +154,12 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
+    // The Performance log times Home's swipe and a widget's resize on their own, so a slow one shows up by name.
+    LaunchedEffect(resize.active) {
+        if (!resize.active) return@LaunchedEffect
+        PerfLog.begin(PerfScenario.WIDGET_RESIZE)
+        try { kotlinx.coroutines.awaitCancellation() } finally { PerfLog.end(PerfScenario.WIDGET_RESIZE) }
+    }
     // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
     var clockEditSlot by remember { mutableStateOf<Int?>(null) }
     var placeSlot by remember { mutableStateOf<Int?>(null) }
@@ -237,6 +243,13 @@ fun LauncherScreen(
     val pageCount = visibleHomePages + 1
     val nativePager = rememberPagerState(initialPage = savedPage.coerceIn(-firstHome, pageCount - 1) + firstHome, pageCount = { pageCount + firstHome })
     val pager = remember(nativePager) { LauncherPager(nativePager, firstHome) }
+    LaunchedEffect(pager) {
+        var swiping = false
+        try { snapshotFlow { pager.state.isScrollInProgress }.collect { now ->
+            if (now && !swiping) { PerfLog.begin(PerfScenario.HOME_SWIPE); swiping = true }
+            else if (!now && swiping) { PerfLog.end(PerfScenario.HOME_SWIPE); swiping = false }
+        } } finally { if (swiping) PerfLog.end(PerfScenario.HOME_SWIPE) }
+    }
     fun leaveTemporaryWidgetPage() {
         val persistedPages = model.state.value.homePages
         if (pager.currentPage >= persistedPages)
