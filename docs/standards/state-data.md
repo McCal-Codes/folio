@@ -40,9 +40,12 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 
 - **STA-5 MUST** version every saved format (`STATE_SCHEMA`, `LAYOUT_BACKUP_VERSION`, `"folioTheme": 1`) and migrate
   forward with a one-time backup of the old data before the first write.
-  A new optional key in an existing format needs no version bump when an older save simply lacks it, an older build
-  ignores it, and an unknown value in it is kept as it is. It does need a load test for the older save (STA-7). The Market's
-  `packages` key and Icon Actions' `iconActions` key are the precedents.
+  A new optional key needs no version bump in a file Folio imports and does not rewrite from its own fields, such as
+  Layout Backup, when an older build simply ignores it. In a file Folio rewrites whole, such as `launcher/state`, an older
+  build would drop a key it does not know on its next save and lose it without a word, so a save that contains the key is
+  written with a newer schema number, and a save without it keeps the old one. An older build then refuses the newer file
+  visibly (STA-6) and a phone that does not use the feature stays readable by every older build (`stateSchemaFor`). Both
+  need a load test for the older save (STA-7).
 - **STA-6 MUST** fail visibly: a layout that can't be read keeps a `state_damaged_backup` and tells the user, never
   silently resets.
 - **STA-7 MUST** have a load test for each schema step (`LayoutLoadTest`) when the format changes.
