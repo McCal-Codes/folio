@@ -14,7 +14,8 @@ class SafetyFixesTest {
     }
 
     @Test fun `actions that need the accessibility service or Do Not Disturb access say so`() {
-        val actions = source("FolioActions.kt")
+        // The refusals are said by the action runner, which every action goes through.
+        val actions = source("ActionRegistry.kt")
         assertTrue(actions.contains("needs_accessibility_service"))
         assertTrue(actions.contains("needs_dnd_access"))
         assertTrue(source("TopPanels.kt").contains("needs_accessibility_service"))

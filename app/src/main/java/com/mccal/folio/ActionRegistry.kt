@@ -132,7 +132,8 @@ internal class ActionRegistry(specs: List<ActionSpec>) {
 
 /**
  * The one way an action runs: ask for a verdict, run inside a catch, and leave a line in the trail either way, so a
- * refused or failed action is never silent. The trail holds ids and outcomes only, no app names or arguments.
+ * refused or failed action is never silent. The trail holds ids and outcomes only, no app names or arguments. Trail
+ * lines are read in reports by the developer, not shown to people, so they stay English (marked english-only below).
  */
 internal object ActionRunner {
     /** Returns whether the action ran. A refusal also tells the person what to turn on, as the old actions did. */
@@ -164,11 +165,11 @@ internal object ActionRunner {
             return false
         }
         if (!done) {
-            trail("Action ${ref.id} (${source.trailName}) did not run")
+            trail("Action ${ref.id} (${source.trailName}) did not run")  // english-only
             if (spec.needs == ActionNeeds.ACCESSIBILITY) notice(R.string.needs_accessibility_service)
             return false
         }
-        trail("Action ${ref.id} (${source.trailName}) ran")
+        trail("Action ${ref.id} (${source.trailName}) ran")  // english-only
         return true
     }
 
@@ -177,7 +178,7 @@ internal object ActionRunner {
         ActionVerdict.NeedsAccessibility -> "needs Accessibility"
         ActionVerdict.NeedsPolicyAccess -> "needs Do Not Disturb access"
         is ActionVerdict.NeedsAndroid -> "needs Android API $sdk"
-        ActionVerdict.SafeMode -> "Safe Mode is on"
+        ActionVerdict.SafeMode -> "Safe Mode is on"  // english-only
         ActionVerdict.Unknown -> "unknown action"
     }
 }
