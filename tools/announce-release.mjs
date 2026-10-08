@@ -122,7 +122,7 @@ export function problemsWith(content = '') {
     if (hit) found.push(`mentions "${hit[0]}"`)
   }
   // A <name> left in from a template, but not a Discord mention: <@...>, <#...> or an emoji, <:x:> and <a:x:>.
-  const placeholder = /<(?![@#:!]|a:)[A-Za-z][^>\n]{0,40}>/.exec(content)
+  const placeholder = /<(?![@#:!]|a:|https?:)[A-Za-z][^>\n]{0,40}>/.exec(content)
   if (placeholder) found.push(`has a placeholder, ${placeholder[0]}`)
   return found
 }
