@@ -110,6 +110,27 @@ internal class FrameHistogram {
     }
 }
 
+/** What Folio is doing that a frame belongs to, so a report can say how smooth each thing was and not only the whole run. */
+internal enum class PerfScenario { FOLD, HOME_SWIPE, FOLDER, WIDGET_RESIZE, SHEET, MENU }
+
+/**
+ * Counts which scenarios are going on and gives each its own frame histogram. [begin] and [end] nest and may repeat, so two things at once,
+ * or a stray [end], never leave a scenario stuck on. A frame counts toward every scenario active when it is drawn.
+ */
+internal class PerfScenarios {
+    private val active = AtomicIntegerArray(PerfScenario.entries.size)
+    private val histograms = Array(PerfScenario.entries.size) { FrameHistogram() }
+
+    fun begin(s: PerfScenario) { active.incrementAndGet(s.ordinal) }
+    fun end(s: PerfScenario) { active.updateAndGet(s.ordinal) { if (it > 0) it - 1 else 0 } }
+    fun isActive(s: PerfScenario) = active.get(s.ordinal) > 0
+    fun histogram(s: PerfScenario) = histograms[s.ordinal]
+
+    fun record(totalNs: Long, janky: Boolean) {
+        for (i in histograms.indices) if (active.get(i) > 0) histograms[i].record(totalNs, janky)
+    }
+}
+
 /** Remembers how long each state held, so a report can say what was happening between two readings. */
 internal class PerfContext(private val now: () -> Long, frontNow: Boolean = false, screenNow: Boolean = true, chargingNow: Boolean = false) {
     private var front = frontNow; private var screen = screenNow; private var charging = chargingNow
@@ -142,7 +163,17 @@ internal data class PerfHeader(val version: String, val device: String, val andr
 
 /** The plain-text report: what Folio cost, in numbers a tester can paste into an issue. */
 internal object PerfReport {
-    fun build(header: PerfHeader, samples: List<PerfSample>, histogram: FrameHistogram): String {
+    /** English on purpose: this goes into a report McCal reads, like the rest of it. */
+    private fun scenarioName(s: PerfScenario) = when (s) {
+        PerfScenario.FOLD -> "Fold animation" // english-only
+        PerfScenario.HOME_SWIPE -> "Home swipe" // english-only
+        PerfScenario.FOLDER -> "Folder opening" // english-only
+        PerfScenario.WIDGET_RESIZE -> "Widget resize" // english-only
+        PerfScenario.SHEET -> "Page or sheet sliding in" // english-only
+        PerfScenario.MENU -> "Menu or alert opening" // english-only
+    }
+
+    fun build(header: PerfHeader, samples: List<PerfSample>, histogram: FrameHistogram, scenarios: PerfScenarios? = null): String {
         val sb = StringBuilder()
         sb.append("Folio performance report\n")
         sb.append("Folio ${header.version} on ${header.device} (Android ${header.android}), ${header.screen}\n")
@@ -179,6 +210,15 @@ internal object PerfReport {
             sb.append("  Frame time p50 ${PerfMath.fmt(histogram.percentileMs(50.0))} ms, p95 ${PerfMath.fmt(histogram.percentileMs(95.0))} ms, p99 ${PerfMath.fmt(histogram.percentileMs(99.0))} ms\n\n")
         }
 
+        if (scenarios != null && PerfScenario.entries.any { scenarios.histogram(it).frames > 0 }) {
+            sb.append("Frames by what Folio was doing\n") // english-only
+            for (sc in PerfScenario.entries) {
+                val h = scenarios.histogram(sc)
+                if (h.frames == 0L) continue
+                sb.append("  ${scenarioName(sc)}: ${h.frames} frames, janky ${h.janky} (${PerfMath.fmt(PerfMath.percent(h.janky, h.frames))} %), p50 ${PerfMath.fmt(h.percentileMs(50.0))} ms, p95 ${PerfMath.fmt(h.percentileMs(95.0))} ms, p99 ${PerfMath.fmt(h.percentileMs(99.0))} ms\n") // english-only
+            }
+            sb.append("\n")
+        }
         sb.append("Memory (Folio's own process)\n")
         val mem = samples.filter { it.pssKb > 0 }
         if (mem.isEmpty()) sb.append("  No reading.\n\n") else {

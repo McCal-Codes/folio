@@ -1,6 +1,16 @@
 {
-  "release": "0.6.9-beta.1",
+  "release": "0.6.9-beta.2",
   "items": [
+    { "id": "notices", "title": "Notices in the Dynamic Island", "where": "Home, with the island on",
+      "steps": ["Do something that shows a notice: turn a Focus trigger on or off, or save a layout backup.", "The notice should fit its text (up to three lines) and stay clear of the camera and of the fold: check the cover, the open screen and half folded.", "Open Settings or a full-screen page first: the notice should fall back to a short message, not sit under the page."] },
+    { "id": "update-undo", "title": "Undo from the update notice", "where": "The island, after a package updates itself",
+      "steps": ["With Update packages in the background on, wait for a package to update by itself, or use a source that has an update.", "The notice should say which package updated, with an Undo.", "Tap Undo: the earlier version should come back, Home should stay as it is, and the same update should not be installed again by itself."] },
+    { "id": "safe-mode-recovers", "title": "An install cut short", "where": "Market, then Folio's own start",
+      "steps": ["Only if you are comfortable force-stopping Folio: start a package install or update, then force-stop Folio from Settings > Apps while it is working.", "Start Folio again: it should put things back as they were and say which package did not finish installing.", "Folio should not offer Safe Mode just because Android closed it for memory."] },
+    { "id": "animation-speed", "title": "Animation Speed on more motion", "where": "Settings > Animation Speed",
+      "steps": ["Set Animation Speed to Slow, then open a panel, the notification shade, a switch and a segmented control, and drag an icon stack open.", "They should all slow down together. Set it to Fast or Off: they should speed up or stop moving, and nothing should end up in the wrong place."] },
+    { "id": "first-hints", "title": "The two first-use hints", "where": "The first Home after setup (optional)",
+      "steps": ["Only on a phone that has just been through setup: Home should say once to press and hold an icon to rearrange.", "Unfolded for the first time, it should say once that this is the same Home with more room.", "Neither should come back after it has been shown once."] },
     { "id": "bottom-of-home", "title": "Bottom of Home", "where": "Settings > Home Screen & Dock",
       "steps": ["Switch between Search button, Page dots and Nothing.", "Home should not shift between them.", "With Nothing, drag along the empty strip: it should still change pages."] },
     { "id": "stronger-rings", "title": "Stronger rings", "where": "Settings > Icons & Side Bar > Status",
