@@ -40,8 +40,10 @@ class FoldTimelineRootGateTest {
     }
 
     private val started = CountDownLatch(1)
-    private val process = OpenSu()
-    private val launcher = SuLauncher { started.countDown(); process }
+    /** Every helper the timeline started, in order: a restart is a second one. */
+    private val processes = java.util.concurrent.CopyOnWriteArrayList<OpenSu>()
+    private val process get() = processes.first()
+    private val launcher = SuLauncher { OpenSu().also { processes += it; started.countDown() } }
     private var timeline: FoldTimeline? = null
 
     @Before fun root() {
@@ -64,6 +66,13 @@ class FoldTimelineRootGateTest {
     }
 
     private fun settle() = shadowOf(android.os.Looper.getMainLooper()).idle()
+
+    /** The feed starts on its own thread, so a test waits a moment for the launcher to be called. */
+    private fun waitFor(check: () -> Boolean): Boolean {
+        val end = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < end) { if (check()) return true; Thread.sleep(10) }
+        return false
+    }
 
     @Test fun `turning off system access stops the root feed at once`() {
         val t = running()
@@ -93,6 +102,41 @@ class FoldTimelineRootGateTest {
         context.getSharedPreferences("system_bridge", Context.MODE_PRIVATE).edit().putBoolean("something_else", true).commit()
         settle()
         assertFalse("the feed was stopped by a setting that does not matter", process.closed)
+    }
+
+    @Test fun `turning system access back on starts the root feed again`() {
+        running()
+        SystemBridge.setOff(context, true); settle()
+        assertTrue(process.closed)
+        SystemBridge.setOff(context, false); settle()
+        assertTrue("the feed was not started again", waitFor { processes.size == 2 })
+        assertFalse("the new helper should be running", processes[1].closed)
+    }
+
+    @Test fun `turning on the root options while Home is open starts the feed`() {
+        context.getSharedPreferences("root_hinge", Context.MODE_PRIVATE).edit().putBoolean("use", false).commit()
+        val t = FoldTimeline(context, launcher).also { timeline = it }
+        t.start()
+        assertTrue("the feed started while the option was off", processes.isEmpty())
+        RootHingeStore.setUseInFold(context, true); settle()
+        assertTrue("the feed did not start when the option was turned on", waitFor { processes.size == 1 })
+    }
+
+    @Test fun `a change that leaves the gate open does not start a second feed`() {
+        running()
+        context.getSharedPreferences("root_hinge", Context.MODE_PRIVATE).edit().putString("report", "x").commit()
+        settle()
+        Thread.sleep(100)
+        assertTrue("a second helper was started", processes.size == 1)
+    }
+
+    @Test fun `the feed does not start again while system access is still off`() {
+        running()
+        SystemBridge.setOff(context, true); settle()
+        RootHingeStore.setUseInFold(context, false); settle()
+        RootHingeStore.setUseInFold(context, true); settle()
+        Thread.sleep(100)
+        assertTrue("the feed was started while system access is off", processes.size == 1)
     }
 
     @Test fun `after the timeline stops, a changed switch does nothing more`() {

@@ -37,6 +37,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A setup that asks where you are from:** setup now asks whether you are coming from iPhone or Android and starts Folio looking like it, with a How do you move around? page when you choose Android, a quiet extra step only on a phone that already has Shizuku or a root manager, and the rest under Finish setting up. Open it again from Settings › Help › Show Welcome Again, where Keep Things as They Are changes nothing.
 
 ### Fixed
+- **System Bridge changes take effect at once:** turning "Allow system access" off stops the root hinge feed right away, and turning it (or the root options) back on starts it again, instead of waiting for Folio to restart.
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
 - **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.
 - **Media controls and Notification access:** the island no longer risks a crash or a stuck media callback when notification access is turned off while a media session is changing.
