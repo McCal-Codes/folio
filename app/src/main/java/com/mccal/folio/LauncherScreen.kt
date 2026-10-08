@@ -618,7 +618,7 @@ fun LauncherScreen(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
         val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
-        CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+        CompositionLocalProvider(LocalOpenMenuId provides overlays.menu, LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
             LocalBigClockStyles provides bigClockStyles,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
