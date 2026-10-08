@@ -623,6 +623,15 @@ fun LauncherScreen(
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
+            // Icon Actions: an icon's saved swipes and double tap, while the gate is open, Home is not being edited and Safe Mode is off
+            // (in Safe Mode icons keep their normal gestures, rather than a swipe being taken and then refused).
+            LocalIconActions provides remember(state.iconActions, homeEdit.active, haptic, launcherActivity) {
+                if (!iconActionsAvailable(homeEdit.active, SafeMode.active, state.iconActions.isNotEmpty(), FeatureGate.ICON_ACTIONS.isOpen(launcherActivity))) null
+                else IconActionHost(actionsFor = { state.iconActions[it] }, run = { ref ->
+                    haptic.perform(FolioHaptic.Step)
+                    ActionRunner.run(launcherActivity, ref, ActionSource.ICON)
+                })
+            },
             LocalIconStack provides remember(homeEdit.active, haptic) {
                 if (homeEdit.active) null else { app: AppEntry -> haptic.perform(FolioHaptic.Open); overlays.stackFan = app.id }
             },
