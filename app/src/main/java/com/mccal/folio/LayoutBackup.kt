@@ -42,6 +42,8 @@ data class LayoutImportPreview(
     val appNames: Map<String, String> = emptyMap(),
     /** Icon looks chosen for single apps (since 0.6.8); a backup from before has none, and the ones on the phone stay. */
     val appIconStyles: Map<String, AppIconOverride> = emptyMap(),
+    /** Icon swipe and double tap actions; a backup from before has none, and the ones on the phone stay. */
+    val iconActions: Map<String, IconActions> = emptyMap(),
 )
 
 fun layoutBackupScope(context: Context): String {
@@ -98,6 +100,7 @@ fun encodeLayoutBackup(
     root.put("appNames", JSONObject().apply { state.appNames.forEach { (id, name) -> put(id, name) } })
     // Only when there are some, so a backup from a phone that uses none is exactly what it was before this existed.
     withoutPictures(state.appIconStyles).let { styles -> if (styles.isNotEmpty()) root.put("appIconStyles", appIconStylesToJson(styles)) }
+    if (state.iconActions.isNotEmpty()) root.put("iconActions", iconActionsToJson(state.iconActions))
     // Added in 0.7.0, and deliberately not a new backup version: a Folio that has never heard of the Market reads
     // everything else in this file and ignores a key it doesn't know, so backups still travel backwards.
     packages?.let { root.put("packages", JSONObject(it)) }
@@ -246,7 +249,8 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
             dock.count { it != null } + folders.sumOf { it.appIds.size },
         folderCount = folders.size, widgetCount = layout.widgetPlacements.size,
         compact = compact, expanded = expanded, portrait = portrait, labels = labels, googleSearch = googleSearch, verticalStatus = verticalStatus,
-        packages = packages, appNames = appNames, appIconStyles = appIconStylesFromJson(root.optJSONObject("appIconStyles")))
+        packages = packages, appNames = appNames, appIconStyles = appIconStylesFromJson(root.optJSONObject("appIconStyles")),
+        iconActions = iconActionsFromJson(root.optJSONObject("iconActions")))
 }
 
 internal fun validBackupPlacement(value: WidgetPlacement): Boolean {
