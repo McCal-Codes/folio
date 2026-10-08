@@ -42,6 +42,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **The App Library scrolls smoothly:** the soft fade at the top and bottom of long lists (the App Library, Spotlight, Settings and more) used to make the phone redraw the whole list on every frame, so scrolling dropped frames. It now only fades the two thin edges, and scrolling the App Library on a Fold8 went from about 4.6% slow frames to about 0.5% in a debug build.
 - **System Bridge changes take effect at once:** turning "Allow system access" off stops the root hinge feed right away, and turning it (or the root options) back on starts it again, instead of waiting for Folio to restart.
 - **A scheduled Focus you turned off stays off:** a Focus on a schedule (Sleep at night, say) that you turned off, or replaced with another, no longer switches itself back on the next time Home starts or another schedule's alarm goes off. It stays off until its window ends and comes back at the next one.
 - **No alarm storm when the clocks go back:** a Focus schedule with a time in the repeated hour no longer fires its alarm again and again until that time arrives.

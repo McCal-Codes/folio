@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 
 /**
@@ -111,22 +112,33 @@ enum class MotionSpeed(@androidx.annotation.StringRes val label: Int, val factor
  */
 internal fun androidx.compose.ui.Modifier.edgeFade(top: (Float) -> Float, bottom: (Float) -> Float,
     size: androidx.compose.ui.unit.Dp = 28.dp): androidx.compose.ui.Modifier =
-    // An offscreen layer only while an edge is actually fading, so a list at rest draws normally.
-    graphicsLayer {
-        val px = size.toPx()
-        compositingStrategy = if (top(px) > 0f || bottom(px) > 0f) androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-            else androidx.compose.ui.graphics.CompositingStrategy.Auto
-    }.drawWithContent {
-        drawContent()
+    // Only the fading bands get an offscreen layer. The rest of the content draws as normal, so scrolling a tall list does not
+    // make the GPU copy the whole thing every frame; that was what made the App Library's scroll miss frames.
+    drawWithContent {
         val px = size.toPx().coerceAtMost(this.size.height / 3f)
         val t = top(px).coerceIn(0f, 1f)
         val b = bottom(px).coerceIn(0f, 1f)
-        if (t > 0f) drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(*fadeStops(t, towardEnd = false), startY = 0f, endY = px),
-            size = androidx.compose.ui.geometry.Size(this.size.width, px), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
-        if (b > 0f) drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(*fadeStops(b, towardEnd = true),
-            startY = this.size.height - px, endY = this.size.height),
-            topLeft = androidx.compose.ui.geometry.Offset(0f, this.size.height - px),
-            size = androidx.compose.ui.geometry.Size(this.size.width, px), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
+        if (t <= 0f && b <= 0f) {
+            drawContent()
+            return@drawWithContent
+        }
+        val width = this.size.width
+        val height = this.size.height
+        val content = this
+        clipRect(0f, if (t > 0f) px else 0f, width, if (b > 0f) height - px else height) {
+            content.drawContent()
+        }
+        fun band(from: Float, to: Float, stops: Array<Pair<Float, Color>>) {
+            val area = androidx.compose.ui.geometry.Rect(0f, from, width, to)
+            drawContext.canvas.saveLayer(area, androidx.compose.ui.graphics.Paint())
+            clipRect(0f, from, width, to) { content.drawContent() }
+            drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(*stops, startY = from, endY = to),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, from), size = androidx.compose.ui.geometry.Size(width, to - from),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
+            drawContext.canvas.restore()
+        }
+        if (t > 0f) band(0f, px, fadeStops(t, towardEnd = false))
+        if (b > 0f) band(height - px, height, fadeStops(b, towardEnd = true))
     }
 
 /** Mask stops for one fade: fully kept away from the edge, easing (smoothstep) down to 1 − [amount] at the edge. */
