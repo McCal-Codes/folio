@@ -12,7 +12,7 @@ import org.json.JSONObject
  * namespaced id such as `app.open`. An id this build does not know is kept as it is and reported as unavailable, so a
  * backup from a newer Folio loses nothing when it passes through an older one.
  */
-internal data class ActionRef(val id: String, val args: Map<String, String> = emptyMap()) {
+data class ActionRef(val id: String, val args: Map<String, String> = emptyMap()) {
     fun toJson(): JSONObject = JSONObject().put("id", id).apply {
         if (args.isNotEmpty()) put("a", JSONObject().apply { args.toSortedMap().forEach { (k, v) -> put(k, v) } })
     }
