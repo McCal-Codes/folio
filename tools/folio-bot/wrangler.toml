@@ -19,3 +19,17 @@ workers_dev = true
 GUILD_ID = "1551382087985266838"
 # The ping role the "Get release pings" button hands out and takes back.
 ROLE_UPDATES = "1553093586705449062"
+
+# The first reply in #help and the forums (autoreply.mjs). Switch it off with AUTO_REPLY = "off" and a deploy.
+AUTO_REPLY = "on"
+BOT_ID = "1553079678988849294"
+# McCal's own account: his posts never get an automatic reply.
+STAFF_IDS = "224692018515935233"
+HELP_CHANNEL = "1553093592438800445"
+FAQ_CHANNEL = "1555694592639246477"
+BUG_FORUM = "1555691880564527206"
+IDEAS_FORUM = "1555693466288394421"
+
+# Every two minutes. Each pass reads the latest messages and replies once to anything new.
+[triggers]
+crons = ["*/2 * * * *"]
