@@ -388,7 +388,8 @@
           "title": "Focus that turns on by itself",
           "detail": "A Focus can turn on when the phone is unfolded, charging or has headphones, and off when that stops.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "folder",
@@ -396,7 +397,8 @@
           "title": "Folders you can shape",
           "detail": "Resize a folder by its corner, drop an app on another to make one, and sort A to Z.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "clock",
@@ -404,7 +406,8 @@
           "title": "Make the Big Clock your own",
           "detail": "Looks, a color, Fine tune and Place Freely.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "dock",
@@ -412,7 +415,8 @@
           "title": "Drag the dock",
           "detail": "A handle in edit mode moves the Side Bar dock up and down.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "rings",
@@ -420,7 +424,8 @@
           "title": "Bottom of Home and stronger rings",
           "detail": "Choose a Search button, Page dots or Nothing, and thicker status rings.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "grid",
@@ -428,7 +433,8 @@
           "title": "Even rows under a widget",
           "detail": "A widget at the top of a page fills exactly two rows, so the dock lines up.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "store",
@@ -436,7 +442,8 @@
           "title": "The Market keeps itself current",
           "detail": "Add a source from a GitHub address, and refresh, notices and automatic updates, all off until you turn them on, with Undo and an Updated recently list.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "history",
@@ -444,7 +451,8 @@
           "title": "What Folio can use, and what it did",
           "detail": "Capabilities and Recent Activity in Settings › Advanced, and Copy Diagnostics.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "sensor",
@@ -452,7 +460,8 @@
           "title": "System Bridge",
           "detail": "One switch for everything that reaches past a normal app, with an optional root hinge angle.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "person",
@@ -460,7 +469,8 @@
           "title": "A setup that asks where you are from",
           "detail": "iPhone or Android start, a navigation page, and Keep Things as They Are.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "bug",
@@ -468,7 +478,8 @@
           "title": "What to Test",
           "detail": "A checklist for beta testers, with a way to report what is wrong.",
           "status": "building",
-          "beta": true
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "lock",
