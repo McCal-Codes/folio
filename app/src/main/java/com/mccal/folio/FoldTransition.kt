@@ -270,7 +270,7 @@ private fun SnapshotMorph(expanded: Boolean, coverShot: androidx.compose.ui.grap
 }
 
 /** Hinge steps + learned timing → target effect strength over time. */
-internal class FoldTimeline(private val context: Context) : SensorEventListener {
+internal class FoldTimeline(private val context: Context, private val suLauncher: SuLauncher = ProcessSuLauncher) : SensorEventListener {
     /** Rung whenever something happens that can start the effect, so the idle loop wakes at once. */
     val wake = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
     private val sensors = context.getSystemService(SensorManager::class.java)
@@ -362,7 +362,7 @@ internal class FoldTimeline(private val context: Context) : SensorEventListener 
         if (su != null && rootAllowed()) {
             // A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's.
             useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
-            rootFeed = RootHingeFeed(ProcessSuLauncher, apk, su,
+            rootFeed = RootHingeFeed(suLauncher, apk, su,
                 onSample = { s -> main.post { if (source == HingeSource.ROOT_HELPER) { onAngle(s.angleDegrees, s.timestampNanos, SystemClock.uptimeMillis()); wake.trySend(Unit) } } },
                 onLost = { main.post { rootLost() } }, now = { SystemClock.elapsedRealtime() }).also { it.start() }
         } else registerPublic()

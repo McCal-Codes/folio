@@ -66,6 +66,21 @@ what Discord's own endpoint check expects.
 4. **Install it.** The application's **Installation** page already asks for `applications.commands`, which is all
    phase 1 needs. `bot` and Manage Roles come with phase 2.
 
+## First replies in #help and the forums
+
+Mr Folio replies once to a new post in `#help`, `#bug-reports` and `#feature-ideas`, so a person is told where answers
+are and what to include while they wait for McCal. The text is in `autoreply.mjs`.
+
+- **How:** the bot has no live connection to Discord, so a timer (`crons` in `wrangler.toml`, every two minutes) wakes it, it
+  reads the latest messages and new posts, and replies to anything new. It never reads what anyone wrote.
+- **What it skips:** McCal's own posts (`STAFF_IDS`), bots and webhooks, replies to somebody else, anything older than 30
+  minutes (so switching it on never answers the backlog), anything it already answered, and a person's second post
+  within two hours. At most three replies per pass.
+- **Nothing is stored.** "Already answered" is read from Discord: the bot's reply points at the message it answers, and a
+  forum post is answered if the bot has posted in it.
+- **Switch off:** set `AUTO_REPLY = "off"` in `wrangler.toml` and deploy.
+- **Needs** the bot token as the Worker secret `DISCORD_BOT_TOKEN`, as the ping button does, and the channel ids in `[vars]`.
+
 ## Tests
 
 ```
