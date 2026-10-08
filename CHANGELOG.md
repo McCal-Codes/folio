@@ -36,6 +36,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Installs that finish with a pop:** when a package finishes installing, a green check pops in where the ring was, then the row settles to its button. Supporters on the beta see it first.
 - **Animation Speed reaches sheets:** Settings › Gestures › Animation Speed now also speeds up or slows a page sliding in, an alert, a form sheet and the Library popup. Supporters on the beta see it first.
 - **Smoother sheets and menus:** a page sliding in, a menu or alert opening, and the Library's category popup now settle on the same springs, a touch softer for pages and with a hint of life for menus. Supporters on the beta see it first.
+- **Page dots that stretch:** with the new motion on (supporters first), the active page dot stretches toward the next one as you swipe and the tail follows, so a swipe has a visible companion. Off, or with Reduce Motion on, it is the dot it was.
 
 ### Changed
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
