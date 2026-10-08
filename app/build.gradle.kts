@@ -1,3 +1,8 @@
+import java.io.ByteArrayOutputStream
+import java.time.OffsetDateTime
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -31,7 +36,7 @@ val releaseStoreFile = releaseSigningValues["FOLIO_RELEASE_STORE_FILE"]?.let { c
     }
 }
 
-val folioVersion = "0.6.8-beta.2"
+val folioVersion = "0.6.9-beta.1"
 
 // Bundle the changelog so Folio can show What's New after an update.
 val bundleChangelog = tasks.register<Copy>("bundleChangelog") {
@@ -67,6 +72,47 @@ val indexFolioSource = tasks.register("indexFolioSource") {
     }
 }
 tasks.named("preBuild") { dependsOn(indexFolioSource) }
+
+/**
+ * Folio Dev's "welcome back" page (docs/release-0.6.9-plan.md, G4). Writes dev-build.json for the debug and fast builds only:
+ * the branch, commit, time, the last commits and, if the branch has one, the steps in docs/dev-notes.md. A release build
+ * never gets the file, so the page has nothing to show there. Always runs, so the commit and time are never stale.
+ */
+@UntrackedTask(because = "It records the commit and time of this build, so it has to run every time")
+abstract class DevBuildInfoTask @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+    @get:Internal abstract val repoDir: DirectoryProperty
+    @get:Internal abstract val notesFile: RegularFileProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    private fun git(vararg args: String): String = runCatching {
+        val out = ByteArrayOutputStream()
+        exec.exec { commandLine(listOf("git") + args); workingDir = repoDir.get().asFile; standardOutput = out; errorOutput = ByteArrayOutputStream(); isIgnoreExitValue = true }
+        out.toString(Charsets.UTF_8).trim()
+    }.getOrDefault("")
+
+    private fun q(s: String) = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ").replace("\t", " ") + "\""
+
+    @TaskAction fun write() {
+        val commits = git("log", "-15", "--abbrev=8", "--format=%h%x09%s").lines().filter { it.contains('\t') }.map { it.substringBefore('\t') to it.substringAfter('\t') }
+        val notes = notesFile.get().asFile.takeIf { it.isFile }?.readLines().orEmpty().map { it.trim() }.filter { it.startsWith("- ") }.map { it.removePrefix("- ").trim() }
+        val json = buildString {
+            append("{")
+            append("\"branch\":").append(q(git("rev-parse", "--abbrev-ref", "HEAD").ifEmpty { "unknown" })).append(",")
+            append("\"sha\":").append(q(git("rev-parse", "--short=8", "HEAD").ifEmpty { "unknown" })).append(",")
+            append("\"dirty\":").append(git("status", "--porcelain").isNotEmpty()).append(",")
+            append("\"builtAt\":").append(q(OffsetDateTime.now().toString())).append(",")
+            append("\"commits\":[").append(commits.joinToString(",") { "{\"sha\":${q(it.first)},\"subject\":${q(it.second)}}" }).append("],")
+            append("\"notes\":[").append(notes.joinToString(",") { q(it) }).append("]")
+            append("}")
+        }
+        outputDir.get().asFile.also { it.mkdirs() }.resolve("dev-build.json").writeText(json)
+    }
+}
+val generateDevBuildInfo = tasks.register<DevBuildInfoTask>("generateDevBuildInfo") {
+    repoDir.set(rootProject.layout.projectDirectory)
+    notesFile.set(rootProject.layout.projectDirectory.file("docs/dev-notes.md"))
+    outputDir.set(layout.buildDirectory.dir("generated/devbuild"))
+}
 /**
  * The profile is recorded from the "fast" build ("Folio Dev", debug-signed) because the release APK can't be
  * installed over the signed Folio on a test phone, and merged into main so the release build ships it.
@@ -83,6 +129,11 @@ baselineProfile {
  */
 androidComponents {
     onVariants { variant ->
+        // Only the two Folio Dev build types get dev-build.json; a release build never sees the folder. Registered through the
+        // variant API so everything that reads assets (merge, lint) depends on the task that writes it.
+        if (variant.buildType == "debug" || variant.buildType == "fast") {
+            variant.sources.assets?.addGeneratedSourceDirectory(generateDevBuildInfo, DevBuildInfoTask::outputDir)
+        }
         if (variant.buildType == "nonMinifiedRelease" || variant.buildType == "benchmarkRelease") {
             variant.applicationId.set("com.mccal.folio.profile")
         }

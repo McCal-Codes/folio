@@ -42,3 +42,18 @@ CREATE TABLE IF NOT EXISTS checks (
   value TEXT NOT NULL,              -- JSON
   at    TEXT NOT NULL
 );
+
+-- Unused since 2 Oct 2026. Mr Folio's /redeem used to hand out supporter roles in Discord and record them here, one code to
+-- one person, with a daily cron taking the role back after ends_on. /redeem was removed (Ko-fi's own bot manages those
+-- roles), so nothing reads or writes this table now. It is kept, not dropped, in case a row is ever worth a look.
+CREATE TABLE IF NOT EXISTS discord_roles (
+  serial     INTEGER PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  guild_id   TEXT NOT NULL,
+  role_id    TEXT NOT NULL,
+  granted_at TEXT NOT NULL,        -- YYYY-MM-DD, UTC
+  ends_on    TEXT,                 -- the code's last day, YYYY-MM-DD; null for a code with no end
+  removed_at TEXT                  -- set when the cron takes the role back
+);
+CREATE INDEX IF NOT EXISTS discord_roles_due ON discord_roles (removed_at, ends_on);
+CREATE INDEX IF NOT EXISTS discord_roles_person ON discord_roles (user_id, role_id);

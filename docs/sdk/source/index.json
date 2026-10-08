@@ -163,7 +163,7 @@
       "manifest": {
         "format": 1,
         "id": "com.mccal.folio.colored-albums",
-        "name": "Colored Albums",
+        "name": "Afterglow",
         "version": "1.0.0",
         "author": {
           "name": "Folio",
@@ -219,7 +219,7 @@
         "icon": "assets/icons/flipbook.png",
         "depiction": "depiction.json",
         "license": "MIT",
-        "description": "Home pages turn in 3D as you swipe, instead of sliding flat.",
+        "description": "Home pages move in 3D as you swipe, instead of sliding flat.",
         "requires": {
           "features": [
             "tweaks.pageEffects"

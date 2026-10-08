@@ -23,6 +23,9 @@ internal object IconPacks {
         "ch.deletescape.lawnchair.ICONPACK").map(::Intent) +
         listOf("com.anddoes.launcher.THEME", "com.fede.launcher.THEME_ICONPACK").map { Intent(Intent.ACTION_MAIN).addCategory(it) }
     private val mappings = HashMap<String, Map<String, String>>()
+    /** When a pack last failed to read, so a pack with no usable list isn't re-read for every icon. */
+    private val failedAt = HashMap<String, Long>()
+    private const val RETRY_AFTER_MS = 30_000L
     private val icons = LruCache<String, Bitmap>(160)
 
     fun installed(context: Context): List<Pack> {
@@ -44,12 +47,28 @@ internal object IconPacks {
         }.getOrNull()?.also { icons.put(key, it) }
     }
 
-    @Synchronized private fun mapping(context: Context, pack: String): Map<String, String> = mappings.getOrPut(pack) {
-        runCatching {
+    /**
+     * A pack that couldn't be read is not remembered as empty for good, so a pack mid-update gets another try, but not
+     * for every icon: it is left alone for [RETRY_AFTER_MS] first.
+     */
+    @Synchronized private fun mapping(context: Context, pack: String): Map<String, String> {
+        mappings[pack]?.let { return it }
+        val now = android.os.SystemClock.elapsedRealtime()
+        failedAt[pack]?.let { if (now - it < RETRY_AFTER_MS) return emptyMap() }
+        val read = runCatching { readMapping(context, pack) }.getOrNull()
+        if (read == null) { failedAt[pack] = now; return emptyMap() }
+        failedAt.remove(pack)
+        mappings[pack] = read
+        return read
+    }
+
+    private fun readMapping(context: Context, pack: String): Map<String, String> {
             val res = context.packageManager.getResourcesForApplication(pack)
             val xmlId = res.getIdentifier("appfilter", "xml", pack)
+            val stream = if (xmlId == 0) res.assets.open("appfilter.xml") else null
             val parser: XmlPullParser = if (xmlId != 0) res.getXml(xmlId)
-                else Xml.newPullParser().apply { setInput(res.assets.open("appfilter.xml"), "UTF-8") }
+                else Xml.newPullParser().apply { setInput(stream, "UTF-8") }
+            try {
             val map = HashMap<String, String>()
             while (parser.next() != XmlPullParser.END_DOCUMENT) {
                 if (parser.eventType != XmlPullParser.START_TAG || parser.name != "item") continue
@@ -61,9 +80,12 @@ internal object IconPacks {
                 if (cls.startsWith(".")) cls = pkg + cls
                 map["$pkg/$cls"] = drawable
             }
-            map
-        }.getOrDefault(emptyMap())
+            return map
+            } finally {
+                stream?.close()
+                (parser as? android.content.res.XmlResourceParser)?.close()
+            }
     }
 
-    fun clear() { icons.evictAll(); synchronized(this) { mappings.clear() } }
+    fun clear() { icons.evictAll(); synchronized(this) { mappings.clear(); failedAt.clear() } }
 }

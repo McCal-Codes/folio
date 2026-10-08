@@ -54,6 +54,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,6 +131,8 @@ internal fun MarketScreen(
     var openSourceUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var introducing by rememberSaveable { mutableStateOf(!session.prefs.introductionSeen) }
     var style by rememberSaveable { mutableStateOf(session.prefs.featuredStyle) }
+    // The one question about keeping packages up to date, asked once after the welcome (see MarketPrefs.updatesQuestionSeen).
+    var askingUpdates by rememberSaveable { mutableStateOf(!session.prefs.updatesQuestionSeen) }
     var confirming by rememberSaveable { mutableStateOf<String?>(null) }
     var addingSource by rememberSaveable { mutableStateOf(false) }
     var sourceUrl by rememberSaveable { mutableStateOf("") }
@@ -367,6 +371,7 @@ internal fun MarketScreen(
     LaunchedEffect(MarketLink.pending) {
         when (val link = MarketLink.pending) {
             is MarketLink.Package -> { tab = MarketTab.PACKAGES; openId = link.id }
+            MarketLink.Updates -> tab = MarketTab.INSTALLED
             is MarketLink.Source -> {
                 // What the format says a source link does: the Add Source sheet, filled in. The fingerprint still
                 // has to be confirmed, so a link can't add a source by itself.
@@ -387,6 +392,25 @@ internal fun MarketScreen(
             onDone = { session.prefs.introductionSeen = true; introducing = false },
         )
         return
+    }
+    if (askingUpdates) {
+        val notifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) session.prefs.notifyUpdates = false
+        }
+        AlertDialog(onDismissRequest = { session.prefs.updatesQuestionSeen = true; askingUpdates = false },
+            title = { Text(stringResource(R.string.updates_question_title)) },
+            text = { Text(stringResource(R.string.updates_question_body)) },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { session.prefs.updatesQuestionSeen = true; askingUpdates = false }) { Text(stringResource(R.string.not_now)) } },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    session.prefs.backgroundRefresh = true
+                    session.prefs.notifyUpdates = true
+                    MarketRefreshJob.schedule(context)
+                    session.prefs.updatesQuestionSeen = true
+                    askingUpdates = false
+                    if (!SoftwareUpdate.canPostNotifications(context)) notifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.turn_on)) }
+            })
     }
 
     // Every row and page asks the same question about an external app, and re-asks it when Folio
@@ -462,6 +486,8 @@ internal fun MarketScreen(
                             onOpen = { openId = it },
                             onGet = { onExternalOrConfirm(it) },
                             onRemove = { id, name -> remove(id, name) },
+                            onTryAgain = { id, name -> tryAgain(id, name) },
+                            onChanged = { refresh() },
                         )
                     }
                 }
@@ -495,6 +521,7 @@ internal fun MarketScreen(
                                         session = session,
                                         entry = entry,
                                         installed = installed[entry.id],
+                                        installedAll = installed,
                                         busy = entry.id == busyId,
                                         selected = false,
                                         onOpen = { openId = entry.id },
@@ -515,6 +542,7 @@ internal fun MarketScreen(
                             host = openHost,
                             onGetHost = { openHost?.let { getHost(it.id, it.name) } },
                             installed = installed[open.id],
+                            installedAll = installed,
                             appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
                             source = open.source,
@@ -849,11 +877,16 @@ private fun MarketList(
     onOpen: (String) -> Unit,
     onGet: (MarketEntry) -> Unit,
     onRemove: (String, String) -> Unit,
+    onTryAgain: (String, String) -> Unit,
+    onChanged: () -> Unit = {},
 ) {
     // A package is an update when a source offers a higher version than the one installed. An app of its own is
     // never in [installed] - Android has it, not Folio - so its version is asked of Android, and only for the
     // listings that are apps.
     val context = androidx.compose.ui.platform.LocalContext.current
+    val listScope = rememberCoroutineScope()
+    // The last automatic updates, newest first; the newest of each package can be undone while it is still the installed version.
+    var autoUpdated by remember { mutableStateOf(session.autoUpdates.recent().filter { !it.undone }) }
     val appsChanged = LocalAppsChanged.current
     val appUpdates = remember(entries, appsChanged) { entries.filter { MarketAppUpdate.offered(context, it) != null } }
     val updates = entries.filter { entry ->
@@ -914,6 +947,7 @@ private fun MarketList(
                             session = session,
                             entry = entry,
                             installed = installed[entry.id],
+                            installedAll = installed,
                             busy = entry.id == busyId,
                             update = true,
                             selected = entry.id == openId,
@@ -921,6 +955,32 @@ private fun MarketList(
                             onGet = { onGet(entry) },
                             onRemove = { onRemove(entry.id, entry.name) },
                         )
+                    }
+                }
+            }
+        }
+        if (tab == MarketTab.INSTALLED && autoUpdated.isNotEmpty()) {
+            item(key = "recent-label") { SheetGroupLabel(stringResource(R.string.updated_recently)) }
+            item(key = "recent") {
+                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                    autoUpdated.forEach { u ->
+                        // Undo only on a package's newest update, and only while the version it made is still the one installed.
+                        val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.let { it.version == u.to && it.enabled } == true
+                        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(u.name, color = Color.White, fontSize = FolioType.BODY.sp)
+                                Text(stringResource(R.string.version_from_to, u.from.text, u.to.text), color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                            }
+                            if (canUndo) androidx.compose.material3.TextButton(onClick = {
+                                listScope.launch {
+                                    // Through the same one-at-a-time slot as installs and automatic updates: both rewrite the whole list of installed packages.
+                                    if (MarketWork.exclusive("undo:${u.id}") { session.undoAutoUpdate(u) } == true) {
+                                        autoUpdated = session.autoUpdates.recent().filter { !it.undone }; onChanged()
+                                    }
+                                }
+                            }, modifier = Modifier.testTag("undo-auto-update-${u.id}")) { Text(stringResource(R.string.undo)) }
+                        }
                     }
                 }
             }
@@ -948,6 +1008,7 @@ private fun MarketList(
                                         session = session,
                                         entry = entry,
                                         installed = installed[entry.id],
+                                        installedAll = installed,
                                         busy = entry.id == busyId,
                                         selected = entry.id == openId,
                                         onOpen = { onOpen(entry.id) },
@@ -974,8 +1035,15 @@ private fun MarketList(
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(pkg.name, color = Color.White, fontSize = 16.sp)
-                                Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
-                                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                                if (!pkg.enabled) {
+                                    // A listed package is put back on its page; one from a file has no page, so its
+                                    // row says what happened and offers the same Try Again.
+                                    Text(stringResource(R.string.turned_off_after_a_crash), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
+                                    TryAgainButton(pkg.name, onClick = { onTryAgain(pkg.id, pkg.name) })
+                                } else {
+                                    Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
+                                        color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                                }
                             }
                             MarketActionButton(R.string.remove, pkg.name, onClick = { onRemove(pkg.id, pkg.name) })
                         }
@@ -991,6 +1059,8 @@ private fun MarketRow(
     session: MarketSession,
     entry: MarketEntry,
     installed: InstalledPackage?,
+    /** Everything installed, which a compatibility answer reads (a dependency, a conflict), so it is recomputed when it changes. */
+    installedAll: Map<String, InstalledPackage> = emptyMap(),
     busy: Boolean,
     selected: Boolean,
     onOpen: () -> Unit,
@@ -1003,6 +1073,11 @@ private fun MarketRow(
     val openLabel = stringResource(R.string.open_1_s, name)
     val external = MarketExternalApp.isExternal(entry.entry.manifest)
     val appUpdate = if (external) appUpdateFor(entry) else null
+    // Whether it can be had here, before the person taps. A package already on the phone has been through that, unless
+    // this row offers a newer version of it: that version can need more than the one installed did.
+    val compat = remember(entry, installed, installedAll, update, MarketWork.busyId) {
+        if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    }
     Row(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
@@ -1030,6 +1105,7 @@ private fun MarketRow(
                 },
                 fontSize = FolioType.FOOTNOTE.sp,
             )
+            compatSummary(compat)?.let { Text(it.rowText(), color = it.rowColor(), fontSize = FolioType.FOOTNOTE.sp) }
             if (entry.unsigned) {
                 Text(stringResource(R.string.unsigned), color = FolioColors.Warning, fontSize = FolioType.GROUP_LABEL.sp)
             }
@@ -1050,7 +1126,12 @@ private fun MarketRow(
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
+            // Something installed keeps its Remove even when its newer listing can't be read.
+            entry.entry.needs.isNotEmpty() && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            // The line under its name says why; there is nothing to install until that changes. What is already on the
+            // phone can still be removed.
+            compatBlocked(compat) != null -> if (installed != null) MarketActionButton(R.string.remove, name, onRemove)
             update || appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
             // An app of its own is Get until Android has it, then Open, and Update when its source lists a newer one.
             external ->
@@ -1148,6 +1229,19 @@ private fun MarketActionButton(@androidx.annotation.StringRes label: Int, name: 
     )
 }
 
+/** Puts back a package Safe Mode turned off. A word under what it's about, with its name for TalkBack as Remove has. */
+@Composable
+private fun TryAgainButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val described = stringResource(R.string.text_1_s_2_s, stringResource(R.string.try_again), name)
+    Text(
+        stringResource(R.string.try_again),
+        color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+        modifier = modifier.clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
+            .padding(vertical = 11.dp).semantics { contentDescription = described },
+    )
+}
+
 @Composable
 private fun MarketPackagePage(
     entry: IndexPackage,
@@ -1156,6 +1250,8 @@ private fun MarketPackagePage(
     host: HostTweak? = null,
     onGetHost: () -> Unit = {},
     installed: InstalledPackage?,
+    /** Everything installed, which a compatibility answer reads (a dependency, a conflict), so it is recomputed when it changes. */
+    installedAll: Map<String, InstalledPackage> = emptyMap(),
     /** The app on the phone this listing would update, when it is an app of its own and newer. */
     appUpdate: MarketAppUpdate.OnPhone? = null,
     revoked: String?,
@@ -1191,6 +1287,11 @@ private fun MarketPackagePage(
     val backLabel = stringResource(R.string.back)
     val external = MarketExternalApp.isExternal(entry.manifest)
     val onPhone = if (external) externalAppId(entry.manifest) else null
+    // A newer listing of what is installed offers Update, and has to be checked like anything else being got.
+    val updateAvailable = installed != null && entry.version > installed.version
+    val compat = remember(entry, installed, installedAll, updateAvailable, MarketWork.busyId) {
+        if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1224,13 +1325,7 @@ private fun MarketPackagePage(
                         )
                         // Safe Mode took its changes off Home. This puts them back, for a crash that wasn't its
                         // fault; Remove, below, is the other way out.
-                        Text(
-                            stringResource(R.string.try_again),
-                            color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(12.dp))
-                                .clickable(onClick = onTryAgain).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight()
-                                .padding(vertical = 11.dp).testTag("package-try-again"),
-                        )
+                        TryAgainButton(name, onTryAgain, Modifier.padding(top = FolioSpace.SMALL.dp).testTag("package-try-again"))
                     }
                 }
             }
@@ -1246,9 +1341,13 @@ private fun MarketPackagePage(
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
                 appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
+                // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
+                entry.needs.isNotEmpty() && installed == null ->
+                    Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
+                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
-                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false)
+                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
             }
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source
@@ -1256,12 +1355,28 @@ private fun MarketPackagePage(
             Text(
                 when {
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
+                    updateAvailable -> "${installed?.version} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
                 },
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
+        }
+        // A package from a source can opt out of automatic updates on its own page; it follows the global switch until then.
+        // A built-in package has no source address to be updated from, so there is nothing for the switch to do.
+        if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl != null && source.kind != Source.Kind.BUILT_IN &&
+            FeatureGate.MARKET_AUTO_UPDATE.isOpen(androidx.compose.ui.platform.LocalContext.current)) {
+            var on by remember(installed.id) { mutableStateOf(!session.prefs.autoUpdateTurnedOff(installed.id)) }
+            val global = session.prefs.autoUpdatePackages
+            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).padding(top = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.update_automatically), color = Color.White, fontSize = FolioType.BODY.sp)
+                    Text(stringResource(if (global) R.string.update_automatically_follows else R.string.update_automatically_global_off),
+                        color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                }
+                IosSwitch(on, { on = it; session.prefs.setAutoUpdateFor(installed.id, it) }, Modifier.testTag("package-auto-update"))
+            }
         }
 
         if (host != null && !host.onPhone) NeedsHostNote(host, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
@@ -1306,6 +1421,12 @@ private fun MarketPackagePage(
         // What a package can't reach is worked out from the Folio permissions it asks for. An app of its own asks
         // Folio for nothing and gets everything Android grants it - a keyboard sees what you type - so the list
         // would be a promise Folio has no way to keep. It says what is true instead.
+        // Whether it works here comes before what it can't reach: the first thing to know about a package is whether
+        // it can be had at all.
+        if (compat.isNotEmpty()) {
+            SheetGroupLabel(stringResource(R.string.compatibility))
+            CompatibilityCard(compat, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
+        }
         if (external) {
             SheetGroupLabel(stringResource(R.string.an_app_of_its_own))
             SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
@@ -1494,6 +1615,12 @@ private fun MarketImage(session: MarketSession, source: Source, path: String, mo
 private fun MarketScreenshot(session: MarketSession, source: Source, path: String, height: androidx.compose.ui.unit.Dp) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
+    // A picture that moves plays; one that doesn't is drawn as before. Only a source's own files, not ones fetched.
+    val moving = remember(path, url) { if (url != null) null else MarketImages.bundledAnimation(session.source::asset, path) }
+    if (moving != null) {
+        AnimatedScreenshot(moving, height)
+        return
+    }
     val bundled = remember(path, url) { if (url != null) null else MarketImages.bundled(session.source::asset, path) }
     val painter = when {
         bundled != null -> remember(bundled) { androidx.compose.ui.graphics.painter.BitmapPainter(bundled) }
@@ -1503,10 +1630,7 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
     val size = painter?.intrinsicSize
     // Until the picture arrives there is no shape to follow, so it holds a phone-shaped space rather than none.
     val ratio = if (size != null && size != androidx.compose.ui.geometry.Size.Unspecified && size.width > 0f && size.height > 0f) size.width / size.height else 150f / 260f
-    Box(
-        Modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).then(Modifier.width(height * ratio))
-            .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
-    ) {
+    ScreenshotFrame(height, ratio) {
         painter?.let {
             androidx.compose.foundation.Image(
                 painter = it,
@@ -1515,6 +1639,48 @@ private fun MarketScreenshot(session: MarketSession, source: Source, path: Strin
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+/** The frame every screenshot sits in, still or moving: a fixed height, the picture's own width, rounded. */
+@Composable
+private fun ScreenshotFrame(height: androidx.compose.ui.unit.Dp, ratio: Float, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+    Box(
+        modifier.padding(bottom = FolioSpace.COMPACT.dp).height(height).width(height * ratio)
+            .clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .06f)),
+        content = content,
+    )
+}
+
+/**
+ * A screenshot that moves, in the same frame as a still one. It loops while it is on screen, and with Reduce Motion on it
+ * stays on its first frame, which is a screenshot like any other.
+ */
+@Composable
+private fun AnimatedScreenshot(drawable: android.graphics.drawable.AnimatedImageDrawable, height: androidx.compose.ui.unit.Dp) {
+    val reduceMotion = LocalReduceMotion.current
+    val ratio = if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight else 150f / 260f
+    // A row of screenshots is not lazy, so a clip scrolled out of view is still composed: it only plays while it is on screen.
+    var onScreen by remember { mutableStateOf(true) }
+    val windowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
+    DisposableEffect(drawable, reduceMotion, onScreen) {
+        drawable.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
+        if (!reduceMotion && onScreen) drawable.start()
+        onDispose { drawable.stop() }
+    }
+    ScreenshotFrame(height, ratio, Modifier.onGloballyPositioned { coordinates ->
+        onScreen = coordinates.isAttached && coordinates.boundsInWindow().let { it.right > 0f && it.left < windowWidth }
+    }) {
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { context ->
+                android.widget.ImageView(context).apply {
+                    scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                    importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO // the page's text says what it is
+                    setImageDrawable(drawable)
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 
@@ -1727,6 +1893,8 @@ private fun report(context: android.content.Context, issuesUrl: String?, entry: 
 internal sealed interface MarketLink {
     data class Package(val id: String) : MarketLink
     data class Source(val url: String) : MarketLink
+    /** The update notice: the store, on what is installed and has a newer version. */
+    data object Updates : MarketLink
 
     // A supporter's code is a link too, but it belongs to Settings rather than the store: see RedeemActivity.
 
@@ -1739,6 +1907,7 @@ internal sealed interface MarketLink {
             val host = rest.substringBefore('/')
             val value = rest.substringAfter('/', "").substringBefore('?').substringBefore('#')
             if (value.isEmpty()) return null
+            if (host == "market") return Updates.takeIf { value == "updates" }
             return when (host) {
                 "package" -> Package(value).takeIf { PackageManifest.ID.containsMatchIn(it.id) }
                 // The url is encoded, because it carries its own slashes.

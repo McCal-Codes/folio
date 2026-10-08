@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -30,13 +31,17 @@ class MarketRefreshJob : JobService() {
                 // The gate is asked again here, not only when the job was scheduled: a supporter's code can run out
                 // between one day and the next, and a phone that can't open the store shouldn't be going online for
                 // it. The setting is asked again for the same reason.
-                if (MarketAccess.isOpen(applicationContext) && prefs.backgroundRefresh) {
+                // Safe Mode pauses optional work, and a refresh that finds packages is not what a crash loop needs.
+                if (SafeMode.isOn(applicationContext)) {
+                    schedule(applicationContext)
+                } else if (MarketAccess.isOpen(applicationContext) && prefs.backgroundRefresh) {
                     refreshSources(applicationContext)
                 } else {
                     schedule(applicationContext)
                 }
             } finally {
-                jobFinished(params, false)
+                // Android already knows when it stopped the job itself; telling it again is only noise.
+                if (isActive) jobFinished(params, false)
             }
         }
         return true
@@ -83,12 +88,29 @@ class MarketRefreshJob : JobService() {
         }
 
         /**
-         * Refreshes every source, keeping the cached list when one fails. Nothing is installed: an update is something
-         * the user chooses, so this only makes the store know there is one.
+         * Refreshes every source, keeping the cached list when one fails. The refresh itself installs nothing. After it,
+         * with the beta feature on, a checked update that touches none of the person's settings is staged and installed
+         * (see [MarketAutoUpdate]); any other update is something the user chooses.
          */
         internal suspend fun refreshSources(context: Context) {
             val session = MarketSession(context, ReadOnlyLauncher)
             session.sources.refreshAll(force = false)
+            // Packages that update themselves (M1): stage the checked update, and apply it through the running app. With
+            // no running app it waits in the staging folder for the next start.
+            if (MarketAutoUpdate.enabled(context)) caught("Market: updating packages in the background") {
+                MarketAutoUpdate.stage(context, session)
+                FolioSettingsBridge.liveModel?.get()?.let { model ->
+                    MarketAutoUpdate.applyStaged(context, MarketSession(context, ModelLauncher(model, context)))
+                }
+            }
+            // Tell the person, once per set of new versions, only if they asked to be told.
+            val prefs = rememberedMarketPrefs(context)
+            if (prefs.notifyUpdates) caught("Market: the update notice") {
+                val updates = MarketUpdateNotice.pending(context, session)
+                if (MarketUpdateNotice.shouldNotify(updates, prefs.lastNotifiedUpdates)) {
+                    if (MarketUpdateNotice.post(context, updates)) prefs.lastNotifiedUpdates = MarketUpdateNotice.signature(updates)
+                } else if (updates.isEmpty()) prefs.lastNotifiedUpdates = null
+            }
         }
     }
 }

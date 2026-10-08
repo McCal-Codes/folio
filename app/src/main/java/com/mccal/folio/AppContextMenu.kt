@@ -74,6 +74,15 @@ internal fun loadQuickActions(context: android.content.Context, app: AppEntry, l
 }.getOrDefault(emptyList())
 
 /**
+ * Starts one of [app]'s quick actions. One that won't start (the app has removed or turned it off) says so, the way an
+ * app that won't open does, instead of the menu closing on nothing.
+ */
+internal fun startQuickAction(context: android.content.Context, app: AppEntry, action: QuickAction) {
+    runCatching { context.getSystemService(LauncherApps::class.java).startShortcut(action.info, null, null) }
+        .onFailure { IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, action.label.ifBlank { app.label }), app.icon) }
+}
+
+/**
  * iPhone-style long-press menu: the icon lifts where it is, Home blurs behind, and a compact menu
  * appears next to it with the app's own quick actions first, then Folio's actions.
  */
@@ -84,6 +93,8 @@ internal fun AppContextMenu(
     lockedBy: String? = null,
     onDismiss: () -> Unit, onMove: () -> Unit, onAddOrRemove: () -> Unit, onCreateFolder: () -> Unit, hasFolders: Boolean = false,
     onWidgets: (() -> Unit)?, onToggleHidden: () -> Unit, onInfo: () -> Unit, onRename: () -> Unit,
+    /** This app's own icon look; null where an icon has none to change. */
+    onEditIcon: (() -> Unit)? = null,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
 ) {
@@ -165,7 +176,7 @@ internal fun AppContextMenu(
                 shownActions.forEachIndexed { i, action ->
                     MenuRow(action.label, bitmap = action.icon) {
                         onDismiss()
-                        runCatching { context.getSystemService(LauncherApps::class.java).startShortcut(action.info, null, null) }
+                        startQuickAction(context, app, action)
                     }
                     if (i == shownActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
                     else MenuDivider()
@@ -198,6 +209,7 @@ internal fun AppContextMenu(
                     onStack?.let { MenuDivider(); MenuRow(stringResource(R.string.stack_apps), Icons.Rounded.Layers) { it() } }
                     MenuDivider()
                     MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
+                    onEditIcon?.let { MenuDivider(); MenuRow(stringResource(R.string.edit_icon), Icons.Rounded.Palette) { it() } }
                     MenuDivider()
                     MenuRow(if (hidden) stringResource(R.string.show_in_app_library) else stringResource(R.string.hide_from_app_library), if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
                     MenuDivider()

@@ -22,7 +22,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `standby-charging` ([#113](https://github.com/McCal-Codes/folio/pull/113)) | StandBy comes on while charging, in any pose | `StandBy.kt`, `MainActivity.kt`, `LauncherModel.kt`, `CustomizationSheet.kt`, `strings.xml` |
+| `release-069-beta1` | Draft bump to 0.6.9-beta.1: the version, the release note and this row, nothing else (REL-13). Not for merge until the beta.1 pull requests are on `main`. | `app/build.gradle.kts`, `docs/releases/0.6.9-beta.1.md`, this file |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.

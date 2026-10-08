@@ -19,17 +19,32 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-1 MUST** keep `main` releasable. Every change lands as a topic branch and a squashed pull request, and
   `main` is the only branch anything is ever built from.
 - **REL-2 MUST NOT** let a topic branch live long enough to hold a release. A branch that cannot merge within about
-  a week is too big: split it, or merge the finished part behind a setting that is off.
-- **REL-3 SHOULD** merge `main` into a topic branch whenever `main` moves, not once at the end. A branch that is
-  both ahead and behind by double figures is a merge nobody can review.
+  two working days is too big: split it, or merge the finished part behind a gate that is closed (REL-4a). The limit
+  was a week; on 6 Oct 2026 sixteen branches of one session were all more than a day old, three were stacked on each
+  other, and `main` moved under them twice, which cost a day of rebasing that landing each one would not have.
+- **REL-2a MUST NOT** hold more than five open topic branches at once in one session (a person, or an agent working
+  in its own worktree). Three is the number the DORA research associates with teams that ship fast; five is the
+  most this project can review. At the limit, land one, or park one (delete the branch after writing down what is
+  left) before starting another. `bash tools/check-branches.sh` counts them and lists what has already landed.
+- **REL-3 MUST** bring a topic branch up to date with `main` whenever `main` moves, not once at the end, and MUST
+  NOT leave one behind `main` by ten commits or more: update it or close it. A branch that is both ahead and behind
+  by double figures is a merge nobody can review. A stack of branches is at most two deep, and the lower one lands
+  first.
+- **REL-3a MAY** build a throwaway integration branch that merges several topic branches, to check they work
+  together. It MUST NOT be built, tagged, published or handed out (REL-4), it is deleted once its topic branches land
+  or after two days, and topic branches never wait for it: each lands on `main` on its own, behind its own gate.
 - **REL-4 MUST NOT** build, tag or publish anything from a topic branch. If supporters need it, it goes to `main`
   first. There is no stable branch and no beta branch: one trunk, and the two audiences are separated by a gate in the
   build ([ADR 0007](../adr/0007-release-trains.md)).
 - **REL-4a MUST** gate a feature that is not ready for everyone on the `beta` scope rather than holding it on a
   branch. A supporter sees it the day it merges; opening the gate is what shipping it means. Gate it at the entry
   point, not only in the UI, so hidden work costs nobody battery.
-- **REL-4b** A stable release is the same tree as the beta before it, with gates open. Nothing is ported,
-  cherry-picked or rebuilt between the two.
+- **REL-4b** A stable release ships the same app as the beta before it, with gates open: the same code and resources
+  under `app/` and `market/`, the same built-in Market source (`docs/sdk/source`, which the APK bundles) and the same
+  Gradle setup, with only the version, the roadmap and the notes moved
+  (REL-13). Nothing is ported, cherry-picked or rebuilt between the two. Docs, tools and tests may change in between,
+  since nobody installs them. (Until 2 Oct 2026 this said "the same tree", which held a fix to a tool or a note back a
+  whole release.)
 - **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort, only when a breaking migration is mid-flight on
   `main`. It ships and merges back the same day.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
@@ -37,6 +52,8 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-6 MUST** check [docs/in-flight.md](../in-flight.md), the other worktrees and the open pull requests before
   editing a file more than one change is likely to touch, and add a row there when starting on one: `CHANGELOG.md`, `app/src/main/assets/roadmap.json`, `strings.xml`, `app/build.gradle.kts`.
   Several sessions work on Folio at once.
+- **REL-6a SHOULD** run `bash tools/check-branches.sh` at the start and the end of a working session: at the start to
+  see what is already open before adding to it, at the end to delete the branches and worktrees that have landed.
 
 ### The changelog
 
@@ -59,7 +76,9 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-13 MUST** make the version bump its own commit, the last one before the tag, touching only the version, the
   changelog date, the roadmap's statuses for that release and its release doc.
 - **REL-14 MUST** give every release a section in `app/src/main/assets/roadmap.json` matching its version, so
-  `RoadmapTest` passes and Settings › Roadmap agrees with What's New.
+  `RoadmapTest` passes and Settings › Roadmap agrees with What's New. A stable's own section has no item still
+  Building or Planned: each is marked done, or moved to the release it now belongs to, in the bump
+  (`tools/check-release-rules.sh`, REL-14b). A section may carry an optional `subtitle`, its theme.
 - **REL-15 MUST NOT** publish a stable release carrying less than a beta of the same version. Either the stable
   includes everything its betas had, or the beta line is renumbered before the stable goes out.
 - **REL-16** A version number means one build. If what ships has to change after a beta, the number moves; the
@@ -102,6 +121,7 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 ### Dependencies
 
+- **REL-31 MUST** keep the roadmap's marks in step with the tags. A release section whose items are all `done` names a release that has its stable tag, and an item marked `beta` belongs to a release that has a `-beta.N` tag. Every install reads `roadmap.json` from `main`, so "done" for a release nobody can install is a promise the page cannot keep: shipped means tagged, not merged. `tools/check-release-rules.sh` checks it whenever a pull request changes the roadmap; the `release-exception` label waives it.
 - **REL-27 MUST NOT** take a dependency bump that reaches the APK into a release already carrying a lot. Test-only
   dependencies (`baselineprofile`, `androidTest`) are safe whenever, because they never ship.
 - **REL-28 MUST** bump the Android Gradle plugins together. `com.android.application` and `com.android.library` are
@@ -125,7 +145,7 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   rule (#72, `THREE_PANES_DP`) is on `main` and in no tag, so 0.6.6, which is what the site documents and what people
   download, still draws three panes on a Fold's inner screen. The site's Fold screenshot is a real capture from
   22 Sep and is correct until 0.6.7 ships, at which point it has to be re-taken.
-- REL-5 (AI credit in commits, the branch name and the description), REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
+- REL-4b (on the stable's bump), REL-5 (AI credit in commits, the branch name and the description), REL-7, REL-10, REL-13 and REL-16 are checked by machine now: `tools/check-release-rules.sh` in CI, and guards at
   the top of `scripts/release-signed.sh`. Both name the rule they are enforcing in the failure, so the message is
   useful without opening this file.
 - One feature is gated today: the Market, shut since 19 Sep 2026, due to open in 0.7.0.

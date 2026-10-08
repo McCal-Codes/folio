@@ -17,8 +17,8 @@ const sources = {
     { version: '0.6.5', date: '2026-09-20', body: '### Fixed\n- **A crash:** gone.' },
   ],
   roadmap: async () => [
-    { name: 'Folio 0.6.6', shipped: true, items: [{ title: 'Market', detail: 'Shipped.', status: 'done' }] },
-    { name: 'Next', shipped: false, items: [{ title: 'Language in Settings', detail: 'Pick it yourself.', status: 'planned' }] },
+    { name: 'Folio 0.6.6', release: true, shipped: true, items: [{ title: 'Market', detail: 'Shipped.', status: 'done' }] },
+    { name: 'Folio 0.6.9 (Foundation)', release: true, shipped: false, items: [{ title: 'Language in Settings', detail: 'Pick it yourself.', status: 'planned' }] },
     { name: 'Later', shipped: false, items: [{ title: 'Dock Drawer', detail: 'Swipe in on the dock.', status: 'planned' }] },
   ],
   tweaks: async () => [
@@ -76,8 +76,15 @@ test('an unknown version is a helpful answer, not an error', async () => {
 
 test('roadmap leaves out what has already shipped', async () => {
   const answer = await run('roadmap', {}, sources)
-  assert.match(answer, /\*\*Next\*\*/)
+  assert.match(answer, /\*\*Folio 0\.6\.9 \(Foundation\)\*\*/)
   assert.match(answer, /\*\*Later\*\*/)
+  assert.doesNotMatch(answer, /Folio 0\.6\.6/)
+})
+
+test('roadmap next is the releases still being built', async () => {
+  const answer = await run('roadmap', { when: 'next' }, sources)
+  assert.match(answer, /Language in Settings/)
+  assert.doesNotMatch(answer, /Dock Drawer/)
   assert.doesNotMatch(answer, /Folio 0\.6\.6/)
 })
 

@@ -57,7 +57,7 @@ const DEFINITIONS = [
   },
 ]
 
-export const COMMANDS = DEFINITIONS.map((command) => ({ ...command, ...EVERYWHERE }))
+export const COMMANDS = DEFINITIONS.map((command) => ({ ...EVERYWHERE, ...command }))
 
 const trim = (text, limit = LIMIT) =>
   text.length <= limit ? text : `${text.slice(0, limit - 2).trimEnd()}…`
@@ -119,8 +119,9 @@ export const handlers = {
 
   async roadmap(options, sources) {
     const sections = (await sources.roadmap()).filter((section) => !section.shipped)
+    // "Next" is the releases still being built, each with its own version; Later and Exploring are lists with a title.
     const wanted = options.when
-      ? sections.filter((section) => section.name.toLowerCase() === options.when)
+      ? sections.filter((section) => options.when === 'next' ? section.release : section.name.toLowerCase() === options.when)
       : sections
     if (!wanted.length) return `Nothing under ${options.when}. Try next, later or exploring.`
     const blocks = wanted.map((section) => {

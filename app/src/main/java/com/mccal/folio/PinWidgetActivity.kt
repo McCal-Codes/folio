@@ -157,7 +157,8 @@ private fun PinCard(onCancel: () -> Unit, error: String?, addLabel: String, tag:
                 .clickable(onClick = onAdd).testTag("$tag-add"), contentAlignment = Alignment.Center) {
                 Text(addLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
             }
-            Text(stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, modifier = Modifier.clickable(onClick = onCancel).padding(FolioSpace.SMALL.dp))
+            Text(stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onCancel).heightIn(min = FolioTouch.MIN.dp)
+                .wrapContentHeight(Alignment.CenterVertically).padding(horizontal = FolioSpace.SMALL.dp))
         }
     }
 }

@@ -32,6 +32,14 @@ data class DeviceStatus(
     val silent: Boolean = false,
 )
 
+/**
+ * Charging as Home shows it: on the cable. At a charge limit, like Samsung's battery protection holding at 80%, Android
+ * reports the battery as not charging while the phone is still plugged in, and Home used to show it as on battery
+ * (StandBy dropping out with it). Plugged in counts now, as iOS shows the bolt while charging is on hold.
+ */
+internal fun isCharging(status: Int, plugged: Int): Boolean =
+    plugged != 0 || status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
 /** Observe only while visible. No location, phone-state, or notification access required. */
 class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserver {
     private val connection = context.getSystemService(ConnectivityManager::class.java)
@@ -58,8 +66,9 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
                 val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
                 val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
                 val charge = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
                 mutable.update { it.copy(battery = if (level >= 0 && scale > 0) (level * 100 / scale).coerceIn(0, 100) else null,
-                    charging = charge == BatteryManager.BATTERY_STATUS_CHARGING || charge == BatteryManager.BATTERY_STATUS_FULL) }
+                    charging = isCharging(charge, plugged)) }
             }
             updateConnection()
         }

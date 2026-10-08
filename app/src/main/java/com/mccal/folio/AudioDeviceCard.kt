@@ -92,16 +92,17 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
     val background = if (dark) FolioColors.SecondaryBackground else FolioColors.LightBackground
     val primary = if (dark) Color.White else Color.Black
     val secondary = if (dark) Color(0xFF98989F) else Color(0xFF6C6C70)
-    val title = device.name ?: if (device.speaker) "Speaker" else "Headphones"
+    val title = device.name ?: stringResource(if (device.speaker) R.string.speaker else R.string.headphones)
     Column(Modifier.navigationBarsPadding().padding(FolioSpace.MEDIUM.dp).widthIn(max = 400.dp).fillMaxWidth()
         .clip(RoundedCornerShape(36.dp)).background(background).padding(horizontal = 22.dp, vertical = 18.dp)
         .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally) {
+        val closeLabel = stringResource(R.string.close)
         Box(Modifier.fillMaxWidth()) {
             Text(title, Modifier.align(Alignment.Center).padding(horizontal = 44.dp), color = primary, fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Box(Modifier.align(Alignment.CenterEnd).minimumInteractiveComponentSize()
-                .clickable(role = Role.Button, onClick = onDone).semantics { contentDescription = "Close" },
+                .clickable(role = Role.Button, onClick = onDone).semantics { contentDescription = closeLabel },
                 contentAlignment = Alignment.Center) {
                 Box(Modifier.size(30.dp).clip(CircleShape).background(secondary.copy(alpha = .18f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Close, null, tint = secondary, modifier = Modifier.size(18.dp))

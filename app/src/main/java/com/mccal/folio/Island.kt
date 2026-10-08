@@ -126,8 +126,11 @@ sealed interface IslandEvent {
     data class Message(val key: String, val packageName: String, val appLabel: String, val sender: String, val text: String?,
         val avatar: Bitmap?, val appIcon: Bitmap?, val canReply: Boolean, val alert: Boolean = false) : IslandEvent
     /** Brief feedback from Folio itself ("Calendar is unavailable"), with the app's icon when it's about an app. */
-    data class Notice(val text: String, val appIcon: Bitmap? = null) : IslandEvent
+    data class Notice(val text: String, val appIcon: Bitmap? = null, val action: NoticeAction? = null) : IslandEvent
 }
+
+/** A button on a notice, like Undo. It runs once; the notice then goes. */
+class NoticeAction(val label: String, val run: () -> Unit)
 
 /**
  * Reads ongoing activities (calls, timers, navigation, progress), the active media session, new messages and, when
@@ -160,8 +163,13 @@ class IslandListenerService : NotificationListenerService() {
         notificationsMutable.value = emptyList() // don't keep other apps' content after access is gone
     }
 
+    /** Set before anything is torn down, so a pass already running on the worker cannot register callbacks afterwards. */
+    @Volatile private var destroyed = false
+
     override fun onDestroy() {
+        destroyed = true
         workerHandler.removeCallbacksAndMessages(null)
+        clearControllerCallbacks()
         worker.quitSafely()
         if (instance === this) instance = null
         super.onDestroy()
@@ -439,20 +447,24 @@ class IslandListenerService : NotificationListenerService() {
 
     private fun watch(controllers: List<MediaController>) {
         val tokens = controllers.map { it.sessionToken }.toSet()
-        controllerCallbacks.keys.filter { it !in tokens }.forEach { token ->
-            controllerCallbacks.remove(token)?.let { (controller, callback) -> controller.unregisterCallback(callback) }
-        }
-        controllers.filter { it.sessionToken !in controllerCallbacks }.forEach { controller ->
-            val callback = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
-                override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
+        // The worker thread changes this map and the main thread clears it when access goes, so both hold the same lock.
+        synchronized(controllerCallbacks) {
+            if (destroyed) return
+            controllerCallbacks.keys.filter { it !in tokens }.forEach { token ->
+                controllerCallbacks.remove(token)?.let { (controller, callback) -> controller.unregisterCallback(callback) }
             }
-            controller.registerCallback(callback, workerHandler)
-            controllerCallbacks[controller.sessionToken] = controller to callback
+            controllers.filter { it.sessionToken !in controllerCallbacks }.forEach { controller ->
+                val callback = object : MediaController.Callback() {
+                    override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
+                    override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
+                }
+                controller.registerCallback(callback, workerHandler)
+                controllerCallbacks[controller.sessionToken] = controller to callback
+            }
         }
     }
 
-    private fun clearControllerCallbacks() {
+    private fun clearControllerCallbacks() = synchronized(controllerCallbacks) {
         controllerCallbacks.values.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
         controllerCallbacks.clear()
     }

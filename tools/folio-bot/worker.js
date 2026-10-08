@@ -5,14 +5,18 @@
  * alive: Discord posts an interaction here, this answers it, and that is the whole lifetime. Same account and the
  * same `wrangler deploy` as the supporter worker.
  *
- * Secrets: DISCORD_PUBLIC_KEY (from the application's General Information page) is the only one phase 1 needs.
- * Handing out roles comes later and needs a bot token; nothing here has one.
+ * Secrets: DISCORD_PUBLIC_KEY (from the application's General Information page) checks that a request came from
+ * Discord. DISCORD_BOT_TOKEN lets the "Get release pings" button give and take back the Folio updates role; nothing else uses it.
  */
 import { optionsOf, run } from './commands.mjs'
+import { discordFor } from './discord.mjs'
+import { runAutoReply } from './autoreply.mjs'
+import { PINGS_BUTTON, togglePings } from './pings.mjs'
 import { sources as liveSources } from './sources.mjs'
 
 const PING = 1
 const APPLICATION_COMMAND = 2
+const MESSAGE_COMPONENT = 3
 const PONG = 1
 const CHANNEL_MESSAGE = 4
 const DEFERRED_CHANNEL_MESSAGE = 5
@@ -50,15 +54,35 @@ async function verify(request, body, publicKey) {
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } })
 
-/** A message the way every answer is shaped: no preview cards under it, and nobody pinged by it. */
-const message = (content) => ({ content, flags: 4, allowed_mentions: { parse: [] } })
+const SUPPRESS_EMBEDS = 4
+const EPHEMERAL = 64
+
+/**
+ * A message the way every answer is shaped: no preview cards under it, and nobody pinged by it. A private one is
+ * seen only by whoever asked, which is how a reply about a supporter code never lands in a channel.
+ */
+const message = (content, secret = false) => ({
+  content,
+  flags: SUPPRESS_EMBEDS | (secret ? EPHEMERAL : 0),
+  allowed_mentions: { parse: [] },
+})
 
 /**
  * Built with its dependencies passed in, so the tests can hand it slow sources and a fake fetch rather than
  * reaching GitHub and Discord.
  */
-export function createWorker({ sources = liveSources, send = fetch, wait = ANSWER_WITHIN_MS } = {}) {
+export function createWorker({
+  sources = liveSources,
+  send = fetch,
+  wait = ANSWER_WITHIN_MS,
+  discord = (env) => discordFor(env),
+} = {}) {
   return {
+    /** The timer. Wakes up every couple of minutes to give new posts in #help and the forums their first reply. */
+    async scheduled(_event, env, ctx) {
+      ctx?.waitUntil?.(runAutoReply(env, send))
+    },
+
     async fetch(request, env, ctx) {
       if (request.method === 'GET') {
         // Something to look at when checking the Worker is up. Discord never uses it.
@@ -76,9 +100,19 @@ export function createWorker({ sources = liveSources, send = fetch, wait = ANSWE
 
       const interaction = JSON.parse(body)
       if (interaction.type === PING) return json({ type: PONG })
+      if (interaction.type === MESSAGE_COMPONENT) {
+        // A button press. Only the release-pings button exists; anything else is acknowledged and ignored.
+        if (interaction.data?.custom_id !== PINGS_BUTTON) return json({ type: PONG })
+        const said = await togglePings(env, interaction, discord(env)).catch((error) => {
+          console.error(`pings failed: ${error.message}`)
+          return 'That did not work. Try again in a little while.'
+        })
+        return json({ type: CHANNEL_MESSAGE, data: message(said, true) })
+      }
       if (interaction.type !== APPLICATION_COMMAND) return json({ type: PONG })
 
-      const answer = run(interaction.data?.name, optionsOf(interaction), sources)
+      const name = interaction.data?.name
+      const answer = run(name, optionsOf(interaction), sources)
       const timer = new Promise((resolve) => setTimeout(() => resolve(null), wait))
       const quick = await Promise.race([answer, timer])
       if (quick !== null) return json({ type: CHANNEL_MESSAGE, data: message(quick) })

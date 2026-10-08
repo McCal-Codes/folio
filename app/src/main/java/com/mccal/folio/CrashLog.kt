@@ -81,19 +81,68 @@ internal object SafeMode {
     private const val PREFS = "safe_mode"
     private const val QUICK_CRASHES = "quickCrashes"
     private const val WINDOW_MS = 30_000L
+    private const val LAST_START = "lastStartWall"
+    private const val EXITS_SEEN = "exitsSeenUntil"
     private var startedAt = 0L
     @Volatile var active = false
         private set
 
-    fun onStart(context: Context) {
-        startedAt = android.os.SystemClock.elapsedRealtime()
-        active = context.getSharedPreferences(PREFS, 0).getInt(QUICK_CRASHES, 0) >= 2
+    private const val CRASHED_LAST_RUN = "crashedLastRun"
+    @Volatile private var crashedLastRun = false
+    @Volatile private var appContext: Context? = null
+    private val crashTaken = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * True once per process, and only when the process before this one ended in an uncaught crash. Package Safe Mode
+     * counts a crash only then: asked on every Home composition (a fold, an unfold) it would blame a package for
+     * nothing.
+     */
+    fun takeCrashedLastRun(): Boolean {
+        if (!crashedLastRun || !crashTaken.compareAndSet(false, true)) return false
+        // Cleared only now that Home has read it: a background job that starts the process after a crash, and is then
+        // killed before Home exists, must not use the flag up.
+        appContext?.getSharedPreferences(PREFS, 0)?.edit()?.putBoolean(CRASHED_LAST_RUN, false)?.apply()
+        return true
     }
+
+    /**
+     * [exits] is how earlier processes ended, newest first; the default reads Android's record. A native crash, a freeze
+     * or a failed start in the first 30 seconds counts like an uncaught exception does (see [SafeModeExits]).
+     */
+    fun onStart(context: Context, exits: () -> List<ExitRecord> = { SafeModeExits.read(context) }) {
+        startedAt = android.os.SystemClock.elapsedRealtime()
+        val prefs = context.getSharedPreferences(PREFS, 0)
+        val previousStart = prefs.getLong(LAST_START, 0L)
+        val seen = prefs.getLong(EXITS_SEEN, 0L)
+        val all = runCatching(exits).getOrDefault(emptyList())
+        val extra = SafeModeExits.quick(all, previousStart, seen, WINDOW_MS).size
+        val quickCrashes = prefs.getInt(QUICK_CRASHES, 0) + extra
+        val edit = prefs.edit().putLong(LAST_START, System.currentTimeMillis())
+        if (all.isNotEmpty()) edit.putLong(EXITS_SEEN, maxOf(seen, all.maxOf { it.timestampMs }))
+        if (extra > 0) edit.putInt(QUICK_CRASHES, quickCrashes)
+        active = quickCrashes >= 2
+        crashTaken.set(false)
+        appContext = context.applicationContext
+        val nativeCrash = SafeModeExits.crashedLast(all, seen)
+        // A crash Android recorded is kept as the same saved flag, not just in memory: the exits are marked as seen
+        // above, so a background-only process that never reaches Home must not use the evidence up.
+        if (nativeCrash) edit.putBoolean(CRASHED_LAST_RUN, true)
+        crashedLastRun = prefs.getBoolean(CRASHED_LAST_RUN, false) || nativeCrash
+        // Synchronously: a crash right after this returns must find the start time, the exits seen and the count on disk,
+        // or a fast startup loop would never add up to two. A few small values, once per process.
+        edit.commit()
+    }
+
+    /**
+     * Whether Folio is in Safe Mode right now, read from what was saved. For work that can start without the app being
+     * open (a background job), where [onStart] may not have run in this process yet.
+     */
+    fun isOn(context: Context): Boolean = context.getSharedPreferences(PREFS, 0).getInt(QUICK_CRASHES, 0) >= 2
 
     fun onCrash(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, 0)
         val quick = android.os.SystemClock.elapsedRealtime() - startedAt < WINDOW_MS
-        prefs.edit().putInt(QUICK_CRASHES, if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1).commit()
+        prefs.edit().putInt(QUICK_CRASHES, if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1).putBoolean(CRASHED_LAST_RUN, true).commit()
     }
 
     /** Folio ran a while without crashing: forget earlier quick crashes (called from Home). */

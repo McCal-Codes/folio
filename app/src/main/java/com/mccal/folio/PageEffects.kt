@@ -38,8 +38,24 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
      */
     CUBE(R.string.cube),
 
+    /**
+     * Cube seen from inside: pages hinge on the same seam, but toward you, like the walls of a room. The idea is
+     * Cylinder's Cube (inside), by Reed Weichler, re-created here as numbers; Cylinder has no license, so no code.
+     *
+     * Its free edge comes toward the camera, which is how a face looked huge before the camera fix of 29 Sep 2026
+     * ([PageEffectSpec.cameraDistance]). With the camera two page widths away, an edge reaches twice its size only
+     * edge-on, a full page out, where it has left the screen.
+     */
+    INSIDE_CUBE(R.string.inside_cube),
+
     /** Pages turn a little and step back as they leave, the way a row of cards passing a window would. */
-    CAROUSEL(R.string.carousel);
+    CAROUSEL(R.string.carousel),
+
+    /**
+     * Pages step back as they leave, without turning: Page Squeeze by Beta382 for Cylinder, re-created as numbers.
+     * With no turn, Android draws it as a flat scale with no 3D camera at all.
+     */
+    STACK(R.string.stack);
 
     /**
      * Degrees around the vertical axis at [position].
@@ -53,6 +69,8 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
      *
      * The clamp is not cosmetic: a page two positions out would otherwise reach 180 degrees and come back into view
      * mirrored, and pages that far out are kept composed on purpose ([PRF-9]).
+     *
+     * [INSIDE_CUBE] is the cube with the sign flipped, so its free edges turn toward the viewer instead.
      */
     fun rotationY(position: Float): Float = spec?.rotationY(position) ?: 0f
 
@@ -90,6 +108,12 @@ enum class PageEffect(@androidx.annotation.StringRes val label: Int) {
 
         /** A leaving page ends at 80% of its size. Deeper and the gap between pages starts to look like a mistake. */
         internal const val CAROUSEL_SHRINK = .2f
+
+        /**
+         * A leaving page ends at three quarters of its size, deeper than Carousel's: with no turn, stepping back is all
+         * that shows Stack's depth. The number shown in the Mockup Lab.
+         */
+        internal const val STACK_SHRINK = .25f
 
         /** The saved value, or [NONE] for a save from before Page Effects and for anything unrecognised. */
         fun of(name: String?): PageEffect = entries.firstOrNull { it.name == name } ?: NONE
@@ -191,7 +215,9 @@ data class PageEffectSpec(
 internal val PageEffect.spec: PageEffectSpec? get() = when (this) {
     PageEffect.NONE -> null
     PageEffect.CUBE -> PageEffectSpec(PageEffect.CUBE_DEGREES, PageEffectSpec.Pivot.SEAM, 0f, 2f)
+    PageEffect.INSIDE_CUBE -> PageEffectSpec(-PageEffect.CUBE_DEGREES, PageEffectSpec.Pivot.SEAM, 0f, 2f)
     PageEffect.CAROUSEL -> PageEffectSpec(PageEffect.CAROUSEL_DEGREES, PageEffectSpec.Pivot.CENTER, PageEffect.CAROUSEL_SHRINK, 3f)
+    PageEffect.STACK -> PageEffectSpec(0f, PageEffectSpec.Pivot.CENTER, PageEffect.STACK_SHRINK, 3f)
 }
 
 /** A page effect a Market package installed: its package id, the name the picker shows, and its clamped spec. */

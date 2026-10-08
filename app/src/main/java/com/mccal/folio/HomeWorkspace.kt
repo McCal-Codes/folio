@@ -135,7 +135,8 @@ internal fun ExpandedWorkspace(
     onMove: (String, Int) -> Unit = { _, _ -> },
     /** Back swipe progress over the App Library (predictive back), 0–1. */
     libraryBack: () -> Float = { 0f },
-    onRefresh: () -> Unit,
+    /** A tap on the message Home shows when apps or the layout couldn't be loaded. */
+    onProblem: () -> Unit,
 ) {
     val density = LocalDensity.current
     val viewportWidth = motion.pageWidth
@@ -202,7 +203,7 @@ internal fun ExpandedWorkspace(
                         -1, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,
                         widgets, drag, target, insertionTarget, showLargeWidget = true,
                         onLaunch = onLaunchFrom, onActions = onActions, onWidget = onWidget,
-                        onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove, onRefresh = onRefresh,
+                        onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove, onProblem = onProblem,
                         modifier = Modifier,
                     )
                 }
@@ -221,7 +222,7 @@ internal fun ExpandedWorkspace(
                             onFolder = onFolder,
                             onEmptyWidget = onEmptyWidget,
                             onMove = onMove,
-                            onRefresh = onRefresh,
+                            onProblem = onProblem,
                         )
                     }
                 }
@@ -267,7 +268,8 @@ internal fun HomePagePane(
     onEmptyWidget: (Int) -> Unit = {},
     /** Moves an app or folder by a number of cells (TalkBack actions and Alt+arrow keys; no dragging needed). */
     onMove: (String, Int) -> Unit = { _, _ -> },
-    onRefresh: () -> Unit,
+    /** A tap on the message Home shows when apps or the layout couldn't be loaded. */
+    onProblem: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val homeOptionsLabel = stringResource(R.string.home_options)
@@ -340,7 +342,8 @@ internal fun HomePagePane(
                 onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }))
             if (!state.homeReady) LinearProgressIndicator(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp))
             if (state.error != null) Text(state.error, color = Color.White,
-                modifier = Modifier.clickable(onClick = onRefresh).padding(FolioSpace.MEDIUM.dp))
+                modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = stringResource(R.string.fix_saved_layout), onClick = onProblem)
+                    .heightIn(min = FolioTouch.MIN.dp).padding(FolioSpace.MEDIUM.dp))
         }
     }
 }
@@ -423,6 +426,7 @@ internal fun SharedHomeGrid(
     val foldShift by animateFloatAsState(fold?.second ?: 0f, androidx.compose.animation.core.spring(dampingRatio = .85f, stiffness = 380f), label = "fold shift")
     val foldRow = fold?.first ?: Int.MAX_VALUE
     fun rowTop(row: Int) = cells.y(row) + if (row >= foldRow) foldShift else 0f
+    CompositionLocalProvider(LocalHomeIconSize provides geometry.iconSize) {
     Box(Modifier.fillMaxWidth().height((cells.height(renderedRows) + foldShift).dp)
         .onGloballyPositioned { gridTopDp = with(density) { it.boundsInWindow().top.toDp().value } }) {
         val cellWidth = cells.cellWidth.dp
@@ -506,23 +510,34 @@ internal fun SharedHomeGrid(
             key("widget-${placement.slot}") {
                 val width = (cellWidth * placement.spanX - 10.dp).coerceAtLeast(1.dp)
                 val row = displayRow(placement.row)
-                val x = cellX(placement.column, row) + 5.dp
-                val y = rowTop(row)
+                // A freely placed widget drifts part of a cell from the cells it keeps; the two-column and half-folded
+                // layouts move rows around, so there it stays on its cells.
+                val free = !geometry.splitColumns && hinge == null
+                // The distance a whole row is on the side the offset goes: a clock nudged up from row 2 sits in the half-height rows above it.
+                val rowPitch = if (placement.offsetY < 0f && row > 0) rowTop(row) - rowTop(row - 1)
+                    else if (row + 1 < GRID_ROWS) rowTop(row + 1) - rowTop(row) else rowTop(row) - rowTop(row - 1)
+                val x = cellX(placement.column, row) + 5.dp + if (free) cellWidth * placement.offsetX else 0.dp
+                val y = rowTop(row) + if (free) rowPitch * placement.offsetY else 0f
                 val height = (cells.spanHeight(row, placement.spanY) - 18f).coerceAtLeast(48f)
-                if (placement == pending) Surface(Modifier.offset(x = x, y = y.dp).width(width).height(height.dp)
-                    .testTag("widget-pending-${placement.slot}").semantics(mergeDescendants = true) {
-                        contentDescription = "Pending ${widgets.pendingProvider?.shortClassName ?: "widget"}"
-                    }, color = Glass.copy(alpha = .72f),
-                    shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)) {
-                    Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
-                        Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.finish_widget_setup), color = Ink)
+                if (placement == pending) {
+                    // TalkBack names the widget by what its app calls it, not by the class behind it.
+                    val name = remember(widgets.pendingProvider) { widgets.pendingLabel() } ?: stringResource(R.string.widget)
+                    val waiting = stringResource(R.string.widget_waiting_for_setup, name)
+                    Surface(Modifier.offset(x = x, y = y.dp).width(width).height(height.dp)
+                        .testTag("widget-pending-${placement.slot}").semantics(mergeDescendants = true) { contentDescription = waiting },
+                        color = Glass.copy(alpha = .72f),
+                        shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)) {
+                        Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                            Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.finish_widget_setup), color = Ink)
+                        }
                     }
                 } else MovableWidget(placement.id, placement.slot, widgets, drag, target,
                     Modifier.offset(x = x, y = y.dp).width(width).height(height.dp), page = page) { onWidget(placement.slot) }
             }
         }
+    }
     }
 }
 

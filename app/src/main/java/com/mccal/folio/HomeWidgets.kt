@@ -5,7 +5,9 @@ package com.mccal.folio
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetProviderInfo
+import android.content.Intent
 import android.os.UserManager
+import android.provider.AlarmClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -96,10 +98,23 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Holding a built-in widget where nothing around it takes the hold: the Today View, where it starts editing. Null on
+ * Home, whose own long press picks the widget up or opens its options.
+ */
+internal val LocalWidgetHold = staticCompositionLocalOf<(() -> Unit)?> { null }
+
+/** A built-in widget's tap, and its hold where [LocalWidgetHold] gives one. */
+@Composable
+internal fun Modifier.widgetTap(onClick: () -> Unit): Modifier {
+    val hold = LocalWidgetHold.current ?: return clickable(onClick = onClick)
+    return combinedClickable(onLongClickLabel = stringResource(R.string.edit), onLongClick = hold, onClick = onClick)
+}
+
 @Composable
 internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val look = LocalGlassLook.current
-    Surface(modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).clickable(onClick = onClick),
+    Surface(modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).widgetTap(onClick),
         color = Glass.copy(alpha = look.widget), shape = RoundedCornerShape(FolioRadius.PANEL.dp),
         border = if (look.outline > 0f) androidx.compose.foundation.BorderStroke(1.dp, look.outlineColor) else null) {
         // Like iOS widgets, the whole card scales with its size, so a narrower column (the Today View beside
@@ -122,12 +137,12 @@ internal fun currentTime(): LocalDateTime {
 
 @Composable
 internal fun ClockCard(onClick: () -> Unit) {
-    val clockWidgetTapToReplaceLabel = stringResource(R.string.clock_widget_tap_to_replace)
+    val clockWidgetTapToOpenLabel = stringResource(R.string.clock_widget_tap_to_open)
     val time = currentTime()
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     GlassCard(onClick = onClick) {
         Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
-            modifier = Modifier.semantics { contentDescription = clockWidgetTapToReplaceLabel })
+            modifier = Modifier.semantics { contentDescription = clockWidgetTapToOpenLabel })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
         Text(time.format(DateTimeFormatter.ofPattern(if (format == "HH:mm") "EEE" else "a · EEE")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
@@ -232,19 +247,42 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
                 if (drag.active && target == cell) Color.White else Color.Transparent, RoundedCornerShape(FolioRadius.PANEL.dp))
             .semantics { onLongClick(context.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
         if (cards.size > 1) SmartStack(cards, slot, controller, chrome, onAdd)
-        else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, onAdd) }
+        else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, opensApp = true, onAdd = onAdd) }
     if (edit.active && id != EMPTY_WIDGET && id != INFO_WIDGET) JiggleRemoveButton(stringResource(R.string.remove_widget)) { edit.onRemove(cell) }
     }
 }
 
+/**
+ * The app a built-in card shows, which tapping the card opens, as iOS opens Clock and Calendar from their widgets.
+ * Null for the cards that aren't one app's.
+ */
+internal fun builtinWidgetApp(id: Int): Intent? = when (id) {
+    CLOCK_WIDGET, BIG_CLOCK_WIDGET -> Intent(AlarmClock.ACTION_SHOW_ALARMS)
+    DATE_WIDGET, UP_NEXT_WIDGET -> Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
+    else -> null
+}
+
+/**
+ * One of Folio's own widgets. With [opensApp] (Home and the Today View) tapping a clock or a date opens that app, and
+ * holding the card is the way to its options, or in the Today View to editing. A tap while editing still does [onAdd],
+ * as does one on a phone with nothing to open it with; the preview in Settings leaves [opensApp] off.
+ */
 @Composable
-internal fun BuiltinWidgetCard(id: Int, slot: Int, onAdd: () -> Unit) {
+internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, onAdd: () -> Unit) {
+    val context = LocalContext.current
+    val edit = LocalHomeEdit.current
+    val onTap: () -> Unit = if (!opensApp) onAdd else {{
+        val app = builtinWidgetApp(id)
+        val opened = app != null && !edit.active &&
+            runCatching { context.startActivity(app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        if (!opened) onAdd()
+    }}
     when (id) {
-        CLOCK_WIDGET -> ClockCard(onAdd)
-        DATE_WIDGET -> DateCard(onAdd)
-        UP_NEXT_WIDGET -> UpNextCard(onAdd)
+        CLOCK_WIDGET -> ClockCard(onTap)
+        DATE_WIDGET -> DateCard(onTap)
+        UP_NEXT_WIDGET -> UpNextCard(onTap)
         SUGGESTIONS_WIDGET -> SuggestionsCard(onAdd)
-        BIG_CLOCK_WIDGET -> BigClockCard(onAdd)
+        BIG_CLOCK_WIDGET -> BigClockCard(onTap, slot, home = opensApp)
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
@@ -303,7 +341,7 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
         androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)),
             key = { cards[it] }, beyondViewportPageCount = 0) { page ->
             val card = cards[page]
-            WidgetSlot(card, slot, controller, Modifier.fillMaxSize(), onAdd) { BuiltinWidgetCard(card, slot, onAdd) }
+            WidgetSlot(card, slot, controller, Modifier.fillMaxSize(), onAdd) { BuiltinWidgetCard(card, slot, opensApp = true, onAdd = onAdd) }
         }
         val dotsAlpha by animateFloatAsState(if (dotsVisible) 1f else 0f, label = "stack dots")
         Column(Modifier.align(Alignment.CenterEnd).padding(end = 5.dp).alpha(dotsAlpha)
@@ -331,6 +369,11 @@ internal fun WidgetActions(
     onReplace: () -> Unit,
     onRemove: () -> Unit,
     onClose: () -> Unit,
+    /** A built-in widget's own look (today, only Big Clock's color and weight). Real AppWidgets configure
+     * through [onConfigure] instead - that gate only ever fires for a real `AppWidgetProviderInfo`, which a
+     * built-in widget's negative id never has, so this is a separate entry rather than folded into it. */
+    onCustomize: (() -> Unit)? = null,
+    onPlace: (() -> Unit)? = null,
     stackCards: List<Int> = emptyList(),
     stackLabel: (Int) -> String? = { null },
     stackRotate: Boolean = true,
@@ -384,6 +427,16 @@ internal fun WidgetActions(
                         modifier = Modifier.weight(1f).testTag("widget-size-${label.lowercase()}-${placement.slot}"))
                 }
             }
+            // Shapes beyond Small, Medium and Large, for a widget whose limits allow them (Suggestions: one cell, a row, a column).
+            val extraSizes = listOf(Triple(stringResource(R.string.widget_shape_tiny), 1, 1), Triple(stringResource(R.string.widget_shape_row), GRID_COLUMNS, 1),
+                Triple(stringResource(R.string.widget_shape_column), 1, 4)).filter { (_, w, h) -> constraints != null && fits(w, h) || (placement.spanX == w && placement.spanY == h) }
+            if (extraSizes.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.MEDIUM.dp).padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                extraSizes.forEach { (label, w, h) ->
+                    IosChip(selected = placement.spanX == w && placement.spanY == h,
+                        onClick = { if (placement.spanX != w || placement.spanY != h) { onResize(w, h); onClose() } },
+                        label = { Text(label) }, modifier = Modifier.weight(1f).testTag("widget-size-${w}x$h-${placement.slot}"))
+                }
+            }
             MenuDivider()
             MenuRow(stringResource(R.string.resize_on_home), Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
             MenuDivider()
@@ -415,6 +468,8 @@ internal fun WidgetActions(
         SheetGroupLabel(stringResource(R.string.widget))
         SheetGroup {
             if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
+            if (onCustomize != null) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette) { onCustomize() }; MenuDivider() }
+            if (onPlace != null) { MenuRow(stringResource(R.string.place_freely), Icons.Rounded.OpenWith) { onPlace() }; MenuDivider() }
             MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
             if (homePages > 1) {
                 MenuDivider()

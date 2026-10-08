@@ -48,14 +48,23 @@ internal object FolioActions {
         if (action != FolioAction.NONE) run(context.applicationContext, action)
     }
 
+    /** Runs [action] the way every caller always has; the registry adds the verdict and the trail line. */
     fun run(context: Context, action: FolioAction) {
+        if (action != FolioAction.NONE) ActionRunner.run(context, ActionRef.of(action), ActionSource.DIRECT)
+    }
+
+    /**
+     * The doing, for [ActionRegistry]: true when the action ran. The access an action needs is checked before this by
+     * [ActionRunner], which also tells the person what to turn on, so this only reports whether the system accepted it.
+     */
+    fun perform(context: Context, action: FolioAction): Boolean {
         when (action) {
             FolioAction.NONE -> Unit
             FolioAction.SPOTLIGHT -> showOnHome(context, ShadePanel.SEARCH)
             FolioAction.NOTIFICATIONS -> showOnHome(context, ShadePanel.NOTIFICATIONS)
             FolioAction.CONTROL_CENTER -> showOnHome(context, ShadePanel.QUICK_SETTINGS)
-            FolioAction.LOCK -> SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
-            FolioAction.SCREENSHOT -> SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+            FolioAction.LOCK -> return SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+            FolioAction.SCREENSHOT -> return SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
             FolioAction.TORCH -> runCatching {
                 val camera = context.getSystemService(CameraManager::class.java)
                 val id = camera.cameraIdList.firstOrNull { camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
@@ -72,11 +81,11 @@ internal object FolioActions {
             FolioAction.FOCUS_PERSONAL -> FocusScheduler.toggle(context, "personal")
             FolioAction.FOCUS_OFF -> FocusScheduler.setActive(context, null)
             FolioAction.DND_ON, FolioAction.DND_OFF -> runCatching {
-                val notifications = context.getSystemService(NotificationManager::class.java)
-                if (notifications.isNotificationPolicyAccessGranted) notifications.setInterruptionFilter(
+                context.getSystemService(NotificationManager::class.java).setInterruptionFilter(
                     if (action == FolioAction.DND_ON) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL)
             }
         }
+        return true
     }
 
     private fun showOnHome(context: Context, panel: ShadePanel) {

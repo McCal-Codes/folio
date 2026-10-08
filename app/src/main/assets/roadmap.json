@@ -4,69 +4,84 @@
   "sections": [
     {
       "release": "0.6.8",
+      "subtitle": "Your language, your Home, and Smooth",
       "items": [
-        {
-          "icon": "tune",
-          "color": "#8E8E93",
-          "title": "A shorter Settings list",
-          "detail": "Ten fewer rows on the first screen: a General page for what you open once, and one Support Folio row.",
-          "status": "building"
-        },
-        {
-          "icon": "language",
-          "color": "#0A84FF",
-          "title": "Language in Settings",
-          "detail": "Choose Folio's language in Settings › General.",
-          "status": "building"
-        },
-        {
-          "icon": "grid",
-          "color": "#5E5CE6",
-          "title": "Cleaner widget picker",
-          "detail": "Find a widget without scrolling past one app's hundreds: a row of app icons narrows the gallery to the one you want, and each app shows a single row until you ask for more.",
-          "status": "building"
-        },
-        {
-          "icon": "pages",
-          "color": "#32ADE6",
-          "title": "Flipbook",
-          "detail": "Home pages turn in 3D as you swipe, inspired by Barrel. Supporters have it in the Market now, and everyone gets it in 0.6.8.",
-          "status": "building"
-        },
-        {
-          "icon": "speed",
-          "color": "#FF9F0A",
-          "title": "Faster Folio",
-          "detail": "Quicker start, smoother swipes and less memory, on every phone.",
-          "status": "building"
-        },
         {
           "icon": "dock",
           "color": "#30D158",
           "title": "More dock apps",
-          "detail": "Up to six apps in the dock.",
-          "status": "planned"
+          "detail": "The dock grows from four to six apps as you fill it.",
+          "status": "done"
         },
         {
           "icon": "badge",
           "color": "#FF3B30",
           "title": "Clear badges when opened",
           "detail": "Optionally hide an app's badge once you open it.",
-          "status": "planned"
-        },
-        {
-          "icon": "history",
-          "color": "#8E8E93",
-          "title": "Layout History",
-          "detail": "Out of beta: go back to how Home looked before a big change.",
-          "status": "planned"
+          "status": "done"
         },
         {
           "icon": "clock",
           "color": "#FF9F0A",
           "title": "StandBy without the fold",
           "detail": "StandBy as a screen saver, so it turns on while the phone charges instead of only when it is set down half open. Chosen in Android’s Settings › Display › Screen saver.",
-          "status": "planned"
+          "status": "done"
+        },
+        {
+          "icon": "pages",
+          "color": "#32ADE6",
+          "title": "Flipbook",
+          "detail": "Home pages turn in 3D as you swipe, inspired by Barrel. Supporters have it in the Market now, and everyone gets it in 0.6.8.",
+          "status": "done"
+        },
+        {
+          "icon": "rings",
+          "color": "#BF5AF2",
+          "title": "Duet",
+          "detail": "The fold animation as a tweak, with six looks including iPhone Duo. Based on Duo Fold Live.",
+          "status": "done"
+        },
+        {
+          "icon": "search",
+          "color": "#0A84FF",
+          "title": "Your own search engine",
+          "detail": "Bing, Brave, Ecosia and more, or any address you type.",
+          "status": "done"
+        },
+        {
+          "icon": "language",
+          "color": "#0A84FF",
+          "title": "Language in Settings",
+          "detail": "Choose Folio's language in Settings › General, with more of Folio in Korean and Chinese.",
+          "status": "done"
+        },
+        {
+          "icon": "tune",
+          "color": "#8E8E93",
+          "title": "A shorter Settings list",
+          "detail": "Ten fewer rows on the first screen: a General page for what you open once, and one Support Folio row.",
+          "status": "done"
+        },
+        {
+          "icon": "grid",
+          "color": "#5E5CE6",
+          "title": "Cleaner widget picker",
+          "detail": "Find a widget without scrolling past one app's hundreds: a row of app icons narrows the gallery to the one you want, and each app shows a single row until you ask for more.",
+          "status": "done"
+        },
+        {
+          "icon": "speed",
+          "color": "#FF9F0A",
+          "title": "Faster Folio",
+          "detail": "Home and the App Library are ready sooner after Folio starts.",
+          "status": "done"
+        },
+        {
+          "icon": "history",
+          "color": "#8E8E93",
+          "title": "Layout History",
+          "detail": "Out of beta: go back to how Home looked before a big change.",
+          "status": "done"
         }
       ]
     },
@@ -364,41 +379,181 @@
       ]
     },
     {
-      "title": "Next",
+      "release": "0.6.9",
+      "subtitle": "Foundation",
       "items": [
         {
-          "icon": "redeem",
+          "icon": "tap",
+          "color": "#5E5CE6",
+          "title": "Focus that turns on by itself",
+          "detail": "A Focus can turn on when the phone is unfolded, charging or has headphones, and off when that stops.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "folder",
+          "color": "#FF9F0A",
+          "title": "Folders you can shape",
+          "detail": "Resize a folder by its corner, drop an app on another to make one, and sort A to Z.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "clock",
+          "color": "#32ADE6",
+          "title": "Make the Big Clock your own",
+          "detail": "Looks, a color, Fine tune and Place Freely.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "dock",
+          "color": "#30D158",
+          "title": "Drag the dock",
+          "detail": "A handle in edit mode moves the Side Bar dock up and down.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "rings",
           "color": "#BF5AF2",
-          "title": "Supporter codes",
-          "detail": "Redeem a Ko-fi code in Settings to try new features early. Folio's core stays free, and a code is checked on your phone, offline, with no account.",
-          "status": "building"
+          "title": "Bottom of Home and stronger rings",
+          "detail": "Choose a Search button, Page dots or Nothing, and thicker status rings.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "grid",
           "color": "#0A84FF",
-          "title": "Edit Layout on Home",
-          "detail": "Adjust icons, rows, spacing, the dock and the status right on your Home Screen.",
-          "status": "planned"
+          "title": "Even rows under a widget",
+          "detail": "A widget at the top of a page fills exactly two rows, so the dock lines up.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
         },
         {
-          "icon": "brush",
+          "icon": "store",
           "color": "#FF375F",
-          "title": "Custom app icons",
-          "detail": "Pick any app's icon from an icon pack or a photo.",
-          "status": "planned"
+          "title": "The Market keeps itself current",
+          "detail": "Add a source from a GitHub address, and refresh, notices and automatic updates, all off until you turn them on, with Undo and an Updated recently list.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
         },
         {
-          "icon": "weather",
+          "icon": "history",
+          "color": "#30D158",
+          "title": "What Folio can use, and what it did",
+          "detail": "Capabilities and Recent Activity in Settings › Advanced, and Copy Diagnostics.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "sensor",
+          "color": "#8E8E93",
+          "title": "System Bridge",
+          "detail": "One switch for everything that reaches past a normal app, with an optional root hinge angle.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "person",
+          "color": "#5E5CE6",
+          "title": "A setup that asks where you are from",
+          "detail": "iPhone or Android start, a navigation page, and Keep Things as They Are.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "bug",
+          "color": "#FF453A",
+          "title": "What to Test",
+          "detail": "A checklist for beta testers, with a way to report what is wrong.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "lock",
+          "color": "#30D158",
+          "title": "Safe Mode that recovers",
+          "detail": "An install cut short is put back, and native crashes and freezes count toward Safe Mode.",
+          "status": "building"
+        },
+        {
+          "icon": "notifications",
+          "color": "#0A84FF",
+          "title": "Notices with Undo",
+          "detail": "Notices that fit their text and stay clear of the camera and fold, and Undo from the update notice.",
+          "status": "building"
+        },
+        {
+          "icon": "speed",
           "color": "#32ADE6",
-          "title": "Weather widget",
-          "detail": "A glass widget with the hourly forecast. Off until you turn it on, since it needs a weather service.",
+          "title": "Smoother swiping",
+          "detail": "Less redrawing while apps install and when offline; the swipe itself comes next, measured on the Fold8.",
+          "status": "building"
+        }
+      ]
+    },
+    {
+      "release": "0.7.0",
+      "subtitle": "The Market for everyone",
+      "items": [
+        {
+          "icon": "tap",
+          "color": "#5E5CE6",
+          "title": "Icon Actions",
+          "detail": "Tap, long press, double tap and swipes on a Home icon, each set to an action you choose.",
           "status": "planned"
         },
         {
           "icon": "store",
           "color": "#0A84FF",
-          "title": "The Folio app",
-          "detail": "A Sileo-style app for tweaks, themes and updates, with Settings as one tab. The Tweak Library is the first piece.",
+          "title": "The Market for everyone",
+          "detail": "Packages say what they may change, and anything unknown is held back until you allow it.",
+          "status": "planned"
+        },
+        {
+          "icon": "bug",
+          "color": "#8E8E93",
+          "title": "A record of what packages did",
+          "detail": "An audit list on your phone, with package health and a quarantine for ones that misbehave.",
+          "status": "planned"
+        },
+        {
+          "icon": "pages",
+          "color": "#32ADE6",
+          "title": "Page effects from the Market",
+          "detail": "New Flipbook effects arrive as packages.",
+          "status": "planned"
+        },
+        {
+          "icon": "extension",
+          "color": "#BF5AF2",
+          "title": "Community Tweaks built in",
+          "detail": "Folio's own tweaks come from the Market too, so they update like any package.",
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "release": "0.7.1",
+      "subtitle": "Make it yours",
+      "items": [
+        {
+          "icon": "grid",
+          "color": "#0A84FF",
+          "title": "Edit Layout on Home",
+          "detail": "Adjust icons, rows, spacing, the dock and the status right on your Home Screen.",
           "status": "planned"
         },
         {
@@ -409,17 +564,17 @@
           "status": "planned"
         },
         {
-          "icon": "tap",
-          "color": "#30D158",
-          "title": "Back Tap",
-          "detail": "Double or triple tap the back of your phone to run an action. Inspired by RegiStar.",
+          "icon": "brush",
+          "color": "#FF375F",
+          "title": "Custom app icons",
+          "detail": "Pick any app's icon from an icon pack or a photo.",
           "status": "planned"
         },
         {
-          "icon": "accessibility",
-          "color": "#0A84FF",
-          "title": "Simple Mode",
-          "detail": "Large, clear buttons with labels, a Home that can't be moved by accident, and only the settings you need.",
+          "icon": "folder",
+          "color": "#BF5AF2",
+          "title": "Icon Stacks",
+          "detail": "A stack of icons built on folders.",
           "status": "planned"
         }
       ]
@@ -427,6 +582,27 @@
     {
       "title": "Later",
       "items": [
+        {
+          "icon": "accessibility",
+          "color": "#0A84FF",
+          "title": "Simple Mode",
+          "detail": "Large, clear buttons with labels, a Home that can't be moved by accident, and only the settings you need.",
+          "status": "planned"
+        },
+        {
+          "icon": "weather",
+          "color": "#32ADE6",
+          "title": "Weather widget",
+          "detail": "A glass widget with the hourly forecast. Off until you turn it on, since it needs a weather service.",
+          "status": "planned"
+        },
+        {
+          "icon": "tap",
+          "color": "#30D158",
+          "title": "Back Tap",
+          "detail": "Double or triple tap the back of your phone to run an action. Inspired by RegiStar.",
+          "status": "planned"
+        },
         {
           "icon": "notifications",
           "color": "#FF3B30",
@@ -495,6 +671,13 @@
           "color": "#30D158",
           "title": "Apps in the Market",
           "detail": "Icon packs and themes from Play Store, F-Droid and Obtainium, plus layouts from other launchers, all from the Folio Market.",
+          "status": "planned"
+        },
+        {
+          "icon": "store",
+          "color": "#0A84FF",
+          "title": "The Folio app",
+          "detail": "A Sileo-style app for tweaks, themes and updates, with Settings as one tab. The Tweak Library is the first piece.",
           "status": "planned"
         }
       ]

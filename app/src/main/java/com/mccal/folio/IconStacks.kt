@@ -148,7 +148,7 @@ internal fun IconStackFan(anchor: AppEntry, apps: List<AppEntry>, onDismiss: () 
 @Composable
 internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: List<String>, onToggle: (String) -> Unit, onDone: () -> Unit) {
     var query by remember { mutableStateOf("") }
-    val shown = remember(apps, query) { apps.filter { it.id != anchor.id && !it.isWork && it.label.contains(query.trim(), true) } }
+    val shown = remember(apps, query) { apps.filter { it.id != anchor.id && !it.isWork && appMatches(it, query.trim()) } }
     Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).padding(horizontal = FolioSpace.LARGE.dp).testTag("icon-stack-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppIcon(anchor, null, Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), badge = false)
@@ -160,20 +160,7 @@ internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: Lis
             Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onDone).padding(FolioSpace.SMALL.dp))
         }
-        IosSearchField(query, { query = it }, "Search apps", Modifier.padding(vertical = FolioSpace.MEDIUM.dp))
-        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-        LazyColumn(Modifier.weight(1f).edgeFade(listState), state = listState) {
-            items(shown, key = { it.id }) { app ->
-                val on = app.id in chosen
-                val full = !on && chosen.size >= IconStacks.MAX
-                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(enabled = !full) { onToggle(app.id) }
-                    .graphicsLayer { alpha = if (full) .4f else 1f }.padding(vertical = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AppIcon(app, null, Modifier.size(40.dp), shape = RoundedCornerShape(FolioRadius.CONTROL.dp), badge = false)
-                    Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp))
-                    Icon(if (on) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, if (on) "In stack" else "Not in stack",
-                        tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .35f), modifier = Modifier.size(24.dp))
-                }
-            }
-        }
+        AppCheckList(shown, query, { query = it }, checked = { it.id in chosen }, enabled = { it.id in chosen || chosen.size < IconStacks.MAX },
+            checkedLabel = "In stack", uncheckedLabel = "Not in stack", onToggle = { onToggle(it.id) }, modifier = Modifier.weight(1f))
     }
 }

@@ -54,12 +54,30 @@ fun addAppToFolder(layout: HomeLayout, folderId: String, appId: String, index: I
     return cleared.copy(folders = cleared.folders.map { if (it.id == folderId) it.copy(appIds = members) else it })
 }
 
+/**
+ * [appIds] into the folder, in the order given and after what is there, as one change: each is taken out of Home, the
+ * dock or the folder it was in by [addAppToFolder], so apps already in this folder, ones that aren't real, and
+ * repeats are skipped rather than moved or doubled.
+ */
+fun addAppsToFolder(layout: HomeLayout, folderId: String, appIds: List<String>): HomeLayout {
+    if (layout.folder(folderId) == null) return layout
+    return appIds.distinct().fold(layout) { current, appId -> addAppToFolder(current, folderId, appId) }
+}
+
 fun moveFolderApp(layout: HomeLayout, folderId: String, appId: String, index: Int): HomeLayout {
     val folder = layout.folder(folderId) ?: return layout
     val from = folder.appIds.indexOf(appId)
     if (from < 0 || index !in folder.appIds.indices || from == index) return layout
     val members = folder.appIds.toMutableList().apply { add(index, removeAt(from)) }
     return layout.copy(folders = layout.folders.map { if (it.id == folderId) it.copy(appIds = members) else it })
+}
+
+/** Replaces a folder's whole member order at once, e.g. for a "Sort A-Z" action - [appIds] must be exactly the
+ * folder's own members, reordered, so this can never add, drop, or duplicate one. */
+fun reorderFolder(layout: HomeLayout, folderId: String, appIds: List<String>): HomeLayout {
+    val folder = layout.folder(folderId) ?: return layout
+    if (appIds.size != folder.appIds.size || appIds.toSet() != folder.appIds.toSet()) return layout
+    return layout.copy(folders = layout.folders.map { if (it.id == folderId) it.copy(appIds = appIds) else it })
 }
 
 fun removeAppFromFolder(layout: HomeLayout, folderId: String, appId: String, target: DropTarget, appRows: Int = MAX_APP_ROWS): HomeLayout {

@@ -1,6 +1,9 @@
 package com.mccal.folio
 
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
 import android.app.role.RoleManager
@@ -55,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private val showFirstRun = mutableStateOf(false)
     private val showWhatsNew = mutableStateOf(false)
     private val whatsNewRequested = mutableStateOf(false)
+    private val showDevBuild = mutableStateOf(false)
     /** A theme shared to Folio, waiting for Apply or Cancel. */
     private val sharedTheme = mutableStateOf<FolioTheme?>(null)
     private lateinit var setupExperience: SetupExperience
@@ -92,13 +96,30 @@ class MainActivity : ComponentActivity() {
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { syncStandByScreenSaver(this@MainActivity) }
         FocusScheduler.run(this)
+        // Focus triggers (folding, charging, headphones): listen only while some Focus uses one.
+        // Gated (FeatureGate.FOCUS_TRIGGERS): a phone the feature is shut for never registers a listener.
+        if (FeatureGate.FOCUS_TRIGGERS.isOpen(this)) lifecycleScope.launch {
+            model.state.map { st -> st.focusModes.any { it.triggers.any } }.distinctUntilChanged().collectLatest { listening ->
+                if (listening) focusSignals(this@MainActivity).collect { model.onFocusSignals(it) }
+            }
+        }
+        // Updates staged by the daily refresh while Folio was not running go in a little after start, once Home is up.
+        if (MarketAutoUpdate.enabled(this)) lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.delay(20_000)
+            runCatching { MarketAutoUpdate.applyStaged(applicationContext, MarketSession(applicationContext, ModelLauncher(model, applicationContext))) }
+        }
         // USER_PRESENT is a protected system broadcast delivered to runtime receivers.
         androidx.core.content.ContextCompat.registerReceiver(this, unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         showFirstRun.value = setupExperience.entryDecision(SetupExperience.hadLauncherState(this)) ==
             SetupEntryDecision.SHOW
         showWhatsNew.value = savedInstanceState == null && WhatsNew.shouldShow(this, firstRun = showFirstRun.value)
+        // Folio Dev only: its builds keep one version name, so What's New never shows; this page is keyed to the commit.
+        // Not tied to savedInstanceState: after an install the app is killed and Android restores Home from saved state, which
+        // is exactly when a new build needs announcing. The commit check keeps it to once per build.
+        showDevBuild.value = DevBuild.shouldShow(this)
         returningFromShadeSettings = savedInstanceState?.getBoolean(SHADE_SETTINGS_PENDING) == true
         val restoreShadeDialog = savedInstanceState?.getBoolean(SHADE_DIALOG_VISIBLE) == true
         appearance = AppearanceStore(this)
@@ -196,8 +217,15 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.ui.graphics.BlurEffect(backdropBlurPx, backdropBlurPx, androidx.compose.ui.graphics.TileMode.Clamp)
             }
             DuoTheme(appearance.state.dark) { val notificationItems = IslandListenerService.notifications.collectAsStateWithLifecycle().value
-            val installSessions = Installs.active.collectAsStateWithLifecycle().value
-            val installProgress = androidx.compose.runtime.remember(installSessions) { installSessions.values.associate { it.packageName to it.progress } }
+            // Progress ticks for every install session on the phone. Kept as a State that nothing here reads, so a tick
+            // reaches only the icons that are installing (see LocalInstallProgress) instead of recomposing all of Home.
+            val installProgress = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyMap<String, Float>()) }
+            // Only while Folio is on screen (STARTED), as collectAsStateWithLifecycle was: a tick the UI can't draw costs nothing.
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                    Installs.active.collect { sessions -> installProgress.value = sessions.values.associate { it.packageName to it.progress } }
+                }
+            }
             val newApps = NewApps.packages.collectAsStateWithLifecycle().value
             // The Discover host is a not-touchable window stacked above the keyboard; Android drops every key
             // tap "due to occlusion" while it exists. Remove it whenever a keyboard can be up.
@@ -257,15 +285,22 @@ class MainActivity : ComponentActivity() {
                 LocalTintOptions provides androidx.compose.ui.platform.LocalConfiguration.current.let { config ->
                     val screen = screenFor(config.fitsRegularHomeLayout())
                     TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
-                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen),
-                        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen))
+                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
+                        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
+                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
                 },
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
                 LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, state.badgeStyle, state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
+                LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
-                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(state.foldEffect && !reduceMotion, state.foldIntensity, state.stayAwakeOnFold, state.foldSnapshot, state.haptics) {
+                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
+                    screenFor(androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())), state.foldIntensity, state.stayAwakeOnFold,
+                    // Reduce Motion: a plain shade, no frost, tilt, shrink or picture moving (DYN-11: motion becomes a fade).
+                    state.foldSnapshot && !reduceMotion, state.haptics,
+                    if (reduceMotion) com.mccal.folio.duet.DuetStyles.reducedMotion(state.duet.resolved()) else state.duet.resolved(), state.duet.plays,
+                    reduceMotion = reduceMotion) {
                 // The launcher blurs behind every overlay with the same spring the overlay uses.
                 androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
                     .graphicsLayer {
@@ -288,12 +323,22 @@ class MainActivity : ComponentActivity() {
                     onAppearanceClear = { cancelAppearanceLocation(); appearance.clearLocation(systemDark()) },
                     showFirstRun = showFirstRun.value,
                     onFinishFirstRun = ::finishFirstRun,
-                    onShadeSetup = ::showShadeSetup, onShowWelcome = { showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
+                    onShadeSetup = ::showShadeSetup, onShowWelcome = { SetupReplay.active = true; showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
                 }
-                StandByOverlay(rememberHalfOpenPose(this@MainActivity), state.standBy, blocked = overlayOpen, status = deviceStatus)
+                // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
+                // charging on its side and a tent on the cover.
+                val standByMore = androidx.compose.runtime.remember { FeatureGate.STANDBY_CHARGING.isOpen(this@MainActivity) }
+                val standByShowing = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
+                val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
+                val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
+                val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
+                StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
+                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it })
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
-                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen)
-                SetupReminderCard(defaultHome.value, blocked = overlayOpen || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
+                // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
+                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)
+                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
@@ -304,9 +349,19 @@ class MainActivity : ComponentActivity() {
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { sharedTheme.value = null }) {
                             androidx.compose.material3.Text(getString(R.string.cancel)) } })
                 }
-                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
+                // After What's New, not on top of it: the build page waits until that sheet has been closed.
+                if ((showDevBuild.value || DevBuild.reopen.intValue > 0) && !showWhatsNew.value && !whatsNewRequested.value) DevBuild.load(this@MainActivity)?.let { dev ->
+                    val before = androidx.compose.runtime.remember { DevBuild.seen(this@MainActivity) }
+                    DevBuildSheet(dev, before) { showDevBuild.value = false; DevBuild.reopen.intValue = 0; DevBuild.markSeen(this@MainActivity, dev) }
+                }
+                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet(
+                    // A beta build offers the testers' list from here; it closes this sheet and opens Settings on that page.
+                    onWhatToTest = if (WhatToTest.available(SoftwareUpdate.installedVersion(this@MainActivity), packageName)) ({
+                        showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity)
+                        SettingsLink.page = CustomizationPage.WHAT_TO_TEST; settingsRequests.intValue++
+                    }) else null) { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
                 // With live activities in the side rail, the camera island on Home keeps only its brief events.
-                if (state.island) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
+                if (state.island && !standByShowing.value) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
                     ?.takeUnless { it is IslandActivity.Call && "CALL" in state.islandEventsOff }
                     ?.takeUnless { state.railActivities && state.verticalStatus && !overlayOpen }, state.islandEventsOff + "BLUETOOTH") {
                     IslandListenerService.open(this@MainActivity, it)
@@ -326,11 +381,13 @@ class MainActivity : ComponentActivity() {
         // Reassert the token after recreation (and after process restoration, where the
         // in-memory owner set is empty) before any external UI can uncover Discover.
         if (returningFromShadeSettings || restoreShadeDialog) ownShadeSetupExternally()
-        if (restoreShadeDialog) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
+        if (restoreShadeDialog || (savedInstanceState == null && intent.getStringExtra("duo_destination") == "shade_setup")) window.decorView.post { if (!isFinishing && !isDestroyed) showShadeSetup() }
     }
 
     override fun onStart() {
         super.onStart(); widgets.host.startListening()
+        // A new build can also arrive while this activity is alive in a restored task, so look again each time it starts.
+        if (!showDevBuild.value && DevBuild.shouldShow(this)) showDevBuild.value = true
         if (!timeReceiverRegistered) {
             ContextCompat.registerReceiver(this, timeReceiver, IntentFilter().apply {
                 addAction(Intent.ACTION_TIME_TICK); addAction(Intent.ACTION_TIME_CHANGED)
@@ -343,7 +400,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
-        widgets.host.stopListening(); super.onStop()
+        widgets.host.stopListening(); model.flushPending(); super.onStop()
     }
     override fun onDestroy() {
         runCatching { unregisterReceiver(unlockReceiver) }
@@ -465,6 +522,7 @@ class MainActivity : ComponentActivity() {
     private fun finishFirstRun() {
         setupExperience.finish()
         showFirstRun.value = false
+        SetupReplay.active = false
     }
 
     private fun ownShadeSetupExternally() {
@@ -524,6 +582,8 @@ class MainActivity : ComponentActivity() {
         FoldRenderExperiment.onNewIntent(this, intent)
         updateDefaultHome()
         if (intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++
+        // From the Notification shade shortcut when the gestures service is off: explain how to turn it on.
+        if (intent.getStringExtra("duo_destination") == "shade_setup") showShadeSetup()
         // One chain: tapping Folio's icon opens Settings *or* goes Home, never both.
         if (opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
         else if (takeMarketLink(intent)) settingsRequests.intValue++

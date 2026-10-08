@@ -164,7 +164,7 @@ internal object SoftwareUpdate {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = android.app.Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle("Folio ${release.version} is available")
+            .setContentTitle(context.getString(R.string.folio_1_s_is_available, release.version))
             .setContentText(context.getString(R.string.tap_to_see_what_s_new_and_install_it))
             .setContentIntent(open).setAutoCancel(true).build()
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
@@ -366,7 +366,7 @@ internal object SoftwareUpdate {
                     require(expected != null && expected.equals(sha256(apk), ignoreCase = true)) { context.getString(R.string.the_download_didn_t_match_its_checksum) }
                 }
                 require(sameSigner(context, apk)) { context.getString(R.string.the_update_isn_t_signed_with_folio_s_key) }
-                apk.renameTo(File(dir, "Folio-${release.version}.apk"))
+                check(apk.renameTo(File(dir, "Folio-${release.version}.apk"))) { context.getString(R.string.the_update_couldn_t_be_downloaded) }
                 File(dir, "release.json").writeText(JSONObject().put("version", release.version).put("notes", release.notes.take(4000))
                     .put("notesUrl", release.notesUrl).toString())
             }
@@ -508,7 +508,7 @@ class SoftwareUpdateReceiver : BroadcastReceiver() {
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> SoftwareUpdate.status.value = SoftwareUpdate.Status.Failed(
-                intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.let { "The update wasn't installed: $it" } ?: "The update wasn't installed.")
+                intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.let { context.getString(R.string.the_update_wasn_t_installed_1_s, it) } ?: context.getString(R.string.the_update_wasn_t_installed))
         }
     }
 }

@@ -112,7 +112,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         // event happened to arrive.
         val (event, at) = eventPair ?: run { eventVisible = null; return@LaunchedEffect }
         if (event.kind in eventsOff) { eventVisible = null; return@LaunchedEffect }
-        val remaining = IslandEvents.showMs(event) - (System.currentTimeMillis() - at)
+        val remaining = IslandEvents.showMs(view.context, event) - (System.currentTimeMillis() - at)
         if (remaining <= 0) { eventVisible = null; return@LaunchedEffect }
         eventVisible = event; delay(remaining)
         snapshotFlow { replying }.first { r -> !r }
@@ -161,7 +161,14 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         // A new message opens straight into a small card (like an iPhone banner coming out of the island).
         val ringing = (live as? IslandActivity.Call)?.takeIf { it.incoming }
         val open = (expanded && live != null) || message != null || notice != null || ringing != null
-        val cardW = (if (notice != null) 300.dp else 340.dp).coerceAtMost(windowWidth.toDp() - 16.dp)
+        // A notice fits its text and keeps clear of the screen edges and a bent hinge; other cards keep their width.
+        val hinge = LocalHinge.current?.takeIf { it.active }
+        val placement = notice?.let { n ->
+            noticePlacement(windowWidth.toDp().value, windowHeight.toDp().value, centerX.toDp().value, geometry.top,
+                noticeWantWidth(n.text.length, n.action != null),
+                hinge?.spans.orEmpty().map { it.first.toDp().value..it.last.toDp().value }, hinge?.vertical ?: true)
+        }
+        val cardW = placement?.width?.dp ?: 340.dp.coerceAtMost(windowWidth.toDp() - 16.dp)
         // One shape morphs between pill and card: width, corner radius and height all spring together,
         // anchored to the camera like the real Dynamic Island.
         val morph = spring<Dp>(dampingRatio = .74f, stiffness = Spring.StiffnessMediumLow)
@@ -169,10 +176,12 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val corner by animateDpAsState(if (open) 34.dp else pillH / 2, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
         val edge = ISLAND_SIDE_MARGIN.dp.toPx()
-        val left = (centerX - width.toPx() / 2f).coerceIn(edge, maxOf(edge, windowWidth - width.toPx() - edge))
+        val left = if (placement != null && open) noticeLeft(placement, centerX.toDp().value, width.value).dp.toPx()
+            else (centerX - width.toPx() / 2f).coerceIn(edge, maxOf(edge, windowWidth - width.toPx() - edge))
         val top = geometry.top.coerceAtLeast(ISLAND_EDGE_GAP).dp
 
         Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + dragOffset.y).roundToInt()) }.width(width)
+            .then(if (placement != null && open) Modifier.heightIn(max = placement.maxHeight.dp) else Modifier)
             .graphicsLayer { val s = if (dragging) 1.06f else 1f; scaleX = s; scaleY = s }
             // Long-press and drag to move it; dropping near the camera snaps back to the camera.
             .pointerInput(wide, landscape, windowWidth) {
@@ -200,7 +209,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             .testTag("cutout-island")) {
             androidx.compose.animation.AnimatedContent(open, label = "island-content",
                 transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90)) }) { showCard ->
-                if (showCard && notice != null) NoticeCardContent(notice) { eventVisible = null; IslandEvents.dismiss() }
+                if (showCard && notice != null) NoticeCardContent(notice, topInset = pillH) { eventVisible = null; IslandEvents.dismiss() }
                 else if (showCard && message != null) MessageCardContent(message, replying, onReply = { replying = true },
                     onOpen = { replying = false; eventVisible = null; IslandListenerService.openKey(context, message.key, message.packageName) },
                     onDone = { replying = false; eventVisible = null },
@@ -370,15 +379,15 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
     when (content) {
         is IslandContent.Event -> when (val e = content.event) {
             is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The app's icon beside the sender's photo; without a photo the icon is already on the left.
             is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { Image(it.asImageBitmap(), null, Modifier.size(size * .8f).clip(RoundedCornerShape(size * .22f))) }
             is IslandEvent.Notice -> Unit
         }
         is IslandContent.Live -> when (val a = content.activity) {
-            is IslandActivity.Media -> Bars(a.playing, if (LocalTintOptions.current.media) rememberAccent(a.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen else IslandGreen)
+            is IslandActivity.Media -> Bars(a.playing, if (LocalTintOptions.current.mediaIsland) rememberAccent(a.art)?.let { mixColor(it, Color.White, .25f) } ?: IslandGreen else IslandGreen)
             is IslandActivity.Progress -> Ring(a.fraction, size)
             is IslandActivity.Call -> Bars(playing = !a.incoming)
             is IslandActivity.Timer -> Chronometer(a.base, a.countDown, IslandOrange)
@@ -412,15 +421,34 @@ private fun Modifier.swipeUpToHide(enabled: Boolean, onHide: () -> Unit): Modifi
 
 /** Folio's own brief feedback: the app's icon (or an info symbol) and one or two lines. Tap or swipe up to hide. */
 @Composable
-private fun NoticeCardContent(notice: IslandEvent.Notice, onHide: () -> Unit) {
-    Row(Modifier.fillMaxWidth().swipeUpToHide(true, onHide).clickable(onClick = onHide)
-        .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun NoticeCardContent(notice: IslandEvent.Notice, topInset: Dp, onHide: () -> Unit) {
+    // The text starts below the camera row, never across the lens. At large text the button drops under the text.
+    val large = androidx.compose.ui.platform.LocalConfiguration.current.fontScale >= 1.3f
+    @Composable fun action() {
+        val action = notice.action ?: return
+        Text(action.label, color = IslandBlue, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.heightIn(min = FolioTouch.MIN.dp).clickable { action.run(); onHide() }.padding(start = FolioSpace.MEDIUM.dp, end = FolioSpace.SMALL.dp)
+                .wrapContentHeight(Alignment.CenterVertically).testTag("island-notice-action"))
+    }
+    @Composable fun body(modifier: Modifier) {
+      Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         notice.appIcon?.let { Image(it.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))) }
             ?: Icon(Icons.Rounded.Info, null, tint = IslandBlue, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(12.dp))
-        Text(notice.text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp)
+        // Three lines at most, then an ellipsis: the card stays small and quiet. TalkBack reads all of it.
+        Text(notice.text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = NOTICE_MAX_LINES, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp,
+            modifier = Modifier.weight(1f))
+        if (!large) action()
+      }
+    }
+    Column(Modifier.fillMaxWidth().swipeUpToHide(true, onHide).clickable(onClick = onHide)
+        .padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = topInset, bottom = FolioSpace.MEDIUM.dp)) {
+        body(Modifier.fillMaxWidth())
+        if (large) Box(Modifier.align(Alignment.End)) { action() }
     }
 }
+
+private const val NOTICE_MAX_LINES = 3
 
 /** Sender photo (a notification's own picture for other apps), or the app icon when there isn't one. */
 @Composable
@@ -497,7 +525,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
             is IslandActivity.Media -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val t = activity.controller.transportControls
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
-                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(R.string.play_or_pause), tint = Color.White,
+                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = Color.White,
                     modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
             }

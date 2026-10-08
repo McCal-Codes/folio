@@ -1,6 +1,10 @@
 package com.mccal.folio
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -104,9 +108,21 @@ private class FloatArrayList {
     fun add(v: Float) { if (size == data.size) data = data.copyOf(size * 2); data[size++] = v }
 }
 
+/** The one main action in a card: a filled button, so it reads as the thing to press and not as another link. */
+@Composable
+internal fun CardPrimaryAction(label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Box(modifier.then(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).heightIn(min = 48.dp))
+        .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.PANEL.dp))
+        .background(if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = .12f))
+        .settingsFocus(label).clickable(enabled = enabled, role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(label, color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = .6f),
+            fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+    }
+}
+
 /** A blue action row, like a button cell in iOS Settings: the text lines up with the other rows' labels. */
 @Composable
 internal fun CardAction(label: String, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
     Text(label, color = Color(if (destructive) FolioColors.Value.Red else FolioColors.Value.Blue).copy(alpha = if (enabled) 1f else .4f), fontSize = FolioType.BODY.sp,
-        modifier = modifier.heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
+        modifier = modifier.heightIn(min = FolioRow.ACTION.dp).settingsFocus(label).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
 }

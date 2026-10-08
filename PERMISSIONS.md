@@ -16,6 +16,7 @@ say no. You can check this list against `app/src/main/AndroidManifest.xml`; noth
 | `ACCESS_WIFI_STATE` | The Wi-Fi network's name and signal in the status area and Control Center (`DeviceStatus.kt`) | The Wi-Fi row shows no name |
 | `ACCESS_NOTIFICATION_POLICY` | Turning Do Not Disturb on with a Focus (`Focus.kt`) | Focus changes everything except Do Not Disturb |
 | `WRITE_SETTINGS` | The brightness slider and rotation lock in Control Center (`TopPanels.kt`) | Those two controls are off |
+| `WRITE_SECURE_SETTINGS` | Nothing uses it yet. Android lets an app change its protected settings only after you grant this once from a computer (`adb shell pm grant`); Folio cannot grant it to itself, and Settings › Advanced › System Bridge says whether it is on. It is declared so a later feature that changes a setting can work without Shizuku running | Nothing changes. It stays off, as it is for every app, until you grant it |
 | `USE_BIOMETRIC` | Unlocking Hidden Apps with your fingerprint or face (`CustomizationSheet.kt`) | Hidden Apps falls back to your screen lock |
 | `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing a Folio update you asked for (`SoftwareUpdate.kt`), and an app from a Market source if you turn that on (`MarketApkInstall.kt`) | Update the APK yourself, and Market apps can't be installed |
 | `BIND_APPWIDGET` | Declared the way launchers do. Android never grants it to an app like Folio: adding a widget still asks you each time (`WidgetController.kt`) | No difference |
@@ -28,7 +29,9 @@ Folio keeps working.
 app open the system notifications and Quick Settings panels: there is no other way for an app to do it. It also shows
 Folio's dock handle and Dynamic Island over other apps, if you turn those on. It observes no events, cannot read what
 is on screen, and cannot tap or type for you (`SystemShadeController.kt`). Without it, Home's swipe-down gestures use
-Folio's own Notification Center and Control Center.
+Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
+(`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
+shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a
@@ -53,13 +56,12 @@ Android Settings › Accessibility is safe: Folio keeps working, and you can tur
 Every release lists the APK's SHA-256. To check the file you downloaded:
 
 ```bash
-shasum -a 256 Folio-0.6.6.apk
+shasum -a 256 Folio-<version>.apk
 ```
 
-Releases also link a [VirusTotal](https://www.virustotal.com/) scan of that exact APK, so you don't have to take the
-checksum on faith. Every release carries the certificate it was signed with (`signing-certificate.txt`), so you can
-check it's the same key that signed the last one. Android won't let a build signed by anyone else update the
-Folio you already have.
+Every release is signed with the same key, and its SHA-256 is on [foliolauncher.com/download](https://foliolauncher.com/download/)
+(some releases also attach it as `signing-certificate.txt`), so you can check it's the key that signed the last one.
+Android won't let a build signed by anyone else update the Folio you already have.
 
 An unsigned or sideloaded launcher deserves suspicion. If anything here doesn't match what you see in the code, please
 [open an issue](https://github.com/McCal-Codes/folio/issues/new). That's a bug worth fixing.

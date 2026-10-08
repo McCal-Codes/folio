@@ -75,7 +75,7 @@ Good:
 - 48dp rows and dock minimums (`LayoutModel.kt`), 44dp jiggle remove, `minimumInteractiveComponentSize` in 7 files.
 - 77 content descriptions, 62 semantics blocks, custom move actions mirrored on the keyboard.
 - `LocalReduceMotion` and `LocalSolidGlass` exist and are used.
-- `getRecommendedTimeoutMillis` for Market notices.
+- `getRecommendedTimeoutMillis` for Market notices and for everything the island shows for a moment.
 
 Not yet:
 

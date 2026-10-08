@@ -12,3 +12,6 @@ Short records of decisions that shape Folio, why they were made, and what they c
 | [0006](0006-standards.md) | Folio Standards are the build contract; outside AI agents only test and fix bugs | Proposed |
 | [0007](0007-release-trains.md) | One trunk, two audiences: features gated by the `beta` scope, betas are tags, and `versionCode` gets hotfix headroom | Proposed |
 | [0008](0008-platform-architecture.md) | A launcher first, then an extension platform, then an optional system bridge: six core primitives, privilege tiers A0 to A5, packages never inherit privilege | Proposed |
+| [0009](0009-duet-effect-engine.md) | Duet is the fold animation; its looks are a catalog ported only from pinned, MIT-licensed code | Proposed |
+| [0011](0011-system-bridge.md) | The System Bridge is a broker, typed providers and a version handshake: no shell for packages, Shizuku in Folio's own APK first, everything above A2 off with one switch | Proposed |
+| [0012](0012-root-hinge-provider.md) | A continuous hinge angle is an optional root provider behind the broker: Folio's own code run through su, one pipe, public sensor always the way back | Accepted, built, off by default |

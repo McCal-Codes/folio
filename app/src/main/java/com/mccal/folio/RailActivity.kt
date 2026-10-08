@@ -32,6 +32,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,7 +85,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
             .clip(RoundedCornerShape(outer)).background(Color.Black)
             // Grows and shrinks along the rail with the same spring as the island.
             .animateContentSize(if (reduceMotion) androidx.compose.animation.core.snap() else bouncy)
-            .clickable(pressed, null, onClickLabel = if (current is IslandActivity.Media) (if (expanded) "Collapse" else "Expand") else "Open ${current.title}") {
+            .clickable(pressed, null, onClickLabel = if (current is IslandActivity.Media) stringResource(if (expanded) R.string.collapse else R.string.expand) else stringResource(R.string.open_1_s, current.title)) {
                 if (current is IslandActivity.Media) expanded = !expanded else open()
             }
             .padding(inset).testTag("rail-live-activity")
@@ -97,7 +98,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
                     (current.art ?: current.icon)?.let {
                         androidx.compose.foundation.Image(it.asImageBitmap(), current.title,
                             Modifier.size(glyph).clip(RoundedCornerShape((outer - inset).coerceAtMost(glyph * .3f)))
-                                .then(if (expanded) Modifier.clickable(onClickLabel = "Open ${current.title}", onClick = open) else Modifier),
+                                .then(if (expanded) Modifier.clickable(onClickLabel = stringResource(R.string.open_named, current.title), onClick = open) else Modifier),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                     }
                     if (!expanded) Box(Modifier.padding(bottom = FolioSpace.HAIR.dp).graphicsLayer { scaleX = 1.25f; scaleY = 1.25f }) { Bars(current.playing, accent) }
@@ -149,16 +150,18 @@ internal fun RailNowPlaying(media: IslandActivity.Media, accent: Color, width: a
             media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = 10.sp, maxLines = 1,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1400)) }
         }
+        val progressText = if (duration != null && position != null) stringResource(R.string.progress_of, formatClock(position), formatClock(duration)) else ""
         if (duration != null && position != null) Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .22f))
-            .semantics { contentDescription = "${formatClock(position)} of ${formatClock(duration)}" }) {
+            .semantics { contentDescription = progressText }) {
             Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent))
         }
         val controls = controller?.transportControls
-        RailControl(Icons.Rounded.FastRewind, "Previous", 22.dp) { controls?.skipToPrevious() }
-        RailControl(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (media.playing) "Pause" else "Play", 32.dp) {
+        RailControl(Icons.Rounded.FastRewind, stringResource(R.string.previous_track), 22.dp) { controls?.skipToPrevious() }
+        RailControl(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            androidx.compose.ui.res.stringResource(if (media.playing) R.string.pause else R.string.play), 32.dp) {
             if (media.playing) controls?.pause() else controls?.play()
         }
-        RailControl(Icons.Rounded.FastForward, "Next", 22.dp) { controls?.skipToNext() }
+        RailControl(Icons.Rounded.FastForward, stringResource(R.string.next_track), 22.dp) { controls?.skipToNext() }
     }
 }
 
@@ -274,8 +277,8 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
                     is IslandActivity.Progress -> Ring(live.fraction, 18.dp)
                     is IslandActivity.Navigation, null -> when (val e = (content as? IslandContent.Event)?.event) {
                         is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                        is IslandEvent.Silent -> Text(if (e.on) "On" else "Off", color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                        is IslandEvent.Focus -> Text(if (e.on) "On" else "Off", color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, Modifier.size(18.dp).clip(RoundedCornerShape(5.dp))) }
                         else -> Unit
                     }
@@ -306,7 +309,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
                 if (card && live != null) ExpandedCardContent(live) { expanded = false; onOpen(live) }
             }
             Box(Modifier.shadow(8.dp, RoundedCornerShape(width / 2)).clip(RoundedCornerShape(width / 2)).background(Color.Black)
-                .clickable(pressed, null, onClickLabel = if (media != null || callControls) (if (expanded) "Collapse" else "Expand") else describe(content, islandStrings)) { onTap() }
+                .clickable(pressed, null, onClickLabel = if (media != null || callControls) stringResource(if (expanded) R.string.collapse else R.string.expand) else describe(content, islandStrings)) { onTap() }
                 .semantics { contentDescription = describe(content, islandStrings) }.testTag("vertical-island"))
             leading()
             trailing()
@@ -354,11 +357,11 @@ private fun RailCallButtons(call: IslandActivity.Call) {
     val grey = Color.White.copy(alpha = .22f)
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
         if (call.incoming) {
-            if (call.canAnswer) RailCallButton(Icons.Rounded.Call, "Accept", IslandGreen) { act(CallControls.Kind.ANSWER) }
-            if (call.canDecline) RailCallButton(Icons.Rounded.CallEnd, "Decline", red) { act(CallControls.Kind.DECLINE) }
+            if (call.canAnswer) RailCallButton(Icons.Rounded.Call, stringResource(R.string.accept), IslandGreen) { act(CallControls.Kind.ANSWER) }
+            if (call.canDecline) RailCallButton(Icons.Rounded.CallEnd, stringResource(R.string.decline), red) { act(CallControls.Kind.DECLINE) }
         } else {
-            if (call.canMute) RailCallButton(Icons.Rounded.MicOff, "Mute", grey) { act(CallControls.Kind.MUTE) }
-            if (call.canSpeaker) RailCallButton(Icons.AutoMirrored.Rounded.VolumeUp, "Speaker", grey) { act(CallControls.Kind.SPEAKER) }
+            if (call.canMute) RailCallButton(Icons.Rounded.MicOff, stringResource(R.string.mute), grey) { act(CallControls.Kind.MUTE) }
+            if (call.canSpeaker) RailCallButton(Icons.AutoMirrored.Rounded.VolumeUp, stringResource(R.string.speaker), grey) { act(CallControls.Kind.SPEAKER) }
             if (call.canHangUp) RailCallButton(Icons.Rounded.CallEnd, "End", red) { act(CallControls.Kind.HANG_UP) }
         }
     }

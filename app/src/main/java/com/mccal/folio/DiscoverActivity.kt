@@ -372,7 +372,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
     val context = LocalContext.current
     val fullWidth = fullSize.width / density.density
     val classScale = androidx.compose.ui.platform.LocalConfiguration.current.classScale
-    val preset = if (fullWidth * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && fullSize.height / density.density * classScale >= HOME_REGULAR_MIN_HEIGHT_DP) state.expanded else state.compact
+    val preset = state.presetFor(layoutScreenFor(fullWidth, fullSize.height / density.density, classScale))
     val apps = remember(state.apps) { state.apps.associateBy { it.id } }
     val progress = DiscoverMotion.progress.floatValue
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
@@ -413,11 +413,13 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
             }
             var statusHeight by remember { mutableFloatStateOf(0f) }
             // Discover's page is laid out beside the Side Bar, so its dock stays there whatever Home uses.
-            val geometry = homeGeometry(fullWidth, maxHeight.value, preset.copy(dockPlacement = DockPlacement.SIDE), state.labels,
+            val geometry = homeGeometry(fullWidth, maxHeight.value, preset.copy(dockPlacement = DockPlacement.SIDE), state.labels, dockSlots = state.dock.size,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = true,
                 homeBottomSpace = if (context.getSystemService(android.app.role.RoleManager::class.java)
-                    .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale, appRows = state.homeAppRows)
+                    .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale, appRows = state.homeAppRows,
+                // The same rows as Home, so the dock doesn't jump when Discover opens.
+                widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(context))
             if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp)
                 .offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp)
                 .onSizeChanged {
@@ -443,9 +445,9 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
             }
             Column(Modifier.align(Alignment.BottomEnd).padding(end = FolioSpace.MEDIUM.dp, bottom = FolioSpace.MEDIUM.dp).width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 // Home is physically to the right of Discover, matching our fixed page order.
-                FilledTonalIconButton(onClick = onHome, Modifier.testTag("discover-home")) { Icon(Icons.Rounded.ArrowForward, "Back to home") }
+                FilledTonalIconButton(onClick = onHome, Modifier.testTag("discover-home")) { Icon(Icons.Rounded.ArrowForward, stringResource(R.string.back_to_home)) }
                 Spacer(Modifier.height(8.dp))
-                FilledTonalIconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search apps") }
+                FilledTonalIconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, stringResource(R.string.search_apps)) }
             }
         }
     }

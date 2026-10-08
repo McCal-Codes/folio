@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,14 +76,14 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
     val time = android.text.format.DateFormat.format(
         if (android.text.format.DateFormat.is24HourFormat(context)) "H:mm" else "h:mm", now).toString()
     val timeSize = minOf(if (roomy) 52f else 44f, (width.value - 2 * MICRO_SIDE) / 3.2f)
-    val date = android.text.format.DateFormat.format("EEE, MMM d", now).toString() +
+    val date = android.text.format.DateFormat.format(stringResource(R.string.eee_mmm_d_2), now).toString() +
         (status.battery?.let { " · $it%" } ?: "")
     val shown = apps.take(microAppCount(width.value))
     Column(Modifier.fillMaxSize().padding(horizontal = MICRO_SIDE.dp, vertical = FolioSpace.COMFY.dp).testTagMicro(),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
         // Tap the time for Notification Center; hold it for Folio's settings.
         Column(Modifier.clip(RoundedCornerShape(FolioRadius.GROUP.dp))
-            .combinedClickable(onClickLabel = "Notification Center", onLongClickLabel = "Folio Settings",
+            .combinedClickable(onClickLabel = stringResource(R.string.notification_center), onLongClickLabel = stringResource(R.string.folio_settings),
                 onLongClick = onSettings, onClick = onNotifications)
             .padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.HAIR.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(time, color = Color.White, fontSize = timeSize.sp, fontWeight = FontWeight.SemiBold,
@@ -91,15 +92,15 @@ internal fun MicroHome(apps: List<AppEntry>, status: DeviceStatus, width: Dp, he
         }
         if (shown.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(MICRO_GAP.dp)) {
             shown.forEach { app ->
-                Box(Modifier.size(MICRO_ICON.dp).clickable(onClickLabel = "Open ${app.label}") { onLaunch(app) }) {
+                Box(Modifier.size(MICRO_ICON.dp).clickable(onClickLabel = stringResource(R.string.open_named, app.label)) { onLaunch(app) }) {
                     AppIcon(app, app.label, Modifier.size(MICRO_ICON.dp), shape = RoundedCornerShape(12.dp))
                 }
             }
         }
         media?.let { MicroNowPlaying(it) }
         if (roomy) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            MicroChip(if (notifications == 1) "1 notification" else "$notifications notifications", null, onNotifications)
-            MicroChip("Search", Icons.Rounded.Search, onSearch)
+            MicroChip(androidx.compose.ui.res.pluralStringResource(R.plurals.text_1_d_notifications, notifications, notifications), null, onNotifications)
+            MicroChip(stringResource(R.string.search), Icons.Rounded.Search, onSearch)
         }
     }
 }
@@ -109,7 +110,7 @@ private fun MicroNowPlaying(media: IslandActivity.Media) {
     val controls = runCatching { media.controller.transportControls }.getOrNull()
     val open = runCatching { media.controller.sessionActivity }.getOrNull()
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .14f))
-        .clickable(enabled = open != null, onClickLabel = "Open ${media.title}") { runCatching { open?.send() } }
+        .clickable(enabled = open != null, onClickLabel = stringResource(R.string.open_named, media.title)) { runCatching { open?.send() } }
         .padding(start = FolioSpace.SMALL.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         val art = media.art ?: media.icon
         if (art != null) Image(art.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
@@ -119,7 +120,7 @@ private fun MicroNowPlaying(media: IslandActivity.Media) {
             media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .65f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = .9f))
-            .clickable(onClickLabel = if (media.playing) "Pause" else "Play") { if (media.playing) controls?.pause() else controls?.play() },
+            .clickable(onClickLabel = stringResource(if (media.playing) R.string.pause else R.string.play)) { if (media.playing) controls?.pause() else controls?.play() },
             contentAlignment = Alignment.Center) {
             Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
         }

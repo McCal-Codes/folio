@@ -48,8 +48,9 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
     val tick by rememberMinuteTick()
     val today = remember(tick) { LocalDate.now() }
     val apps = remember(state.apps, state.hiddenApps) { state.apps.filter { it.id !in state.hiddenApps } }
-    val suggestions by produceState(emptyList<AppEntry>(), apps) {
-        value = withContext(Dispatchers.IO) {
+    // Off means no row and no usage query either.
+    val suggestions by produceState(emptyList<AppEntry>(), apps, state.todaySuggestions) {
+        value = if (!state.todaySuggestions) emptyList() else withContext(Dispatchers.IO) {
             Suggestions.forNow(context, apps)
         }
     }
@@ -76,7 +77,7 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
                     Column(Modifier.padding(start = FolioSpace.TINY.dp, top = FolioSpace.SNUG.dp)) {
                         Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp,
                             fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp)
-                        Text(today.format(DateTimeFormatter.ofPattern("MMMM d")), color = LocalHomeInk.current.primary, fontSize = if (wide) 40.sp else 34.sp,
+                        Text(today.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.primary, fontSize = if (wide) 40.sp else 34.sp,
                             fontWeight = FontWeight.Bold)
                     }
                     if (suggestions.isNotEmpty() && !edit.active) TodaySuggestions(suggestions, 4, onLaunch)
@@ -148,8 +149,13 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
     canMoveUp: Boolean, canMoveDown: Boolean, onRemove: () -> Unit, onMove: (Int) -> Unit) {
     Box(Modifier.size(width, height).then(if (widget.id < 0) Modifier.jiggle("today-${widget.id}", .5f) else Modifier)) {
         Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp))) {
-            if (widget.id < 0) BuiltinWidgetCard(widget.id, -1) { if (!edit.active) edit.start() }
-            else {
+            // A tap on a clock or a date opens its app, as on Home; holding a card starts editing, as Edit below does.
+            if (widget.id < 0) {
+                val hold = remember(edit) { { edit.start() } }
+                CompositionLocalProvider(LocalWidgetHold provides hold) {
+                    BuiltinWidgetCard(widget.id, -1, opensApp = true) { if (!edit.active) edit.start() }
+                }
+            } else {
                 val info = remember(widget.id) { runCatching { widgets.manager.getAppWidgetInfo(widget.id) }.getOrNull() }
                 if (info == null) Box(Modifier.fillMaxSize().background(Glass.copy(alpha = .2f)), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.widget_unavailable), color = Color.White.copy(alpha = .8f), fontSize = FolioType.FOOTNOTE.sp)
@@ -159,10 +165,10 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
             }
         }
         if (edit.active) {
-            JiggleRemoveButton("Remove widget", onRemove = onRemove)
+            JiggleRemoveButton(stringResource(R.string.remove_widget), onRemove = onRemove)
             Row(Modifier.align(Alignment.BottomEnd).padding(FolioSpace.SMALL.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f))) {
-                if (canMoveUp) TodayArrow(Icons.Rounded.KeyboardArrowUp, "Move up") { onMove(-1) }
-                if (canMoveDown) TodayArrow(Icons.Rounded.KeyboardArrowDown, "Move down") { onMove(1) }
+                if (canMoveUp) TodayArrow(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.move_up)) { onMove(-1) }
+                if (canMoveDown) TodayArrow(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.move_down)) { onMove(1) }
             }
         }
     }
@@ -170,7 +176,7 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
 
 @Composable
 private fun TodayArrow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(36.dp).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, label, tint = Color.White, modifier = Modifier.size(22.dp))
     }
 }

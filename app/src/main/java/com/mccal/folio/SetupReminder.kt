@@ -67,7 +67,8 @@ internal object SetupReminder {
 /** A progress ring with "done/total" inside (Settings' Finish Setting Up row and the Home card). */
 @Composable
 internal fun SetupRing(done: Int, total: Int, size: Dp, track: Color, modifier: Modifier = Modifier) {
-    Box(modifier.size(size).semantics { contentDescription = "$done of $total done" }, contentAlignment = Alignment.Center) {
+    val described = stringResource(R.string.text_1_d_of_2_d_done, done, total)
+    Box(modifier.size(size).semantics { contentDescription = described }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = size.toPx() * .1f
             val inset = stroke / 2
@@ -114,10 +115,10 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-                    ReminderButton("Not Now", secondary.copy(alpha = .18f), primary, Modifier.weight(1f)) {
+                    ReminderButton(stringResource(R.string.not_now), secondary.copy(alpha = .18f), primary, Modifier.weight(1f)) {
                         show = false; SetupReminder.snooze(context, SetupReminder.NOT_NOW_MS)
                     }
-                    ReminderButton("Continue", LocalAccent.current.ink, Color.White, Modifier.weight(1f)) {
+                    ReminderButton(stringResource(R.string.continue_button), LocalAccent.current.ink, Color.White, Modifier.weight(1f)) {
                         show = false; SetupReminder.snooze(context, SetupReminder.CONTINUE_MS); onContinue()
                     }
                 }

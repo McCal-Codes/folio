@@ -1,0 +1,15 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/tweaks.schema.json",
+  "format": 1,
+  "tweaks": [
+    {
+      "id": "duet",
+      "enabled": true,
+      "options": {
+        "style": "deep",
+        "direction": "opening",
+        "frost": 0.8
+      }
+    }
+  ]
+}

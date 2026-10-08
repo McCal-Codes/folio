@@ -45,6 +45,11 @@ internal object Diagnostics {
         while (trail.size > TRAIL_SIZE) trail.removeFirst()
     }
 
+    /** The automatic package updates (M1), in the trail so Recent Activity can say what happened in the background. */
+    fun autoUpdated(id: String, version: Any) = event("Updated $id to $version in the background")
+    fun autoUpdateStale(id: String) = event("A staged update for $id was no longer valid")
+    fun autoUpdateFailed(id: String, what: String) = event("The update for $id failed: $what")
+
     @Synchronized fun trailText(): String = trail.joinToString("\n")
 
     private var lastCaught: String? = null
@@ -75,12 +80,21 @@ internal object Diagnostics {
 
     /** Saves the trail and a heartbeat, so the next start can tell what came before a freeze or restart. */
     fun checkpoint(context: Context, visible: Boolean) {
-        runCatching {
-            File(CrashLog.dir(context), TRAIL_FILE).writeText(trailText())
-            context.getSharedPreferences(PREFS, 0).edit().putLong(LAST_SEEN, System.currentTimeMillis())
-                .putBoolean(VISIBLE, visible).putInt(BOOT_COUNT, bootCount(context)).apply()
+        // The text is made here, where the trail is; the file write and the settings read happen on a thread of
+        // their own, so a slow flash write never lands on a frame (the fold pauses and resumes Home).
+        val trail = runCatching { trailText() }.getOrNull() ?: return
+        val now = System.currentTimeMillis()
+        val app = context.applicationContext
+        checkpointWriter.execute {
+            runCatching {
+                File(CrashLog.dir(app), TRAIL_FILE).writeText(trail)
+                app.getSharedPreferences(PREFS, 0).edit().putLong(LAST_SEEN, now)
+                    .putBoolean(VISIBLE, visible).putInt(BOOT_COUNT, bootCount(app)).apply()
+            }
         }
     }
+
+    private val checkpointWriter = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "folio-checkpoint").apply { isDaemon = true } }
 
     private fun bootCount(context: Context) =
         runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT) }.getOrDefault(-1)
@@ -172,10 +186,33 @@ internal object Diagnostics {
             "animations ${scale}×",
             "left page ${state?.optString("leftPage", "TODAY") ?: "?"}",
             "wallpaper ${if (state?.optBoolean("systemWallpaper", false) == true) "Android" else "Folio"}",
-            "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}",
+            "fold effect ${if (state?.optBoolean("foldEffect", true) != false) "on" else "off"}" +
+                " (Duet ${state?.optJSONObject("duet")?.optString("style")?.ifBlank { null } ?: "duo"}," +
+                " plays ${state?.optJSONObject("duet")?.optString("direction")?.ifBlank { null } ?: "both"})",
             "page effect ${state?.optString("pageEffect")?.ifBlank { PageEffect.NONE.name } ?: "?"}",
             "safe mode ${if (SafeMode.active) "on" else "off"}",
         ).joinToString(", ")
+    }
+
+    /**
+     * Every sensor that could be the hinge, and what Folio learned about it: some foldables report only a few fixed
+     * positions (the Fold8's public sensor gives 0, 90 and 180), which decides how Duet can follow the fold. The idea
+     * of a copyable sensor report is from marcoazeem/duo-open (MIT); this is Folio's own listing, no code from it.
+     */
+    fun hingeReport(context: Context): String = buildString {
+        appendLine("Hinge sensors:")
+        val sensors = context.getSystemService(android.hardware.SensorManager::class.java)?.getSensorList(android.hardware.Sensor.TYPE_ALL).orEmpty()
+        val hinge = Regex("hinge|angle|fold|posture|flip", RegexOption.IGNORE_CASE)
+        val found = sensors.filter { it.type == android.hardware.Sensor.TYPE_HINGE_ANGLE || hinge.containsMatchIn(it.name) || hinge.containsMatchIn(it.stringType) }
+        if (found.isEmpty()) appendLine("  (none)")
+        found.forEach { s ->
+            appendLine("  ${s.name} · ${s.vendor} · ${s.stringType} (type ${s.type})" +
+                " · range ${s.maximumRange} · resolution ${s.resolution} · min delay ${s.minDelay} µs" +
+                " · ${if (s.isWakeUpSensor) "wake-up" else "non-wake-up"}" +
+                (if (s.type == android.hardware.Sensor.TYPE_HINGE_ANGLE && s.resolution >= 45f) " · steps only" else ""))
+        }
+        val learned = context.getSharedPreferences("folio", 0).getString("fold_hinge_capability", null)
+        append("Folio has seen the hinge as: ${learned?.lowercase() ?: "not moved yet"}")
     }
 
     fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"
@@ -187,6 +224,8 @@ internal object Diagnostics {
     fun bundle(context: Context): String = buildString {
         appendLine("Folio diagnostics (${format(System.currentTimeMillis())})")
         appendLine(CrashLog.environment(context))
+        appendLine()
+        appendLine(hingeReport(context))
         appendLine()
         appendLine("Recent events:")
         appendLine(trailText().ifBlank { "(none)" })
@@ -216,20 +255,20 @@ internal object Diagnostics {
      * readable file instead of pages of pasted text, and they can open it before anything is sent. [email] addresses
      * it to [SUPPORT_EMAIL]; without it, the share sheet leaves the choice of where entirely to them.
      */
-    suspend fun reportIntent(context: Context, email: Boolean): Intent = withContext(Dispatchers.IO) {
+    suspend fun reportIntent(context: Context, email: Boolean, note: String? = null): Intent = withContext(Dispatchers.IO) {
         // Old reports are cleared, but not one a mail app may still be reading: only those more than ten minutes old,
         // and every report gets a name of its own, so two in the same minute don't overwrite each other.
         val dir = File(context.cacheDir, "reports").apply { mkdirs() }
         val now = System.currentTimeMillis()
         dir.listFiles()?.filter { now - it.lastModified() > 10 * 60_000 }?.forEach { it.delete() }
         val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"))
-        val file = File(dir, "folio-report-$stamp-${(1000..9999).random()}.txt").apply { writeText(bundle(context)) }
+        val file = File(dir, "folio-report-$stamp-${(1000..9999).random()}.txt").apply { writeText((note?.let { "Test: $it\n\n" } ?: "") + bundle(context)) }
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.reports", file)
         val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
         val send = Intent(Intent.ACTION_SEND).setType("text/plain")
             .putExtra(Intent.EXTRA_STREAM, uri)
             .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.folio_bug_report_1, version))
-            .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.report_email_body))
+            .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.report_email_body) + (note?.let { "\n\nTest: $it" } ?: ""))
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         // The chooser only passes read access on if the file is also in clipData.
         send.clipData = ClipData.newRawUri("", uri)

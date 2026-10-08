@@ -1,0 +1,29 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
+  "format": 1,
+  "id": "com.mccal.folio.example.duet-deep",
+  "name": "Deep Fold",
+  "version": "1.0.0",
+  "author": {
+    "name": "McCal"
+  },
+  "minFolio": "0.6.8",
+  "section": "tweaks",
+  "kind": [
+    "tweakBundle"
+  ],
+  "permissions": [
+    "tweaks"
+  ],
+  "screens": [
+    "cover",
+    "inner"
+  ],
+  "license": "MIT",
+  "description": "An example of tweak options: Duet's fold with the Deep style, a little less frost, and only when you open the phone.",
+  "requires": {
+    "features": [
+      "tweaks.foldTransition"
+    ]
+  }
+}

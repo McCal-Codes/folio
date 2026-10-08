@@ -92,7 +92,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
         val room = ((maxHeight.value - clockSize * 1.6f - 150f) / 76f).toInt().coerceIn(0, 4)
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = if (wide) 84.dp else FolioSpace.LARGE.dp).padding(top = if (wide) FolioSpace.SMALL.dp else 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(now.format(DateTimeFormatter.ofPattern(if (wide) "EEE MMM d" else "EEEE, MMMM d")), color = Color.White,
+            Text(now.format(DateTimeFormatter.ofPattern(stringResource(if (wide) R.string.eee_mmm_d else R.string.eeee_mmmm_d))), color = Color.White,
                 fontSize = if (wide) 17.sp else 20.sp, fontWeight = FontWeight.SemiBold)
             Text(now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = Color.White,
                 fontSize = clockSize.sp, fontWeight = FontWeight.Bold, lineHeight = (clockSize * 1.04f).sp)
@@ -129,8 +129,8 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
                 }
             }
         }
-        val flashlight: @Composable () -> Unit = { CoverButton(Icons.Rounded.FlashlightOn, "Flashlight") { FolioActions.run(context, FolioAction.TORCH) } }
-        val camera: @Composable () -> Unit = { CoverButton(Icons.Rounded.PhotoCamera, "Camera") {
+        val flashlight: @Composable () -> Unit = { CoverButton(Icons.Rounded.FlashlightOn, stringResource(R.string.flashlight)) { FolioActions.run(context, FolioAction.TORCH) } }
+        val camera: @Composable () -> Unit = { CoverButton(Icons.Rounded.PhotoCamera, stringResource(R.string.camera)) {
             onDismiss(); runCatching { context.startActivity(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         } }
         // Flashlight and camera: bottom corners as on iPhone, or stacked on the side edge when wide, as on iPhone Duo.

@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,12 +47,12 @@ private val IosTrackOff = Color(0xFF39393D)
 
 /** iOS switch: 51×31 green track with a white thumb that springs across. */
 @Composable
-internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptic = LocalHapticFeedback.current
     val track by animateColorAsState(if (checked) FolioColors.GreenLight else IosTrackOff, label = "switch track")
     val offset by animateDpAsState(if (checked) 20.dp else 0.dp, spring(dampingRatio = .7f, stiffness = Spring.StiffnessMedium), label = "switch thumb")
     Box(modifier.minimumInteractiveComponentSize()
-        .toggleable(checked, role = Role.Switch, onValueChange = {
+        .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = {
             haptic.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff); onCheckedChange(it)
         }), contentAlignment = Alignment.Center) {
         Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).padding(FolioSpace.HAIR.dp)) {
@@ -100,16 +101,23 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) androidx.compose.material3.Text(placeholder, color = ink.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
+            // The placeholder is drawn inside the field, so TalkBack takes it as the field's name. Beside the field it
+            // lay under it, and Compose leaves a covered node out of what TalkBack sees: a nameless "Edit box".
             androidx.compose.foundation.text.BasicTextField(query, onQuery, fieldModifier.fillMaxWidth(), singleLine = true,
                 textStyle = TextStyle(color = ink, fontSize = FolioType.BODY.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(ink),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }),
+                decorationBox = { field ->
+                    Box {
+                        if (query.isEmpty()) androidx.compose.material3.Text(placeholder, color = ink.copy(alpha = .55f), fontSize = FolioType.BODY.sp, maxLines = 1)
+                        field()
+                    }
+                })
         }
         // The row's height comes from its text, so this only widens the target: nothing drawn moves (A11Y-1).
         if (query.isNotEmpty()) Box(Modifier.width(FolioTouch.MIN.dp).fillMaxHeight().clip(androidx.compose.foundation.shape.CircleShape).clickable { onQuery("") },
             contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, "Clear search", tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Cancel, stringResource(R.string.clear_search), tint = ink.copy(alpha = .5f), modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -119,7 +127,7 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
 internal fun IosActionRow(text: String, tag: String? = null, destructive: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val color = if (destructive) FolioColors.RedOnDark else LocalAccent.current.ink
     androidx.compose.material3.Text(text, color = if (enabled) color else Color.White.copy(alpha = .3f), fontSize = FolioType.BODY.sp,
-        modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        modifier = Modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).settingsFocus(text).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = FolioSpace.LARGE.dp, vertical = 13.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier))
 }
 
@@ -141,7 +149,7 @@ internal fun IosCheckRow(text: String, selected: Boolean, onClick: () -> Unit, t
 /** A row that opens another page, like iOS Settings: label, current value and a chevron. */
 @Composable
 internal fun IosNavRow(text: String, value: String?, onClick: () -> Unit, tag: String? = null) {
-    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.NAV.dp).clickable(role = Role.Button, onClick = onClick)
+    Row(Modifier.fillMaxWidth().heightIn(min = FolioRow.NAV.dp).settingsFocus(text).clickable(role = Role.Button, onClick = onClick)
         .then(if (tag != null) Modifier.testTag(tag) else Modifier), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Text(text, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
         value?.let { androidx.compose.material3.Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp) }
@@ -199,8 +207,8 @@ internal fun <T> IosMenuRow(title: String, options: List<Pair<T, String>>, selec
     var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val current = options.firstOrNull { it.first == selected }?.second ?: ""
-    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-        .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Choose $title") { open = true }
+    Row(modifier.fillMaxWidth().heightIn(min = FolioRow.ACTION.dp).settingsFocus(title).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+        .clickable(enabled = enabled, role = Role.Button, onClickLabel = stringResource(R.string.choose_1_s, title)) { open = true }
         .then(if (tag != null) Modifier.testTag(tag) else Modifier)
         .androidxAlpha(if (enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Text(title, color = Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))

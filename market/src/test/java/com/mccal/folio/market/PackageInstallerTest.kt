@@ -33,13 +33,23 @@ class PackageInstallerTest {
         val applied = mutableListOf<PackageChange>()
         val restored = mutableListOf<PackageChange>()
         var failOn: ((PackageChange) -> Boolean)? = null
+        /** Throws an Error, which the installer's `catch (Exception)` does not catch: what a killed process looks like. */
+        var dieOn: ((PackageChange) -> Boolean)? = null
+        var whileApplying: (() -> Unit)? = null
+        /** Throws an Error after the change has taken effect and before the installer notes its snapshot: a kill at the worst moment. */
+        var dieAfter: ((PackageChange) -> Boolean)? = null
         var state = "tweaks off"
+
+        override fun snapshotBefore(change: PackageChange): String = state
 
         override fun apply(change: PackageChange): String {
             if (failOn?.invoke(change) == true) error("the launcher refused that change")
+            if (dieOn?.invoke(change) == true) throw AssertionError("the process died here")
+            whileApplying?.invoke()
             applied += change
             val before = state
             state = "applied ${describe(change)}"
+            if (dieAfter?.invoke(change) == true) throw AssertionError("the process died here, after the change")
             return before
         }
 
@@ -244,7 +254,7 @@ class PackageInstallerTest {
         assertTrue(read is PackageInstaller.ReadResult.Ok)
         val pkg = (read as PackageInstaller.ReadResult.Ok).pkg
         assertEquals("Cabinet", pkg.manifest.name.english)
-        assertEquals(6, pkg.depiction?.blocks?.size)
+        assertEquals(7, pkg.depiction?.blocks?.size)
         assertTrue(host.applied.isEmpty() && store.installed().isEmpty())
     }
 
@@ -545,4 +555,112 @@ class PackageInstallerTest {
         provenance = null,
         manifest = null,
     )
+
+    // The 5 Oct audit (S1, S2): a process killed in the middle of an install must leave Home as it was.
+    private fun cabinet() = (installer.read(pack()) as PackageInstaller.ReadResult.Ok).pkg
+
+    @Test fun `an install the process died in is put back at the next start and the journal is cleared`() {
+        val pkg = cabinet()
+        host.dieOn = { true }
+        try { installer.install(pack(), origin = InstalledPackage.Origin.FILE) } catch (e: AssertionError) { /* the process died */ }
+        host.dieOn = null
+        assertTrue(store.installed().none { it.id == pkg.id })
+        // A new process: a new installer on the same storage.
+        val next = PackageInstaller(store, host, clock = { now })
+        val recovered = next.recoverInterrupted()
+        assertEquals(pkg.id, recovered?.id)
+        assertNull(next.recoverInterrupted())
+    }
+
+    @Test fun `changes already applied when the process died are restored newest first`() {
+        val pkg = cabinet()
+        ApplyJournal(store).apply { begin(pkg.id, "Cabinet", pkg.version.toString(), pkg.changes, null); progress(listOf("tweaks off")) }
+        host.state = "applied something"
+        PackageInstaller(store, host, clock = { now }).recoverInterrupted()
+        assertEquals(pkg.changes.take(1), host.restored)
+        assertEquals("tweaks off", host.state)
+    }
+
+    @Test fun `an install that had finished before the process died is left alone`() {
+        assertTrue(installer.install(pack(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        val pkg = cabinet()
+        // Written down, then killed before the journal was cleared.
+        ApplyJournal(store).apply { begin(pkg.id, "Cabinet", pkg.version.toString(), pkg.changes, null); progress(listOf("tweaks off")) }
+        host.restored.clear()
+        assertNull(PackageInstaller(store, host, clock = { now }).recoverInterrupted())
+        assertTrue(host.restored.isEmpty())
+        assertTrue(store.find(pkg.id) != null)
+    }
+
+    @Test fun `an update killed after the old version came off gets the old version back`() {
+        assertTrue(installer.install(pack(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        val old = store.find(cabinet().id)!!
+        val appliedBefore = host.applied.size
+        ApplyJournal(store).begin(old.id, "Cabinet", "99.0", cabinet().changes, old)
+        val recovered = PackageInstaller(store, host, clock = { now }).recoverInterrupted()
+        assertEquals(old.id, recovered?.id)
+        assertTrue("the old version's changes are applied again", host.applied.size > appliedBefore)
+        assertEquals(old.version, store.find(old.id)!!.version)
+    }
+
+    @Test fun `recovery never touches an install that is still running in this process`() {
+        var seen: PackageInstaller.Interrupted? = PackageInstaller.Interrupted("x", "x")
+        host.whileApplying = { seen = PackageInstaller(store, host, clock = { now }).recoverInterrupted() }
+        assertTrue(installer.install(pack(), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+        assertNull(seen)
+        assertTrue(store.installed().any { it.id == cabinet().id })
+    }
+
+    @Test fun `Safe Mode still blames a package that crashed Folio twice just after it applied cleanly`() {
+        var t = 1_000L
+        val safe = PackageSafeMode(MemoryStore(), clock = { t })
+        safe.beginChange("dev.example.tweak")
+        t += 5
+        safe.endChange()
+        t += 10
+        assertNull(safe.noteCrash())
+        t += 10
+        assertEquals("dev.example.tweak", safe.noteCrash())
+    }
+
+    @Test fun `a finished package is forgiven once the minute is up`() {
+        var t = 1_000L
+        val safe = PackageSafeMode(MemoryStore(), clock = { t })
+        safe.beginChange("dev.example.tweak")
+        safe.endChange()
+        t += 120
+        assertNull(safe.noteCrash())
+        assertNull(safe.noteCrash())
+    }
+
+    @Test fun `a kill after a change took effect but before its snapshot was noted still puts that change back`() {
+        val pkg = cabinet()
+        host.dieAfter = { true }
+        try { installer.install(pack(), origin = InstalledPackage.Origin.FILE) } catch (e: AssertionError) { /* the process died */ }
+        host.dieAfter = null
+        assertTrue("the change is on Home", host.state.startsWith("applied"))
+        val recovered = PackageInstaller(store, host, clock = { now }).recoverInterrupted()
+        assertEquals(pkg.id, recovered?.id)
+        assertEquals("tweaks off", host.state)
+        assertTrue(host.restored.isNotEmpty())
+    }
+
+    @Test fun `an install that cannot write its journal does not start`() {
+        val failing = object : KeyValueStore by store.keyValue {
+            override fun set(key: String, value: String?): Boolean = if (key == "market:apply-journal" && value != null) false else store.keyValue.set(key, value)
+        }
+        val blocked = PackageInstaller(InstalledStore(failing), host, clock = { now })
+        val result = blocked.install(pack(), origin = InstalledPackage.Origin.FILE)
+        assertTrue("$result", result is InstallResult.Failed)
+        assertTrue("nothing was applied", host.applied.isEmpty())
+        assertNull("and no package was recorded", store.installed().firstOrNull())
+    }
+
+    @Test fun `a failed install leaves no marker for Safe Mode to blame`() {
+        host.failOn = { true }
+        assertTrue(installer.install(pack(), origin = InstalledPackage.Origin.FILE) is InstallResult.Failed)
+        val safeMode = PackageSafeMode(store.keyValue) { now }
+        assertNull(safeMode.noteCrash())
+        assertNull("not even on the second crash", safeMode.noteCrash())
+    }
 }

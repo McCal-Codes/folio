@@ -3,7 +3,17 @@
 #
 #   bash tools/check-release-rules.sh [base-ref]        # default base: origin/main
 #
-# Three rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026:
+# Six rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026; REL-4b
+# became "the same app" on 2 Oct 2026, so a fix to a tool or a note no longer waits a whole release:
+#
+#   REL-4b  A stable ships the same app as the last beta of its version: what goes into the APK matches that beta's
+#           tag, apart from the version, the roadmap and the notes.
+#
+#   REL-14b A stable's own roadmap section has no item still Building or Planned: each is done or moved.
+#
+#   REL-31  The roadmap tells the truth about tags (only checked when roadmap.json changes): a release section whose
+#           items are all done names a release whose stable tag exists, and an item marked beta belongs to a release that
+#           has a beta tag. "Shipped" means tagged, not merged.
 #
 #   REL-5   No AI attribution: no co-author, credit line or robot footer in a commit or the description, and no
 #           branch named after a tool. Not waivable.
@@ -15,11 +25,12 @@
 #           doc. A pull request that moves folioVersion and changes code at the same time hides the release in a
 #           feature diff.
 #
-# Both can be waived by labelling the pull request, so the escape hatch is visible in the pull request rather than
-# hidden in someone's shell:
+# REL-7, REL-13 and REL-4b can be waived by labelling the pull request, so the escape hatch is visible in the pull
+# request rather than hidden in someone's shell:
 #
 #   no-changelog        this change is invisible to users (REL-9), so it gets no line
-#   release-exception   this really is a release and a change together, and that was deliberate
+#   release-exception   this really is a release and a change together, or a stable that differs from its beta,
+#                       and that was deliberate
 #
 # Locally, set them as environment variables: PR_LABELS="no-changelog" bash tools/check-release-rules.sh
 set -uo pipefail
@@ -129,6 +140,102 @@ else
         fail "REL-13 folioVersion moves to $new_version in a pull request that also changes:
 $(echo "$stray" | head -5 | sed 's/^/          /')
         Land the change first, then bump the version on its own, so the release is one reviewable diff."
+    fi
+fi
+
+# REL-14b: a stable's own roadmap section has nothing left Building or Planned. The roadmap is read from `main` by every
+# install, so a stable that leaves its own items open tells people the release is still coming.
+if [[ "$version_changed" != yes || "$new_version" == *-* ]]; then
+    skip "REL-14b not a stable release"
+else
+    section=$(echo "${new_version%%-*}" | cut -d. -f1-3)
+    still_open=$(git show HEAD:app/src/main/assets/roadmap.json 2>/dev/null | python3 -c '
+import json, sys
+section = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+except ValueError:
+    print("(roadmap.json is not valid JSON)"); sys.exit(0)
+for s in data.get("sections", []):
+    if s.get("release") == section:
+        for i in s.get("items", []):
+            if i.get("status") in ("building", "planned"):
+                print("%s (%s)" % (i.get("title"), i.get("status")))
+' "$section")
+    if has_label release-exception; then
+        skip "REL-14b waived by the release-exception label"
+    elif [[ -z "$still_open" ]]; then
+        pass "REL-14b the $section roadmap section has nothing still Building or Planned"
+    else
+        fail "REL-14b the $section roadmap section still lists open items on a stable:
+$(echo "$still_open" | head -6 | sed 's/^/          /')
+        Mark each one done, or move it to the release it now belongs to, in the version bump."
+    fi
+fi
+
+# REL-4b: a stable ships the same app as the last beta of its version. Only what is built into the APK is compared:
+# the code and resources under app/ and market/, the Market's built-in source and the Gradle setup. The version, the roadmap and the notes move in
+# the bump itself (REL-13); docs, tools and tests may change after the beta, since nobody installs them.
+if [[ "$version_changed" != yes || "$new_version" == *-* ]]; then
+    skip "REL-4b not a stable release"
+else
+    tags=$(git tag -l --sort=-v:refname "v${new_version}-beta.*")
+    last_beta=${tags%%$'\n'*}
+    if [[ -z "$last_beta" ]]; then
+        skip "REL-4b no beta of $new_version is tagged to compare with"
+    elif has_label release-exception; then
+        skip "REL-4b waived by the release-exception label"
+    else
+        # docs/sdk/source is in the list because the APK bundles it: it is the Market's built-in source.
+        app_paths=(app/src/main app/src/release market/src/main docs/sdk/source app/build.gradle.kts market/build.gradle.kts
+            build.gradle.kts settings.gradle.kts gradle.properties gradle app/proguard-rules.pro)
+        moved=$(git diff --name-only "$last_beta" HEAD -- "${app_paths[@]}" \
+            | grep -vE '^(app/build\.gradle\.kts|app/src/main/assets/roadmap\.json)$' || true)
+        # The app's build file may differ from the beta's only in the version line.
+        build_lines=$(git diff -U0 "$last_beta" HEAD -- app/build.gradle.kts | grep -E '^[+-][^+-]' || true)
+        if [[ -n "$build_lines" ]] && grep -qvE '^[+-]val folioVersion = ' <<< "$build_lines"; then
+            moved=$(printf '%s\n%s' "$moved" "app/build.gradle.kts, beyond the version" | sed '/^$/d')
+        fi
+        if [[ -z "$moved" ]]; then
+            pass "REL-4b $new_version ships the same app as $last_beta"
+        else
+            fail "REL-4b $new_version would not ship the same app as $last_beta. Changed since it:
+$(echo "$moved" | head -5 | sed 's/^/          /')
+        Put it out as another beta first (REL-16), so what goes out stable has been out as a beta."
+        fi
+    fi
+fi
+
+# REL-31: the roadmap says only what the tags say. Every install reads roadmap.json from `main`, so an item marked done
+# for a release nobody can install, or in a beta that was never tagged, is a promise the page cannot keep.
+if git diff --quiet "$merge_base..HEAD" -- app/src/main/assets/roadmap.json; then
+    skip "REL-31 roadmap.json is unchanged"
+elif has_label release-exception; then
+    skip "REL-31 waived by the release-exception label"
+else
+    untagged=$(git show HEAD:app/src/main/assets/roadmap.json 2>/dev/null | python3 -c '
+import json, subprocess, sys
+tags = set(subprocess.run(["git", "tag", "--list"], capture_output=True, text=True).stdout.split())
+try:
+    data = json.load(sys.stdin)
+except ValueError:
+    print("(roadmap.json is not valid JSON)"); sys.exit(0)
+for s in data.get("sections", []):
+    release = s.get("release")
+    items = s.get("items", [])
+    if not release or not items:
+        continue
+    if all(i.get("status") == "done" for i in items) and "v" + release not in tags:
+        print("%s: every item is done but there is no v%s tag" % (release, release))
+    if any(i.get("beta") for i in items) and not any(t.startswith("v" + release + "-beta.") for t in tags):
+        print("%s: an item is marked beta but there is no v%s-beta.N tag" % (release, release))
+')
+    if [[ -z "$untagged" ]]; then
+        pass "REL-31 the roadmap's done and beta marks match the tags"
+    else
+        fail "REL-31 the roadmap says more than the tags do:
+$(echo "$untagged" | head -6 | sed 's/^/          /')
+        Tag the release (or its beta) first, or mark the items building or planned until it is."
     fi
 fi
 

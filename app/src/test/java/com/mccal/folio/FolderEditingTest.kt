@@ -64,9 +64,9 @@ class FolderEditingTest {
 
     @Test fun rejectedExtractionFromFullDockPreservesEveryFolderChild() {
         val folder = FolderEntry(folderId, "Pair", listOf("a", "b"))
-        val before = HomeLayout(listOf(folderId), listOf("d0", "d1", "d2", "d3"), folders = listOf(folder))
+        val before = HomeLayout(listOf(folderId), listOf("d0", "d1", "d2", "d3", "d4", "d5"), folders = listOf(folder))
         assertSame(before, removeAppFromFolder(before, folderId, "b", DropTarget.Dock(0)))
-        assertEquals(setOf("a", "b", "d0", "d1", "d2", "d3"),
+        assertEquals(setOf("a", "b", "d0", "d1", "d2", "d3", "d4", "d5"),
             (before.folders.flatMap { it.appIds } + before.dock.filterNotNull()).toSet())
     }
 
@@ -86,5 +86,34 @@ class FolderEditingTest {
         layout = addAppToFolder(layout, folderId, "e")
         assertEquals(listOf("a", "b", "c", "d", "e"), layout.folder(folderId)?.appIds)
         assertEquals(listOf(folderId), layout.slots.filterNotNull())
+    }
+
+    @Test fun addingSeveralAppsTakesEachFromHomeAndTheDockInOrder() {
+        val folder = FolderEntry(folderId, "Group", listOf("a"))
+        val before = HomeLayout(listOf(folderId, "b", null, "c"), listOf("d", null), folders = listOf(folder))
+        val next = addAppsToFolder(before, folderId, listOf("b", "d", "c"))
+        assertEquals(listOf("a", "b", "d", "c"), next.folder(folderId)?.appIds)
+        assertEquals("emptied cells at the end are trimmed", listOf(folderId), next.slots)
+        assertEquals(listOf(null, null), next.dock)
+    }
+
+    @Test fun addingSeveralAppsSkipsRepeatsMembersAndReservedIds() {
+        val folder = FolderEntry(folderId, "Group", listOf("a", "b"))
+        val before = HomeLayout(listOf(folderId, "c"), emptyList(), folders = listOf(folder))
+        val next = addAppsToFolder(before, folderId, listOf("a", "c", "c", "", folderId))
+        assertEquals(listOf("a", "b", "c"), next.folder(folderId)?.appIds)
+        assertSame(before, addAppsToFolder(before, "folder:missing", listOf("c")))
+        assertSame(before, addAppsToFolder(before, folderId, listOf("a", "b")))
+    }
+
+    @Test fun addingAppsFromAFolderThatThenDissolvesPromotesNothingTwice() {
+        val other = "folder:223e4567-e89b-12d3-a456-426614174000"
+        val before = HomeLayout(listOf(folderId, other), emptyList(), folders = listOf(
+            FolderEntry(folderId, "Target", listOf("t1", "t2")), FolderEntry(other, "Pair", listOf("x", "y"))))
+        // Taking both of the pair's apps dissolves it: the first promotes the second into its cell, the second is then taken from Home.
+        val next = addAppsToFolder(before, folderId, listOf("x", "y"))
+        assertEquals(listOf("t1", "t2", "x", "y"), next.folder(folderId)?.appIds)
+        assertEquals(null, next.folder(other))
+        assertEquals(listOf(folderId), next.slots)
     }
 }

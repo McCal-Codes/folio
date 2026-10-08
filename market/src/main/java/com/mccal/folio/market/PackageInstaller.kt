@@ -26,6 +26,13 @@ interface PackageHost {
      * a host says otherwise, so a host that forgets to answer refuses add-ons rather than installing them bare.
      */
     fun hasTweak(id: String): Boolean = false
+
+    /**
+     * What [change] would replace, read without applying it: the same text [apply] would return. The installer writes it
+     * down before the change, so a process killed between the change taking effect and the installer noting its snapshot
+     * can still be put back. Null when it can't be read ahead of time, which leaves that one change as it was.
+     */
+    fun snapshotBefore(change: PackageChange): String? = null
 }
 
 /** A package Folio has installed, and what it replaced. */
@@ -83,6 +90,44 @@ class PackageInstaller(
     /** This build's release number, for a package's `minFolio`. Null skips that check, which only a test does. */
     private val folioVersion: FolioVersion? = null,
 ) {
+    private val journal = ApplyJournal(store)
+
+    /** An install that was cut short and put back. */
+    data class Interrupted(val id: String, val name: String)
+
+    /**
+     * Called at start. If the last process died part way through an install or update (the journal is still there),
+     * everything it had applied is put back, newest first, and an update's earlier version is put back on, so Home is
+     * what it was and the package list matches it. Does nothing while an install is running in this process, and
+     * nothing when the install had in fact finished.
+     */
+    fun recoverInterrupted(): Interrupted? = synchronized(LOCK) {
+        if (inFlight) return null
+        val entry = journal.read() ?: return null
+        val recorded = store.find(entry.id)
+        // Written down and then killed before the journal was cleared: the install finished, nothing to put back.
+        val finished = recorded != null && recorded.version.toString() == entry.version && entry.replacedVersion != entry.version
+        if (!finished) {
+            // The change that was being applied when the process died has no snapshot in the list yet; the one written
+            // before it was applied puts it back, newest first like the rest.
+            entry.pending?.let { before -> entry.changes.getOrNull(entry.snapshots.size)?.let { runCatching { host.restore(it, before) } } }
+            entry.changes.take(entry.snapshots.size).zip(entry.snapshots).reversed().forEach { (change, snapshot) ->
+                runCatching { host.restore(change, snapshot) }
+            }
+            if (recorded != null && recorded.version.toString() == entry.replacedVersion && entry.replacedEnabled) {
+                store.changesFor(recorded.id, recorded.version)?.let { previous ->
+                    val again = mutableListOf<String>()
+                    runCatching { previous.forEach { again += host.apply(it) } }
+                    store.put(recorded.copy(snapshots = again), previous)
+                }
+            }
+        }
+        journal.clear()
+        // Put back, or already finished: either way nothing of this install is left to blame.
+        if (finished) safeMode.endChange() else safeMode.abandonChange()
+        if (finished) null else Interrupted(entry.id, entry.name)
+    }
+
     /**
      * Reads [bytes] as a package and applies it. [expected] is the index entry it came from, when there was one: its
      * hash, size, id and version all have to match what's inside the file (T1, and the "no bait and switch" rule).
@@ -92,10 +137,22 @@ class PackageInstaller(
         expected: IndexPackage? = null,
         origin: InstalledPackage.Origin = InstalledPackage.Origin.FOLIO_SOURCE,
         sourceUrl: String? = null,
-    ): InstallResult {
-        expected?.size?.let { if (bytes.size != it) return InstallResult.Failed(InstallResult.Reason.SIZE, "that download isn't the size the source listed") }
+    ): InstallResult = when (val v = verify(bytes, expected)) {
+        is Verified.Stop -> v.result
+        is Verified.Ok -> apply(v.pkg, origin, sourceUrl, pinning = v.pinning)
+    }
+
+    /** What [verify] found: a package that passed every check on the bytes, or the result to give instead. */
+    private sealed interface Verified {
+        data class Ok(val pkg: FolioPackage, val pinning: Pair<String, String>?) : Verified
+        data class Stop(val result: InstallResult) : Verified
+    }
+
+    /** Every check an install makes on the bytes themselves: size, checksum, author, the archive, and that it is the package the source listed. */
+    private fun verify(bytes: ByteArray, expected: IndexPackage?): Verified {
+        expected?.size?.let { if (bytes.size != it) return Verified.Stop(InstallResult.Failed(InstallResult.Reason.SIZE, "that download isn't the size the source listed")) }
         expected?.sha256?.let {
-            if (sha256Hex(bytes) != it) return InstallResult.Failed(InstallResult.Reason.HASH, "that download doesn't match the source's checksum")
+            if (sha256Hex(bytes) != it) return Verified.Stop(InstallResult.Failed(InstallResult.Reason.HASH, "that download doesn't match the source's checksum"))
         }
         // Who wrote it, which is a different question from who handed it over. Checked here, against the bytes that
         // actually arrived, so a mirror can carry a package but can't alter it or publish under its author's name.
@@ -104,14 +161,14 @@ class PackageInstaller(
             when (val author = authors.check(expected.id, expected.version, expected.sha256, expected.signedBy)) {
                 is AuthorTrust.Result.FirstTime -> pinning = expected.id to author.keyBase64
                 else -> if (!author.installable) {
-                    return InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message)
+                    return Verified.Stop(InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message))
                 }
             }
         }
         val pkg = when (val read = read(bytes)) {
             is ReadResult.Ok -> read.pkg
-            is ReadResult.NeedsNewerFolio -> return InstallResult.NeedsNewerFolio(read.missing)
-            is ReadResult.Failed -> return InstallResult.Failed(read.reason, read.message)
+            is ReadResult.NeedsNewerFolio -> return Verified.Stop(InstallResult.NeedsNewerFolio(read.missing))
+            is ReadResult.Failed -> return Verified.Stop(InstallResult.Failed(read.reason, read.message))
         }
         // A package shared as a file has no index to carry a signature, so it carries its own. The same rules
         // apply: a name that already belongs to another key is refused, whichever way the package arrived.
@@ -119,7 +176,7 @@ class PackageInstaller(
             when (val author = authors.checkFiles(pkg.id, pkg.version, pkg.files)) {
                 is AuthorTrust.Result.FirstTime -> pinning = pkg.id to author.keyBase64
                 else -> if (!author.installable) {
-                    return InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message)
+                    return Verified.Stop(InstallResult.Failed(InstallResult.Reason.AUTHOR, author.message))
                 }
             }
         }
@@ -127,12 +184,77 @@ class PackageInstaller(
         // copy said: a mirror could otherwise label a tweak bundle "Appearance only" and have it applied anyway.
         val shown = expected?.manifest
         if (shown != null && (shown.kinds != pkg.manifest.kinds || shown.permissions != pkg.manifest.permissions)) {
-            return InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed")
+            return Verified.Stop(InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed"))
         }
         if (expected != null && (expected.id != pkg.id || expected.version != pkg.version)) {
-            return InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed")
+            return Verified.Stop(InstallResult.Failed(InstallResult.Reason.MISMATCH, "that package isn't the one the source listed"))
         }
-        return apply(pkg, origin, sourceUrl, pinning = pinning)
+        return Verified.Ok(pkg, pinning)
+    }
+
+    /** What stops [pkg] from going on this phone, as the result an install gives, or null when nothing does. */
+    private fun compatStop(pkg: FolioPackage, builtIn: Boolean): InstallResult? {
+        // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
+        // page would have said before the person tapped Get, in the same order.
+        val already = store.installed()
+        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
+        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+            is CompatCheck.Kinds -> InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
+            is CompatCheck.Features -> InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
+            // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
+            // needs a later Folio's behaviour without naming anything. Both mean the same thing to the user.
+            is CompatCheck.Release -> InstallResult.NeedsNewerFolio(listOf("Folio ${stop.needs}"))
+            // An add-on without its host would sit on the phone doing nothing, so the host comes first.
+            is CompatCheck.Hosts -> InstallResult.NeedsHost(stop.missing)
+            is CompatCheck.Replaces -> InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
+            // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
+            is CompatCheck.Needs -> InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
+            else -> null
+        }
+    }
+
+    /**
+     * Updates an installed package's record to a new version that changes exactly the same things, without touching
+     * Home: nothing is undone and nothing is applied again, so a setting changed since the install keeps its value. The
+     * snapshots are kept as they are, because they still describe what to put back. It is for automatic updates, which
+     * must never change a setting; anything else (the changes differ, the package is off, it is not installed) is
+     * refused so the caller can leave it for the person to tap.
+     */
+    fun updateKeepingSettings(
+        bytes: ByteArray,
+        expected: IndexPackage? = null,
+        origin: InstalledPackage.Origin = InstalledPackage.Origin.FOLIO_SOURCE,
+        sourceUrl: String? = null,
+    ): InstallResult {
+        val verified = when (val v = verify(bytes, expected)) {
+            is Verified.Stop -> return v.result
+            is Verified.Ok -> v
+        }
+        val pkg = verified.pkg
+        val old = store.find(pkg.id)?.takeIf { it.enabled }
+            ?: return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package isn't installed and on, so it can't be updated in place")
+        if (store.changesFor(old.id, old.version) != pkg.changes) {
+            return InstallResult.Failed(InstallResult.Reason.MISMATCH, "that update changes settings, so it needs the person to apply it")
+        }
+        compatStop(pkg, builtIn = false)?.let { return it }
+        val updated = old.copy(version = pkg.version, name = pkg.manifest.name.english, origin = origin, sourceUrl = sourceUrl, installedAt = clock())
+        if (!store.put(updated, changes = pkg.changes)) {
+            return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't save that update, so nothing changed")
+        }
+        verified.pinning?.let { (id, key) -> authors.remember(id, key) }
+        return InstallResult.Installed(updated, old, pkg.notes)
+    }
+
+    /**
+     * Puts back the version an in-place update ([updateKeepingSettings]) replaced. The update never touched Home, so
+     * neither does this: the record goes back to [from], whose changes are still stored under its own version. It only
+     * works while the installed version is still [to] and on, and the old version's changes are still there; otherwise
+     * it says no and nothing changes.
+     */
+    fun undoUpdateInPlace(id: String, from: DebVersion, to: DebVersion): Boolean {
+        val current = store.find(id)?.takeIf { it.enabled && it.version == to } ?: return false
+        val changes = store.changesFor(id, from) ?: return false
+        return store.put(current.copy(version = from), changes)
     }
 
     private fun apply(
@@ -143,39 +265,46 @@ class PackageInstaller(
         /** The id and author key to remember, once this package is really on. */
         pinning: Pair<String, String>? = null,
     ): InstallResult {
-        val missing = pkg.manifest.missingCapabilities(host.capabilities).map { it.id } +
-            pkg.changes.flatMap { it.capabilities }.filterNot { it in host.capabilities }.map { it.id }
-        if (missing.isNotEmpty()) return InstallResult.NeedsNewerFolio(missing.distinct())
-        // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that needs a
-        // later Folio's behaviour without naming anything. Both mean the same thing to the user.
-        val needs = pkg.manifest.minFolio
-        if (!builtIn && folioVersion != null && needs > folioVersion) {
-            return InstallResult.NeedsNewerFolio(listOf("Folio $needs"))
-        }
-        // An add-on without its host would sit on the phone doing nothing, so the host comes first.
-        val hosts = missingHosts(pkg.changes)
-        if (hosts.isNotEmpty()) return InstallResult.NeedsHost(hosts)
-        val already = store.installed()
-        already.firstOrNull { it.id != pkg.id && pkg.manifest.conflicts.any { c -> c.id == it.id && c.matches(it.version) } }
-            ?.let { return InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${it.name}") }
-        // Dependencies have to be installed first; the store's queue sheet offers to add them (Phase 5).
-        val missingDepends = pkg.manifest.depends.filterNot { needed ->
-            already.any { it.id == needed.id && it.enabled && needed.matches(it.version) }
-        }
-        if (missingDepends.isNotEmpty()) {
-            return InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${missingDepends.joinToString { it.toString() }} first")
-        }
+        compatStop(pkg, builtIn)?.let { return it }
 
         // Applying starts here. Safe Mode watches from now until the marker is cleared, so a crash while a package is
         // being applied turns that package off instead of leaving Home unusable.
         val replaced = store.find(pkg.id)
+        // One change to Home at a time in this process, and a flag saying so, so recovering after a killed process
+        // can never roll back an install that is still running.
+        return synchronized(LOCK) {
+            inFlight = true
+            try { applyNow(pkg, origin, sourceUrl, pinning, replaced) } finally { inFlight = false }
+        }
+    }
+
+    private fun applyNow(
+        pkg: FolioPackage,
+        origin: InstalledPackage.Origin,
+        sourceUrl: String?,
+        pinning: Pair<String, String>?,
+        replaced: InstalledPackage?,
+    ): InstallResult {
         safeMode.beginChange(pkg.id)
+        // Nothing is changed that Folio couldn't first write down how to put back: a store that won't take the journal
+        // means the install doesn't start.
+        if (!journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced)) {
+            safeMode.abandonChange()
+            return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't write down what it was about to do, so nothing changed")
+        }
         val snapshots = mutableListOf<String>()
         try {
             // A version Safe Mode turned off has already had its changes taken off Home, so undoing them again
             // would put back what Home looked like before it, over whatever has happened since.
             replaced?.takeIf { it.enabled }?.let { undoChanges(it) }
-            for (change in pkg.changes) snapshots += host.apply(change)
+            for (change in pkg.changes) {
+                // Where Home is right now, written before the change: a process killed after the change takes effect
+                // but before its snapshot is noted can still put it back.
+                check(journal.pending(snapshots, host.snapshotBefore(change))) { "the journal can't be written" }
+                snapshots += host.apply(change)
+                // Written after each change, so a process that dies part way knows exactly what to put back.
+                check(journal.progress(snapshots)) { "the journal can't be written" }
+            }
         } catch (e: Exception) {
             // Put back everything this install had already changed, newest first.
             pkg.changes.take(snapshots.size).zip(snapshots).reversed().forEach { (change, snapshot) ->
@@ -191,7 +320,8 @@ class PackageInstaller(
                     store.put(old.copy(snapshots = again), previous)
                 }
             }
-            safeMode.endChange()
+            journal.clear()
+            safeMode.abandonChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't apply that package, so nothing changed")
         }
         val installed = InstalledPackage(
@@ -209,11 +339,13 @@ class PackageInstaller(
             pkg.changes.zip(snapshots).reversed().forEach { (change, snapshot) ->
                 runCatching { host.restore(change, snapshot) }
             }
-            safeMode.endChange()
+            journal.clear()
+            safeMode.abandonChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't save that package, so nothing changed")
         }
         // Only once the package is really on: a key remembered for an install that failed would own the id anyway.
         pinning?.let { (id, key) -> authors.remember(id, key) }
+        journal.clear()
         safeMode.endChange()
         return InstallResult.Installed(installed, replaced, pkg.notes)
     }
@@ -295,6 +427,15 @@ class PackageInstaller(
         store.remove(id)
         safeMode.endChange()
         return true
+    }
+
+    /**
+     * True when [bytes] is a package whose changes are exactly the ones the installed version applied: an update that
+     * touches none of the person's settings (new text, pictures, a version), so it can go in without undoing anything.
+     */
+    fun changesUnchanged(bytes: ByteArray, installed: InstalledPackage): Boolean {
+        val pkg = (read(bytes) as? ReadResult.Ok)?.pkg ?: return false
+        return pkg.id == installed.id && store.changesFor(installed.id, installed.version) == pkg.changes
     }
 
     /** Undo right after an install: remove what went on, and put the previous version back if there was one. */
@@ -516,6 +657,10 @@ class PackageInstaller(
     }
 
     private companion object {
+        /** One change to Home at a time in this process, and whether one is running now (see [recoverInterrupted]). */
+        val LOCK = Any()
+        @Volatile var inFlight = false
+
         val ANDROID_PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+\\z")
 
         /** What a wallpaper picture can be, matching the archive's own list of allowed types. */
@@ -531,7 +676,22 @@ class PackageInstaller(
 class PackageSafeMode(private val store: KeyValueStore, private val clock: () -> Long = { System.currentTimeMillis() / 1000 }) {
     fun beginChange(id: String) = store.set(KEY, JSONObject().put("id", id).put("at", clock()).toString())
 
-    fun endChange() = store.set(KEY, null)
+    /**
+     * The change finished, but the marker stays for the same minute, with the time reset: a package that applies
+     * cleanly and then crashes Folio a moment later while Home draws it is the one to turn off, and a marker cleared
+     * here would never have blamed it. It is only ever read after a crash (see [noteCrash]), and it expires.
+     */
+    fun endChange() {
+        val marker = store.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
+        store.set(KEY, marker.put("at", clock()).put("done", true).toString())
+    }
+
+    /**
+     * The change was put back (it failed, or it was interrupted and recovered), so there is nothing left applied to blame:
+     * the marker goes, instead of staying for a minute as [endChange] leaves it. Otherwise two crashes soon after could
+     * turn off the earlier version that was just restored.
+     */
+    fun abandonChange() { store.set(KEY, null) }
 
     /**
      * Called when Folio starts after a crash. Returns the package to turn off, if a change was in flight recently and
@@ -557,6 +717,56 @@ class PackageSafeMode(private val store: KeyValueStore, private val clock: () ->
         const val KEY = "market:safe-mode"
         const val WINDOW_SECONDS = 60L
     }
+}
+
+/**
+ * What an install was about to do and has done so far, written before the first change and cleared when the install
+ * ends either way. If it is still there at the next start, the process died in the middle (S2 in the 5 Oct audit).
+ */
+internal class ApplyJournal(private val store: InstalledStore) {
+    data class Entry(
+        val id: String, val name: String, val version: String, val changes: List<PackageChange>, val snapshots: List<String>,
+        val replacedVersion: String?, val replacedEnabled: Boolean,
+        /** What the change being applied when the process died would have replaced, written just before it ran; null if it could not be read ahead. */
+        val pending: String? = null,
+    )
+
+    /** Each write says whether the store really took it: an install that can't be written down must not go on. */
+    fun begin(id: String, name: String, version: String, changes: List<PackageChange>, replaced: InstalledPackage?): Boolean {
+        val json = JSONObject().put("id", id).put("name", name).put("version", version).put("changes", store.encodeChanges(changes))
+            .put("snapshots", JSONArray())
+        replaced?.let { json.put("replacedVersion", it.version.toString()).put("replacedEnabled", it.enabled) }
+        return store.keyValue.set(KEY, json.toString())
+    }
+
+    /** Written before a change is applied. [before] is null when the host can't read it ahead of time. */
+    fun pending(snapshots: List<String>, before: String?): Boolean {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return false
+        json.put("snapshots", JSONArray(snapshots))
+        if (before != null) json.put("pending", before) else json.remove("pending")
+        return store.keyValue.set(KEY, json.toString())
+    }
+
+    /** Written after a change: the change is in the list now, so the pending one is no longer needed. */
+    fun progress(snapshots: List<String>): Boolean {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return false
+        json.remove("pending")
+        return store.keyValue.set(KEY, json.put("snapshots", JSONArray(snapshots)).toString())
+    }
+
+    fun clear() { store.keyValue.set(KEY, null) }
+
+    fun read(): Entry? {
+        val json = store.keyValue.get(KEY)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return null
+        val changes = store.decodeChanges(json.optString("changes")) ?: return null
+        val snapshots = json.optJSONArray("snapshots")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+        val id = json.optString("id").takeIf { it.isNotEmpty() } ?: return null
+        return Entry(id, json.optString("name", id), json.optString("version"), changes, snapshots,
+            json.optString("replacedVersion").takeIf { it.isNotEmpty() }, json.optBoolean("replacedEnabled"),
+            if (json.has("pending")) json.optString("pending") else null)
+    }
+
+    private companion object { const val KEY = "market:apply-journal" }
 }
 
 /** What's installed, what each package changed, and what it replaced. */
@@ -706,7 +916,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
     }
 
     // Changes are stored as data, so Undo and Remove work after a restart without keeping the package file around.
-    private fun encodeChanges(changes: List<PackageChange>): String {
+    internal fun encodeChanges(changes: List<PackageChange>): String {
         val array = JSONArray()
         for (change in changes) {
             val json = JSONObject()
@@ -729,7 +939,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                     "tweaks",
                     JSONArray().apply {
                         change.bundle.tweaks.forEach {
-                            put(JSONObject().put("id", it.id.id).put("enabled", it.enabled).put("cover", it.cover).put("inner", it.inner))
+                            put(JSONObject().put("id", it.id.id).put("enabled", it.enabled).put("cover", it.cover).put("inner", it.inner)
+                                .apply { if (it.options.isNotEmpty()) put("options", JSONObject(it.options)) })
                         }
                     },
                 )
@@ -739,7 +950,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
         return array.toString()
     }
 
-    private fun decodeChanges(text: String): List<PackageChange>? {
+    internal fun decodeChanges(text: String): List<PackageChange>? {
         val array = runCatching { JSONArray(text) }.getOrNull() ?: return null
         return (0 until array.length()).mapNotNull { i ->
             val json = array.optJSONObject(i) ?: return@mapNotNull null
@@ -768,7 +979,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                             (0 until list.length()).mapNotNull { k ->
                                 val t = list.optJSONObject(k) ?: return@mapNotNull null
                                 TweakId.from(t.optString("id"))?.let {
-                                    TweakSetting(it, t.optBoolean("enabled"), t.optBoolean("cover", true), t.optBoolean("inner", true))
+                                    TweakSetting(it, t.optBoolean("enabled"), t.optBoolean("cover", true), t.optBoolean("inner", true),
+                                        t.optJSONObject("options")?.let(::readOptionRecord).orEmpty())
                                 }
                             },
                         ),
@@ -786,3 +998,15 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
         const val MAX_BACKUP_PACKAGES = 200
     }
 }
+
+/**
+ * A tweak's options as a record saved them: numbers come back as Double and strings as String, the two shapes
+ * [TweakOptions] allows. Anything else is from a newer format and is left out rather than turned into a string.
+ */
+internal fun readOptionRecord(o: JSONObject): Map<String, Any> = o.keys().asSequence().mapNotNull { key ->
+    when (val v = o.opt(key)) {
+        is Number -> key to v.toDouble()
+        is String -> key to v
+        else -> null
+    }
+}.toMap()

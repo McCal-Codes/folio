@@ -125,10 +125,35 @@ test('a slow answer is deferred inside the deadline, then edited in with the int
   assert.deepEqual(edited.allowed_mentions, { parse: [] })
 })
 
-test('every command says where it can be used, since user install is on', async () => {
+test('every command can be used anywhere: servers, DMs and group chats', async () => {
   const { COMMANDS } = await import('./commands.mjs')
   for (const command of COMMANDS) {
     assert.deepEqual(command.integration_types, [0, 1], command.name)
     assert.deepEqual(command.contexts, [0, 1, 2], command.name)
   }
+})
+
+test('there is no /redeem any more: a signed one is answered like any unknown command', async () => {
+  const { COMMANDS } = await import('./commands.mjs')
+  assert.ok(!COMMANDS.some((command) => command.name === 'redeem'))
+})
+
+test('the read-only answers stay public', async () => {
+  const body = JSON.stringify({ type: 2, data: { name: 'sandwich', options: [] } })
+  const answer = await (await worker.fetch(await signed(body), env)).json()
+  assert.equal(answer.data.flags & 64, 0)
+})
+
+test('a press of the release-pings button toggles the role and the answer is private', async () => {
+  const calls = []
+  const bot = createWorker({ discord: () => ({ addRole: async (...a) => (calls.push(a), 204), removeRole: async () => 204 }) })
+  const body = JSON.stringify({ type: 3, guild_id: 'folio', member: { user: { id: 'u1' }, roles: [] }, data: { custom_id: 'folio-release-pings' } })
+  const answer = await (await bot.fetch(await signed(body), { ...env, GUILD_ID: 'folio', ROLE_UPDATES: 'ping', DISCORD_BOT_TOKEN: 't' }, {})).json()
+  assert.equal(answer.type, 4)
+  assert.equal(answer.data.flags & 64, 64, 'ephemeral')
+  assert.match(answer.data.content, /pinged/)
+  assert.equal(calls.length, 1)
+  // A button this bot did not make is acknowledged and ignored.
+  const other = JSON.stringify({ type: 3, guild_id: 'folio', member: { user: { id: 'u1' }, roles: [] }, data: { custom_id: 'something-else' } })
+  assert.deepEqual(await (await bot.fetch(await signed(other), env, {})).json(), { type: 1 })
 })

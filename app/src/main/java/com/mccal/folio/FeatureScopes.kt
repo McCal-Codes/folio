@@ -25,6 +25,10 @@ internal object FeatureScopes {
 
 internal fun screenFor(wide: Boolean) = if (wide) FolioScreen.INNER else FolioScreen.COVER
 
+/** "Barrel by Aaron Ash, Cylinder by Reed Weichler" without the authors: the short credit on a Tweak Library row. */
+internal val TweakFeature.inspiredNames: String get() = inspiredBy.replace(AUTHOR, "")
+private val AUTHOR = Regex(" by [^,]+")
+
 /** A tweak-inspired feature: its page in Settings › Tweaks, with a main switch and per-screen overrides. */
 internal data class TweakFeature(
     val id: String, val name: String, val inspiredBy: String,
@@ -37,6 +41,8 @@ internal data class TweakFeature(
     val gate: FeatureGate? = null,
     /** More words Settings search finds it by, for a tweak people know by what it does ("Page Effects"). */
     @androidx.annotation.StringRes val keywords: Int? = null,
+    /** The credit line when this tweak includes someone's code, in place of "re-created from scratch". */
+    @androidx.annotation.StringRes val credit: Int? = null,
 )
 
 /**
@@ -64,15 +70,23 @@ internal val TweakFeatures = listOf(
     TweakFeature("tintNotifications", "Palette", "Velvet by NoisyFlake & HiMyNameisUbik", // english-only
         R.string.tweak_palette_detail,
         androidx.compose.material.icons.Icons.Rounded.Star, FolioColors.Value.Orange, { it.tintNotifications }, { m, v -> m.setTintNotifications(v) }, false),
-    TweakFeature("tintMedia", "Colored Albums", "ColorFlow by David Goldman", // english-only
+    TweakFeature("tintMedia", "Afterglow", "ColorFlow by David Goldman", // english-only
         R.string.tweak_colored_albums_detail,
-        androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true),
+        androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true, keywords = R.string.settings_keywords_afterglow),
     // The switch is on or off, and which effect it is lives on Flipbook's own page, beside the effects packages add
     // (Flipbook is their host, as Cylinder is for its scripts). Turning it on brings back the last one chosen; the
     // cube the first time, since that is the one Barrel was known for.
-    TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash", // english-only
+    TweakFeature("pageEffects", "Flipbook", "Barrel by Aaron Ash, Cylinder by Reed Weichler", // english-only
         R.string.tweak_flipbook_detail,
         androidx.compose.material.icons.Icons.Rounded.AutoStories, FolioColors.Value.Teal,
         { it.pageEffect != PageEffect.NONE },
         { m, v -> m.setPageEffectOn(v) }, false, FeatureGate.PAGE_EFFECTS, keywords = R.string.page_effects),
+    // Folio's fold animation. It was built in, so it defaults on and a save from before it counts as installed.
+    TweakFeature(DUET_ID, "Duet", "Duo Fold Live by joeconsorti", // english-only
+        R.string.tweak_duet_detail,
+        androidx.compose.material.icons.Icons.Rounded.MenuBook, FolioColors.Value.Indigo,
+        { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit,
+        keywords = R.string.settings_keywords_fold_animation),
 )
+
+internal const val DUET_ID = "duet"

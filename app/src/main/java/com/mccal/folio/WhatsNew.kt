@@ -122,7 +122,7 @@ internal object WhatsNew {
 /** iOS-style "What's New": the version's changes grouped under their headings, with a Continue button. */
 @androidx.compose.runtime.Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-internal fun WhatsNewSheet(onDismiss: () -> Unit) {
+internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val version = androidx.compose.runtime.remember { WhatsNew.releaseVersion(context) }
     val notes = androidx.compose.runtime.remember { WhatsNew.notes(context) }
@@ -155,6 +155,10 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                                     modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.SMALL.dp)) }
                             }
                         }
+                        // On a beta build: the testers' list, one tap away.
+                        onWhatToTest?.let { open ->
+                            FolioButton(stringResource(R.string.what_to_test), open, modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp).testTag("whats-new-what-to-test"))
+                        }
                     }
                 }
                 // Like a tweak's depiction in Sileo: new features first, each with a soft icon, a title and a line about it;
@@ -166,12 +170,12 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                 shownFeatures.forEachIndexed { index, note -> item(key = "feature-$index") { FeatureRow(note) } }
                 if (features.size > shownFeatures.size) item(key = "more-features") {
                     SheetGroup {
-                        DisclosureRow("${features.size - shownFeatures.size} more new features", open = false, tag = "whats-new-more") { showAllFeatures = true }
+                        DisclosureRow((features.size - shownFeatures.size).let { androidx.compose.ui.res.pluralStringResource(R.plurals.more_new_features, it, it) }, open = false, tag = "whats-new-more") { showAllFeatures = true }
                     }
                 }
                 if (others.isNotEmpty()) item(key = "fixes") {
                     SheetGroup {
-                        DisclosureRow("Fixes and Improvements", open = fixesOpen, count = others.size, tag = "whats-new-fixes") { fixesOpen = !fixesOpen }
+                        DisclosureRow(stringResource(R.string.fixes_and_improvements), open = fixesOpen, count = others.size, tag = "whats-new-fixes") { fixesOpen = !fixesOpen }
                         if (fixesOpen) others.forEach { note ->
                             MenuDivider()
                             androidx.compose.material3.Text(MarketText.inline(note.title?.let { "**$it:** ${note.detail}" } ?: note.detail, LocalAccent.current.ink),
@@ -181,7 +185,7 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                     }
                 }
                 // Version History: every earlier release, collapsed like iOS disclosure rows.
-                if (older.isNotEmpty()) item { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp)) { SheetGroupLabel("Version History") } }
+                if (older.isNotEmpty()) item { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp)) { SheetGroupLabel(stringResource(R.string.version_history)) } }
                 older.forEach { notes ->
                     item(key = "history-${notes.version}") {
                         val open = notes.version in expanded

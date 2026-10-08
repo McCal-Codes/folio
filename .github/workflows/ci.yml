@@ -33,6 +33,10 @@ jobs:
       # Before anything slow: a key in the repository is the one mistake that can't be taken back by deleting it.
       - name: No private keys in the repository
         run: bash tools/check-secrets.sh
+      # PERMISSIONS.md tells readers they can check it against the manifest. This is that check, both ways, so the
+      # document cannot go on promising a list the app no longer matches (docs/standards/site.md, WEB-3).
+      - name: PERMISSIONS.md lists exactly the permissions the manifest declares
+        run: python3 tools/check-permissions.py
       # Folio's own packages are the SDK's worked examples, so they have to pass the validator authors are told to
       # run. The Kotlin parser and the published schemas are separate lists, and this is what keeps them agreeing.
       - name: Folio's own packages pass the SDK validator

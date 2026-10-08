@@ -18,3 +18,26 @@ The Gradle dependency graph records the resolved artifact versions. Test and bui
 The default wallpaper and launcher icon are generated locally from project drawing code/resources. Installed application icons and widget content belong to their respective providers. Google Discover and Google search run in the installed Google application; that application and its content are not redistributed here.
 
 Private design-study images, copied reference files, device captures, and probe research are excluded from the public source package. Apple, Google, Android, Samsung, and other referenced names are trademarks of their respective owners; this project is unaffiliated with those companies.
+
+## Duet (the fold animation)
+
+Duet includes code adapted from these MIT-licensed projects. Details, commits and changes: `third_party/duet/PROVENANCE.md`.
+
+- Duo Fold Live, https://github.com/joeconsorti/duo-fold-live. Copyright (c) 2026 Duo Fold Live contributors; upstream portions keep their notices (chuspeeism/iphone-duo, MIT, jadon7). Classic Glass and the direction setting.
+- hingewave, https://github.com/Ant-lib/hingewave. Copyright (c) 2026 Ant-lib. The perspective projection and blur floor.
+- FoldFX, https://github.com/iamkeeler/FoldFX. Copyright (c) 2026 Gary Keeler. The style catalog.
+
+All three are under the MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

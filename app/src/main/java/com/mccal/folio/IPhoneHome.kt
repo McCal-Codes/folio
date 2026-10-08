@@ -45,29 +45,40 @@ internal fun resolveIPhoneApps(context: Context, apps: List<AppEntry>, messagesA
     fun category(name: String) = defaultFor(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, name))
     fun firstOf(vararg packages: String) = packages.firstNotNullOfOrNull { entryFor(it) }
     fun labelled(vararg labels: String) = labels.firstNotNullOfOrNull { l -> personal.firstOrNull { it.label.equals(l, ignoreCase = true) }?.id }
-    return buildMap {
-        fun put(app: IPhoneApp, id: String?) { if (id != null && id !in values) put(app, id) }
-        put(IPhoneApp.FACETIME, firstOf("com.google.android.apps.tachyon"))
-        put(IPhoneApp.CALENDAR, category(Intent.CATEGORY_APP_CALENDAR))
-        put(IPhoneApp.PHOTOS, category(Intent.CATEGORY_APP_GALLERY))
-        put(IPhoneApp.CAMERA, defaultFor(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)))
-        put(IPhoneApp.MAIL, category(Intent.CATEGORY_APP_EMAIL))
-        put(IPhoneApp.NOTES, firstOf(*CcControl.NOTE_APPS.toTypedArray()))
-        put(IPhoneApp.CLOCK, defaultFor(Intent(AlarmClock.ACTION_SHOW_ALARMS)))
-        put(IPhoneApp.MAPS, category(Intent.CATEGORY_APP_MAPS))
-        put(IPhoneApp.SIRI, defaultFor(Intent(Intent.ACTION_ASSIST)) ?: firstOf("com.google.android.apps.bard"))
-        put(IPhoneApp.TV, labelled("TV", "Apple TV") ?: firstOf("com.google.android.videos"))
-        put(IPhoneApp.HEALTH, firstOf("com.sec.android.app.shealth", "com.google.android.apps.fitness"))
-        put(IPhoneApp.REMINDERS, firstOf("com.samsung.android.app.reminder", "com.google.android.apps.tasks"))
-        put(IPhoneApp.SHORTCUTS, firstOf("com.samsung.android.app.routines"))
-        put(IPhoneApp.APP_STORE, firstOf("com.android.vending"))
-        put(IPhoneApp.WALLET, firstOf(*CcControl.WALLETS.toTypedArray()))
-        put(IPhoneApp.SETTINGS, defaultFor(Intent(Settings.ACTION_SETTINGS)))
-        put(IPhoneApp.PHONE, defaultFor(Intent(Intent.ACTION_DIAL)))
-        put(IPhoneApp.SAFARI, defaultFor(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE)))
-        put(IPhoneApp.MESSAGES, entryFor(messagesApp) ?: entryFor(android.provider.Telephony.Sms.getDefaultSmsPackage(context)))
-        put(IPhoneApp.MUSIC, category(Intent.CATEGORY_APP_MUSIC) ?: firstOf("com.spotify.music", "com.google.android.apps.youtube.music"))
-    }
+    // Each role gets the app that fills it, and an app fills one role only (see [assignRoles]).
+    return assignRoles(listOf(
+        IPhoneApp.FACETIME to (firstOf("com.google.android.apps.tachyon")),
+        IPhoneApp.CALENDAR to (category(Intent.CATEGORY_APP_CALENDAR)),
+        IPhoneApp.PHOTOS to (category(Intent.CATEGORY_APP_GALLERY)),
+        IPhoneApp.CAMERA to (defaultFor(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))),
+        IPhoneApp.MAIL to (category(Intent.CATEGORY_APP_EMAIL)),
+        IPhoneApp.NOTES to (firstOf(*CcControl.NOTE_APPS.toTypedArray())),
+        IPhoneApp.CLOCK to (defaultFor(Intent(AlarmClock.ACTION_SHOW_ALARMS))),
+        IPhoneApp.MAPS to (category(Intent.CATEGORY_APP_MAPS)),
+        IPhoneApp.SIRI to (defaultFor(Intent(Intent.ACTION_ASSIST)) ?: firstOf("com.google.android.apps.bard")),
+        IPhoneApp.TV to (labelled("TV", "Apple TV") ?: firstOf("com.google.android.videos")),
+        IPhoneApp.HEALTH to (firstOf("com.sec.android.app.shealth", "com.google.android.apps.fitness")),
+        IPhoneApp.REMINDERS to (firstOf("com.samsung.android.app.reminder", "com.google.android.apps.tasks")),
+        IPhoneApp.SHORTCUTS to (firstOf("com.samsung.android.app.routines")),
+        IPhoneApp.APP_STORE to (firstOf("com.android.vending")),
+        IPhoneApp.WALLET to (firstOf(*CcControl.WALLETS.toTypedArray())),
+        IPhoneApp.SETTINGS to (defaultFor(Intent(Settings.ACTION_SETTINGS))),
+        IPhoneApp.PHONE to (defaultFor(Intent(Intent.ACTION_DIAL))),
+        IPhoneApp.SAFARI to (defaultFor(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE))),
+        IPhoneApp.MESSAGES to (entryFor(messagesApp) ?: entryFor(android.provider.Telephony.Sms.getDefaultSmsPackage(context))),
+        IPhoneApp.MUSIC to (category(Intent.CATEGORY_APP_MUSIC) ?: firstOf("com.spotify.music", "com.google.android.apps.youtube.music")),
+    ))
+}
+
+/**
+ * Gives each role its app, in order, skipping a role with no app and an app already given to an earlier role. A plain
+ * function, not a local one inside the builder: a local `put` of the same name called itself and overflowed the stack the
+ * first time any role found an app, which is what made Arrange Like iPhone crash.
+ */
+internal fun assignRoles(candidates: List<Pair<IPhoneApp, String?>>): Map<IPhoneApp, String> {
+    val roles = LinkedHashMap<IPhoneApp, String>()
+    for ((role, id) in candidates) if (id != null && id !in roles.values) roles[role] = id
+    return roles
 }
 
 /**
