@@ -55,6 +55,7 @@ internal object PerfLog {
     private var tick = 0
     private val samples = ArrayList<PerfSample>()
     @Volatile private var histogram = FrameHistogram()
+    @Volatile private var scenarios = PerfScenarios()
     private var clock = PerfContext({ SystemClock.elapsedRealtime() })
     private var header: PerfHeader? = null
 
@@ -72,7 +73,7 @@ internal object PerfLog {
         if (mutable.value.running) return
         val application = appContext.applicationContext as Application
         app = application
-        samples.clear(); histogram = FrameHistogram(); tick = 0; mem = IntArray(3)
+        samples.clear(); histogram = FrameHistogram(); scenarios = PerfScenarios(); tick = 0; mem = IntArray(3)
         startedReal = SystemClock.elapsedRealtime()
         startedAtText = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
         val power = application.getSystemService(PowerManager::class.java)
@@ -113,6 +114,10 @@ internal object PerfLog {
     /** Counts a fold, unfold or fold animation in the report's context line. */
     fun noteFold() = clock.noteFold()
 
+    /** The start and end of something whose smoothness is worth knowing on its own: the frames drawn in between are counted for it too. Cheap and safe to call when no run is going. */
+    fun begin(s: PerfScenario) = scenarios.begin(s)
+    fun end(s: PerfScenario) = scenarios.end(s)
+
     /**
      * The report as a plain-text share: only EXTRA_TEXT. No file, no stream and no selector, so the chooser lists every
      * app that takes text (a mail selector in the chooser once made "Email a Report" find no app).
@@ -124,7 +129,7 @@ internal object PerfLog {
     /** The report so far (or the last finished one), as plain text. */
     @Synchronized fun reportText(): String {
         val h = header ?: return "Folio performance report\nNo recording has been made yet.\n"
-        return PerfReport.build(h, samples.toList(), histogram)
+        return PerfReport.build(h, samples.toList(), histogram, scenarios)
     }
 
     private val sampler = object : Runnable {
@@ -223,6 +228,8 @@ internal object PerfLog {
     private val frames = Window.OnFrameMetricsAvailableListener { _, metrics, _ ->
         if (metrics.getMetric(FrameMetrics.FIRST_DRAW_FRAME) == 1L) return@OnFrameMetricsAvailableListener
         val total = metrics.getMetric(FrameMetrics.TOTAL_DURATION)
-        histogram.record(total, PerfMath.isJank(total, metrics.getMetric(FrameMetrics.DEADLINE), fallbackBudgetNs))
+        val janky = PerfMath.isJank(total, metrics.getMetric(FrameMetrics.DEADLINE), fallbackBudgetNs)
+        histogram.record(total, janky)
+        scenarios.record(total, janky)
     }
 }

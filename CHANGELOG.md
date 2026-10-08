@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.9] - Unreleased
 
 ### Added
+- **Performance log by what Folio was doing:** besides the whole run, the report gives the frame timing (p50, p95, p99 and janky frames) of the fold animation, Home swipes, folders opening and widget resizing on their own, so a slow one shows up by name.
 - **Copy Diagnostics beside Share:** Settings › Advanced › Diagnostics has Copy Diagnostics next to Share Diagnostics, so the report can be pasted into a form or a chat without going through a share sheet. It is the same text a shared report holds, and nothing leaves your phone.
 - **Capabilities and Recent Activity:** Settings › Advanced › Diagnostics shows what Folio can use on this phone (Standard, Notification access and Accessibility, each On or Off, and what it is for), with a button to Android's settings for the ones that are off, and Folio's own recent activity, newest first, with a Failed filter for problems it carried on from. Both are read-only and stay on the phone.
 - **Suggestions, any size:** the Suggestions widget now goes from one cell to the whole grid. Its size menu adds 1 × 1, Row (four across) and Column (four down), and the icons keep to the size of your Home icons instead of stretching to fill the card.
