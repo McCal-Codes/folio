@@ -771,7 +771,8 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     Row(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SNUG.dp)) {
         for (tab in MarketTab.entries) {
             Column(
-                Modifier.weight(1f).marketTab(tab, onSelect).padding(vertical = FolioSpace.TINY.dp),
+                Modifier.weight(1f).marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
         }
@@ -818,7 +819,7 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                     .background(if (on) LocalAccent.current.fill else Color.Transparent)
-                    .marketTab(tab, onSelect).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 11.dp),
+                    .marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
