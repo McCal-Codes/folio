@@ -1912,4 +1912,5 @@
     <string name="bridge_outcome_ran">已运行</string>
     <string name="bridge_outcome_fell_back">改用了标准方式</string>
     <string name="bridge_outcome_failed">失败，已改用标准方式</string>
+    <string name="market_install_put_back">%1$s 未能完成安装，Folio 已恢复原状</string>
 </resources>

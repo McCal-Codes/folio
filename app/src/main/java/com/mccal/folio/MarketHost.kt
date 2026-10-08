@@ -157,6 +157,15 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
     // Added from the Market or from Settings' Tweak Library: either way it's in installedTweaks.
     override fun hasTweak(id: String): Boolean = id in launcher.state.installedTweaks
 
+    // Read ahead of the change, so a kill between the change and the installer noting its snapshot can still put it back.
+    // A wallpaper's snapshot comes from the picture store as it is applied, so that one is not recorded ahead of time.
+    override fun snapshotBefore(change: PackageChange): String? = when (change) {
+        is PackageChange.Theme -> FolioTheme.of(launcher.state, PREVIOUS_THEME).toJson().toString()
+        is PackageChange.Tweaks -> tweakSnapshot(launcher.state, change.bundle)
+        is PackageChange.PageEffect -> ""
+        else -> null
+    }
+
     override fun apply(change: PackageChange): String = when (change) {
         is PackageChange.Theme -> {
             val theme = FolioTheme.fromJson(change.json) ?: error("that theme file isn't one Folio can read")

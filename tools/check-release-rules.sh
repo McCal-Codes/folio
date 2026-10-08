@@ -3,13 +3,17 @@
 #
 #   bash tools/check-release-rules.sh [base-ref]        # default base: origin/main
 #
-# Five rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026; REL-4b
+# Six rules. REL-7 and REL-13 were both broken in the week the standard was written; REL-5 on 28 Sep 2026; REL-4b
 # became "the same app" on 2 Oct 2026, so a fix to a tool or a note no longer waits a whole release:
 #
 #   REL-4b  A stable ships the same app as the last beta of its version: what goes into the APK matches that beta's
 #           tag, apart from the version, the roadmap and the notes.
 #
 #   REL-14b A stable's own roadmap section has no item still Building or Planned: each is done or moved.
+#
+#   REL-31  The roadmap tells the truth about tags (only checked when roadmap.json changes): a release section whose
+#           items are all done names a release whose stable tag exists, and an item marked beta belongs to a release that
+#           has a beta tag. "Shipped" means tagged, not merged.
 #
 #   REL-5   No AI attribution: no co-author, credit line or robot footer in a commit or the description, and no
 #           branch named after a tool. Not waivable.
@@ -199,6 +203,39 @@ else
 $(echo "$moved" | head -5 | sed 's/^/          /')
         Put it out as another beta first (REL-16), so what goes out stable has been out as a beta."
         fi
+    fi
+fi
+
+# REL-31: the roadmap says only what the tags say. Every install reads roadmap.json from `main`, so an item marked done
+# for a release nobody can install, or in a beta that was never tagged, is a promise the page cannot keep.
+if git diff --quiet "$merge_base..HEAD" -- app/src/main/assets/roadmap.json; then
+    skip "REL-31 roadmap.json is unchanged"
+elif has_label release-exception; then
+    skip "REL-31 waived by the release-exception label"
+else
+    untagged=$(git show HEAD:app/src/main/assets/roadmap.json 2>/dev/null | python3 -c '
+import json, subprocess, sys
+tags = set(subprocess.run(["git", "tag", "--list"], capture_output=True, text=True).stdout.split())
+try:
+    data = json.load(sys.stdin)
+except ValueError:
+    print("(roadmap.json is not valid JSON)"); sys.exit(0)
+for s in data.get("sections", []):
+    release = s.get("release")
+    items = s.get("items", [])
+    if not release or not items:
+        continue
+    if all(i.get("status") == "done" for i in items) and "v" + release not in tags:
+        print("%s: every item is done but there is no v%s tag" % (release, release))
+    if any(i.get("beta") for i in items) and not any(t.startswith("v" + release + "-beta.") for t in tags):
+        print("%s: an item is marked beta but there is no v%s-beta.N tag" % (release, release))
+')
+    if [[ -z "$untagged" ]]; then
+        pass "REL-31 the roadmap's done and beta marks match the tags"
+    else
+        fail "REL-31 the roadmap says more than the tags do:
+$(echo "$untagged" | head -6 | sed 's/^/          /')
+        Tag the release (or its beta) first, or mark the items building or planned until it is."
     fi
 fi
 

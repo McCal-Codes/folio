@@ -241,6 +241,14 @@ internal class MarketSession(
     }
 
     /**
+     * Called as Home starts: if the last process died part way through an install, what it had applied is put back.
+     * Returns the package that did not finish, so Home can say so.
+     */
+    fun recoverInterrupted(): PackageInstaller.Interrupted? = installer.recoverInterrupted()?.also {
+        Diagnostics.event("Market: put back an install that did not finish: ${it.id}")
+    }
+
+    /**
      * Called when Folio starts after a crash: if a package was being applied, it's turned off rather than left to
      * break Home again. Returns the package that was turned off, so the store can explain itself.
      */
