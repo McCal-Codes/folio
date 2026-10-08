@@ -4,6 +4,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -76,5 +77,18 @@ class IconActionsTest {
         val plain = decodeLayoutBackup(encodeLayoutBackup(base, emptyList(), "phone"), emptyList(), emptyList(), "other")
         assertTrue(plain.iconActions.isEmpty())
         assertFalse(JSONObject(encodeLayoutBackup(base, emptyList(), "phone")).has("iconActions"))
+    }
+
+    @Test fun `a save with icon actions is written as schema 10 and one without stays schema 9`() {
+        assertEquals(9, stateSchemaFor(LauncherState()))
+        assertEquals(10, stateSchemaFor(LauncherState(iconActions = mapOf("a" to IconActions(up = ActionRef("TORCH"))))))
+        assertEquals("the newest schema this build reads", 10, STATE_SCHEMA)
+    }
+
+    @Test fun `icon actions load from a save, and a schema newer than this build reads is still refused`() {
+        val saved = LayoutLoadTest().schema8Fixture().put("iconActions", iconActionsToJson(mapOf(mail to torch)))
+        assertEquals(torch, decodeLauncherState(saved.toString(), legacyRaw = null).iconActions[mail])
+        // An older build runs this same check against a schema 10 save: its newest is 9, so it refuses the file visibly.
+        assertThrows(Exception::class.java) { decodeLauncherState(saved.put("schema", STATE_SCHEMA + 1).toString(), legacyRaw = null) }
     }
 }

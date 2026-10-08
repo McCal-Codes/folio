@@ -405,8 +405,19 @@ fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int): Int =
     (if (setting > 0) setting else listOf(fitCompact, fitExpanded).filter { it > 0 }.minOrNull() ?: BASE_APP_ROWS)
         .coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
 
-/** Saved-state schema. 9: 36-cell Home pages (More rows); 6–8 had 24. */
-const val STATE_SCHEMA = 9
+/**
+ * The newest saved-state schema this build reads. 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
+ * A save is written with [stateSchemaFor], not always with this number.
+ */
+const val STATE_SCHEMA = 10
+
+/**
+ * The schema a save is written with: the lowest one that holds everything in it. A phone that uses nothing from schema 10
+ * keeps writing 9, so an older Folio still reads it. A phone with icon actions writes 10, and an older Folio then refuses
+ * the file and says so (the damaged-state path) instead of reading it, dropping the actions on its next save, and losing
+ * them without a word when the newer Folio comes back.
+ */
+internal fun stateSchemaFor(s: LauncherState) = if (s.iconActions.isNotEmpty()) 10 else 9
 
 /**
  * The schema that brought More rows. A save older than this was arranged in four rows, and keeps them; anything
@@ -1473,7 +1484,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("slot", restore.slot).put("provider", restore.providerComponent).put("userSerial", restore.userSerial)
             .put("title", restore.title).put("profileLabel", restore.profileLabel).put("work", restore.isWork)
             .put("sourceScope", restore.sourceScope)) } }
-        val data = JSONObject().put("schema", STATE_SCHEMA).put("pinned", JSONArray(s.order)).put("homeSlots", JSONArray(s.homeSlots))
+        val data = JSONObject().put("schema", stateSchemaFor(s)).put("pinned", JSONArray(s.order)).put("homeSlots", JSONArray(s.homeSlots))
             .put("leadingSlots", JSONArray(s.leadingSlots)).put("dock", JSONArray(s.dock))
             .put("widgets", widgets).put("labels", s.labels)
             .put("folders", folders)
