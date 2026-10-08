@@ -49,6 +49,8 @@ by an earlier start): Home's apps in at 53 ms (was 139), fully drawn 120 ms (was
 ### Measuring
 
 - **PRF-1 MUST** measure before optimising, and put the before and after numbers in the PR.
+  A change behind a closed `FeatureGate` that nobody can reach yet may merge without them, if its PR says the numbers are
+  still to come; they are then required in the PR that opens the gate (REL-4a). A change everyone runs always needs them.
 - **PRF-2 MUST NOT** draw performance conclusions from a debug build. Use the `fast` build (R8, release-like) or
   release.
 - **PRF-3 MUST** give a new critical journey baseline profile coverage in `StartupProfile.kt` (or a sibling test) and
