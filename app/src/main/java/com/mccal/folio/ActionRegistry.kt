@@ -47,9 +47,9 @@ internal class ActionSpec(
     val needs: ActionNeeds = ActionNeeds.NONE,
     /** The lowest Android API level this works on; 0 for all. */
     val minSdk: Int = 0,
-    val run: (Context, Map<String, String>) -> Boolean,
     /** The picker section this belongs to (`open`, `media`, `volume`, `panel`, `system`); empty for the original actions. */
     val group: String = "",
+    val run: (Context, Map<String, String>) -> Boolean,
 )
 
 /** The answer to "can this action run right now", in the order a person would fix it. Always a state, never an error. */
