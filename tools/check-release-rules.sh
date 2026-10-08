@@ -12,8 +12,9 @@
 #   REL-14b A stable's own roadmap section has no item still Building or Planned: each is done or moved.
 #
 #   REL-31  The roadmap tells the truth about tags (only checked when roadmap.json changes): a release section whose
-#           items are all done names a release whose stable tag exists, and an item marked beta belongs to a release that
-#           has a beta tag. "Shipped" means tagged, not merged.
+#           items are all done names a release whose stable tag exists (except the stable this very pull request is
+#           bumping, whose tag follows the merge), and an item marked beta says which beta it is in ("inBeta": N) and that
+#           beta's tag exists. "Shipped" means tagged, not merged.
 #
 #   REL-5   No AI attribution: no co-author, credit line or robot footer in a commit or the description, and no
 #           branch named after a tool. Not waivable.
@@ -213,8 +214,12 @@ if git diff --quiet "$merge_base..HEAD" -- app/src/main/assets/roadmap.json; the
 elif has_label release-exception; then
     skip "REL-31 waived by the release-exception label"
 else
+    # The stable being bumped in this very pull request: its tag follows the merge (REL-13), so it is not asked for yet.
+    bumping=""
+    if [[ "$version_changed" == yes && "$new_version" != *-* ]]; then bumping=$(echo "${new_version%%-*}" | cut -d. -f1-3); fi
     untagged=$(git show HEAD:app/src/main/assets/roadmap.json 2>/dev/null | python3 -c '
 import json, subprocess, sys
+bumping = sys.argv[1]
 tags = set(subprocess.run(["git", "tag", "--list"], capture_output=True, text=True).stdout.split())
 try:
     data = json.load(sys.stdin)
@@ -225,11 +230,17 @@ for s in data.get("sections", []):
     items = s.get("items", [])
     if not release or not items:
         continue
-    if all(i.get("status") == "done" for i in items) and "v" + release not in tags:
+    if all(i.get("status") == "done" for i in items) and release != bumping and "v" + release not in tags:
         print("%s: every item is done but there is no v%s tag" % (release, release))
-    if any(i.get("beta") for i in items) and not any(t.startswith("v" + release + "-beta.") for t in tags):
-        print("%s: an item is marked beta but there is no v%s-beta.N tag" % (release, release))
-')
+    for i in items:
+        if not i.get("beta"):
+            continue
+        n = i.get("inBeta")
+        if not isinstance(n, int) or n < 1:
+            print("%s: \"%s\" is marked beta but not which one (add \"inBeta\": N)" % (release, i.get("title")))
+        elif "v%s-beta.%d" % (release, n) not in tags:
+            print("%s: \"%s\" is marked in beta %d but there is no v%s-beta.%d tag" % (release, i.get("title"), n, release, n))
+' "$bumping")
     if [[ -z "$untagged" ]]; then
         pass "REL-31 the roadmap's done and beta marks match the tags"
     else
