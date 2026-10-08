@@ -66,7 +66,7 @@ internal val LocalStackedApps = staticCompositionLocalOf { emptySet<String>() }
 /** Swipe up (app panel) or down (icon stack) on an icon; taps and long-presses pass through. */
 internal fun Modifier.iconSwipes(onSwipeUp: (() -> Unit)?, onSwipeDown: (() -> Unit)?): Modifier =
     if (onSwipeUp == null && onSwipeDown == null) this else pointerInput(onSwipeUp, onSwipeDown) {
-        val threshold = 28.dp.toPx()
+        val threshold = IconGesture.THRESHOLD_DP.dp.toPx()
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             while (true) {
@@ -74,9 +74,12 @@ internal fun Modifier.iconSwipes(onSwipeUp: (() -> Unit)?, onSwipeDown: (() -> U
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
                 if (!change.pressed || change.isConsumed) break
                 val d = change.position - down.position
-                if (onSwipeUp != null && -d.y > threshold && abs(d.x) < -d.y * .6f) { change.consume(); onSwipeUp(); break }
-                if (onSwipeDown != null && d.y > threshold && abs(d.x) < d.y * .6f) { change.consume(); onSwipeDown(); break }
-                if (abs(d.y) > threshold || abs(d.x) > threshold) break
+                when (IconGesture.classify(d.x, d.y, threshold, up = onSwipeUp != null, down = onSwipeDown != null)) {
+                    IconSwipe.UP -> { change.consume(); onSwipeUp?.invoke(); break }
+                    IconSwipe.DOWN -> { change.consume(); onSwipeDown?.invoke(); break }
+                    IconSwipe.CANCEL -> break
+                    IconSwipe.PENDING -> Unit
+                }
             }
         }
     }
