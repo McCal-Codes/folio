@@ -16,8 +16,8 @@ import android.view.KeyEvent
  * that into a trail line and, for accessibility, a notice.
  */
 internal object ActionSpecs {
-    /** Android's media play/pause global action (API 36). Used by value so the call compiles against any SDK. */
-    private const val GLOBAL_ACTION_MEDIA_PLAY_PAUSE = 20
+    /** Android's media play/pause global action (API 36). The SDK's own constant is inlined at compile time (compileSdk is 36). */
+    private const val GLOBAL_ACTION_MEDIA_PLAY_PAUSE = android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_MEDIA_PLAY_PAUSE
 
     val all: List<ActionSpec> by lazy {
         listOf(
