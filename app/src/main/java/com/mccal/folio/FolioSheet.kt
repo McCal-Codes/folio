@@ -43,6 +43,10 @@ import androidx.compose.ui.unit.dp
  * until the phone restarted. The timeout here puts the overlay in place even when no frame ever arrived.
  */
 @Composable
+internal fun rememberEntrance(spring: Pair<Float, Float>, from: Float = 0f, to: Float = 1f) =
+    rememberEntrance(stiffness = spring.second, dampingRatio = spring.first, from = from, to = to)
+
+@Composable
 internal fun rememberEntrance(stiffness: Float, dampingRatio: Float = 1f, from: Float = 0f, to: Float = 1f):
     androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D> {
     val reduceMotion = LocalReduceMotion.current
@@ -146,7 +150,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                 }
             }
         }
-        val slide = rememberEntrance(stiffness = 500f, from = 1f, to = 0f)
+        val slide = rememberEntrance(FolioMotion.pick(old = 1f to 500f, new = FolioMotion.Sheet), from = 1f, to = 0f)
         // Once the page covers Home, drawing and blurring Home is work nobody sees, and it shows up as stutter
         // while you're moving between Folio and Android's permission screens. It comes back the moment it's needed.
         val covering = slide.value == 0f
@@ -219,7 +223,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = dismissOnBack)) {
         FolioDialogWindow(dim = 0f)
-        val appear = rememberEntrance(stiffness = 520f)
+        val appear = rememberEntrance(FolioMotion.pick(old = 1f to 520f, new = FolioMotion.Sheet))
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .35f))
                 .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismissRequest))
@@ -253,7 +257,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = .3f)
-        val appear = rememberEntrance(stiffness = 900f, dampingRatio = .85f)
+        val appear = rememberEntrance(FolioMotion.pick(old = .85f to 900f, new = FolioMotion.Menu))
         val base = MaterialTheme.typography
         // The accent's ink, not its fill: the alert is always dark, and a fill-weight color on its grey fails
         // contrast (iOS blue measures 3.82:1 there).

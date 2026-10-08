@@ -101,7 +101,14 @@ internal enum class FeatureGate(
      * rows on a page with a widget and on one without (issue #13). It changes how every stacked layout looks and
      * retires Widget Size, so supporters try it first; opening the gate is what shipping it means.
      */
-    WIDGETS_FILL_ROWS("widgetsFillRows", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    WIDGETS_FILL_ROWS("widgetsFillRows", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * The 0.6.9 motion pass: sheets, menus and alerts settle on shared springs ([FolioMotion.Sheet], [FolioMotion.Menu])
+     * instead of the numbers each one picked for itself. A small change in feel, so it goes to supporters and Folio
+     * Dev first to say whether it reads as smoother. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
+     */
+    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

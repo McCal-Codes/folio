@@ -195,5 +195,20 @@ internal object FolioMotion {
     val Quick = .8f to 700f
     /** Firm, no-bounce snaps (dismissals). */
     val Firm = 1f to 700f
+
+    // The 0.6.9 motion pass (docs/research-motion-0-6-9.md). Damping never goes below 0.7: that is about 4.6% overshoot,
+    // the most a settle that starts with the finger's speed should have, and Apple calls more than that exaggerated.
+    /** Full pages and panels sliding in from an edge: soft, no visible overshoot, about 0.32 s. */
+    val Sheet = .9f to 380f
+    /** Menus opening from the pressed object: a hint of life, about 0.25 s. Close them on [Firm]. */
+    val Menu = .78f to 650f
+    /** A settle that starts with the finger's speed (a flick, a drop): visibly passes the line and eases back. Never for a tap. */
+    val Bounce = .7f to 480f
+
+    /** True while the 0.6.9 motion pass is on for this phone ([FeatureGate.MOTION_V2]); set once when the app starts. */
+    @Volatile var v2 = false
+
+    /** The new spring when the motion pass is on, and the numbers the caller used before it when it is not. */
+    fun pick(old: Pair<Float, Float>, new: Pair<Float, Float>) = if (v2) new else old
     fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
 }
