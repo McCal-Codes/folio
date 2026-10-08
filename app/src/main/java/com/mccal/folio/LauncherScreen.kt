@@ -677,12 +677,14 @@ fun LauncherScreen(
             val dockOpenPlace = drag.active && drag.source?.appId != null && drag.source?.target !is DropTarget.Dock &&
                 state.dock.size < MAX_DOCK_SLOTS && state.dock.none { it == null }
             val shownDock = if (dockOpenPlace) state.dock + null else state.dock
+            val fillRows = remember(launcherActivity) { FeatureGate.WIDGETS_FILL_ROWS.isOpen(launcherActivity) }
             val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
                 // The rail's round search/back controls only show without the search pill or on Discover.
                 railControls = !state.searchPill || pager.currentPage < 0, classScale = classScale, appRows = homeAppRows,
+                widgetsFillRows = fillRows,
                 foldAtCenter = hinge?.vertical == true, fillSpace = state.homeRows == 0)
             // Half folded like a laptop: the status (information) stays above the hinge and the dock (controls) goes
             // below it, like Folio's other fold-aware panels; the dock scrolls if the lower half is short.
@@ -1253,7 +1255,12 @@ fun LauncherScreen(
                         onWallpaper = { value ->
                             if (value != state.systemWallpaper) { model.setSystemWallpaper(value); launcherActivity.applyWallpaperWindow(value) }
                         },
-                        onFinish = onFinishFirstRun, state = state, model = model)
+                        onFinish = onFinishFirstRun, state = state, model = model,
+                        // The quiet step for a phone with Shizuku or root: setup closes and Settings opens on System Bridge.
+                        onOpenBridge = {
+                            customizationPage = CustomizationPage.SYSTEM_BRIDGE
+                            sheet = sheetForAppIcon(CustomizationPage.SYSTEM_BRIDGE, customizationPage, MarketAccess.isOpen(launcherActivity))
+                        })
                 }
             }
             if (sheet == "widgets") OwnMethod {

@@ -1106,6 +1106,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
     fun setExperienceProfile(profile: ExperienceProfile) = updateSettings(soon = false) { it.withProfile(profile) }
+    /** Setup's first question: where you are coming from (see [StartingPoint]). */
+    internal fun setStartingPoint(point: StartingPoint) = updateSettings(soon = false) { it.withStartingPoint(point) }
     fun setHoldDelay(value: HoldDelay) = updateSettings(soon = false) { it.copy(holdDelay = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
     fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }

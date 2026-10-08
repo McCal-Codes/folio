@@ -13,6 +13,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,7 +59,7 @@ private data class OnboardingPage(
 @Composable
 internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onShadeSetup: () -> Unit,
     systemWallpaper: Boolean, onWallpaper: (Boolean) -> Unit, onFinish: () -> Unit,
-    state: LauncherState? = null, model: LauncherModel? = null) {
+    state: LauncherState? = null, model: LauncherModel? = null, onOpenBridge: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("setup_experience", Context.MODE_PRIVATE) }
     var tick by remember { mutableIntStateOf(0) }
@@ -68,32 +70,32 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Like iPhone's Setup Assistant: only what makes Folio work, one question per screen. Everything optional
     // (contacts, Bluetooth, Do Not Disturb, brightness, the side key) is asked where it's used, and all of it is
     // listed in Settings › Privacy & Permissions.
-    val all = remember {
+    // Onboarding C (McCal, 7 Oct 2026): welcome, starting point, a navigation page only when Android is chosen, Make Folio Your
+    // Home, a quiet step only when Shizuku or a root manager is already on the phone, and the last page.
+    val androidStart = state?.startingPoint() == StartingPoint.ANDROID
+    val optionalAccess = remember { OptionalAccess.found { pkg -> runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess } }
+    val all = remember(androidStart, optionalAccess) {
         listOf(
             OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, context.getString(R.string.welcome_to_folio),
                 context.getString(R.string.onboarding_welcome_detail),
                 action = context.getString(R.string.continue_button), optional = false, appIcon = true),
+            // Where you are coming from: how Folio starts. Skipping keeps today's defaults, which are the iPhone starting point.
+            OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, context.getString(R.string.where_are_you_coming_from),
+                context.getString(R.string.starting_point_detail), optional = false),
+            OnboardingPage("nav", Icons.Rounded.Navigation, FolioColors.Value.Blue, context.getString(R.string.onboarding_nav_title), "", optional = false),
             OnboardingPage("home", Icons.Rounded.Home, FolioColors.Value.Blue, context.getString(R.string.make_folio_your_home),
                 context.getString(R.string.onboarding_home_detail),
                 action = context.getString(R.string.choose_home_app), done = { isDefaultHome }, onAction = onMakeDefault),
-            // Which of Folio's iPhone-style pieces to start with. Skipping keeps today's defaults, which are the Folio profile.
-            OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, context.getString(R.string.how_should_folio_feel),
-                context.getString(R.string.how_should_folio_feel_detail), optional = false),
-            OnboardingPage("notifications", Icons.Rounded.Notifications, FolioColors.Value.RedLight, context.getString(R.string.notifications_title),
-                context.getString(R.string.onboarding_notifications_detail),
-                uses = listOf(context.getString(R.string.onboarding_use_island), context.getString(R.string.onboarding_use_quick_reply), context.getString(R.string.onboarding_use_badges)),
-                action = context.getString(R.string.allow_access), done = { IslandListenerService.hasAccess(context) },
-                onAction = { open(IslandListenerService.accessSettingsIntent(context)) }),
-            OnboardingPage("gestures", Icons.Rounded.SwipeDown, FolioColors.Value.Green, context.getString(R.string.pull_down_for_more),
-                context.getString(R.string.onboarding_gestures_detail),
-                uses = listOf(context.getString(R.string.onboarding_use_panels), context.getString(R.string.onboarding_use_everywhere)),
-                action = context.getString(R.string.turn_on_button), done = { SystemShadeAccessibilityService.isConnected() }, onAction = onShadeSetup),
-            OnboardingPage("look", Icons.Rounded.Wallpaper, FolioColors.Value.CyanLight, context.getString(R.string.choose_a_look),
-                context.getString(R.string.onboarding_look_detail),
-                optional = false),
+            OnboardingPage("adv", Icons.Rounded.Tune, FolioColors.Value.Indigo, context.getString(R.string.onboarding_adv_title), "", optional = false),
             OnboardingPage("done", Icons.Rounded.CheckCircle, FolioColors.Value.Green, context.getString(R.string.youre_all_set),
                 context.getString(R.string.a_few_things_to_try), action = context.getString(R.string.get_started), optional = false),
-        ).filter { page -> page.key in setOf("welcome", "feel", "look", "done") || !page.done() }
+        ).filter { page ->
+            when (page.key) {
+                "nav" -> androidStart
+                "adv" -> optionalAccess.isNotEmpty()
+                else -> page.key in setOf("welcome", "feel", "done") || !page.done()
+            }
+        }
     }
     // Resume by page key: the page list changes between versions (and skips what's already allowed), so an index
     // saved by an older Folio could land on the wrong page.
@@ -102,6 +104,15 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     fun go(to: Int) { index = to.coerceIn(0, all.lastIndex); prefs.edit().remove(STEP).putString(STEP_KEY, all[index].key).apply() }
     fun finish() { prefs.edit().remove(STEP).remove(STEP_KEY).apply(); onFinish() }
     BackHandler(index > 0) { go(index - 1) }
+    var navChoice by rememberSaveable { mutableStateOf(NavChoice.KEEP) }
+    // The navigation page's choice takes effect when it is confirmed. Folio never changes how Android navigates.
+    fun applyNavigation() {
+        when (navChoice) {
+            NavChoice.KEEP -> Unit
+            NavChoice.BIG -> { model?.setButtonBar(true); if (!SystemShadeAccessibilityService.isConnected()) onShadeSetup() }
+            NavChoice.SYSTEM -> open(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
+        }
+    }
     val page = all[index]
     val reduceMotion = LocalReduceMotion.current
     val done = remember(tick, page) { page.done() }
@@ -155,13 +166,13 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                         }
                     }
                     if (p.key == "done") {
-                        val gestures = remember(tick) { SystemShadeAccessibilityService.isConnected() }
                         val tips = listOf(
                             Icons.Rounded.TouchApp to context.getString(R.string.onboarding_tip_hold_app),
                             Icons.Rounded.Search to context.getString(R.string.swipe_down_on_home_for_spotlight),
-                            Icons.Rounded.SwipeDown to if (gestures) context.getString(R.string.onboarding_tip_pull_down)
-                                else context.getString(R.string.onboarding_tip_turn_on_gestures),
                             Icons.Rounded.Settings to context.getString(R.string.onboarding_tip_settings),
+                            Icons.Rounded.SwipeUp to context.getString(
+                                if (NavigationTip.of(remember(tick) { gestureNavigation(context) }) == NavigationTip.GESTURES) R.string.onboarding_tip_nav_gestures
+                                else R.string.onboarding_tip_nav_buttons),
                         )
                         SheetGroup(Modifier.padding(top = FolioSpace.XL.dp)) {
                             tips.forEachIndexed { n, (icon, tip) ->
@@ -174,21 +185,11 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                             }
                         }
                     }
-                    if (p.key == "feel" && state != null && model != null) {
-                        val chosen = state.profile()
-                        Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XXL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-                            listOf(ExperienceProfile.FOLIO, ExperienceProfile.ANDROID_STYLE).forEach { profile ->
-                                IosChip(selected = chosen == profile, onClick = { model.setExperienceProfile(profile) },
-                                    label = { Text(stringResource(profile.label)) }, modifier = Modifier.weight(1f).testTag("profile-${profile.name.lowercase()}"))
-                            }
-                        }
-                        Text(stringResource(chosen.detail), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp, textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = FolioSpace.LARGE.dp))
-                    }
-                    if (p.key == "look") Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XXL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-                        IosChip(selected = systemWallpaper, onClick = { onWallpaper(true) }, label = { Text(stringResource(R.string.my_wallpaper)) }, modifier = Modifier.weight(1f))
-                        IosChip(selected = !systemWallpaper, onClick = { onWallpaper(false) }, label = { Text(stringResource(R.string.folio_dunes)) }, modifier = Modifier.weight(1f))
-                    }
+                    if (p.key == "feel" && state != null && model != null) StartingPointPage(state, model, tick, onShadeSetup,
+                        replay = SetupReplay.active, onKeep = { finish() })
+                    if (p.key == "nav") NavigationPage(navChoice, { navChoice = it }, tick)
+                    if (p.key == "adv") AdvancedStep(optionalAccess, onOpenBridge = { finish(); onOpenBridge() })
+                    if (p.key == "done") FinishSettingUp(tick, systemWallpaper, onWallpaper, onShadeSetup, ::open)
                     if (done && p.onAction != null) Row(Modifier.padding(top = FolioSpace.XL.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green)
                         Spacer(Modifier.width(6.dp))
@@ -198,6 +199,9 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             }
             // Bottom: primary action (or Continue once done), Not Now, and progress dots.
             val primary = when {
+                // A phone that is set up some other way (the person's own mix) keeps it: nothing is applied until a choice is tapped.
+                page.key == "feel" && state != null -> state.startingPoint()?.let { context.getString(R.string.use_starting_point, context.getString(it.label)) }
+                    ?: context.getString(R.string.onboarding_keep_things_as_they_are)
                 page.onAction != null && !done -> page.action ?: context.getString(R.string.continue_button)
                 page.key == "done" -> page.action ?: context.getString(R.string.get_started)
                 else -> context.getString(R.string.continue_button)
@@ -206,6 +210,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 .clickable {
                     when {
                         page.key == "done" -> finish()
+                        page.key == "nav" -> { applyNavigation(); go(index + 1) }
                         page.onAction != null && !done -> page.onAction.invoke()
                         else -> go(index + 1)
                     }
@@ -229,3 +234,180 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
 
 private const val STEP = "onboardingStep"
 private const val STEP_KEY = "onboardingPage"
+
+/**
+ * Where are you coming from: iPhone or Android, each with a picture of what it sets, then how you get around. "Not sure?"
+ * shows both pictures side by side. Nothing here is locked in: it is a first set of ordinary settings, changed later in Settings.
+ */
+@Composable
+private fun StartingPointPage(state: LauncherState, model: LauncherModel, tick: Int, onShadeSetup: () -> Unit, replay: Boolean, onKeep: () -> Unit) {
+    val context = LocalContext.current
+    // Null on a phone set up some other way: nothing is selected until the person taps one, so setup can't pretend it knows.
+    val chosen = state.startingPoint()
+    var both by remember { mutableStateOf(false) }
+    var navOpen by remember { mutableStateOf(false) }
+    val gestures = remember(tick) { gestureNavigation(context) }
+    if (both) {
+        Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.LARGE.dp)) {
+            StartingPoint.entries.forEach { point ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    StartingPointPreview(point, Modifier.fillMaxWidth(.8f))
+                    Text(stringResource(point.label), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
+                    IosChip(selected = chosen == point, onClick = { model.setStartingPoint(point); both = false },
+                        label = { Text(stringResource(R.string.use_starting_point, stringResource(point.label))) },
+                        modifier = Modifier.padding(top = FolioSpace.SMALL.dp).testTag("starting-use-${point.name.lowercase()}"))
+                }
+            }
+        }
+    } else {
+        Column(Modifier.fillMaxWidth().padding(top = FolioSpace.XL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
+            StartingPoint.entries.forEach { point ->
+                val selected = chosen == point
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp))
+                    .background(if (selected) Color.White.copy(alpha = .14f) else Color.White.copy(alpha = .07f))
+                    .selectable(selected = selected, role = Role.RadioButton, onClick = { model.setStartingPoint(point) })
+                    .padding(FolioSpace.MEDIUM.dp).testTag("starting-${point.name.lowercase()}"), verticalAlignment = Alignment.CenterVertically) {
+                    StartingPointPreview(point, Modifier.width(44.dp))
+                    Column(Modifier.weight(1f).padding(horizontal = FolioSpace.MEDIUM.dp)) {
+                        Text(stringResource(point.label), color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(point.detail), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp)
+                    }
+                    Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null,
+                        tint = if (selected) LocalAccent.current.ink else Color.White.copy(alpha = .4f))
+                }
+            }
+        }
+        if (chosen != StartingPoint.ANDROID) {
+        // How you get around. Folio follows what Android is set to; these are only optional extras.
+        Row(Modifier.fillMaxWidth().padding(top = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .07f))
+            .clickable { navOpen = !navOpen }.padding(FolioSpace.MEDIUM.dp).testTag("starting-navigation"), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.navigation_row), color = Color.White, fontSize = FolioType.BODY.sp)
+                Text(stringResource(R.string.navigation_follows, stringResource(if (gestures) R.string.navigation_gestures else R.string.navigation_buttons)),
+                    color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp)
+            }
+            Icon(if (navOpen) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null, tint = Color.White.copy(alpha = .7f))
+        }
+        if (navOpen) {
+            Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                IosChip(selected = true, onClick = { navOpen = false }, label = { Text(stringResource(R.string.navigation_keep)) }, modifier = Modifier.weight(1f))
+                IosChip(selected = state.buttonBar, onClick = { model.setButtonBar(true); if (!SystemShadeAccessibilityService.isConnected()) onShadeSetup() },
+                    label = { Text(stringResource(R.string.navigation_big_buttons)) }, modifier = Modifier.weight(1f))
+                IosChip(selected = false, onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } },
+                    label = { Text(stringResource(R.string.navigation_android_settings)) }, modifier = Modifier.weight(1f))
+            }
+            Text(stringResource(R.string.navigation_note), color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
+        }
+        }
+    }
+    Text(stringResource(if (both) R.string.starting_back else R.string.starting_show_both), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+        modifier = Modifier.padding(top = FolioSpace.LARGE.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { both = !both }.padding(FolioSpace.COMPACT.dp).testTag("starting-both"))
+    if (replay) Text(stringResource(R.string.onboarding_keep_things_as_they_are), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+        modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onKeep).padding(FolioSpace.COMPACT.dp).testTag("starting-keep"))
+}
+
+/**
+ * What setup used to ask on pages of its own, now offered when it is done and asked again where it is used: notification
+ * access for the island and the accessibility service for the pull-down panels, only while they are still off, and the
+ * wallpaper. Nothing is blocked on any of it.
+ */
+@Composable
+private fun FinishSettingUp(tick: Int, systemWallpaper: Boolean, onWallpaper: (Boolean) -> Unit, onShadeSetup: () -> Unit, open: (Intent?) -> Unit) {
+    val context = LocalContext.current
+    val notifications = remember(tick) { IslandListenerService.hasAccess(context) }
+    val panels = remember(tick) { SystemShadeAccessibilityService.isConnected() }
+    Text(stringResource(R.string.finish_setting_up), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.XL.dp, bottom = FolioSpace.SMALL.dp))
+    SheetGroup {
+        if (!notifications) {
+            FinishRow(Icons.Rounded.Notifications, stringResource(R.string.notifications_title), stringResource(R.string.finish_notifications_detail), "finish-notifications") { open(IslandListenerService.accessSettingsIntent(context)) }
+            MenuDivider()
+        }
+        if (!panels) {
+            FinishRow(Icons.Rounded.SwipeDown, stringResource(R.string.pull_down_for_more), stringResource(R.string.finish_panels_detail), "finish-panels") { onShadeSetup() }
+            MenuDivider()
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Wallpaper, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
+            IosChip(selected = systemWallpaper, onClick = { onWallpaper(true) }, label = { Text(stringResource(R.string.my_wallpaper)) }, modifier = Modifier.weight(1f))
+            IosChip(selected = !systemWallpaper, onClick = { onWallpaper(false) }, label = { Text(stringResource(R.string.folio_dunes)) }, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun FinishRow(icon: ImageVector, title: String, detail: String, tag: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(onClick = onClick).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp).testTag(tag),
+        verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
+        Column(Modifier.weight(1f).padding(horizontal = FolioSpace.MEDIUM.dp)) {
+            Text(title, color = Color.White, fontSize = FolioType.SUBHEAD.sp)
+            Text(detail, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp)
+        }
+        Text(stringResource(R.string.set_up), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** What setup was opened for: the first run, or a replay from Settings or What to Test on a phone that is already set up. */
+internal object SetupReplay { var active by androidx.compose.runtime.mutableStateOf(false) }
+
+internal enum class NavChoice { KEEP, BIG, SYSTEM }
+
+/**
+ * Only for the Android starting point (McCal, 4 and 7 Oct 2026): Folio follows whatever navigation Android is on, and offers
+ * three ways forward. It never changes system navigation itself; "Change it in Android" opens Android's own settings.
+ */
+@Composable
+private fun NavigationPage(choice: NavChoice, onChoice: (NavChoice) -> Unit, tick: Int) {
+    val context = LocalContext.current
+    val gestures = remember(tick) { gestureNavigation(context) }
+    Text(stringResource(R.string.onboarding_nav_lead, stringResource(if (gestures) R.string.navigation_gestures else R.string.navigation_buttons)),
+        color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
+    Column(Modifier.fillMaxWidth().padding(top = FolioSpace.XL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
+        listOf(
+            Triple(NavChoice.KEEP, R.string.onboarding_nav_keep_title, R.string.onboarding_nav_keep_detail),
+            Triple(NavChoice.BIG, R.string.onboarding_nav_big_title, R.string.onboarding_nav_big_detail),
+            Triple(NavChoice.SYSTEM, R.string.onboarding_nav_system_title, R.string.onboarding_nav_system_detail),
+        ).forEach { (option, title, detail) ->
+            val selected = choice == option
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp))
+                .background(if (selected) Color.White.copy(alpha = .14f) else Color.White.copy(alpha = .07f))
+                .selectable(selected = selected, role = Role.RadioButton, onClick = { onChoice(option) })
+                .padding(FolioSpace.MEDIUM.dp).testTag("navigation-${option.name.lowercase()}"), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(title), color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(detail), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp)
+                }
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null,
+                    tint = if (selected) LocalAccent.current.ink else Color.White.copy(alpha = .4f))
+            }
+        }
+    }
+}
+
+/**
+ * Shown only when Shizuku or a root manager is already on the phone. It names what was found, says everything works without
+ * it, and points at System Bridge, where it is turned on and tested. Setup itself asks for nothing and runs nothing.
+ */
+@Composable
+private fun AdvancedStep(found: List<OptionalAccess>, onOpenBridge: () -> Unit) {
+    val lead = stringResource(when {
+        found.size > 1 -> R.string.onboarding_adv_found_both
+        found.firstOrNull() == OptionalAccess.SHIZUKU -> R.string.onboarding_adv_found_shizuku
+        else -> R.string.onboarding_adv_found_root
+    }) + " " + stringResource(R.string.onboarding_adv_lead_rest)
+    Text(lead, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp, modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
+    SheetGroup(Modifier.padding(top = FolioSpace.XL.dp)) {
+        found.forEachIndexed { n, access ->
+            if (n > 0) MenuDivider()
+            Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp)) {
+                Text(stringResource(if (access == OptionalAccess.SHIZUKU) R.string.onboarding_adv_shizuku_name else R.string.onboarding_adv_root_name), color = Color.White, fontSize = FolioType.BODY.sp)
+                Text(stringResource(if (access == OptionalAccess.SHIZUKU) R.string.onboarding_adv_shizuku_detail else R.string.onboarding_adv_root_detail),
+                    color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp)
+            }
+        }
+    }
+    Text(stringResource(R.string.onboarding_adv_reassure), color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
+        modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
+    Text(stringResource(R.string.onboarding_adv_open_bridge), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+        modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onOpenBridge).padding(FolioSpace.COMPACT.dp).testTag("onboarding-open-bridge"))
+}
