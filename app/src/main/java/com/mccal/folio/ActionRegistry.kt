@@ -48,6 +48,8 @@ internal class ActionSpec(
     /** The lowest Android API level this works on; 0 for all. */
     val minSdk: Int = 0,
     val run: (Context, Map<String, String>) -> Boolean,
+    /** The picker section this belongs to (`open`, `media`, `volume`, `panel`, `system`); empty for the original actions. */
+    val group: String = "",
 )
 
 /** The answer to "can this action run right now", in the order a person would fix it. Always a state, never an error. */
@@ -109,8 +111,8 @@ internal class ActionRegistry(specs: List<ActionSpec>) {
     }
 
     companion object {
-        /** The registry Folio runs with. The original actions are registered unchanged under their enum names. */
-        val standard: ActionRegistry by lazy { ActionRegistry(FolioAction.entries.filter { it != FolioAction.NONE }.map(::legacy)) }
+        /** The registry Folio runs with. The original actions are registered unchanged under their enum names, then the [ActionSpecs]. */
+        val standard: ActionRegistry by lazy { ActionRegistry(FolioAction.entries.filter { it != FolioAction.NONE }.map(::legacy) + ActionSpecs.all) }
 
         private fun legacy(action: FolioAction) = ActionSpec(
             id = action.name,

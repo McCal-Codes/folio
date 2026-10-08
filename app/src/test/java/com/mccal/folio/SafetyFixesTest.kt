@@ -14,7 +14,11 @@ class SafetyFixesTest {
     }
 
     @Test fun `actions that need the accessibility service or Do Not Disturb access say so`() {
+<<<<<<< HEAD
         // The refusals are said by the action runner, which every action goes through.
+=======
+        // The runner, not each action, tells the person what to turn on.
+>>>>>>> b3fe4180 (New actions for icons: media, volume, panels and accessibility, behind the registry)
         val actions = source("ActionRegistry.kt")
         assertTrue(actions.contains("needs_accessibility_service"))
         assertTrue(actions.contains("needs_dnd_access"))
