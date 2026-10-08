@@ -1,10 +1,12 @@
 # Tells Discord about a release, once, when it is published.
 #
-# Posts to every webhook in the secret DISCORD_WEBHOOK_URLS, comma-separated: Folio's own #announcements and Mod My
-# Android's #app-updates. Nothing is sent until that secret exists, so this is inert until it does.
+# Posts to every webhook in the secret DISCORD_WEBHOOK_URLS, comma-separated: the private #community-developers test
+# channel first, then the public #app-updates, both in the Mod My Android server. Nothing is sent until that secret
+# exists, so this is inert until it does.
 #
-# The variable DISCORD_ROLE_IDS holds the role to ping in each of those servers, in the same order, since a role only
-# exists in its own server. Leave a position empty for no ping there.
+# The variable DISCORD_ROLE_IDS holds the role to ping in each of those channels, in the same order, since a role only
+# exists in its own server. Leave a position empty for no ping there: ",<role id>" pings nobody in the test channel and
+# Folio Updates in #app-updates.
 #
 # The old names, MMD_WEBHOOK_URL and MMD_ROLE_ID, still work, so nothing breaks if they were set first.
 name: Announce
