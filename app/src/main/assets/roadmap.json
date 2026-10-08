@@ -385,51 +385,122 @@
         {
           "icon": "tap",
           "color": "#5E5CE6",
-          "title": "Icon Actions",
-          "detail": "Tap, long press, double tap and swipes on a Home icon, each set to an action you choose.",
-          "status": "planned"
+          "title": "Focus that turns on by itself",
+          "detail": "A Focus can turn on when the phone is unfolded, charging or has headphones, and off when that stops.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "folder",
+          "color": "#FF9F0A",
+          "title": "Folders you can shape",
+          "detail": "Resize a folder by its corner, drop an app on another to make one, and sort A to Z.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "clock",
+          "color": "#32ADE6",
+          "title": "Make the Big Clock your own",
+          "detail": "Looks, a color, Fine tune and Place Freely.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "dock",
+          "color": "#30D158",
+          "title": "Drag the dock",
+          "detail": "A handle in edit mode moves the Side Bar dock up and down.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "rings",
+          "color": "#BF5AF2",
+          "title": "Bottom of Home and stronger rings",
+          "detail": "Choose a Search button, Page dots or Nothing, and thicker status rings.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "grid",
+          "color": "#0A84FF",
+          "title": "Even rows under a widget",
+          "detail": "A widget at the top of a page fills exactly two rows, so the dock lines up.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "store",
+          "color": "#FF375F",
+          "title": "The Market keeps itself current",
+          "detail": "Add a source from a GitHub address, and refresh, notices and automatic updates, all off until you turn them on, with Undo and an Updated recently list.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "history",
           "color": "#30D158",
-          "title": "Snapshots and Safe Mode 2",
-          "detail": "One careful way to apply a change, with Undo, and a Safe Mode you can reach on its own that starts with nothing extra turned on.",
-          "status": "planned"
+          "title": "What Folio can use, and what it did",
+          "detail": "Capabilities and Recent Activity in Settings › Advanced, and Copy Diagnostics.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "sensor",
+          "color": "#8E8E93",
+          "title": "System Bridge",
+          "detail": "One switch for everything that reaches past a normal app, with an optional root hinge angle.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
+        },
+        {
+          "icon": "person",
+          "color": "#5E5CE6",
+          "title": "A setup that asks where you are from",
+          "detail": "iPhone or Android start, a navigation page, and Keep Things as They Are.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "bug",
-          "color": "#0A84FF",
-          "title": "Inspector",
-          "detail": "See what a gesture, rule or package did, and what failed, kept on your phone.",
-          "status": "planned"
+          "color": "#FF453A",
+          "title": "What to Test",
+          "detail": "A checklist for beta testers, with a way to report what is wrong.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 1
         },
         {
           "icon": "lock",
-          "color": "#FF9F0A",
-          "title": "Capability Viewer",
-          "detail": "What your phone and your choices allow, and why, in Settings › Advanced.",
-          "status": "planned"
-        },
-        {
-          "icon": "update",
-          "color": "#BF5AF2",
-          "title": "Market updates itself",
-          "detail": "Packages and apps like Keyd update themselves, and you can choose to be told about updates.",
-          "status": "planned"
-        },
-        {
-          "icon": "store",
           "color": "#30D158",
-          "title": "GitHub sources and Community Tweaks",
-          "detail": "Add a source from a GitHub address, and Folio Community Tweaks built in for everyone with the Market.",
-          "status": "planned"
+          "title": "Safe Mode that recovers",
+          "detail": "An install cut short is put back, and native crashes and freezes count toward Safe Mode.",
+          "status": "building"
+        },
+        {
+          "icon": "notifications",
+          "color": "#0A84FF",
+          "title": "Notices with Undo",
+          "detail": "Notices that fit their text and stay clear of the camera and fold, and Undo from the update notice.",
+          "status": "building"
         },
         {
           "icon": "speed",
-          "color": "#FF9F0A",
+          "color": "#32ADE6",
           "title": "Smoother swiping",
-          "detail": "Folio learns the swipe path ahead of time, so Home turns pages more smoothly.",
-          "status": "planned"
+          "detail": "Less redrawing while apps install and when offline; the swipe itself comes next, measured on the Fold8.",
+          "status": "building"
         }
       ]
     },
@@ -437,6 +508,13 @@
       "release": "0.7.0",
       "subtitle": "The Market for everyone",
       "items": [
+        {
+          "icon": "tap",
+          "color": "#5E5CE6",
+          "title": "Icon Actions",
+          "detail": "Tap, long press, double tap and swipes on a Home icon, each set to an action you choose.",
+          "status": "planned"
+        },
         {
           "icon": "store",
           "color": "#0A84FF",
@@ -456,6 +534,13 @@
           "color": "#32ADE6",
           "title": "Page effects from the Market",
           "detail": "New Flipbook effects arrive as packages.",
+          "status": "planned"
+        },
+        {
+          "icon": "extension",
+          "color": "#BF5AF2",
+          "title": "Community Tweaks built in",
+          "detail": "Folio's own tweaks come from the Market too, so they update like any package.",
           "status": "planned"
         }
       ]
