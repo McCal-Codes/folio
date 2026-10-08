@@ -947,7 +947,7 @@ fun LauncherScreen(
             var settledDockSlots by remember { mutableIntStateOf(shownDock.size) }
             val dockResizes = settledDockSlots != shownDock.size
             SideEffect { settledDockSlots = shownDock.size }
-            val dockSpec: AnimationSpec<Float> = if (dockResizes && !dockReduceMotion) spring(dampingRatio = .82f, stiffness = 420f) else snap()
+            val dockSpec: AnimationSpec<Float> = if (dockResizes && !dockReduceMotion) FolioMotion.spring(FolioMotion.Settle) else snap()
             val dockPitchShown by animateFloatAsState(if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight, dockSpec, label = "dock pitch")
             val dockRailHeightShown by animateFloatAsState(dockHeightShown, dockSpec, label = "dock height")
             val dockBarWidthShown = animateFloatAsState(dockBarWidth.value, dockSpec, label = "dock width").value.dp

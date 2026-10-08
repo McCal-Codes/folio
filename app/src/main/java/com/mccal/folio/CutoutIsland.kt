@@ -201,7 +201,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     },
                 ) { change, amount -> change.consume(); dragOffset += amount }
             }
-            .animateContentSize(spring(dampingRatio = .78f, stiffness = Spring.StiffnessMediumLow))
+            .animateContentSize(FolioMotion.spring(FolioMotion.Appear))
             .clip(RoundedCornerShape(corner)).background(Color.Black)
             .clickable(remember { MutableInteractionSource() }, null) { if (message == null && live != null) expanded = !expanded }
             // Polite, so a notice or a new activity is read when it appears rather than only when found (A11Y-7).
@@ -410,7 +410,7 @@ private fun Modifier.swipeUpToHide(enabled: Boolean, onHide: () -> Unit): Modifi
         var travel = 0f
         detectVerticalDragGestures(
             onDragStart = { travel = 0f },
-            onDragEnd = { if (travel < -hideAt) latestOnHide() else scope.launch { pull.animateTo(0f, spring(dampingRatio = .7f)) } },
+            onDragEnd = { if (travel < -hideAt) latestOnHide() else scope.launch { pull.animateTo(0f, FolioMotion.spring(FolioMotion.Control)) } },
             onDragCancel = { scope.launch { pull.animateTo(0f) } },
         ) { change, dy ->
             change.consume(); travel += dy
