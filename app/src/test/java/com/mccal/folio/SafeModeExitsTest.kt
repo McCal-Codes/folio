@@ -54,4 +54,16 @@ class SafeModeExitsTest {
         SafeMode.onStart(context) { listOf(one) }
         assertFalse(SafeMode.active)
     }
+
+    @Test fun `a native crash Android recorded survives a process that never reaches Home`() {
+        val exits = listOf(ExitRecord(native, 10_000))
+        // The first start after the crash: a background job, killed before Home exists, never asks.
+        SafeMode.onStart(context) { exits }
+        // The next start, with the same record already seen: Home still learns the last run crashed.
+        SafeMode.onStart(context) { exits }
+        assertTrue(SafeMode.takeCrashedLastRun())
+        assertFalse(SafeMode.takeCrashedLastRun())
+        SafeMode.onStart(context) { exits }
+        assertFalse("and it is gone once Home has read it", SafeMode.takeCrashedLastRun())
+    }
 }
