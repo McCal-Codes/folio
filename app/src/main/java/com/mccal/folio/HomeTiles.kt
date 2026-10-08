@@ -292,37 +292,43 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     val iconSize = size.dp
     val bounds = remember { android.graphics.Rect() }
     val openPanel = LocalAppPanel.current
-    // Icon Actions: what this icon's swipes and double tap do when the person set them; otherwise today's panel and stack.
+    // Icon Actions: what this icon's swipes and double tap do when the person set them. An icon with none runs exactly
+    // the code it always did (no extra callbacks, no insets read, a plain clickable), so the gate being shut or no
+    // action being set costs every other icon nothing.
     val host = LocalIconActions.current
     val saved = host?.actionsFor(app.id)
     val upRef = saved.runnable(IconGestureKind.UP)
     val downRef = saved.runnable(IconGestureKind.DOWN)
     val doubleRef = saved.runnable(IconGestureKind.DOUBLE)
     val stack = if (app.id in LocalStackedApps.current) LocalIconStack.current else null
-    val swipeUp = remember(app, upRef, openPanel, host) { upRef?.let { ref -> { host!!.run(ref) } } ?: openPanel?.let { { it(app) } } }
-    val swipeDown = remember(app, downRef, stack, host) { downRef?.let { ref -> { host!!.run(ref) } } ?: stack?.let { { it(app) } } }
-    val doubleTap = remember(doubleRef, host) { doubleRef?.let { ref -> { host!!.run(ref) } } }
-    // A touch in the bottom gesture strip belongs to Android's navigation, so it never starts an icon swipe.
-    val gestureInset = WindowInsets.systemGestures.getBottom(LocalDensity.current)
-    val windowHeight = LocalWindowInfo.current.containerSize.height
-    val tileTop = remember { floatArrayOf(0f) }
-    val startAllowed = remember(gestureInset, windowHeight) { { y: Float -> IconGesture.startsAboveInset(tileTop[0] + y, windowHeight.toFloat(), gestureInset.toFloat()) } }
-    val swipeUpLabel = upRef?.let { ref -> ActionRegistry.standard.spec(ref.id)?.let { stringResource(R.string.icon_action_talkback, stringResource(R.string.icon_action_swipe_up), stringResource(it.label)) } }
-    val swipeDownLabel = downRef?.let { ref -> ActionRegistry.standard.spec(ref.id)?.let { stringResource(R.string.icon_action_talkback, stringResource(R.string.icon_action_swipe_down), stringResource(it.label)) } }
-    val doubleLabel = doubleRef?.let { ref -> ActionRegistry.standard.spec(ref.id)?.let { stringResource(R.string.icon_action_talkback, stringResource(R.string.icon_action_double_tap), stringResource(it.label)) } }
+    val custom = host != null && (upRef != null || downRef != null || doubleRef != null)
+    val gestures: Modifier = if (!custom) {
+        Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = { onClick(bounds) })
+    } else {
+        val swipeUp = remember(app, upRef, openPanel, host) { upRef?.let { ref -> { host!!.run(ref) } } ?: openPanel?.let { { it(app) } } }
+        val swipeDown = remember(app, downRef, stack, host) { downRef?.let { ref -> { host!!.run(ref) } } ?: stack?.let { { it(app) } } }
+        val doubleTap = remember(doubleRef, host) { doubleRef?.let { ref -> { host!!.run(ref) } } }
+        // A touch in the bottom gesture strip belongs to Android's navigation, so it never starts an icon swipe.
+        val gestureInset = WindowInsets.systemGestures.getBottom(LocalDensity.current)
+        val windowHeight = LocalWindowInfo.current.containerSize.height
+        val tileTop = remember { floatArrayOf(0f) }
+        val startAllowed = remember(gestureInset, windowHeight) { { y: Float -> IconGesture.startsAboveInset(tileTop[0] + y, windowHeight.toFloat(), gestureInset.toFloat()) } }
+        Modifier.onGloballyPositioned { tileTop[0] = it.positionInWindow().y }
+            .iconSwipes(swipeUp, swipeDown, startAllowed)
+            // A double tap makes this icon's single tap wait out the double-tap timeout, so only an icon that has one pays for it.
+            .combinedClickable(interactionSource = interaction, indication = null, role = Role.Button,
+                onClick = { onClick(bounds) }, onDoubleClick = doubleTap)
+    }
+    val talkBack = if (!custom) emptyList() else listOfNotNull(
+        upRef?.let { it to R.string.icon_action_swipe_up }, downRef?.let { it to R.string.icon_action_swipe_down }, doubleRef?.let { it to R.string.icon_action_double_tap },
+    ).mapNotNull { (ref, gesture) -> ActionRegistry.standard.spec(ref.id)?.let { spec -> ref to stringResource(R.string.icon_action_talkback, stringResource(gesture), stringResource(spec.label)) } }
     Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
-        .onGloballyPositioned { tileTop[0] = it.positionInWindow().y }
-        .iconSwipes(swipeUp, swipeDown, startAllowed)
-        // A double tap makes this icon's single tap wait out the double-tap timeout, so only an icon that has one pays for it.
-        .combinedClickable(interactionSource = interaction, indication = null,
-            role = Role.Button, onClick = { onClick(bounds) }, onDoubleClick = doubleTap)
+        .then(gestures)
         .semantics {
             onLongClick(appOptionsLabel) { onLongClick(); true }
             // Every action is also here, so nothing depends on a gesture (TalkBack's Actions list).
-            customActions = listOfNotNull(
-                swipeUpLabel?.let { CustomAccessibilityAction(it) { host?.run(upRef!!); true } },
-                swipeDownLabel?.let { CustomAccessibilityAction(it) { host?.run(downRef!!); true } },
-                doubleLabel?.let { CustomAccessibilityAction(it) { host?.run(doubleRef!!); true } })
+            if (talkBack.isNotEmpty()) customActions = talkBack.map { (ref, label) -> CustomAccessibilityAction(label) { host?.run(ref); true } }
         }.padding(horizontal = FolioSpace.HAIR.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
