@@ -125,19 +125,22 @@ class IslandEvents private constructor(private val context: Context) {
         const val MESSAGE_SHOW_MS = 6_000L
         const val NOTICE_SHOW_MS = 3_500L
 
+        private const val NOTICE_ACTION_SHOW_MS = 7_000L
+
         /**
          * How long [event] stays up: the times above, or longer for someone who has asked Android for more time to
-         * read and act (A11Y-19), as the Market's banners do. A message can be opened or answered, so it counts as
-         * having controls too.
+         * read and act (A11Y-19), as the Market's banners do. A message can be opened or answered, and a notice with Undo
+         * has a button, so both count as having controls too.
          */
         fun showMs(context: Context, event: IslandEvent): Long {
             val shown = when (event) {
                 is IslandEvent.Message -> MESSAGE_SHOW_MS
-                is IslandEvent.Notice -> NOTICE_SHOW_MS
+                // A notice with a button stays long enough to reach it.
+                is IslandEvent.Notice -> if (event.action != null) NOTICE_ACTION_SHOW_MS else NOTICE_SHOW_MS
                 else -> SHOW_MS
             }
             val content = AccessibilityManager.FLAG_CONTENT_TEXT or AccessibilityManager.FLAG_CONTENT_ICONS or
-                (if (event is IslandEvent.Message) AccessibilityManager.FLAG_CONTENT_CONTROLS else 0)
+                (if (event is IslandEvent.Message || (event is IslandEvent.Notice && event.action != null)) AccessibilityManager.FLAG_CONTENT_CONTROLS else 0)
             return context.getSystemService(AccessibilityManager::class.java)
                 ?.getRecommendedTimeoutMillis(shown.toInt(), content)?.toLong() ?: shown
         }
@@ -149,11 +152,12 @@ class IslandEvents private constructor(private val context: Context) {
          * Folio's own brief feedback, shown next to where you are instead of as a toast: in Home's island when it's on
          * screen, and as a toast otherwise (island off, another app in front).
          */
-        fun notice(context: Context, text: String, appIcon: android.graphics.Bitmap? = null) {
-            // A sheet or full-screen page (Settings) would cover Home's island, so those keep the toast.
+        fun notice(context: Context, text: String, appIcon: android.graphics.Bitmap? = null, action: NoticeAction? = null, toastFallback: Boolean = true): Boolean {
+            // A sheet or full-screen page (Settings) would cover Home's island, so those keep the toast (which has no button).
             val covered = LauncherSheetsOpen.intValue > 0 || LauncherPagesOpen.intValue > 0
-            if (noticeIslands > 0 && FolioForeground.visible.value && !covered) post(IslandEvent.Notice(text, appIcon))
-            else android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show()
+            return if (noticeIslands > 0 && FolioForeground.visible.value && !covered) { post(IslandEvent.Notice(text, appIcon, action)); true }
+            else if (toastFallback) { android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show(); true }
+            else false
         }
         /** Hides the pop-up now (swiped away); the notification itself stays in Notification Center. */
         fun dismiss() { mutable.value = null }

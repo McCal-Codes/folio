@@ -1073,7 +1073,16 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         triggerState = result.state
         focusReasonState.value = result.state.reason
         rememberTriggerState()
-        if (result.changed) applyFocus(result.active)
+        if (result.changed) {
+            applyFocus(result.active)
+            // Say what just happened, in Home's island, so a Focus turning itself on never feels like magic. Nothing is shown
+            // (not even a toast) when Home is not on screen: the person is somewhere else and the Focus list says why.
+            val app = getApplication<android.app.Application>()
+            val on = state.focusModes.firstOrNull { it.id == result.active }
+            val text = if (on != null) app.getString(R.string.focus_island_on, on.name, result.state.reason?.let { app.getString(it.label(on)) }.orEmpty())
+                else state.focusModes.firstOrNull { it.id == state.activeFocus }?.let { app.getString(R.string.focus_island_off, it.name) }
+            if (text != null) IslandEvents.notice(app, text, toastFallback = false)
+        }
     }
     fun updateFocusMode(mode: FocusMode) {
         updateSettings(soon = false) { it.copy(focusModes = FocusModes.update(it.focusModes, mode)) }

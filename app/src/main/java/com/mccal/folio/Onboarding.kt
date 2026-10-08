@@ -102,7 +102,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     var index by rememberSaveable { mutableIntStateOf(runCatching { prefs.getString(STEP_KEY, null) }.getOrNull()
         ?.let { key -> all.indexOfFirst { it.key == key } }?.takeIf { it >= 0 } ?: 0) }
     fun go(to: Int) { index = to.coerceIn(0, all.lastIndex); prefs.edit().remove(STEP).putString(STEP_KEY, all[index].key).apply() }
-    fun finish() { prefs.edit().remove(STEP).remove(STEP_KEY).apply(); onFinish() }
+    fun finish() { prefs.edit().remove(STEP).remove(STEP_KEY).apply(); FirstUseHints.arm(context); onFinish() }
     BackHandler(index > 0) { go(index - 1) }
     var navChoice by rememberSaveable { mutableStateOf(NavChoice.KEEP) }
     // The navigation page's choice takes effect when it is confirmed. Folio never changes how Android navigates.
@@ -316,16 +316,19 @@ private fun FinishSettingUp(tick: Int, systemWallpaper: Boolean, onWallpaper: (B
     val context = LocalContext.current
     val notifications = remember(tick) { IslandListenerService.hasAccess(context) }
     val panels = remember(tick) { SystemShadeAccessibilityService.isConnected() }
-    Text(stringResource(R.string.finish_setting_up), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.XL.dp, bottom = FolioSpace.SMALL.dp))
+    val total = 2
+    val done = listOf(notifications, panels).count { it }
+    Row(Modifier.fillMaxWidth().padding(top = FolioSpace.XL.dp, bottom = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.finish_setting_up), Modifier.weight(1f), color = Color.White.copy(alpha = .7f), fontSize = FolioType.SUBHEAD.sp)
+        // The same count the Home card and Settings show, so finishing a step moves one number everywhere.
+        Text(stringResource(R.string.text_1_d_of_2_d_done, done, total), color = if (done == total) FolioColors.Green else Color.White.copy(alpha = .7f),
+            fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.testTag("finish-progress"))
+    }
     SheetGroup {
-        if (!notifications) {
-            FinishRow(Icons.Rounded.Notifications, stringResource(R.string.notifications_title), stringResource(R.string.finish_notifications_detail), "finish-notifications") { open(IslandListenerService.accessSettingsIntent(context)) }
-            MenuDivider()
-        }
-        if (!panels) {
-            FinishRow(Icons.Rounded.SwipeDown, stringResource(R.string.pull_down_for_more), stringResource(R.string.finish_panels_detail), "finish-panels") { onShadeSetup() }
-            MenuDivider()
-        }
+        FinishRow(Icons.Rounded.Notifications, stringResource(R.string.notifications_title), stringResource(R.string.finish_notifications_detail), "finish-notifications", notifications) { open(IslandListenerService.accessSettingsIntent(context)) }
+        MenuDivider()
+        FinishRow(Icons.Rounded.SwipeDown, stringResource(R.string.pull_down_for_more), stringResource(R.string.finish_panels_detail), "finish-panels", panels) { onShadeSetup() }
+        MenuDivider()
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Wallpaper, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
             IosChip(selected = systemWallpaper, onClick = { onWallpaper(true) }, label = { Text(stringResource(R.string.my_wallpaper)) }, modifier = Modifier.weight(1f))
@@ -335,15 +338,17 @@ private fun FinishSettingUp(tick: Int, systemWallpaper: Boolean, onWallpaper: (B
 }
 
 @Composable
-private fun FinishRow(icon: ImageVector, title: String, detail: String, tag: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(onClick = onClick).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp).testTag(tag),
-        verticalAlignment = Alignment.CenterVertically) {
+private fun FinishRow(icon: ImageVector, title: String, detail: String, tag: String, done: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).then(if (done) Modifier else Modifier.clickable(onClick = onClick))
+        .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = LocalAccent.current.ink, modifier = Modifier.size(22.dp))
         Column(Modifier.weight(1f).padding(horizontal = FolioSpace.MEDIUM.dp)) {
             Text(title, color = Color.White, fontSize = FolioType.SUBHEAD.sp)
             Text(detail, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp)
         }
-        Text(stringResource(R.string.set_up), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+        // A finished step keeps its place with a tick (so the list never reshuffles under a finger); the rest say Set Up.
+        if (done) Icon(Icons.Rounded.CheckCircle, stringResource(R.string.all_set), tint = FolioColors.Green)
+        else Text(stringResource(R.string.set_up), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

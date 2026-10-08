@@ -126,8 +126,11 @@ sealed interface IslandEvent {
     data class Message(val key: String, val packageName: String, val appLabel: String, val sender: String, val text: String?,
         val avatar: Bitmap?, val appIcon: Bitmap?, val canReply: Boolean, val alert: Boolean = false) : IslandEvent
     /** Brief feedback from Folio itself ("Calendar is unavailable"), with the app's icon when it's about an app. */
-    data class Notice(val text: String, val appIcon: Bitmap? = null) : IslandEvent
+    data class Notice(val text: String, val appIcon: Bitmap? = null, val action: NoticeAction? = null) : IslandEvent
 }
+
+/** A button on a notice, like Undo. It runs once; the notice then goes. */
+class NoticeAction(val label: String, val run: () -> Unit)
 
 /**
  * Reads ongoing activities (calls, timers, navigation, progress), the active media session, new messages and, when

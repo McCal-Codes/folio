@@ -88,6 +88,11 @@ class MarketPrefs(private val store: KeyValueStore) {
         get() = store.get(UPDATES_QUESTION_SEEN) == "1"
         set(value) { store.set(UPDATES_QUESTION_SEEN, if (value) "1" else null) }
 
+    /** Versions the person undid after an automatic update ("id@version"), which are never installed by themselves again. */
+    var skippedUpdates: Set<String>
+        get() = store.get(SKIPPED_UPDATES)?.split('\n')?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+        set(value) { store.set(SKIPPED_UPDATES, value.takeIf { it.isNotEmpty() }?.joinToString("\n")) }
+
     /** What the last update notice listed, so the same updates are never announced twice. */
     var lastNotifiedUpdates: String?
         get() = store.get(LAST_NOTIFIED)
@@ -103,6 +108,7 @@ class MarketPrefs(private val store: KeyValueStore) {
         const val INTRO_SEEN = "market:intro-seen"
         const val BACKGROUND_REFRESH = "market:background-refresh"
         const val NOTIFY_UPDATES = "market:notify-updates"
+        const val SKIPPED_UPDATES = "market:skipped-updates"
         const val AUTO_UPDATE_PACKAGES = "market:auto-update-packages"
         const val AUTO_UPDATE_OFF = "market:auto-update-off"
         const val UPDATES_QUESTION_SEEN = "market:updates-question-seen"
