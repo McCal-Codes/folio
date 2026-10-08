@@ -2,6 +2,11 @@ package com.mccal.folio
 
 import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
@@ -15,6 +20,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -113,6 +119,34 @@ class IconActionsTileTest {
         val labels = compose.onNodeWithTag("tile").fetchSemanticsNode().config
             .getOrNull(SemanticsActions.CustomActions)!!.map { it.label }
         assertEquals(listOf("Swipe up: Flashlight", "Swipe down: Spotlight", "Double tap: Lock Screen"), labels)
+    }
+
+    @Test fun `Home provides no host while editing, in Safe Mode, with the gate shut or with nothing saved`() {
+        assertTrue(iconActionsAvailable(editing = false, safeMode = false, anySaved = true, gateOpen = true))
+        assertFalse("editing", iconActionsAvailable(editing = true, safeMode = false, anySaved = true, gateOpen = true))
+        assertFalse("Safe Mode", iconActionsAvailable(editing = false, safeMode = true, anySaved = true, gateOpen = true))
+        assertFalse("nothing saved", iconActionsAvailable(editing = false, safeMode = false, anySaved = false, gateOpen = true))
+        assertFalse("gate shut", iconActionsAvailable(editing = false, safeMode = false, anySaved = true, gateOpen = false))
+    }
+
+    /** The dock builds its own slot but uses the same helper, so an app in the dock keeps its actions. */
+    @Test fun `the shared gesture helper gives a dock slot the same swipes and double tap`() {
+        compose.setContent {
+            CompositionLocalProvider(LocalIconActions provides host(IconActions(up = torch, double = spotlight))) {
+                val interaction = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val gestures = rememberIconGestures(app, interaction, null, null, null, { opened++ },
+                    plain = Modifier.clickable { opened++ })
+                androidx.compose.foundation.layout.Box(Modifier.size(64.dp).testTag("slot").then(gestures.modifier)
+                    .semantics { if (gestures.customActions.isNotEmpty()) customActions = gestures.customActions })
+            }
+        }
+        compose.onNodeWithTag("slot").performTouchInput { swipeUp() }
+        assertEquals(listOf("TORCH"), ran)
+        compose.onNodeWithTag("slot").performTouchInput { doubleClick() }
+        compose.mainClock.advanceTimeBy(1_000)
+        assertEquals(listOf("TORCH", "SPOTLIGHT"), ran)
+        assertEquals(0, opened)
+        assertEquals(2, compose.onNodeWithTag("slot").fetchSemanticsNode().config.getOrNull(SemanticsActions.CustomActions)!!.size)
     }
 
     @Test fun `with no actions there are no extra TalkBack actions`() {

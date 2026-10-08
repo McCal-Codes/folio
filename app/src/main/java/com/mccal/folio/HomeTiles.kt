@@ -180,13 +180,18 @@ internal fun DockAppColumn(
                     previewId == null -> Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
+            val dockClick = { if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index) }
+            val indication = LocalIndication.current
+            val dockGestures = rememberIconGestures(savedApp, interactions[index], indication, null, null, dockClick,
+                plain = Modifier.combinedClickable(interactionSource = interactions[index], indication = indication, role = Role.Button, onClick = dockClick, onLongClick = null))
             Box(Modifier.slot(index)
                 .testTag("dock-slot-$index").dropRegion(drag, cell, savedApp?.id)
                 .semantics(mergeDescendants = true) { contentDescription = savedApp?.label ?: "Choose dock app ${index + 1}" }
-                .combinedClickable(interactionSource = interactions[index], indication = LocalIndication.current, role = Role.Button, onClick = {
-                    if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index)
-                }, onLongClick = null)
-                .semantics { onLongClick(chooseDockLabel) { onChoose(index); true } })
+                .then(dockGestures.modifier)
+                .semantics {
+                    onLongClick(chooseDockLabel) { onChoose(index); true }
+                    if (dockGestures.customActions.isNotEmpty()) customActions = dockGestures.customActions
+                })
         }
 
         val ids = (savedDock + previewDock).filterNotNull().distinct()
@@ -292,43 +297,18 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     val iconSize = size.dp
     val bounds = remember { android.graphics.Rect() }
     val openPanel = LocalAppPanel.current
-    // Icon Actions: what this icon's swipes and double tap do when the person set them. An icon with none runs exactly
-    // the code it always did (no extra callbacks, no insets read, a plain clickable), so the gate being shut or no
-    // action being set costs every other icon nothing.
-    val host = LocalIconActions.current
-    val saved = host?.actionsFor(app.id)
-    val upRef = saved.runnable(IconGestureKind.UP)
-    val downRef = saved.runnable(IconGestureKind.DOWN)
-    val doubleRef = saved.runnable(IconGestureKind.DOUBLE)
+    // Icon Actions: an icon with saved actions gets swipes, a double tap and TalkBack actions for them; any other runs
+    // exactly the code it always did (see rememberIconGestures).
     val stack = if (app.id in LocalStackedApps.current) LocalIconStack.current else null
-    val custom = host != null && (upRef != null || downRef != null || doubleRef != null)
-    val gestures: Modifier = if (!custom) {
-        Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
-            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = { onClick(bounds) })
-    } else {
-        val swipeUp = remember(app, upRef, openPanel, host) { upRef?.let { ref -> { host!!.run(ref) } } ?: openPanel?.let { { it(app) } } }
-        val swipeDown = remember(app, downRef, stack, host) { downRef?.let { ref -> { host!!.run(ref) } } ?: stack?.let { { it(app) } } }
-        val doubleTap = remember(doubleRef, host) { doubleRef?.let { ref -> { host!!.run(ref) } } }
-        // A touch in the bottom gesture strip belongs to Android's navigation, so it never starts an icon swipe.
-        val gestureInset = WindowInsets.systemGestures.getBottom(LocalDensity.current)
-        val windowHeight = LocalWindowInfo.current.containerSize.height
-        val tileTop = remember { floatArrayOf(0f) }
-        val startAllowed = remember(gestureInset, windowHeight) { { y: Float -> IconGesture.startsAboveInset(tileTop[0] + y, windowHeight.toFloat(), gestureInset.toFloat()) } }
-        Modifier.onGloballyPositioned { tileTop[0] = it.positionInWindow().y }
-            .iconSwipes(swipeUp, swipeDown, startAllowed)
-            // A double tap makes this icon's single tap wait out the double-tap timeout, so only an icon that has one pays for it.
-            .combinedClickable(interactionSource = interaction, indication = null, role = Role.Button,
-                onClick = { onClick(bounds) }, onDoubleClick = doubleTap)
-    }
-    val talkBack = if (!custom) emptyList() else listOfNotNull(
-        upRef?.let { it to R.string.icon_action_swipe_up }, downRef?.let { it to R.string.icon_action_swipe_down }, doubleRef?.let { it to R.string.icon_action_double_tap },
-    ).mapNotNull { (ref, gesture) -> ActionRegistry.standard.spec(ref.id)?.let { spec -> ref to stringResource(R.string.icon_action_talkback, stringResource(gesture), stringResource(spec.label)) } }
+    val gestures = rememberIconGestures(app, interaction, null, openPanel, stack, { onClick(bounds) },
+        plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = { onClick(bounds) }))
     Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
-        .then(gestures)
+        .then(gestures.modifier)
         .semantics {
             onLongClick(appOptionsLabel) { onLongClick(); true }
             // Every action is also here, so nothing depends on a gesture (TalkBack's Actions list).
-            if (talkBack.isNotEmpty()) customActions = talkBack.map { (ref, label) -> CustomAccessibilityAction(label) { host?.run(ref); true } }
+            if (gestures.customActions.isNotEmpty()) customActions = gestures.customActions
         }.padding(horizontal = FolioSpace.HAIR.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
