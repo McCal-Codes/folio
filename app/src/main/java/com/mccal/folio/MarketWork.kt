@@ -55,6 +55,16 @@ internal object MarketWork {
     val busy: Boolean get() = busyId != null
 
     /**
+     * Runs [work] only while nothing else is installing, holding the same one-at-a-time slot meanwhile, so an
+     * automatic update and a tap on Get can never run together and record each other out of the list. Null when busy.
+     */
+    suspend fun <T> exclusive(id: String, work: suspend () -> T): T? = kotlinx.coroutines.withContext(Dispatchers.Main.immediate) {
+        if (busy) return@withContext null
+        busyId = id
+        try { kotlinx.coroutines.withContext(Dispatchers.IO) { work() } } finally { busyId = null }
+    }
+
+    /**
      * Starts an install, unless one is already running. [work] is the whole thing - download, checks, apply - and it
      * runs to the end whether or not anyone is still looking. [failed] is what to say if it throws; it comes from the
      * caller because this object has no context to read a string with, and it has to be in the phone's language.

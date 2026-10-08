@@ -122,7 +122,7 @@ internal object WhatsNew {
 /** iOS-style "What's New": the version's changes grouped under their headings, with a Continue button. */
 @androidx.compose.runtime.Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-internal fun WhatsNewSheet(onDismiss: () -> Unit) {
+internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val version = androidx.compose.runtime.remember { WhatsNew.releaseVersion(context) }
     val notes = androidx.compose.runtime.remember { WhatsNew.notes(context) }
@@ -154,6 +154,10 @@ internal fun WhatsNewSheet(onDismiss: () -> Unit) {
                                     color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 14.sp,
                                     modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.SMALL.dp)) }
                             }
+                        }
+                        // On a beta build: the testers' list, one tap away.
+                        onWhatToTest?.let { open ->
+                            FolioButton(stringResource(R.string.what_to_test), open, modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp).testTag("whats-new-what-to-test"))
                         }
                     }
                 }

@@ -1,5 +1,7 @@
 package com.mccal.folio
 
+import kotlin.math.roundToInt
+
 const val GRID_COLUMNS = 4
 /** Stored rows per page: the two half-height widget rows and up to [MAX_APP_ROWS] app rows ("More rows"). */
 const val GRID_ROWS = 2 + 7
@@ -10,13 +12,20 @@ const val MAX_APP_ROWS = GRID_ROWS - 2
 /** Before More rows, pages were 4×6 (24 cells) and the retained schema-5 overflow widget sat at row 6. */
 const val LEGACY_GRID_ROWS = 6
 const val LEGACY_HOME_CELLS = GRID_COLUMNS * LEGACY_GRID_ROWS
+/** The furthest a freely placed widget is drawn from the cells it keeps, in cells. */
+const val MAX_WIDGET_OFFSET = 0.5f
 const val EMPTY_WIDGET = -1
 const val CLOCK_WIDGET = -2
 const val DATE_WIDGET = -3
 const val INFO_WIDGET = -4
 const val NEEDS_BINDING_WIDGET = -5
 
-data class WidgetPlacement(val slot: Int, val id: Int, val page: Int, val column: Int, val row: Int, val spanX: Int, val spanY: Int)
+/**
+ * [offsetX] and [offsetY] are how far a widget is drawn from its cells, in cells (-0.5 to 0.5), when it was placed freely.
+ * The cells it covers stay reserved, so apps never end up under it; zero (the default) draws it exactly on the grid.
+ */
+data class WidgetPlacement(val slot: Int, val id: Int, val page: Int, val column: Int, val row: Int, val spanX: Int, val spanY: Int,
+    val offsetX: Float = 0f, val offsetY: Float = 0f)
 data class WidgetRestore(val slot: Int, val providerComponent: String, val userSerial: Long, val title: String,
     val profileLabel: String, val isWork: Boolean = false, val sourceScope: String? = null)
 
@@ -143,7 +152,8 @@ fun WidgetPlacement.coveredIndices(): Set<Int> {
 private fun WidgetPlacement.valid() =
     slot >= 0 && id != EMPTY_WIDGET && page >= -1 && column >= 0 && row >= 0 &&
         spanX in 1..GRID_COLUMNS && spanY in 1..GRID_ROWS && column + spanX <= GRID_COLUMNS &&
-        row + spanY <= GRID_ROWS
+        row + spanY <= GRID_ROWS && offsetX.isFinite() && offsetY.isFinite() && offsetX in -MAX_WIDGET_OFFSET..MAX_WIDGET_OFFSET &&
+        offsetY in -MAX_WIDGET_OFFSET..MAX_WIDGET_OFFSET
 
 private fun widgetCells(layout: HomeLayout, exceptSlot: Int? = null) = layout.widgetPlacements
     .filter { it.slot != exceptSlot }.flatMapTo(mutableSetOf()) { it.coveredIndices() }
@@ -321,12 +331,35 @@ fun moveWidget(layout: HomeLayout, slot: Int, index: Int): HomeLayout {
     if (page !in -1..layout.pageCount) return layout
     val local = homeCellLocal(index)
     return placeWidget(layout, old.copy(page = page, column = local % GRID_COLUMNS,
-        row = local / GRID_COLUMNS, spanY = old.spanY.coerceAtMost(GRID_ROWS)))
+        row = local / GRID_COLUMNS, spanY = old.spanY.coerceAtMost(GRID_ROWS), offsetX = 0f, offsetY = 0f))
+}
+
+/**
+ * Places a widget at a position that need not sit on a cell ([column] and [row] are in cells, fractions allowed), on the
+ * page it is already on. It keeps the cells nearest that position, and is drawn the rest of the way, so the cells it keeps
+ * can't hold apps or other widgets: a spot those cells make impossible leaves the layout as it was.
+ */
+fun placeWidgetFreely(layout: HomeLayout, slot: Int, column: Float, row: Float): HomeLayout {
+    val placement = freePlacement(layout.placement(slot) ?: return layout, column, row) ?: return layout
+    return placeWidget(layout, placement)
+}
+
+/** The placement [old] would take at the fractional [column] and [row], or null for a position that isn't a number. */
+fun freePlacement(old: WidgetPlacement, column: Float, row: Float): WidgetPlacement? {
+    if (!column.isFinite() || !row.isFinite()) return null
+    val maxColumn = GRID_COLUMNS - old.spanX
+    val maxRow = GRID_ROWS - old.spanY
+    val cell = column.roundToInt().coerceIn(0, maxColumn)
+    val line = row.roundToInt().coerceIn(0, maxRow)
+    // At the page's edge there is nothing to drift towards: the widget stays inside the grid.
+    val x = (column - cell).coerceIn(if (cell == 0) 0f else -MAX_WIDGET_OFFSET, if (cell == maxColumn) 0f else MAX_WIDGET_OFFSET)
+    val y = (row - line).coerceIn(if (line == 0) 0f else -MAX_WIDGET_OFFSET, if (line == maxRow) 0f else MAX_WIDGET_OFFSET)
+    return old.copy(column = cell, row = line, offsetX = x, offsetY = y)
 }
 
 fun resizeWidget(layout: HomeLayout, slot: Int, spanX: Int, spanY: Int): HomeLayout {
     val old = layout.placement(slot) ?: return layout
-    return placeWidget(layout, old.copy(spanX = spanX, spanY = spanY))
+    return placeWidget(layout, old.copy(spanX = spanX, spanY = spanY, offsetX = 0f, offsetY = 0f))
 }
 
 /** Remove only the shortcut/placement, never the installed app or widget binding. */

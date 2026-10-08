@@ -1,6 +1,9 @@
 package com.mccal.folio
 
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
 import android.app.role.RoleManager
@@ -55,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private val showFirstRun = mutableStateOf(false)
     private val showWhatsNew = mutableStateOf(false)
     private val whatsNewRequested = mutableStateOf(false)
+    private val showDevBuild = mutableStateOf(false)
     /** A theme shared to Folio, waiting for Apply or Cancel. */
     private val sharedTheme = mutableStateOf<FolioTheme?>(null)
     private lateinit var setupExperience: SetupExperience
@@ -94,12 +98,28 @@ class MainActivity : ComponentActivity() {
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { syncStandByScreenSaver(this@MainActivity) }
         FocusScheduler.run(this)
+        // Focus triggers (folding, charging, headphones): listen only while some Focus uses one.
+        // Gated (FeatureGate.FOCUS_TRIGGERS): a phone the feature is shut for never registers a listener.
+        if (FeatureGate.FOCUS_TRIGGERS.isOpen(this)) lifecycleScope.launch {
+            model.state.map { st -> st.focusModes.any { it.triggers.any } }.distinctUntilChanged().collectLatest { listening ->
+                if (listening) focusSignals(this@MainActivity).collect { model.onFocusSignals(it) }
+            }
+        }
+        // Updates staged by the daily refresh while Folio was not running go in a little after start, once Home is up.
+        if (MarketAutoUpdate.enabled(this)) lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.delay(20_000)
+            runCatching { MarketAutoUpdate.applyStaged(applicationContext, MarketSession(applicationContext, ModelLauncher(model, applicationContext))) }
+        }
         // USER_PRESENT is a protected system broadcast delivered to runtime receivers.
         androidx.core.content.ContextCompat.registerReceiver(this, unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         showFirstRun.value = setupExperience.entryDecision(SetupExperience.hadLauncherState(this)) ==
             SetupEntryDecision.SHOW
         showWhatsNew.value = savedInstanceState == null && WhatsNew.shouldShow(this, firstRun = showFirstRun.value)
+        // Folio Dev only: its builds keep one version name, so What's New never shows; this page is keyed to the commit.
+        // Not tied to savedInstanceState: after an install the app is killed and Android restores Home from saved state, which
+        // is exactly when a new build needs announcing. The commit check keeps it to once per build.
+        showDevBuild.value = DevBuild.shouldShow(this)
         returningFromShadeSettings = savedInstanceState?.getBoolean(SHADE_SETTINGS_PENDING) == true
         val restoreShadeDialog = savedInstanceState?.getBoolean(SHADE_DIALOG_VISIBLE) == true
         appearance = AppearanceStore(this)
@@ -197,8 +217,15 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.ui.graphics.BlurEffect(backdropBlurPx, backdropBlurPx, androidx.compose.ui.graphics.TileMode.Clamp)
             }
             DuoTheme(appearance.state.dark) { val notificationItems = IslandListenerService.notifications.collectAsStateWithLifecycle().value
-            val installSessions = Installs.active.collectAsStateWithLifecycle().value
-            val installProgress = androidx.compose.runtime.remember(installSessions) { installSessions.values.associate { it.packageName to it.progress } }
+            // Progress ticks for every install session on the phone. Kept as a State that nothing here reads, so a tick
+            // reaches only the icons that are installing (see LocalInstallProgress) instead of recomposing all of Home.
+            val installProgress = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyMap<String, Float>()) }
+            // Only while Folio is on screen (STARTED), as collectAsStateWithLifecycle was: a tick the UI can't draw costs nothing.
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                    Installs.active.collect { sessions -> installProgress.value = sessions.values.associate { it.packageName to it.progress } }
+                }
+            }
             val newApps = NewApps.packages.collectAsStateWithLifecycle().value
             // The Discover host is a not-touchable window stacked above the keyboard; Android drops every key
             // tap "due to occlusion" while it exists. Remove it whenever a keyboard can be up.
@@ -296,7 +323,7 @@ class MainActivity : ComponentActivity() {
                     onAppearanceClear = { cancelAppearanceLocation(); appearance.clearLocation(systemDark()) },
                     showFirstRun = showFirstRun.value,
                     onFinishFirstRun = ::finishFirstRun,
-                    onShadeSetup = ::showShadeSetup, onShowWelcome = { showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
+                    onShadeSetup = ::showShadeSetup, onShowWelcome = { SetupReplay.active = true; showFirstRun.value = true }, onShowWhatsNew = { whatsNewRequested.value = true })
                 }
                 // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
                 // charging on its side and a tent on the cover.
@@ -322,7 +349,17 @@ class MainActivity : ComponentActivity() {
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { sharedTheme.value = null }) {
                             androidx.compose.material3.Text(getString(R.string.cancel)) } })
                 }
-                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
+                // After What's New, not on top of it: the build page waits until that sheet has been closed.
+                if ((showDevBuild.value || DevBuild.reopen.intValue > 0) && !showWhatsNew.value && !whatsNewRequested.value) DevBuild.load(this@MainActivity)?.let { dev ->
+                    val before = androidx.compose.runtime.remember { DevBuild.seen(this@MainActivity) }
+                    DevBuildSheet(dev, before) { showDevBuild.value = false; DevBuild.reopen.intValue = 0; DevBuild.markSeen(this@MainActivity, dev) }
+                }
+                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet(
+                    // A beta build offers the testers' list from here; it closes this sheet and opens Settings on that page.
+                    onWhatToTest = if (WhatToTest.available(SoftwareUpdate.installedVersion(this@MainActivity), packageName)) ({
+                        showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity)
+                        SettingsLink.page = CustomizationPage.WHAT_TO_TEST; settingsRequests.intValue++
+                    }) else null) { showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity) }
                 // With live activities in the side rail, the camera island on Home keeps only its brief events.
                 if (state.island && !standByShowing.value) CutoutIsland(IslandListenerService.activity.collectAsStateWithLifecycle().value
                     ?.takeUnless { it is IslandActivity.Call && "CALL" in state.islandEventsOff }
@@ -349,6 +386,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart(); widgets.host.startListening()
+        // A new build can also arrive while this activity is alive in a restored task, so look again each time it starts.
+        if (!showDevBuild.value && DevBuild.shouldShow(this)) showDevBuild.value = true
         if (!timeReceiverRegistered) {
             ContextCompat.registerReceiver(this, timeReceiver, IntentFilter().apply {
                 addAction(Intent.ACTION_TIME_TICK); addAction(Intent.ACTION_TIME_CHANGED)
@@ -483,6 +522,7 @@ class MainActivity : ComponentActivity() {
     private fun finishFirstRun() {
         setupExperience.finish()
         showFirstRun.value = false
+        SetupReplay.active = false
     }
 
     private fun ownShadeSetupExternally() {

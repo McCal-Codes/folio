@@ -16,6 +16,7 @@ say no. You can check this list against `app/src/main/AndroidManifest.xml`; noth
 | `ACCESS_WIFI_STATE` | The Wi-Fi network's name and signal in the status area and Control Center (`DeviceStatus.kt`) | The Wi-Fi row shows no name |
 | `ACCESS_NOTIFICATION_POLICY` | Turning Do Not Disturb on with a Focus (`Focus.kt`) | Focus changes everything except Do Not Disturb |
 | `WRITE_SETTINGS` | The brightness slider and rotation lock in Control Center (`TopPanels.kt`) | Those two controls are off |
+| `WRITE_SECURE_SETTINGS` | Nothing uses it yet. Android lets an app change its protected settings only after you grant this once from a computer (`adb shell pm grant`); Folio cannot grant it to itself, and Settings › Advanced › System Bridge says whether it is on. It is declared so a later feature that changes a setting can work without Shizuku running | Nothing changes. It stays off, as it is for every app, until you grant it |
 | `USE_BIOMETRIC` | Unlocking Hidden Apps with your fingerprint or face (`CustomizationSheet.kt`) | Hidden Apps falls back to your screen lock |
 | `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION` | Installing a Folio update you asked for (`SoftwareUpdate.kt`), and an app from a Market source if you turn that on (`MarketApkInstall.kt`) | Update the APK yourself, and Market apps can't be installed |
 | `BIND_APPWIDGET` | Declared the way launchers do. Android never grants it to an app like Folio: adding a widget still asks you each time (`WidgetController.kt`) | No difference |

@@ -426,6 +426,7 @@ internal fun SharedHomeGrid(
     val foldShift by animateFloatAsState(fold?.second ?: 0f, androidx.compose.animation.core.spring(dampingRatio = .85f, stiffness = 380f), label = "fold shift")
     val foldRow = fold?.first ?: Int.MAX_VALUE
     fun rowTop(row: Int) = cells.y(row) + if (row >= foldRow) foldShift else 0f
+    CompositionLocalProvider(LocalHomeIconSize provides geometry.iconSize) {
     Box(Modifier.fillMaxWidth().height((cells.height(renderedRows) + foldShift).dp)
         .onGloballyPositioned { gridTopDp = with(density) { it.boundsInWindow().top.toDp().value } }) {
         val cellWidth = cells.cellWidth.dp
@@ -509,8 +510,14 @@ internal fun SharedHomeGrid(
             key("widget-${placement.slot}") {
                 val width = (cellWidth * placement.spanX - 10.dp).coerceAtLeast(1.dp)
                 val row = displayRow(placement.row)
-                val x = cellX(placement.column, row) + 5.dp
-                val y = rowTop(row)
+                // A freely placed widget drifts part of a cell from the cells it keeps; the two-column and half-folded
+                // layouts move rows around, so there it stays on its cells.
+                val free = !geometry.splitColumns && hinge == null
+                // The distance a whole row is on the side the offset goes: a clock nudged up from row 2 sits in the half-height rows above it.
+                val rowPitch = if (placement.offsetY < 0f && row > 0) rowTop(row) - rowTop(row - 1)
+                    else if (row + 1 < GRID_ROWS) rowTop(row + 1) - rowTop(row) else rowTop(row) - rowTop(row - 1)
+                val x = cellX(placement.column, row) + 5.dp + if (free) cellWidth * placement.offsetX else 0.dp
+                val y = rowTop(row) + if (free) rowPitch * placement.offsetY else 0f
                 val height = (cells.spanHeight(row, placement.spanY) - 18f).coerceAtLeast(48f)
                 if (placement == pending) {
                     // TalkBack names the widget by what its app calls it, not by the class behind it.
@@ -530,6 +537,7 @@ internal fun SharedHomeGrid(
                     Modifier.offset(x = x, y = y.dp).width(width).height(height.dp), page = page) { onWidget(placement.slot) }
             }
         }
+    }
     }
 }
 

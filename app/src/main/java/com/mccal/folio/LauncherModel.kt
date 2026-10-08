@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -178,7 +179,7 @@ data class LauncherState(
     /** Badge counts already seen, by package name: the count that was showing when the app was last opened. */
     val badgesSeen: Map<String, Int> = emptyMap(),
     /** iOS "Search" capsule on Home in place of the page dots. */
-    val searchPill: Boolean = true,
+    val homeStrip: HomeStrip = HomeStrip.SEARCH,
     /** Swipe down on Home (below the top edge) opens Spotlight. */
     /** Swipe down on Home: SPOTLIGHT, NOTIFICATIONS (Folio's or Android's, whichever the panels setting says) or OFF. */
     val swipeDownHome: String = "SPOTLIGHT",
@@ -287,6 +288,10 @@ data class LauncherState(
     val liveIconLook: String = "AUTO",
     /** Optional tint per folder id (ARGB). */
     val folderColors: Map<String, Long> = emptyMap(),
+    /** Optional custom width/height per folder id, from dragging its resize handle; absent means automatic. */
+    val folderSizes: Map<String, FolderSize> = emptyMap(),
+    /** Optional color/weight per Big Clock, keyed by its widget slot since more than one can be on Home. */
+    val bigClockStyles: Map<Int, BigClockStyle> = emptyMap(),
     /** Icon Stacks: anchor app id → the apps that fan out when you swipe down on it. */
     val iconStacks: Map<String, List<String>> = emptyMap(),
     /** Custom app names by app id; apps without an entry keep the name Android reports. */
@@ -627,7 +632,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
                         dock = trimmedDock(reconciled.dock), folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
-                        appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds,
+                        appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds.also { gone -> AppIconPictures.deleteAll(getApplication(), gone.filter { old.appIconStyles[it]?.hasPicture == true }) },
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
                         error = if (statePayloadInvalid) old.error else null)
                 }
@@ -883,6 +888,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         commitLayout(com.mccal.folio.removeAppFromFolder(mutable.value.layout, folderId, appId, target, mutable.value.homeAppRows))
     fun moveFolderApp(folderId: String, appId: String, index: Int) =
         commitLayout(com.mccal.folio.moveFolderApp(mutable.value.layout, folderId, appId, index))
+    fun sortFolderAlphabetically(folderId: String): Boolean {
+        val folder = mutable.value.layout.folder(folderId) ?: return false
+        val labels = mutable.value.apps.associate { it.id to it.label }
+        val sorted = folder.appIds.sortedBy { labels[it]?.lowercase() ?: "" }
+        return commitLayout(com.mccal.folio.reorderFolder(mutable.value.layout, folderId, sorted))
+    }
     fun folder(id: String) = mutable.value.layout.folder(id)
 
     /**
@@ -906,6 +917,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
+            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            bigClockStyles = old.bigClockStyles.filterKeys { slot ->
+                old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
             fullWidthRestore = emptyMap(),
@@ -919,12 +935,15 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return moveWidgetTo(from, target.page * HOME_CELLS + target.row * GRID_COLUMNS + target.column)
     }
     fun moveWidgetTo(slot: Int, index: Int) = commitLayout(moveWidget(mutable.value.layout, slot, index))
+    fun placeWidgetFreely(slot: Int, column: Float, row: Float) = commitLayout(placeWidgetFreely(mutable.value.layout, slot, column, row))
     fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = commitLayout(resizeWidget(mutable.value.layout, slot, spanX, spanY))
     fun placeWidget(placement: WidgetPlacement) = commitLayout(placeWidget(mutable.value.layout, placement))
     fun placement(slot: Int) = mutable.value.layout.placement(slot)
     // Never reuse a slot number that a (possibly undoable) stack still refers to.
+    // A slot that still has a stack or a Big Clock style (the widget may only have been removed, and removal is undoable) is
+    // not handed to a new widget, which would otherwise inherit the old one's look.
     fun nextWidgetSlot() = maxOf(mutable.value.widgetPlacements.maxOfOrNull { it.slot } ?: -1,
-        mutable.value.widgetStacks.keys.maxOrNull() ?: -1) + 1
+        mutable.value.widgetStacks.keys.maxOrNull() ?: -1, mutable.value.bigClockStyles.keys.maxOrNull() ?: -1) + 1
 
     fun stackCards(slot: Int): List<Int> = mutable.value.layout.placement(slot)
         ?.let { WidgetStacks.cards(it.id, mutable.value.widgetStacks[slot]) }.orEmpty()
@@ -963,12 +982,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** The look before the last theme was applied, so Undo can put it back. */
     var themeUndo: FolioTheme? = null
         private set
+    /** Applying and undoing a theme go one after another, in the order they were asked, even though each looks up icon packs off the main thread first. */
+    private val themeLock = kotlinx.coroutines.sync.Mutex()
     fun applyTheme(theme: FolioTheme) {
         themeUndo = FolioTheme.of(mutable.value, "Previous")
-        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } }
+        viewModelScope.launch { themeLock.withLock { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(theme, packs) } } }
     }
     fun undoTheme() { themeUndo?.let { previous -> themeUndo = null
-        viewModelScope.launch { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } }
+        viewModelScope.launch { themeLock.withLock { val packs = installedPackNames(); updateSettings(soon = false) { it.withTheme(previous, packs) } } } } }
     /** The icon packs on this phone, asked of Android off the main thread. */
     private suspend fun installedPackNames() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         IconPacks.installed(getApplication()).mapTo(mutableSetOf()) { it.packageName }
@@ -1012,15 +1033,47 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in next.widgetPlacements.map { it.slot }.toSet() },
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
     }
-    /** Turns a Focus on (or all off with null) and applies it to Android. */
-    fun setFocus(id: String?) {
+    /**
+     * Turns a Focus on (or all off with null) and applies it to Android. By hand, a trigger that holds won't undo it until something
+     * changes, and a Focus turned off while its schedule covers now stays off until that window ends (see FocusDismissals).
+     */
+    fun setFocus(id: String?, byHand: Boolean = true) {
+        if (byHand) {
+            FocusDismissals.record(getApplication(), mutable.value.focusModes, mutable.value.activeFocus, id)
+            val before = mutable.value.activeFocus
+            triggerState = if (id == null) FocusTriggers.onTurnedOffByHand(mutable.value.focusModes, triggerState, before) else FocusTriggers.onTurnedOnByHand(triggerState)
+            focusReasonState.value = null
+            rememberTriggerState()
+        }
+        applyFocus(id)
+    }
+    private fun applyFocus(id: String?) {
         updateSettings(soon = false) { it.copy(activeFocus = id?.takeIf { f -> it.focusModes.any { m -> m.id == f } }) }
         val state = mutable.value
         FocusController.apply(getApplication(), state.focusModes, state.focusModes.firstOrNull { it.id == state.activeFocus })
+    }
+    // What turned the Focus on survives the app being closed, so a Focus a trigger turned on is still turned off when the trigger ends.
+    private var triggerState = FocusTriggerState(
+        byTrigger = triggerPrefs().getString("trigger_by", null),
+        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) })
+    private fun triggerPrefs() = getApplication<android.app.Application>().getSharedPreferences("focus_rules", 0)
+    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key).apply()
+    private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(triggerState.reason)
+    /** Why the Focus that is on turned on by itself (unfolded, charging, headphones), or null when it was turned on by hand. */
+    val focusReason: kotlinx.coroutines.flow.StateFlow<FocusReason?> get() = focusReasonState
+    /** The phone's folding, charging or headphones changed: turns a Focus on or off by its triggers (see [FocusTriggers]). */
+    fun onFocusSignals(signals: FocusSignals) {
+        val state = mutable.value
+        val result = FocusTriggers.onSignals(state.focusModes, state.activeFocus, triggerState, signals)
+        triggerState = result.state
+        focusReasonState.value = result.state.reason
+        rememberTriggerState()
+        if (result.changed) applyFocus(result.active)
     }
     fun updateFocusMode(mode: FocusMode) {
         updateSettings(soon = false) { it.copy(focusModes = FocusModes.update(it.focusModes, mode)) }
@@ -1031,7 +1084,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun syncFocus() {
         val state = mutable.value
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus } ?: return
-        if (FocusController.isOnInAndroid(getApplication(), active) == false) updateSettings(soon = false) { it.copy(activeFocus = null) }
+        if (FocusController.isOnInAndroid(getApplication(), active) == false) {
+            // Turned off in Android: count it as turned off by hand, so its schedule doesn't switch it back on.
+            FocusDismissals.record(getApplication(), state.focusModes, state.activeFocus, null)
+            updateSettings(soon = false) { it.copy(activeFocus = null) }
+        }
     }
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
     fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }
@@ -1049,6 +1106,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
     fun setExperienceProfile(profile: ExperienceProfile) = updateSettings(soon = false) { it.withProfile(profile) }
+    /** Setup's first question: where you are coming from (see [StartingPoint]). */
+    internal fun setStartingPoint(point: StartingPoint) = updateSettings(soon = false) { it.withStartingPoint(point) }
     fun setHoldDelay(value: HoldDelay) = updateSettings(soon = false) { it.copy(holdDelay = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
     fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }
@@ -1131,6 +1190,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             widgetRestores = next.widgetRestores,
             // Keep stacks of the undoable previous layout too, so undoing a removal brings the whole stack back.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, (next.widgetPlacements + old.widgetPlacements).map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in (next.widgetPlacements + old.widgetPlacements).map { it.slot }.toSet() },
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true
@@ -1146,6 +1206,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
             googleSearch = settings?.googleSearch ?: old.googleSearch, verticalStatus = settings?.verticalStatus ?: old.verticalStatus,
@@ -1196,7 +1257,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val trimmed = BadgesWhenOpened.trimmed(counts, seen)
         if (trimmed != seen) updateSettings(soon = true) { it.copy(badgesSeen = trimmed) }
     }
-    fun setSearchPill(value: Boolean) = updateSettings(soon = false) { it.copy(searchPill = value) }
+    fun setHomeStrip(value: HomeStrip) = updateSettings(soon = false) { it.copy(homeStrip = value) }
     fun setSwipeDownHome(value: String) = updateSettings(soon = false) { it.copy(swipeDownHome = value) }
     fun setMessagesApp(pkg: String?) = updateSettings(soon = false) { it.copy(messagesApp = pkg) }
     fun setMessagesAvoidDouble(value: Boolean) = updateSettings(soon = false) { it.copy(messagesAvoidDouble = value) }
@@ -1209,6 +1270,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setNcSplit(value: Boolean) = updateSettings(soon = false) { it.copy(ncSplit = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
+    fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
+        it.copy(folderSizes = if (size == null) it.folderSizes - folderId else it.folderSizes + (folderId to size)) }
+    // soon = true: the weight slider's onValueChange fires on every pixel of drag, each one a call here - soon
+    // coalesces those into one write after they stop (persistSoon's own purpose), instead of a synchronous
+    // persist() blocking the UI thread on every tick, which is what made the slider look stuck.
+    fun setBigClockStyle(slot: Int, style: BigClockStyle?) = updateSettings(soon = true) {
+        it.copy(bigClockStyles = if (style == null) it.bigClockStyles - slot else it.bigClockStyles + (slot to style)) }
     fun setButtonBar(value: Boolean) = updateSettings(soon = false) { it.copy(buttonBar = value) }
     fun setButtonBarHeight(value: Float) = updateSettings(soon = false) { it.copy(buttonBarHeight = value.coerceIn(44f, 60f)) }
     fun setButtonBarWidth(value: Float) = updateSettings(soon = false) { it.copy(buttonBarWidth = value.coerceIn(.3f, .8f)) }
@@ -1243,7 +1311,11 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setIsland(value: Boolean) = updateSettings(soon = false) { it.copy(island = value) }
     fun setHidden(id: String, hidden: Boolean) = updateSettings(soon = false) { it.copy(hiddenApps = if (hidden) it.hiddenApps + id else it.hiddenApps - id) }
     /** Renames one app everywhere it appears; a blank name puts the name Android reports back. */
-    fun setAppIconStyle(id: String, override: AppIconOverride) = updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
+    fun setAppIconStyle(id: String, override: AppIconOverride) {
+        // A picture that is no longer chosen (Reset Icon, Remove Picture) is deleted, so nothing stale is kept.
+        if (!override.hasPicture && mutable.value.appIconStyles[id]?.hasPicture == true) AppIconPictures.delete(getApplication(), id)
+        updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
+    }
     fun renameApp(id: String, name: String) = updateSettings(soon = false) { s ->
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))
@@ -1380,7 +1452,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop)
         val widgets = JSONArray().also { array -> s.widgetPlacements.forEach { w -> array.put(JSONObject()
             .put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
-            .put("spanX", w.spanX).put("spanY", w.spanY)) } }
+            .put("spanX", w.spanX).put("spanY", w.spanY)
+            .apply { if (w.offsetX != 0f) put("offsetX", w.offsetX.toDouble()); if (w.offsetY != 0f) put("offsetY", w.offsetY.toDouble()) }) } }
         val folders = JSONArray().also { array -> s.folders.forEach { folder -> array.put(JSONObject()
             .put("id", folder.id).put("title", folder.title).put("apps", JSONArray(folder.appIds))) } }
         val restores = JSONArray().also { array -> s.widgetRestores.forEach { restore -> array.put(JSONObject()
@@ -1406,7 +1479,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
-            .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
+            .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncSplit", s.ncSplit)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1430,6 +1503,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("triggerActions", JSONObject().apply { s.triggerActions.forEach { (k, v) -> put(k, v) } })
             .put("todayWidgets", JSONArray().apply { s.todayWidgets.forEach { put(JSONObject().put("id", it.id).put("size", it.size.name)) } })
             .put("folderColors", JSONObject().apply { s.folderColors.forEach { (id, c) -> put(id, c) } })
+            .put("folderSizes", JSONObject().apply { s.folderSizes.forEach { (id, sz) -> put(id, JSONObject().put("w", sz.width.toDouble()).put("h", sz.height.toDouble())) } })
+            .put("bigClockStyles", JSONObject().apply { s.bigClockStyles.forEach { (slot, st) ->
+                put(slot.toString(), JSONObject().put("mode", st.mode).put("customIndex", st.customIndex).put("weight", st.weight)
+                    .put("size", st.size.toDouble()).put("face", st.face).put("shadow", st.shadow).put("date", st.date)
+                    .put("showNext", st.showNext).put("align", st.align)
+                    .put("stacked", st.stacked).put("hours", st.hours).put("ampm", st.ampm)) } })
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
             .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
@@ -1544,7 +1623,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         List(widgetArray.length()) { index ->
             val w = widgetArray.getJSONObject(index)
             WidgetPlacement(strictInt(w, "slot"), strictInt(w, "id"), strictInt(w, "page"), strictInt(w, "column"), strictInt(w, "row"),
-                strictInt(w, "spanX"), strictInt(w, "spanY")).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
+                strictInt(w, "spanX"), strictInt(w, "spanY"),
+                w.optDouble("offsetX", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f,
+                w.optDouble("offsetY", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f).let { if (legacyGrid) migrateLegacyWidgetPlacement(it) else it }
         }.also { loaded ->
             require(loaded.map { it.slot }.distinct().size == loaded.size) { "Widget placement slots must be unique" }
             loaded.forEach { placement ->
@@ -1659,7 +1740,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         badgeSize = runCatching { BadgeSize.valueOf(j.optString("badgeSize")) }.getOrDefault(BadgeSize.STANDARD),
         badgesWhenOpened = j.optBoolean("badgesWhenOpened", false),
         badgesSeen = j.optJSONObject("badgesSeen")?.let { o -> o.keys().asSequence().associateWith { o.getInt(it) }.filterValues { it > 0 } } ?: emptyMap(),
-        searchPill = j.optBoolean("searchPill", true),
+        homeStrip = HomeStrip.read(j.optString("homeStrip").takeIf { it.isNotEmpty() }, j.optBoolean("searchPill", true)),
         // Up to 0.6.0 this was a switch for Spotlight alone.
         swipeDownHome = j.optString("swipeDownHome", "").ifBlank { if (j.optBoolean("swipeDownSearch", true)) "SPOTLIGHT" else "OFF" },
         messagesApp = j.optString("messagesApp").takeIf { it.isNotBlank() && it != "null" },
@@ -1719,6 +1800,22 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             a.optJSONObject(i)?.let { o -> runCatching { TodayWidget(o.getInt("id"), TodaySize.valueOf(o.getString("size"))) }.getOrNull() }
         } } ?: DEFAULT_TODAY_WIDGETS,
         folderColors = j.optJSONObject("folderColors")?.let { o -> o.keys().asSequence().associateWith { o.getLong(it) } } ?: emptyMap(),
+        // Defensive against a hand-edited or older-build settings file, the same way pageStyles coerces iconScale.
+        folderSizes = j.optJSONObject("folderSizes")?.let { o -> o.keys().asSequence().mapNotNull { id ->
+            val sz = o.optJSONObject(id) ?: return@mapNotNull null
+            id to FolderSize(sz.optDouble("w", -1.0).toFloat().coerceIn(100f, 2000f), sz.optDouble("h", -1.0).toFloat().coerceIn(100f, 2000f))
+        }.toMap() } ?: emptyMap(),
+        bigClockStyles = j.optJSONObject("bigClockStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
+            val slot = key.toIntOrNull() ?: return@mapNotNull null
+            val st = o.optJSONObject(key) ?: return@mapNotNull null
+            val mode = st.optString("mode", "AUTO").takeIf { it in setOf("AUTO", "WALLPAPER", "WHITE", "CUSTOM") } ?: "AUTO"
+            fun pick(key: String, allowed: Set<String>, fallback: String) = st.optString(key, fallback).takeIf { it in allowed } ?: fallback
+            slot to BigClockStyle(mode, st.optInt("customIndex", 0).coerceIn(0, 4), st.optInt("weight", 600).coerceIn(100, 900),
+                st.optDouble("size", 1.0).toFloat().coerceIn(.7f, 1.3f), pick("face", setOf("SANS", "ROUNDED", "SERIF", "MONO"), "SANS"),
+                pick("shadow", setOf("OFF", "SOFT", "GLOW"), "SOFT"), pick("date", setOf("LONG", "SHORT", "OFF"), "LONG"),
+                st.optBoolean("showNext", true), pick("align", setOf("LEFT", "CENTER", "RIGHT"), "CENTER"),
+                st.optBoolean("stacked", false), pick("hours", setOf("SYSTEM", "12", "24"), "SYSTEM"), st.optBoolean("ampm", false))
+        }.toMap() } ?: emptyMap(),
         pageStyles = j.optJSONObject("pageStyles")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val page = key.toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null
             val style = o.optJSONObject(key) ?: return@mapNotNull null

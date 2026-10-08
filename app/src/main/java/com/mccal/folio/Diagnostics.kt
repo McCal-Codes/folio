@@ -45,6 +45,11 @@ internal object Diagnostics {
         while (trail.size > TRAIL_SIZE) trail.removeFirst()
     }
 
+    /** The automatic package updates (M1), in the trail so Recent Activity can say what happened in the background. */
+    fun autoUpdated(id: String, version: Any) = event("Updated $id to $version in the background")
+    fun autoUpdateStale(id: String) = event("A staged update for $id was no longer valid")
+    fun autoUpdateFailed(id: String, what: String) = event("The update for $id failed: $what")
+
     @Synchronized fun trailText(): String = trail.joinToString("\n")
 
     private var lastCaught: String? = null
@@ -250,20 +255,20 @@ internal object Diagnostics {
      * readable file instead of pages of pasted text, and they can open it before anything is sent. [email] addresses
      * it to [SUPPORT_EMAIL]; without it, the share sheet leaves the choice of where entirely to them.
      */
-    suspend fun reportIntent(context: Context, email: Boolean): Intent = withContext(Dispatchers.IO) {
+    suspend fun reportIntent(context: Context, email: Boolean, note: String? = null): Intent = withContext(Dispatchers.IO) {
         // Old reports are cleared, but not one a mail app may still be reading: only those more than ten minutes old,
         // and every report gets a name of its own, so two in the same minute don't overwrite each other.
         val dir = File(context.cacheDir, "reports").apply { mkdirs() }
         val now = System.currentTimeMillis()
         dir.listFiles()?.filter { now - it.lastModified() > 10 * 60_000 }?.forEach { it.delete() }
         val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"))
-        val file = File(dir, "folio-report-$stamp-${(1000..9999).random()}.txt").apply { writeText(bundle(context)) }
+        val file = File(dir, "folio-report-$stamp-${(1000..9999).random()}.txt").apply { writeText((note?.let { "Test: $it\n\n" } ?: "") + bundle(context)) }
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.reports", file)
         val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
         val send = Intent(Intent.ACTION_SEND).setType("text/plain")
             .putExtra(Intent.EXTRA_STREAM, uri)
             .putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.folio_bug_report_1, version))
-            .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.report_email_body))
+            .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.report_email_body) + (note?.let { "\n\nTest: $it" } ?: ""))
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         // The chooser only passes read access on if the file is also in clipData.
         send.clipData = ClipData.newRawUri("", uri)
