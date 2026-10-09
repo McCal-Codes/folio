@@ -72,7 +72,9 @@ internal fun gestureName(gesture: IconGestureKind) = when (gesture) {
  */
 @Composable
 internal fun IconActionsEditor(app: AppEntry, current: IconActions, apps: List<AppEntry>, onChange: (IconActions) -> Unit, onBack: () -> Unit,
-    env: (android.content.Context) -> ActionEnv = ActionEnv::live) {
+    env: (android.content.Context) -> ActionEnv = ActionEnv::live, backLabel: String = stringResource(R.string.edit_icon)) {
+    // The actions as they were when the editor opened, so every change made here can be undone at once.
+    val opened = remember(app.id) { current }
     val context = LocalContext.current
     val registry = ActionRegistry.standard
     var screen by remember { mutableStateOf<IconActionsScreen>(IconActionsScreen.Gestures) }
@@ -99,7 +101,7 @@ internal fun IconActionsEditor(app: AppEntry, current: IconActions, apps: List<A
     Column(Modifier.fillMaxWidth().testTag("icon-actions-editor")) {
         when (val s = screen) {
             IconActionsScreen.Gestures -> {
-                BackRow(stringResource(R.string.edit_icon), onBack)
+                BackRow(backLabel, onBack)
                 Title(stringResource(R.string.icon_actions_title))
                 CardNote(stringResource(R.string.icon_actions_lead, app.label))
                 SettingsCard(null) {
@@ -113,6 +115,7 @@ internal fun IconActionsEditor(app: AppEntry, current: IconActions, apps: List<A
                 }
                 last?.let { gesture -> current.get(gesture)?.let { ref -> TryIt(ref, gesture, registry) } }
                 CardNote(stringResource(R.string.icon_actions_footnote))
+                if (current != opened) IosActionRow(stringResource(R.string.icon_actions_undo_changes), tag = "icon-actions-undo", onClick = { onChange(opened); last = null })
                 if (current != IconActions()) IosActionRow(stringResource(R.string.icon_actions_reset), destructive = true, onClick = { onChange(IconActions()); last = null })
             }
             is IconActionsScreen.Picker -> {

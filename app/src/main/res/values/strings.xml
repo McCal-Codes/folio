@@ -2029,4 +2029,9 @@
     <string name="icon_actions_risk_power">Opens the power menu</string>
     <string name="icon_actions_risk_screenshot">Takes a screenshot</string>
     <string name="icon_actions_opens_panel">Opens a panel</string>
+    <string name="icon_actions_settings_note">To give an icon actions, press and hold it on Home, then More › Edit Icon › Icon Actions.</string>
+    <string name="icon_actions_none_yet">No icon has an action yet.</string>
+    <string name="icon_actions_reset_all">Reset All Icon Actions</string>
+    <string name="icon_actions_undo_reset">Undo Reset</string>
+    <string name="icon_actions_undo_changes">Undo Changes</string>
 </resources>

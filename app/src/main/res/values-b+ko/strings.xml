@@ -2000,4 +2000,9 @@
     <string name="icon_actions_risk_power">전원 메뉴를 엽니다</string>
     <string name="icon_actions_risk_screenshot">스크린샷을 찍습니다</string>
     <string name="icon_actions_opens_panel">패널 열기</string>
+    <string name="icon_actions_settings_note">아이콘에 동작을 지정하려면 홈 화면에서 아이콘을 길게 누른 다음 더 보기 › 아이콘 편집 › 아이콘 동작을 선택하세요.</string>
+    <string name="icon_actions_none_yet">아직 동작이 지정된 아이콘이 없습니다.</string>
+    <string name="icon_actions_reset_all">모든 아이콘 동작 재설정</string>
+    <string name="icon_actions_undo_reset">재설정 취소</string>
+    <string name="icon_actions_undo_changes">변경 사항 취소</string>
 </resources>

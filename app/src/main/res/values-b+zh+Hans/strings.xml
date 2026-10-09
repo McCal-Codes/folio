@@ -1979,4 +1979,9 @@
     <string name="icon_actions_risk_power">打开电源菜单</string>
     <string name="icon_actions_risk_screenshot">截取屏幕</string>
     <string name="icon_actions_opens_panel">打开面板</string>
+    <string name="icon_actions_settings_note">要为图标设置操作，请在主屏幕上长按图标，然后选择“更多 › 编辑图标 › 图标操作”。</string>
+    <string name="icon_actions_none_yet">还没有图标设置了操作。</string>
+    <string name="icon_actions_reset_all">重置所有图标操作</string>
+    <string name="icon_actions_undo_reset">撤销重置</string>
+    <string name="icon_actions_undo_changes">撤销更改</string>
 </resources>
