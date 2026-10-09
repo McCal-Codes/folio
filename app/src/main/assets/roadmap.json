@@ -486,14 +486,18 @@
           "color": "#30D158",
           "title": "Safe Mode that recovers",
           "detail": "An install cut short is put back, and native crashes and freezes count toward Safe Mode.",
-          "status": "building"
+          "status": "building",
+          "beta": true,
+          "inBeta": 2
         },
         {
           "icon": "notifications",
           "color": "#0A84FF",
           "title": "Notices with Undo",
           "detail": "Notices that fit their text and stay clear of the camera and fold, and Undo from the update notice.",
-          "status": "building"
+          "status": "building",
+          "beta": true,
+          "inBeta": 2
         },
         {
           "icon": "speed",
