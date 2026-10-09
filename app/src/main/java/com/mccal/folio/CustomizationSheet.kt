@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -105,6 +105,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE -> ADVANCED
         WHAT_TO_TEST -> HELP
+        DEVELOPER -> ADVANCED
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
         else -> OVERVIEW
@@ -135,6 +136,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         TWEAK, LIBRARY_TWEAK, FOLD_TWEAK -> R.string.tweak
         ADVANCED -> R.string.advanced
         SYSTEM_BRIDGE -> R.string.system_bridge
+        DEVELOPER -> R.string.developer
         NOTIFICATIONS -> R.string.notifications_control_center
         SEARCH -> R.string.search_app_library
         TODAY -> R.string.today_view
@@ -858,6 +860,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     CapabilitiesCard()
                     RecentActivityCard()
+                    // Folio Dev only: the passphrase-locked developer actions. A release build never shows this row.
+                    if (DevBuild.isDevApp(androidx.compose.ui.platform.LocalContext.current)) SettingsCard(null) {
+                        IosNavRow(DevBuild.DEVELOPER_LABEL, null, { onPage(CustomizationPage.DEVELOPER) }, "developer-row")
+                    }
                     CrashReportsCard()
                     PerformanceCard()
                 }
@@ -969,6 +975,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.SUPPORTER -> SupporterPage()
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
+                CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ })
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
                 CustomizationPage.FOCUS -> FocusListPage(state, model) { focusId = it; onPage(CustomizationPage.FOCUS_MODE) }
