@@ -1701,8 +1701,8 @@
     <string name="edit_icon_picture_note">图片会复制到 Folio 并裁剪为正方形，所以即使删除原图也能继续使用。它只保存在这部手机上，不包含在备份中。</string>
     <string name="reset_icon">重置图标</string>
     <string name="custom_search_blank">在你输入地址之前，按回车搜索会使用 Google。</string>
-    <string name="separate_upright_layout">竖屏时使用单独布局</string>
-    <string name="separate_upright_layout_note">为竖向的内屏提供单独的布局。它一开始是横向布局的副本，关闭后会恢复共用。</string>
+    <string name="separate_upright_layout">竖屏时使用单独尺寸</string>
+    <string name="separate_upright_layout_note">为竖向的内屏提供单独的尺寸和间距（图标、行和程序坞）。哪个应用在哪里仍与横向屏幕共用。它一开始是横向尺寸的副本，关闭后会恢复共用。</string>
     <string name="sideways">横向</string>
     <string name="upright">竖向</string>
     <string name="full_width_home">全宽主屏幕</string>

@@ -1750,8 +1750,8 @@
     <string name="edit_icon_picture_note">The picture is copied into Folio and cropped to a square, so it keeps working if the photo is deleted. It stays on this phone and is not part of a backup.</string>
     <string name="reset_icon">Reset Icon</string>
     <string name="custom_search_blank">Until you type an address, Search with Enter uses Google.</string>
-    <string name="separate_upright_layout">Separate layout when upright</string>
-    <string name="separate_upright_layout_note">The upright inner screen gets its own layout. It starts as a copy of the sideways one, and turning this off goes back to sharing it.</string>
+    <string name="separate_upright_layout">Separate sizes when upright</string>
+    <string name="separate_upright_layout_note">The upright inner screen gets its own sizes and spacing: icons, rows and the dock. Which app is where is still shared with the sideways screen. It starts as a copy of the sideways sizes, and turning this off goes back to sharing them.</string>
     <string name="sideways">Sideways</string>
     <string name="upright">Upright</string>
     <string name="full_width_home">Full-Width Home</string>
