@@ -22,6 +22,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
+| `screenshot-swap` | Screenshot Mode app swap for beta 3: a disguise applied where Home and Discover collect state, `AppEntry.iconFrom` read by `AppIcon`, widget cards and hidden shortcuts for swapped apps, and the Swap Apps settings page. | `ScreenshotDisguise.kt`, `ScreenshotSwapPage.kt`, `LiveIcons.kt` (`AppIcon`), `LauncherModel.kt` (`AppEntry`, uninstall cleanup), `MainActivity.kt`, `DiscoverActivity.kt`, `HomeWidgets.kt`, `HomeTiles.kt`, `AppLibrary.kt`, `AppContextMenu.kt`, `AppPanel.kt`, `LauncherScreen.kt`, `CustomizationSheet.kt`, strings |
 | `release-069-beta1` | Draft bump to 0.6.9-beta.1: the version, the release note and this row, nothing else (REL-13). Not for merge until the beta.1 pull requests are on `main`. | `app/build.gradle.kts`, `docs/releases/0.6.9-beta.1.md`, this file |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
