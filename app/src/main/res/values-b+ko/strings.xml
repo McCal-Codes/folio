@@ -6,7 +6,7 @@
 -->
     <string name="dune_wallpaper_description">Folio에서 고른 배경을 화면 크기에 맞춰 표시합니다.</string>
     <string name="shade_service_label">Folio 제스처 및 오버레이</string>
-    <string name="shade_service_description">홈 화면 제스처로 시스템 알림창과 빠른 설정창을 엽니다. 해당 기능을 켠 경우에만 다른 앱 위에 Folio의 Dock 핸들과 Dynamic Island를 표시하고, Dock의 앱을 실행하거나 홈 화면으로 이동합니다. 화면 내용을 읽거나 다른 앱에서 하는 활동을 관찰하지 않습니다.</string>
+    <string name="shade_service_description">Folio가 Android 시스템 버튼을 대신 누를 수 있게 합니다. 알림창, 빠른 설정, 잠금, 스크린샷, 뒤로 가기, 홈, 최근 앱 등입니다. Folio 컨트롤을 탭하거나 설정한 제스처를 사용할 때만 동작합니다. 화면을 읽거나 입력하는 내용을 보지 않습니다.</string>
     <string name="personal">개인용</string>
     <string name="work">업무용</string>
     <string name="turn_on_work_apps">업무용 앱 켜기</string>

@@ -1,7 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="dune_wallpaper_description">The background you chose in Folio, sized for your display.</string>
     <string name="shade_service_label">Folio gestures &amp; overlays</string>
-    <string name="shade_service_description">Lets Folio open the system notifications and Quick Settings panels from Home gestures, and, only if you turn them on, show Folio’s dock handle and Dynamic Island over other apps, launch your dock apps and go Home. It does not read screen content or observe what you do in other apps.</string>
+    <string name="shade_service_description">Lets Folio use Android’s system buttons for you: the notification shade, Quick Settings, lock, screenshot, Back, Home, recent apps and a few more. It only does this when you tap a Folio control or set a gesture. It does not read your screen or see what you type.</string>
     <string name="personal">Personal</string>
     <string name="work">Work</string>
     <string name="turn_on_work_apps">Turn on work apps</string>

@@ -9,7 +9,7 @@
 <resources>
     <string name="dune_wallpaper_description">你在 Folio 中选择的背景，已按你的屏幕尺寸调整。</string>
     <string name="shade_service_label">Folio 手势与悬浮控件</string>
-    <string name="shade_service_description">让 Folio 通过主屏幕手势打开系统的通知和快捷设置面板；并且仅在你开启时，在其他 App 上方显示 Folio 的程序坞把手和灵动岛、打开程序坞中的 App 以及返回主屏幕。它不会读取屏幕内容，也不会观察你在其他 App 中的操作。</string>
+    <string name="shade_service_description">让 Folio 替你使用 Android 的系统按钮：通知栏、快捷设置、锁屏、截屏、返回、主屏幕、最近使用的 App 等。只有在你点按 Folio 的控件或使用你设置的手势时才会这样做。它不会读取你的屏幕，也看不到你输入的内容。</string>
     <string name="personal">个人</string>
     <string name="work">工作</string>
     <string name="turn_on_work_apps">开启工作 App</string>
