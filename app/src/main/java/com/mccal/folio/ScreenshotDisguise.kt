@@ -85,14 +85,12 @@ internal object ScreenshotSwap {
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    /** Reads the saved rules once; later calls do nothing. */
-    fun load(context: Context) {
-        if (loaded) return
-        synchronized(this) {
-            if (loaded) return
-            mutable.value = decode(prefs(context).getString(KEY, null))
-            loaded = true
+    /** Reads the saved rules once, and returns the current ones. */
+    fun load(context: Context): DisguiseRules {
+        if (!loaded) synchronized(this) {
+            if (!loaded) { mutable.value = decode(prefs(context).getString(KEY, null)); loaded = true }
         }
+        return mutable.value
     }
 
     @Synchronized fun set(context: Context, rules: DisguiseRules) {
@@ -101,7 +99,7 @@ internal object ScreenshotSwap {
         prefs(context).edit().apply { if (rules.isEmpty) remove(KEY) else putString(KEY, encode(rules)) }.apply()
     }
 
-    fun chosen(context: Context): Set<String> { load(context); return mutable.value.chosen }
+    fun chosen(context: Context): Set<String> = load(context).chosen
 
     /** Apps that were uninstalled leave the list quietly, so nothing stale comes back with a reinstall. */
     fun forget(context: Context, removedIds: Collection<String>) {

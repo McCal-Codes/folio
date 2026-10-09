@@ -1938,4 +1938,14 @@
     <string name="action_a11y_shade">Android 通知栏</string>
     <string name="action_a11y_splitscreen">分屏</string>
     <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
+    <string name="screenshot_swap_apps">替换 App</string>
+    <string name="screenshot_swap_intro">截图模式开启时，你选择的 App 会显示为这部手机上的一个系统自带 App，使用它的图标和名称。点按后仍会打开真实的 App，只有屏幕显示会改变。手机自带的 App 不会被替换。</string>
+    <string name="screenshot_swap_all_third_party">替换所有第三方 App</string>
+    <string name="screenshot_swap_all_third_party_note">所有不是这部手机自带的 App，包括你以后安装的 App。</string>
+    <string name="screenshot_swap_choose">要替换的 App</string>
+    <string name="screenshot_swap_count">已选 %1$d 个</string>
+    <string name="screenshot_swap_system_app">手机自带，不会被替换</string>
+    <string name="screenshot_swap_none">没有匹配的 App</string>
+    <string name="screenshot_swap_footnote">截图模式开启时，被替换 App 的小组件会隐藏，其快捷方式也不会显示。文件夹名称是你自己起的，不会改变。Android 自身的界面、其他 App 上方的程序坞以及打开后的 App 本身仍会显示真实的 App。</string>
+    <string name="settings_keywords_screenshot_swap">截图 替换 隐藏 App 系统 图标 隐私</string>
 </resources>
