@@ -42,6 +42,8 @@ data class AppEntry(
     val available: Boolean = true,
     /** The name Android reports, kept so a custom name can be changed or cleared without reloading apps. */
     val systemLabel: String = label,
+    /** The stock app this one is shown as while Screenshot Mode swaps it ([ScreenshotDisguise]), or null. */
+    val iconFrom: AppEntry? = null,
 ) {
     val packageName: String get() = component.packageName
     /** A pinned shortcut (a website or app action someone added to Home) rather than an app. */
