@@ -40,6 +40,13 @@ class FolioMotionTest {
         assertEquals(FolioMotion.Sheet, FolioMotion.pick(old, FolioMotion.Sheet))
     }
 
+    @Test fun `the icon fan keeps its old spring until the pass is on`() {
+        FolioMotion.use(false)
+        assertEquals(.68f to 520f, fanSpring())
+        FolioMotion.use(true)
+        assertEquals(FolioMotion.Bounce, fanSpring())
+    }
+
     @Test fun `the switch overrides the gate, and with no switch the gate decides`() {
         assertEquals(true, FolioMotion.resolve(override = null, gateOpen = true))
         assertEquals(false, FolioMotion.resolve(override = null, gateOpen = false))
