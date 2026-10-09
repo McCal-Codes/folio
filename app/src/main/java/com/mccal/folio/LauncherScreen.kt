@@ -546,6 +546,12 @@ fun LauncherScreen(
             }
                 ?: rawDestination
         } else rawDestination
+        // With the motion pass, an app that moved flies to its place (or back to it, for a drop that did nothing), unless it
+        // went into a folder, made one, or was removed: those keep the copy's old exit.
+        val lands = drag.landing.lifted && moved && source.appId != null && destination != DropTarget.Remove && destination !is DropTarget.Folder &&
+            !(destination is DropTarget.Home && (folderDropTarget(source.appId, destination.index) != null || folderMergeTarget(source.appId, destination.index) != null))
+        val releasedAt = drag.pointer - drag.rootOrigin
+        val releaseSpeed = drag.releaseVelocity()
         val changed = when {
             source.folderId != null && destination is DropTarget.Folder ->
                 model.addAppToFolder(destination.id, source.appId ?: "")
@@ -574,10 +580,13 @@ fun LauncherScreen(
             is DropTarget.Widget -> 0
             else -> if (source.target is DropTarget.Library) pager.currentPage else drag.originPage
         }
+        if (lands) drag.landing.land(scope, source.appId!!, releasedAt, releaseSpeed)
         scope.launch {
             // Let a new home page compose before removing the temporary drop page.
             withFrameNanos { }
             drag.clear()
+            // Cleared only now, so a drop without a landing never shows the old copy for a frame.
+            if (!lands) drag.landing.drop()
             withFrameNanos { }
             pager.scrollToPage(if (returnToLibrary) model.state.value.homePages else page.coerceIn(0, model.state.value.homePages - 1))
             if (!moved && !cancelled) {
@@ -604,10 +613,14 @@ fun LauncherScreen(
         // Only Google Discover's hosted feed needs it; with Today View an extra offscreen pass just costs frames.
         compositingStrategy = if (!hostedDiscover) androidx.compose.ui.graphics.CompositingStrategy.Auto
             else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-    }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").homeDragInput(drag,
+    }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").onGloballyPositioned { drag.landing.rootInWindow = it.boundsInWindow().topLeft }.homeDragInput(drag,
         enabled = sheet.isEmpty() && !showFirstRun && overlays.menu == null && !resize.active && pager.currentPage >= 0,
         page = pager.currentPage, eligiblePages = eligibleDragPages, onStart = {
             focus.clearFocus(); keyboard?.hide(); haptic.perform(FolioHaptic.PickedUp)
+            // The 0.6.9 motion pass: an app carried from Home or the dock lifts where it is and later lands (DragLanding).
+            val carried = drag.source?.takeIf { (it.target is DropTarget.Home || it.target is DropTarget.Dock) && it.folderId == null }
+                ?.appId?.takeUnless(::isFolderId)
+            drag.landing.begin(scope, carried, drag.pointer - drag.rootOrigin, FolioMotion.v2, dockReduceMotion)
             // iPhone: holding an app shows its menu right away (no Android-style pick-up). Moving while still
             // holding dismisses the menu, picks the app up and starts jiggle mode (see the effect below).
             drag.source?.let { src ->
@@ -1576,6 +1589,22 @@ fun LauncherScreen(
                 }
             }
         }
+        val landing = drag.landing
+        (if (drag.active && landing.lifted) drag.source?.appId else landing.flyingId)?.let { appsById[it] }?.let { app ->
+            val side = with(LocalDensity.current) { landing.size.toDp() }
+            val shape = RoundedCornerShape(side * .24f)
+            AppIcon(app, stringResource(R.string.moving_named, app.label), Modifier
+                .offset {
+                    val p = if (drag.active) landing.heldAt(drag.pointer - drag.rootOrigin) else landing.position.value
+                    IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                }
+                .size(side)
+                .graphicsLayer {
+                    scaleX = landing.scale.value; scaleY = scaleX; alpha = landing.fade.value
+                    shadowElevation = PressFeedback.LIFT_SHADOW_DP.dp.toPx() * landing.liftProgress(); this.shape = shape; clip = true
+                }
+                .testTag("drag-ghost"))
+        }
         if (drag.active) {
             if (drag.moved) {
                 if (pager.currentPage > 0) Box(Modifier.align(Alignment.CenterStart).width(6.dp).height(112.dp)
@@ -1583,7 +1612,7 @@ fun LauncherScreen(
                 if (pager.currentPage < homePages) Box(Modifier.align(Alignment.CenterEnd).width(6.dp).height(112.dp)
                     .background(Color.White.copy(alpha = if (edge > 0) .9f else .3f), RoundedCornerShape(6.dp)).testTag("drag-edge-right"))
             }
-            appsById[drag.source?.appId]?.let { app ->
+            appsById[drag.source?.appId]?.takeUnless { drag.landing.lifted }?.let { app ->
                 val size = 66.dp
                 val px = with(LocalDensity.current) { size.toPx() }
                 AppIcon(app, stringResource(R.string.moving_named, app.label), Modifier

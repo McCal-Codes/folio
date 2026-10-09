@@ -217,7 +217,7 @@ internal fun DockAppColumn(
                     if (!visible) 0f else if (dimDragged && id == draggedId) .28f else 1f,
                     label = "dock insertion visibility $id",
                 )
-                Box(Modifier.offset { animatedOffset }.then(if (horizontal) Modifier.fillMaxHeight().width(rowHeight.dp) else Modifier.fillMaxWidth().height(rowHeight.dp)).alpha(opacity)
+                Box(Modifier.offset { animatedOffset }.then(if (horizontal) Modifier.fillMaxHeight().width(rowHeight.dp) else Modifier.fillMaxWidth().height(rowHeight.dp)).graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }
                     .testTag("dock-app-$id"), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(iconSize.dp).testTag("dock-icon-$id")
                         .onGloballyPositioned { if (savedIndex >= 0) { launchBounds[savedIndex].set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(id, launchBounds[savedIndex]) } }

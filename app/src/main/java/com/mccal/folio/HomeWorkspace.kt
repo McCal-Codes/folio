@@ -487,7 +487,7 @@ internal fun SharedHomeGrid(
                     label = "home insertion visibility $id",
                 )
                 Box(Modifier.offset { animatedOffset }.width(cellWidth).height(rowHeight.dp)
-                    .alpha(opacity).moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
+                    .graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }.moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
                     if (visible) AppTile(app, iconSize, labels,
                         onClick = { if (!edit.active) onLaunch(app, it) }, onLongClick = { onActions(app) },
                         onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null)
