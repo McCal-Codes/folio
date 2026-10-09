@@ -74,7 +74,9 @@ sdk_dir=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 if [[ -z "$sdk_dir" && -f "$repository_root/local.properties" ]]; then
     sdk_dir=$(sed -n 's/^sdk\.dir=//p' "$repository_root/local.properties")
 fi
-apksigner=$(ls -d "$sdk_dir"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
+[[ -n "$sdk_dir" ]] || sdk_dir=${LOCALAPPDATA:+$LOCALAPPDATA/Android/Sdk}
+# Windows ships it as apksigner.bat.
+apksigner=$(ls -d "$sdk_dir"/build-tools/*/apksigner "$sdk_dir"/build-tools/*/apksigner.bat 2>/dev/null | sort -V | tail -1 || true)
 if [[ -z "$apksigner" ]]; then
     echo "apksigner not found. Set ANDROID_HOME to your Android SDK." >&2
     exit 1
