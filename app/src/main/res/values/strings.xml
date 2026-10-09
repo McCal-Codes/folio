@@ -31,7 +31,7 @@
     <string name="dark_appearance_dims_wallpaper">Dark appearance dims wallpaper</string>
     <string name="darken_behind_text">Darken behind text</string>
     <string name="launcher_background">Launcher background</string>
-    <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens. </string>
+    <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens.\u0020</string>
     <string name="cancel">Cancel</string>
     <string name="apply">Apply</string>
     <string name="opens_android_s_preview_to_use_folio_s_b">Opens Android’s preview to use Folio’s background as your phone’s wallpaper too (a live wallpaper), so it matches outside Folio.</string>
@@ -119,8 +119,8 @@
     <string name="closing_from_home">Closing from Home</string>
     <string name="stay_awake_on_the_cover_screen">Stay awake on the cover screen</string>
     <string name="samsung_locks_the_phone_when_you_fold_on">Samsung locks the phone when you fold on any home screen. Folio briefly steps aside while you close it so the cover screen stays on. Needs Settings › Display › Continue apps on cover screen › Always.</string>
-    <string name="save_the_current_home_layout_folders_wid">Save the current Home layout, folders, widgets, and layout settings. </string>
-    <string name="save_the_current_home_layout_folders_wid_2">Save the current Home layout, folders, widgets, layout settings, and the packages you got from the Market. </string>
+    <string name="save_the_current_home_layout_folders_wid">Save the current Home layout, folders, widgets, and layout settings.\u0020</string>
+    <string name="save_the_current_home_layout_folders_wid_2">Save the current Home layout, folders, widgets, layout settings, and the packages you got from the Market.\u0020</string>
     <string name="restore">Restore</string>
     <string name="restore_shows_a_review_before_changing_h">Restore shows a review before changing Home.</string>
     <string name="lock_cover">Lock Cover</string>
@@ -588,7 +588,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio gestures are starting. Swipe down again.</string>
     <string name="android_couldn_t_open_the_system_panel">Android couldn’t open the system panel.</string>
     <string name="turn_on_folio_gestures">Turn On Folio Gestures</string>
-    <string name="folio_uses_it_to_open_notification_cente">Folio uses it to open Notification Center and Control Center, and for the dock and island over other apps. </string>
+    <string name="folio_uses_it_to_open_notification_cente">Folio uses it to open Notification Center and Control Center, and for the dock and island over other apps.\u0020</string>
     <string name="it_can_t_read_what_s_on_your_screen">It can\'t read what\'s on your screen.</string>
     <string name="app_info">App Info</string>
     <string name="open_settings">Open Settings</string>
