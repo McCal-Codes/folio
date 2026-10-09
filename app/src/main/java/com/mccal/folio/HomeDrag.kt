@@ -34,6 +34,8 @@ internal class HomeDragState {
     val active get() = source != null
     /** The 0.6.9 motion pass's lift and landing for the app being carried ([DragLanding]). */
     val landing = DragLanding()
+    /** The app whose folder plate is showing because the carried app is held over its middle (FolderOrRoom). */
+    var mergePreview by mutableStateOf<String?>(null)
     /** The finger's last moments, for the speed it lets go with ([releaseVelocity]). Not state: only read on release. */
     private val trail = ArrayDeque<Pair<Long, Offset>>()
     fun track(timeMillis: Long, point: Offset) {
@@ -64,7 +66,7 @@ internal class HomeDragState {
             }
         }.maxByOrNull(::dragRegionPriority)
     }
-    fun clear() { source = null; moved = false; trail.clear() }
+    fun clear() { source = null; moved = false; trail.clear(); mergePreview = null }
 
     fun register(owner: Any, region: DragRegion) {
         regionOwners[region.target] = owner

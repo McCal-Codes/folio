@@ -506,9 +506,44 @@ fun LauncherScreen(
         val occupant = state.layout.slotAt(index) ?: return null
         return occupant.takeIf { state.layout.folder(it) != null && drag.source?.folderId != it }
     }
-    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows) {
+    // Folder or make room (FolderOrRoom), with the motion pass and folders on drop: only the middle of an app, held, makes a
+    // folder; its edge or a gap, held a moment, makes room; passing over an app does nothing. Without the pass, any app under
+    // the finger means a folder, as before.
+    val folderOrRoom = FolioMotion.v2 && folderEditing
+    val heldCenter = if (!folderOrRoom || !drag.active || !drag.moved) null
+        else if (drag.landing.lifted) drag.landing.heldAt(drag.pointer - drag.rootOrigin) + Offset(drag.landing.size / 2f, drag.landing.size / 2f)
+        else drag.pointer - drag.rootOrigin
+    val hoverIndex = (insertionTarget as? DropTarget.Home)?.index
+    val hoverApp = if (folderOrRoom && hoverIndex != null) folderMergeTarget(drag.source?.appId, hoverIndex) else null
+    val heldOverMiddle = hoverApp != null && FolderOrRoom.inMiddle(heldCenter, IconBounds.of(hoverApp)?.let {
+        androidx.compose.ui.geometry.Rect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()).translate(-drag.landing.rootInWindow)
+    })
+    val middleIndex = hoverIndex.takeIf { heldOverMiddle }
+    var armedMerge by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(middleIndex, folderOrRoom) {
+        armedMerge = null
+        if (folderOrRoom && middleIndex != null) { delay(FolderOrRoom.FOLDER_WAIT_MS); armedMerge = middleIndex }
+    }
+    var roomTarget by remember { mutableStateOf<DropTarget?>(null) }
+    LaunchedEffect(insertionTarget, heldOverMiddle, folderOrRoom) {
+        if (!folderOrRoom || insertionTarget == null) { roomTarget = null; return@LaunchedEffect }
+        // Over the middle the others stay where they are; anywhere else they make room after a moment.
+        if (heldOverMiddle) return@LaunchedEffect
+        if (insertionTarget is DropTarget.Home) delay(FolderOrRoom.ROOM_WAIT_MS)
+        roomTarget = insertionTarget
+    }
+    SideEffect { drag.mergePreview = if (folderOrRoom && drag.active) armedMerge?.let { folderMergeTarget(drag.source?.appId, it) } else null }
+    /** The app a drop on [index] makes a folder with: with FolderOrRoom only once its middle was held long enough. */
+    fun mergesAt(sourceAppId: String?, index: Int): String? = folderMergeTarget(sourceAppId, index)?.takeIf { !folderOrRoom || armedMerge == index }
+    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows, folderOrRoom, armedMerge, roomTarget) {
         val id = drag.source?.appId
         when {
+            folderOrRoom && id != null && drag.moved -> when {
+                armedMerge != null -> state.layout
+                insertionTarget is DropTarget.Home && folderDropTarget(id, insertionTarget.index) != null -> state.layout
+                roomTarget is DropTarget.Home || roomTarget is DropTarget.Dock -> dropApp(state.layout, id, roomTarget!!, homeAppRows)
+                else -> state.layout
+            }
             // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
             // the target cell's own hover highlight is the only feedback until release, same as a real platform.
             id != null && insertionTarget is DropTarget.Home &&
@@ -549,7 +584,7 @@ fun LauncherScreen(
         // With the motion pass, an app that moved flies to its place (or back to it, for a drop that did nothing), unless it
         // went into a folder, made one, or was removed: those keep the copy's old exit.
         val lands = drag.landing.lifted && moved && source.appId != null && destination != DropTarget.Remove && destination !is DropTarget.Folder &&
-            !(destination is DropTarget.Home && (folderDropTarget(source.appId, destination.index) != null || folderMergeTarget(source.appId, destination.index) != null))
+            !(destination is DropTarget.Home && (folderDropTarget(source.appId, destination.index) != null || mergesAt(source.appId, destination.index) != null))
         val releasedAt = drag.pointer - drag.rootOrigin
         val releaseSpeed = drag.releaseVelocity()
         val changed = when {
@@ -563,8 +598,8 @@ fun LauncherScreen(
                 model.addAppToFolder(folderDropTarget(source.appId, destination.index)!!, source.appId!!)
             // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
             // places. Dropping on an existing folder already goes through DropTarget.Folder above.
-            destination is DropTarget.Home && folderMergeTarget(source.appId, destination.index) != null ->
-                model.createFolder(source.appId!!, folderMergeTarget(source.appId, destination.index)!!, destination.index) != null
+            destination is DropTarget.Home && mergesAt(source.appId, destination.index) != null ->
+                model.createFolder(source.appId!!, mergesAt(source.appId, destination.index)!!, destination.index) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }

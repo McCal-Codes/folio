@@ -439,7 +439,8 @@ internal fun SharedHomeGrid(
             val savedApp = appsById[savedId]
             val savedFolder = folders.firstOrNull { it.id == savedId }
             val previewId = previewAt(globalIndex)
-            val highlighted = drag.active && target == cell
+            // With a folder plate showing (FolderOrRoom), the plate is the feedback; the cell outline would double it.
+            val highlighted = drag.active && target == cell && (drag.mergePreview == null || savedId != drag.mergePreview)
             val gap = hiddenIndex == globalIndex
             val row = localIndex / GRID_COLUMNS
             val cellHeight = cells.spanHeight(row, 1)
@@ -486,11 +487,15 @@ internal fun SharedHomeGrid(
                     if (dimDragged && id == draggedId) .28f else 1f,
                     label = "home insertion visibility $id",
                 )
+                val plateOn = drag.mergePreview == id
+                val plateGrowth by animateFloatAsState(if (plateOn) 1f else 0f,
+                    FolioMotion.spring(if (plateOn) FolioMotion.Quick else FolioMotion.Firm), label = "folderPlate $id")
                 Box(Modifier.offset { animatedOffset }.width(cellWidth).height(rowHeight.dp)
                     .graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }.moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
                     if (visible) AppTile(app, iconSize, labels,
                         onClick = { if (!edit.active) onLaunch(app, it) }, onLongClick = { onActions(app) },
-                        onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null)
+                        onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null,
+                        plate = if (plateOn || plateGrowth > .001f) ({ plateGrowth }) else null)
                 }
             }
         }

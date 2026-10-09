@@ -299,7 +299,9 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
 
 @Composable
 internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modifier = Modifier, onClick: (android.graphics.Rect) -> Unit, onLongClick: () -> Unit,
-    onRemove: (() -> Unit)? = null) {
+    onRemove: (() -> Unit)? = null,
+    /** How far a folder plate has grown behind this icon, 0 to 1, while another app is held over its middle (FolderOrRoom). */
+    plate: (() -> Float)? = null) {
     val appOptionsLabel = stringResource(R.string.app_options)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -330,8 +332,16 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
         Box(Modifier.size(iconSize).onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(app.id, bounds) }
             .jiggle(app.id).foldMotionIcon()) {
+            // The folder plate grows behind the icon and the icon shrinks into it; under Reduce Motion the plate only fades in.
+            val still = LocalReduceMotion.current
+            if (plate != null) Box(Modifier.matchParentSize().graphicsLayer {
+                val p = plate()
+                alpha = if (still) p else if (p > .001f) 1f else 0f
+                val grown = 1f + FolderOrRoom.PLATE_GROWTH * (if (still) 1f else p); scaleX = grown; scaleY = grown
+            }.background(Glass.copy(alpha = .72f), RoundedCornerShape((size * .24f).dp)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp)))
             if (app.id in LocalStackedApps.current) StackPeek(iconSize)
             AppIcon(app, null, Modifier.fillMaxSize()
+                .graphicsLayer { if (plate != null && !still) { val inside = 1f - (1f - FolderOrRoom.ICON_INSIDE) * plate(); scaleX = inside; scaleY = inside } }
                 .pressFeedback(pressed || launching, lifted, size * .24f, kind = PressFeedback.Kind.APP), shape = RoundedCornerShape((size * .24f).dp))
             if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = onRemove)
         }
