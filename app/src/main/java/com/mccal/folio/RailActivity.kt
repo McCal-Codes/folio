@@ -67,7 +67,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
     if (activity != null) shown = activity
     LaunchedEffect(activity == null, activity?.packageName) { if (activity == null || activity !is IslandActivity.Media) expanded = false }
     val reduceMotion = LocalReduceMotion.current
-    val bouncy = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntSize>(dampingRatio = .72f, stiffness = 420f)
+    val bouncy = FolioMotion.spring<androidx.compose.ui.unit.IntSize>(.72f to 420f)
     AnimatedVisibility(activity != null,
         enter = if (reduceMotion) fadeIn() else expandVertically(bouncy, expandFrom = Alignment.Top) + fadeIn(),
         exit = if (reduceMotion) fadeOut() else shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()) {
@@ -78,7 +78,7 @@ internal fun RailLiveActivity(activity: IslandActivity?, width: androidx.compose
         val pressed = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
         val isPressed by pressed.collectIsPressedAsState()
         val scale by androidx.compose.animation.core.animateFloatAsState(if (isPressed) .94f else 1f,
-            androidx.compose.animation.core.spring(dampingRatio = .6f, stiffness = 700f), label = "rail island press")
+            FolioMotion.spring(.6f to 700f), label = "rail island press")
         val open = { IslandListenerService.open(context, current) }
         Column(Modifier.width(width).graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(8.dp, RoundedCornerShape(outer), ambientColor = Color.Black, spotColor = Color.Black)
@@ -213,7 +213,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
     var expanded by remember(media?.packageName, call?.key, call?.incoming) { mutableStateOf(call?.incoming == true && callControls) }
     androidx.activity.compose.BackHandler(expanded) { expanded = false }
     val reduceMotion = LocalReduceMotion.current
-    val bouncy = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntSize>(dampingRatio = .72f, stiffness = 420f)
+    val bouncy = FolioMotion.spring<androidx.compose.ui.unit.IntSize>(.72f to 420f)
     with(density) {
         val hole = minOf(camera.width(), camera.height()).toDp()
         val edge = SIDE_ISLAND_EDGE
@@ -225,7 +225,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
         val grown = expanded && alongEdge
         val card = expanded && !alongEdge
         val width by androidx.compose.animation.core.animateDpAsState(if (grown) 76.dp else thickness,
-            androidx.compose.animation.core.spring(dampingRatio = .74f, stiffness = 420f), label = "vertical island width")
+            FolioMotion.spring(.74f to 420f), label = "vertical island width")
         val glyph = thickness - 14.dp
         val gapHalf = hole / 2 + 4.dp
         val growUp = camera.centerY() > windowHeight / 2
@@ -237,7 +237,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
         val pressed = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
         val isPressed by pressed.collectIsPressedAsState()
         val scale by androidx.compose.animation.core.animateFloatAsState(if (isPressed) .95f else 1f,
-            androidx.compose.animation.core.spring(dampingRatio = .6f, stiffness = 700f), label = "vertical island press")
+            FolioMotion.spring(.6f to 700f), label = "vertical island press")
         val expandedStack: @Composable () -> Unit = {
             if (grown && media != null) RailNowPlaying(media, accent, 76.dp - 20.dp)
             if (grown && call != null && callControls) RailCallButtons(call)
@@ -249,7 +249,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
                 when {
                     media != null -> (media.art ?: media.icon)?.let {
                         val art by androidx.compose.animation.core.animateDpAsState(if (grown) 76.dp - 20.dp else glyph,
-                            androidx.compose.animation.core.spring(dampingRatio = .74f, stiffness = 420f), label = "vertical island art")
+                            FolioMotion.spring(.74f to 420f), label = "vertical island art")
                         androidx.compose.foundation.Image(it.asImageBitmap(), media.title, Modifier.size(art).clip(RoundedCornerShape(art * .24f)),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                     }
@@ -295,7 +295,7 @@ internal fun VerticalIsland(content: IslandContent, camera: android.graphics.Rec
         }
         val cardGrow = remember { androidx.compose.animation.core.Animatable(0f) }
         LaunchedEffect(card) {
-            if (card) { if (reduceMotion) cardGrow.snapTo(1f) else cardGrow.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .74f, stiffness = 520f)) }
+            if (card) { if (reduceMotion) cardGrow.snapTo(1f) else cardGrow.animateTo(1f, FolioMotion.spring(.74f to 520f)) }
             else cardGrow.snapTo(0f)
         }
         androidx.compose.ui.layout.Layout(content = {

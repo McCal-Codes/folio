@@ -423,7 +423,7 @@ internal fun SharedHomeGrid(
     val fold = hinge?.let { h -> with(density) {
         foldDisplacement(cells, renderedRows, gridTopDp, h.startPx.toDp().value, h.endPx.toDp().value, widgetRows)
     } }
-    val foldShift by animateFloatAsState(fold?.second ?: 0f, androidx.compose.animation.core.spring(dampingRatio = .85f, stiffness = 380f), label = "fold shift")
+    val foldShift by animateFloatAsState(fold?.second ?: 0f, FolioMotion.spring(.85f to 380f), label = "fold shift")
     val foldRow = fold?.first ?: Int.MAX_VALUE
     fun rowTop(row: Int) = cells.y(row) + if (row >= foldRow) foldShift else 0f
     CompositionLocalProvider(LocalHomeIconSize provides geometry.iconSize) {
@@ -477,7 +477,7 @@ internal fun SharedHomeGrid(
                 // Slide only while rearranging; a new screen size (folding) must place icons immediately.
                 val animatedOffset by animateIntOffsetAsState(
                     with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) },
-                    animationSpec = if (drag.active || edit.active) androidx.compose.animation.core.spring(visibilityThreshold = IntOffset(1, 1))
+                    animationSpec = if (drag.active || edit.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
                         else androidx.compose.animation.core.snap(),
                     label = "home insertion $id",
                 )
