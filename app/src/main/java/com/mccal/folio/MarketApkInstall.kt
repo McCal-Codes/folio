@@ -99,7 +99,7 @@ internal object MarketApkInstall {
         status.value = Status.Working(name)
         val bytes = fetch(url) { read, total -> MarketWork.downloaded(read, total) }
             ?: return fail(context, R.string.folio_couldn_t_download_that_app)
-        // Hashing and copying up to 20 MB happen off the main thread: MarketWork runs on it, and only the fetch moved.
+        // Hashing and copying up to 100 MB (IndexPackage.MAX_APP_BYTES) happen off the main thread: MarketWork runs on it, and only the fetch moved.
         val matches = withContext(Dispatchers.Default) { sha256(bytes).equals(expected, ignoreCase = true) }
         // The checksum already covers the size; this is the listing's own number, checked in its own right.
         if (!matches || (entry.size != null && bytes.size != entry.size)) {

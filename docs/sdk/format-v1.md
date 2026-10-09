@@ -24,7 +24,7 @@ script.js          reserved: a package whose kind includes "script" is refused
 ```
 
 Limits:
-- **Size:** at most 20 MB compressed and 50 MB uncompressed.
+- **Size:** at most 20 MB compressed and 50 MB uncompressed. An `externalApp` listing's APK (`size` in the index) may be up to 100 MB; nothing else may pass 20 MB.
 - **Entries:** at most 500.
 - **Names:** relative paths with `/` separators; no `..`, no absolute paths, no symlinks.
 - **Rejected on sight:** anything that breaks these rules, plus files with extensions other than `.json`, `.png`, `.webp`, `.jpg`, `.jpeg` and `.js`.
