@@ -133,10 +133,17 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
         var litFrames = 0
         var lastFrame = 0L
+        // The Performance log counts the fold animation as one thing, with its own frame timing.
+        var measuring = false
+        try {
         while (true) {
             // Idle: sleep until the hinge moves or the display switches, so a fold starts on its first frame rather
             // than up to one poll later. The timeout is only a backstop.
-            if (!fold.busy && m == 0f) { animating(false); lastFrame = 0L; kotlinx.coroutines.withTimeoutOrNull(IDLE_WAIT_MS) { fold.wake.receive() }; continue }
+            if (!fold.busy && m == 0f) {
+                if (measuring) { PerfLog.end(PerfScenario.FOLD); measuring = false }
+                animating(false); lastFrame = 0L; kotlinx.coroutines.withTimeoutOrNull(IDLE_WAIT_MS) { fold.wake.receive() }; continue
+            }
+            if (!measuring) { PerfLog.noteFold(); PerfLog.begin(PerfScenario.FOLD); measuring = true }
             animating(enabled)
             if (cornerPx == 0f) cornerPx = screenCornerPx(view)
             withFrameNanos { frame ->
@@ -163,6 +170,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 }
             }
         }
+        } finally { if (measuring) PerfLog.end(PerfScenario.FOLD) }
     } }
 
     // The Duo shader always drives the rotating half; the iPhone Duo style adds the still right half on top.
@@ -367,13 +375,15 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
         val su = RootHingeStore.suPath(context)
         // The kill switch and the root options are read again whenever they change, so turning them off stops the helper at once.
         listOf(SystemBridge.PREFS, RootHingeStore.PREFS).forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(rootGate) }
-        if (su != null && rootAllowed()) {
-            // A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's.
-            useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
-            rootFeed = RootHingeFeed(suLauncher, apk, su,
-                onSample = { s -> main.post { if (source == HingeSource.ROOT_HELPER) { onAngle(s.angleDegrees, s.timestampNanos, SystemClock.uptimeMillis()); wake.trySend(Unit) } } },
-                onLost = { main.post { rootLost() } }, now = { SystemClock.elapsedRealtime() }).also { it.start() }
-        } else registerPublic()
+        if (su != null && rootAllowed()) startRootFeed(apk, su) else registerPublic()
+    }
+
+    /** A continuous feed proven by the owner's test: followed directly, remembered apart from the public sensor's. */
+    private fun startRootFeed(apk: String, su: String) {
+        useSource(HingeSource.ROOT_HELPER, HingeCapability.CONTINUOUS)
+        rootFeed = RootHingeFeed(suLauncher, apk, su,
+            onSample = { s -> main.post { if (source == HingeSource.ROOT_HELPER) { onAngle(s.angleDegrees, s.timestampNanos, SystemClock.uptimeMillis()); wake.trySend(Unit) } } },
+            onLost = { main.post { rootLost() } }, now = { SystemClock.elapsedRealtime() }).also { it.start() }
     }
 
     fun stop() {
@@ -386,12 +396,24 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     private fun rootAllowed() = RootHingeStore.advanced(context) && RootHingeStore.useInFold(context) &&
         hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER
 
-    private val rootGate = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+    private val rootGate = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         main.post {
-            if (rootFeed != null && !rootAllowed()) {
+            traceEvent("root gate: $key changed, feed=${rootFeed != null} allowed=${rootAllowed()} off=${SystemBridge.isOff(context)} advanced=${RootHingeStore.advanced(context)} use=${RootHingeStore.useInFold(context)}")
+            val allowed = rootAllowed()
+            if (rootFeed != null && !allowed) {
+                traceEvent("root feed stopped by the gate")
                 rootFeed?.stop(); rootFeed = null
                 registerPublic()
                 wake.trySend(Unit)
+            } else if (rootFeed == null && allowed) {
+                // Switched back on (or the root options turned on) while Home is open: start the feed now, not at the next start.
+                val su = RootHingeStore.suPath(context)
+                if (su != null) {
+                    traceEvent("root feed started by the gate")
+                    sensors?.unregisterListener(this)
+                    startRootFeed(context.applicationInfo.sourceDir, su)
+                    wake.trySend(Unit)
+                }
             }
         }
     }

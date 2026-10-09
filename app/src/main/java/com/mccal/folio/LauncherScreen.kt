@@ -154,6 +154,12 @@ fun LauncherScreen(
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
     val picker = rememberWidgetRequest()
     val resize = rememberWidgetResize()
+    // The Performance log times Home's swipe and a widget's resize on their own, so a slow one shows up by name.
+    LaunchedEffect(resize.active) {
+        if (!resize.active) return@LaunchedEffect
+        PerfLog.begin(PerfScenario.WIDGET_RESIZE)
+        try { kotlinx.coroutines.awaitCancellation() } finally { PerfLog.end(PerfScenario.WIDGET_RESIZE) }
+    }
     // The Big Clock being edited right on Home (Customize on its menu): Looks, color, Fine tune, Done.
     var clockEditSlot by remember { mutableStateOf<Int?>(null) }
     var placeSlot by remember { mutableStateOf<Int?>(null) }
@@ -237,6 +243,13 @@ fun LauncherScreen(
     val pageCount = visibleHomePages + 1
     val nativePager = rememberPagerState(initialPage = savedPage.coerceIn(-firstHome, pageCount - 1) + firstHome, pageCount = { pageCount + firstHome })
     val pager = remember(nativePager) { LauncherPager(nativePager, firstHome) }
+    LaunchedEffect(pager) {
+        var swiping = false
+        try { snapshotFlow { pager.state.isScrollInProgress }.collect { now ->
+            if (now && !swiping) { PerfLog.begin(PerfScenario.HOME_SWIPE); swiping = true }
+            else if (!now && swiping) { PerfLog.end(PerfScenario.HOME_SWIPE); swiping = false }
+        } } finally { if (swiping) PerfLog.end(PerfScenario.HOME_SWIPE) }
+    }
     fun leaveTemporaryWidgetPage() {
         val persistedPages = model.state.value.homePages
         if (pager.currentPage >= persistedPages)
@@ -623,6 +636,15 @@ fun LauncherScreen(
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
+            // Icon Actions: an icon's saved swipes and double tap, while the gate is open, Home is not being edited and Safe Mode is off
+            // (in Safe Mode icons keep their normal gestures, rather than a swipe being taken and then refused).
+            LocalIconActions provides remember(state.iconActions, homeEdit.active, haptic, launcherActivity) {
+                if (!iconActionsAvailable(homeEdit.active, SafeMode.active, state.iconActions.isNotEmpty(), FeatureGate.ICON_ACTIONS.isOpen(launcherActivity))) null
+                else IconActionHost(actionsFor = { state.iconActions[it] }, run = { ref ->
+                    haptic.perform(FolioHaptic.Step)
+                    ActionRunner.run(launcherActivity, ref, ActionSource.ICON)
+                })
+            },
             LocalIconStack provides remember(homeEdit.active, haptic) {
                 if (homeEdit.active) null else { app: AppEntry -> haptic.perform(FolioHaptic.Open); overlays.stackFan = app.id }
             },
@@ -947,7 +969,7 @@ fun LauncherScreen(
             var settledDockSlots by remember { mutableIntStateOf(shownDock.size) }
             val dockResizes = settledDockSlots != shownDock.size
             SideEffect { settledDockSlots = shownDock.size }
-            val dockSpec: AnimationSpec<Float> = if (dockResizes && !dockReduceMotion) spring(dampingRatio = .82f, stiffness = 420f) else snap()
+            val dockSpec: AnimationSpec<Float> = if (dockResizes && !dockReduceMotion) FolioMotion.spring(FolioMotion.Settle) else snap()
             val dockPitchShown by animateFloatAsState(if (geometry.horizontalDock) dockPitch else geometry.dockRowHeight, dockSpec, label = "dock pitch")
             val dockRailHeightShown by animateFloatAsState(dockHeightShown, dockSpec, label = "dock height")
             val dockBarWidthShown = animateFloatAsState(dockBarWidth.value, dockSpec, label = "dock width").value.dp
@@ -1250,6 +1272,19 @@ fun LauncherScreen(
                                 onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null)
                         }
                     }
+                }
+            }
+            // One-time hints (FirstUseHints): the first Home after setup, and the first unfolded one. Doing the thing counts as having seen it.
+            LaunchedEffect(showFirstRun, homeEdit.active, overlays.menu) {
+                if (homeEdit.active || overlays.menu != null) FirstUseHints.done(launcherActivity, FirstUseHint.HOLD)
+                else if (!showFirstRun && sheet.isEmpty()) { kotlinx.coroutines.delay(2_500); FirstUseHints.show(launcherActivity, FirstUseHint.HOLD) }
+            }
+            LaunchedEffect(wide, showFirstRun) {
+                if (wide && !showFirstRun && FirstUseHints.pending(launcherActivity, FirstUseHint.UNFOLD)) {
+                    kotlinx.coroutines.delay(2_500)
+                    // The island holds one notice, so the unfold hint waits out the hold hint instead of replacing it.
+                    if (FirstUseHints.pending(launcherActivity, FirstUseHint.HOLD)) kotlinx.coroutines.delay(IslandEvents.NOTICE_SHOW_MS + 1_000)
+                    FirstUseHints.show(launcherActivity, FirstUseHint.UNFOLD)
                 }
             }
             // iOS-style notice when editing is locked by a Focus.
@@ -1815,7 +1850,12 @@ fun LauncherScreen(
                 modifier = Modifier.testTag("background-picker-resume")) { Text(stringResource(R.string.resume)) } },
             dismissButton = { TextButton(onClick = launcherActivity.backgrounds::cancelPendingSelection,
                 modifier = Modifier.testTag("background-picker-cancel")) { Text(stringResource(R.string.cancel)) } })
-        (launcherActivity.backups.errorMessage ?: launcherActivity.backups.successMessage)?.let { message ->
+        // A short confirmation ("Layout backup saved.") is a notice in Home's island, which nothing has to dismiss; a problem,
+        // or a long message the person has to read (what a restore did, which widgets to reconnect), keeps its dialog.
+        launcherActivity.backups.successMessage?.takeIf { launcherActivity.backups.errorMessage == null && it.length <= SHORT_CONFIRMATION }?.let { message ->
+            LaunchedEffect(message) { IslandEvents.notice(launcherActivity, message); launcherActivity.backups.clearMessage() }
+        }
+        (launcherActivity.backups.errorMessage ?: launcherActivity.backups.successMessage)?.takeIf { it.length > SHORT_CONFIRMATION || launcherActivity.backups.errorMessage != null }?.let { message ->
             AlertDialog(onDismissRequest = launcherActivity.backups::clearMessage,
                 title = { Text(if (launcherActivity.backups.errorMessage != null) stringResource(R.string.layout_backup_problem) else stringResource(R.string.layout_backup)) },
                 text = { Text(message) }, confirmButton = { TextButton(onClick = launcherActivity.backups::clearMessage) { Text(stringResource(R.string.ok)) } })
@@ -1875,3 +1915,6 @@ private fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
         }
     }
 }
+
+/** A backup message this short is shown as an island notice; longer ones stay a dialog, because they have to be read. */
+private const val SHORT_CONFIRMATION = 48

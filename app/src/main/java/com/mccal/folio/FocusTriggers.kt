@@ -1,6 +1,6 @@
 package com.mccal.folio
 
-/** How the screen is folded, as far as a Focus trigger cares. */
+/** How the screen is folded, as far as a Focus trigger cares. [TENT] is any half-open pose (tent or laptop), shown to the person as Half Open. */
 enum class FoldState(val key: String) {
     UNFOLDED("unfolded"), COVER("cover"), TENT("tent");
     companion object { fun parse(key: String?) = entries.firstOrNull { it.key == key } }

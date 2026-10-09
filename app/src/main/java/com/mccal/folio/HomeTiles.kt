@@ -59,6 +59,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.onLongClick
@@ -177,13 +180,18 @@ internal fun DockAppColumn(
                     previewId == null -> Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
+            val dockClick = { if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index) }
+            val indication = LocalIndication.current
+            val dockGestures = rememberIconGestures(savedApp, interactions[index], indication, null, null, dockClick,
+                plain = Modifier.combinedClickable(interactionSource = interactions[index], indication = indication, role = Role.Button, onClick = dockClick, onLongClick = null))
             Box(Modifier.slot(index)
                 .testTag("dock-slot-$index").dropRegion(drag, cell, savedApp?.id)
                 .semantics(mergeDescendants = true) { contentDescription = savedApp?.label ?: "Choose dock app ${index + 1}" }
-                .combinedClickable(interactionSource = interactions[index], indication = LocalIndication.current, role = Role.Button, onClick = {
-                    if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index)
-                }, onLongClick = null)
-                .semantics { onLongClick(chooseDockLabel) { onChoose(index); true } })
+                .then(dockGestures.modifier)
+                .semantics {
+                    onLongClick(chooseDockLabel) { onChoose(index); true }
+                    if (dockGestures.customActions.isNotEmpty()) customActions = dockGestures.customActions
+                })
         }
 
         val ids = (savedDock + previewDock).filterNotNull().distinct()
@@ -289,11 +297,19 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     val iconSize = size.dp
     val bounds = remember { android.graphics.Rect() }
     val openPanel = LocalAppPanel.current
+    // Icon Actions: an icon with saved actions gets swipes, a double tap and TalkBack actions for them; any other runs
+    // exactly the code it always did (see rememberIconGestures).
+    val stack = if (app.id in LocalStackedApps.current) LocalIconStack.current else null
+    val gestures = rememberIconGestures(app, interaction, null, openPanel, stack, { onClick(bounds) },
+        plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = { onClick(bounds) }))
     Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
-        .iconSwipes(openPanel?.let { { it(app) } }, if (app.id in LocalStackedApps.current) LocalIconStack.current?.let { { it(app) } } else null)
-        .clickable(interactionSource = interaction, indication = null,
-            role = Role.Button, onClick = { onClick(bounds) })
-        .semantics { onLongClick(appOptionsLabel) { onLongClick(); true } }.padding(horizontal = FolioSpace.HAIR.dp),
+        .then(gestures.modifier)
+        .semantics {
+            onLongClick(appOptionsLabel) { onLongClick(); true }
+            // Every action is also here, so nothing depends on a gesture (TalkBack's Actions list).
+            if (gestures.customActions.isNotEmpty()) customActions = gestures.customActions
+        }.padding(horizontal = FolioSpace.HAIR.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
         Box(Modifier.size(iconSize).onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(app.id, bounds) }

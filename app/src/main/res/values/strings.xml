@@ -410,9 +410,11 @@
     <string name="focus_trigger_headphones">Headphones</string>
     <string name="focus_fold_unfolded">Unfolded</string>
     <string name="focus_fold_cover">Cover Screen</string>
-    <string name="focus_fold_tent">Tent</string>
+    <string name="focus_fold_tent">Half Open</string>
     <string name="focus_triggers_note">These only turn this Focus on and off. If you turn it off yourself, it stays off until the next change.</string>
     <string name="focus_on_because">On · %1$s</string>
+    <string name="focus_island_on">%1$s on · %2$s</string>
+    <string name="focus_island_off">%1$s off</string>
     <string name="from">From</string>
     <string name="silence_notifications">Silence Notifications</string>
     <string name="calls_and_people_allowed_in_android_s_do">Calls and people allowed in Android\'s Do Not Disturb settings still come through.</string>
@@ -1374,6 +1376,7 @@
     <string name="refresh_in_the_background">Refresh in the background</string>
     <string name="tell_me_about_updates">Tell me about updates</string>
     <string name="update_packages_in_background">Update packages in the background</string>
+    <string name="market_package_updated">%1$s updated</string>
     <string name="update_packages_in_background_detail">Packages from your sources update themselves when the change touches none of your settings</string>
     <string name="market_updates_notice_detail">One notice when a source has a newer version of something you installed</string>
     <string name="updates_question_title">Keep your packages up to date?</string>
@@ -1731,6 +1734,8 @@
     <string name="onboarding_tip_nav_gestures">Swipe up from the bottom edge to go Home, and in from either edge to go Back.</string>
     <string name="onboarding_tip_nav_buttons">Tap Home to come back to Home, and Back to go back.</string>
     <string name="finish_setting_up">Finish setting up, whenever you like</string>
+    <string name="hint_hold">Press and hold an icon to rearrange or edit Home</string>
+    <string name="hint_unfold">Unfolded, it is the same Home with more room</string>
     <string name="finish_notifications_detail">The island, badges from notifications and quick reply.</string>
     <string name="finish_panels_detail">Notification Center and Control Center from the top corners.</string>
     <string name="set_up">Set Up</string>
@@ -1971,4 +1976,30 @@
     <string name="bridge_outcome_fell_back">Used the standard way instead</string>
     <string name="bridge_outcome_failed">Failed, used the standard way instead</string>
     <string name="market_install_put_back">%1$s didn’t finish installing, so Folio put things back</string>
+    <string name="icon_action_swipe_up">Swipe up</string>
+    <string name="icon_action_swipe_down">Swipe down</string>
+    <string name="icon_action_double_tap">Double tap</string>
+    <!-- The TalkBack action on an icon: the gesture, then what it does. -->
+    <string name="icon_action_talkback">%1$s: %2$s</string>
+    <string name="bridge_cap_global_actions">Back, Home, Recents and other system buttons</string>
+    <string name="action_app_open">Open an app</string>
+    <string name="action_shortcut_open">Open an app shortcut</string>
+    <string name="action_media_playpause">Play or pause</string>
+    <string name="action_media_next">Next track</string>
+    <string name="action_media_prev">Previous track</string>
+    <string name="action_volume_up">Volume up</string>
+    <string name="action_volume_down">Volume down</string>
+    <string name="action_volume_mute">Mute or unmute</string>
+    <string name="action_panel_wifi">Wi-Fi panel</string>
+    <string name="action_panel_bluetooth">Bluetooth settings</string>
+    <string name="action_a11y_back">Back</string>
+    <string name="action_a11y_home">Home</string>
+    <string name="action_a11y_recents">Recent apps</string>
+    <string name="action_a11y_quicksettings">Android quick settings</string>
+    <string name="action_a11y_allapps">Android app drawer</string>
+    <string name="action_a11y_dismissshade">Close the notification shade</string>
+    <string name="action_a11y_power">Power menu</string>
+    <string name="action_a11y_shade">Android notification shade</string>
+    <string name="action_a11y_splitscreen">Split screen</string>
+    <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
 </resources>

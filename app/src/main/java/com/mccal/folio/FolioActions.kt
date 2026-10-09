@@ -45,44 +45,51 @@ internal object FolioActions {
     fun onTrigger(context: Context, trigger: FolioTrigger) {
         if (SafeMode.active) return
         val action = actionFor(context, trigger)
-        if (action != FolioAction.NONE) run(context.applicationContext, action)
+        if (action != FolioAction.NONE) run(context.applicationContext, action, ActionSource.TRIGGER)
     }
 
-    fun run(context: Context, action: FolioAction) {
+    /** Runs [action] the way every caller always has; the registry adds the verdict and the trail line. */
+    fun run(context: Context, action: FolioAction, source: ActionSource = ActionSource.DIRECT) {
+        if (action != FolioAction.NONE) ActionRunner.run(context, ActionRef.of(action), source)
+    }
+
+    /**
+     * The doing, for [ActionRegistry]: true when the action ran. The access an action needs is checked before this by
+     * [ActionRunner], which also tells the person what to turn on, so this only reports whether the system accepted it.
+     */
+    fun perform(context: Context, action: FolioAction): Boolean {
         when (action) {
             FolioAction.NONE -> Unit
             FolioAction.SPOTLIGHT -> showOnHome(context, ShadePanel.SEARCH)
             FolioAction.NOTIFICATIONS -> showOnHome(context, ShadePanel.NOTIFICATIONS)
             FolioAction.CONTROL_CENTER -> showOnHome(context, ShadePanel.QUICK_SETTINGS)
-            FolioAction.LOCK -> needsService(context, SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN))
-            FolioAction.SCREENSHOT -> needsService(context, SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT))
-            FolioAction.TORCH -> runCatching {
+            FolioAction.LOCK -> return SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+            FolioAction.SCREENSHOT -> return SystemShadeAccessibilityService.global(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+            FolioAction.TORCH -> return runCatching {
                 val camera = context.getSystemService(CameraManager::class.java)
                 val id = camera.cameraIdList.firstOrNull { camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
-                if (id != null) camera.registerTorchCallback(object : CameraManager.TorchCallback() {
-                    override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
-                        if (cameraId != id) return
-                        camera.unregisterTorchCallback(this)
-                        runCatching { camera.setTorchMode(id, !enabled) }
-                    }
-                }, android.os.Handler(android.os.Looper.getMainLooper()))
-            }
+                // No flash on this phone is not a success: the trail should say it did not run.
+                if (id == null) false else {
+                    camera.registerTorchCallback(object : CameraManager.TorchCallback() {
+                        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+                            if (cameraId != id) return
+                            camera.unregisterTorchCallback(this)
+                            runCatching { camera.setTorchMode(id, !enabled) }
+                        }
+                    }, android.os.Handler(android.os.Looper.getMainLooper()))
+                    true
+                }
+            }.getOrDefault(false)
             FolioAction.FOCUS_SLEEP -> FocusScheduler.toggle(context, "sleep")
             FolioAction.FOCUS_WORK -> FocusScheduler.toggle(context, "work")
             FolioAction.FOCUS_PERSONAL -> FocusScheduler.toggle(context, "personal")
             FolioAction.FOCUS_OFF -> FocusScheduler.setActive(context, null)
-            FolioAction.DND_ON, FolioAction.DND_OFF -> runCatching {
-                val notifications = context.getSystemService(NotificationManager::class.java)
-                if (notifications.isNotificationPolicyAccessGranted) notifications.setInterruptionFilter(
+            FolioAction.DND_ON, FolioAction.DND_OFF -> return runCatching {
+                context.getSystemService(NotificationManager::class.java).setInterruptionFilter(
                     if (action == FolioAction.DND_ON) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL)
-                else IslandEvents.notice(context, context.getString(R.string.needs_dnd_access))
-            }
+            }.isSuccess
         }
-    }
-
-    /** A gesture bound to an action that needs the accessibility service says so when the service is off, instead of doing nothing. */
-    private fun needsService(context: Context, done: Boolean) {
-        if (!done) IslandEvents.notice(context, context.getString(R.string.needs_accessibility_service))
+        return true
     }
 
     private fun showOnHome(context: Context, panel: ShadePanel) {

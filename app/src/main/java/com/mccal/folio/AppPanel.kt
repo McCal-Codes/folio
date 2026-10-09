@@ -80,7 +80,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
     val context = LocalContext.current
     val density = LocalDensity.current
     val appear = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, spring(dampingRatio = .74f, stiffness = Spring.StiffnessMediumLow)) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
     DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
     val actions by produceState(emptyList<QuickAction>(), app.id) { value = withContext(Dispatchers.IO) { loadQuickActions(context, app, 4) } }
     val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.filter { it.packageName == app.component.packageName }.take(3)

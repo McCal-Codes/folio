@@ -101,7 +101,14 @@ internal enum class FeatureGate(
      * rows on a page with a widget and on one without (issue #13). It changes how every stacked layout looks and
      * retires Widget Size, so supporters try it first; opening the gate is what shipping it means.
      */
-    WIDGETS_FILL_ROWS("widgetsFillRows", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    WIDGETS_FILL_ROWS("widgetsFillRows", closedSince = "2026-10-06", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Icon Actions: a swipe up, a swipe down or a double tap on a Home icon runs an action you chose. It sits on the
+     * touch path every icon shares, and a double tap makes that icon's tap wait a moment, so supporters try it on real
+     * phones first. Flip [OPEN_IN_0_7_0] to true in the 0.7.0 release.
+     */
+    ICON_ACTIONS("iconActions", closedSince = "2026-10-08", opensIn = "0.7.0", { OPEN_IN_0_7_0 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -124,6 +131,9 @@ internal enum class FeatureGate(
 
         /** The features built during 0.6.9 for supporters to try first, which open together in the 0.6.9 release. */
         private const val OPEN_IN_0_6_9 = false
+
+        /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
+        private const val OPEN_IN_0_7_0 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }

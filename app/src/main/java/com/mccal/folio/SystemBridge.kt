@@ -89,6 +89,7 @@ internal object SystemBridge {
 
     @androidx.annotation.StringRes fun capabilityName(c: FolioCapability): Int = when (c) {
         FolioCapability.SHADE_OPEN -> R.string.bridge_cap_shade
+        FolioCapability.SYSTEM_GLOBAL_ACTIONS -> R.string.bridge_cap_global_actions
         FolioCapability.NOTIFICATIONS_READ -> R.string.bridge_cap_notifications
         FolioCapability.HINGE_ANGLE -> R.string.bridge_cap_hinge
         FolioCapability.HINGE_ANGLE_CONTINUOUS -> R.string.bridge_cap_hinge_continuous
@@ -121,9 +122,9 @@ internal class NotificationAccessProvider(private val context: Context) : Capabi
     override fun status() = BackendStatus.of(IslandListenerService.hasAccess(context))
 }
 
-/** A2: Folio's accessibility service, which opens the shade over other apps. */
+/** A2: Folio's accessibility service, which opens the shade and runs Back, Home, Recents and the other global actions over other apps. */
 internal class AccessibilityProvider : CapabilityProvider {
     override val tier = PrivilegeTier.ACCESSIBILITY
-    override val capabilities = setOf(FolioCapability.SHADE_OPEN)
+    override val capabilities = setOf(FolioCapability.SHADE_OPEN, FolioCapability.SYSTEM_GLOBAL_ACTIONS)
     override fun status() = BackendStatus.of(SystemShadeAccessibilityService.isConnected())
 }

@@ -298,6 +298,8 @@ data class LauncherState(
     val appNames: Map<String, String> = emptyMap(),
     /** Icon looks chosen for single apps (long-press, More, Edit Icon); an app not here follows the launcher. */
     val appIconStyles: Map<String, AppIconOverride> = emptyMap(),
+    /** Swipe up, swipe down and double tap actions chosen for single apps; an app not here keeps today's behavior. */
+    val iconActions: Map<String, IconActions> = emptyMap(),
     /** Per-page looks by real Home page number (pages without an entry use Home's settings). */
     val pageStyles: Map<Int, PageStyle> = emptyMap(),
     val islandEverywhere: Boolean = false,
@@ -330,7 +332,7 @@ data class LauncherState(
  */
 internal fun LauncherState.trackedAppIds(): List<String> =
     homeSlots.filterNotNull() + leadingSlots.filterNotNull() + dock.filterNotNull() + folders.flatMap { it.appIds } +
-        iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys
+        iconStacks.keys + iconStacks.values.flatten() + appNames.keys + appIconStyles.keys + iconActions.keys
 
 /**
  * Full-Width Home turned on or off for [screen]: a bottom dock and no status Side Bar, or what they were before. Turning
@@ -403,8 +405,22 @@ fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int): Int =
     (if (setting > 0) setting else listOf(fitCompact, fitExpanded).filter { it > 0 }.minOrNull() ?: BASE_APP_ROWS)
         .coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
 
-/** Saved-state schema. 9: 36-cell Home pages (More rows); 6–8 had 24. */
-const val STATE_SCHEMA = 9
+/**
+ * The newest saved-state schema this build reads. 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
+ * A save is written with [stateSchemaFor], not always with this number.
+ */
+const val STATE_SCHEMA = 10
+
+/**
+ * The schema a save is written with: the lowest one that holds everything in it. A phone that uses nothing from schema 10
+ * keeps writing 9, so an older Folio still reads it. A phone with icon actions writes 10, and an older Folio then refuses
+ * the file and says so (the damaged-state path) instead of reading it, dropping the actions on its next save, and losing
+ * them without a word when the newer Folio comes back.
+ */
+internal fun stateSchemaFor(s: LauncherState) = if (s.iconActions.isNotEmpty()) 10 else 9
+
+/** Whether this save should keep the schema 9 file it is about to replace: it writes schema 10 over an older read and no copy exists yet. */
+internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 10 && writtenSchema >= 10 && !hasBackup
 
 /**
  * The schema that brought More rows. A save older than this was arranged in four rows, and keeps them; anything
@@ -632,7 +648,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
                         dock = trimmedDock(reconciled.dock), folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
-                        appNames = old.appNames - removedIds, appIconStyles = old.appIconStyles - removedIds.also { gone -> AppIconPictures.deleteAll(getApplication(), gone.filter { old.appIconStyles[it]?.hasPicture == true }) },
+                        appNames = old.appNames - removedIds, iconActions = old.iconActions - removedIds, appIconStyles = old.appIconStyles - removedIds.also { gone -> AppIconPictures.deleteAll(getApplication(), gone.filter { old.appIconStyles[it]?.hasPicture == true }) },
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
                         error = if (statePayloadInvalid) old.error else null)
                 }
@@ -906,13 +922,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val kept = before ?: old
         if (old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
             old.portrait == preview.portrait && old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
-            old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles) return false
+            old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles &&
+            old.iconActions + preview.iconActions == old.iconActions) return false
         if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
         undoLayout = kept.layout to preview.layout
         undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
-        mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, apps = old.apps.withAppNames(names),
+        mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
             homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
             widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
             widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
@@ -1073,7 +1090,16 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         triggerState = result.state
         focusReasonState.value = result.state.reason
         rememberTriggerState()
-        if (result.changed) applyFocus(result.active)
+        if (result.changed) {
+            applyFocus(result.active)
+            // Say what just happened, in Home's island, so a Focus turning itself on never feels like magic. Nothing is shown
+            // (not even a toast) when Home is not on screen: the person is somewhere else and the Focus list says why.
+            val app = getApplication<android.app.Application>()
+            val on = state.focusModes.firstOrNull { it.id == result.active }
+            val text = if (on != null) app.getString(R.string.focus_island_on, on.name, result.state.reason?.let { app.getString(it.label(on)) }.orEmpty())
+                else state.focusModes.firstOrNull { it.id == state.activeFocus }?.let { app.getString(R.string.focus_island_off, it.name) }
+            if (text != null) IslandEvents.notice(app, text, toastFallback = false)
+        }
     }
     fun updateFocusMode(mode: FocusMode) {
         updateSettings(soon = false) { it.copy(focusModes = FocusModes.update(it.focusModes, mode)) }
@@ -1316,6 +1342,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (!override.hasPicture && mutable.value.appIconStyles[id]?.hasPicture == true) AppIconPictures.delete(getApplication(), id)
         updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
     }
+    fun setIconActions(id: String, actions: IconActions) = updateSettings(soon = false) { it.copy(iconActions = editIconActions(it.iconActions, id, actions)) }
     fun renameApp(id: String, name: String) = updateSettings(soon = false) { s ->
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))
@@ -1460,7 +1487,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("slot", restore.slot).put("provider", restore.providerComponent).put("userSerial", restore.userSerial)
             .put("title", restore.title).put("profileLabel", restore.profileLabel).put("work", restore.isWork)
             .put("sourceScope", restore.sourceScope)) } }
-        val data = JSONObject().put("schema", STATE_SCHEMA).put("pinned", JSONArray(s.order)).put("homeSlots", JSONArray(s.homeSlots))
+        val data = JSONObject().put("schema", stateSchemaFor(s)).put("pinned", JSONArray(s.order)).put("homeSlots", JSONArray(s.homeSlots))
             .put("leadingSlots", JSONArray(s.leadingSlots)).put("dock", JSONArray(s.dock))
             .put("widgets", widgets).put("labels", s.labels)
             .put("folders", folders)
@@ -1512,6 +1539,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("iconStacks", JSONObject().apply { s.iconStacks.forEach { (id, apps) -> put(id, JSONArray(apps)) } })
             .put("appNames", JSONObject().apply { s.appNames.forEach { (id, name) -> put(id, name) } })
             .put("appIconStyles", appIconStylesToJson(s.appIconStyles))
+            // Only when there are some, so a save from before this existed keeps its shape.
+            .also { o -> if (s.iconActions.isNotEmpty()) o.put("iconActions", iconActionsToJson(s.iconActions)) }
             .put("pageStyles", JSONObject().apply { s.pageStyles.forEach { (page, style) -> put(page.toString(), JSONObject().put("scale", style.iconScale.toDouble())
                 .apply { style.labels?.let { put("labels", it) } }) } })
             .put(SettingKeys.DOCK_EVERYWHERE, s.dockEverywhere).put(SettingKeys.ISLAND_EVERYWHERE, s.islandEverywhere)
@@ -1537,6 +1566,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editor.putString("state_v7_backup", legacyRaw)
         if (legacyRaw != null && sourceSchema < 9 && !prefs.contains("state_v8_backup"))
             editor.putString("state_v8_backup", legacyRaw)
+        // The first save that writes schema 10 (one with icon actions) keeps the schema 9 file it replaces, like every step before it.
+        if (legacyRaw != null && v9BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v9_backup")))
+            editor.putString("state_v9_backup", legacyRaw)
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
@@ -1827,6 +1859,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             .associateWith { o.optString(it).trim().takeAppName() }
             .filterValues(String::isNotBlank) } ?: emptyMap(),
         appIconStyles = appIconStylesFromJson(j.optJSONObject("appIconStyles")),
+        iconActions = iconActionsFromJson(j.optJSONObject("iconActions")),
         iconStacks = j.optJSONObject("iconStacks")?.let { o -> o.keys().asSequence().associateWith { key ->
             o.optJSONArray(key)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()
         }.filterValues { it.isNotEmpty() } } ?: emptyMap(),
