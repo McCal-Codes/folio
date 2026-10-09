@@ -61,6 +61,7 @@ internal object DevBuild {
     private const val TICKS = "ticks_"
 
     const val THIS_BUILD_LABEL = "This build" // english-only
+    const val DEVELOPER_LABEL = "Developer" // english-only
 
     /** Bumped to show the page again from Settings › General › What's New. */
     val reopen = mutableIntStateOf(0)
