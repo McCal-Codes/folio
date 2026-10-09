@@ -150,8 +150,8 @@ class MainActivity : ComponentActivity() {
             androidx.activity.compose.ReportDrawnWhen { savedState.homeReady }
             val safeMode = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(SafeMode.active) }
             val solidGlass = savedState.reduceTransparency || rememberSystemHighContrast()
-            val state = FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
-                .let { if (solidGlass) it.withSolidGlass() else it }
+            val state = rememberDisguised(FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
+                .let { if (solidGlass) it.withSolidGlass() else it })
             androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(31_000); SafeMode.markStable(this@MainActivity) }
             val safeAcknowledged = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
             if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {},

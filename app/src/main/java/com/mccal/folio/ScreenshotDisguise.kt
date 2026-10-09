@@ -1,6 +1,15 @@
 package com.mccal.folio
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -113,4 +122,37 @@ internal object ScreenshotSwap {
             DisguiseRules(chosen.toSet(), o.optBoolean("allThirdParty", false))
         }.getOrNull()
     } ?: DisguiseRules()
+}
+
+/**
+ * [state] as Home should draw it: with Screenshot Mode's swap applied while the mode is on and a rule is set, and
+ * [state] itself otherwise, so Home costs nothing extra when the swap is not in use. Applied where a screen collects
+ * the launcher state, so every list under it (grid, dock, folders, App Library, Spotlight, Today) follows; the model
+ * and Layout Backup keep the real apps.
+ */
+@Composable
+internal fun rememberDisguised(state: LauncherState): LauncherState {
+    val context = LocalContext.current
+    remember { ScreenshotSwap.load(context) }
+    val on by ScreenshotMode.on.collectAsStateWithLifecycle()
+    val rules by ScreenshotSwap.rules.collectAsStateWithLifecycle()
+    val active = on && !rules.isEmpty
+    val packages = remember(state.apps) { state.apps.mapTo(mutableSetOf()) { it.packageName } }
+    // Asked only while the swap is in use, and off the main thread: one package manager call per app.
+    val system by produceState<Set<String>?>(null, active, packages) {
+        value = if (active) withContext(Dispatchers.IO) { systemPackages(context, packages) } else null
+    }
+    val shown = system
+    if (!active || shown == null) return state
+    val apps = remember(state.apps, rules, shown) { ScreenshotDisguise.apply(state.apps, rules, shown) }
+    return remember(state, apps) { if (apps === state.apps) state else state.copy(apps = apps) }
+}
+
+/** The packages in [packages] that shipped with the phone, updated or not. */
+internal fun systemPackages(context: Context, packages: Set<String>): Set<String> {
+    val pm = context.packageManager
+    val system = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+    return packages.filterTo(mutableSetOf()) { pkg ->
+        runCatching { pm.getApplicationInfo(pkg, 0).flags and system != 0 }.getOrDefault(false)
+    }
 }

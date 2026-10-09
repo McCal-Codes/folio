@@ -220,7 +220,8 @@ class DiscoverActivity : DiscoverPageActivity() {
             // Discover is its own window, so it needs the Glass setting too (the Side Bar outline follows it).
             androidx.compose.runtime.CompositionLocalProvider(LocalGlassLook provides GlassLook(state.widgetGlass, state.glassOutline)) {
                 BackHandler { DiscoverSession.requestHome(this) }
-                DiscoverDock(if (state.loading) state.copy(apps = startupApps) else state, status, fullSize.value, onLaunch = ::launchApp,
+                // The same swap as Home: Discover collects its own state, so it applies it here too.
+                DiscoverDock(rememberDisguised(if (state.loading) state.copy(apps = startupApps) else state), status, fullSize.value, onLaunch = ::launchApp,
                     onHome = { DiscoverSession.requestHome(this) }, onSearch = { DiscoverSession.home(this, search = true) },
                     onReady = { viewportReady = true; openFeed() })
             }
