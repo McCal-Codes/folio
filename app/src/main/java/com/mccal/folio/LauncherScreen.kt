@@ -1102,11 +1102,19 @@ fun LauncherScreen(
                         // iOS's page control: the dots stay small and the strip around them takes the tap, so a
                         // finger has 48 dp of height without the dots spacing apart (A11Y-1).
                         else Box(Modifier.height(FolioTouch.MIN.dp), contentAlignment = Alignment.Center) {
+                            // With the new motion on, the active dot is a worm drawn over the resting dots: it stretches toward the next
+                            // page as the finger moves, read when drawing so a swipe recomposes nothing. Off, or with Reduce Motion, it is the dot it was.
+                            val dotWorm = FolioMotion.v2 && !LocalReduceMotion.current && visibleHomePages <= 6
+                            val dotDensity = LocalDensity.current
+                            val dotInk = LocalHomeInk.current
                             Row(Modifier.heightIn(min = 30.dp).background(if (scrubbing) Color.White.copy(alpha = .18f) else Color.Transparent, CircleShape)
+                                .then(if (dotWorm) Modifier.dotWorm({ pager.position }, homePages, dotInk.primary, with(dotDensity) { 28.dp.toPx() },
+                                    with(dotDensity) { (if (scrubbing) FolioSpace.SNUG.dp else 0.dp).toPx() }, with(dotDensity) { 3.dp.toPx() }) else Modifier)
                                 .padding(horizontal = if (scrubbing) FolioSpace.SNUG.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (visibleHomePages <= 6) repeat(visibleHomePages) { index ->
                                 Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
                                     if (index == homePages) Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    else if (dotWorm) Box(Modifier.size(4.dp).background(dotInk.faint, CircleShape))
                                     else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
                                 }
                             } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
