@@ -1488,6 +1488,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
+    R.string.hinge_detents to CustomizationPage.FOLD_TWEAK,
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
@@ -2191,6 +2192,7 @@ internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 
         SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
         CardNote(stringResource(R.string.fold_motion_note))
     }
+    HingeDetentsCard(state.haptics)
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
             state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")

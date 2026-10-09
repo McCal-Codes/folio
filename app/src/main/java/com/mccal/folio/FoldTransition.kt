@@ -91,6 +91,10 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val tick by androidx.compose.runtime.rememberUpdatedState(enabled && haptics)
     fold.onHalfway = { if (tick) view.performHapticFeedback(
         if (Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.SEGMENT_TICK else android.view.HapticFeedbackConstants.CLOCK_TICK) }
+    // Hinge detents replace that single tick with a stop at 45, 90 and 135 degrees, the ends and flat (see HingeDetents.kt).
+    val detentOptions by rememberHingeDetentOptions(LocalContext.current)
+    fold.detentsOn = detentOptions.on
+    fold.onDetent = { d -> if (tick) view.performHapticFeedback(HingeDetents.hapticFor(d.kind, detentOptions.strength, Build.VERSION.SDK_INT)) }
     // m: 0 = clean, 1 = fully half-folded look. cover = whole-screen mode on the cover display.
     var m by remember { mutableFloatStateOf(0f) }
     // Screenshot morph (fallback style): snapshots of Folio's own screen taken the moment the hinge
@@ -350,6 +354,10 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     var onOpeningStarted: (() -> Unit)? = null
     var onClosingStarted: (() -> Unit)? = null
     var onHalfway: (() -> Unit)? = null
+    /** Hinge detents: when on, a stop is reported instead of the single halfway tick. */
+    var detentsOn = false
+    var onDetent: ((Detent) -> Unit)? = null
+    private val detents = HingeDetents.Tracker()
     /** Uptime when the screenshot morph started on the new display, or -1. */
     var morphFrom = -1L
     /** Folding from the open screen right now. */
@@ -461,12 +469,13 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
                 else before + (1f - kotlin.math.exp(-((timestampNs - coverAngleNs) / 1e9f) / COVER_SMOOTH_S)) * (value - before)
             coverAngleNs = timestampNs
         } else coverAngle = null
+        if (detentsOn) detents.feed(value, continuous, now)?.let { onDetent?.invoke(it) } else detents.reset()
         if (previous == null) { peak = value; movedFrom = value; movedAt = now; return }
         if (previous == value) return
         // A phone held still for a while starts a fresh reference, so an old maximum can't turn a small move into a fold.
         if (now - movedAt > STALL_MS && closeStartAt < 0) peak = previous
         if (kotlin.math.abs(value - movedFrom) >= MOVE_DEG) { movedFrom = value; movedAt = now }
-        if (HingeTracker.crossedHalfway(previous, value)) onHalfway?.invoke()
+        if (!detentsOn && HingeTracker.crossedHalfway(previous, value)) onHalfway?.invoke()
         if (expanded) {
             when {
                 // Reached flat while revealing: learn how long lit → flat takes for this person.
