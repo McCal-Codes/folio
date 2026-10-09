@@ -1750,7 +1750,9 @@ fun LauncherScreen(
         }
         appsById[overlays.iconEditor]?.let { app ->
             ModalBottomSheet(onDismissRequest = { overlays.iconEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-                AppIconEditor(app, state.appIconStyles[app.id] ?: AppIconOverride(), onChange = { model.setAppIconStyle(app.id, it) }, onDone = { overlays.iconEditor = null })
+                AppIconEditor(app, state.appIconStyles[app.id] ?: AppIconOverride(), onChange = { model.setAppIconStyle(app.id, it) }, onDone = { overlays.iconEditor = null },
+                    actions = if (FeatureGate.ICON_ACTIONS.isOpen(launcherActivity) && !SafeMode.active) state.iconActions[app.id] ?: IconActions() else null,
+                    apps = state.apps, onActions = { model.setIconActions(app.id, it) })
             }
         }
         appsById[overlays.rename]?.let { app ->
