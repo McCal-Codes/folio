@@ -105,4 +105,16 @@ class ScreenshotDisguiseTest {
         ScreenshotSwap.set(context, DisguiseRules())
         assertNull("no rules, no file entry", context.getSharedPreferences("screenshot_swap", 0).getString("rules", null))
     }
+
+    @Test fun `swapped apps are found by package with their stand-in, for widgets`() {
+        val out = ScreenshotDisguise.apply(apps, DisguiseRules(chosen = setOf(reddit.id)), system)
+        val byPackage = swappedByPackage(out)
+        assertEquals(setOf(reddit.packageName), byPackage.keys)
+        assertEquals(out.single { it.id == reddit.id }.iconFrom, byPackage[reddit.packageName])
+    }
+
+    @Test fun `a swapped app offers none of its own shortcuts`() {
+        val swapped = ScreenshotDisguise.apply(apps, DisguiseRules(chosen = setOf(reddit.id)), system).single { it.id == reddit.id }
+        assertEquals(emptyList<QuickAction>(), loadQuickActions(RuntimeEnvironment.getApplication(), swapped))
+    }
 }

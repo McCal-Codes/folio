@@ -156,3 +156,9 @@ internal fun systemPackages(context: Context, packages: Set<String>): Set<String
         runCatching { pm.getApplicationInfo(pkg, 0).flags and system != 0 }.getOrDefault(false)
     }
 }
+
+/** Swapped apps by package, each with its stand-in, for what Home draws by package rather than by app (widgets). */
+internal val LocalSwappedApps = androidx.compose.runtime.staticCompositionLocalOf { emptyMap<String, AppEntry>() }
+
+internal fun swappedByPackage(apps: List<AppEntry>): Map<String, AppEntry> =
+    apps.mapNotNull { app -> app.iconFrom?.let { app.packageName to it } }.toMap()
