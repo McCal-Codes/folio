@@ -1938,4 +1938,10 @@
     <string name="action_a11y_shade">Android 通知栏</string>
     <string name="action_a11y_splitscreen">分屏</string>
     <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
+    <string name="action_category_folio">Folio</string>
+    <string name="action_category_apps">App</string>
+    <string name="action_category_phone">手机</string>
+    <string name="action_category_panels">面板</string>
+    <string name="action_category_accessibility">需要无障碍</string>
+    <string name="action_folio_notification_center">Folio 通知中心</string>
 </resources>
