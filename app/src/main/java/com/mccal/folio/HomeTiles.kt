@@ -59,6 +59,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.onLongClick
@@ -177,13 +180,18 @@ internal fun DockAppColumn(
                     previewId == null -> Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
+            val dockClick = { if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index) }
+            val indication = LocalIndication.current
+            val dockGestures = rememberIconGestures(savedApp, interactions[index], indication, null, null, dockClick,
+                plain = Modifier.combinedClickable(interactionSource = interactions[index], indication = indication, role = Role.Button, onClick = dockClick, onLongClick = null))
             Box(Modifier.slot(index)
                 .testTag("dock-slot-$index").dropRegion(drag, cell, savedApp?.id)
                 .semantics(mergeDescendants = true) { contentDescription = savedApp?.label ?: "Choose dock app ${index + 1}" }
-                .combinedClickable(interactionSource = interactions[index], indication = LocalIndication.current, role = Role.Button, onClick = {
-                    if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index)
-                }, onLongClick = null)
-                .semantics { onLongClick(chooseDockLabel) { onChoose(index); true } })
+                .then(dockGestures.modifier)
+                .semantics {
+                    onLongClick(chooseDockLabel) { onChoose(index); true }
+                    if (dockGestures.customActions.isNotEmpty()) customActions = dockGestures.customActions
+                })
         }
 
         val ids = (savedDock + previewDock).filterNotNull().distinct()
@@ -206,7 +214,7 @@ internal fun DockAppColumn(
                     .testTag("dock-app-$id"), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(iconSize.dp).testTag("dock-icon-$id")
                         .onGloballyPositioned { if (savedIndex >= 0) { launchBounds[savedIndex].set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(id, launchBounds[savedIndex]) } }
-                        .jiggle(id)) {
+                        .jiggle(id).foldMotionIcon()) {
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
@@ -240,15 +248,20 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     val unread = folder.appIds.mapNotNull { apps[it]?.packageName }.distinct().sumOf { counts0[it] ?: 0 }
     val folderApps = pluralStringResource(R.plurals.folder_apps, folder.appIds.size, folder.title, folder.appIds.size)
     val folderLabel = if (unread > 0) pluralStringResource(R.plurals.folder_unread, unread, folderApps, unread) else folderApps
-    Column(modifier.clickable(onClick = onClick).semantics(mergeDescendants = true) {
+    // The whole cell takes the drop, not just the icon, so an app held near a folder's label still goes in.
+    Column(modifier.clickable(onClick = onClick).dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
+        .semantics(mergeDescendants = true) {
         contentDescription = folderLabel
     }, horizontalAlignment = Alignment.CenterHorizontally) {
         val tint = LocalFolderColors.current[folder.id]?.let { Color(it) }
         val bounds = remember { android.graphics.Rect() }
-        Box(Modifier.size(size.dp)
-            .dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
+        // An app held over this folder says so before you let go: the folder lifts a little, and the drop is what adds it.
+        val hovered = drag.moved && drag.source?.appId?.let { !isFolderId(it) } == true &&
+            drag.destination(drag.pointer, setOf(page))?.target == DropTarget.Folder(folder.id)
+        val lift by animateFloatAsState(if (hovered) 1.12f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "folder hover")
+        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift }
             .onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(folder.id, bounds) }
-            .jiggle(folder.id)) {
+            .jiggle(folder.id).foldMotionIcon()) {
             // Like iOS: a folder's badge is the total of its apps' badges (each app counted once).
             val look = LocalIconLook.current
             val counts = LocalBadgeCounts.current
@@ -284,15 +297,23 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     val iconSize = size.dp
     val bounds = remember { android.graphics.Rect() }
     val openPanel = LocalAppPanel.current
+    // Icon Actions: an icon with saved actions gets swipes, a double tap and TalkBack actions for them; any other runs
+    // exactly the code it always did (see rememberIconGestures).
+    val stack = if (app.id in LocalStackedApps.current) LocalIconStack.current else null
+    val gestures = rememberIconGestures(app, interaction, null, openPanel, stack, { onClick(bounds) },
+        plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = { onClick(bounds) }))
     Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
-        .iconSwipes(openPanel?.let { { it(app) } }, if (app.id in LocalStackedApps.current) LocalIconStack.current?.let { { it(app) } } else null)
-        .clickable(interactionSource = interaction, indication = null,
-            role = Role.Button, onClick = { onClick(bounds) })
-        .semantics { onLongClick(appOptionsLabel) { onLongClick(); true } }.padding(horizontal = FolioSpace.HAIR.dp),
+        .then(gestures.modifier)
+        .semantics {
+            onLongClick(appOptionsLabel) { onLongClick(); true }
+            // Every action is also here, so nothing depends on a gesture (TalkBack's Actions list).
+            if (gestures.customActions.isNotEmpty()) customActions = gestures.customActions
+        }.padding(horizontal = FolioSpace.HAIR.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
         Box(Modifier.size(iconSize).onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(app.id, bounds) }
-            .jiggle(app.id)) {
+            .jiggle(app.id).foldMotionIcon()) {
             if (app.id in LocalStackedApps.current) StackPeek(iconSize)
             AppIcon(app, null, Modifier.fillMaxSize()
                 .graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (pressed) .82f else 1f }, shape = RoundedCornerShape((size * .24f).dp))

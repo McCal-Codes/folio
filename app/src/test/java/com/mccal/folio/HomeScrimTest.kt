@@ -166,7 +166,7 @@ class HomeScrimTest {
         assertTrue("the scrim has to take both the resolved ink and the dim already being drawn",
             "HomeScrim.of(state.homeScrim, homeInk.dark, dim)" in screen)
         assertTrue("Folio's own background gets it inside its cached layer",
-            "DuneWallpaper(scrim = scrim)" in screen)
+            "DuneWallpaper(Modifier.foldMotionWallpaper(), scrim = scrim)" in screen)
         assertTrue("Android's wallpaper is the system's to draw, so Home draws the bands over it",
             "if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))" in screen)
         // The dim has to be worked out before the scrim, or the scrim cannot give way to it.

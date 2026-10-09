@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
@@ -90,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -102,6 +103,8 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         // The pages you open once live under General, as iOS keeps them under General › About.
         SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
+        SYSTEM_BRIDGE -> ADVANCED
+        WHAT_TO_TEST -> HELP
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
         else -> OVERVIEW
@@ -131,6 +134,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         THEMES -> R.string.themes
         TWEAK, LIBRARY_TWEAK, FOLD_TWEAK -> R.string.tweak
         ADVANCED -> R.string.advanced
+        SYSTEM_BRIDGE -> R.string.system_bridge
         NOTIFICATIONS -> R.string.notifications_control_center
         SEARCH -> R.string.search_app_library
         TODAY -> R.string.today_view
@@ -144,6 +148,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         ACCESSIBILITY -> R.string.accessibility
         SUPPORT -> R.string.support_folio
         SUPPORTER -> R.string.supporter
+        WHAT_TO_TEST -> R.string.what_to_test
     }
 }
 
@@ -322,6 +327,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 // The old Setup Checklist lives on in Privacy & Permissions (one list of everything Folio can use).
                 CustomizationPage.SETUP -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.COMING_SOON -> ComingSoonPage()
+                CustomizationPage.WHAT_TO_TEST -> WhatToTestPage(onOpenSetup = { onClose(); onShowWelcome() })
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
                     // The order is the one every well-regarded product uses, sourced in docs/mockups/wallpaper-page.html:
@@ -492,7 +498,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.off_new_downloads_go_to_the_app_library))
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.search)) {
-                        SettingsSwitch(stringResource(R.string.search_button_on_home), state.searchPill, model::setSearchPill, "search-pill-switch")
+                        // One choice instead of a switch: what sits above the dock at rest. Nothing is still in beta.
+                        val stripContext = androidx.compose.ui.platform.LocalContext.current
+                        val nothingOpen = remember(stripContext) { FeatureGate.HOME_STRIP_NOTHING.isOpen(stripContext) }
+                        IosMenuRow(stringResource(R.string.home_strip), HomeStrip.entries.filter { it != HomeStrip.NOTHING || nothingOpen || state.homeStrip == it }
+                            .map { it to stringResource(it.label) }, state.homeStrip, model::setHomeStrip, tag = "home-strip")
+                        CardNote(stringResource(R.string.home_strip_note))
                         SettingsSwitch(stringResource(R.string.search_button_opens_the_google_app), state.googleSearch, model::setGoogleSearch, "google-search-switch")
                         CardNote(stringResource(R.string.when_off_the_search_button_opens_spotlig))
                     }
@@ -564,6 +575,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.show_status_in_the_rail), state.verticalStatus, model::setVerticalStatus, "status-switch")
                         if (state.verticalStatus) {
                             IosMenuRow(stringResource(R.string.icon_style), StatusGlyph.entries.map { it to stringResource(it.label) }, st.glyph, { model.setStatusStyle(st.copy(glyph = it)) }, tag = "status-glyph")
+                        if (st.glyph != StatusGlyph.ICONS && st.glyph != StatusGlyph.NONE) {
+                            SettingsSwitch(stringResource(R.string.stronger_rings), st.strongRings, { model.setStatusStyle(st.copy(strongRings = it)) }, "stronger-rings-switch")
+                            CardNote(stringResource(R.string.stronger_rings_note))
+                        }
                             SettingsSwitch(stringResource(R.string.time), st.showTime, { model.setStatusStyle(st.copy(showTime = it)) }, "status-time")
                             SettingsSwitch(stringResource(R.string.date), st.showDate, { model.setStatusStyle(st.copy(showDate = it)) }, "status-date")
                             SettingsSwitch(stringResource(R.string.battery_percentage), st.showBatteryPercent, { model.setStatusStyle(st.copy(showBatteryPercent = it)) }, "status-percent")
@@ -742,6 +757,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         MenuDivider()
                         TweakRow(Icons.Rounded.NewReleases, FolioColors.Value.Green, stringResource(R.string.what_s_new), "customization-whats-new",
                             "v" + WhatsNew.currentVersion(generalContext)) { onClose(); onShowWhatsNew() }
+                        if (DevBuild.isDevApp(generalContext) && DevBuild.load(generalContext) != null) {
+                            MenuDivider()
+                            TweakRow(Icons.Rounded.Build, FolioColors.Value.Orange, DevBuild.THIS_BUILD_LABEL, "customization-dev-build",
+                                DevBuild.load(generalContext)?.sha) { onClose(); DevBuild.reopen.intValue++ }
+                        }
                     }
                     SheetGroup {
                         // Android's own per-app language screen (13+), which lists every language Folio ships, as iOS does.
@@ -809,6 +829,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         MenuDivider()
                         TweakRow(Icons.Rounded.WavingHand, FolioColors.Value.Orange, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
+                        // The testers' checklist: only on a beta build and Folio Dev.
+                        if (WhatToTest.available(SoftwareUpdate.installedVersion(helpContext), helpContext.packageName)) {
+                            MenuDivider()
+                            TweakRow(Icons.Rounded.Checklist, FolioColors.Value.Green, stringResource(R.string.what_to_test), "customization-what-to-test") { onPage(CustomizationPage.WHAT_TO_TEST) }
+                        }
                     }
                     CardNote(stringResource(R.string.report_a_bug_opens_github_in_your_browse), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                     LauncherHelp(
@@ -828,7 +853,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(if (SafeMode.active) stringResource(R.string.folio_is_running_in_safe_mode_optional_f)
                             else stringResource(R.string.if_folio_closes_unexpectedly_twice_right))
                     }
+                    SettingsCard(null) {
+                        IosNavRow(stringResource(R.string.system_bridge), null, { onPage(CustomizationPage.SYSTEM_BRIDGE) }, "system-bridge-row")
+                    }
+                    CapabilitiesCard()
+                    RecentActivityCard()
                     CrashReportsCard()
+                    PerformanceCard()
                 }
                 CustomizationPage.MARKET -> {
                     Text(stringResource(R.string.market_page_intro),
@@ -870,6 +901,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     SheetGroupLabel(stringResource(R.string.market_refreshing_section))
                     var background by remember { mutableStateOf(marketPrefs.backgroundRefresh) }
                     var wifiOnly by remember { mutableStateOf(marketPrefs.refreshOnWifiOnly) }
+                    var notifyUpdates by remember { mutableStateOf(marketPrefs.notifyUpdates) }
+                    var autoUpdate by remember { mutableStateOf(marketPrefs.autoUpdatePackages) }
+                    var notifyRefused by remember { mutableStateOf(false) }
+                    val marketNotifyPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+                        // Android said no: the switch goes back off instead of staying on and never showing anything.
+                        if (!granted) { notifyUpdates = false; marketPrefs.notifyUpdates = false; notifyRefused = true }
+                    }
                     SheetGroup {
                         SwitchRow(stringResource(R.string.refresh_in_the_background), stringResource(if (background) R.string.once_a_day else R.string.off), background) {
                             background = it
@@ -877,6 +915,20 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             MarketRefreshJob.schedule(sheetContext)
                         }
                         if (background) {
+                            MenuDivider()
+                            if (FeatureGate.MARKET_AUTO_UPDATE.isOpen(sheetContext)) {
+                                SwitchRow(stringResource(R.string.update_packages_in_background), stringResource(R.string.update_packages_in_background_detail), autoUpdate) {
+                                    autoUpdate = it
+                                    marketPrefs.autoUpdatePackages = it
+                                }
+                                MenuDivider()
+                            }
+                            SwitchRow(stringResource(R.string.tell_me_about_updates), stringResource(R.string.market_updates_notice_detail), notifyUpdates) {
+                                notifyUpdates = it
+                                marketPrefs.notifyUpdates = it
+                                notifyRefused = false
+                                if (it && !SoftwareUpdate.canPostNotifications(sheetContext)) marketNotifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            }
                             MenuDivider()
                             SwitchRow(stringResource(R.string.only_on_wifi), stringResource(if (wifiOnly) R.string.never_uses_mobile_data else R.string.any_network), wifiOnly) {
                                 wifiOnly = it
@@ -887,6 +939,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     Text(stringResource(R.string.with_this_off_folio_only_goes_online),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp))
+                    if (notifyRefused) Text(stringResource(R.string.updates_notice_refused),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp, vertical = FolioSpace.TINY.dp))
                 }
                 CustomizationPage.TWEAKS -> {
                     CardNote(stringResource(R.string.features_inspired_by_ios_jailbreak_tweak), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -914,6 +968,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.TWEAK_LIBRARY -> TweakLibraryPage(state, model) { tweakId = it.id; onPage(CustomizationPage.LIBRARY_TWEAK) }
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.SUPPORTER -> SupporterPage()
+                CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
                 CustomizationPage.FOCUS -> FocusListPage(state, model) { focusId = it; onPage(CustomizationPage.FOCUS_MODE) }
@@ -1290,9 +1345,11 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.privacy_permissions, R.string.settings_keywords_privacy_permissions, CustomizationPage.PERMISSIONS),
     Triple(R.string.settings_safe_mode_crash_reports, R.string.settings_keywords_safe_mode_crash_reports, CustomizationPage.ADVANCED),
     Triple(R.string.screenshot_mode, R.string.settings_keywords_screenshot_mode, CustomizationPage.ADVANCED),
+    Triple(R.string.system_bridge, R.string.settings_keywords_system_bridge, CustomizationPage.SYSTEM_BRIDGE),
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
+    Triple(R.string.what_to_test, R.string.settings_keywords_what_to_test, CustomizationPage.WHAT_TO_TEST),
     Triple(R.string.help, R.string.settings_keywords_help, CustomizationPage.HELP),
     Triple(R.string.credits, R.string.settings_keywords_credits, CustomizationPage.CREDITS),
     Triple(R.string.supporters, R.string.settings_keywords_supporters, CustomizationPage.SUPPORTERS),
@@ -1339,7 +1396,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.add_new_apps_to_home_screen to CustomizationPage.SEARCH,
     R.string.group_apps_into_categories to CustomizationPage.SEARCH,
     R.string.message_contacts_with to CustomizationPage.SEARCH,
-    R.string.search_button_on_home to CustomizationPage.SEARCH,
+    R.string.home_strip to CustomizationPage.SEARCH,
+    R.string.stronger_rings to CustomizationPage.STATUS,
     R.string.search_button_opens_the_google_app to CustomizationPage.SEARCH,
     R.string.search_with_enter to CustomizationPage.SEARCH,
     R.string.work_apps to CustomizationPage.SEARCH,
@@ -1353,6 +1411,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.reduce_transparency to CustomizationPage.WALLPAPER,
     R.string.when_unfolded to CustomizationPage.TODAY,
     R.string.turn_on_automatically to CustomizationPage.FOCUS,
+    R.string.focus_trigger_folding to CustomizationPage.FOCUS,
+    R.string.focus_trigger_charging to CustomizationPage.FOCUS,
+    R.string.focus_trigger_headphones to CustomizationPage.FOCUS,
     R.string.silence_notifications to CustomizationPage.FOCUS,
     R.string.when_you_hold_it to CustomizationPage.SIDE_KEY,
     R.string.fold_displays to CustomizationPage.FOLD,
@@ -1422,8 +1483,30 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.save_backup to CustomizationPage.BACKUP,
     R.string.save_backup_to_files to CustomizationPage.BACKUP,
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
+    R.string.capability_open_settings to CustomizationPage.ADVANCED,
+    R.string.allow_system_access to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
+    R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
+    R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
+    R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_share to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_details to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_root_report to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_advanced to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_rootgrant_allow to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_rootgrant_do to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_rootgrant_undo to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_grant_copy to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
     R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
+    R.string.performance_log to CustomizationPage.ADVANCED,
+    R.string.performance_start to CustomizationPage.ADVANCED,
+    R.string.performance_stop to CustomizationPage.ADVANCED,
+    R.string.performance_copy to CustomizationPage.ADVANCED,
+    R.string.performance_share to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
 
@@ -1453,7 +1536,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val context = androidx.compose.ui.platform.LocalContext.current
     val resources = context.resources
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
-        SettingsEntries.map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
+        // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
+        SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
     val results = index.filter { settingsMatches(query, it.title, it.keywords) }
@@ -1636,12 +1721,13 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var access by remember { mutableStateOf(FocusController.hasAccess(context)) }
+    val reason by model.focusReason.collectAsState()
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { access = FocusController.hasAccess(context) } }
     SheetGroup {
         state.focusModes.forEachIndexed { index, mode ->
             if (index > 0) MenuDivider()
-            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) stringResource(R.string.on) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
+            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) (reason?.let { stringResource(R.string.focus_on_because, stringResource(it.label(mode))) } ?: stringResource(R.string.on)) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -1708,6 +1794,27 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             CardNote(stringResource(R.string.focus_schedule_note, mode.name))
         }
     }
+    // Supporters and Folio Dev first (FeatureGate.FOCUS_TRIGGERS); everyone from 0.6.9.
+    val gateContext = androidx.compose.ui.platform.LocalContext.current
+    val triggersOpen = remember { FeatureGate.FOCUS_TRIGGERS.isOpen(gateContext) }
+    if (triggersOpen) SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
+        val triggers = mode.triggers
+        SettingsSwitch(stringResource(R.string.focus_trigger_folding), triggers.fold != null,
+            { on -> model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = if (on) FoldState.UNFOLDED else null))) }, "focus-trigger-fold")
+        triggers.fold?.let { chosen ->
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                FoldState.entries.forEach { fold ->
+                    IosChip(chosen == fold, { model.updateFocusMode(mode.copy(triggers = triggers.copy(fold = fold))) },
+                        label = { Text(stringResource(fold.label())) }, modifier = Modifier.testTag("focus-fold-${fold.key}"))
+                }
+            }
+        }
+        SettingsSwitch(stringResource(R.string.focus_trigger_charging), triggers.charging,
+            { model.updateFocusMode(mode.copy(triggers = triggers.copy(charging = it))) }, "focus-trigger-charging")
+        SettingsSwitch(stringResource(R.string.focus_trigger_headphones), triggers.headphones,
+            { model.updateFocusMode(mode.copy(triggers = triggers.copy(headphones = it))) }, "focus-trigger-headphones")
+        CardNote(stringResource(R.string.focus_triggers_note))
+    }
     SettingsCard(stringResource(R.string.notifications_title)) {
         SettingsSwitch(stringResource(R.string.silence_notifications), mode.silence, { model.updateFocusMode(mode.copy(silence = it)) }, "focus-silence")
         CardNote(stringResource(R.string.calls_and_people_allowed_in_android_s_do))
@@ -1740,6 +1847,70 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
+private fun riskLabel(risk: OperationRisk) = when (risk) {
+    OperationRisk.OBSERVE -> R.string.risk_observe
+    OperationRisk.REVERSIBLE -> R.string.risk_reversible
+    OperationRisk.STATEFUL -> R.string.risk_stateful
+    OperationRisk.DISRUPTIVE -> R.string.risk_disruptive
+    OperationRisk.CRITICAL -> R.string.risk_critical
+    OperationRisk.EXPERIMENTAL -> R.string.risk_experimental
+}
+
+/** Advanced › Diagnostics: what this phone and your permissions allow, and why a feature might be off (A0 to A2, see Capabilities). */
+@Composable private fun CapabilitiesCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun read() = Capabilities.rows(IslandListenerService.hasAccess(context), SystemShadeAccessibilityService.isConnected())
+    var rows by remember { mutableStateOf(read()) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { rows = read() } }
+    SettingsCard(stringResource(R.string.capabilities)) {
+        rows.forEach { row ->
+            val (name, uses) = when (row.tier) {
+                CapabilityTier.STANDARD -> R.string.capability_standard to R.string.capability_standard_uses
+                CapabilityTier.NOTIFICATIONS -> R.string.capability_notifications to R.string.capability_notifications_uses
+                CapabilityTier.ACCESSIBILITY -> R.string.capability_accessibility to R.string.capability_accessibility_uses
+            }
+            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).testTag("capability-${row.tier.code}"), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${row.tier.code} · ${stringResource(name)}", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(uses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.capability_risk_line, stringResource(riskLabel(row.risk))), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("capability-risk-${row.tier.code}"))
+                }
+                Text(stringResource(if (row.on) R.string.on else R.string.capability_off), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        if (Capabilities.needsPermission(rows).isNotEmpty()) CardAction(stringResource(R.string.capability_open_settings), onClick = {
+            val tier = Capabilities.needsPermission(rows).first()
+            val intent = if (tier == CapabilityTier.NOTIFICATIONS) IslandListenerService.accessSettingsIntent(context)
+                else android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+        }, modifier = Modifier.testTag("capability-open-settings"))
+        CardNote(stringResource(R.string.capabilities_note))
+    }
+}
+
+/** Advanced › Diagnostics: Folio's own recent activity, newest first, with the failures it carried on from. Kept only on the phone. */
+@Composable private fun RecentActivityCard() {
+    var failedOnly by remember { mutableStateOf(false) }
+    val entries = remember { Inspector.entries(Diagnostics.trailText()) }
+    val shown = Inspector.filter(entries, failedOnly).take(15)
+    SettingsCard(stringResource(R.string.recent_activity)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+            IosChip(!failedOnly, { failedOnly = false }, label = { Text(stringResource(R.string.all)) }, modifier = Modifier.testTag("activity-all"))
+            IosChip(failedOnly, { failedOnly = true }, label = { Text(stringResource(R.string.activity_failed)) }, modifier = Modifier.testTag("activity-failed"))
+        }
+        if (shown.isEmpty()) Text(stringResource(R.string.no_activity_to_show), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+        shown.forEach { e ->
+            Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp)) {
+                Text(e.text, style = MaterialTheme.typography.bodyMedium, color = if (e.failed) FolioColors.Red else androidx.compose.ui.graphics.Color.Unspecified)
+                if (e.time.isNotEmpty()) Text(e.time, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        CardNote(stringResource(R.string.recent_activity_note))
+    }
+}
+
 @Composable private fun CrashReportsCard() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var reports by remember { mutableStateOf(CrashLog.reports(context)) }
@@ -1756,14 +1927,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             shareScope.launch { Diagnostics.send(context, email = false) }
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
-        var copied by remember { mutableStateOf(false) }
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {
-            shareScope.launch { runCatching { Diagnostics.copy(context); copied = true } }
+            shareScope.launch { runCatching { Diagnostics.copy(context); IslandEvents.notice(context, context.getString(R.string.diagnostics_copied)) } }
         }, modifier = Modifier.testTag("copy-diagnostics"))
-        if (copied) {
-            LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); copied = false }
-            Text(stringResource(R.string.diagnostics_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("diagnostics-copied").semantics { liveRegion = LiveRegionMode.Polite })
-        }
         CardNote(stringResource(R.string.diagnostics_file_note))
     }
 }
@@ -1820,6 +1986,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
+/** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
+internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -1830,7 +1999,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     /** The Side Bar (status, dock and search): off for the second page of an unfolded preview, which has one Side Bar. */
     sideBar: Boolean = true,
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
-    preset: LayoutPreset = state.compact) {
+    preset: LayoutPreset = state.compact,
+    /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
+    page: Int = LocalPreviewPage.current) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -1844,11 +2015,12 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     // status rail, dock, search pill), then scaled down, so the preview matches Home instead of approximating it.
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
-        appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus)
-    val placements = state.widgetPlacements.filter { it.page == 0 }
-    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.take(HOME_CELLS), placements)
+        appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
+        widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
+    val placements = state.widgetPlacements.filter { it.page == page }
+    val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
-    val (iconSize, labels) = (state.pageStyles[0] ?: PageStyle()).apply(geometry, state.labels)
+    val (iconSize, labels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
     val scale = previewHeight.value / refH
     val left = state.leftHanded
     val railAlign = if (left) Alignment.TopStart else Alignment.TopEnd
@@ -1874,10 +2046,13 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                 // Drawn over the background rather than inside it, because the preview lays the chosen photo over the
                 // background; on Home the same scrim is baked into the background's cached layer.
                 HomeScrim.of(state.homeScrim, ink.dark, previewDim).let { if (it.draws) Box(Modifier.matchParentSize().homeScrim(it)) }
-                CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass)) {
+                CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
-                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f).dp, y = cells.y(w.row).dp)
+                            // A freely placed widget (Place Freely) is drawn a part of a cell from its cells, as on Home.
+                            val rowPitch = if (w.offsetY < 0f && w.row > 0) cells.y(w.row) - cells.y(w.row - 1)
+                                else if (w.row + 1 < GRID_ROWS) cells.y(w.row + 1) - cells.y(w.row) else cells.y(w.row) - cells.y(w.row - 1)
+                            Box(Modifier.offset(x = (cells.x(w.column, w.row) + 5f + geometry.cellWidth * w.offsetX).dp, y = (cells.y(w.row) + rowPitch * w.offsetY).dp)
                                 .size((geometry.cellWidth * w.spanX - 10f).dp, (cells.spanHeight(w.row, w.spanY) - 18f).coerceAtLeast(48f).dp)) {
                                 if (w.id < 0) BuiltinWidgetCard(w.id, w.slot) {}
                                 else Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(glass.copy(alpha = LocalGlassLook.current.widget)), contentAlignment = Alignment.Center) {
@@ -1886,7 +2061,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                             }
                         }
                         repeat(shownRows * GRID_COLUMNS) { local ->
-                            val id = state.homeSlots.getOrNull(local) ?: return@repeat
+                            val id = state.homeSlots.getOrNull(homeCellIndex(page, local)) ?: return@repeat
                             val app = apps[id]
                             val folder = if (app == null) state.folders.firstOrNull { it.id == id } ?: return@repeat else null
                             val row = local / GRID_COLUMNS
@@ -1954,8 +2129,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                     if (record.size != record.layer.size) record.size = record.layer.size
                 } else Modifier)) {
                 // Two Home pages with one Side Bar, on the right (on the left in left-handed layouts), like the open Fold.
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded)
-                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = state.leftHanded, page = 0)
+                MiniHomePreview(bitmap, state, 150.dp, framed = false, sideBar = !state.leftHanded, page = 0)
             }
         }
     }
@@ -2006,6 +2181,15 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     SettingsCard(stringResource(R.string.duet_direction)) {
         IosSegmented(com.mccal.folio.duet.DuetDirection.entries.map { it to stringResource(it.label) }, duet.plays,
             { model.setDuet(duet.copy(direction = it.id)) }, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "duet-direction")
+    }
+    val motionContext = androidx.compose.ui.platform.LocalContext.current
+    val motion by rememberFoldMotionOptions(motionContext)
+    SettingsCard(stringResource(R.string.fold_motion)) {
+        val prefs = remember { FoldMotionOptions.prefs(motionContext) }
+        SettingsSwitch(stringResource(R.string.fold_motion_ripple), motion.ripple, { FoldMotionOptions.write(prefs, motion.copy(ripple = it)) }, "fold-motion-ripple")
+        SettingsSwitch(stringResource(R.string.fold_motion_depth), motion.depth, { FoldMotionOptions.write(prefs, motion.copy(depth = it)) }, "fold-motion-depth")
+        SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
+        CardNote(stringResource(R.string.fold_motion_note))
     }
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
@@ -2131,7 +2315,9 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         CustomizationSlider(stringResource(R.string.app_icon_size), stringResource(R.string.dp_value, p.iconSize.toInt()), p.iconSize, 40f..68f, d.iconSize, peek = true) { model.setPreset(screen, p.copy(iconSize = it)) }
         CustomizationSlider(stringResource(R.string.space_between_rows), stringResource(R.string.dp_value, p.rowGap.toInt()), p.rowGap, 0f..28f, d.rowGap, peek = true) { model.setPreset(screen, p.copy(rowGap = it)) }
         CustomizationSlider(stringResource(R.string.space_between_columns), stringResource(R.string.dp_value, p.columnGap.toInt()), p.columnGap, 8f..40f, d.columnGap, peek = true) { model.setPreset(screen, p.copy(columnGap = it)) }
-        CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
+        // With the gate open a widget is exactly two rows tall, so Widget Size has nothing to do (its saved value is kept).
+        if (!FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
+            CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
         // Automatic says which number it landed on, so the count is never a mystery.
         IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.homeAppRows), 4 to "4"), state.homeRows, model::setHomeRows, tag = "home-rows")
         CardNote(stringResource(R.string.automatic_adds_up_to_3_more_rows_of_apps))
@@ -2750,4 +2936,237 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         out.write(buffer, 0, read)
     }
     return out.toByteArray()
+}
+
+/** Advanced › System Bridge (ADR 0011): the ways Folio can reach more of the system, what each lets it do, and the one switch that turns the extra ones off. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable private fun SystemBridgePage() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var off by remember { mutableStateOf(SystemBridge.isOff(context)) }
+    val safe = SafeMode.active
+    val broker = remember { SystemBridge.broker(context) }
+    fun read() = broker.states()
+    var states by remember { mutableStateOf(read()) }
+    var rootState by remember { mutableStateOf(RootHingeStore.state(context)) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, off) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { states = read() } }
+    LaunchedEffect(off) { states = read() }
+    Text(stringResource(R.string.system_bridge_intro), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = FolioSpace.TINY.dp))
+    if (safe) CardNote(stringResource(R.string.system_bridge_safe_mode), Modifier.testTag("bridge-safe-mode"))
+    SettingsCard(null) {
+        SettingsSwitch(stringResource(R.string.allow_system_access), !off, { on -> off = !on; SystemBridge.setOff(context, off) }, "bridge-allow-switch")
+        CardNote(stringResource(R.string.allow_system_access_note))
+    }
+    SettingsCard(stringResource(R.string.bridge_ways)) {
+        val gated = SystemBridge.wayLabel(off, safe)
+        val ways = listOf(
+            BridgeWayRow(PrivilegeTier.STANDARD, R.string.bridge_way_standard, R.string.bridge_way_standard_uses, R.string.bridge_state_always, "A0 to A2", "bridge-way-standard"),
+            BridgeWayRow(PrivilegeTier.SHIZUKU, R.string.bridge_way_shizuku, R.string.bridge_way_shizuku_uses, gated, "A3", "bridge-way-shizuku"),
+            BridgeWayRow(PrivilegeTier.ROOT, R.string.bridge_way_root, R.string.bridge_way_root_uses, SystemBridge.rootWayLabel(rootState, off, safe), "A4", "bridge-way-root"),
+            BridgeWayRow(PrivilegeTier.HOOKS, R.string.bridge_way_system, R.string.bridge_way_system_uses, gated, "A5", "bridge-way-system"),
+            BridgeWayRow(null, R.string.bridge_way_device, R.string.bridge_way_device_uses, gated, "", "bridge-way-device"),
+        )
+        val (now, later) = SystemBridge.splitNotYet(ways) { it.state }
+        now.forEach { BridgeWay(it.tier, it.name, it.uses, it.state, it.code, it.tag) }
+        if (later.isNotEmpty()) BridgeNotYet(later.size, R.string.bridge_not_yet_ways_cd, "bridge-ways-later") {
+            later.forEach { BridgeWay(it.tier, it.name, it.uses, it.state, it.code, it.tag) }
+        }
+    }
+    BridgeWarning(stringResource(R.string.bridge_knox))
+    // Root and computer commands sit behind one switch and a short warning. Details open the full disclosure.
+    var advanced by remember { mutableStateOf(RootHingeStore.advanced(context)) }
+    var dialog by remember { mutableStateOf<String?>(null) }
+    SettingsCard(null) {
+        SettingsSwitch(stringResource(R.string.bridge_advanced), advanced,
+            { on -> if (on) dialog = "adv" else { advanced = false; RootHingeStore.setAdvanced(context, false) } }, "bridge-advanced")
+        CardNote(stringResource(R.string.bridge_advanced_note))
+        val cd = stringResource(R.string.bridge_details_adv_cd)
+        CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cd }.testTag("bridge-details-adv"), onClick = { dialog = "details-adv" })
+    }
+    if (advanced) {
+        SettingsCard(stringResource(R.string.bridge_root_title)) {
+            CardNote(stringResource(R.string.bridge_root_note))
+            SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-root-paused")) }
+            val status by RootHingeTester.status.collectAsState()
+            val testing = status is RootHingeTester.Status.Running
+            val found = (status as? RootHingeTester.Status.Done)?.report
+            // The result lands whichever screen is showing (the Fold swaps displays mid-test), so the saved state is read again when it does.
+            LaunchedEffect(status) { rootState = RootHingeStore.state(context); states = read() }
+            DisposableEffect(Unit) { onDispose { RootHingeTester.dismiss() } }
+            // Before the first test the owner sees a short note about what runs as root; after that, a test just starts.
+            CardPrimaryAction(stringResource(R.string.bridge_root_test), Modifier.testTag("bridge-root-test"), enabled = !testing && !off && !safe,
+                onClick = { if (RootHingeStore.explained(context)) RootHingeTester.start(context) else dialog = "first" })
+            found?.let { Text(SystemBridge.rootResult(context, it), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-result")) }
+            if (testing) Text(stringResource(R.string.bridge_root_testing), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-root-testing"))
+            if (rootState == RootState.READY) {
+                var use by remember { mutableStateOf(RootHingeStore.useInFold(context)) }
+                SettingsSwitch(stringResource(R.string.bridge_root_use), use, { on -> use = on; RootHingeStore.setUseInFold(context, on) }, "bridge-root-use")
+                CardNote(stringResource(R.string.bridge_root_use_note))
+            }
+            if (RootHingeStore.lastReport(context) != null) {
+                // Copy and Share live under one row, so the card has one main action and a few quiet ones.
+                var reportMenu by remember { mutableStateOf(false) }
+                Box {
+                    CardAction(stringResource(R.string.bridge_root_report), Modifier.fillMaxWidth().testTag("bridge-root-report"), onClick = { reportMenu = true })
+                    DropdownMenu(expanded = reportMenu, onDismissRequest = { reportMenu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.bridge_root_copy)) }, modifier = Modifier.testTag("bridge-root-copy"), onClick = {
+                            reportMenu = false
+                            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio root test", RootHingeStore.lastReport(context)))
+                        })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.bridge_root_share)) }, modifier = Modifier.testTag("bridge-root-share"), onClick = {
+                            reportMenu = false
+                            RootHingeStore.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
+                        })
+                    }
+                }
+            }
+            val cdRoot = stringResource(R.string.bridge_details_root_cd)
+            CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdRoot }.testTag("bridge-details-root"), onClick = { dialog = "details-root" })
+        }
+        SettingsCard(stringResource(R.string.bridge_grant_title)) {
+            CardNote(stringResource(R.string.bridge_grant_note))
+            SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-grant-paused")) }
+            var granted by remember { mutableStateOf(SecureSettingsGrant.isGranted(context)) }
+            // Checked again whenever the page comes back, since the owner may grant it on a computer.
+            LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { granted = SecureSettingsGrant.isGranted(context); states = read() } }
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-grant-state"), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.bridge_grant_permission), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(if (granted) R.string.bridge_grant_yes else R.string.bridge_grant_no), style = MaterialTheme.typography.bodyMedium,
+                    color = if (granted) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val command = if (granted) SecureSettingsGrant.revokeCommand(context.packageName) else SecureSettingsGrant.grantCommand(context.packageName)
+            if (!granted) { CardNote(stringResource(R.string.bridge_grant_step_1)); CardNote(stringResource(R.string.bridge_grant_step_2)) }
+            if (command != null) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(command, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .08f)).padding(horizontal = 12.dp, vertical = 10.dp).testTag("bridge-grant-command"),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace))
+                }
+                CardNote(stringResource(if (granted) R.string.bridge_grant_revoke_note else R.string.bridge_grant_step_3))
+                CardAction(stringResource(if (granted) R.string.bridge_grant_copy_revoke else R.string.bridge_grant_copy), Modifier.fillMaxWidth().testTag("bridge-grant-copy"), onClick = {
+                    context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("Folio command", command))
+                })
+            }
+            // With root working, the owner may let Folio do the same command itself. Off until they turn it on, and only a button press runs it.
+            if (rootState == RootState.READY) {
+                var allow by remember { mutableStateOf(RootHingeStore.allowRootGrant(context)) }
+                SettingsSwitch(stringResource(R.string.bridge_rootgrant_allow), allow, { on -> allow = on; RootHingeStore.setAllowRootGrant(context, on) }, "bridge-rootgrant-allow")
+                CardNote(stringResource(R.string.bridge_rootgrant_note))
+                if (allow && !off && !safe) {
+                    val gs by RootSettingsGrantTester.status.collectAsState()
+                    val working = gs is RootSettingsGrantTester.Status.Running
+                    LaunchedEffect(gs) { granted = SecureSettingsGrant.isGranted(context); states = read() }
+                    DisposableEffect(Unit) { onDispose { RootSettingsGrantTester.dismiss() } }
+                    (gs as? RootSettingsGrantTester.Status.Done)?.let { d ->
+                        Text(stringResource(when {
+                            d.outcome == RootSettingsGrantRunner.Outcome.DONE && d.granted -> R.string.bridge_rootgrant_granted
+                            d.outcome == RootSettingsGrantRunner.Outcome.DONE -> R.string.bridge_rootgrant_removed
+                            d.outcome == RootSettingsGrantRunner.Outcome.DENIED -> R.string.bridge_rootgrant_denied
+                            else -> R.string.bridge_rootgrant_failed }),
+                            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-rootgrant-result"))
+                    }
+                    if (working) Text(stringResource(R.string.bridge_rootgrant_working), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+                    CardAction(stringResource(if (granted) R.string.bridge_rootgrant_undo else R.string.bridge_rootgrant_do), Modifier.fillMaxWidth().testTag("bridge-rootgrant-do"),
+                        enabled = !working, onClick = { RootSettingsGrantTester.start(context, grant = !granted) })
+                }
+            }
+            val cdGrant = stringResource(R.string.bridge_details_grant_cd)
+            CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdGrant }.testTag("bridge-details-grant"), onClick = { dialog = "details-grant" })
+        }
+    }
+    dialog?.let { d ->
+        val details = d.startsWith("details-")
+        val title = when (d) { "adv" -> R.string.bridge_adv_title; "first" -> R.string.bridge_root_explain_title; "details-adv" -> R.string.bridge_detail_adv_title
+            "details-root" -> R.string.bridge_root_about; else -> R.string.bridge_detail_grant_title }
+        if (details) {
+            // The full disclosure is a Folio sheet (a handle on the cover, a form sheet on the open screen), not a cramped alert.
+            val body = when (d) {
+                "details-adv" -> listOf(R.string.bridge_detail_adv_1, R.string.bridge_detail_adv_2, R.string.bridge_detail_adv_3)
+                "details-root" -> listOf(R.string.bridge_root_explain_1, R.string.bridge_root_explain_2, R.string.bridge_root_explain_3)
+                else -> listOf(R.string.bridge_detail_grant_1, R.string.bridge_detail_grant_2, R.string.bridge_detail_grant_3) }
+            ModalBottomSheet(onDismissRequest = { dialog = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XXL.dp).padding(bottom = FolioSpace.XXL.dp),
+                    verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                    Text(stringResource(title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                    body.forEach { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium) }
+                    CardPrimaryAction(stringResource(R.string.done), Modifier.testTag("bridge-dialog-go"), onClick = { dialog = null })
+                }
+            }
+        } else {
+            // The short warnings are alerts: the preferred action first and bold, then Details, then the way out.
+            val message = if (d == "adv") R.string.bridge_adv_text else R.string.bridge_root_first_text
+            AlertDialog(onDismissRequest = { dialog = null },
+                title = { Text(stringResource(title)) },
+                text = { Text(stringResource(message)) },
+                confirmButton = { TextButton(onClick = {
+                    when (d) {
+                        "adv" -> { advanced = true; RootHingeStore.setAdvanced(context, true) }
+                        "first" -> { RootHingeStore.setExplained(context); RootHingeTester.start(context) }
+                    }
+                    dialog = null }, modifier = Modifier.testTag("bridge-dialog-go")) { Text(stringResource(if (d == "adv") R.string.bridge_adv_know else R.string.bridge_root_explain_continue)) } },
+                neutralButton = { TextButton(onClick = { dialog = if (d == "adv") "details-adv" else "details-root" }, modifier = Modifier.testTag("bridge-dialog-details")) { Text(stringResource(R.string.bridge_details)) } },
+                dismissButton = { TextButton(onClick = { dialog = null }, modifier = Modifier.testTag("bridge-dialog-no")) { Text(stringResource(R.string.not_now)) } })
+        }
+    }
+    SettingsCard(stringResource(R.string.bridge_does)) {
+        val (now, later) = SystemBridge.splitNotYet(states) { SystemBridge.stateLabel(it) }
+        @Composable fun CapRow(s: CapabilityState) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("bridge-cap-${s.capability.id}"), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(SystemBridge.capabilityName(s.capability)), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(SystemBridge.stateLabel(s)), style = MaterialTheme.typography.bodyMedium,
+                    color = if (s.available) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        now.forEach { CapRow(it) }
+        if (later.isNotEmpty()) BridgeNotYet(later.size, R.string.bridge_not_yet_caps_cd, "bridge-caps-later") { later.forEach { CapRow(it) } }
+        CardNote(stringResource(R.string.bridge_if_stops))
+    }
+    SettingsCard(stringResource(R.string.bridge_recent)) {
+        val calls = remember { SystemBridge.recentCalls() }
+        if (calls.isEmpty()) Text(stringResource(R.string.bridge_recent_none), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+        calls.forEach { e ->
+            Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp)) {
+                Text(stringResource(SystemBridge.capabilityName(e.capability)), style = MaterialTheme.typography.bodyMedium)
+                Text("${e.via?.code ?: "-"} · ${stringResource(SystemBridge.outcomeLabel(e.outcome))}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        CardNote(stringResource(R.string.bridge_recent_note))
+    }
+}
+
+/** One way of getting access: its tier code, what it is for and the state in words (never color alone). */
+private data class BridgeWayRow(val tier: PrivilegeTier?, @androidx.annotation.StringRes val name: Int, @androidx.annotation.StringRes val uses: Int,
+    @androidx.annotation.StringRes val state: Int, val code: String, val tag: String)
+
+/** One row that stands for the things that are not available yet; it opens to list them. */
+@Composable private fun BridgeNotYet(count: Int, @androidx.annotation.StringRes description: Int, tag: String, content: @Composable () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val spoken = stringResource(description, count)
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = !open }
+        .semantics { contentDescription = spoken; stateDescription = if (open) "expanded" else "collapsed" }.testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.bridge_not_yet_group, count), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Icon(if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (open) content()
+}
+
+/** The Knox note: the most important sentence on the page, so it gets a card of its own instead of small print. */
+@Composable private fun BridgeWarning(text: String) {
+    val shape = RoundedCornerShape(FolioRadius.CARD.dp)
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth().clip(shape).background(FolioColors.Orange.copy(alpha = .14f)).border(1.dp, FolioColors.Orange.copy(alpha = .45f), shape)
+            .padding(12.dp).testTag("bridge-knox"))
+}
+
+@Composable private fun BridgeWay(tier: PrivilegeTier?, @androidx.annotation.StringRes name: Int, @androidx.annotation.StringRes uses: Int,
+    @androidx.annotation.StringRes state: Int, code: String, tag: String) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(vertical = FolioSpace.SMALL.dp).semantics(mergeDescendants = true) {}.testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(if (code.isEmpty()) stringResource(name) else "$code · ${stringResource(name)}", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(uses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(stringResource(state), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = FolioSpace.SMALL.dp),
+            color = if (tier == PrivilegeTier.STANDARD) FolioColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

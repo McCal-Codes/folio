@@ -17,6 +17,16 @@ class LayoutHistoryTest {
         assertEquals(snapshots, LayoutHistory.decode(LayoutHistory.encode(snapshots)))
     }
 
+    @Test fun `a freely placed widget keeps its offset, and older saves without one load on the grid`() {
+        val free = layout.copy(widgetPlacements = listOf(WidgetPlacement(0, BIG_CLOCK_WIDGET, 0, 0, 0, 4, 2, .25f, -.5f)))
+        val back = LayoutHistory.decodeLayout(LayoutHistory.encodeLayout(free))
+        assertEquals(.25f, back.widgetPlacements.single().offsetX, 0f)
+        assertEquals(-.5f, back.widgetPlacements.single().offsetY, 0f)
+        val plain = LayoutHistory.decodeLayout(LayoutHistory.encodeLayout(layout))
+        assertEquals(0f, plain.widgetPlacements.first().offsetX, 0f)
+        assertEquals(false, LayoutHistory.encodeLayout(layout).toString().contains("offsetX"))
+    }
+
     @Test fun `unreadable history loads as empty instead of crashing`() {
         assertEquals(emptyList<LayoutSnapshot>(), LayoutHistory.decode("not json"))
         assertEquals(emptyList<LayoutSnapshot>(), LayoutHistory.decode(null))

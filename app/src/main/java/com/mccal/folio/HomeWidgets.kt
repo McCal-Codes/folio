@@ -282,7 +282,7 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
         DATE_WIDGET -> DateCard(onTap)
         UP_NEXT_WIDGET -> UpNextCard(onTap)
         SUGGESTIONS_WIDGET -> SuggestionsCard(onAdd)
-        BIG_CLOCK_WIDGET -> BigClockCard(onTap)
+        BIG_CLOCK_WIDGET -> BigClockCard(onTap, slot, home = opensApp)
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
@@ -369,6 +369,11 @@ internal fun WidgetActions(
     onReplace: () -> Unit,
     onRemove: () -> Unit,
     onClose: () -> Unit,
+    /** A built-in widget's own look (today, only Big Clock's color and weight). Real AppWidgets configure
+     * through [onConfigure] instead - that gate only ever fires for a real `AppWidgetProviderInfo`, which a
+     * built-in widget's negative id never has, so this is a separate entry rather than folded into it. */
+    onCustomize: (() -> Unit)? = null,
+    onPlace: (() -> Unit)? = null,
     stackCards: List<Int> = emptyList(),
     stackLabel: (Int) -> String? = { null },
     stackRotate: Boolean = true,
@@ -422,6 +427,16 @@ internal fun WidgetActions(
                         modifier = Modifier.weight(1f).testTag("widget-size-${label.lowercase()}-${placement.slot}"))
                 }
             }
+            // Shapes beyond Small, Medium and Large, for a widget whose limits allow them (Suggestions: one cell, a row, a column).
+            val extraSizes = listOf(Triple(stringResource(R.string.widget_shape_tiny), 1, 1), Triple(stringResource(R.string.widget_shape_row), GRID_COLUMNS, 1),
+                Triple(stringResource(R.string.widget_shape_column), 1, 4)).filter { (_, w, h) -> constraints != null && fits(w, h) || (placement.spanX == w && placement.spanY == h) }
+            if (extraSizes.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.MEDIUM.dp).padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                extraSizes.forEach { (label, w, h) ->
+                    IosChip(selected = placement.spanX == w && placement.spanY == h,
+                        onClick = { if (placement.spanX != w || placement.spanY != h) { onResize(w, h); onClose() } },
+                        label = { Text(label) }, modifier = Modifier.weight(1f).testTag("widget-size-${w}x$h-${placement.slot}"))
+                }
+            }
             MenuDivider()
             MenuRow(stringResource(R.string.resize_on_home), Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
             MenuDivider()
@@ -453,6 +468,8 @@ internal fun WidgetActions(
         SheetGroupLabel(stringResource(R.string.widget))
         SheetGroup {
             if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
+            if (onCustomize != null) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette) { onCustomize() }; MenuDivider() }
+            if (onPlace != null) { MenuRow(stringResource(R.string.place_freely), Icons.Rounded.OpenWith) { onPlace() }; MenuDivider() }
             MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
             if (homePages > 1) {
                 MenuDivider()

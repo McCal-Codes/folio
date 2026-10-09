@@ -228,14 +228,14 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                                 PanelPill(stringResource(R.string.show_less)) { expandedGroup = null }
                             }
                         }
-                        items(group, key = { it.key }) { item -> NotificationCard(item, Modifier.animateItem(fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                            placementSpec = spring(dampingRatio = .86f, stiffness = Spring.StiffnessMediumLow))) {
+                        items(group, key = { it.key }) { item -> NotificationCard(item, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle))) {
                             onClose(); IslandListenerService.openNotification(context, item)
                         } }
                     } else item(group.first().key) {
                         // Same key as the first card when expanded, so the stack slides apart instead of swapping.
-                        StackedNotification(group, Modifier.animateItem(fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                            placementSpec = spring(dampingRatio = .86f, stiffness = Spring.StiffnessMediumLow))) { expandedGroup = pkg }
+                        StackedNotification(group, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle))) { expandedGroup = pkg }
                     }
                 }
             }
@@ -297,7 +297,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
         val press = remember { MutableInteractionSource() }
         val pressed by press.collectIsPressedAsState()
         val pressScale by androidx.compose.animation.core.animateFloatAsState(if (pressed) .97f else 1f,
-            spring(dampingRatio = .7f, stiffness = Spring.StiffnessMedium), label = "notification press")
+            FolioMotion.spring(FolioMotion.Control), label = "notification press")
         Row(Modifier.fillMaxWidth().graphicsLayer { scaleX = pressScale; scaleY = pressScale }
             .clip(RoundedCornerShape(22.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
             .border(FolioGlass.edge, RoundedCornerShape(22.dp))
@@ -367,7 +367,7 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
     val context = LocalContext.current
     val density = LocalDensity.current
     val appear = remember { androidx.compose.animation.core.Animatable(0f) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, spring(dampingRatio = .75f, stiffness = Spring.StiffnessMediumLow)) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
     fun act(action: () -> Unit) { onDismiss(); action() }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -789,7 +789,7 @@ private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: 
 @Composable
 private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp, height: Dp,
     onStart: () -> Unit = {}, onValue: (Float) -> Unit) {
-    val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), spring(stiffness = Spring.StiffnessMedium), label = label)
+    val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), FolioMotion.spring(FolioMotion.Snap), label = label)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(ModuleGlass)
         .pointerInput(Unit) {

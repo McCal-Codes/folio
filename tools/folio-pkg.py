@@ -361,6 +361,16 @@ def check_effect(effect, where: str, report: Report):
         report.error(f"{where}: pivot must be seam or center")
 
 
+def check_reserved_kinds(kinds, where: str, report: Report):
+    """Folio refuses a package of a reserved kind and won't install it, so a source mustn't offer one, as a folder
+    or packed. A kind that isn't a list is the schema's to report."""
+    if not isinstance(kinds, list):
+        return
+    for kind in RESERVED_KINDS:
+        if kind in kinds:
+            report.error(f"{where}: kind {kind} is reserved; Folio refuses a package of it and won't install it")
+
+
 def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: SchemaSet, report: Report) -> dict | None:
     """One package folder: its manifest, its page, and the files its manifest promises."""
     name = folder.name
@@ -371,9 +381,7 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
         report.error(problem)
 
     kinds = manifest.get("kind", [])
-    for kind in RESERVED_KINDS:
-        if kind in kinds:
-            report.error(f"{name}: kind {kind} is reserved; Folio refuses a package of it and won't install it")
+    check_reserved_kinds(kinds, name, report)
     if "script" not in kinds and (folder / "script.js").is_file():
         report.error(f"{name}: there is a script.js, but kind does not include script")
     if "tweakBundle" in kinds and not (folder / "tweaks.json").is_file():
@@ -636,6 +644,8 @@ def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report, stand
     label = f"{prefix}manifest.json"
     for problem in schemas.validate(manifest, schemas.get("manifest.schema.json"), label):
         report.error(problem)
+    # The schema lists the reserved kinds, so it passes them; a packed one would otherwise reach a source unseen.
+    check_reserved_kinds(manifest.get("kind"), label, report)
     if "depiction" in manifest and manifest["depiction"] not in names:
         report.error(f"{label}: names {manifest['depiction']}, which is not in the archive")
     # A published source carries only archives, so what a phone installs gets the same effect checks as a folder.

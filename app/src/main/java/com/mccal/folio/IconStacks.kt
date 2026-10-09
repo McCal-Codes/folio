@@ -64,9 +64,13 @@ internal val LocalIconStack = staticCompositionLocalOf<((AppEntry) -> Unit)?> { 
 internal val LocalStackedApps = staticCompositionLocalOf { emptySet<String>() }
 
 /** Swipe up (app panel) or down (icon stack) on an icon; taps and long-presses pass through. */
-internal fun Modifier.iconSwipes(onSwipeUp: (() -> Unit)?, onSwipeDown: (() -> Unit)?): Modifier =
-    if (onSwipeUp == null && onSwipeDown == null) this else pointerInput(onSwipeUp, onSwipeDown) {
-        val threshold = 28.dp.toPx()
+internal fun Modifier.iconSwipes(
+    onSwipeUp: (() -> Unit)?, onSwipeDown: (() -> Unit)?,
+    /** Whether a touch that went down at this height inside the icon may start a swipe: false in the bottom gesture strip. */
+    startAllowed: (Float) -> Boolean = { true },
+): Modifier =
+    if (onSwipeUp == null && onSwipeDown == null) this else pointerInput(onSwipeUp, onSwipeDown, startAllowed) {
+        val threshold = IconGesture.THRESHOLD_DP.dp.toPx()
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             while (true) {
@@ -74,9 +78,12 @@ internal fun Modifier.iconSwipes(onSwipeUp: (() -> Unit)?, onSwipeDown: (() -> U
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
                 if (!change.pressed || change.isConsumed) break
                 val d = change.position - down.position
-                if (onSwipeUp != null && -d.y > threshold && abs(d.x) < -d.y * .6f) { change.consume(); onSwipeUp(); break }
-                if (onSwipeDown != null && d.y > threshold && abs(d.x) < d.y * .6f) { change.consume(); onSwipeDown(); break }
-                if (abs(d.y) > threshold || abs(d.x) > threshold) break
+                when (IconGesture.classify(d.x, d.y, threshold, up = onSwipeUp != null, down = onSwipeDown != null, startAllowed = startAllowed(down.position.y))) {
+                    IconSwipe.UP -> { change.consume(); onSwipeUp?.invoke(); break }
+                    IconSwipe.DOWN -> { change.consume(); onSwipeDown?.invoke(); break }
+                    IconSwipe.CANCEL -> break
+                    IconSwipe.PENDING -> Unit
+                }
             }
         }
     }
@@ -100,7 +107,7 @@ internal fun IconStackFan(anchor: AppEntry, apps: List<AppEntry>, onDismiss: () 
     LaunchedEffect(Unit) {
         kotlinx.coroutines.coroutineScope {
             progress.forEachIndexed { i, p ->
-                launch { kotlinx.coroutines.delay(i * 35L); p.animateTo(1f, spring(dampingRatio = .68f, stiffness = 520f)) }
+                launch { kotlinx.coroutines.delay(i * 35L); p.animateTo(1f, FolioMotion.spring(FolioMotion.Bounce)) }
             }
         }
     }

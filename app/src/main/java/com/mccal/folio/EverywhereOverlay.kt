@@ -310,7 +310,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 LaunchedEffect(Unit) { dockOpen.value = true }
                 Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null) { closeDock() },
                     contentAlignment = if (s.leftHanded) Alignment.CenterStart else Alignment.CenterEnd) {
-                    AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(spring(dampingRatio = .8f, stiffness = Spring.StiffnessMediumLow)) { if (s.leftHanded) -it else it },
+                    AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(FolioMotion.spring(FolioMotion.Appear)) { if (s.leftHanded) -it else it },
                         exit = fadeOut() + slideOutHorizontally { if (s.leftHanded) -it else it }) {
                         Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(30.dp))
                             .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(30.dp))
@@ -390,7 +390,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 val islandStrings = androidx.compose.ui.platform.LocalContext.current.strings()
                 val content = islandContent.collectAsState().value
                 val w by animateDpAsState(content?.let { g.widthFor(it).dp } ?: 0.dp,
-                    spring(dampingRatio = .72f, stiffness = Spring.StiffnessMediumLow), label = "overlay-island")
+                    FolioMotion.spring(FolioMotion.Appear), label = "overlay-island")
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     val popUp = (content as? IslandContent.Event)?.event is IslandEvent.Message
                     if (content != null && w > 1.dp) Box(Modifier.size(w, g.pillH.dp).clip(RoundedCornerShape((g.pillH / 2).dp)).background(Color.Black)

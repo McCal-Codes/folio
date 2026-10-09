@@ -186,6 +186,8 @@ internal class MarketSources(
      * installed from it: a host that simply stops answering would otherwise keep a frozen list, and every revocation
      * it never delivered, installable for ever.
      */
+    fun isStale(source: Source): Boolean = stale(source)
+
     private fun stale(source: Source): Boolean {
         if (source.kind == Source.Kind.BUILT_IN || source.kind == Source.Kind.LOCAL_DEV) return false
         return client.isStale(source.url)
@@ -197,6 +199,20 @@ internal class MarketSources(
             val full = if (url.startsWith("https://")) url else source.url + url
             (http.get(full, maxBytes, onProgress) as? HttpResult.Body)?.bytes
         }
+
+    /**
+     * Downloads a listing's bytes without applying anything, for staging an update: null when the list is too old, there
+     * is nowhere to download from, the download fails, or it is not the size and checksum the source promised.
+     */
+    suspend fun fetchPackage(entry: IndexPackage, source: Source): ByteArray? = withContext(io) {
+        if (stale(source)) return@withContext null
+        // A checksum is required too: staging and installing on its own with nothing to check against is not allowed.
+        if (entry.sha256 == null) return@withContext null
+        val url = entry.url ?: return@withContext null
+        val size = entry.size ?: return@withContext null
+        val full = if (url.startsWith("https://")) url else source.url + url
+        (http.get(full, size, { _, _ -> }) as? HttpResult.Body)?.bytes?.takeIf { entry.matches(it) }
+    }
 
     suspend fun download(
         entry: IndexPackage,

@@ -10,6 +10,7 @@
  */
 import { optionsOf, run } from './commands.mjs'
 import { discordFor } from './discord.mjs'
+import { runAutoReply } from './autoreply.mjs'
 import { PINGS_BUTTON, togglePings } from './pings.mjs'
 import { sources as liveSources } from './sources.mjs'
 
@@ -77,6 +78,11 @@ export function createWorker({
   discord = (env) => discordFor(env),
 } = {}) {
   return {
+    /** The timer. Wakes up every couple of minutes to give new posts in #help and the forums their first reply. */
+    async scheduled(_event, env, ctx) {
+      ctx?.waitUntil?.(runAutoReply(env, send))
+    },
+
     async fetch(request, env, ctx) {
       if (request.method === 'GET') {
         // Something to look at when checking the Worker is up. Discord never uses it.

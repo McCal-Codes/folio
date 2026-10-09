@@ -76,8 +76,8 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
                     scope.launch {
                         if (offset.value < -size.height * .22f) {
                             haptic.perform(FolioHaptic.GestureDone)
-                            offset.animateTo(-size.height.toFloat(), spring(stiffness = 900f)); onDismiss()
-                        } else offset.animateTo(0f, spring(dampingRatio = .8f))
+                            offset.animateTo(-size.height.toFloat(), FolioMotion.spring(FolioMotion.Firm)); onDismiss()
+                        } else offset.animateTo(0f, FolioMotion.spring(FolioMotion.Quick))
                     }
                 },
                 onDragCancel = { scope.launch { offset.animateTo(0f) } },
