@@ -49,8 +49,10 @@ by an earlier start): Home's apps in at 53 ms (was 139), fully drawn 120 ms (was
 ### Measuring
 
 - **PRF-1 MUST** measure before optimising, and put the before and after numbers in the PR.
-  A change behind a closed `FeatureGate` that nobody can reach yet may merge without them, if its PR says the numbers are
-  still to come; they are then required in the PR that opens the gate (REL-4a). A change everyone runs always needs them.
+  A change behind a closed `FeatureGate` may merge without them only while nothing can reach it: no screen sets it, and
+  no Folio Dev or beta supporter build can turn it on (REL-4a opens gated features to those builds the day they merge).
+  The PR says the numbers are still to come, and they are required in the PR that makes the change reachable. A change
+  that supporters can already reach, or that everyone runs, needs them before it merges.
 - **PRF-2 MUST NOT** draw performance conclusions from a debug build. Use the `fast` build (R8, release-like) or
   release.
 - **PRF-3 MUST** give a new critical journey baseline profile coverage in `StartupProfile.kt` (or a sibling test) and

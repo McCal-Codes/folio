@@ -820,7 +820,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 title = { Text(stringResource(R.string.how_should_this_report_go)) },
                                 text = { Text(stringResource(R.string.email_needs_no_account)) },
                                 confirmButton = { TextButton(onClick = { askDiagnostics = false
-                                    reportScope.launch { runCatching { helpContext.startActivity(Diagnostics.reportIntent(helpContext, email = true)) } } },
+                                    reportScope.launch { Diagnostics.send(helpContext, email = true) } },
                                     modifier = Modifier.testTag("report-email")) { Text(stringResource(R.string.email_a_report)) } },
                                 dismissButton = { TextButton(onClick = { askDiagnostics = false
                                     // Copied off the main thread first, so the form opens with the details ready to paste.
@@ -1924,7 +1924,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
         }
         val shareScope = rememberCoroutineScope()
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
-            shareScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = false)) } }
+            shareScope.launch { Diagnostics.send(context, email = false) }
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {
