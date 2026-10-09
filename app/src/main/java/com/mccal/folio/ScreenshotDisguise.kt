@@ -1,5 +1,11 @@
 package com.mccal.folio
 
+import android.content.Context
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.Collator
 
 /**
@@ -54,4 +60,57 @@ object ScreenshotDisguise {
         apps.filter { it.packageName in systemPackages && !it.isWork && !it.isShortcut && it.available }
             .distinctBy { it.packageName }
             .sortedBy { it.id }
+}
+
+/**
+ * The swap rules, kept in a file of their own rather than in `launcher/state`: an older Folio ignores this file, so a
+ * phone with rules set stays readable by every older build, where a key in the state would need a newer schema
+ * (STA-5). The list of apps someone wants hidden is itself private, so it is not part of Layout Backup either.
+ */
+internal object ScreenshotSwap {
+    private const val FILE = "screenshot_swap"
+    private const val KEY = "rules"
+    private val mutable = MutableStateFlow(DisguiseRules())
+    val rules: StateFlow<DisguiseRules> = mutable.asStateFlow()
+    @Volatile private var loaded = false
+
+    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+
+    /** Reads the saved rules once; later calls do nothing. */
+    fun load(context: Context) {
+        if (loaded) return
+        synchronized(this) {
+            if (loaded) return
+            mutable.value = decode(prefs(context).getString(KEY, null))
+            loaded = true
+        }
+    }
+
+    @Synchronized fun set(context: Context, rules: DisguiseRules) {
+        load(context)
+        mutable.value = rules
+        prefs(context).edit().apply { if (rules.isEmpty) remove(KEY) else putString(KEY, encode(rules)) }.apply()
+    }
+
+    fun chosen(context: Context): Set<String> { load(context); return mutable.value.chosen }
+
+    /** Apps that were uninstalled leave the list quietly, so nothing stale comes back with a reinstall. */
+    fun forget(context: Context, removedIds: Collection<String>) {
+        load(context)
+        val current = mutable.value
+        if (removedIds.none { it in current.chosen }) return
+        set(context, current.copy(chosen = current.chosen - removedIds.toSet()))
+    }
+
+    internal fun encode(rules: DisguiseRules): String =
+        JSONObject().put("chosen", JSONArray(rules.chosen.sorted())).put("allThirdParty", rules.allThirdParty).toString()
+
+    /** Rules from a saved file, or none when there is no file or it can't be read. */
+    internal fun decode(raw: String?): DisguiseRules = raw?.let {
+        runCatching {
+            val o = JSONObject(it)
+            val chosen = o.optJSONArray("chosen")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optString(i).takeIf(String::isNotBlank) } }.orEmpty()
+            DisguiseRules(chosen.toSet(), o.optBoolean("allThirdParty", false))
+        }.getOrNull()
+    } ?: DisguiseRules()
 }

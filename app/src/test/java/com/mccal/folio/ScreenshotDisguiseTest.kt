@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -80,5 +81,28 @@ class ScreenshotDisguiseTest {
     @Test fun `the list is sorted by the names shown`() {
         val out = ScreenshotDisguise.apply(apps, DisguiseRules(allThirdParty = true), system)
         assertEquals(out.map { it.label }.sorted(), out.map { it.label })
+    }
+
+    @Test fun `rules survive a save and a read`() {
+        val rules = DisguiseRules(chosen = setOf(reddit.id, bank.id), allThirdParty = true)
+        assertEquals(rules, ScreenshotSwap.decode(ScreenshotSwap.encode(rules)))
+    }
+
+    @Test fun `no file, a damaged file or blank ids read as no rules`() {
+        assertEquals(DisguiseRules(), ScreenshotSwap.decode(null))
+        assertEquals(DisguiseRules(), ScreenshotSwap.decode("not json"))
+        assertEquals(DisguiseRules(chosen = setOf(reddit.id)), ScreenshotSwap.decode("""{"chosen":["${reddit.id}"," ",""]}"""))
+    }
+
+    @Test fun `rules are kept in their own file, and an uninstalled app leaves the list`() {
+        val context = RuntimeEnvironment.getApplication()
+        ScreenshotSwap.set(context, DisguiseRules(chosen = setOf(reddit.id, bank.id)))
+        val file = context.getSharedPreferences("screenshot_swap", 0).getString("rules", null)
+        assertEquals(setOf(reddit.id, bank.id), ScreenshotSwap.decode(file).chosen)
+        assertTrue("not in the launcher state", context.getSharedPreferences("launcher", 0).getString("state", "").orEmpty().indexOf(reddit.id) < 0)
+        ScreenshotSwap.forget(context, listOf(reddit.id))
+        assertEquals(setOf(bank.id), ScreenshotSwap.chosen(context))
+        ScreenshotSwap.set(context, DisguiseRules())
+        assertNull("no rules, no file entry", context.getSharedPreferences("screenshot_swap", 0).getString("rules", null))
     }
 }
