@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep and switch between Folio Dev builds, one per branch, from this Mac.
+"""Keep and switch between Folio Dev builds, one per branch, from a Mac or a Windows PC.
 
     tools/dev-builds.py build                  build this worktree's debug APK and keep a copy
     tools/dev-builds.py build --apk app.apk    keep an APK you already built (its dev-build.json says which branch)
@@ -13,6 +13,9 @@ Why a script as well as a source: a debug Folio is about 80 MB, which the Market
 source must be HTTPS with a key Folio pins, so a phone-side list needs somewhere to be hosted. `install` works today
 over wireless debugging; `source` makes the files for that later, and publishes nothing.
 
+On Windows, run it as `python tools/dev-builds.py ...`. It finds JDK 17, the Android SDK, adb and openssl on its own
+(Git for Windows brings openssl); set JAVA_HOME, ANDROID_HOME or ANDROID_SERIAL to choose others.
+
 Builds are kept in ~/.folio-dev-builds (override with FOLIO_DEV_BUILDS), outside every repository. A build is named
 <branch>-<commit>. Every build is signed with the local debug key, so any of them installs over any other and keeps
 Folio Dev's Home and settings.
@@ -22,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import glob
 import hashlib
 import json
 import os
@@ -38,9 +42,67 @@ STORE = pathlib.Path(os.environ.get("FOLIO_DEV_BUILDS", "~/.folio-dev-builds")).
 KEEP = 12
 # Folio's Market lists an app up to this size (market/.../SourceFiles.kt MAX_APP_BYTES, raised from 20 MiB on 2026-10-06).
 MAX_APP_BYTES = 100 * 1024 * 1024
-JAVA_HOME = os.environ.get("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
+WINDOWS = os.name == "nt"
 TEMPLATE = pathlib.Path(os.environ.get("FOLIO_SOURCE_TEMPLATE", "~/dev/folio-source-template")).expanduser()
 REPO = pathlib.Path(__file__).resolve().parent.parent
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # a Windows console is not UTF-8, and subjects can hold any text
+
+
+def is_jdk17(home: str) -> bool:
+    try:
+        return 'JAVA_VERSION="17' in pathlib.Path(home, "release").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+
+
+def java_home() -> str | None:
+    """JDK 17 for Gradle. JDK 21 fails one of Folio's tests, and the PC's JAVA_HOME is 21, so a JAVA_HOME that is not 17
+    only wins when no JDK 17 is installed in the usual place."""
+    current = os.environ.get("JAVA_HOME")
+    if current and is_jdk17(current):
+        return current
+    found = sorted(glob.glob(r"C:\Program Files\Eclipse Adoptium\jdk-17*")) if WINDOWS else []
+    found += [p for p in ["/opt/homebrew/opt/openjdk@17"] if os.path.isdir(p)]
+    return found[-1] if found else current
+
+
+def android_sdk() -> pathlib.Path | None:
+    for var in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        if os.environ.get(var):
+            return pathlib.Path(os.environ[var])
+    guess = pathlib.Path(os.environ.get("LOCALAPPDATA", ""), "Android", "Sdk") if WINDOWS else pathlib.Path("~/Library/Android/sdk").expanduser()
+    return guess if guess.is_dir() else None
+
+
+def tool(name: str, *extra: pathlib.Path) -> str:
+    """A program on PATH, or in one of the places it usually sits when it is not."""
+    found = shutil.which(name)
+    if found:
+        return found
+    for folder in extra:
+        for candidate in (folder / f"{name}.exe", folder / name):
+            if candidate.is_file():
+                return str(candidate)
+    return name
+
+
+def adb_path() -> str:
+    sdk = android_sdk()
+    return tool("adb", *([sdk / "platform-tools"] if sdk else []))
+
+
+def openssl_path() -> str:
+    git = pathlib.Path(os.environ.get("ProgramFiles", r"C:\Program Files"), "Git")
+    return tool("openssl", git / "mingw64" / "bin", git / "usr" / "bin")
+
+
+def folio_version(repo: pathlib.Path = REPO) -> str:
+    """The versionName every build of this checkout carries (folioVersion in app/build.gradle.kts)."""
+    text = (repo / "app/build.gradle.kts").read_text(encoding="utf-8")
+    found = re.search(r'^val folioVersion = "([^"]+)"', text, re.M)
+    return found.group(1) if found else "0.0.0"
 
 
 def slug(text: str) -> str:
@@ -91,12 +153,12 @@ def read_info(apk: pathlib.Path) -> dict:
 
 def load_index() -> dict:
     path = STORE / "index.json"
-    return json.loads(path.read_text()) if path.exists() else {"builds": [], "installed": None}
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"builds": [], "installed": None}
 
 
 def save_index(index: dict) -> None:
     STORE.mkdir(parents=True, exist_ok=True)
-    (STORE / "index.json").write_text(json.dumps(index, indent=2) + "\n")
+    (STORE / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
 
 
 def keep(apk: pathlib.Path) -> dict:
@@ -108,7 +170,7 @@ def keep(apk: pathlib.Path) -> dict:
     shutil.copyfile(apk, target)
     subject = info["commits"][0]["subject"] if info.get("commits") else ""
     entry = {"name": name, "branch": info["branch"], "sha": info["sha"], "dirty": bool(info.get("dirty")), "builtAt": info.get("builtAt", ""),
-             "subject": subject, "size": target.stat().st_size, "sha256": sha256_of(target)}
+             "subject": subject, "version": folio_version(), "size": target.stat().st_size, "sha256": sha256_of(target)}
     index = load_index()
     index["builds"] = [b for b in index["builds"] if b["name"] != name] + [entry]
     index["builds"].sort(key=lambda b: b["builtAt"])
@@ -120,15 +182,36 @@ def keep(apk: pathlib.Path) -> dict:
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, text=True, capture_output=True, **kw)
+    return subprocess.run(cmd, text=True, capture_output=True, encoding="utf-8", errors="replace", **kw)
+
+
+def run_for(cmd: list[str], seconds: float) -> str:
+    """What a command that never ends by itself (dns-sd -B) prints in its first few seconds. Not `timeout`: on Windows
+    that is a different program, which only waits."""
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    try:
+        out, _ = proc.communicate(timeout=seconds)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        out, _ = proc.communicate()
+    return out or ""
 
 
 def cmd_build(args) -> int:
     apk = pathlib.Path(args.apk) if args.apk else REPO / "app/build/outputs/apk/debug/app-debug.apk"
     if not args.apk:
-        env = dict(os.environ, JAVA_HOME=JAVA_HOME)
+        env = dict(os.environ)
+        if java_home():
+            env["JAVA_HOME"] = java_home()
+        sdk = android_sdk()
+        if sdk and not (REPO / "local.properties").exists() and not env.get("ANDROID_HOME"):
+            env["ANDROID_HOME"] = str(sdk)  # a fresh worktree has no local.properties
+        gradlew = [str(REPO / "gradlew.bat")] if WINDOWS else ["./gradlew"]
         print("Building the debug APK (this is the same build Folio Dev gets)…")
-        if subprocess.run(["./gradlew", ":app:assembleDebug", "-q"], cwd=REPO, env=env).returncode != 0:
+        if subprocess.run([*gradlew, ":app:assembleDebug", "-q"], cwd=REPO, env=env).returncode != 0:
             return 1
     if not apk.exists():
         sys.exit(f"{apk} does not exist.")
@@ -153,14 +236,14 @@ def cmd_list(_args) -> int:
 # ---- the phone -------------------------------------------------------------------------------------------------
 
 def adb(*args: str, timeout: int = 60) -> subprocess.CompletedProcess:
-    return run(["adb", *args], timeout=timeout)
+    return run([adb_path(), *args], timeout=timeout)
 
 
 def find_phone() -> str:
     """A serial for adb: a plugged-in phone, a connected wireless one, or one found on the network by its mDNS name.
 
-    `adb mdns services` is often empty on this Mac, so this asks macOS directly (dns-sd), and restarts the adb server
-    when a connect says "No route to host" while the phone still answers ping.
+    It asks adb's own mDNS first, then Bonjour (dns-sd, on a Mac and on Windows with Bonjour) because `adb mdns services`
+    is often empty on the Mac, and restarts the adb server when a connect fails while the phone is still on the network.
     """
     def devices() -> list[str]:
         out = adb("devices").stdout.splitlines()[1:]
@@ -170,18 +253,7 @@ def find_phone() -> str:
     found = devices()
     if found:
         return found[0]
-    browse = run(["timeout", "6", "dns-sd", "-B", "_adb-tls-connect._tcp", "local."]) if shutil.which("dns-sd") else None
-    instances = re.findall(r"_adb-tls-connect\._tcp\.\s+(\S+)", (browse.stdout if browse else ""))
-    for instance in instances:
-        look = run(["timeout", "6", "dns-sd", "-L", instance, "_adb-tls-connect._tcp", "local."])
-        host = re.search(r"can be reached at (\S+?):(\d+)", look.stdout)
-        if not host:
-            continue
-        ip = run(["timeout", "5", "dns-sd", "-G", "v4", host.group(1)]).stdout
-        address = re.search(r"Add\s+\S+\s+\d+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)", ip)
-        if not address:
-            continue
-        target = f"{address.group(1)}:{host.group(2)}"
+    for target in phone_addresses():
         if "connected" not in adb("connect", target).stdout:
             adb("kill-server")
             adb("start-server")
@@ -189,6 +261,25 @@ def find_phone() -> str:
         if target in devices():
             return target
     sys.exit("No phone found. Plug it in, or turn on Wireless debugging on the Fold and run this again.")
+
+
+def mdns_targets(adb_mdns: str) -> list[str]:
+    """ip:port of each phone offering wireless debugging, from `adb mdns services` output."""
+    return re.findall(r"_adb-tls-connect\._tcp\.?\s+(\d+\.\d+\.\d+\.\d+:\d+)", adb_mdns)
+
+
+def phone_addresses() -> list[str]:
+    targets = mdns_targets(adb("mdns", "services", timeout=15).stdout)
+    if targets or not shutil.which("dns-sd"):
+        return targets
+    for instance in re.findall(r"_adb-tls-connect\._tcp\.\s+(\S+)", run_for(["dns-sd", "-B", "_adb-tls-connect._tcp", "local."], 6)):
+        host = re.search(r"can be reached at (\S+?):(\d+)", run_for(["dns-sd", "-L", instance, "_adb-tls-connect._tcp", "local."], 6))
+        if not host:
+            continue
+        address = re.search(r"Add\s+\S+\s+\d+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)", run_for(["dns-sd", "-G", "v4", host.group(1)], 5))
+        if address:
+            targets.append(f"{address.group(1)}:{host.group(2)}")
+    return targets
 
 
 def phone_state(serial: str) -> dict:
@@ -273,7 +364,7 @@ def cmd_source(args) -> int:
     # The template's copy of the index schema still stops an app at 20 MiB; Folio's own now allows 100 MiB for an app.
     schema = work / "schema/v1/index.schema.json"
     if schema.exists():
-        schema.write_text(schema.read_text().replace("20971520", str(MAX_APP_BYTES)))
+        schema.write_text(schema.read_text(encoding="utf-8").replace("20971520", str(MAX_APP_BYTES)), encoding="utf-8")
     (work / "packages").mkdir(parents=True, exist_ok=True)
     base = args.base_url.rstrip("/")
     for b in index["builds"]:
@@ -281,24 +372,29 @@ def cmd_source(args) -> int:
         folder.mkdir(parents=True, exist_ok=True)
         manifest = {
             "format": 1, "id": package_id(b["name"]), "name": f"Folio Dev: {b['branch']}",
-            "version": listing_version("0.6.8-beta.6", b["builtAt"], b["sha"]),
+            "version": listing_version(b.get("version") or folio_version(), b["builtAt"], b["sha"]),
             "author": {"name": "McCal"}, "minFolio": "0.6.6", "section": "tweaks", "kind": ["externalApp"],
             "permissions": [], "screens": ["cover", "inner"], "license": "MIT",
             "description": f"{b['subject']} ({b['sha']}). A debug build of Folio Dev, signed with the local debug key.",
             "via": [{"store": "obtainium", "repoUrl": base, "id": APP_ID}],
         }
-        (folder / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-        (folder / "app.json").write_text(json.dumps({"url": f"{base}/apks/{b['name']}.apk", "sha256": b["sha256"], "size": b["size"]}, indent=2) + "\n")
+        (folder / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        (folder / "app.json").write_text(json.dumps({"url": f"{base}/apks/{b['name']}.apk", "sha256": b["sha256"], "size": b["size"]}, indent=2) + "\n", encoding="utf-8")
     (work / "source.json").write_text(json.dumps({
         "name": "Folio Dev builds", "description": "Debug builds of Folio Dev, one per branch. Debug-signed: for the person who made them.",
-        "icon": "assets/icon.png", "issuesUrl": "https://github.com/McCal-Codes/folio/issues", "maxAgeDays": 14}, indent=2) + "\n")
+        "icon": "assets/icon.png", "issuesUrl": "https://github.com/McCal-Codes/folio/issues", "maxAgeDays": 14}, indent=2) + "\n", encoding="utf-8")
     key = pathlib.Path(args.key).expanduser() if args.key else STORE / "dev-source.pem"
+    openssl = openssl_path()
+    if not shutil.which(openssl):
+        sys.exit("Needs openssl to sign the source. On Windows it comes with Git for Windows; on a Mac it is already there.")
+    # The template's build.py calls plain `openssl`, so the one found here goes first on its PATH.
+    env = dict(os.environ, PATH=str(pathlib.Path(openssl).parent) + os.pathsep + os.environ.get("PATH", ""))
     if not key.exists():
         # A key for this local source only. It is not Folio's source key and never goes anywhere near a repository.
-        run(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(key)])
+        run([openssl, "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(key)])
         key.chmod(0o600)
         print(f"Made a signing key for this source at {key}. Keep it: a lost key means re-adding the source on the phone.")
-    result = subprocess.run([sys.executable, "tools/build.py", "--key", str(key)], cwd=work)
+    result = subprocess.run([sys.executable, "tools/build.py", "--key", str(key)], cwd=work, env=env)
     if result.returncode != 0:
         return result.returncode
     site = work / "_site"
