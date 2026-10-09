@@ -97,6 +97,8 @@ internal fun AppContextMenu(
     onEditIcon: (() -> Unit)? = null,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
+    /** This icon's Icon Actions as menu rows ("Swipe up: Flashlight"), the path for a keyboard or Switch Access (INT-16). */
+    iconActions: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -143,7 +145,7 @@ internal fun AppContextMenu(
             val spaceBelow = screenH - (iconTop + iconSize * 1.1f + gap) - safeBottom
             val spaceAbove = iconTop - gap - safeTop
             // Folio's own rows: Edit Home Screen, Remove/Add, More, plus Clear Badge when the app has one.
-            val folioRows = 3 + if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
+            val folioRows = 3 + iconActions.size + if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
             val estimatedH = with(density) { (49.dp * (actions.size + folioRows) + 8.dp).toPx() }
             // Prefer below (like iOS) when it fits; otherwise whichever side has more room, scrolling if needed.
             val below = estimatedH <= spaceBelow || spaceBelow >= spaceAbove
@@ -179,6 +181,12 @@ internal fun AppContextMenu(
                         startQuickAction(context, app, action)
                     }
                     if (i == shownActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
+                    else MenuDivider()
+                }
+                // The icon's own gestures, so each one can be run without the gesture itself.
+                if (!more) iconActions.forEachIndexed { i, (label, run) ->
+                    MenuRow(label, Icons.Rounded.TouchApp) { onDismiss(); run() }
+                    if (i == iconActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
                     else MenuDivider()
                 }
                 if (lockedBy != null) {

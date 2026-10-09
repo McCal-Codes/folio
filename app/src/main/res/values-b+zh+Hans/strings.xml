@@ -1949,7 +1949,7 @@
     <string name="icon_actions_tap">轻点</string>
     <string name="icon_actions_tap_note">打开 App</string>
     <string name="icon_actions_double_waits">轻点时 %1$s 会稍等片刻再打开</string>
-    <string name="icon_actions_footnote">你设置的每个操作也会出现在这个图标的 TalkBack 操作列表中。</string>
+    <string name="icon_actions_footnote">你设置的每个操作也会出现在这个图标的菜单和 TalkBack 操作列表中。</string>
     <string name="icon_actions_reset">重置图标操作</string>
     <string name="icon_actions_search">搜索操作</string>
     <string name="icon_actions_no_match">没有匹配的操作</string>

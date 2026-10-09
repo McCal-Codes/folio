@@ -1970,7 +1970,7 @@
     <string name="icon_actions_tap">탭</string>
     <string name="icon_actions_tap_note">앱 열기</string>
     <string name="icon_actions_double_waits">%1$s은(는) 탭했을 때 잠시 기다렸다가 열립니다</string>
-    <string name="icon_actions_footnote">설정한 모든 동작은 이 아이콘의 TalkBack 동작 목록에도 표시됩니다.</string>
+    <string name="icon_actions_footnote">설정한 모든 동작은 이 아이콘의 메뉴와 TalkBack 동작 목록에도 표시됩니다.</string>
     <string name="icon_actions_reset">아이콘 동작 재설정</string>
     <string name="icon_actions_search">동작 검색</string>
     <string name="icon_actions_no_match">일치하는 동작이 없습니다</string>

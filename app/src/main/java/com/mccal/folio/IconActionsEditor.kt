@@ -60,7 +60,7 @@ internal fun IconActions.with(gesture: IconGestureKind, ref: ActionRef?): IconAc
 internal fun androidRelease(sdk: Int): Int = when { sdk >= 33 -> sdk - 20; sdk >= 31 -> 12; else -> sdk }
 
 @androidx.annotation.StringRes
-private fun gestureName(gesture: IconGestureKind) = when (gesture) {
+internal fun gestureName(gesture: IconGestureKind) = when (gesture) {
     IconGestureKind.UP -> R.string.icon_action_swipe_up
     IconGestureKind.DOWN -> R.string.icon_action_swipe_down
     IconGestureKind.DOUBLE -> R.string.icon_action_double_tap
@@ -222,7 +222,7 @@ internal fun IconActionsEditor(app: AppEntry, current: IconActions, apps: List<A
 
 /** The name a gesture's action shows: the app or shortcut it opens, the action's own name, or Nothing. */
 @Composable
-private fun actionName(ref: ActionRef?): String {
+internal fun actionName(ref: ActionRef?): String {
     if (ref == null) return stringResource(R.string.nothing)
     val name = ref.args["name"]
     return when {
@@ -313,3 +313,10 @@ private fun BackRow(label: String, onBack: () -> Unit) {
 @Composable
 private fun Title(text: String) =
     Text(text, color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp))
+
+/** An icon's set actions as menu rows ("Swipe up: Flashlight") with what each runs, in gesture order. */
+@Composable
+internal fun iconActionMenuRows(actions: IconActions?, run: (ActionRef) -> Unit): List<Pair<String, () -> Unit>> =
+    IconGestureKind.entries.mapNotNull { gesture ->
+        actions.runnable(gesture)?.let { ref -> stringResource(R.string.icon_action_talkback, stringResource(gestureName(gesture)), actionName(ref)) to { run(ref) } }
+    }

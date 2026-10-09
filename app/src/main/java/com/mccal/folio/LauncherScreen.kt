@@ -1746,7 +1746,9 @@ fun LauncherScreen(
                 onInfo = { onAppInfo(app); overlays.menu = null },
                 onRename = { overlays.rename = app.id; overlays.menu = null },
                 onEditIcon = if (app.isShortcut) null else {{ overlays.iconEditor = app.id; overlays.menu = null }},
-                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null)
+                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null,
+                iconActions = if (!FeatureGate.ICON_ACTIONS.isOpen(launcherActivity) || SafeMode.active) emptyList()
+                    else iconActionMenuRows(state.iconActions[app.id]) { ref -> ActionRunner.run(launcherActivity, ref, ActionSource.ICON) })
         }
         appsById[overlays.iconEditor]?.let { app ->
             ModalBottomSheet(onDismissRequest = { overlays.iconEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {

@@ -120,4 +120,16 @@ class IconActionsEditorTest {
         assertEquals(13, androidRelease(33))
         assertEquals(12, androidRelease(32))
     }
+
+    @Test fun `set actions become menu rows in gesture order, each running its action`() {
+        var rows: List<Pair<String, () -> Unit>> = emptyList()
+        val ran = mutableListOf<ActionRef>()
+        compose.setContent { rows = iconActionMenuRows(IconActions(double = ActionRef("SPOTLIGHT"), up = ActionRef("TORCH"), down = ActionRef("not.a.real.action"))) { ran += it } }
+        compose.waitForIdle()
+        val up = text(R.string.icon_action_talkback, text(R.string.icon_action_swipe_up), text(R.string.flashlight))
+        val double = text(R.string.icon_action_talkback, text(R.string.icon_action_double_tap), text(R.string.spotlight))
+        assertEquals("an action this build doesn't know gets no row", listOf(up, double), rows.map { it.first })
+        rows.forEach { it.second() }
+        assertEquals(listOf(ActionRef("TORCH"), ActionRef("SPOTLIGHT")), ran)
+    }
 }

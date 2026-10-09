@@ -1999,7 +1999,7 @@
     <string name="icon_actions_tap">Tap</string>
     <string name="icon_actions_tap_note">Opens the app</string>
     <string name="icon_actions_double_waits">%1$s waits a moment before it opens on Tap</string>
-    <string name="icon_actions_footnote">Every action you set is also in TalkBack’s Actions list for this icon.</string>
+    <string name="icon_actions_footnote">Every action you set is also in this icon’s menu and in TalkBack’s Actions list.</string>
     <string name="icon_actions_reset">Reset Icon Actions</string>
     <string name="icon_actions_search">Search actions</string>
     <string name="icon_actions_no_match">No action matches</string>
