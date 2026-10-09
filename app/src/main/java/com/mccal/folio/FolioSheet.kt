@@ -49,7 +49,8 @@ internal fun rememberEntrance(stiffness: Float, dampingRatio: Float = 1f, from: 
     val entrance = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) to else from) }
     // The animation runs in the composition, which is where the frame clock lives.
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        entrance.animateTo(to, androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness))
+        // motion-ratchet: the 0.6.9 motion pass (#321) decides when entrances follow Animation Speed.
+        entrance.animateTo(to, androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness)) // motion-ratchet
     }
     // The timeout must not depend on frames, so it runs on the main thread alone. Snapping cancels the animation.
     DisposableEffect(Unit) {
@@ -166,7 +167,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                 // half-readable competes with Home (only the dragged slider's capsule shows).
                 // Predictive back: the page eases right and shrinks a little with the swipe, like Android's own screens.
                 val back = androidx.compose.animation.core.animateFloatAsState(SheetBackProgress.floatValue,
-                    androidx.compose.animation.core.spring(stiffness = 1400f), label = "sheet back").value
+                    FolioMotion.spring(1f to 1400f), label = "sheet back").value
                 androidx.compose.material3.Surface(Modifier.fillMaxSize().graphicsLayer {
                     translationX = size.width * slide.value + size.width * .08f * back
                     scaleX = 1f - .1f * back; scaleY = scaleX

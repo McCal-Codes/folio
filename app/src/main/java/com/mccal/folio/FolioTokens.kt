@@ -203,5 +203,5 @@ internal object FolioMotion {
     val Bounce = .68f to 520f
     /** A value following another with no overshoot (gauges, progress). */
     val Snap = 1f to 1500f
-    fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
+    fun <T> spring(pair: Pair<Float, Float>, visibilityThreshold: T? = null) = MotionSpeed.spring(pair.first, pair.second, visibilityThreshold)
 }

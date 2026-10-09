@@ -76,7 +76,7 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
     val margin = with(density) { 12.dp.roundToPx() }
     val reduceMotion = LocalReduceMotion.current
     val appear = remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 1f else 0f) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .8f, stiffness = 700f)) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) }
     var alignEnd by remember { mutableStateOf(false) }
     val position = remember(anchor, margin) {
         object : androidx.compose.ui.window.PopupPositionProvider {
