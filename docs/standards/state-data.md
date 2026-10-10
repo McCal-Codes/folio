@@ -19,6 +19,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Appearance | `AppearanceStore` | `appearance` prefs | Everything; not in Layout Backup |
 | What is behind Home | `LauncherModel` (see Gap below: three owners today) | `launcher/state` JSON, mirrored to `launcher_background` prefs for the wallpaper service | Everything; the picked photo itself stays out of Layout Backup |
 | Focus modes and rules | `FocusController` | `focus_rules` prefs | Everything |
+| Screenshot Mode's swap list (apps shown as the phone's own apps) | `ScreenshotSwap` | `screenshot_swap` prefs, key `rules`, only when some are set; not in `launcher/state`, so no schema change | Everything; not in Layout Backup (the list is private) |
 | Market packages | Market repository | `filesDir/market` + records in layout JSON | Backup keeps records, reapplies changes |
 | Hinge posture, window size | WindowManager (`LocalHinge`) | None | Recomputed |
 | Battery, signal, ringer | `DeviceStatus` | None | Recomputed on start |
