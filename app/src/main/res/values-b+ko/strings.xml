@@ -767,7 +767,6 @@
     <string name="color">색상</string>
     <string name="white">흰색</string>
     <string name="weight">굵기</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android는 앱이 시스템 배경화면을 읽을 수 없게 하므로, 배경화면 및 사용자 지정 색상에는 Folio의 사진이 필요합니다.</string>
     <string name="text_1_s_unavailable">%1$s 사용 불가</string>
     <string name="headphones">헤드폰</string>
     <string name="fixes_and_improvements">수정 및 개선 사항</string>
@@ -1959,4 +1958,6 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <string name="clock_font">서체</string>
+    <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
 </resources>

@@ -762,7 +762,6 @@
     <string name="color">Color</string>
     <string name="white">White</string>
     <string name="weight">Weight</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android doesn\'t let apps read the system wallpaper, so Wallpaper and Custom need a Folio picture behind Home.</string>
     <string name="text_1_s_unavailable">%1$s unavailable</string>
     <string name="headphones">Headphones</string>
     <string name="fixes_and_improvements">Fixes and Improvements</string>
@@ -1839,7 +1838,7 @@
     <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages. With Page dots or Nothing, Search moves to a round button in the bottom corner.</string>
     <string name="stronger_rings">Stronger rings</string>
     <string name="stronger_rings_note">Thicker rings and a clearer track, easier to tell apart at a glance. Also on while Android’s Bold text is on.</string>
-    <string name="fine_tune_look_note">Looks set weight, style and shadow together. Change one and it becomes your own.</string>
+    <string name="fine_tune_look_note">Looks set weight, font and shadow together. Change one and it becomes your own.</string>
     <string name="fine_tune_hours_note">System follows your phone\'s 12 or 24-hour setting.</string>
     <string name="fine_tune_next_note">Your next calendar event or alarm, under the time.</string>
     <string name="capability_risk_line">What it does: %1$s</string>
@@ -1988,4 +1987,6 @@
     <string name="action_a11y_shade">Android notification shade</string>
     <string name="action_a11y_splitscreen">Split screen</string>
     <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
+    <string name="clock_font">Font</string>
+    <string name="clock_colors_android_wallpaper">With Android’s wallpaper, the colors are its main colors, and a soft shade behind the time keeps it readable.</string>
 </resources>
