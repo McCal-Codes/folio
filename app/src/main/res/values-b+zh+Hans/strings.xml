@@ -68,8 +68,8 @@
     <string name="swipe_down_on_home_for_spotlight">在主屏幕下滑打开聚焦搜索</string>
     <string name="drag_page_dots_to_flip_pages">拖动页面圆点翻页</string>
     <string name="haptic_feedback">触感反馈</string>
-    <string name="search_button_opens_the_google_app">搜索按钮打开 Google App</string>
-    <string name="when_off_the_search_button_opens_spotlig">关闭时，搜索按钮会打开聚焦搜索：App、联系人、设置、计算器、不带 AI 的 Google，以及 ChatGPT、Claude 或 Perplexity。</string>
+    <string name="search_button_opens_the_google_app">搜索打开 Google App</string>
+    <string name="when_off_the_search_button_opens_spotlig">关闭时，搜索会打开聚焦搜索：App、联系人、设置、计算器、不带 AI 的 Google，以及 ChatGPT、Claude 或 Perplexity。</string>
     <string name="app_icons">App 图标</string>
     <string name="icon_pack">图标包</string>
     <string name="install_any_icon_pack_made_for_nova_styl">安装任何为 Nova 类启动器制作的图标包，即可在这里使用。</string>
@@ -1703,8 +1703,8 @@
     <string name="edit_icon_picture_note">图片会复制到 Folio 并裁剪为正方形，所以即使删除原图也能继续使用。它只保存在这部手机上，不包含在备份中。</string>
     <string name="reset_icon">重置图标</string>
     <string name="custom_search_blank">在你输入地址之前，按回车搜索会使用 Google。</string>
-    <string name="separate_upright_layout">竖屏时使用单独布局</string>
-    <string name="separate_upright_layout_note">为竖向的内屏提供单独的布局。它一开始是横向布局的副本，关闭后会恢复共用。</string>
+    <string name="separate_upright_layout">竖屏时使用单独尺寸</string>
+    <string name="separate_upright_layout_note">为竖向的内屏提供单独的尺寸和间距（图标、行和程序坞）。哪个应用在哪里仍与横向屏幕共用。它一开始是横向尺寸的副本，关闭后会恢复共用。</string>
     <string name="sideways">横向</string>
     <string name="upright">竖向</string>
     <string name="full_width_home">全宽主屏幕</string>
@@ -1786,10 +1786,10 @@
     <string name="installing_percent">正在安装，%1$d%%</string>
     <string name="fix_saved_layout">修复已保存的布局</string>
     <string name="home_strip">主屏幕底部</string>
-    <string name="home_strip_search">搜索按钮</string>
+    <string name="home_strip_search">搜索栏</string>
     <string name="home_strip_dots">页面圆点</string>
     <string name="home_strip_nothing">无</string>
-    <string name="home_strip_note">滑动或编辑主屏幕时会显示页面圆点；沿底部拖动仍可切换页面。</string>
+    <string name="home_strip_note">滑动或编辑主屏幕时会显示页面圆点；沿底部拖动仍可切换页面。选择页面圆点或无时，搜索会移到底部角落的圆形按钮。</string>
     <string name="stronger_rings">更醒目的圆环</string>
     <string name="stronger_rings_note">圆环更粗、轨道更清晰，一眼就能分辨。开启 Android 的粗体文字时也会自动开启。</string>
     <string name="fine_tune_look_note">外观会同时设定粗细、字体和阴影，改动其中一项就成了你自己的样式。</string>
