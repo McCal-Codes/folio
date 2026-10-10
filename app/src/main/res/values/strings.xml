@@ -1988,4 +1988,12 @@
     <string name="action_a11y_shade">Android notification shade</string>
     <string name="action_a11y_splitscreen">Split screen</string>
     <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
+    <string name="remove_app">Remove App</string>
+    <string name="remove_app_title">Remove “%1$s”?</string>
+    <string name="remove_app_message">Removing it from Home keeps the app in your App Library.</string>
+    <string name="remove_app_came_with_phone">%1$s came with your phone, so only Android can delete it. You can hide it, or turn it off in App Info.</string>
+    <string name="remove_app_work">%1$s is a work app. Delete it from App Info.</string>
+    <string name="delete_app">Delete App</string>
+    <string name="app_deleted">%1$s deleted</string>
+    <string name="app_not_deleted">Couldn’t delete %1$s</string>
 </resources>

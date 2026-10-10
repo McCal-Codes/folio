@@ -1,0 +1,91 @@
+package com.mccal.folio
+
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.net.Uri
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+/**
+ * Deleting an app from Folio, the iOS way on Android's rules (Lab scene `delete-apps`): a Home icon's Remove App opens
+ * one choice, Delete App, Remove from Home or Cancel; the App Library says Delete App directly. Android shows its own
+ * "uninstall?" confirmation for every delete and a launcher can't skip it, so Folio's alert is a choice, never a
+ * second "are you sure?". No Archive in this version (McCal, 10 Oct).
+ */
+internal enum class RemoveChoice { DELETE, HIDE, REMOVE_FROM_HOME, APP_INFO }
+
+/** Why an app can't be deleted from Folio, if it can't. */
+internal enum class RemoveReason { NONE, CAME_WITH_PHONE, WORK_APP }
+
+internal data class RemoveOptions(val reason: RemoveReason, val choices: List<RemoveChoice>)
+
+/**
+ * What Remove App offers. Only Android can delete an app that came with the phone, so it gets Hide and App Info instead
+ * of a Delete that fails. A work app is deleted from App Info for now: a launcher deleting across profiles is not
+ * checked on a phone yet.
+ */
+internal fun removeOptions(cameWithPhone: Boolean, isWork: Boolean, onHome: Boolean): RemoveOptions {
+    val home = listOfNotNull(RemoveChoice.REMOVE_FROM_HOME.takeIf { onHome })
+    return when {
+        cameWithPhone -> RemoveOptions(RemoveReason.CAME_WITH_PHONE, listOf(RemoveChoice.HIDE) + home + RemoveChoice.APP_INFO)
+        isWork -> RemoveOptions(RemoveReason.WORK_APP, home + RemoveChoice.APP_INFO)
+        else -> RemoveOptions(RemoveReason.NONE, listOf(RemoveChoice.DELETE) + home)
+    }
+}
+
+/** Whether Folio can ask Android to delete this app (the App Library's Delete App row). */
+internal fun canDelete(cameWithPhone: Boolean, isWork: Boolean) = !cameWithPhone && !isWork
+
+/** Whether [packageName] shipped with the phone, updated or not. Unknown counts as yes, so Folio never offers a Delete that fails. */
+internal fun cameWithPhone(context: Context, packageName: String): Boolean = runCatching {
+    context.packageManager.getApplicationInfo(packageName, 0).flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+}.getOrDefault(true)
+
+/**
+ * Android's own uninstall confirmation for [packageName], returning whether it was deleted. Needs
+ * REQUEST_DELETE_PACKAGES (an install-time permission, no prompt). Deprecated in favor of PackageInstaller.uninstall,
+ * which would need a receiver and a background activity start for the same dialog; this asks for the same thing
+ * from the screen the person is on.
+ */
+@Suppress("DEPRECATION")
+internal fun uninstallIntent(packageName: String): Intent =
+    Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.fromParts("package", packageName, null)).putExtra(Intent.EXTRA_RETURN_RESULT, true)
+
+/** Remove App's one alert: the choices [options] allows, and Cancel. */
+@Composable
+internal fun RemoveAppAlert(app: AppEntry, options: RemoveOptions, onChoice: (RemoveChoice) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, modifier = Modifier.testTag("remove-app-alert"),
+        title = { Text(stringResource(R.string.remove_app_title, app.label)) },
+        text = {
+            Column {
+                Text(when (options.reason) {
+                    RemoveReason.NONE -> stringResource(R.string.remove_app_message)
+                    RemoveReason.CAME_WITH_PHONE -> stringResource(R.string.remove_app_came_with_phone, app.label)
+                    RemoveReason.WORK_APP -> stringResource(R.string.remove_app_work, app.label)
+                }, fontSize = FolioType.FOOTNOTE.sp)
+                options.choices.forEach { choice ->
+                    TextButton({ onChoice(choice) }, Modifier.fillMaxWidth().testTag("remove-app-${choice.name.lowercase()}")) {
+                        Text(stringResource(when (choice) {
+                            RemoveChoice.DELETE -> R.string.delete_app
+                            RemoveChoice.HIDE -> R.string.hide_from_app_library
+                            RemoveChoice.REMOVE_FROM_HOME -> R.string.remove_from_home
+                            RemoveChoice.APP_INFO -> R.string.app_info
+                        }), color = if (choice == RemoveChoice.DELETE) FolioColors.RedOnDark else androidx.compose.ui.graphics.Color.White,
+                            fontWeight = if (choice == RemoveChoice.DELETE) FontWeight.SemiBold else FontWeight.Normal)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onDismiss, Modifier.testTag("remove-app-cancel")) { Text(stringResource(R.string.cancel)) } })
+}
