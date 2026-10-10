@@ -31,7 +31,7 @@
     <string name="dark_appearance_dims_wallpaper">Dark appearance dims wallpaper</string>
     <string name="darken_behind_text">Darken behind text</string>
     <string name="launcher_background">Launcher background</string>
-    <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens. </string>
+    <string name="changes_the_image_behind_folio_s_home_sc">Changes the image behind Folio’s Home screens.\u0020</string>
     <string name="cancel">Cancel</string>
     <string name="apply">Apply</string>
     <string name="opens_android_s_preview_to_use_folio_s_b">Opens Android’s preview to use Folio’s background as your phone’s wallpaper too (a live wallpaper), so it matches outside Folio.</string>
@@ -61,8 +61,8 @@
     <string name="swipe_down_on_home_for_spotlight">Swipe down on Home for Spotlight</string>
     <string name="drag_page_dots_to_flip_pages">Drag page dots to flip pages</string>
     <string name="haptic_feedback">Haptic feedback</string>
-    <string name="search_button_opens_the_google_app">Search button opens the Google app</string>
-    <string name="when_off_the_search_button_opens_spotlig">When off, the search button opens Spotlight: apps, contacts, settings, a calculator, Google without AI, and ChatGPT, Claude or Perplexity.</string>
+    <string name="search_button_opens_the_google_app">Search opens the Google app</string>
+    <string name="when_off_the_search_button_opens_spotlig">When off, Search opens Spotlight: apps, contacts, settings, a calculator, Google without AI, and ChatGPT, Claude or Perplexity.</string>
     <string name="app_icons">App icons</string>
     <string name="icon_pack">Icon pack</string>
     <string name="install_any_icon_pack_made_for_nova_styl">Install any icon pack made for Nova-style launchers to use it here.</string>
@@ -119,8 +119,8 @@
     <string name="closing_from_home">Closing from Home</string>
     <string name="stay_awake_on_the_cover_screen">Stay awake on the cover screen</string>
     <string name="samsung_locks_the_phone_when_you_fold_on">Samsung locks the phone when you fold on any home screen. Folio briefly steps aside while you close it so the cover screen stays on. Needs Settings › Display › Continue apps on cover screen › Always.</string>
-    <string name="save_the_current_home_layout_folders_wid">Save the current Home layout, folders, widgets, and layout settings. </string>
-    <string name="save_the_current_home_layout_folders_wid_2">Save the current Home layout, folders, widgets, layout settings, and the packages you got from the Market. </string>
+    <string name="save_the_current_home_layout_folders_wid">Save the current Home layout, folders, widgets, and layout settings.\u0020</string>
+    <string name="save_the_current_home_layout_folders_wid_2">Save the current Home layout, folders, widgets, layout settings, and the packages you got from the Market.\u0020</string>
     <string name="restore">Restore</string>
     <string name="restore_shows_a_review_before_changing_h">Restore shows a review before changing Home.</string>
     <string name="lock_cover">Lock Cover</string>
@@ -358,6 +358,8 @@
     <string name="restore_from_backup">Restore from Backup…</string>
     <string name="include_diagnostics">Include Diagnostics?</string>
     <string name="just_open_form">Just Open Form</string>
+    <string name="motion_pass">New motion</string>
+    <string name="motion_pass_note">The 0.6.9 motion pass: sheets, menus and alerts settle on shared springs, the Market tabs glide, badge counts roll and a finished install pops. Turn it off to compare with how it moved before. It follows Animation Speed, and Reduce Motion still wins. Only shown on beta builds and Folio Dev.</string>
     <string name="screenshot_mode">Screenshot Mode</string>
     <string name="safe_mode">Safe Mode</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio is running in Safe Mode: optional features are paused for this session.</string>
@@ -588,7 +590,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio gestures are starting. Swipe down again.</string>
     <string name="android_couldn_t_open_the_system_panel">Android couldn’t open the system panel.</string>
     <string name="turn_on_folio_gestures">Turn On Folio Gestures</string>
-    <string name="folio_uses_it_to_open_notification_cente">Folio uses it to open Notification Center and Control Center, and for the dock and island over other apps. </string>
+    <string name="folio_uses_it_to_open_notification_cente">Folio uses it to open Notification Center and Control Center, and for the dock and island over other apps.\u0020</string>
     <string name="it_can_t_read_what_s_on_your_screen">It can\'t read what\'s on your screen.</string>
     <string name="app_info">App Info</string>
     <string name="open_settings">Open Settings</string>
@@ -1222,6 +1224,7 @@
     <string name="get_tweak">Get %1$s</string>
     <string name="applied">Applied %1$s.</string>
     <string name="focus_lets_you_silence_notifications_cha">Focus lets you silence notifications, change how the phone looks and bring Home to the page you need. Turn one on here or from Control Center.</string>
+    <string name="focus_trigger_order_note">If more than one Focus could turn on by itself at once, the one higher in this list wins. A Focus you turn on yourself stays on.</string>
     <string name="only_these_pages_show_while_is_on_editin">Only these pages show while %1$s is on. Editing Home is paused until it ends, so nothing moves on the hidden pages.</string>
     <string name="page_number">Page %1$s</string>
     <string name="home_opens_on_this_page_while_is_on">Home opens on this page while %1$s is on.</string>
@@ -1833,10 +1836,10 @@
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
     <string name="home_strip">Bottom of Home</string>
-    <string name="home_strip_search">Search button</string>
+    <string name="home_strip_search">Search bar</string>
     <string name="home_strip_dots">Page dots</string>
     <string name="home_strip_nothing">Nothing</string>
-    <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages.</string>
+    <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages. With Page dots or Nothing, Search moves to a round button in the bottom corner.</string>
     <string name="stronger_rings">Stronger rings</string>
     <string name="stronger_rings_note">Thicker rings and a clearer track, easier to tell apart at a glance. Also on while Android’s Bold text is on.</string>
     <string name="fine_tune_look_note">Looks set weight, style and shadow together. Change one and it becomes your own.</string>
