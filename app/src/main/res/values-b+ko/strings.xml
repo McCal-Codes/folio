@@ -66,8 +66,8 @@
     <string name="swipe_down_on_home_for_spotlight">홈 화면을 쓸어내려 Spotlight 열기</string>
     <string name="drag_page_dots_to_flip_pages">페이지 표시점을 드래그하여 페이지 전환</string>
     <string name="haptic_feedback">햅틱 피드백</string>
-    <string name="search_button_opens_the_google_app">검색 버튼으로 Google 앱 열기</string>
-    <string name="when_off_the_search_button_opens_spotlig">끄면 검색 버튼으로 Spotlight를 엽니다. 앱, 연락처, 설정, 계산기, AI 없는 Google 검색, ChatGPT, Claude 또는 Perplexity를 사용할 수 있습니다.</string>
+    <string name="search_button_opens_the_google_app">검색으로 Google 앱 열기</string>
+    <string name="when_off_the_search_button_opens_spotlig">끄면 검색으로 Spotlight를 엽니다. 앱, 연락처, 설정, 계산기, AI 없는 Google 검색, ChatGPT, Claude 또는 Perplexity를 사용할 수 있습니다.</string>
     <string name="app_icons">앱 아이콘</string>
     <string name="icon_pack">아이콘 팩</string>
     <string name="install_any_icon_pack_made_for_nova_styl">Nova 계열 런처용 아이콘 팩을 설치하면 여기에서 사용할 수 있습니다.</string>
@@ -1805,10 +1805,10 @@
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
     <string name="home_strip">홈 하단</string>
-    <string name="home_strip_search">검색 버튼</string>
+    <string name="home_strip_search">검색 막대</string>
     <string name="home_strip_dots">페이지 점</string>
     <string name="home_strip_nothing">없음</string>
-    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다.</string>
+    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다. 페이지 점이나 없음을 선택하면 검색은 아래쪽 모서리의 둥근 버튼으로 이동합니다.</string>
     <string name="stronger_rings">더 진한 링</string>
     <string name="stronger_rings_note">링을 더 두껍게 하고 바탕을 선명하게 해 한눈에 구분하기 쉽습니다. Android의 굵은 글씨가 켜져 있을 때도 켜집니다.</string>
     <string name="fine_tune_look_note">룩은 굵기, 서체, 그림자를 한 번에 정해요. 하나만 바꾸면 나만의 스타일이 돼요.</string>

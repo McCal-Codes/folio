@@ -61,8 +61,8 @@
     <string name="swipe_down_on_home_for_spotlight">Swipe down on Home for Spotlight</string>
     <string name="drag_page_dots_to_flip_pages">Drag page dots to flip pages</string>
     <string name="haptic_feedback">Haptic feedback</string>
-    <string name="search_button_opens_the_google_app">Search button opens the Google app</string>
-    <string name="when_off_the_search_button_opens_spotlig">When off, the search button opens Spotlight: apps, contacts, settings, a calculator, Google without AI, and ChatGPT, Claude or Perplexity.</string>
+    <string name="search_button_opens_the_google_app">Search opens the Google app</string>
+    <string name="when_off_the_search_button_opens_spotlig">When off, Search opens Spotlight: apps, contacts, settings, a calculator, Google without AI, and ChatGPT, Claude or Perplexity.</string>
     <string name="app_icons">App icons</string>
     <string name="icon_pack">Icon pack</string>
     <string name="install_any_icon_pack_made_for_nova_styl">Install any icon pack made for Nova-style launchers to use it here.</string>
@@ -1833,10 +1833,10 @@
     <string name="installing_percent">Installing, %1$d percent</string>
     <string name="fix_saved_layout">Fix the saved layout</string>
     <string name="home_strip">Bottom of Home</string>
-    <string name="home_strip_search">Search button</string>
+    <string name="home_strip_search">Search bar</string>
     <string name="home_strip_dots">Page dots</string>
     <string name="home_strip_nothing">Nothing</string>
-    <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages.</string>
+    <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages. With Page dots or Nothing, Search moves to a round button in the bottom corner.</string>
     <string name="stronger_rings">Stronger rings</string>
     <string name="stronger_rings_note">Thicker rings and a clearer track, easier to tell apart at a glance. Also on while Android’s Bold text is on.</string>
     <string name="fine_tune_look_note">Looks set weight, style and shadow together. Change one and it becomes your own.</string>
