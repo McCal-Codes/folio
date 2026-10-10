@@ -33,6 +33,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Place the Big Clock anywhere:** long-press a Big Clock, then Place Freely, and drag it where you want it, a part of a cell off the grid. A dashed outline shows the cells it keeps for itself, so apps never end up underneath, and it turns red where those cells are taken. Arrows nudge it a quarter of a cell, Snap to Grid puts it back, and moving or resizing it on the grid starts it fresh. On the two-column and half-folded layouts it stays on its cells.
 
 ### Changed
+- **Bottom of Home says where Search goes (#325):** the first choice is now called Search bar, and the note says that with Page dots or Nothing, Search moves to a round button in the bottom corner. The switch below it is now Search opens the Google app, since it covers both.
 - **Folio Dev has a Developer page:** in Folio Dev, Settings › Advanced has a Developer page locked with a passphrase you set (five free tries, then a growing wait). It can show the current build's welcome page again. Release builds of Folio never show it.
 - **The Market lists bigger apps:** an app in a source can now be up to 100 MB, up from 20 MB, so larger apps can be listed and installed from the Market. A package (a tweak, theme or effect) is still limited to 20 MB.
 - **A simpler folder header:** opening a folder now shows just its name and one options button. Color and Add Apps used to sit under the title every time a folder opened; they're in that button's popup now instead.
