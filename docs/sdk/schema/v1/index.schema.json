@@ -155,7 +155,7 @@
           "size": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20971520
+            "maximum": 104857600
           },
           "manifest": {
             "$ref": "manifest.schema.json"

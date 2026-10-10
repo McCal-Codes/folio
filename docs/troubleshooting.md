@@ -32,7 +32,7 @@ leave. Google handles swipes inside its own feed, so a short swipe that starts i
 
 ## Search doesn't open Google
 
-If **Search button opens Google** is on and the Google app can't open its search screen, Folio uses Spotlight
+If **Search opens the Google app** is on and the Google app can't open its search screen, Folio uses Spotlight
 instead. Turn the setting off to always use Spotlight.
 
 ## A widget won't add or finish setting up
