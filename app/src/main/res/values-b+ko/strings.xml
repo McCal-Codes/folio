@@ -1205,6 +1205,7 @@
     <string name="get_tweak">%1$s 받기</string>
     <string name="applied">%1$s을(를) 적용했습니다.</string>
     <string name="focus_lets_you_silence_notifications_cha">집중 모드로 알림을 무음으로 설정하고 휴대전화 외관을 바꾸며 필요한 홈 페이지를 표시할 수 있습니다. 여기 또는 제어 센터에서 켜세요.</string>
+    <string name="focus_trigger_order_note">여러 집중 모드가 동시에 자동으로 켜질 수 있으면 이 목록에서 더 위에 있는 모드가 켜집니다. 직접 켠 집중 모드는 그대로 유지됩니다.</string>
     <string name="only_these_pages_show_while_is_on_editin">%1$s 사용 중에는 이 페이지들만 표시됩니다. 숨겨진 페이지의 항목이 이동하지 않도록 집중 모드가 끝날 때까지 홈 화면 편집이 일시 중지됩니다.</string>
     <string name="page_number">%1$s페이지</string>
     <string name="home_opens_on_this_page_while_is_on">%1$s 사용 중에는 이 페이지에서 홈 화면이 열립니다.</string>

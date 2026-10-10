@@ -1222,6 +1222,7 @@
     <string name="get_tweak">Get %1$s</string>
     <string name="applied">Applied %1$s.</string>
     <string name="focus_lets_you_silence_notifications_cha">Focus lets you silence notifications, change how the phone looks and bring Home to the page you need. Turn one on here or from Control Center.</string>
+    <string name="focus_trigger_order_note">If more than one Focus could turn on by itself at once, the one higher in this list wins. A Focus you turn on yourself stays on.</string>
     <string name="only_these_pages_show_while_is_on_editin">Only these pages show while %1$s is on. Editing Home is paused until it ends, so nothing moves on the hidden pages.</string>
     <string name="page_number">Page %1$s</string>
     <string name="home_opens_on_this_page_while_is_on">Home opens on this page while %1$s is on.</string>
