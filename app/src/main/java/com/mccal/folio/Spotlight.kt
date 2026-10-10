@@ -114,7 +114,7 @@ internal object RecentApps {
 @Composable
 internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: LauncherState, onClose: () -> Unit,
     onLaunch: (AppEntry) -> Unit) {
-    BackHandler(visible) { onClose() }
+    OverlayBackHandler(visible, onClose)
     // Composed while visible or still animating out; every layer follows the one shared spring,
     // so scrim, content and the blurred Home behind always move together.
     // Composed while visible or animating out. (A pre-warmed hidden copy measured no faster and stole
@@ -130,7 +130,8 @@ internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: La
         .then(if (visible) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose) else Modifier))
     Box(Modifier.fillMaxSize().graphicsLayer {
         val p = progress()
-        alpha = p; translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
+        // Moves with the back swipe's preview, fades only as it closes (OverlayBack).
+        alpha = OverlayBack.unpreviewed(p); translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f)
     }) { SpotlightContent(state, active = visible, onClose, onLaunch) }
 }
