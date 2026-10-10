@@ -503,13 +503,20 @@ internal fun SharedHomeGrid(
             val savedIndex = savedIndexOf(folder.id)
             val previewIndex = previewIndexOf(folder.id)
             val renderIndex = previewIndex?.takeIf { it in pageRange } ?: savedIndex?.takeIf { it in pageRange } ?: return@forEach
-            val localIndex = renderIndex - pageStart
-            val row = localIndex / GRID_COLUMNS
-            val x = cellX(localIndex % GRID_COLUMNS, row)
-            val y = rowTop(row).dp
-            FolderTile(folder, appsById, iconSize, labels, drag, page,
-                Modifier.offset(x = x, y = y).width(cellWidth).height(rowHeight.dp)
-                    .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+            key(folder.id) {
+                val localIndex = renderIndex - pageStart
+                val row = localIndex / GRID_COLUMNS
+                val place = with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) }
+                // With the motion pass, a folder pushed along by a drag slides with the apps around it, on the same stiff spring;
+                // without it, it jumps as it always did. Only while rearranging: a new screen size (folding) places it at once.
+                val slides = FolioMotion.v2 && (drag.active || edit.active)
+                val placed by animateIntOffsetAsState(place,
+                    animationSpec = if (slides) FolioMotion.spring<IntOffset>(FolioMotion.Snap) else androidx.compose.animation.core.snap(),
+                    label = "folderSlide ${folder.id}")
+                FolderTile(folder, appsById, iconSize, labels, drag, page,
+                    Modifier.offset { placed }.width(cellWidth).height(rowHeight.dp)
+                        .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+            }
         }
         pageWidgets.forEach { placement ->
             key("widget-${placement.slot}") {
