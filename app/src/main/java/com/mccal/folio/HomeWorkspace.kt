@@ -245,6 +245,13 @@ internal fun ExpandedWorkspace(
     }
 }
 
+
+/** The press-and-hold strip on the left of each Home page, beside the grid (a long-press there opens Home's options). */
+internal const val HOME_OPTIONS_MARGIN = 16f
+
+/** How far a centered Home page moves so its grid, not the grid and the one-sided margin, sits in the middle. */
+internal const val HOME_PANE_SHIFT = -HOME_OPTIONS_MARGIN / 2f
+
 @Composable
 internal fun HomePagePane(
     page: Int,
@@ -316,9 +323,9 @@ internal fun HomePagePane(
             }
         }
         .onGloballyPositioned { paneBounds = it.boundsInRoot() }
-        .width((geometry.gridWidth + 16f).dp)
+        .width((geometry.gridWidth + HOME_OPTIONS_MARGIN).dp)
         .height((contentHeight - bottomSpace).coerceAtLeast(0.dp))) {
-        Box(Modifier.width(16.dp).fillMaxHeight().testTag("home-options-margin-$page")
+        Box(Modifier.width(HOME_OPTIONS_MARGIN.dp).fillMaxHeight().testTag("home-options-margin-$page")
             .pointerInput(backgroundTarget, drag.active) {
                 detectTapGestures(onLongPress = {
                     if (!drag.active) onEmptyWidget(backgroundTarget)
@@ -332,7 +339,7 @@ internal fun HomePagePane(
         // fixed amount cut off the bottom row's labels on screens that already had space at the top.
         // Unfolded, the bar sits in the space above the widget row, so the grid doesn't move at all (like iPad).
         val editRoom by animateDpAsState(if (roomWanted && !geometry.expanded) (JIGGLE_BAR_BOTTOM - geometry.contentTop.dp).coerceAtLeast(0.dp) else 0.dp, label = "jiggle room")
-        Column(Modifier.offset(x = 16.dp).width(geometry.gridWidth.dp).fillMaxHeight()
+        Column(Modifier.offset(x = HOME_OPTIONS_MARGIN.dp).width(geometry.gridWidth.dp).fillMaxHeight()
             .verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = FolioSpace.SMALL.dp)) {
             val (pageIcon, pageLabels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
             SharedHomeGrid(page, state.homeSlots, state.leadingSlots, previewSlots, previewLeadingSlots, previewWidgetPlacements,

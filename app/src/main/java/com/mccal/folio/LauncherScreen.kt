@@ -929,7 +929,9 @@ fun LauncherScreen(
                         // grid beside the rail, so a cube pivoting on the Row would hinge on the window edge, out in
                         // the empty margin, instead of on the seam the pane shares with its neighbour.
                         Row(Modifier.fillMaxSize().testTag("home-surface"), horizontalArrangement = Arrangement.Center) {
-                            Box(Modifier.pageEffect(pageEffect, nativePager, physicalPage)) {
+                            // The pane carries its press-and-hold margin on the left only; shifting it by half of that
+                            // centers the grid itself rather than the grid and its margin.
+                            Box(Modifier.offset(x = HOME_PANE_SHIFT.dp).pageEffect(pageEffect, nativePager, physicalPage)) {
                                 HomePagePane(page, state, previewLayout.slots, previewLayout.leadingSlots, previewLayout.widgetPlacements, appsById, geometry, contentHeight,
                                     bottomSpace, widgets, drag, target, insertionTarget, showLargeWidget = false,
                                     onLaunch = onLaunchFrom, onActions = { overlays.menu = it.id },
@@ -1893,11 +1895,14 @@ fun LauncherScreen(
 @Composable
 private fun BoxScope.OwnMethod(content: @Composable BoxScope.() -> Unit) = content()
 
-/** App Library side margins: Home's 16dp, plus room for the Side Bar's status capsule on whichever side it sits. */
-private fun libraryEdges(statusInCorner: Boolean, dockWidth: Float, leftHanded: Boolean): PaddingValues {
+/**
+ * App Library side margins: Home's 16dp on both sides, and room for the Side Bar's status capsule on whichever side it
+ * sits. Without a capsule in the corner (Full-Width Home among them) the library used to keep 16dp on one side only.
+ */
+internal fun libraryEdges(statusInCorner: Boolean, dockWidth: Float, leftHanded: Boolean): PaddingValues {
     val rail = if (statusInCorner) (dockWidth + 28f).dp else 0.dp
-    return if (leftHanded) PaddingValues(start = rail.coerceAtLeast(16.dp), end = if (statusInCorner) 16.dp else 0.dp)
-    else PaddingValues(start = 16.dp, end = rail)
+    val railSide = rail.coerceAtLeast(16.dp)
+    return if (leftHanded) PaddingValues(start = railSide, end = 16.dp) else PaddingValues(start = 16.dp, end = railSide)
 }
 
 /** Shown while Folio is open as an app, before it's the Home app: says so, and offers both ways forward. */

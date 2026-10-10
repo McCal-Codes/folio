@@ -190,9 +190,10 @@ class PageEffectsTest {
             screen.substringAfter("onActions = { overlays.menu = it.id }, modifier = Modifier.fillMaxSize()")
                 .substringBefore("libraryBack").contains(".pageEffect("))
         // The layer wraps the pane, not the full-width Row: a cube pivoting on the Row would hinge on the window
-        // edge whenever the grid is centred and narrower than the window.
+        // edge whenever the grid is centred and narrower than the window. The centering shift comes first, so the
+        // layer and its pivot move with the pane.
         assertTrue("Home's effect should wrap the pane, not the Row",
-            "Box(Modifier.pageEffect(pageEffect, nativePager, physicalPage))" in screen)
+            "Box(Modifier.offset(x = HOME_PANE_SHIFT.dp).pageEffect(pageEffect, nativePager, physicalPage))" in screen)
         assertTrue("the Row should carry no layer of its own",
             """Row(Modifier.fillMaxSize().testTag("home-surface")""" in screen)
     }
