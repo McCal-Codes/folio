@@ -408,6 +408,8 @@ internal fun SharedHomeGrid(
     val pending = widgets.pendingPlacement?.takeIf { it.page == page }
     val pendingIsReplacement = pending != null && widgetPlacements.any { it.slot == pending.slot }
     val pageWidgets = widgetPlacements.filter { it.page == page } + listOfNotNull(pending?.takeUnless { pendingIsReplacement })
+    // Cells under a widget take no app, so they get no empty-cell hint during a drag (it showed through the widget).
+    val widgetCells = remember(pageWidgets) { pageWidgets.flatMapTo(mutableSetOf()) { it.coveredIndices() } }
     // More rows: the rows Home shows, or more where apps or widgets already sit lower; cells past them aren't drawn.
     val shownRows = shownHomeRows(geometry.appRows, pageRange.map { previewAt(it) ?: savedAt(it) }, pageWidgets)
     // The retained overflow widget (stored under the grid) draws right after the shown rows.
@@ -457,7 +459,7 @@ internal fun SharedHomeGrid(
                 .border(if (highlighted) 2.dp else 0.dp,
                     if (highlighted) Color.White.copy(alpha = .8f) else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp)),
                 contentAlignment = Alignment.TopCenter) {
-                if (drag.active && drag.source?.appId != null && (gap || previewId == null)) Box(
+                if (showsDropHint(drag.active, drag.source?.appId != null, gap, previewId, globalIndex in widgetCells)) Box(
                     Modifier.size(iconSize.dp).testTag(if (gap) "drag-gap-home-$globalIndex" else "empty-home-slot-$globalIndex")
                         .background(Glass.copy(alpha = if (gap) .16f else .08f), RoundedCornerShape(18.dp))
                         .border(if (gap) 2.dp else 1.dp, Color.White.copy(alpha = if (gap) .55f else .3f), RoundedCornerShape(18.dp)))
@@ -582,3 +584,10 @@ private fun Modifier.moveActions(id: String, page: Int, onMove: (String, Int) ->
         perform(action); true
     }
 }
+
+/**
+ * Whether a Home cell shows its hint while an app is carried: the outlined gap where the app will go, or a faint outline on
+ * an empty cell it could go to. Never on a cell under a widget, which takes no app.
+ */
+internal fun showsDropHint(dragging: Boolean, carryingApp: Boolean, gap: Boolean, previewId: String?, underWidget: Boolean) =
+    dragging && carryingApp && !underWidget && (gap || previewId == null)
