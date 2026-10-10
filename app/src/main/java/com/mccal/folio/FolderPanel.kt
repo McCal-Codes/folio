@@ -86,8 +86,13 @@ internal fun FolderPanel(
     val carryHandled = remember(folder.id) { booleanArrayOf(false) }
     val carryFade by androidx.compose.animation.core.animateFloatAsState(if (carrying) 0f else 1f,
         FolioMotion.spring(FolioMotion.Quick), label = "folder carry fade")
+    // The 0.6.9 motion pass (MO5, the Lab's "Grow from the icon"): the apps settle in one after another and leave together.
+    val pass = FolioMotion.v2
+    val still = pass && LocalReduceMotion.current
+    val entrance = remember(folder.id) { mutableStateMapOf<String, androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D>>() }
     val close: () -> Unit = {
         if (!closing) { closing = true; scope.launch {
+            if (pass) entrance.values.forEach { launch { it.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)) } }
             appear.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)); onDismiss()
         } }
     }
@@ -101,7 +106,20 @@ internal fun FolderPanel(
         drag.activeSourceScope = folder.id
         onDispose { if (drag.activeSourceScope == folder.id) drag.activeSourceScope = null }
     }
-    LaunchedEffect(folder.id) { appear.animateTo(1f, MotionSpeed.spring(.78f, androidx.compose.animation.core.Spring.StiffnessMediumLow)) }
+    LaunchedEffect(folder.id) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
+    // Home reads how far this folder has opened: its tile hands over to the panel, and Home steps back (FolderOpening).
+    DisposableEffect(folder.id) {
+        FolderOpening.id = folder.id
+        onDispose { if (FolderOpening.id == folder.id) { FolderOpening.id = null; FolderOpening.progress = 0f } }
+    }
+    LaunchedEffect(folder.id) { snapshotFlow { appear.value }.collect { FolderOpening.progress = it } }
+    LaunchedEffect(folder.id, pass) {
+        if (!pass) return@LaunchedEffect
+        folder.appIds.forEachIndexed { i, id ->
+            val a = entrance.getOrPut(id) { androidx.compose.animation.core.Animatable(if (still) 1f else 0f) }
+            if (!still) launch { kotlinx.coroutines.delay(FolderOpening.FIRST_APP_MS + i * FolderOpening.STAGGER_MS); a.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) }
+        }
+    }
     val folderLook = LocalFolderLook.current
     // Mirrors Configuration.fitsRegularHomeLayout() (SizeClass.kt): the same signal every other screen already
     // uses to tell the cover screen apart from the unfolded inner screen, so a resized folder stays hinge-safe -
@@ -169,12 +187,16 @@ internal fun FolderPanel(
             .onGloballyPositioned { panelBounds = it.boundsInWindow() }
             .graphicsLayer {
                 val p = appear.value
-                if (tile != null && panelBounds.width > 0f) {
+                if (still) {
+                    // Reduce Motion with the pass: the folder fades in where it opens; nothing scales or moves.
+                    alpha = p.coerceIn(0f, 1f)
+                } else if (tile != null && panelBounds.width > 0f) {
                     val start = (tile.width() / panelBounds.width).coerceIn(.08f, 1f)
                     val s = start + (1f - start) * p; scaleX = s; scaleY = s
                     translationX = (tile.exactCenterX() - panelBounds.center.x) * (1f - p)
                     translationY = (tile.exactCenterY() - panelBounds.center.y) * (1f - p)
-                    alpha = (p * 1.8f).coerceIn(0f, 1f)
+                    // With the pass the tile cross-fades into the panel over the first fifth, then only the contents fade.
+                    alpha = if (pass) (p / FolderOpening.HANDOVER).coerceIn(0f, 1f) else (p * 1.8f).coerceIn(0f, 1f)
                 } else { val s = .86f + .14f * p; scaleX = s; scaleY = s }
             }) {
         // Just the title and a small options button: color and Add Apps used to sit inline below it always
@@ -183,7 +205,8 @@ internal fun FolderPanel(
         var folderMenu by remember { mutableStateOf(false) }
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(bottom = FolioSpace.COMFY.dp)
-                .onGloballyPositioned { headerHeightPx = it.size.height.toFloat() }) {
+                .onGloballyPositioned { headerHeightPx = it.size.height.toFloat() }
+                .graphicsLayer { if (pass) alpha = FolderOpening.contentAlpha(appear.value) }) {
             Spacer(Modifier.size(FolioTouch.MIN.dp))
             androidx.compose.foundation.text.BasicTextField(title, { title = it },
                 Modifier.weight(1f, fill = false).widthIn(max = 320.dp).testTag("folder-name"), singleLine = true,
@@ -283,6 +306,13 @@ internal fun FolderPanel(
                     verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                     items(order, key = { it }) { appId ->
                         apps[appId]?.let { app ->
+                          Box(Modifier.graphicsLayer {
+                              if (!pass) return@graphicsLayer
+                              // Each app settles in after the panel, a moment after the one before (scale only without Reduce Motion).
+                              val q = if (still) FolderOpening.contentAlpha(appear.value) else entrance[appId]?.value ?: 1f
+                              alpha = q.coerceIn(0f, 1f)
+                              if (!still) { val s = .8f + .2f * q; scaleX = s; scaleY = s }
+                          }) {
                             val isDragging = appId == draggingAppId
                             FolderChild(app, folder.id, drag, page, homeDestinations, dockVacancies,
                                 onLaunch = onLaunch, onMoveOut = onMoveOut,
@@ -358,6 +388,7 @@ internal fun FolderPanel(
                                     }
                                     .zIndex(if (isDragging) 1f else 0f)
 )
+                          }
                         }
                     }
                 }
@@ -449,3 +480,27 @@ private fun FolderChild(
 }
 
 private val FolderSwatches = listOf(0xFFFF6B63, 0xFFFFA94D, 0xFFFFD84D, 0xFF63D98B, 0xFF4DB8FF, 0xFF8E7CFF, 0xFFFF7EB9)
+
+/**
+ * Which folder is open and how far its panel has grown, 0 to 1, for the 0.6.9 motion pass (MO5): Home's tile for that folder
+ * fades out as the panel fades in over the first [HANDOVER] of the growth, and Home steps back by [STEP_BACK]. The apps inside
+ * start [FIRST_APP_MS] after the panel and [STAGGER_MS] apart. Starting values from the Lab, to tune on the phone.
+ */
+internal object FolderOpening {
+    var id by mutableStateOf<String?>(null)
+    var progress by mutableFloatStateOf(0f)
+    const val HANDOVER = .2f
+    const val STEP_BACK = .06f
+    const val FIRST_APP_MS = 80L
+    const val STAGGER_MS = 30L
+
+    /** How visible the folder's tile on Home is while [folderId] opens: it hands over to the panel. */
+    fun tileAlpha(folderId: String, openId: String?, progress: Float) =
+        if (folderId != openId) 1f else 1f - (progress / HANDOVER).coerceIn(0f, 1f)
+
+    /** The panel's title and contents come in after the panel itself has mostly grown. */
+    fun contentAlpha(progress: Float) = ((progress - .35f) / .5f).coerceIn(0f, 1f)
+
+    /** How far Home has stepped back, as a scale, while a folder is open. */
+    fun homeScale(progress: Float) = 1f - STEP_BACK * progress.coerceIn(0f, 1f)
+}

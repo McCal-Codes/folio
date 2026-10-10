@@ -271,7 +271,9 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
         val hovered = drag.moved && drag.source?.appId?.let { !isFolderId(it) } == true &&
             drag.destination(drag.pointer, setOf(page))?.target == DropTarget.Folder(folder.id)
         val lift by animateFloatAsState(if (hovered) 1.12f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "folder hover")
-        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift }
+        // With the motion pass, the tile hands over to the open folder's panel (FolderOpening).
+        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift
+                if (FolioMotion.v2) alpha = FolderOpening.tileAlpha(folder.id, FolderOpening.id, FolderOpening.progress) }
             .onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(folder.id, bounds) }
             .jiggle(folder.id).foldMotionIcon().pressFeedback(pressed || opening, lifted, size * .24f, kind = PressFeedback.Kind.FOLDER)) {
             // Like iOS: a folder's badge is the total of its apps' badges (each app counted once).
