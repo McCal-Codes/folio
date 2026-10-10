@@ -29,7 +29,7 @@ class LabSettingsParityTest {
     /** What a string resource says, so this can compare the lab with words that have moved into strings.xml. */
     private fun resource(name: String): String {
         val xml = File(root, "app/src/main/res/values/strings.xml").readText()
-        val value = Regex("""<string name="${Regex.escape(name)}">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+        val value = Regex("""<string name="${Regex.escape(name)}"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
             .find(xml)?.groupValues?.get(1) ?: error("no string named $name")
         return value.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\\'", "'").replace("\\\"", "\"")
     }
@@ -37,8 +37,9 @@ class LabSettingsParityTest {
     /** The Settings rows the app draws, in order, as (title, tag). */
     private fun appRows(): List<Pair<String, String>> {
         val body = sheet.readText().let { it.substring(it.indexOf("fun CustomizationSheet("), it.indexOf("@Composable private fun SwitchRow(")) }
-        return Regex("""TweakRow\(Icons\.Rounded\.\w+, 0x[0-9A-Fa-f]{8}, "([^"]+)", "([^"]+)"""")
-            .findAll(body).map { it.groupValues[1] to it.groupValues[2] }.toList()
+        // A row's color is a raw value or a FolioColors.Value, and its title a literal or a string resource.
+        return Regex("""TweakRow\(Icons\.Rounded\.\w+, (?:0x[0-9A-Fa-f]{8}|FolioColors\.Value\.\w+), (?:"([^"]+)"|stringResource\(R\.string\.(\w+)\)), "([^"]+)"""")
+            .findAll(body).map { it.groupValues[1].ifEmpty { resource(it.groupValues[2]) } to it.groupValues[3] }.toList()
     }
 
     private fun labRows(): List<Pair<String, String>> {
@@ -55,9 +56,9 @@ class LabSettingsParityTest {
         val lab = labRows()
         val app = appRows().take(lab.size)
         assertEquals("the lab's rows have drifted from CustomizationSheet.kt", app, lab)
-        assertTrue("the lab shows the whole overview", lab.size >= 20)
-        // The Market row is the one this release adds; if it ever disappears, the scene is out of date.
-        assertTrue("customization-market" in lab.map { it.second })
+        assertTrue("the lab shows the whole overview", lab.size >= 15)
+        // The overview ends at Support Folio (the Market has its own tab); a lab that stops short is out of date.
+        assertEquals("customization-support-folio", lab.last().second)
     }
 
     @Test fun `the lab splits Settings at the same widths the app does`() {
@@ -106,7 +107,8 @@ class LabSettingsParityTest {
     @Test fun `the setup steps and permissions are the app's own`() {
         val data = json()
         val steps = data.getJSONArray("setupSteps").titles()
-        val appSteps = Regex("""SetupStep\(Icons\.Rounded\.\w+, "([^"]+)"""").findAll(checklist.readText()).map { it.groupValues[1] }.toList()
+        val appSteps = Regex("""SetupStep\(Icons\.Rounded\.\w+, (?:"([^"]+)"|context\.getString\(R\.string\.(\w+)\))""")
+            .findAll(checklist.readText()).map { it.groupValues[1].ifEmpty { resource(it.groupValues[2]) } }.toList()
         assertEquals(appSteps, steps)
 
         val perms = data.getJSONArray("permissions").titles()
@@ -125,7 +127,8 @@ class LabSettingsParityTest {
         // Wording that appears in both places, so a change in one shows up as a failure rather than a surprise.
         for (line in listOf("Refresh in the background", "Only on Wi-Fi", "Once a day", "Never uses mobile data")) {
             assertTrue("the scene is missing \"$line\"", line in text)
-            assertTrue("Settings is missing \"$line\"", line in sheet.readText())
+            // The Market's settings moved into strings.xml, so the app's side is the resource, wherever it is drawn.
+            assertTrue("Settings is missing \"$line\"", ">$line<" in File(root, "app/src/main/res/values/strings.xml").readText())
         }
     }
 
