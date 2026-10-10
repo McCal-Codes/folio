@@ -119,7 +119,8 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = 0f, blurRadiusDp = 24)
         val appear = rememberEntrance(FolioMotion.pick(old = .82f to 600f, new = FolioMotion.Menu), scenario = PerfScenario.MENU)
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
+        val fade = rememberReducedFade()
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
             .testTag("category-folder-scrim"))
         FoldAvoidingBox(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -128,7 +129,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                 // ~84dp per app: three or four columns on the cover, up to six unfolded.
                 val columns = evenColumnsOnHinge(((width - 40.dp) / 84.dp).toInt().coerceIn(3, 6), 3)
                 Column(Modifier.width(width).graphicsLayer {
-                    alpha = appear.value; scaleX = .9f + .1f * appear.value; scaleY = scaleX
+                    alpha = appear.value * fade.value; scaleX = .9f + .1f * appear.value; scaleY = scaleX
                 }) {
                     Text(title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(start = FolioSpace.SMALL.dp, bottom = FolioSpace.MEDIUM.dp))

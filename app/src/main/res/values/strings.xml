@@ -308,6 +308,9 @@
     <string name="folders">Folders</string>
     <string name="columns">Columns</string>
     <string name="animation_speed">Animation Speed</string>
+    <string name="reduce_motion">Reduce Motion</string>
+    <string name="reduce_motion_note">Pages, sheets and menus fade in where they land instead of sliding or growing, icons stop wiggling while you edit Home, and switches stop without bouncing.</string>
+    <string name="reduce_motion_note_removed">On while Android\'s Remove animations is on. Folio then shows every change at once.</string>
     <string name="swipe_down_on_home">Swipe Down on Home</string>
     <string name="nothing">Nothing</string>
     <string name="background_blur">Background blur</string>
@@ -1263,6 +1266,7 @@
     <string name="settings_keywords_tweak_library">tweak library get install remove packages sileo cydia</string>
     <string name="settings_animation_speed">Animation speed</string>
     <string name="settings_keywords_animation_speed">animation motion speed fast slow snappy relaxed</string>
+    <string name="settings_keywords_reduce_motion">reduce motion animation accessibility fade wiggle jiggle bounce dizzy</string>
     <string name="settings_app_name_size">App name size</string>
     <string name="settings_keywords_app_name_size">label name text size small large</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">glass tint frost blur</string>

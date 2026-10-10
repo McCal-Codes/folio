@@ -247,4 +247,13 @@ internal object FolioMotion {
     /** The new spring when the motion pass is on, and the numbers the caller used before it when it is not. */
     fun pick(old: Pair<Float, Float>, new: Pair<Float, Float>) = if (v2) new else old
     fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
+
+    /** Reduce Motion's stand-in for anything that would slide or grow in: a fade where it lands, this long. */
+    const val FADE_MS = 150
+
+    /**
+     * Reduce Motion keeps motion that shows a state (a switch thumb, a segment) but takes out the overshoot: the same
+     * stiffness at damping 1. Under Android's Remove animations Compose ends it at once anyway.
+     */
+    fun calm(pair: Pair<Float, Float>, reduce: Boolean) = if (reduce) 1f to pair.second else pair
 }
