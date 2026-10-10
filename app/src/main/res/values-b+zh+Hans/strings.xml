@@ -1735,6 +1735,15 @@
     <string name="compat_screen_inner_only_detail">它不会改变外屏。这并不是问题，只是不会在那里显示。</string>
     <string name="compat_screen_cover_only">仅限外屏</string>
     <string name="compat_screen_cover_only_detail">它不会改变内屏。这并不是问题，只是不会在那里显示。</string>
+    <string name="compat_android_between">Android %1$s 至 %2$s</string>
+    <string name="compat_android_from">Android %1$s 或更高版本</string>
+    <string name="compat_android_up_to">Android %1$s 或更低版本</string>
+    <string name="compat_android_ok_detail">这部手机运行的是 Android %1$s。</string>
+    <string name="compat_android_blocked_detail">这部手机运行的是 Android %1$s。更新 Folio 也无法改变这一点。</string>
+    <string name="compat_folio_untried">尚未在 Folio %1$s 上试过</string>
+    <string name="compat_folio_untried_detail">为 Folio %1$s 制作。你仍然可以获取它；如果它导致 Folio 关闭，安全模式会将它关闭。</string>
+    <string name="compat_breaks">与 %1$s %2$s 不兼容</string>
+    <string name="compat_breaks_detail">请先更新 %1$s，再安装此软件包。</string>
     <string name="roadmap_now">现在</string>
     <string name="roadmap_next">接下来</string>
     <string name="roadmap_shipped">已发布</string>

@@ -1,8 +1,9 @@
 # 0013: Package compatibility fields for format 1, decided before the 0.7.0 format freeze
 
 - **Status:** accepted by McCal, 2026-10-10: every field below and both changes from the Lab (access derived, not
-  declared; later breakage from the source). The three questions under "What is still undecided" are still open.
-  Nothing is built yet.
+  declared; later breakage from the source). The three open questions were answered the same day (see "Decided
+  after acceptance"). The format, its checks and `folio-pkg` came first; the slot switch, acting on `incompatible`
+  and the tier table come next.
 - **Extends:** [0004](0004-declarative-first.md) (packages stay declarative) and [0008](0008-platform-architecture.md) (packages never inherit privilege).
 - **Shown in:** the Lab scene `package-tiers` ("Package access and safety", folio-mockups b26ad84 and later).
 
@@ -87,13 +88,14 @@ This replaces the Lab's `brokenOn` manifest field: a published manifest can't kn
 - `docs/sdk/format-v1.md`: the field table and a short "Limits and advice" section. The template repo shows them.
 - `CompatibilityCorpusTest`: new corpus packages that use each field. Existing entries are never changed.
 
-## What is still undecided
+## Decided after acceptance (McCal, 2026-10-10)
 
-- Whether `maxFolio` takes only `x.y` (simpler, matches how people talk about versions) or also `x.y.z`.
-- The tier table for today's capabilities. Every current capability is Standard or Notification access; the
-  Shizuku and root capabilities exist only in the broker. The table should live next to `Capability` in `:market`.
-- Whether an `incompatible` entry from a source the user added can turn off a package that came from Folio's own source.
-  Proposed: no, only its own packages, like `revoked.json` today.
+- **`maxFolio` takes only `x.y`** (`0.7` means every 0.7.x): simpler, and it is how people talk about versions.
+- **The tier table lives next to `Capability` in `:market`**, as package trust tiers. It is kept apart from the System
+  Bridge broker's tiers (ADR 0011), which describe what the phone can grant: a package never inherits those (ADR 0008).
+  If a package capability ever needs a broker capability (a root hinge angle, say), that is a separate, explicit
+  requirement the app checks against the broker at install time.
+- **A source's `incompatible` list covers only its own packages**, like `revoked.json` today.
 
 ## Consequences
 
