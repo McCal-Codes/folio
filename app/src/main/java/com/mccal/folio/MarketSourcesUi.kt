@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
@@ -163,6 +166,7 @@ private fun SourceRow(
  * The packages come in as [rows] rather than being drawn here, so a package listed by a source looks and behaves
  * exactly as it does in the Packages tab - the same row, the same Get, the same long press.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun MarketSourcePage(
     name: String,
@@ -249,7 +253,8 @@ internal fun MarketSourcePage(
             }
         }
         if (!builtIn) {
-            Row(Modifier.padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+            // Wraps instead of running off the edge at a large font size or in a long translation.
+            FlowRow(Modifier.padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 Pill(
                     stringResource(if (status?.refreshing == true) R.string.refreshing else R.string.refresh),
                     onRefresh,
@@ -281,7 +286,7 @@ private fun Pill(label: String, onClick: () -> Unit, destructive: Boolean = fals
         color = if (destructive) FolioColors.RedSoft else LocalAccent.current.ink,
         fontSize = FolioType.SUBHEAD.sp,
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .08f))
-            .clickable(onClick = onClick).heightIn(min = 44.dp).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
+            .clickable(onClick = onClick).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
     )
 }
 

@@ -118,7 +118,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = 0f, blurRadiusDp = 24)
-        val appear = rememberEntrance(stiffness = 600f, dampingRatio = .82f)
+        val appear = rememberEntrance(FolioMotion.pick(old = .82f to 600f, new = FolioMotion.Menu), scenario = PerfScenario.MENU)
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
             .testTag("category-folder-scrim"))
         FoldAvoidingBox(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {

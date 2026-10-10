@@ -64,6 +64,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -768,12 +770,24 @@ internal fun MarketScreen(
 
 @Composable
 private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SNUG.dp)) {
-        for (tab in MarketTab.entries) {
-            Column(
-                Modifier.weight(1f).marketTab(tab, onSelect).padding(vertical = FolioSpace.TINY.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
+    val glide = rememberGlide(selected.ordinal)
+    Box(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SNUG.dp)
+        .height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
+        // The highlight glides from the old tab to the new one instead of jumping (motion pass, 0.6.9).
+        if (FolioMotion.v2) Box(
+            Modifier.fillMaxWidth(1f / MarketTab.entries.size).fillMaxHeight()
+                .graphicsLayer { translationX = glide.value * size.width }
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+                .background(LocalAccent.current.fill.copy(alpha = .22f), RoundedCornerShape(FolioRadius.CONTROL.dp)),
+        )
+        Row(Modifier.fillMaxWidth()) {
+            for (tab in MarketTab.entries) {
+                Column(
+                    Modifier.weight(1f).marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
+            }
         }
     }
 }
@@ -784,16 +798,29 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
  */
 @Composable
 private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
+    val glide = rememberGlide(selected.ordinal)
+    var itemHeight by remember { mutableIntStateOf(0) }
     Column(
         Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SMALL.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        for (tab in MarketTab.entries) {
-            Column(
-                Modifier.fillMaxWidth().marketTab(tab, onSelect).padding(vertical = FolioSpace.COMPACT.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
+        Box(Modifier.fillMaxWidth()) {
+            if (FolioMotion.v2 && itemHeight > 0) Box(
+                Modifier.fillMaxWidth().height(with(LocalDensity.current) { itemHeight.toDp() })
+                    .graphicsLayer { translationY = glide.value * itemHeight }
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .background(LocalAccent.current.fill.copy(alpha = .22f), RoundedCornerShape(FolioRadius.CONTROL.dp)),
+            )
+            Column(Modifier.fillMaxWidth()) {
+                for ((index, tab) in MarketTab.entries.withIndex()) {
+                    Column(
+                        Modifier.fillMaxWidth().then(if (index == 0) Modifier.onSizeChanged { itemHeight = it.height } else Modifier)
+                            .marketTab(tab, onSelect).padding(vertical = FolioSpace.COMPACT.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
+                }
+            }
         }
     }
 }
@@ -804,6 +831,9 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
  */
 @Composable
 private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
+    val glide = rememberGlide(selected.ordinal)
+    var rowHeight by remember { mutableIntStateOf(0) }
+    val gap = with(LocalDensity.current) { FolioSpace.HAIR.dp.toPx() }
     Column(
         Modifier.width(180.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)
             .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.MEDIUM.dp),
@@ -813,12 +843,21 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
             stringResource(R.string.market), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = FolioSpace.MEDIUM.dp, top = FolioSpace.TINY.dp, bottom = FolioSpace.COMPACT.dp),
         )
-        for (tab in MarketTab.entries) {
+        // With the motion pass on, one highlight glides between rows; otherwise each row paints its own.
+        Box(Modifier.fillMaxWidth()) {
+        if (FolioMotion.v2 && rowHeight > 0) Box(
+            Modifier.fillMaxWidth().height(with(LocalDensity.current) { rowHeight.toDp() })
+                .graphicsLayer { translationY = glide.value * (rowHeight + gap) }
+                .background(LocalAccent.current.fill, RoundedCornerShape(FolioRadius.CONTROL.dp)),
+        )
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp)) {
+        for ((index, tab) in MarketTab.entries.withIndex()) {
             val on = tab == selected
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-                    .background(if (on) LocalAccent.current.fill else Color.Transparent)
-                    .marketTab(tab, onSelect).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 11.dp),
+                Modifier.fillMaxWidth().then(if (index == 0) Modifier.onSizeChanged { rowHeight = it.height } else Modifier)
+                    .clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+                    .background(if (on && !FolioMotion.v2) LocalAccent.current.fill else Color.Transparent)
+                    .marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -832,6 +871,8 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
+        }
+        }
         }
     }
 }
@@ -1117,8 +1158,11 @@ private fun MarketRow(
                 null -> Unit
             }
         }
+        val justInstalled = rememberJustInstalled(busy, installed != null)
         when {
             busy -> InstallProgress(MarketWork.progress, words = false, name = name)
+            // The motion pass: the ring finishes with a check that pops in, then the row settles to its button.
+            justInstalled -> InstallDonePop()
             // A revoked package can be removed but never installed again - including as an update, which is how a
             // pulled package used to slip back in.
             entry.revokedReason != null && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
@@ -1332,6 +1376,7 @@ private fun MarketPackagePage(
         }
 
         Row(Modifier.padding(vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
+            val justInstalled = rememberJustInstalled(MarketWork.busyId == entry.id, installed != null)
             when {
                 // Pulled by its source. Removing what's already on is still allowed; getting it is not.
                 revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
@@ -1339,6 +1384,7 @@ private fun MarketPackagePage(
                     Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
+                justInstalled -> InstallDonePop()
                 appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
                 external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
                 // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
