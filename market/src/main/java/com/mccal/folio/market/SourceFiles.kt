@@ -118,7 +118,16 @@ data class IndexPackage(
     val installable: Boolean get() = manifest != null && url != null && sha256 != null && size != null
 
     companion object {
+        /** The most a listed package may be. An app of its own (`externalApp`) may be larger: see [MAX_APP_BYTES]. */
         const val MAX_PACKAGE_BYTES = 20 * 1024 * 1024
+
+        /**
+         * The most a listed app may be (McCal, 2026-10-06, "for now"): a Folio Dev debug build is about 80 MB. Only an
+         * `externalApp` listing gets this; a package is still refused above [MAX_PACKAGE_BYTES], so the zip-bomb limits
+         * on `.foliopkg` files (T7) are unchanged. An app is read into memory once to check its sha256, so this is
+         * bounded by the phone's heap, not by the Market.
+         */
+        const val MAX_APP_BYTES = 100 * 1024 * 1024
 
         /** Why a listed package can't be used here: it names something this Folio doesn't have. */
         const val NEEDS_NEWER_FOLIO = "a newer Folio"
@@ -134,7 +143,7 @@ data class IndexPackage(
             val version = PackageManifest.readVersion(f, "version")
             val url = f.string("url", false, RELATIVE_OR_HTTPS, MAX_URL, "must be an https:// link or a relative path")
             val sha256 = f.string("sha256", false, FileRef.SHA256, 64, "must be 64 lowercase hex characters")
-            val size = f.long("size", false, 1L..MAX_PACKAGE_BYTES.toLong())
+            val size = f.long("size", false, 1L..MAX_APP_BYTES.toLong())
             if (f.has("url") != f.has("sha256") || f.has("url") != f.has("size")) {
                 p.errors += "$at needs url, sha256 and size together, or none of them"
             }
@@ -158,6 +167,10 @@ data class IndexPackage(
             if (id != null && version != null && embedded != null) {
                 if (embedded.id != id) p.errors += "$at.id doesn't match the manifest's id"
                 if (embedded.version != version) p.errors += "$at.version doesn't match the manifest's version"
+            }
+            // Only an app may be bigger than a package can be: the listing says which it is, so check here, not at download.
+            if (size != null && size > MAX_PACKAGE_BYTES && embedded != null && PackageKind.EXTERNAL_APP !in embedded.kinds) {
+                p.errors += "$at.size: a package can be at most ${MAX_PACKAGE_BYTES / 1024 / 1024} MB (only an app may be larger)"
             }
             if (id == null || version == null) return null
             val needs = when {
