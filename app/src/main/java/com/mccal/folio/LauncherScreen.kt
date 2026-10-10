@@ -250,6 +250,16 @@ fun LauncherScreen(
             else if (!now && swiping) { PerfLog.end(PerfScenario.HOME_SWIPE); swiping = false }
         } } finally { if (swiping) PerfLog.end(PerfScenario.HOME_SWIPE) }
     }
+    // Moving an icon, for the Performance log: from the first move of a carried app until its landing has finished, so the
+    // carry, the others making room, a folder plate and the landing all count. The same window with the motion pass off,
+    // so old and new compare like for like.
+    LaunchedEffect(drag) {
+        var moving = false
+        try { snapshotFlow { (drag.active && drag.moved && drag.source?.appId != null) || drag.landing.flyingId != null }.collect { now ->
+            if (now && !moving) { PerfLog.begin(PerfScenario.ICON_MOVE); moving = true }
+            else if (!now && moving) { PerfLog.end(PerfScenario.ICON_MOVE); moving = false }
+        } } finally { if (moving) PerfLog.end(PerfScenario.ICON_MOVE) }
+    }
     fun leaveTemporaryWidgetPage() {
         val persistedPages = model.state.value.homePages
         if (pager.currentPage >= persistedPages)
@@ -506,9 +516,44 @@ fun LauncherScreen(
         val occupant = state.layout.slotAt(index) ?: return null
         return occupant.takeIf { state.layout.folder(it) != null && drag.source?.folderId != it }
     }
-    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows) {
+    // Folder or make room (FolderOrRoom), with the motion pass and folders on drop: only the middle of an app, held, makes a
+    // folder; its edge or a gap, held a moment, makes room; passing over an app does nothing. Without the pass, any app under
+    // the finger means a folder, as before.
+    val folderOrRoom = FolioMotion.v2 && folderEditing
+    val heldCenter = if (!folderOrRoom || !drag.active || !drag.moved) null
+        else if (drag.landing.lifted) drag.landing.heldAt(drag.pointer - drag.rootOrigin) + Offset(drag.landing.size / 2f, drag.landing.size / 2f)
+        else drag.pointer - drag.rootOrigin
+    val hoverIndex = (insertionTarget as? DropTarget.Home)?.index
+    val hoverApp = if (folderOrRoom && hoverIndex != null) folderMergeTarget(drag.source?.appId, hoverIndex) else null
+    val heldOverMiddle = hoverApp != null && FolderOrRoom.inMiddle(heldCenter, IconBounds.of(hoverApp)?.let {
+        androidx.compose.ui.geometry.Rect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()).translate(-drag.landing.rootInWindow)
+    })
+    val middleIndex = hoverIndex.takeIf { heldOverMiddle }
+    var armedMerge by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(middleIndex, folderOrRoom) {
+        armedMerge = null
+        if (folderOrRoom && middleIndex != null) { delay(FolderOrRoom.FOLDER_WAIT_MS); armedMerge = middleIndex }
+    }
+    var roomTarget by remember { mutableStateOf<DropTarget?>(null) }
+    LaunchedEffect(insertionTarget, heldOverMiddle, folderOrRoom) {
+        if (!folderOrRoom || insertionTarget == null) { roomTarget = null; return@LaunchedEffect }
+        // Over the middle the others stay where they are; anywhere else they make room after a moment.
+        if (heldOverMiddle) return@LaunchedEffect
+        if (insertionTarget is DropTarget.Home) delay(FolderOrRoom.ROOM_WAIT_MS)
+        roomTarget = insertionTarget
+    }
+    SideEffect { drag.mergePreview = if (folderOrRoom && drag.active) armedMerge?.let { folderMergeTarget(drag.source?.appId, it) } else null }
+    /** The app a drop on [index] makes a folder with: with FolderOrRoom only once its middle was held long enough. */
+    fun mergesAt(sourceAppId: String?, index: Int): String? = folderMergeTarget(sourceAppId, index)?.takeIf { !folderOrRoom || armedMerge == index }
+    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows, folderOrRoom, armedMerge, roomTarget) {
         val id = drag.source?.appId
         when {
+            folderOrRoom && id != null && drag.moved -> when {
+                armedMerge != null -> state.layout
+                insertionTarget is DropTarget.Home && folderDropTarget(id, insertionTarget.index) != null -> state.layout
+                roomTarget is DropTarget.Home || roomTarget is DropTarget.Dock -> dropApp(state.layout, id, roomTarget!!, homeAppRows)
+                else -> state.layout
+            }
             // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
             // the target cell's own hover highlight is the only feedback until release, same as a real platform.
             id != null && insertionTarget is DropTarget.Home &&
@@ -546,6 +591,12 @@ fun LauncherScreen(
             }
                 ?: rawDestination
         } else rawDestination
+        // With the motion pass, an app that moved flies to its place (or back to it, for a drop that did nothing), unless it
+        // went into a folder, made one, or was removed: those keep the copy's old exit.
+        val lands = drag.landing.lifted && moved && source.appId != null && destination != DropTarget.Remove && destination !is DropTarget.Folder &&
+            !(destination is DropTarget.Home && (folderDropTarget(source.appId, destination.index) != null || mergesAt(source.appId, destination.index) != null))
+        val releasedAt = drag.pointer - drag.rootOrigin
+        val releaseSpeed = drag.releaseVelocity()
         val changed = when {
             source.folderId != null && destination is DropTarget.Folder ->
                 model.addAppToFolder(destination.id, source.appId ?: "")
@@ -557,8 +608,8 @@ fun LauncherScreen(
                 model.addAppToFolder(folderDropTarget(source.appId, destination.index)!!, source.appId!!)
             // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
             // places. Dropping on an existing folder already goes through DropTarget.Folder above.
-            destination is DropTarget.Home && folderMergeTarget(source.appId, destination.index) != null ->
-                model.createFolder(source.appId!!, folderMergeTarget(source.appId, destination.index)!!, destination.index) != null
+            destination is DropTarget.Home && mergesAt(source.appId, destination.index) != null ->
+                model.createFolder(source.appId!!, mergesAt(source.appId, destination.index)!!, destination.index) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
@@ -574,10 +625,13 @@ fun LauncherScreen(
             is DropTarget.Widget -> 0
             else -> if (source.target is DropTarget.Library) pager.currentPage else drag.originPage
         }
+        if (lands) drag.landing.land(scope, source.appId!!, releasedAt, releaseSpeed)
         scope.launch {
             // Let a new home page compose before removing the temporary drop page.
             withFrameNanos { }
             drag.clear()
+            // Cleared only now, so a drop without a landing never shows the old copy for a frame.
+            if (!lands) drag.landing.drop()
             withFrameNanos { }
             pager.scrollToPage(if (returnToLibrary) model.state.value.homePages else page.coerceIn(0, model.state.value.homePages - 1))
             if (!moved && !cancelled) {
@@ -604,10 +658,14 @@ fun LauncherScreen(
         // Only Google Discover's hosted feed needs it; with Today View an extra offscreen pass just costs frames.
         compositingStrategy = if (!hostedDiscover) androidx.compose.ui.graphics.CompositingStrategy.Auto
             else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-    }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").homeDragInput(drag,
+    }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").onGloballyPositioned { drag.landing.rootInWindow = it.boundsInWindow().topLeft }.homeDragInput(drag,
         enabled = sheet.isEmpty() && !showFirstRun && overlays.menu == null && !resize.active && pager.currentPage >= 0,
         page = pager.currentPage, eligiblePages = eligibleDragPages, onStart = {
             focus.clearFocus(); keyboard?.hide(); haptic.perform(FolioHaptic.PickedUp)
+            // The 0.6.9 motion pass: an app carried from Home or the dock lifts where it is and later lands (DragLanding).
+            val carried = drag.source?.takeIf { (it.target is DropTarget.Home || it.target is DropTarget.Dock) && it.folderId == null }
+                ?.appId?.takeUnless(::isFolderId)
+            drag.landing.begin(scope, carried, drag.pointer - drag.rootOrigin, FolioMotion.v2, dockReduceMotion)
             // iPhone: holding an app shows its menu right away (no Android-style pick-up). Moving while still
             // holding dismisses the menu, picks the app up and starts jiggle mode (see the effect below).
             drag.source?.let { src ->
@@ -1576,6 +1634,22 @@ fun LauncherScreen(
                 }
             }
         }
+        val landing = drag.landing
+        (if (drag.active && landing.lifted) drag.source?.appId else landing.flyingId)?.let { appsById[it] }?.let { app ->
+            val side = with(LocalDensity.current) { landing.size.toDp() }
+            val shape = RoundedCornerShape(side * .24f)
+            AppIcon(app, stringResource(R.string.moving_named, app.label), Modifier
+                .offset {
+                    val p = if (drag.active) landing.heldAt(drag.pointer - drag.rootOrigin) else landing.position.value
+                    IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                }
+                .size(side)
+                .graphicsLayer {
+                    scaleX = landing.scale.value; scaleY = scaleX; alpha = landing.fade.value
+                    shadowElevation = PressFeedback.LIFT_SHADOW_DP.dp.toPx() * landing.liftProgress(); this.shape = shape; clip = true
+                }
+                .testTag("drag-ghost"))
+        }
         if (drag.active) {
             if (drag.moved) {
                 if (pager.currentPage > 0) Box(Modifier.align(Alignment.CenterStart).width(6.dp).height(112.dp)
@@ -1583,7 +1657,7 @@ fun LauncherScreen(
                 if (pager.currentPage < homePages) Box(Modifier.align(Alignment.CenterEnd).width(6.dp).height(112.dp)
                     .background(Color.White.copy(alpha = if (edge > 0) .9f else .3f), RoundedCornerShape(6.dp)).testTag("drag-edge-right"))
             }
-            appsById[drag.source?.appId]?.let { app ->
+            appsById[drag.source?.appId]?.takeUnless { drag.landing.lifted }?.let { app ->
                 val size = 66.dp
                 val px = with(LocalDensity.current) { size.toPx() }
                 AppIcon(app, stringResource(R.string.moving_named, app.label), Modifier

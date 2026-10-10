@@ -32,6 +32,18 @@ internal class HomeDragState {
     var moved by mutableStateOf(false)
     var activeSourceScope by mutableStateOf<String?>(null)
     val active get() = source != null
+    /** The 0.6.9 motion pass's lift and landing for the app being carried ([DragLanding]). */
+    val landing = DragLanding()
+    /** The app whose folder plate is showing because the carried app is held over its middle (FolderOrRoom). */
+    var mergePreview by mutableStateOf<String?>(null)
+    /** The finger's last moments, for the speed it lets go with ([releaseVelocity]). Not state: only read on release. */
+    private val trail = ArrayDeque<Pair<Long, Offset>>()
+    fun track(timeMillis: Long, point: Offset) {
+        trail.addLast(timeMillis to point)
+        while (trail.size > 2 && timeMillis - trail.first().first > TRAIL_MS) trail.removeFirst()
+    }
+    /** Pixels per second over the last [TRAIL_MS] of the drag; zero if the finger was still. */
+    fun releaseVelocity(): Offset = releaseVelocity(trail.toList())
     fun hit(point: Offset, pages: Set<Int>) = regions.values
         .filter { (it.page == null || it.page in pages) && it.bounds.contains(point) &&
             (source != null || it.target !is DropTarget.Folder) && it.scope == activeSourceScope }
@@ -54,7 +66,7 @@ internal class HomeDragState {
             }
         }.maxByOrNull(::dragRegionPriority)
     }
-    fun clear() { source = null; moved = false }
+    fun clear() { source = null; moved = false; trail.clear(); mergePreview = null }
 
     fun register(owner: Any, region: DragRegion) {
         regionOwners[region.target] = owner
@@ -75,6 +87,16 @@ internal class HomeDragState {
             regions.remove(target)
         }
     }
+}
+
+private const val TRAIL_MS = 90L
+
+/** The speed between the oldest and newest point of a short trail, in pixels per second; zero without movement or time. */
+internal fun releaseVelocity(trail: List<Pair<Long, Offset>>): Offset {
+    if (trail.size < 2) return Offset.Zero
+    val (t0, p0) = trail.first(); val (t1, p1) = trail.last()
+    val seconds = (t1 - t0) / 1000f
+    return if (seconds <= 0f) Offset.Zero else (p1 - p0) / seconds
 }
 
 /** Page turning follows the window edges, including the space beside the fixed dock. */
@@ -181,6 +203,7 @@ internal fun Modifier.homeDragInput(
             drag.origin = point
             drag.originPage = currentPage
             drag.moved = movedAlready
+            drag.track(down.uptimeMillis, point)
             start()
             try {
                 while (true) {
@@ -192,6 +215,7 @@ internal fun Modifier.homeDragInput(
                         break
                     }
                     drag.pointer = change.position + drag.rootOrigin
+                    drag.track(change.uptimeMillis, drag.pointer)
                     if ((drag.pointer - drag.origin).getDistance() > viewConfiguration.touchSlop) drag.moved = true
                     change.consume()
                     if (!change.pressed) {

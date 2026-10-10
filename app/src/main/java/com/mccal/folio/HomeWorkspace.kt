@@ -439,7 +439,8 @@ internal fun SharedHomeGrid(
             val savedApp = appsById[savedId]
             val savedFolder = folders.firstOrNull { it.id == savedId }
             val previewId = previewAt(globalIndex)
-            val highlighted = drag.active && target == cell
+            // With a folder plate showing (FolderOrRoom), the plate is the feedback; the cell outline would double it.
+            val highlighted = drag.active && target == cell && (drag.mergePreview == null || savedId != drag.mergePreview)
             val gap = hiddenIndex == globalIndex
             val row = localIndex / GRID_COLUMNS
             val cellHeight = cells.spanHeight(row, 1)
@@ -486,11 +487,15 @@ internal fun SharedHomeGrid(
                     if (dimDragged && id == draggedId) .28f else 1f,
                     label = "home insertion visibility $id",
                 )
+                val plateOn = drag.mergePreview == id
+                val plateGrowth by animateFloatAsState(if (plateOn) 1f else 0f,
+                    FolioMotion.spring(if (plateOn) FolioMotion.Quick else FolioMotion.Firm), label = "folderPlate $id")
                 Box(Modifier.offset { animatedOffset }.width(cellWidth).height(rowHeight.dp)
-                    .alpha(opacity).moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
+                    .graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }.moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
                     if (visible) AppTile(app, iconSize, labels,
                         onClick = { if (!edit.active) onLaunch(app, it) }, onLongClick = { onActions(app) },
-                        onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null)
+                        onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null,
+                        plate = if (plateOn || plateGrowth > .001f) ({ plateGrowth }) else null)
                 }
             }
         }
@@ -498,13 +503,20 @@ internal fun SharedHomeGrid(
             val savedIndex = savedIndexOf(folder.id)
             val previewIndex = previewIndexOf(folder.id)
             val renderIndex = previewIndex?.takeIf { it in pageRange } ?: savedIndex?.takeIf { it in pageRange } ?: return@forEach
-            val localIndex = renderIndex - pageStart
-            val row = localIndex / GRID_COLUMNS
-            val x = cellX(localIndex % GRID_COLUMNS, row)
-            val y = rowTop(row).dp
-            FolderTile(folder, appsById, iconSize, labels, drag, page,
-                Modifier.offset(x = x, y = y).width(cellWidth).height(rowHeight.dp)
-                    .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+            key(folder.id) {
+                val localIndex = renderIndex - pageStart
+                val row = localIndex / GRID_COLUMNS
+                val place = with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) }
+                // With the motion pass, a folder pushed along by a drag slides with the apps around it, on the same stiff spring;
+                // without it, it jumps as it always did. Only while rearranging: a new screen size (folding) places it at once.
+                val slides = FolioMotion.v2 && (drag.active || edit.active)
+                val placed by animateIntOffsetAsState(place,
+                    animationSpec = if (slides) FolioMotion.spring<IntOffset>(FolioMotion.Snap) else androidx.compose.animation.core.snap(),
+                    label = "folderSlide ${folder.id}")
+                FolderTile(folder, appsById, iconSize, labels, drag, page,
+                    Modifier.offset { placed }.width(cellWidth).height(rowHeight.dp)
+                        .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+            }
         }
         pageWidgets.forEach { placement ->
             key("widget-${placement.slot}") {
