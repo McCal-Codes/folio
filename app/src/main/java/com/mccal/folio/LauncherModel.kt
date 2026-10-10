@@ -1343,6 +1343,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         updateSettings(soon = false) { it.copy(appIconStyles = editAppIcon(it.appIconStyles, id, override)) }
     }
     fun setIconActions(id: String, actions: IconActions) = updateSettings(soon = false) { it.copy(iconActions = editIconActions(it.iconActions, id, actions)) }
+    /** Every icon's actions at once: Reset All, and its Undo. An icon with no gesture left has no entry. */
+    fun setAllIconActions(actions: Map<String, IconActions>) = updateSettings(soon = false) { it.copy(iconActions = actions.filterValues { a -> !a.isEmpty }) }
     fun renameApp(id: String, name: String) = updateSettings(soon = false) { s ->
         val names = editAppName(s.appNames, id, name)
         s.copy(appNames = names, apps = s.apps.withAppNames(names))

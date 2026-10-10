@@ -11,6 +11,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
@@ -30,7 +31,16 @@ import androidx.compose.ui.unit.sp
  * will be. Reset puts it back to following the launcher. The choice is applied when the icon is drawn.
  */
 @Composable
-internal fun AppIconEditor(app: AppEntry, current: AppIconOverride, onChange: (AppIconOverride) -> Unit, onDone: () -> Unit) {
+internal fun AppIconEditor(app: AppEntry, current: AppIconOverride, onChange: (AppIconOverride) -> Unit, onDone: () -> Unit,
+    /** This icon's actions, or null when Icon Actions isn't open on this phone (the gate, or Safe Mode). */
+    actions: IconActions? = null, apps: List<AppEntry> = emptyList(), onActions: (IconActions) -> Unit = {}) {
+    var showActions by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    if (showActions && actions != null) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).padding(bottom = FolioSpace.XL.dp).verticalScroll(rememberScrollState())) {
+            IconActionsEditor(app, actions, apps, onActions, onBack = { showActions = false })
+        }
+        return
+    }
     Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).padding(bottom = FolioSpace.XL.dp).verticalScroll(rememberScrollState()).testTag("icon-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // The icon as it will look, whatever the launcher's look is.
@@ -71,6 +81,11 @@ internal fun AppIconEditor(app: AppEntry, current: AppIconOverride, onChange: (A
             if (current.hasPicture) IosChip(false, { onChange(current.copy(picture = 0L)) }, { Text(stringResource(R.string.remove_picture)) }, Modifier.testTag("icon-picture-remove"))
         }
         CardNote(stringResource(R.string.edit_icon_picture_note))
+        if (actions != null) {
+            SheetGroupLabel(stringResource(R.string.icon_actions_title))
+            val set = listOfNotNull(actions.up, actions.down, actions.double).size
+            IosNavRow(stringResource(R.string.icon_actions_title), if (set > 0) set.toString() else null, { showActions = true }, "icon-editor-actions")
+        }
         CardNote(stringResource(R.string.edit_icon_note))
         if (!current.isDefault) IosActionRow(stringResource(R.string.reset_icon), destructive = true, onClick = { onChange(AppIconOverride()) })
     }

@@ -22,6 +22,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
+| `icon-actions-picker` | Icon Actions picker for 0.7.0, behind `ICON_ACTIONS`: the catalog, the editor in Edit Icon and Settings › Gestures & Actions, menu rows, and the accessibility service description and PERMISSIONS.md paragraph (PRV-18). | `ActionCatalog.kt`, `IconActionsEditor.kt`, `IconActionsSettings.kt`, `IconEditor.kt`, `AppContextMenu.kt`, `LauncherScreen.kt`, `CustomizationSheet.kt`, `LauncherModel.kt` (`setAllIconActions`), `PERMISSIONS.md`, strings |
 | `release-069-beta1` | Draft bump to 0.6.9-beta.1: the version, the release note and this row, nothing else (REL-13). Not for merge until the beta.1 pull requests are on `main`. | `app/build.gradle.kts`, `docs/releases/0.6.9-beta.1.md`, this file |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and

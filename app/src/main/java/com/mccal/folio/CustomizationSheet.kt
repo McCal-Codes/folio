@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, ICON_ACTIONS;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -105,6 +105,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE -> ADVANCED
         WHAT_TO_TEST -> HELP
+        ICON_ACTIONS -> GESTURES
         DEVELOPER -> ADVANCED
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
@@ -122,6 +123,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         HOME -> R.string.home_screen_dock
         STATUS -> R.string.icons_side_bar
         GESTURES -> R.string.gestures_actions
+        ICON_ACTIONS -> R.string.icon_actions_title
         FOLD -> R.string.fold_displays
         BACKUP -> R.string.backup
         HELP -> R.string.help
@@ -471,6 +473,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             val current = FolioAction.entries.firstOrNull { it.name == state.triggerActions[trigger.name] } ?: FolioAction.NONE
                             IosMenuRow(stringResource(trigger.label), FolioAction.entries.map { it to stringResource(it.label) }, current, { model.setTriggerAction(trigger, it) }, tag = "trigger-${trigger.name.lowercase()}")
                         }
+                    }
+                    // Icon Actions, while its gate is open on this phone and Safe Mode is off (as on Home).
+                    if (page == CustomizationPage.GESTURES && FeatureGate.ICON_ACTIONS.isOpen(androidx.compose.ui.platform.LocalContext.current) && !SafeMode.active) SettingsCard(null) {
+                        IosNavRow(stringResource(R.string.icon_actions_title), state.iconActions.size.takeIf { it > 0 }?.toString(),
+                            { onPage(CustomizationPage.ICON_ACTIONS) }, "icon-actions-settings-row")
+                        CardNote(stringResource(R.string.icon_actions_settings_note))
                     }
                     if (page == CustomizationPage.TODAY) SettingsCard(stringResource(R.string.left_of_home)) {
                         // This used to ask for the screen to be rebuilt, through a cast that was always null in a
@@ -975,6 +983,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.SUPPORTER -> SupporterPage()
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
+                CustomizationPage.ICON_ACTIONS -> IconActionsSettingsPage(state.apps, state.iconActions, model::setIconActions, model::setAllIconActions)
                 CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ })
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
@@ -1399,6 +1408,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.fade_when_idle to CustomizationPage.ACCESSIBILITY,
     R.string.width to CustomizationPage.ACCESSIBILITY,
     R.string.drag_page_dots_to_flip_pages to CustomizationPage.GESTURES,
+    R.string.icon_actions_title to CustomizationPage.GESTURES,
     R.string.touch_and_hold to CustomizationPage.GESTURES,
     R.string.add_new_apps_to_home_screen to CustomizationPage.SEARCH,
     R.string.group_apps_into_categories to CustomizationPage.SEARCH,

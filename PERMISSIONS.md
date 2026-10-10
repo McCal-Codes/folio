@@ -26,12 +26,16 @@ Island, Notification Center, badges, Cabinet and Lock Cover show notifications. 
 Folio keeps working.
 
 **Folio's accessibility service** (`SystemShadeAccessibilityService`, off until you turn it on) is how Android lets any
-app open the system notifications and Quick Settings panels: there is no other way for an app to do it. It also shows
-Folio's dock handle and Dynamic Island over other apps, if you turn those on. It observes no events, cannot read what
-is on screen, and cannot tap or type for you (`SystemShadeController.kt`). Without it, Home's swipe-down gestures use
-Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
-(`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
-shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
+app press its system buttons: there is no other way. Folio uses it to open the notification shade and Quick Settings,
+lock the screen and take a screenshot. If you set an Icon Action, it can also press Back, Home or Recents, open the power
+menu or Android's app list, close the shade, switch split screen and play or pause media. It does each of these once,
+when you trigger it, and nothing else. It also shows Folio's dock handle and Dynamic Island over other apps, if you turn
+those on. It observes no events, cannot read what is on screen, and cannot tap or type for you
+(`SystemShadeController.kt`). Without it, Home's swipe-down gestures use Folio's own Notification Center and Control
+Center, and Icon Actions that need it say so instead of failing. Two launchable entries, Folio Notification Shade and
+Folio Quick Settings (`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that
+opens an app can pull the shade down over another app; they ask for nothing new, show nothing, and do nothing without
+the service.
 
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a
