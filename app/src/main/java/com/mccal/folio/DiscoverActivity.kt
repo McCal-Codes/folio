@@ -418,6 +418,8 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = true,
                 homeBottomSpace = if (context.getSystemService(android.app.role.RoleManager::class.java)
                     .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale, appRows = state.homeAppRows,
+                // Anchored like Home's dock, so it stays put when Discover opens.
+                homeRailControls = if (state.searchPill) 0 else 1,
                 // The same rows as Home, so the dock doesn't jump when Discover opens.
                 widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(context))
             if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp)

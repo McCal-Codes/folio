@@ -711,8 +711,10 @@ fun LauncherScreen(
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
-                // The rail's round search/back controls only show without the search pill or on Discover.
-                railControls = !state.searchPill || pager.currentPage < 0, classScale = classScale, appRows = homeAppRows,
+                // The rail's round controls, counted as the column at its bottom draws them: Search without the search
+                // pill or off the Home pages, and Back to Home on Discover. Home's own count anchors the dock.
+                railControls = (if (pager.currentPage == -1) 1 else 0) + (if (!state.searchPill || pager.currentPage !in 0 until homePages) 1 else 0),
+                homeRailControls = if (state.searchPill) 0 else 1, classScale = classScale, appRows = homeAppRows,
                 widgetsFillRows = fillRows,
                 foldAtCenter = hinge?.vertical == true, fillSpace = state.homeRows == 0)
             // Half folded like a laptop: the status (information) stays above the hinge and the dock (controls) goes
