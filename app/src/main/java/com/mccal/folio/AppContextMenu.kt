@@ -63,6 +63,8 @@ internal data class QuickAction(val label: String, val icon: Bitmap?, val info: 
 
 /** The app's own shortcuts (Folio can read them as the default Home app). Call off the main thread. */
 internal fun loadQuickActions(context: android.content.Context, app: AppEntry, limit: Int = 4): List<QuickAction> = runCatching {
+    // Screenshot Mode: a swapped app's own shortcuts would name the real app.
+    if (app.iconFrom != null) return@runCatching emptyList()
     val apps = context.getSystemService(LauncherApps::class.java)
     if (!apps.hasShortcutHostPermission()) return@runCatching emptyList()
     val query = LauncherApps.ShortcutQuery().setPackage(app.component.packageName).setActivity(app.component)
@@ -105,7 +107,7 @@ internal fun AppContextMenu(
     LaunchedEffect(Unit) { appear.animateTo(1f, MotionSpeed.spring(.72f, Spring.StiffnessMediumLow)) }
     DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
 
-    val actions by produceState(emptyList<QuickAction>(), app.id) { if (!app.isShortcut) value = withContext(Dispatchers.IO) { loadQuickActions(context, app) } }
+    val actions by produceState(emptyList<QuickAction>(), app.id, app.iconFrom) { if (!app.isShortcut) value = withContext(Dispatchers.IO) { loadQuickActions(context, app) } }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
@@ -207,9 +209,12 @@ internal fun AppContextMenu(
                     if (lockedBy == null) MenuRow(if (hasFolders) stringResource(R.string.add_to_folder) else stringResource(R.string.create_folder), Icons.Rounded.CreateNewFolder) { onCreateFolder() }
                     onWidgets?.let { MenuDivider(); MenuRow(stringResource(R.string.widgets), Icons.Rounded.Widgets) { it() } }
                     onStack?.let { MenuDivider(); MenuRow(stringResource(R.string.stack_apps), Icons.Rounded.Layers) { it() } }
-                    MenuDivider()
-                    MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
-                    onEditIcon?.let { MenuDivider(); MenuRow(stringResource(R.string.edit_icon), Icons.Rounded.Palette) { it() } }
+                    // Screenshot Mode: Rename and Edit Icon would change the real app under the stand-in's name.
+                    if (app.iconFrom == null) {
+                        MenuDivider()
+                        MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
+                        onEditIcon?.let { MenuDivider(); MenuRow(stringResource(R.string.edit_icon), Icons.Rounded.Palette) { it() } }
+                    }
                     MenuDivider()
                     MenuRow(if (hidden) stringResource(R.string.show_in_app_library) else stringResource(R.string.hide_from_app_library), if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
                     MenuDivider()

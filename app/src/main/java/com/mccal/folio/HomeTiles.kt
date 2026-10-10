@@ -228,7 +228,7 @@ internal fun DockAppColumn(
                         if (edit.active && savedIndex >= 0) JiggleRemoveButton(stringResource(R.string.remove_from_dock, app.label), inset = 6.dp) { edit.onRemove(DropTarget.Dock(savedIndex)) }
                     }
                     // Recent-app dot (Beta): below the icon in a horizontal dock, on the screen side of a side dock.
-                    if (!edit.active && app.packageName in LocalRecentPackages.current) Box(Modifier
+                    if (!edit.active && app.iconFrom == null && app.packageName in LocalRecentPackages.current) Box(Modifier
                         .align(if (horizontal) Alignment.BottomCenter else if (leftHanded) Alignment.CenterEnd else Alignment.CenterStart)
                         .size(5.dp).background(Color.White.copy(alpha = .8f), CircleShape)
                         .semantics { contentDescription = usedRecentlyLabel })
@@ -321,7 +321,7 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         }
         val ink = LocalHomeInk.current
         if (labels) Row(Modifier.padding(top = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
-            NewAppDot(app.packageName)
+            if (app.iconFrom == null) NewAppDot(app.packageName)
             Text(app.label, color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, lineHeight = LocalLabelSize.current.lineSp.sp, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, style = TextStyle(shadow = ink.labelShadow))
         }

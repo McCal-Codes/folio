@@ -1988,4 +1988,14 @@
     <string name="action_a11y_shade">Android notification shade</string>
     <string name="action_a11y_splitscreen">Split screen</string>
     <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
+    <string name="screenshot_swap_apps">Swap Apps</string>
+    <string name="screenshot_swap_intro">While Screenshot Mode is on, the apps you choose show as a stock app on this phone, with its icon and name. Tapping one still opens the real app; only the screen changes. Apps that came with the phone are never swapped.</string>
+    <string name="screenshot_swap_all_third_party">Swap All Third-Party Apps</string>
+    <string name="screenshot_swap_all_third_party_note">Every app that didn’t come with this phone, including ones you install later.</string>
+    <string name="screenshot_swap_choose">Apps to Swap</string>
+    <string name="screenshot_swap_count">%1$d chosen</string>
+    <string name="screenshot_swap_system_app">Came with the phone, never swapped</string>
+    <string name="screenshot_swap_none">No app matches</string>
+    <string name="screenshot_swap_footnote">Widgets of swapped apps are hidden while Screenshot Mode is on, and their shortcuts aren’t shown. Folder names are your own and don’t change. Android’s own screens, the dock over other apps and the app itself once it opens still show the real app.</string>
+    <string name="settings_keywords_screenshot_swap">screenshot swap replace hide apps stock icons privacy blacklist</string>
 </resources>

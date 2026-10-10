@@ -92,7 +92,7 @@ internal fun AppLibrary(
             val pm = context.packageManager
             val byId = visibleApps.associateBy { it.id }
             val suggestions = RecentApps.load(context).mapNotNull(byId::get).take(8)
-            val grouped = visibleApps.groupBy { LibraryCategory.of(pm, it.component.packageName) }
+            val grouped = visibleApps.groupBy { LibraryCategory.of(pm, (it.iconFrom ?: it).component.packageName) }
                 .mapValues { (_, apps) -> apps.sortedWith(compareBy(java.text.Collator.getInstance()) { it.label }) }
             buildMap {
                 if (suggestions.isNotEmpty()) put(LibraryCategory.SUGGESTIONS, suggestions)
@@ -183,7 +183,7 @@ internal fun AppLibrary(
                             AppIcon(app, null, Modifier.size(40.dp)
                                 .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
                             Row(Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
-                                NewAppDot(app.packageName, 7.dp)
+                                if (app.iconFrom == null) NewAppDot(app.packageName, 7.dp)
                                 Text(app.label, maxLines = 2, fontSize = 14.sp)
                             }
                             if (editing) IconButton(onClick = { onPin(app.id, !isPinned) }, Modifier.testTag("pin-${app.id}")) {

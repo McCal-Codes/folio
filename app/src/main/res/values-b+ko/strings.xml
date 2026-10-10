@@ -1959,4 +1959,14 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
+    <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
+    <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
+    <string name="screenshot_swap_choose">바꿀 앱</string>
+    <string name="screenshot_swap_count">%1$d개 선택됨</string>
+    <string name="screenshot_swap_system_app">기본 앱이므로 바뀌지 않음</string>
+    <string name="screenshot_swap_none">일치하는 앱이 없습니다</string>
+    <string name="screenshot_swap_footnote">스크린샷 모드가 켜져 있는 동안 바뀐 앱의 위젯은 숨겨지고 바로가기도 표시되지 않습니다. 폴더 이름은 직접 지은 것이므로 바뀌지 않습니다. Android 자체 화면, 다른 앱 위의 Dock, 그리고 열린 앱 자체에는 실제 앱이 표시됩니다.</string>
+    <string name="settings_keywords_screenshot_swap">스크린샷 바꾸기 교체 앱 숨기기 기본 아이콘 개인정보</string>
 </resources>
