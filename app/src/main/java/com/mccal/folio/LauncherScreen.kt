@@ -250,6 +250,16 @@ fun LauncherScreen(
             else if (!now && swiping) { PerfLog.end(PerfScenario.HOME_SWIPE); swiping = false }
         } } finally { if (swiping) PerfLog.end(PerfScenario.HOME_SWIPE) }
     }
+    // Moving an icon, for the Performance log: from the first move of a carried app until its landing has finished, so the
+    // carry, the others making room, a folder plate and the landing all count. The same window with the motion pass off,
+    // so old and new compare like for like.
+    LaunchedEffect(drag) {
+        var moving = false
+        try { snapshotFlow { (drag.active && drag.moved && drag.source?.appId != null) || drag.landing.flyingId != null }.collect { now ->
+            if (now && !moving) { PerfLog.begin(PerfScenario.ICON_MOVE); moving = true }
+            else if (!now && moving) { PerfLog.end(PerfScenario.ICON_MOVE); moving = false }
+        } } finally { if (moving) PerfLog.end(PerfScenario.ICON_MOVE) }
+    }
     fun leaveTemporaryWidgetPage() {
         val persistedPages = model.state.value.homePages
         if (pager.currentPage >= persistedPages)
