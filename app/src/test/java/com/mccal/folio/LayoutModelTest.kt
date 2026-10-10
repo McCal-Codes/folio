@@ -76,8 +76,8 @@ class LayoutModelTest {
         for (pos in listOf(0f, .5f, 1f)) {
             val it = g(pos)
             assertTrue(it.dockTop >= it.statusTop + 138f)
-            assertTrue(it.dockHeight >= 4f * 48f + 16f)
-            assertTrue(it.dockTop + it.dockHeight <= 900f - 124f + .5f)
+            assertTrue(it.dockHeight >= 4f * 48f + 16f - .01f) // the controls' reserve is fractional, so allow float rounding
+            assertTrue(it.dockTop + it.dockHeight <= 900f - railControlsReserve(1, it.iconSize) + .5f)
         }
         // Not measured yet: level with the apps.
         assertEquals(homeGeometry(700f, 900f, LayoutPreset(statusAlignToGrid = false, statusPosition = 1f), true).let { it.contentTop }, 
@@ -106,7 +106,7 @@ class LayoutModelTest {
             val p = LayoutPreset(dockPosition = position)
             val g = homeGeometry(width, height, p, true)
             assertTrue("$width x $height", g.dockTop >= 8f)
-            assertTrue("Dock overlaps bottom controls at $width x $height", g.dockTop + g.dockHeight <= height - 124f + .01f)
+            assertTrue("Dock overlaps bottom controls at $width x $height", g.dockTop + g.dockHeight <= height - railControlsReserve(1, g.iconSize) + .01f)
             assertTrue(g.gridWidth + p.dockWidth + 24f <= g.homeWidth)
             assertTrue(g.iconSize + 8f <= g.gridWidth / 4f)
             if (g.dockHeight == 256f) {
@@ -163,7 +163,7 @@ class LayoutModelTest {
             for (position in listOf(0f, .25f, .56f, .75f, 1f)) {
                 val g = homeGeometry(475f, height, LayoutPreset(dockPosition = position), true, status)
                 assertTrue(g.dockTop >= status)
-                assertTrue(g.dockTop + g.dockHeight <= height - 124f + .01f)
+                assertTrue(g.dockTop + g.dockHeight <= height - railControlsReserve(1, g.iconSize) + .01f)
                 assertTrue(g.dockHeight >= 68f)
             }
         }

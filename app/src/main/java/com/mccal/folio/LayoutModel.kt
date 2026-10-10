@@ -184,13 +184,26 @@ fun windowChangedShape(was: Pair<Int, Int>?, now: Pair<Int, Int>, slack: Int = 8
 fun classScale(densityDpi: Int, stableDpi: Int): Float =
     if (densityDpi <= 0 || stableDpi <= 0) 1f else densityDpi.toFloat() / stableDpi
 
+/**
+ * The space Home keeps under the Side Bar dock for [count] round controls at the bottom of the rail, drawn in
+ * LauncherScreen as a column of dock-sized circles with [FolioSpace.SMALL] between them and [FolioSpace.SNUG] under
+ * them, plus a 10 dp gap above (the same gap the dock keeps under the status). Never less than the 28 dp kept with none.
+ */
+fun railControlsReserve(count: Int, homeIconSize: Float): Float {
+    if (count <= 0) return 28f
+    val stack = count * dockIconSize(homeIconSize) + (count - 1) * FolioSpace.SMALL
+    return maxOf(28f, FolioSpace.SNUG + stack + 10f)
+}
+
 /** How many apps the dock holds: four, or more if the person asks (up to six). */
 const val MIN_DOCK_SLOTS = 4
 const val MAX_DOCK_SLOTS = 6
 
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
-    /** Whether round controls (search, back) sit at the bottom of the rail on Home; without them the dock may run lower. */
-    railControls: Boolean = true,
+    /** How many round controls (search, back to Home) sit at the bottom of the rail on the page shown now: 0, 1 or 2. */
+    railControls: Int = 1,
+    /** The same on the Home pages. They anchor the dock, so swiping to a page with one more control moves it only to fit. */
+    homeRailControls: Int = railControls,
     /** See [fitsRegularHomeLayout]: size classes are judged at the phone's own density. */
     classScale: Float = 1f,
     /** App rows to lay out (More rows); the result's [HomeGeometry.fitAppRows] says how many fit this window. */
@@ -326,8 +339,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Search reclaims the redundant bottom controls' space for all four dock apps.
     // Extremely short windows still scroll rather than reduce touch targets below 48dp.
     // The status rail sits at the content top; in two columns the dock shares its edge with it, so it starts below.
-    val homeReserve = if (railControls) 124f else 28f
-    val bottomReserve = if (inLibrary) 12f else homeReserve
+    // Under the dock: the controls' real stack, not a fixed 124 dp sized for two at one icon size (#256: one Search button
+    // took 124 dp, and the dock's spacing was squeezed to fit what was left).
+    val homeReserve = railControlsReserve(homeRailControls, icon)
+    val bottomReserve = if (inLibrary) 12f else railControlsReserve(railControls, icon)
     // A custom status position runs from the top down to where the status still leaves room for four dock targets
     // under it (or, with the dock at the bottom, until it would reach the dock bar). Before the status is measured it
     // sits level with the apps.
