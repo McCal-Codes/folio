@@ -46,6 +46,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **A Focus set to turn on while charging does (#328):** charging now means plugged in, as Home's status shows it, so it also works while a Samsung phone holds at its charge limit. A Focus you turned on yourself, or that its schedule turned on, stays on when another Focus's trigger fires, and the Focus list says that the higher one wins when two could turn on at once.
 - **One prompt at a time on a fresh start:** the Turn On Folio Gestures dialog and the Finish Setting Up Folio card could open together. The card now waits until the dialog is closed.
 - **Full-Width Home is centered:** with the dock at the bottom and no Side Bar, the apps sat a little to the right, narrower columns hugged the left edge, and the App Library ran to the right edge of the screen. All three are now centered, and the same goes for the upright inner screen with the dock at the bottom.
 - **The Search button no longer squeezes the dock (#256):** with Search button on Home turned off, the round Search button in the Side Bar set aside a fixed strip under the dock, much taller than the button, so in a short window the space between your dock apps shrank. Folio now keeps only the room the button really takes.

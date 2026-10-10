@@ -1170,6 +1170,7 @@
     <string name="get_tweak">获取 %1$s</string>
     <string name="applied">已应用 %1$s。</string>
     <string name="focus_lets_you_silence_notifications_cha">专注模式可以将通知静音、改变手机的外观，并把主屏幕切到你需要的页面。在这里或从控制中心开启。</string>
+    <string name="focus_trigger_order_note">如果多个专注模式同时可以自动开启，此列表中靠上的那个优先。你手动开启的专注模式会保持开启。</string>
     <string name="only_these_pages_show_while_is_on_editin">%1$s 开启时只显示这些页面。在它结束之前，编辑主屏幕会暂停，所以隐藏页面上的内容不会移动。</string>
     <string name="page_number">第 %1$s 页</string>
     <string name="home_opens_on_this_page_while_is_on">%1$s 开启时，主屏幕会打开到这一页。</string>
