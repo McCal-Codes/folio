@@ -36,7 +36,7 @@
     <string name="dark_appearance_dims_wallpaper">다크 모드에서 배경화면 어둡게</string>
     <string name="wallpaper_moves_with_pages">페이지와 함께 배경화면 이동</string>
     <string name="launcher_background">런처 배경</string>
-    <string name="changes_the_image_behind_folio_s_home_sc">Folio 홈 화면의 배경 이미지를 변경합니다. </string>
+    <string name="changes_the_image_behind_folio_s_home_sc">Folio 홈 화면의 배경 이미지를 변경합니다.\u0020</string>
     <string name="cancel">취소</string>
     <string name="apply">적용</string>
     <string name="opens_android_s_preview_to_use_folio_s_b">Android 미리보기를 열어 Folio 배경을 휴대전화의 라이브 배경화면으로도 설정합니다. Folio 밖에서도 같은 배경을 사용할 수 있습니다.</string>
@@ -66,8 +66,8 @@
     <string name="swipe_down_on_home_for_spotlight">홈 화면을 쓸어내려 Spotlight 열기</string>
     <string name="drag_page_dots_to_flip_pages">페이지 표시점을 드래그하여 페이지 전환</string>
     <string name="haptic_feedback">햅틱 피드백</string>
-    <string name="search_button_opens_the_google_app">검색 버튼으로 Google 앱 열기</string>
-    <string name="when_off_the_search_button_opens_spotlig">끄면 검색 버튼으로 Spotlight를 엽니다. 앱, 연락처, 설정, 계산기, AI 없는 Google 검색, ChatGPT, Claude 또는 Perplexity를 사용할 수 있습니다.</string>
+    <string name="search_button_opens_the_google_app">검색으로 Google 앱 열기</string>
+    <string name="when_off_the_search_button_opens_spotlig">끄면 검색으로 Spotlight를 엽니다. 앱, 연락처, 설정, 계산기, AI 없는 Google 검색, ChatGPT, Claude 또는 Perplexity를 사용할 수 있습니다.</string>
     <string name="app_icons">앱 아이콘</string>
     <string name="icon_pack">아이콘 팩</string>
     <string name="install_any_icon_pack_made_for_nova_styl">Nova 계열 런처용 아이콘 팩을 설치하면 여기에서 사용할 수 있습니다.</string>
@@ -124,8 +124,8 @@
     <string name="closing_from_home">홈 화면에서 접을 때</string>
     <string name="stay_awake_on_the_cover_screen">커버 화면을 켠 상태로 유지</string>
     <string name="samsung_locks_the_phone_when_you_fold_on">삼성 기기는 홈 화면에서 접으면 휴대전화가 잠깁니다. Folio는 접는 동안 잠시 다른 화면으로 전환하여 커버 화면이 켜져 있도록 합니다. 설정 › 디스플레이 › 커버 화면에서 앱 계속 사용 › 항상으로 설정해야 합니다.</string>
-    <string name="save_the_current_home_layout_folders_wid">현재 홈 화면 레이아웃, 폴더, 위젯 및 레이아웃 설정을 저장합니다. </string>
-    <string name="save_the_current_home_layout_folders_wid_2">현재 홈 화면 레이아웃, 폴더, 위젯, 레이아웃 설정 및 Market에서 받은 패키지를 저장합니다. </string>
+    <string name="save_the_current_home_layout_folders_wid">현재 홈 화면 레이아웃, 폴더, 위젯 및 레이아웃 설정을 저장합니다.\u0020</string>
+    <string name="save_the_current_home_layout_folders_wid_2">현재 홈 화면 레이아웃, 폴더, 위젯, 레이아웃 설정 및 Market에서 받은 패키지를 저장합니다.\u0020</string>
     <string name="restore">복원</string>
     <string name="restore_shows_a_review_before_changing_h">복원하기 전에 홈 화면의 변경 사항을 검토할 수 있습니다.</string>
     <string name="lock_cover">잠금 커버</string>
@@ -595,7 +595,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio 제스처를 시작하는 중입니다. 다시 아래로 쓸어내리세요.</string>
     <string name="android_couldn_t_open_the_system_panel">Android 시스템 패널을 열지 못했습니다.</string>
     <string name="turn_on_folio_gestures">Folio 제스처 켜기</string>
-    <string name="folio_uses_it_to_open_notification_cente">알림 센터와 제어 센터를 열고, 다른 앱 위에 Dock과 Dynamic Island를 표시하는 데 사용합니다. </string>
+    <string name="folio_uses_it_to_open_notification_cente">알림 센터와 제어 센터를 열고, 다른 앱 위에 Dock과 Dynamic Island를 표시하는 데 사용합니다.\u0020</string>
     <string name="it_can_t_read_what_s_on_your_screen">화면 내용은 읽을 수 없습니다.</string>
     <string name="app_info">앱 정보</string>
     <string name="open_settings">설정 열기</string>
@@ -1207,6 +1207,7 @@
     <string name="get_tweak">%1$s 받기</string>
     <string name="applied">%1$s을(를) 적용했습니다.</string>
     <string name="focus_lets_you_silence_notifications_cha">집중 모드로 알림을 무음으로 설정하고 휴대전화 외관을 바꾸며 필요한 홈 페이지를 표시할 수 있습니다. 여기 또는 제어 센터에서 켜세요.</string>
+    <string name="focus_trigger_order_note">여러 집중 모드가 동시에 자동으로 켜질 수 있으면 이 목록에서 더 위에 있는 모드가 켜집니다. 직접 켠 집중 모드는 그대로 유지됩니다.</string>
     <string name="only_these_pages_show_while_is_on_editin">%1$s 사용 중에는 이 페이지들만 표시됩니다. 숨겨진 페이지의 항목이 이동하지 않도록 집중 모드가 끝날 때까지 홈 화면 편집이 일시 중지됩니다.</string>
     <string name="page_number">%1$s페이지</string>
     <string name="home_opens_on_this_page_while_is_on">%1$s 사용 중에는 이 페이지에서 홈 화면이 열립니다.</string>
@@ -1724,8 +1725,8 @@
     <string name="edit_icon_picture_note">사진은 Folio 안으로 복사되어 정사각형으로 잘리므로, 원본을 지워도 계속 쓸 수 있습니다. 이 휴대전화에만 저장되며 백업에는 포함되지 않습니다.</string>
     <string name="reset_icon">아이콘 초기화</string>
     <string name="custom_search_blank">주소를 입력하기 전에는 Enter 검색에 Google이 사용됩니다.</string>
-    <string name="separate_upright_layout">세로로 들 때 별도 레이아웃</string>
-    <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 레이아웃을 줍니다. 처음에는 가로 레이아웃을 복사해 시작하며, 끄면 다시 공유합니다.</string>
+    <string name="separate_upright_layout">세로로 들 때 별도 크기</string>
+    <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 크기와 간격(아이콘, 행, Dock)을 줍니다. 어떤 앱이 어디에 있는지는 가로 화면과 계속 공유합니다. 처음에는 가로 크기를 복사해 시작하며, 끄면 다시 공유합니다.</string>
     <string name="sideways">가로</string>
     <string name="upright">세로</string>
     <string name="full_width_home">전체 너비 홈</string>
@@ -1807,10 +1808,10 @@
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
     <string name="home_strip">홈 하단</string>
-    <string name="home_strip_search">검색 버튼</string>
+    <string name="home_strip_search">검색 막대</string>
     <string name="home_strip_dots">페이지 점</string>
     <string name="home_strip_nothing">없음</string>
-    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다.</string>
+    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다. 페이지 점이나 없음을 선택하면 검색은 아래쪽 모서리의 둥근 버튼으로 이동합니다.</string>
     <string name="stronger_rings">더 진한 링</string>
     <string name="stronger_rings_note">링을 더 두껍게 하고 바탕을 선명하게 해 한눈에 구분하기 쉽습니다. Android의 굵은 글씨가 켜져 있을 때도 켜집니다.</string>
     <string name="fine_tune_look_note">룩은 굵기, 서체, 그림자를 한 번에 정해요. 하나만 바꾸면 나만의 스타일이 돼요.</string>

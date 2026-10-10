@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -105,6 +105,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE -> ADVANCED
         WHAT_TO_TEST -> HELP
+        DEVELOPER -> ADVANCED
         MARKET -> TWEAKS // where tweaks come from
         THEMES -> WALLPAPER // a theme is a look: wallpaper, accent and icons together
         else -> OVERVIEW
@@ -135,6 +136,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         TWEAK, LIBRARY_TWEAK, FOLD_TWEAK -> R.string.tweak
         ADVANCED -> R.string.advanced
         SYSTEM_BRIDGE -> R.string.system_bridge
+        DEVELOPER -> R.string.developer
         NOTIFICATIONS -> R.string.notifications_control_center
         SEARCH -> R.string.search_app_library
         TODAY -> R.string.today_view
@@ -820,7 +822,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 title = { Text(stringResource(R.string.how_should_this_report_go)) },
                                 text = { Text(stringResource(R.string.email_needs_no_account)) },
                                 confirmButton = { TextButton(onClick = { askDiagnostics = false
-                                    reportScope.launch { runCatching { helpContext.startActivity(Diagnostics.reportIntent(helpContext, email = true)) } } },
+                                    reportScope.launch { Diagnostics.send(helpContext, email = true) } },
                                     modifier = Modifier.testTag("report-email")) { Text(stringResource(R.string.email_a_report)) } },
                                 dismissButton = { TextButton(onClick = { askDiagnostics = false
                                     // Copied off the main thread first, so the form opens with the details ready to paste.
@@ -862,6 +864,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     CapabilitiesCard()
                     RecentActivityCard()
+                    // Folio Dev only: the passphrase-locked developer actions. A release build never shows this row.
+                    if (DevBuild.isDevApp(androidx.compose.ui.platform.LocalContext.current)) SettingsCard(null) {
+                        IosNavRow(DevBuild.DEVELOPER_LABEL, null, { onPage(CustomizationPage.DEVELOPER) }, "developer-row")
+                    }
                     CrashReportsCard()
                     PerformanceCard()
                 }
@@ -973,6 +979,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.SUPPORTER -> SupporterPage()
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
+                CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ })
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
                 CustomizationPage.FOCUS -> FocusListPage(state, model) { focusId = it; onPage(CustomizationPage.FOCUS_MODE) }
@@ -1738,6 +1745,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
+    // Which Focus a trigger picks when several hold (FocusTriggers.wanted), said where the list is (#328).
+    if (state.focusModes.any { it.triggers.any }) CardNote(stringResource(R.string.focus_trigger_order_note), Modifier.padding(horizontal = FolioSpace.TINY.dp))
     if (!access) {
         SheetGroup { IosActionRow(stringResource(R.string.allow_do_not_disturb_access), "focus-allow-access") {
             runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -1931,7 +1940,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
         }
         val shareScope = rememberCoroutineScope()
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
-            shareScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = false)) } }
+            shareScope.launch { Diagnostics.send(context, email = false) }
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {
@@ -1996,6 +2005,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
 /** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
 internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
 
+/** The phone's own status for the Settings previews, which already show the real time; the sample is for previews with no phone behind them. */
+internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { DeviceStatus(battery = 80, wifiConnected = true, wifiLevel = 4, cellularLevel = 4) }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -2023,6 +2035,7 @@ internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
+        railControls = if (state.searchPill) 0 else 1, // the Home pages' rail, as Home lays it out
         widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
     val placements = state.widgetPlacements.filter { it.page == page }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
@@ -2082,7 +2095,7 @@ internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 
                             }
                         }
                     }
-                    if (sideBar && state.verticalStatus) StatusRail(DeviceStatus(battery = 80, wifiConnected = true, wifiLevel = 4, cellularLevel = 4),
+                    if (sideBar && state.verticalStatus) StatusRail(LocalDeviceStatus.current,
                         Modifier.align(railAlign).then(railEdge).offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp),
                         iconSize = dockIconSize(iconSize).dp, style = state.statusStyle)
                     // A bottom dock bar: beside the status Side Bar, or the whole width when there is none (Full-Width Home).

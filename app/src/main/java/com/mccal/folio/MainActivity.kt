@@ -83,6 +83,10 @@ class MainActivity : ComponentActivity() {
     private var returningFromShadeSettings = false
     private var shadeSetupOwnsExternalUi = false
     private var recreatingShadeSetup = false
+    // The gestures dialog asked to show while the build page or What's New was up; it shows when they close.
+    private var shadeSetupWaiting = false
+    // The gestures dialog is up (or waiting to be): the setup reminder card holds back until it's gone.
+    private val shadeSetupUp = mutableStateOf(false)
     /**
      * Whether this phone sees Clear Badges When Opened ([FeatureGate.BADGES_WHEN_OPENED]). Read once in `onCreate`,
      * since asking the gate reads preferences and a redeemed supporter code restarts Folio anyway (CMP-9).
@@ -176,9 +180,8 @@ class MainActivity : ComponentActivity() {
                     val report = unreported.value
                     unreported.value = null
                     reportScope.launch {
-                        runCatching { startActivity(Diagnostics.reportIntent(this@MainActivity, email = true)) }
-                            .onSuccess { report?.let { Diagnostics.markAsked(this@MainActivity, it) } }
-                            .onFailure { IslandEvents.notice(this@MainActivity, getString(R.string.the_report_couldn_t_be_opened)) }
+                        if (Diagnostics.send(this@MainActivity, email = true)) report?.let { Diagnostics.markAsked(this@MainActivity, it) }
+                        else IslandEvents.notice(this@MainActivity, getString(R.string.the_report_couldn_t_be_opened))
                     }
                 }) { androidx.compose.material3.Text(stringResource(R.string.send_report)) } },
                 dismissButton = { androidx.compose.material3.TextButton(onClick = {
@@ -273,6 +276,7 @@ class MainActivity : ComponentActivity() {
                 LocalSolidGlass provides solidGlass,
                 LocalFolderLook provides FolderLook(state.folderColumns, state.folderBackground),
                 LocalLabelSize provides state.labelSize,
+                LocalDeviceStatus provides deviceStatus,
                 LocalReduceMotion provides reduceMotion,
                 LocalHinge provides rememberHinge(this@MainActivity),
                 // Tablets and desktop windows draw Folio proportionally larger instead of a phone-sized layout lost in a
@@ -338,7 +342,8 @@ class MainActivity : ComponentActivity() {
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
                 // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
                 AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)
-                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
+                // One prompt at a time: the card also waits while the gestures dialog is up, and comes back when it closes.
+                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value || shadeSetupUp.value, onMakeDefault = ::makeDefault,
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
@@ -348,6 +353,11 @@ class MainActivity : ComponentActivity() {
                             androidx.compose.material3.Text(getString(R.string.apply)) } },
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { sharedTheme.value = null }) {
                             androidx.compose.material3.Text(getString(R.string.cancel)) } })
+                }
+                // The gestures dialog never opens on top of either sheet: it waits here and shows once both are closed.
+                val startupSheet = startupSheetUp()
+                androidx.compose.runtime.LaunchedEffect(startupSheet) {
+                    if (!startupSheet && shadeSetupWaiting) { shadeSetupWaiting = false; showShadeSetup() }
                 }
                 // After What's New, not on top of it: the build page waits until that sheet has been closed.
                 if ((showDevBuild.value || DevBuild.reopen.intValue > 0) && !showWhatsNew.value && !whatsNewRequested.value) DevBuild.load(this@MainActivity)?.let { dev ->
@@ -485,9 +495,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** The build page or What's New is up, or about to be: the same conditions that show them in the content above. */
+    private fun startupSheetUp() = showWhatsNew.value || whatsNewRequested.value ||
+        ((showDevBuild.value || DevBuild.reopen.intValue > 0) && DevBuild.load(this) != null)
+
     private fun showShadeSetup() {
         if (shadeSetupDialog?.isShowing == true) return
         ownShadeSetupExternally()
+        // Two prompts at once read as one: after an install, a restored gestures dialog came up over the build page.
+        if (startupSheetUp()) { shadeSetupWaiting = true; shadeSetupUp.value = true; return }
         shadeSetupDialog = android.app.AlertDialog.Builder(this)
             .setTitle(getString(R.string.turn_on_folio_gestures))
             .setMessage("Android asks you to turn this on yourself:\n\n" +
@@ -514,9 +530,11 @@ class MainActivity : ComponentActivity() {
             }
             .also { dialog -> dialog.setOnDismissListener {
                 shadeSetupDialog = null
+                shadeSetupUp.value = false
                 if (!returningFromShadeSettings && !recreatingShadeSetup) releaseShadeSetupOwnership()
             } }
             .show()
+        shadeSetupUp.value = true
     }
 
     private fun finishFirstRun() {
@@ -542,7 +560,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onSaveInstanceState(outState: Bundle) {
         widgets.save(outState)
-        outState.putBoolean(SHADE_DIALOG_VISIBLE, shadeSetupDialog?.isShowing == true && !returningFromShadeSettings)
+        outState.putBoolean(SHADE_DIALOG_VISIBLE, (shadeSetupDialog?.isShowing == true || shadeSetupWaiting) && !returningFromShadeSettings)
         outState.putBoolean(SHADE_SETTINGS_PENDING, returningFromShadeSettings)
         sharedTheme.value?.let { outState.putString(PENDING_THEME, it.toJson().toString()) }
         super.onSaveInstanceState(outState)
