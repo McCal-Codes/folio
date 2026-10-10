@@ -379,8 +379,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val basePitch = dockIconSize(icon) + 22f
     val barRoom = (if (dockBesideRail) width - p.dockWidth - 12f else width) - 32f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
-    // Upright unfolded with the dock at the bottom, the page is centered, so narrower columns stay centered too.
-    val columnsInset = if (!splitColumns && tallRegular && horizontalDock) (gridWidth - 4f * cell) / 2f else 0f
+    // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is
+    // centered in the window, so narrower columns stay centered too instead of hugging the left edge.
+    val columnsInset = if (!splitColumns && horizontalDock && !dockBesideRail) (gridWidth - 4f * cell) / 2f else 0f
     return HomeGeometry(expanded, homeWidth, gridWidth, icon, row, widget, contentTop, dockTop, dockHeight, dockRowHeight,
         splitColumns = splitColumns, cellWidth = if (splitColumns) splitCell else cell, zoneGap = if (splitColumns) zoneGap else 0f,
         horizontalDock = horizontalDock, dockBarHeight = dockBarHeight, dockBesideRail = dockBesideRail, statusTop = statusTop,

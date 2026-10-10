@@ -917,7 +917,8 @@ fun LauncherScreen(
                                 .pageEffect(pageEffect, nativePager, physicalPage)
                                 .graphicsLayer { val b = libraryBack; scaleX = 1f - .14f * b; scaleY = scaleX; alpha = 1f - .35f * b; translationX = size.width * .08f * b }
                                 .padding(top = FolioSpace.LARGE.dp, bottom = bottomSpace)
-                                .padding(libraryEdges(geometry.horizontalDock && !geometry.dockBesideRail && state.verticalStatus, preset.dockWidth, state.leftHanded)).testTag("library-page"),
+                                .padding(libraryEdges(geometry.horizontalDock && !geometry.dockBesideRail && state.verticalStatus, preset.dockWidth, state.leftHanded,
+                                    spansWindow = geometry.horizontalDock && !geometry.dockBesideRail)).testTag("library-page"),
                             drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = { model.turnOnWork(it) })
                     } else {
                         // Centered beside the rail when the grid is narrower than the space (short, wide windows).
@@ -939,6 +940,10 @@ fun LauncherScreen(
                                     onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
                                     onProblem = onProblem)
                             }
+                            // The pane starts with a 16 dp margin before its grid. With nothing beside the page (dock at the
+                            // bottom, no Side Bar) the Row centers the page in the window, so the same margin after it keeps
+                            // the grid itself centered instead of 8 dp to the right.
+                            if (geometry.horizontalDock && !geometry.dockBesideRail) Spacer(Modifier.width(FolioSpace.LARGE.dp))
                         }
                     }
                 }
@@ -1893,10 +1898,13 @@ fun LauncherScreen(
 @Composable
 private fun BoxScope.OwnMethod(content: @Composable BoxScope.() -> Unit) = content()
 
-/** App Library side margins: Home's 16dp, plus room for the Side Bar's status capsule on whichever side it sits. */
-private fun libraryEdges(statusInCorner: Boolean, dockWidth: Float, leftHanded: Boolean): PaddingValues {
-    val rail = if (statusInCorner) (dockWidth + 28f).dp else 0.dp
-    return if (leftHanded) PaddingValues(start = rail.coerceAtLeast(16.dp), end = if (statusInCorner) 16.dp else 0.dp)
+/**
+ * App Library side margins: Home's 16dp, plus room for the Side Bar's status capsule on whichever side it sits. When the
+ * page spans the window (dock at the bottom, nothing beside it) the far side gets the same 16dp, so the library is centered.
+ */
+internal fun libraryEdges(statusInCorner: Boolean, dockWidth: Float, leftHanded: Boolean, spansWindow: Boolean = false): PaddingValues {
+    val rail = if (statusInCorner) (dockWidth + 28f).dp else if (spansWindow) 16.dp else 0.dp
+    return if (leftHanded) PaddingValues(start = rail.coerceAtLeast(16.dp), end = if (statusInCorner || spansWindow) 16.dp else 0.dp)
     else PaddingValues(start = 16.dp, end = rail)
 }
 
