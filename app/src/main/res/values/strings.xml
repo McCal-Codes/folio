@@ -358,6 +358,8 @@
     <string name="restore_from_backup">Restore from Backup…</string>
     <string name="include_diagnostics">Include Diagnostics?</string>
     <string name="just_open_form">Just Open Form</string>
+    <string name="motion_pass">New motion</string>
+    <string name="motion_pass_note">The 0.6.9 motion pass: sheets, menus and alerts settle on shared springs, the Market tabs glide, badge counts roll and a finished install pops. Turn it off to compare with how it moved before. It follows Animation Speed, and Reduce Motion still wins. Only shown on beta builds and Folio Dev.</string>
     <string name="screenshot_mode">Screenshot Mode</string>
     <string name="safe_mode">Safe Mode</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio is running in Safe Mode: optional features are paused for this session.</string>
