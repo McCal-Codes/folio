@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.9] - Unreleased
 
 ### Added
+- **Press and lift on icons:** with the new motion on (supporters first), apps, dock icons and folders all dip the same way under your finger, an icon lifts with a soft shadow while its menu is open, and after a tap it stays dipped until the app is up (half a second at most), so a slow app no longer looks like nothing happened. With Reduce Motion on the icon only dims.
 - **Performance log by what Folio was doing:** besides the whole run, the report gives the frame timing (p50, p95, p99 and janky frames) of the fold animation, Home swipes, folders opening, widget resizing, and pages, sheets, menus and alerts opening on their own, so a slow one shows up by name.
 - **Copy Diagnostics beside Share:** Settings › Advanced › Diagnostics has Copy Diagnostics next to Share Diagnostics, so the report can be pasted into a form or a chat without going through a share sheet. It is the same text a shared report holds, and nothing leaves your phone.
 - **Capabilities and Recent Activity:** Settings › Advanced › Diagnostics shows what Folio can use on this phone (Standard, Notification access and Accessibility, each On or Off, and what it is for), with a button to Android's settings for the ones that are off, and Folio's own recent activity, newest first, with a Failed filter for problems it carried on from. Both are read-only and stay on the phone.
@@ -36,6 +37,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Installs that finish with a pop:** when a package finishes installing, a green check pops in where the ring was, then the row settles to its button. Supporters on the beta see it first.
 - **Animation Speed reaches sheets:** Settings › Gestures › Animation Speed now also speeds up or slows a page sliding in, an alert, a form sheet and the Library popup. Supporters on the beta see it first.
 - **Smoother sheets and menus:** a page sliding in, a menu or alert opening, and the Library's category popup now settle on the same springs, a touch softer for pages and with a hint of life for menus, and the icon fan lands a little more gently. Supporters on the beta see it first.
+- **Page dots that stretch:** with the new motion on (supporters first), the active page dot stretches toward the next one as you swipe and the tail follows, so a swipe has a visible companion. Off, or with Reduce Motion on, it is the dot it was.
 
 ### Changed
 - **Bottom of Home says where Search goes (#325):** the first choice is now called Search bar, and the note says that with Page dots or Nothing, Search moves to a round button in the bottom corner. The switch below it is now Search opens the Google app, since it covers both.
