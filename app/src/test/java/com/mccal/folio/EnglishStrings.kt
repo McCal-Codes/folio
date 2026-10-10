@@ -7,7 +7,7 @@ package com.mccal.folio
 object EnglishStrings : Strings {
     private val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
     private val xml by lazy { java.io.File(root, "app/src/main/res/values/strings.xml").readText() }
-    private fun unescape(text: String) = text.replace("\\'", "'").replace("\\\"", "\"")
+    private fun unescape(text: String) = text.replace("\\'", "'").replace("\\\"", "\"").replace("\\u0020", " ")
         .replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
     private val strings: Map<String, String> by lazy {
         Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).findAll(xml)

@@ -45,6 +45,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **One prompt at a time, and a truthful preview:** the Turn On Folio Gestures dialog no longer opens on top of What's New (or Folio Dev's build page); it waits until that sheet is closed. The Home preview in Settings shows your phone's real battery and signal instead of a fixed 80%.
+- **Missing spaces between sentences:** the Turn On Folio Gestures note read "over other apps.It can't read" and the Backup note "layout settings.Restore shows". Both have their space back, in English and Korean.
 - **"Separate sizes when upright" says what it does:** the switch for the upright inner screen only ever gave it its own sizes and spacing (icons, rows, dock), and which app is where was always shared with the sideways screen. The name and note now say so, instead of promising a separate layout (#296).
 - **Email a Report opens your mail app:** on a phone with Gmail, Email a Report could open Android's share sheet saying "No apps can perform this action". It now lists your mail apps, and if there are none it opens the ordinary share sheet, so a report can always be sent.
 - **Animation Speed reaches more motion:** panels, the Dynamic Island, the notification shade, switches, segmented controls and the icon fan now follow Settings › Animation Speed, and they share a handful of named springs instead of numbers picked one by one, so they feel alike.

@@ -2006,6 +2006,9 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
 /** The Home page the Settings previews draw: set from the page Home is on, so a widget placed on page 2 shows up. */
 internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 }
 
+/** The phone's own status for the Settings previews, which already show the real time; the sample is for previews with no phone behind them. */
+internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { DeviceStatus(battery = 80, wifiConnected = true, wifiLevel = 4, cellularLevel = 4) }
+
 /**
  * Live preview of Home built from real data only: your Home and dock apps (with the current icon shape, pack,
  * tint, badges and live icons), your text, glass and dimming settings, and your background. Android's wallpaper
@@ -2092,7 +2095,7 @@ internal val LocalPreviewPage = androidx.compose.runtime.compositionLocalOf { 0 
                             }
                         }
                     }
-                    if (sideBar && state.verticalStatus) StatusRail(DeviceStatus(battery = 80, wifiConnected = true, wifiLevel = 4, cellularLevel = 4),
+                    if (sideBar && state.verticalStatus) StatusRail(LocalDeviceStatus.current,
                         Modifier.align(railAlign).then(railEdge).offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp),
                         iconSize = dockIconSize(iconSize).dp, style = state.statusStyle)
                     // A bottom dock bar: beside the status Side Bar, or the whole width when there is none (Full-Width Home).
