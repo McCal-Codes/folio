@@ -70,7 +70,7 @@ sealed interface InstallResult {
 
     data class Failed(val reason: Reason, val message: String) : InstallResult
 
-    enum class Reason { HASH, SIZE, ARCHIVE, MANIFEST, MISMATCH, CONFLICT, DEPENDS, APPLY, REVOKED, NEEDS_NEWER, AUTHOR }
+    enum class Reason { HASH, SIZE, ARCHIVE, MANIFEST, MISMATCH, CONFLICT, DEPENDS, APPLY, REVOKED, NEEDS_NEWER, AUTHOR, ANDROID, BREAKS }
 }
 
 /**
@@ -89,6 +89,8 @@ class PackageInstaller(
     private val clock: () -> Long = { System.currentTimeMillis() / 1000 },
     /** This build's release number, for a package's `minFolio`. Null skips that check, which only a test does. */
     private val folioVersion: FolioVersion? = null,
+    /** This phone's Android API level, for `minSdk`/`maxSdk`. Null skips that check, which only a test does. */
+    private val androidSdk: Int? = null,
 ) {
     private val journal = ApplyJournal(store)
 
@@ -197,8 +199,16 @@ class PackageInstaller(
         // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
         // page would have said before the person tapped Get, in the same order.
         val already = store.installed()
-        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
+        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak, androidSdk = androidSdk)
+        // No `else`: a new kind of check that can block must be given its result here, or this stops compiling. One
+        // that fell through to `else -> null` would install.
         return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+            // Nothing on the phone can change its Android version, so this is said plainly and never offered as a fix.
+            is CompatCheck.Android -> InstallResult.Failed(InstallResult.Reason.ANDROID, "that package is made for ${AndroidRelease.range(stop.min, stop.max)}")
+            is CompatCheck.Breaks -> InstallResult.Failed(
+                InstallResult.Reason.BREAKS,
+                "that package doesn't work with ${stop.broken.joinToString { "${it.name} ${it.version}" }}; update it first",
+            )
             is CompatCheck.Kinds -> InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
             is CompatCheck.Features -> InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
             // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
@@ -209,7 +219,8 @@ class PackageInstaller(
             is CompatCheck.Replaces -> InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
             // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
             is CompatCheck.Needs -> InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
-            else -> null
+            // Notes, never blocks.
+            is CompatCheck.Screens, is CompatCheck.FolioRange, null -> null
         }
     }
 

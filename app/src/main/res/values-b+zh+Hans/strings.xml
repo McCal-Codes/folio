@@ -68,8 +68,8 @@
     <string name="swipe_down_on_home_for_spotlight">在主屏幕下滑打开聚焦搜索</string>
     <string name="drag_page_dots_to_flip_pages">拖动页面圆点翻页</string>
     <string name="haptic_feedback">触感反馈</string>
-    <string name="search_button_opens_the_google_app">搜索按钮打开 Google App</string>
-    <string name="when_off_the_search_button_opens_spotlig">关闭时，搜索按钮会打开聚焦搜索：App、联系人、设置、计算器、不带 AI 的 Google，以及 ChatGPT、Claude 或 Perplexity。</string>
+    <string name="search_button_opens_the_google_app">搜索打开 Google App</string>
+    <string name="when_off_the_search_button_opens_spotlig">关闭时，搜索会打开聚焦搜索：App、联系人、设置、计算器、不带 AI 的 Google，以及 ChatGPT、Claude 或 Perplexity。</string>
     <string name="app_icons">App 图标</string>
     <string name="icon_pack">图标包</string>
     <string name="install_any_icon_pack_made_for_nova_styl">安装任何为 Nova 类启动器制作的图标包，即可在这里使用。</string>
@@ -364,6 +364,8 @@
     <string name="restore_from_backup">从备份恢复…</string>
     <string name="include_diagnostics">包含诊断信息吗？</string>
     <string name="just_open_form">仅打开表单</string>
+    <string name="motion_pass">新动效</string>
+    <string name="motion_pass_note">0.6.9 动效改进：面板、菜单和提示框使用同一组弹簧动画，市场标签页平滑滑动，角标数字滚动变化，安装完成时对勾弹出。关闭后可与之前的动效对比。它遵循动画速度设置，并且减少动态效果优先。仅在测试版和 Folio Dev 中显示。</string>
     <string name="screenshot_mode">截图模式</string>
     <string name="safe_mode">安全模式</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio 正在安全模式下运行：本次会话中可选功能已暂停。</string>
@@ -1170,6 +1172,7 @@
     <string name="get_tweak">获取 %1$s</string>
     <string name="applied">已应用 %1$s。</string>
     <string name="focus_lets_you_silence_notifications_cha">专注模式可以将通知静音、改变手机的外观，并把主屏幕切到你需要的页面。在这里或从控制中心开启。</string>
+    <string name="focus_trigger_order_note">如果多个专注模式同时可以自动开启，此列表中靠上的那个优先。你手动开启的专注模式会保持开启。</string>
     <string name="only_these_pages_show_while_is_on_editin">%1$s 开启时只显示这些页面。在它结束之前，编辑主屏幕会暂停，所以隐藏页面上的内容不会移动。</string>
     <string name="page_number">第 %1$s 页</string>
     <string name="home_opens_on_this_page_while_is_on">%1$s 开启时，主屏幕会打开到这一页。</string>
@@ -1732,6 +1735,15 @@
     <string name="compat_screen_inner_only_detail">它不会改变外屏。这并不是问题，只是不会在那里显示。</string>
     <string name="compat_screen_cover_only">仅限外屏</string>
     <string name="compat_screen_cover_only_detail">它不会改变内屏。这并不是问题，只是不会在那里显示。</string>
+    <string name="compat_android_between">Android %1$s 至 %2$s</string>
+    <string name="compat_android_from">Android %1$s 或更高版本</string>
+    <string name="compat_android_up_to">Android %1$s 或更低版本</string>
+    <string name="compat_android_ok_detail">这部手机运行的是 Android %1$s。</string>
+    <string name="compat_android_blocked_detail">这部手机运行的是 Android %1$s。更新 Folio 也无法改变这一点。</string>
+    <string name="compat_folio_untried">尚未在 Folio %1$s 上试过</string>
+    <string name="compat_folio_untried_detail">为 Folio %1$s 制作。你仍然可以获取它；如果它导致 Folio 关闭，安全模式会将它关闭。</string>
+    <string name="compat_breaks">与 %1$s %2$s 不兼容</string>
+    <string name="compat_breaks_detail">请先更新 %1$s，再安装此软件包。</string>
     <string name="roadmap_now">现在</string>
     <string name="roadmap_next">接下来</string>
     <string name="roadmap_shipped">已发布</string>
@@ -1784,10 +1796,10 @@
     <string name="installing_percent">正在安装，%1$d%%</string>
     <string name="fix_saved_layout">修复已保存的布局</string>
     <string name="home_strip">主屏幕底部</string>
-    <string name="home_strip_search">搜索按钮</string>
+    <string name="home_strip_search">搜索栏</string>
     <string name="home_strip_dots">页面圆点</string>
     <string name="home_strip_nothing">无</string>
-    <string name="home_strip_note">滑动或编辑主屏幕时会显示页面圆点；沿底部拖动仍可切换页面。</string>
+    <string name="home_strip_note">滑动或编辑主屏幕时会显示页面圆点；沿底部拖动仍可切换页面。选择页面圆点或无时，搜索会移到底部角落的圆形按钮。</string>
     <string name="stronger_rings">更醒目的圆环</string>
     <string name="stronger_rings_note">圆环更粗、轨道更清晰，一眼就能分辨。开启 Android 的粗体文字时也会自动开启。</string>
     <string name="fine_tune_look_note">外观会同时设定粗细、字体和阴影，改动其中一项就成了你自己的样式。</string>

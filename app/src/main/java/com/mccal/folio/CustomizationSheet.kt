@@ -859,6 +859,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.screenshot_mode), screenshot, ScreenshotMode::set, "screenshot-mode-switch")
                         CardNote(stringResource(R.string.for_sharing_your_setup_folio_shows_9_41))
                     }
+                    if (FolioMotion.switchVisible(sheetContext)) SettingsCard(stringResource(R.string.motion_pass)) {
+                        SettingsSwitch(stringResource(R.string.motion_pass), FolioMotion.v2, { FolioMotion.setEnabled(sheetContext, it) }, "motion-pass-switch")
+                        CardNote(stringResource(R.string.motion_pass_note))
+                    }
                     SettingsCard(stringResource(R.string.safe_mode)) {
                         CardNote(if (SafeMode.active) stringResource(R.string.folio_is_running_in_safe_mode_optional_f)
                             else stringResource(R.string.if_folio_closes_unexpectedly_twice_right))
@@ -1522,6 +1526,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.performance_log to CustomizationPage.ADVANCED,
     R.string.performance_start to CustomizationPage.ADVANCED,
     R.string.performance_stop to CustomizationPage.ADVANCED,
+    R.string.motion_pass to CustomizationPage.ADVANCED,
     R.string.performance_copy to CustomizationPage.ADVANCED,
     R.string.performance_share to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
@@ -1555,6 +1560,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // The motion switch is only on the page while the pass is on trial, so search only finds it then.
+            .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
@@ -1748,6 +1755,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
+    // Which Focus a trigger picks when several hold (FocusTriggers.wanted), said where the list is (#328).
+    if (state.focusModes.any { it.triggers.any }) CardNote(stringResource(R.string.focus_trigger_order_note), Modifier.padding(horizontal = FolioSpace.TINY.dp))
     if (!access) {
         SheetGroup { IosActionRow(stringResource(R.string.allow_do_not_disturb_access), "focus-allow-access") {
             runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -2036,6 +2045,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     val refW = 420f; val refH = 720f
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
+        railControls = if (state.searchPill) 0 else 1, // the Home pages' rail, as Home lays it out
         widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
     val placements = state.widgetPlacements.filter { it.page == page }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)

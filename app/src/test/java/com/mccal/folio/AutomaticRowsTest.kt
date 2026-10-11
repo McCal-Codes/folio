@@ -18,7 +18,7 @@ class AutomaticRowsTest {
     /** The same call Home makes: default settings, the search pill's space, and Folio as the Home app. */
     private fun fit(size: Pair<Float, Float>, labelHeight: Float, icon: Float = LayoutPreset().iconSize): Int =
         homeGeometry(size.first, size.second, LayoutPreset(iconSize = icon), labels = true, statusHeight = 0f, labelHeight = labelHeight,
-            inLibrary = false, homeBottomSpace = 44f, railControls = true, classScale = 1f,
+            inLibrary = false, homeBottomSpace = 44f, railControls = 0, classScale = 1f,
             appRows = BASE_APP_ROWS, foldAtCenter = false, fillSpace = true).fitAppRows
 
     @Test fun `the Fold8 fits four rows at the default icon size`() {

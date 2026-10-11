@@ -140,7 +140,7 @@ Not yet:
 
 - `FolioMotion` is used 4 times. About 40 other springs pick their own numbers: 13 damping ratios and 11 stiffness
   values, plus 12 tweens.
-- `FolioSheet.kt:161` uses a tween for the sheet, so it doesn't retarget like a spring.
+- The Settings page slide in `FolioSheet.kt` is already a spring (`rememberEntrance(stiffness = 500f)`, line 149). The tween at line 161 is only the 250 ms opacity fade of the Settings peek, which is fine. The gap is that entrances use raw numbers (500/1.0, 520/1.0, 600/.82, 900/.85) instead of one `FolioMotion` token. (Corrected 8 Oct 2026; this line used to say the sheet used a tween.)
 - Page settle (`PageGestures.kt:212`) drops the previous settle's velocity when a new drag starts.
 - Private loops: `EverywhereOverlay.kt:184` still polls every 600 ms for a full-screen app. The Smart Stack rotation
   runs under `repeatOnLifecycle(RESUMED)` now, and `StatusRail` and `MicroHome` take the shared minute tick.
@@ -161,3 +161,5 @@ Not yet:
 | 6 | ~~Live regions for island notices and page changes~~ (done) | S |
 | 7 | Carry velocity into a re-grabbed page settle (part of the 0.7.1 Home swipe work; measure first) | M |
 | 8 | Replace the 600 ms full-screen poll in `EverywhereOverlay` with a window-insets or accessibility-event signal, if one proves reliable | M |
+
+See also [Motion references](motion-references.md) for examples of motion done well.
