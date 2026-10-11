@@ -21,6 +21,15 @@ data class PackageManifest(
     val via: List<ExternalSource> = emptyList(),
     val provides: Set<Provides> = emptySet(),
     val requiredFeatures: Set<Capability> = emptySet(),
+    /** Android API levels the package works on (ADR 0013). Outside them it can't be installed: no Folio update helps. */
+    val minSdk: Int? = null,
+    val maxSdk: Int? = null,
+    /** The newest Folio its author tried. Advice only: past it the page says so, and Get stays. */
+    val maxFolio: FolioMinor? = null,
+    /** One package at a time per slot, named after one of its own [requiredFeatures]. */
+    val slot: Capability? = null,
+    /** Installed versions this package doesn't work with, in the [depends] syntax: those have to be updated first. */
+    val breaks: List<PackageRelation> = emptyList(),
 ) {
     data class Author(val name: LocalizedText, val url: String?)
 
@@ -36,6 +45,9 @@ data class PackageManifest(
         const val MAX_RELATIONS = 32
         const val MAX_AI_TOOLS = 5
         const val MAX_AI_TOOL = 60
+        /** Folio's own minSdk: a package can't ask for an Android older than Folio runs on. */
+        const val MIN_SDK = 31
+        const val MAX_SDK = 99
         private val NOT_BLANK = Regex("\\S")
         val ID = Regex("^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+\\z")
         const val MAX_ID = 120
@@ -44,6 +56,7 @@ data class PackageManifest(
         private val KNOWN = setOf(
             "\$schema", "format", "id", "name", "version", "author", "minFolio", "section", "kind", "permissions",
             "screens", "depends", "conflicts", "icon", "depiction", "license", "description", "aiAssisted", "via", "provides", "requires",
+            "minSdk", "maxSdk", "maxFolio", "slot", "breaks",
         )
 
         fun parse(text: String): ParseResult<PackageManifest> {
@@ -84,6 +97,19 @@ data class PackageManifest(
             val provides = f.ids("provides", false, Provides::from)
             val features = f.obj("requires", false, setOf("features"))?.ids("features", false, Capability::from)
             if (kinds?.contains(PackageKind.EXTERNAL_APP) == true && !f.has("via")) p.errors += "via is required for externalApp packages"
+            // ADR 0013's limits. folio-pkg also requires minFolio 0.7.0 with any of them, so no older Folio skips them.
+            val sdks = MIN_SDK.toLong()..MAX_SDK.toLong()
+            val minSdk = f.long("minSdk", false, sdks)?.toInt()
+            val maxSdk = f.long("maxSdk", false, sdks)?.toInt()
+            if (minSdk != null && maxSdk != null && minSdk > maxSdk) p.errors += "minSdk must not be above maxSdk"
+            val maxFolio = f.string("maxFolio", false, maxLength = 20)?.let { raw ->
+                FolioMinor.parse(raw) ?: null.also { p.errors += "maxFolio must look like 0.7" }
+            }
+            if (maxFolio != null && minFolio != null && !maxFolio.covers(minFolio)) p.errors += "maxFolio must not be older than minFolio"
+            val slot = f.id("slot", false, Capability::from)
+            if (slot != null && features != null && slot !in features) p.errors += "slot must be one of requires.features"
+            if (slot != null && features == null) p.errors += "slot must be one of requires.features"
+            val breaks = readRelations(f, "breaks")
             return p.result {
                 PackageManifest(
                     id = id!!, name = name!!, version = version!!, author = author!!, minFolio = minFolio!!, section = section!!,
@@ -92,6 +118,7 @@ data class PackageManifest(
                     depends = depends.orEmpty(), conflicts = conflicts.orEmpty(), icon = icon, depiction = depiction,
                     license = license, description = description, aiAssisted = aiAssisted, via = via.orEmpty(),
                     provides = provides.orEmpty().toSet(), requiredFeatures = features.orEmpty().toSet(),
+                    minSdk = minSdk, maxSdk = maxSdk, maxFolio = maxFolio, slot = slot, breaks = breaks.orEmpty(),
                 )
             }
         }
@@ -179,6 +206,26 @@ data class FolioVersion(val major: Int, val minor: Int, val patch: Int) : Compar
         /** Reads an app `versionName` such as `0.7.0`, `0.7.0-beta2` or `0.7.0.dev`, using its first three numbers. */
         fun fromAppVersion(versionName: String): FolioVersion? =
             Regex("^[0-9]{1,9}\\.[0-9]{1,9}\\.[0-9]{1,9}(?![0-9])").find(versionName)?.value?.let(::parse)
+    }
+}
+
+/** A Folio release line (`maxFolio`): `0.7` stands for every 0.7.x. */
+data class FolioMinor(val major: Int, val minor: Int) : Comparable<FolioMinor> {
+    override fun compareTo(other: FolioMinor) = compareValuesBy(this, other, { it.major }, { it.minor })
+    override fun toString() = "$major.$minor"
+
+    /** Whether [version] is on this line or an older one. */
+    fun covers(version: FolioVersion) = of(version) <= this
+
+    companion object {
+        private val PATTERN = Regex("^([0-9]{1,9})\\.([0-9]{1,9})\\z")
+
+        fun parse(text: String): FolioMinor? {
+            val (a, b) = PATTERN.find(text)?.destructured ?: return null
+            return FolioMinor(a.toInt(), b.toInt())
+        }
+
+        fun of(version: FolioVersion) = FolioMinor(version.major, version.minor)
     }
 }
 

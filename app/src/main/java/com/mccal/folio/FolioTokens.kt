@@ -199,9 +199,52 @@ internal object FolioMotion {
     val Appear = .78f to 400f
     /** Small controls answering a finger (switch thumbs, segments, a pressed card, a released pull): quick and a touch bouncy. */
     val Control = .75f to 1500f
-    /** A set of icons fanning out: the most overshoot Folio has. */
-    val Bounce = .68f to 520f
     /** A value following another with no overshoot (gauges, progress). */
     val Snap = 1f to 1500f
+
+    // The 0.6.9 motion pass (docs/research-motion-0-6-9.md). Damping never goes below 0.7: that is about 4.6% overshoot,
+    // the most a settle that starts with the finger's speed should have, and Apple calls more than that exaggerated.
+    /** Full pages and panels sliding in from an edge: soft, no visible overshoot, about 0.32 s. */
+    val Sheet = .9f to 380f
+    /** Menus opening from the pressed object: a hint of life, about 0.25 s. Close them on [Firm]. */
+    val Menu = .78f to 650f
+    /** A settle that starts with the finger's speed (a flick, a drop): visibly passes the line and eases back. Never for a tap. */
+    val Bounce = .7f to 480f
+
+    /**
+     * True while the 0.6.9 motion pass is on for this phone. It follows [FeatureGate.MOTION_V2] when the app starts, and
+     * on a beta or Folio Dev build a switch in Settings › Advanced can override it, to compare the old motion with the
+     * new. It is Compose state, so a screen that reads it redraws the moment the switch is flipped.
+     */
+    private val v2State = androidx.compose.runtime.mutableStateOf(false)
+    val v2: Boolean get() = v2State.value
+
+    /** What the switch says, if it was ever used: on, off, or null for "follow the gate". */
+    fun resolve(override: Boolean?, gateOpen: Boolean) = override ?: gateOpen
+
+    private const val PREFS = "folio_motion"
+    private const val OVERRIDE = "motionPassOverride"
+
+    /** Sets [v2] from the gate and the saved switch; called once when the app starts. */
+    fun initialize(context: android.content.Context) {
+        val saved = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        val override = if (saved.contains(OVERRIDE)) saved.getBoolean(OVERRIDE, false) else null
+        use(resolve(override, FeatureGate.MOTION_V2.isOpen(context)))
+    }
+
+    /** The switch in Settings › Advanced. Takes effect at once for what is on screen and for everything opened after. */
+    fun setEnabled(context: android.content.Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean(OVERRIDE, on).apply()
+        use(on)
+    }
+
+    /** Turns the pass on or off in memory only. The switch and the tests both go through here. */
+    internal fun use(on: Boolean) { v2State.value = on }
+
+    /** Whether the switch is shown: only while the pass is still on trial, on a beta or Folio Dev build. */
+    fun switchVisible(context: android.content.Context) = !FeatureGate.MOTION_V2.open && FeatureGate.MOTION_V2.isOpen(context)
+
+    /** The new spring when the motion pass is on, and the numbers the caller used before it when it is not. */
+    fun pick(old: Pair<Float, Float>, new: Pair<Float, Float>) = if (v2) new else old
     fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
 }
