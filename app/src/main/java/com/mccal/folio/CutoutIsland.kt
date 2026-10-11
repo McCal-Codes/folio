@@ -92,7 +92,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             windowWidth = view.rootView.width
             windowHeight = view.rootView.height
             // Reported cutout first; otherwise a known under-display camera (e.g. Galaxy Z Fold8 inner screen).
-            cutout = view.rootWindowInsets?.displayCutout?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let(::Rect)
+            val reported = view.rootWindowInsets?.displayCutout
+            cutout = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath) }
                 ?: CameraArea.hiddenCamera(view.display)
         }
         view.viewTreeObserver.addOnGlobalLayoutListener(update)
@@ -265,6 +266,29 @@ internal fun islandGeometryAt(centerXPx: Float, topDp: Float, windowWidthPx: Int
     val pillH = 34f
     return IslandGeometry(0f, 0f, centerXPx, topDp + pillH / 2, pillH, maxOf(room * 2, 80f), topDp)
 }
+
+/**
+ * The camera to wrap (#61): the cutout's own outline when it lies inside the reported rect and is shorter, else the
+ * rect. The Galaxy Z Fold8 cover reports its punch hole as a rect from the screen edge down past the lens (48 x 104 px),
+ * so wrapping the rect made the island far taller than the lens. The outline is the hole itself.
+ */
+internal fun cameraRect(rect: Rect, outline: android.graphics.Path?): Rect {
+    val bounds = android.graphics.RectF().also { outline?.computeBounds(it, true) }
+    val lens = if (outline == null || bounds.isEmpty) null
+        else intArrayOf(bounds.left.toInt(), bounds.top.toInt(), kotlin.math.ceil(bounds.right).toInt(), kotlin.math.ceil(bounds.bottom).toInt())
+    return cameraRect(intArrayOf(rect.left, rect.top, rect.right, rect.bottom), lens).let { Rect(it[0], it[1], it[2], it[3]) }
+}
+
+/** [rect] and [outline] are left, top, right, bottom in px. An outline that spans other cutouts too is not inside. */
+internal fun cameraRect(rect: IntArray, outline: IntArray?): IntArray {
+    if (outline == null || outline[2] <= outline[0] || outline[3] <= outline[1]) return rect
+    val inside = outline[0] >= rect[0] - OUTLINE_SLACK && outline[1] >= rect[1] - OUTLINE_SLACK &&
+        outline[2] <= rect[2] + OUTLINE_SLACK && outline[3] <= rect[3] + OUTLINE_SLACK
+    return if (inside && outline[3] - outline[1] < rect[3] - rect[1]) outline else rect
+}
+
+/** Pixels an outline may stick out of its rect and still count as inside (rounding). */
+private const val OUTLINE_SLACK = 2
 
 /** Pure placement of the island around a camera cutout. Dp values except [centerXPx]. */
 internal data class IslandGeometry(val camW: Float, val camH: Float, val centerXPx: Float, val centerY: Float, val pillH: Float, val maxW: Float,
