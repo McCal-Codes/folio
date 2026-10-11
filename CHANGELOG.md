@@ -53,6 +53,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **No outlines through widgets while moving an app:** the faint outlines that show where a carried app could go no longer appear on the cells under a widget, which showed through the widget.
 - **Back closes a folder again:** since folders got their own window in beta 1, the Back button and the back swipe did nothing while a folder was open; only a tap outside closed it. Back closes it again, and the back swipe shrinks it toward its icon as before.
 - **The dock handle moves the dock both ways (#326):** in edit mode, dragging the handle under the Side Bar dock downward opened Spotlight or the shade instead, so only upward drags worked. A pull down on the handle now moves the dock.
 - **A Focus set to turn on while charging does (#328):** charging now means plugged in, as Home's status shows it, so it also works while a Samsung phone holds at its charge limit. A Focus you turned on yourself, or that its schedule turned on, stays on when another Focus's trigger fires, and the Focus list says that the higher one wins when two could turn on at once.
