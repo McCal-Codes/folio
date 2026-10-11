@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import com.mccal.folio.market.CompatCheck
 import com.mccal.folio.market.CompatState
 import com.mccal.folio.market.DebVersion
+import com.mccal.folio.market.FolioMinor
 import com.mccal.folio.market.FolioVersion
 import com.mccal.folio.market.InstalledPackage
 import com.mccal.folio.market.PackageRelation
@@ -68,6 +69,31 @@ class MarketCompatTest {
         val other = InstalledPackage("dev.other", DebVersion.parse("1.0")!!, "Other", InstalledPackage.Origin.FOLIO_SOURCE, null, 0L, emptyList())
         assertEquals(listOf("Other"), compatLines(listOf(CompatCheck.Replaces(other))).single().args)
         assertTrue(compatLines(listOf(CompatCheck.Hosts(listOf("pageEffects"), listOf("pageEffects")))).isEmpty())
+    }
+
+    @Test fun `ADR 0013 lines, where Android blocks, an untried Folio is a note and breaks names what to update`() {
+        val outside = compatLines(listOf(CompatCheck.Android(33, 36, 37))).single()
+        assertEquals(CompatState.BLOCKED to R.string.compat_android_between, outside.state to outside.title)
+        assertEquals(listOf("13", "16"), outside.args)
+        assertEquals(listOf("17"), outside.detailArgs)
+        assertEquals(R.string.compat_android_ok_detail, compatLines(listOf(CompatCheck.Android(33, null, 37))).single().detail)
+        assertTrue("no Android given, nothing said", compatLines(listOf(CompatCheck.Android(33, null, null))).isEmpty())
+
+        val untried = compatLines(listOf(CompatCheck.FolioRange(FolioMinor(0, 7), FolioVersion(0, 8, 1)))).single()
+        assertEquals(CompatState.NOTE to listOf("0.8"), untried.state to untried.args)
+        assertEquals(listOf("0.7"), untried.detailArgs)
+        assertTrue("inside the range it says nothing more", compatLines(listOf(CompatCheck.FolioRange(FolioMinor(0, 7), FolioVersion(0, 7, 3)))).isEmpty())
+
+        val harbor = InstalledPackage("com.mccal.folio.harborline", DebVersion.parse("1.0.0")!!, "Harborline", InstalledPackage.Origin.FOLIO_SOURCE, null, 0L, emptyList())
+        val breaks = compatLines(listOf(CompatCheck.Breaks(listOf(PackageRelation.parse("com.mccal.folio.harborline (<< 1.1)")!!), listOf(harbor)))).single()
+        assertEquals(CompatState.BLOCKED to listOf("Harborline", "1.0.0"), breaks.state to breaks.args)
+        assertEquals(listOf("Harborline"), breaks.detailArgs)
+    }
+
+    @Test fun `the Android line reads as words on the card`() {
+        compose.setContent { CompatibilityCard(compatLines(listOf(CompatCheck.Android(33, 36, 37)))) }
+        compose.onNodeWithText("Android 13 to 16").assertIsDisplayed()
+        compose.onNodeWithText("This phone has Android 17. No update to Folio can change that.").assertIsDisplayed()
     }
 
     @Test fun `the card shows each line's title and its reason`() {

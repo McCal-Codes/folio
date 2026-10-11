@@ -188,8 +188,21 @@ data class IndexPackage(
     }
 }
 
-/** A signed list of packages (and sources) to turn off, with the reason to show the user. */
-data class RevocationList(val timestamp: Long, val packages: List<RevokedPackage>, val sources: List<RevokedSource>) {
+/**
+ * A signed list of packages (and sources) to turn off, with the reason to show the user. [incompatible] is ADR 0013's
+ * breakage found after publishing: versions that don't work with a range of Folio releases.
+ */
+data class RevocationList(
+    val timestamp: Long,
+    val packages: List<RevokedPackage>,
+    val sources: List<RevokedSource>,
+    val incompatible: List<IncompatiblePackage> = emptyList(),
+) {
+    /** Why [id] at [version] doesn't work with [folio], or null when nothing says so. */
+    fun incompatibleReason(id: String, version: DebVersion, folio: FolioVersion): String? = incompatible.firstOrNull { entry ->
+        entry.id == id && entry.folio.matches(folio) && entry.versions.any { it == null || DebVersion.parse(it)?.equals(version) == true }
+    }?.reason
+
     /** The reason [id] at [version] is revoked, or null when it isn't. `"*"` in the list means every version. */
     fun reasonFor(id: String, version: DebVersion): String? = packages.firstOrNull { entry ->
         entry.id == id && entry.versions.any { it == null || DebVersion.parse(it)?.equals(version) == true }
@@ -213,7 +226,7 @@ data class RevocationList(val timestamp: Long, val packages: List<RevokedPackage
         fun parse(text: String): ParseResult<RevocationList> {
             val p = Problems()
             val json = parseStrictObject(text, MAX_CHARS, p) ?: return p.result { error("unreachable") }
-            val f = Fields(json, "", p, setOf("\$schema", "format", "timestamp", "packages", "sources"))
+            val f = Fields(json, "", p, setOf("\$schema", "format", "timestamp", "packages", "sources", "incompatible"))
             f.anyString("\$schema")
             f.formatOne()
             val timestamp = f.long("timestamp", true, 0L..4102444800L)
@@ -234,7 +247,48 @@ data class RevocationList(val timestamp: Long, val packages: List<RevokedPackage
                     reason = e.string("reason", true, maxLength = 200).orEmpty(),
                 )
             }
-            return p.result { RevocationList(timestamp!!, packages!!, sources.orEmpty()) }
+            val incompatible = f.objects("incompatible", false, maxItems = MAX_ENTRIES)?.mapNotNull { (i, item) ->
+                val e = f.child(item, "${f.where("incompatible")}[$i]", setOf("id", "versions", "folio", "reason"))
+                val id = e.string("id", true, PackageManifest.ID, PackageManifest.MAX_ID, "must be a package id")
+                val versions = e.strings("versions", true, minItems = 1, maxItems = MAX_VERSIONS) { value, itemAt ->
+                    e.checkString(value, itemAt, VERSION_OR_ANY, DebVersion.MAX_LENGTH, "must be a version or *")
+                }?.map { if (it == "*") null else it }
+                val folio = e.string("folio", true, maxLength = 40)?.let { raw ->
+                    FolioRelation.parse(raw) ?: null.also { p.errors += "${e.where("folio")} must look like (>= 0.8.0)" }
+                }
+                val reason = e.string("reason", true, maxLength = 200)
+                if (id != null && versions != null && folio != null && reason != null) IncompatiblePackage(id, versions, folio, reason) else null
+            }
+            return p.result { RevocationList(timestamp!!, packages!!, sources.orEmpty(), incompatible.orEmpty()) }
+        }
+    }
+}
+
+/** [versions] of [id] don't work with the Folio releases [folio] matches; a null version means every version. */
+data class IncompatiblePackage(val id: String, val versions: List<String?>, val folio: FolioRelation, val reason: String)
+
+/** `(>= 0.8.0)`: a Folio release range, with dpkg's operators. `0.8` is read as `0.8.0`. */
+data class FolioRelation(val op: PackageRelation.Op, val version: FolioVersion) {
+    fun matches(folio: FolioVersion): Boolean {
+        val c = folio.compareTo(version)
+        return when (op) {
+            PackageRelation.Op.EARLIER -> c < 0
+            PackageRelation.Op.EARLIER_OR_EQUAL -> c <= 0
+            PackageRelation.Op.EQUAL -> c == 0
+            PackageRelation.Op.LATER_OR_EQUAL -> c >= 0
+            PackageRelation.Op.LATER -> c > 0
+        }
+    }
+
+    override fun toString() = "(${op.token} $version)"
+
+    companion object {
+        private val PATTERN = Regex("^\\((<<|<=|=|>=|>>) ([0-9]{1,9}\\.[0-9]{1,9}(?:\\.[0-9]{1,9})?)\\)\\z")
+
+        fun parse(text: String): FolioRelation? {
+            val (token, raw) = PATTERN.find(text)?.destructured ?: return null
+            val version = FolioVersion.parse(if (raw.count { it == '.' } == 1) "$raw.0" else raw) ?: return null
+            return FolioRelation(PackageRelation.Op.entries.first { it.token == token }, version)
         }
     }
 }
