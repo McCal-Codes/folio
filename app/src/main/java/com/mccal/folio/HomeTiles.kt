@@ -210,7 +210,7 @@ internal fun DockAppColumn(
             key(id) {
                 val animatedOffset by animateIntOffsetAsState(
                     if (horizontal) IntOffset((renderIndex * rowHeightPx).roundToInt(), 0) else IntOffset(0, (renderIndex * rowHeightPx).roundToInt()),
-                    animationSpec = if (drag.active) androidx.compose.animation.core.spring(visibilityThreshold = IntOffset(1, 1))
+                    animationSpec = if (drag.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
                         else androidx.compose.animation.core.snap(), label = "dock insertion $id")
                 val visible = previewIndex >= 0 && renderIndex != hiddenIndex
                 val opacity by animateFloatAsState(
@@ -225,7 +225,7 @@ internal fun DockAppColumn(
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
-                        } ?: 1f, androidx.compose.animation.core.spring(dampingRatio = .75f, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium), label = "dock magnify $id")
+                        } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id")
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
                             val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value
                             // Grow toward the screen, away from the edge the dock sits on.
