@@ -260,7 +260,7 @@ internal fun MarketScreen(
         // A newer version than the one on the phone: Folio installs it over the old one when it may, and otherwise
         // the sheet offers the places it installs from, the same as Get.
         MarketAppUpdate.offered(appContext, entry)?.let { onPhone ->
-            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.revokedReason != null)) {
+            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.unavailable)) {
                 installApp(entry, onPhone)
             } else {
                 choosing = entry.listingKey
@@ -547,6 +547,7 @@ internal fun MarketScreen(
                             installedAll = installed,
                             appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
+                            incompatible = open.incompatibleReason,
                             source = open.source,
                             showBack = !beside,
                             // Back from a package opened on a source's page goes to that page, so it says its name.
@@ -718,7 +719,7 @@ internal fun MarketScreen(
                             manifest = manifest,
                             signed = listing.source.kind != Source.Kind.LOCAL_DEV,
                             onInstallHere = if (
-                                MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.revokedReason != null)
+                                MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.unavailable)
                             ) {
                                 { choosing = null; installApp(listing) }
                             } else {
@@ -1134,6 +1135,7 @@ private fun MarketRow(
                 when {
                     installed?.enabled == false -> stringResource(R.string.turned_off_after_a_crash)
                     entry.revokedReason != null -> entry.revokedReason
+                    entry.incompatibleReason != null -> stringResource(R.string.doesn_t_work_with_this_folio_1_s, entry.incompatibleReason)
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.entry.version}"
                     update -> "${installed?.version} → ${entry.entry.version}"
                     // A package from somewhere other than Folio says where it came from.
@@ -1141,7 +1143,7 @@ private fun MarketRow(
                     else -> author
                 },
                 color = when {
-                    installed?.enabled == false || entry.revokedReason != null -> FolioColors.Warning
+                    installed?.enabled == false || entry.unavailable -> FolioColors.Warning
                     else -> Color.White.copy(alpha = .55f)
                 },
                 fontSize = FolioType.FOOTNOTE.sp,
@@ -1165,8 +1167,8 @@ private fun MarketRow(
             justInstalled -> InstallDonePop()
             // A revoked package can be removed but never installed again - including as an update, which is how a
             // pulled package used to slip back in.
-            entry.revokedReason != null && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-            entry.revokedReason != null -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            entry.unavailable && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
+            entry.unavailable -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
@@ -1299,6 +1301,8 @@ private fun MarketPackagePage(
     /** The app on the phone this listing would update, when it is an app of its own and newer. */
     appUpdate: MarketAppUpdate.OnPhone? = null,
     revoked: String?,
+    /** Why its source says this version doesn't work with this Folio (ADR 0013), or null. */
+    incompatible: String? = null,
     source: Source,
     showBack: Boolean,
     backTitle: String? = null,
@@ -1383,6 +1387,11 @@ private fun MarketPackagePage(
                     Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
+                // Known not to work with this Folio: the same place and weight as a pulled one, with its own words.
+                incompatible != null && installed == null -> Column(Modifier.testTag("package-incompatible")) {
+                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.doesn_t_work_with_this_folio_1_s, incompatible), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
                 justInstalled -> InstallDonePop()
                 appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
@@ -1390,7 +1399,8 @@ private fun MarketPackagePage(
                 // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
                 entry.needs.isNotEmpty() && installed == null ->
                     Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
-                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
+                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null && revoked == null && incompatible == null ->
+                    MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
                 else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
