@@ -85,6 +85,8 @@ class MainActivity : ComponentActivity() {
     private var recreatingShadeSetup = false
     // The gestures dialog asked to show while the build page or What's New was up; it shows when they close.
     private var shadeSetupWaiting = false
+    // The gestures dialog is up (or waiting to be): the setup reminder card holds back until it's gone.
+    private val shadeSetupUp = mutableStateOf(false)
     /**
      * Whether this phone sees Clear Badges When Opened ([FeatureGate.BADGES_WHEN_OPENED]). Read once in `onCreate`,
      * since asking the gate reads preferences and a redeemed supporter code restarts Folio anyway (CMP-9).
@@ -340,7 +342,8 @@ class MainActivity : ComponentActivity() {
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
                 // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
                 AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)
-                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value, onMakeDefault = ::makeDefault,
+                // One prompt at a time: the card also waits while the gestures dialog is up, and comes back when it closes.
+                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value || shadeSetupUp.value, onMakeDefault = ::makeDefault,
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
@@ -500,7 +503,7 @@ class MainActivity : ComponentActivity() {
         if (shadeSetupDialog?.isShowing == true) return
         ownShadeSetupExternally()
         // Two prompts at once read as one: after an install, a restored gestures dialog came up over the build page.
-        if (startupSheetUp()) { shadeSetupWaiting = true; return }
+        if (startupSheetUp()) { shadeSetupWaiting = true; shadeSetupUp.value = true; return }
         shadeSetupDialog = android.app.AlertDialog.Builder(this)
             .setTitle(getString(R.string.turn_on_folio_gestures))
             .setMessage("Android asks you to turn this on yourself:\n\n" +
@@ -527,9 +530,11 @@ class MainActivity : ComponentActivity() {
             }
             .also { dialog -> dialog.setOnDismissListener {
                 shadeSetupDialog = null
+                shadeSetupUp.value = false
                 if (!returningFromShadeSettings && !recreatingShadeSetup) releaseShadeSetupOwnership()
             } }
             .show()
+        shadeSetupUp.value = true
     }
 
     private fun finishFirstRun() {

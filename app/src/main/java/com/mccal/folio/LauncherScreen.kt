@@ -651,7 +651,7 @@ fun LauncherScreen(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
         val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
-        CompositionLocalProvider(LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+        CompositionLocalProvider(LocalOpenMenuId provides overlays.menu, LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
             LocalBigClockStyles provides bigClockStyles,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
@@ -811,6 +811,8 @@ fun LauncherScreen(
             var gestureOriginInRoot by remember { mutableStateOf(Offset.Zero) }
             var gestureOriginInWindow by remember { mutableStateOf(Offset.Zero) }
             var scrubberBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+            // The edit-mode dock grabber, so a downward drag on it moves the dock instead of opening Spotlight or the shade (#326).
+            var grabberBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
             val pagerInputEnabled = pager.currentPage in -firstHome..visibleHomePages && !drag.active &&
                 widgetSession == null && !resize.active && sheet.isEmpty() && !showFirstRun && overlays.menu == null &&
                 overlays.folder == null && overlays.emptyCell == null && overlays.newFolder == null &&
@@ -833,7 +835,10 @@ fun LauncherScreen(
                     // App Library: like iOS, Notification Center and Control Center pull down from the top edge; lower
                     // down, a downward drag scrolls the library.
                     if (pager.currentPage == visibleHomePages) point.y < libraryPullZone
-                    else if (pager.currentPage !in 0 until visibleHomePages) false else {
+                    else if (pager.currentPage !in 0 until visibleHomePages) false
+                    // Home's page gestures see a touch before the grabber does, so a pull down on it opened Spotlight and only
+                    // drags upward reached it: "the dock handle rarely works" (#326).
+                    else if (homeEdit.active && grabberBounds.contains(point + gestureOriginInRoot)) false else {
                         val region = drag.hit(point + gestureOriginInRoot, eligibleDragPages)
                         val rootOnScreen = IntArray(2).also(launcherRootView::getLocationOnScreen)
                         val screenPoint = point + gestureOriginInWindow +
@@ -1016,6 +1021,8 @@ fun LauncherScreen(
                 val windowHeight by rememberUpdatedState(boxHeightDp)
                 val currentPreset by rememberUpdatedState(preset)
                 // The drag is added up here from where it started, so two moves before the screen redraws are both counted.
+                // Forget where it was once it's gone, so a stale spot never blocks a pull down later.
+                DisposableEffect(Unit) { onDispose { grabberBounds = androidx.compose.ui.geometry.Rect.Zero } }
                 var dragStartCenter by remember { mutableFloatStateOf(0f) }
                 var dragged by remember { mutableFloatStateOf(0f) }
                 val moveLabel = stringResource(R.string.move_dock)
@@ -1024,6 +1031,7 @@ fun LauncherScreen(
                 Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
                     // Under the dock, but never lower than a touch target above the bottom of the window.
                     .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
+                    .onGloballyPositioned { grabberBounds = it.boundsInRoot() }
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(onDragStart = { dragStartCenter = centerDp; dragged = 0f }) { change, dy ->
                             change.consume()
@@ -1129,11 +1137,19 @@ fun LauncherScreen(
                         // iOS's page control: the dots stay small and the strip around them takes the tap, so a
                         // finger has 48 dp of height without the dots spacing apart (A11Y-1).
                         else Box(Modifier.height(FolioTouch.MIN.dp), contentAlignment = Alignment.Center) {
+                            // With the new motion on, the active dot is a worm drawn over the resting dots: it stretches toward the next
+                            // page as the finger moves, read when drawing so a swipe recomposes nothing. Off, or with Reduce Motion, it is the dot it was.
+                            val dotWorm = FolioMotion.v2 && !LocalReduceMotion.current && visibleHomePages <= 6
+                            val dotDensity = LocalDensity.current
+                            val dotInk = LocalHomeInk.current
                             Row(Modifier.heightIn(min = 30.dp).background(if (scrubbing) Color.White.copy(alpha = .18f) else Color.Transparent, CircleShape)
+                                .then(if (dotWorm) Modifier.dotWorm({ pager.position }, homePages, dotInk.primary, with(dotDensity) { 28.dp.toPx() },
+                                    with(dotDensity) { (if (scrubbing) FolioSpace.SNUG.dp else 0.dp).toPx() }, with(dotDensity) { 3.dp.toPx() }) else Modifier)
                                 .padding(horizontal = if (scrubbing) FolioSpace.SNUG.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (visibleHomePages <= 6) repeat(visibleHomePages) { index ->
                                 Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
                                     if (index == homePages) Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    else if (dotWorm) Box(Modifier.size(4.dp).background(dotInk.faint, CircleShape))
                                     else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
                                 }
                             } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)

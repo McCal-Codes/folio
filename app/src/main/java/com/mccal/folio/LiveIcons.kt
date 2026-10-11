@@ -461,9 +461,9 @@ internal fun androidx.compose.foundation.layout.BoxScope.IconBadge(count: Int, s
             contentAlignment = Alignment.Center) {
             if (style == BadgeStyle.COUNT) {
                 val size = with(density) { (h * .6f).toSp() }
-                Text(if (count > 99) "99+" else count.toString(), color = readable, fontWeight = FontWeight.SemiBold,
-                    fontSize = size, maxLines = 1, softWrap = false,
-                    style = androidx.compose.ui.text.TextStyle(lineHeight = size,
+                // The count rolls when it changes (motion pass); otherwise it is the plain text it always was.
+                RollingCount(count, { if (it > 99) "99+" else it.toString() }, readable, size,
+                    androidx.compose.ui.text.TextStyle(lineHeight = size,
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
                         lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
                             androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,

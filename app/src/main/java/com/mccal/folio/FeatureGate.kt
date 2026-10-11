@@ -108,7 +108,14 @@ internal enum class FeatureGate(
      * touch path every icon shares, and a double tap makes that icon's tap wait a moment, so supporters try it on real
      * phones first. Flip [OPEN_IN_0_7_0] to true in the 0.7.0 release.
      */
-    ICON_ACTIONS("iconActions", closedSince = "2026-10-08", opensIn = "0.7.0", { OPEN_IN_0_7_0 });
+    ICON_ACTIONS("iconActions", closedSince = "2026-10-08", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * The 0.6.9 motion pass: sheets, menus and alerts settle on shared springs ([FolioMotion.Sheet], [FolioMotion.Menu])
+     * instead of the numbers each one picked for itself. A small change in feel, so it goes to supporters and Folio
+     * Dev first to say whether it reads as smoother. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
+     */
+    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
