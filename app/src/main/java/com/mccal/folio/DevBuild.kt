@@ -174,7 +174,9 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
     val amber = androidx.compose.ui.graphics.Color(FolioColors.Value.Orange)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.9f).padding(horizontal = FolioSpace.XXL.dp).testTag("dev-build")) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            // The row under the pinned button fades out like Settings does, instead of looking cut off.
+            val scroll = rememberScrollState()
+            Column(Modifier.weight(1f).edgeFade(scroll).verticalScroll(scroll)) {
                 Column(Modifier.fillMaxWidth().padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.foundation.layout.Box(Modifier.size(72.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(amber), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Build, null, tint = white, modifier = Modifier.size(36.dp))
