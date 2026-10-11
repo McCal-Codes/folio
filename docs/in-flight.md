@@ -22,7 +22,6 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `release-069-beta2` | Draft bump to 0.6.9-beta.2: the version, the roadmap's beta 2 marks, the release note and this row, nothing else (REL-13). Not for merge until the beta 2 pull requests are on `main`. | `app/build.gradle.kts`, `app/src/main/assets/roadmap.json`, `docs/releases/0.6.9-beta.2.md`, this file |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.
