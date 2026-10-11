@@ -298,6 +298,8 @@ internal fun MarketScreen(
             if (result is RefreshResult.NeedsTrust) trusting = result
             statuses = withContext(session.io) { session.sources.cached() }
             say(refreshMessage(context, source, result))
+            // A list read by hand can pull something already on the phone; that goes off now, not at the next start.
+            withContext(session.io) { session.turnOffPulled() }.forEach { say(context.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
             refresh()
         }
     }
@@ -1079,8 +1081,12 @@ private fun MarketList(
                                 if (!pkg.enabled) {
                                     // A listed package is put back on its page; one from a file has no page, so its
                                     // row says what happened and offers the same Try Again.
-                                    Text(stringResource(R.string.turned_off_after_a_crash), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
-                                    TryAgainButton(pkg.name, onClick = { onTryAgain(pkg.id, pkg.name) })
+                                    if (pkg.offCause == com.mccal.folio.market.InstalledPackage.OffCause.PULLED) {
+                                        Text(stringResource(R.string.pulled_by_its_source), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
+                                    } else {
+                                        Text(stringResource(R.string.turned_off_after_a_crash), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
+                                        TryAgainButton(pkg.name, onClick = { onTryAgain(pkg.id, pkg.name) })
+                                    }
                                 } else {
                                     Text("${pkg.version} · ${stringResource(R.string.from_a_file_you_opened).trimEnd('.', '。')}",
                                         color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
@@ -1132,6 +1138,7 @@ private fun MarketRow(
             Text(name, color = Color.White, fontSize = 16.sp)
             Text(
                 when {
+                    installed?.enabled == false && installed.offCause == com.mccal.folio.market.InstalledPackage.OffCause.PULLED -> stringResource(R.string.pulled_by_its_source)
                     installed?.enabled == false -> stringResource(R.string.turned_off_after_a_crash)
                     entry.revokedReason != null -> entry.revokedReason
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.entry.version}"
@@ -1362,14 +1369,15 @@ private fun MarketPackagePage(
                 Row(Modifier.padding(FolioSpace.COMFY.dp), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = FolioColors.Warning, modifier = Modifier.size(20.dp))
                     Column(Modifier.padding(start = FolioSpace.COMPACT.dp)) {
-                        Text(stringResource(R.string.turned_off_after_a_crash), color = Color.White, fontSize = FolioType.SUBHEAD.sp)
+                        val pulled = installed.offCause == com.mccal.folio.market.InstalledPackage.OffCause.PULLED
+                        Text(stringResource(if (pulled) R.string.pulled_by_its_source else R.string.turned_off_after_a_crash), color = Color.White, fontSize = FolioType.SUBHEAD.sp)
                         Text(
                             installed.disabledReason ?: stringResource(R.string.your_settings_are_kept),
                             color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                         )
                         // Safe Mode took its changes off Home. This puts them back, for a crash that wasn't its
                         // fault; Remove, below, is the other way out.
-                        TryAgainButton(name, onTryAgain, Modifier.padding(top = FolioSpace.SMALL.dp).testTag("package-try-again"))
+                        if (!pulled) TryAgainButton(name, onTryAgain, Modifier.padding(top = FolioSpace.SMALL.dp).testTag("package-try-again"))
                     }
                 }
             }

@@ -1418,6 +1418,8 @@
     <string name="text_1_s_version_2_s">%1$s · version %2$s</string>
     <string name="installing_1_s">Installing %1$s</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">%1$s was pulled by its source: %2$s</string>
+    <string name="pulled_by_its_source">Pulled by its source</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">%1$s was pulled by its source, so it\'s off. Its settings are kept.</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s offers this under a name that belongs to one of Folio\'s own packages</string>
     <string name="that_file_uses_a_name_that_belongs">That file uses a name that belongs to one of Folio\'s own packages.</string>
     <string name="folio_couldn_t_find_that_package">Folio couldn\'t find that package</string>

@@ -1321,6 +1321,8 @@
     <string name="text_1_s_version_2_s">%1$s · 版本 %2$s</string>
     <string name="installing_1_s">正在安装 %1$s</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">%1$s 已被其源撤下：%2$s</string>
+    <string name="pulled_by_its_source">已被其源撤下</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">%1$s 已被其源撤下，因此已关闭。它的设置会保留。</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s 使用了属于 Folio 自带软件包的名称来提供这个软件包</string>
     <string name="that_file_uses_a_name_that_belongs">那个文件使用了属于 Folio 自带软件包的名称。</string>
     <string name="folio_couldn_t_find_that_package">Folio 找不到那个软件包</string>
