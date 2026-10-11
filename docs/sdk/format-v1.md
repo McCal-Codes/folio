@@ -54,6 +54,10 @@ Limits:
 | `provides` *(later)* | array of enum | `iconPack`, `wallpapers`, `widgets`, `folioTheme`: what an external app brings. |
 | `via` *(later)* | array of object | Required with kind `externalApp`: `{ "store": "playStore"\|"fdroid", "id": … }` or `{ "store": "obtainium", "repoUrl": … }`. |
 | `requires` | object | `{ "features": [capability ids] }`: the Folio capabilities this package configures. See [Capabilities](#capabilities). |
+| `minSdk`, `maxSdk` *(0.7.0)* | integer | Android API levels it works on, 31 to 99. A hard limit. See [Limits and advice](#limits-and-advice). |
+| `maxFolio` *(0.7.0)* | string | The newest Folio release line its author tried, like `0.7`. Advice, never a block. |
+| `slot` *(0.7.0)* | capability id | One package at a time per slot. Must be one of its own `requires.features`. |
+| `breaks` *(0.7.0)* | array of string | Installed versions it doesn't work with, in the `depends` syntax: `com.mccal.folio.harborline (<< 1.1)`. |
 
 **Text values:** any *text* field is either a plain string, or an object of language tags with an `en` fallback:
 `{ "en": "Sunset Icons", "es": "Iconos Atardecer" }`. Tags look like `en`, `es` or `pt-BR`, there are at most 64 of them, and
@@ -64,8 +68,26 @@ regional variant of it, then `en`. Text is at most 400 characters, except `name`
 installed package, not in the manifest. Authors never set it, and a manifest that includes it has that field skipped.
 
 **Limits Folio enforces while reading:** `manifest.json` is at most 64 KB and `depiction.json` at most 256 KB; JSON nests
-at most 32 levels; `depends` and `conflicts` list at most 32 entries each. Files must be strict JSON (RFC 8259):
+at most 32 levels; `depends`, `conflicts` and `breaks` list at most 32 entries each. Files must be strict JSON (RFC 8259):
 comments, unquoted keys, single quotes, trailing commas, trailing text and duplicate keys are all refused.
+
+### Limits and advice
+
+From 0.7.0 ([ADR 0013](../adr/0013-package-compatibility-fields.md)). The manifest decides, the depiction describes, and
+the source speaks for what is found later.
+
+- **`minSdk` and `maxSdk`** are the one hard limit. Outside them the package can't be installed, and the store leaves it
+  out of the list unless the person asks to see it, because nothing on the phone can change its Android version.
+- **`maxFolio`** is advice. On a newer Folio the page says "Not tried on Folio 0.8 yet" and Get stays: most packages keep
+  working, and Package Safe Mode turns one off if it makes Folio close.
+- **`slot`** says "one at a time". Getting a package turns off the other one in the same slot, which stays installed
+  with its settings. `conflicts` keeps its meaning for the rarer "these two can never both be on".
+- **`breaks`** names installed versions this one doesn't work with. Those have to be updated first; Folio never turns a
+  package off to make room for one that breaks it.
+- **A package that uses any of these needs `minFolio` 0.7.0 or later.** An older Folio skips a field it doesn't know
+  (see [Versioning this format](#versioning-this-format)), so it would install the package while ignoring its limits.
+  `folio-pkg validate` refuses one that doesn't.
+- **The access a package needs is never declared.** Folio works it out from `requires.features`.
 
 **Kinds:**
 
@@ -184,7 +206,9 @@ Block types:
   a heading, a table, an unclosed `*`, a link to anything but https - is drawn exactly as it was typed,
   so a stray marker shows up as a marker instead of swallowing a sentence.
 - `featureList`
-- `compatibility`
+- `compatibility`: `screens`, `notes`, and from 0.7.0 `testedOn` (at most 10 of
+  `{ "device": text, "android": API level, "folio": "0.7.0", "date": "2026-10-03" }`, shown as written: Folio checks the
+  shape, not the claim) and `fallback` (text: what still works without the access the package needs).
 - `changelog`
 - `link`: https only.
 - `donation`: https only.
@@ -416,6 +440,15 @@ It's signed the same way as `entry.json`. Revoked packages are turned off, and t
 `versions` means every version. An unsigned, broken or older revocation list is ignored rather than trusted, so a host
 can't un-revoke something by serving an older list. A source can also be listed in a source the user already trusts,
 which drops it before Folio calls it at all.
+
+From 0.7.0 the list can also say a version doesn't work with some Folio releases, for breakage found after publishing:
+
+```json
+{ "incompatible": [{ "id": "dev.example.swing", "versions": ["1.0"], "folio": "(>= 0.8)", "reason": "The fold stops halfway" }] }
+```
+
+`folio` uses the `depends` operators on a Folio release (`0.8` reads as `0.8.0`). A source lists only its own packages.
+Folio 0.7.0 reads the list; acting on it (refusing the install and turning an installed one off, settings kept) is next.
 
 ### Trust
 
