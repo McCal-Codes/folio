@@ -364,6 +364,8 @@
     <string name="restore_from_backup">从备份恢复…</string>
     <string name="include_diagnostics">包含诊断信息吗？</string>
     <string name="just_open_form">仅打开表单</string>
+    <string name="motion_pass">新动效</string>
+    <string name="motion_pass_note">0.6.9 动效改进：面板、菜单和提示框使用同一组弹簧动画，市场标签页平滑滑动，角标数字滚动变化，安装完成时对勾弹出。关闭后可与之前的动效对比。它遵循动画速度设置，并且减少动态效果优先。仅在测试版和 Folio Dev 中显示。</string>
     <string name="screenshot_mode">截图模式</string>
     <string name="safe_mode">安全模式</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio 正在安全模式下运行：本次会话中可选功能已暂停。</string>
@@ -1170,6 +1172,7 @@
     <string name="get_tweak">获取 %1$s</string>
     <string name="applied">已应用 %1$s。</string>
     <string name="focus_lets_you_silence_notifications_cha">专注模式可以将通知静音、改变手机的外观，并把主屏幕切到你需要的页面。在这里或从控制中心开启。</string>
+    <string name="focus_trigger_order_note">如果多个专注模式同时可以自动开启，此列表中靠上的那个优先。你手动开启的专注模式会保持开启。</string>
     <string name="only_these_pages_show_while_is_on_editin">%1$s 开启时只显示这些页面。在它结束之前，编辑主屏幕会暂停，所以隐藏页面上的内容不会移动。</string>
     <string name="page_number">第 %1$s 页</string>
     <string name="home_opens_on_this_page_while_is_on">%1$s 开启时，主屏幕会打开到这一页。</string>
@@ -1732,6 +1735,15 @@
     <string name="compat_screen_inner_only_detail">它不会改变外屏。这并不是问题，只是不会在那里显示。</string>
     <string name="compat_screen_cover_only">仅限外屏</string>
     <string name="compat_screen_cover_only_detail">它不会改变内屏。这并不是问题，只是不会在那里显示。</string>
+    <string name="compat_android_between">Android %1$s 至 %2$s</string>
+    <string name="compat_android_from">Android %1$s 或更高版本</string>
+    <string name="compat_android_up_to">Android %1$s 或更低版本</string>
+    <string name="compat_android_ok_detail">这部手机运行的是 Android %1$s。</string>
+    <string name="compat_android_blocked_detail">这部手机运行的是 Android %1$s。更新 Folio 也无法改变这一点。</string>
+    <string name="compat_folio_untried">尚未在 Folio %1$s 上试过</string>
+    <string name="compat_folio_untried_detail">为 Folio %1$s 制作。你仍然可以获取它；如果它导致 Folio 关闭，安全模式会将它关闭。</string>
+    <string name="compat_breaks">与 %1$s %2$s 不兼容</string>
+    <string name="compat_breaks_detail">请先更新 %1$s，再安装此软件包。</string>
     <string name="roadmap_now">现在</string>
     <string name="roadmap_next">接下来</string>
     <string name="roadmap_shipped">已发布</string>

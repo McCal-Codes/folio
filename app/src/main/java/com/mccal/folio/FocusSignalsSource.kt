@@ -54,11 +54,16 @@ internal fun focusSignals(activity: Activity): Flow<FocusSignals> {
         foldStateOf(folds.isNotEmpty(), folds.any { it.state == FoldingFeature.State.HALF_OPENED }, hinge || prefs.getBoolean("sawFold", false))
     }.distinctUntilChanged()
 
+    // Charging means plugged in, as Home shows it (isCharging in DeviceStatus.kt). BatteryManager.isCharging is false while a
+    // Samsung phone holds at its charge limit, so a charging Focus didn't turn on for anyone using battery protection (#328).
     val charging = callbackFlow {
-        fun now() = context.getSystemService(BatteryManager::class.java).isCharging
+        fun now() = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            ?.let { isCharging(it.getIntExtra(BatteryManager.EXTRA_STATUS, -1), it.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)) } == true
         trySend(now())
         val receiver = object : BroadcastReceiver() { override fun onReceive(c: Context, i: Intent) { trySend(now()) } }
-        val filter = IntentFilter().apply { addAction(Intent.ACTION_POWER_CONNECTED); addAction(Intent.ACTION_POWER_DISCONNECTED) }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED); addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_BATTERY_CHANGED)
+        }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         awaitClose { context.unregisterReceiver(receiver) }
     }.distinctUntilChanged()

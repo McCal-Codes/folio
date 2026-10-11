@@ -358,6 +358,8 @@
     <string name="restore_from_backup">Restore from Backup…</string>
     <string name="include_diagnostics">Include Diagnostics?</string>
     <string name="just_open_form">Just Open Form</string>
+    <string name="motion_pass">New motion</string>
+    <string name="motion_pass_note">The 0.6.9 motion pass: sheets, menus and alerts settle on shared springs, the Market tabs glide, badge counts roll and a finished install pops. Turn it off to compare with how it moved before. It follows Animation Speed, and Reduce Motion still wins. Only shown on beta builds and Folio Dev.</string>
     <string name="screenshot_mode">Screenshot Mode</string>
     <string name="safe_mode">Safe Mode</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio is running in Safe Mode: optional features are paused for this session.</string>
@@ -1222,6 +1224,7 @@
     <string name="get_tweak">Get %1$s</string>
     <string name="applied">Applied %1$s.</string>
     <string name="focus_lets_you_silence_notifications_cha">Focus lets you silence notifications, change how the phone looks and bring Home to the page you need. Turn one on here or from Control Center.</string>
+    <string name="focus_trigger_order_note">If more than one Focus could turn on by itself at once, the one higher in this list wins. A Focus you turn on yourself stays on.</string>
     <string name="only_these_pages_show_while_is_on_editin">Only these pages show while %1$s is on. Editing Home is paused until it ends, so nothing moves on the hidden pages.</string>
     <string name="page_number">Page %1$s</string>
     <string name="home_opens_on_this_page_while_is_on">Home opens on this page while %1$s is on.</string>
@@ -1781,6 +1784,15 @@
     <string name="compat_screen_inner_only_detail">It doesn\'t change the cover screen. Nothing is wrong; it just won\'t show there.</string>
     <string name="compat_screen_cover_only">Cover screen only</string>
     <string name="compat_screen_cover_only_detail">It doesn\'t change the inner screen. Nothing is wrong; it just won\'t show there.</string>
+    <string name="compat_android_between">Android %1$s to %2$s</string>
+    <string name="compat_android_from">Android %1$s or later</string>
+    <string name="compat_android_up_to">Android %1$s or earlier</string>
+    <string name="compat_android_ok_detail">This phone has Android %1$s.</string>
+    <string name="compat_android_blocked_detail">This phone has Android %1$s. No update to Folio can change that.</string>
+    <string name="compat_folio_untried">Not tried on Folio %1$s yet</string>
+    <string name="compat_folio_untried_detail">Made for Folio %1$s. You can still get it, and if it makes Folio close, Safe Mode turns it off.</string>
+    <string name="compat_breaks">Doesn\'t work with %1$s %2$s</string>
+    <string name="compat_breaks_detail">Update %1$s first, then this package.</string>
     <string name="roadmap_now">Now</string>
     <string name="roadmap_next">Next</string>
     <string name="roadmap_shipped">Shipped</string>

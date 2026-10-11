@@ -63,7 +63,7 @@ internal class MarketSession(
     /** What the installer asks about the launcher; the screen asks the same thing before Get. */
     private val host = MarketHost(launcher)
     private val folioVersion = FolioVersion.fromAppVersion(WhatsNew.currentVersion(context))
-    private val installer = PackageInstaller(store, host, safeMode, folioVersion = folioVersion)
+    private val installer = PackageInstaller(store, host, safeMode, folioVersion = folioVersion, androidSdk = android.os.Build.VERSION.SDK_INT)
 
     /** The screens this phone has: both on a foldable, and unknown otherwise, when a package says nothing about them. */
     private val deviceScreens: Set<com.mccal.folio.market.Screen>? =
@@ -73,7 +73,9 @@ internal class MarketSession(
     /** Whether [manifest] works here: the answer the installer refuses on, asked before anything is downloaded. */
     fun compatibility(manifest: com.mccal.folio.market.PackageManifest): List<com.mccal.folio.market.CompatCheck> =
         com.mccal.folio.market.PackageCompatibility.check(
-            manifest, com.mccal.folio.market.CompatContext(host.capabilities, folioVersion, store.installed(), host::hasTweak, deviceScreens),
+            manifest, com.mccal.folio.market.CompatContext(
+                host.capabilities, folioVersion, store.installed(), host::hasTweak, deviceScreens, androidSdk = android.os.Build.VERSION.SDK_INT,
+            ),
         )
 
     /** Whether this build can read an unsigned source served from the phone: Folio Dev only. */
