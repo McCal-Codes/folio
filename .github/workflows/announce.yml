@@ -1,12 +1,15 @@
 # Tells Discord about a release, once, when it is published.
 #
-# Posts to every webhook in the secret DISCORD_WEBHOOK_URLS, comma-separated: Folio's own #announcements and Mod My
-# Android's #app-updates. Nothing is sent until that secret exists, so this is inert until it does.
+# Two separate announcements, each with its own secret and role variable, so one server's settings never touch the other's:
 #
-# The variable DISCORD_ROLE_IDS holds the role to ping in each of those servers, in the same order, since a role only
-# exists in its own server. Leave a position empty for no ping there.
+#   Folio's own server   FOLIO_DISCORD_WEBHOOK_URLS, FOLIO_DISCORD_ROLE_IDS. Hears about every release, betas included,
+#                        and first, so nobody elsewhere hears before the people who use it.
+#   Mod My Android       MMD_DISCORD_WEBHOOK_URLS, MMD_DISCORD_ROLE_IDS. Stable releases only: the private
+#                        #community-developers test channel first, then the public #app-updates.
 #
-# The old names, MMD_WEBHOOK_URL and MMD_ROLE_ID, still work, so nothing breaks if they were set first.
+# Each secret is one webhook or several separated by commas, and each role variable lists one role per webhook in the
+# same order, since a role only exists in its own server. Leave a position empty for no ping there: ",<role id>" pings
+# nobody in the test channel and the role in #app-updates. Nothing is sent for a server until its secret exists.
 name: Announce
 
 on:
@@ -44,9 +47,19 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > release.json
           echo "RELEASE_FILE=$PWD/release.json" >> "$GITHUB_ENV"
 
-      - name: Post it
+      # Folio's own server first, betas included. A failure here must not stop the Mod My Android post, so that step
+      # runs whatever happened before it and the job still ends red if either failed.
+      - name: Post to Folio's server
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URLS || secrets.MMD_WEBHOOK_URL }}
-          DISCORD_ROLE_ID: ${{ vars.DISCORD_ROLE_IDS || vars.MMD_ROLE_ID }}
-          ANNOUNCE_PRERELEASES: ${{ vars.ANNOUNCE_PRERELEASES }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.FOLIO_DISCORD_WEBHOOK_URLS }}
+          DISCORD_ROLE_ID: ${{ vars.FOLIO_DISCORD_ROLE_IDS }}
+          ANNOUNCE_PRERELEASES: "true"
+        run: node tools/announce-release.mjs
+
+      # No ANNOUNCE_PRERELEASES: the script skips a pre-release, which is how betas stay out of Mod My Android.
+      - name: Post to Mod My Android
+        if: ${{ !cancelled() }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.MMD_DISCORD_WEBHOOK_URLS }}
+          DISCORD_ROLE_ID: ${{ vars.MMD_DISCORD_ROLE_IDS }}
         run: node tools/announce-release.mjs

@@ -448,7 +448,9 @@ From 0.7.0 the list can also say a version doesn't work with some Folio releases
 ```
 
 `folio` uses the `depends` operators on a Folio release (`0.8` reads as `0.8.0`). A source lists only its own packages.
-Folio 0.7.0 reads the list; acting on it (refusing the install and turning an installed one off, settings kept) is next.
+A matching version is shown as unavailable with the reason, and Folio won't install it, as a new install, an update
+(automatic or not) or a shared file. One that is already installed keeps working and can be removed, as a pulled one can
+today.
 
 ### Trust
 
