@@ -142,7 +142,7 @@ androidComponents {
 
 android {
     namespace = "com.mccal.folio"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.mccal.folio"
         minSdk = 31
