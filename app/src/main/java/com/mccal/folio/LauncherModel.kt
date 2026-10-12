@@ -38,10 +38,12 @@ data class AppEntry(
     val user: UserHandle = Process.myUserHandle(),
     val userSerial: Long = 0,
     val profileLabel: String = "Personal",
+    /** Not from the personal profile: a work profile or a clone. [kind] says which. */
     val isWork: Boolean = false,
     val available: Boolean = true,
     /** The name Android reports, kept so a custom name can be changed or cleared without reloading apps. */
     val systemLabel: String = label,
+    val kind: ProfileKind = if (isWork) ProfileKind.WORK else ProfileKind.PERSONAL,
 ) {
     val packageName: String get() = component.packageName
     /** A pinned shortcut (a website or app action someone added to Home) rather than an app. */
@@ -566,8 +568,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val application = getApplication<Application>()
                     val (personal, personalSerial, associatedSerials, handles, profiles) = appProfiles()
                     val cachedBeforeProfiles = loadCachedApps().filterNot { entry -> entry.userSerial to entry.packageName in removed }
-                    val removedProfileSerials = removedAssociatedProfileSerials(
-                        cachedBeforeProfiles.filter(AppEntry::isWork).mapTo(mutableSetOf(), AppEntry::userSerial), associatedSerials)
+                    val removedProfileSerials = removedProfileSerials(cachedBeforeProfiles, associatedSerials)
                     val cached = cachedBeforeProfiles.filterNot { it.isWork && it.userSerial in removedProfileSerials }
                     val authoritativeProfiles = mutableSetOf<Long>()
                     authoritativeProfiles += removedProfileSerials
@@ -610,8 +611,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     // Spell Chinese names in pinyin here, off the main thread, so search and the A–Z list don't wait.
                     entries.forEach { Pinyin.syllables(it.label) }
                     iconCache.keys.retainAll(entries.map { it.id }.toSet())
-                    RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, true,
-                        quiet = true, unlocked = false, available = false) }).distinctBy(AppProfile::userSerial),
+                    RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, it.kind == ProfileKind.WORK,
+                        quiet = true, unlocked = false, available = false, kind = it.kind) }).distinctBy(AppProfile::userSerial),
                         authoritativeProfiles.toSet(), removedProfileSerials)
                 }
                 mutable.update { old ->
@@ -688,31 +689,36 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             val baseIcon = application.packageManager.defaultActivityIcon
             val icon = runCatching { application.packageManager.getUserBadgedIcon(baseIcon, user) }.getOrDefault(baseIcon)
             AppEntry(id, item.getString("label"), launcherIcon(icon), component, user, serial,
-                item.optString("profile", if (isWork) "Work" else "Personal"), isWork, available = false)
+                item.optString("profile", if (isWork) "Work" else "Personal"), isWork, available = false,
+                kind = storedProfileKind(item.optString("kind").takeIf(String::isNotEmpty), isWork))
         }
     }.getOrDefault(emptyList())
 
     private data class AppProfiles(val personal: UserHandle, val personalSerial: Long, val associatedSerials: Set<Long>,
         val handles: List<UserHandle>, val profiles: List<AppProfile>)
 
-    /** The profiles Folio lists apps from (personal, and a supported work profile), and whether each can list them now. */
+    /** The profiles Folio lists apps from (personal, a work profile, clones; see [ProfileKind]), and whether each can list them now. */
     private fun appProfiles(): AppProfiles {
         val personal = Process.myUserHandle()
         val personalSerial = userManager.getSerialNumberForUser(personal)
         val associatedSerials = userManager.userProfiles.mapTo(mutableSetOf(), userManager::getSerialNumberForUser)
-        val handles = launcherApps.profiles
-            .filter { profile ->
-                val serial = userManager.getSerialNumberForUser(profile)
-                serial in associatedSerials && (serial == personalSerial || isSupportedWorkProfile(launcherApps, profile))
-            }
+        val kinds = launcherApps.profiles
+            .filter { profile -> userManager.getSerialNumberForUser(profile) in associatedSerials }
             .distinctBy(userManager::getSerialNumberForUser)
+            .associateWith { profile ->
+                if (userManager.getSerialNumberForUser(profile) == personalSerial) ProfileKind.PERSONAL
+                else launcherProfileKind(launcherApps, profile)
+            }
+            .filterValues { it != ProfileKind.SKIP }
+        val handles = kinds.keys.toList()
         val profiles = handles.map { profile ->
             val serial = userManager.getSerialNumberForUser(profile)
-            val isPersonal = serial == personalSerial
+            val kind = kinds.getValue(profile)
+            val isPersonal = kind == ProfileKind.PERSONAL
             val quiet = !isPersonal && runCatching { userManager.isQuietModeEnabled(profile) }.getOrDefault(false)
             val unlocked = runCatching { userManager.isUserUnlocked(profile) }.getOrDefault(isPersonal)
-            AppProfile(serial, if (isPersonal) "Personal" else "Work", isPersonal, !isPersonal,
-                quiet, unlocked, !quiet && unlocked)
+            AppProfile(serial, when (kind) { ProfileKind.PERSONAL -> "Personal"; ProfileKind.CLONE -> "Clone"; else -> "Work" },
+                isPersonal, kind == ProfileKind.WORK, quiet, unlocked, !quiet && unlocked, kind)
         }
         return AppProfiles(personal, personalSerial, associatedSerials, handles, profiles)
     }
@@ -743,14 +749,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (canSave && iconCache[id] == null && (descriptor.userSerial to info.componentName.packageName) !in invalidated) {
             savedIcons.read(id, info.componentName, sourceDir)?.let { (label, icon) ->
                 return AppEntry(id, label, icon, info.componentName, profile, descriptor.userSerial, descriptor.label,
-                    descriptor.isWork, available = true).also { iconCache[id] = it }
+                    !descriptor.isPersonal, available = true, kind = descriptor.kind).also { iconCache[id] = it }
             }
         }
         val label = info.label.toString()
         return iconCache[id]?.takeIf { it.label == label && it.available && it.component == info.componentName } ?: run {
             val icon = runCatching { info.getBadgedIcon(0) }.getOrElse { getApplication<Application>().packageManager.defaultActivityIcon }
             AppEntry(id, label, launcherIcon(icon), info.componentName, profile, descriptor.userSerial, descriptor.label,
-                descriptor.isWork, available = true).also {
+                !descriptor.isPersonal, available = true, kind = descriptor.kind).also {
                 iconCache[id] = it
                 if (canSave) unsavedIcons += SavedIcons.Saved(id, label, it.icon, info.componentName, sourceDir)
             }
@@ -769,7 +775,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             val icon = runCatching { launcherApps.getShortcutBadgedIconDrawable(info, densityDpi) }.getOrNull()
                 ?: getApplication<Application>().packageManager.defaultActivityIcon
             AppEntry(id, label, launcherIcon(icon), ComponentName(info.`package`, SHORTCUT_CLASS_PREFIX + info.id), profile,
-                descriptor.userSerial, descriptor.label, descriptor.isWork, available = true).also { iconCache[id] = it }
+                descriptor.userSerial, descriptor.label, !descriptor.isPersonal, available = true, kind = descriptor.kind).also { iconCache[id] = it }
         }
     }
 
@@ -796,7 +802,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     private fun saveCachedApps(apps: List<AppEntry>) {
         val array = JSONArray().also { result -> apps.forEach { app -> result.put(JSONObject()
             .put("id", app.id).put("label", app.label).put("serial", app.userSerial)
-            .put("profile", app.profileLabel).put("work", app.isWork)) } }
+            .put("profile", app.profileLabel).put("work", app.isWork).putOpt("kind", storedProfileKind(app.kind))) } }
         appCatalogPrefs.edit().putString("apps", array.toString()).apply()
     }
 

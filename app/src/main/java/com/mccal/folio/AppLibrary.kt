@@ -56,7 +56,8 @@ internal fun AppLibrary(
     val pinned = remember(state.homeSlots, state.leadingSlots) {
         (state.homeSlots.asSequence() + state.leadingSlots.asSequence()).filterNotNull().toSet()
     }
-    val hasWork = state.profiles.any { it.isWork } || state.apps.any { it.isWork }
+    // Only a work profile gets the Work switch; clones (Dual Messenger) stay in the main list beside their originals.
+    val hasWork = state.profiles.any { it.isWork } || state.apps.any { it.kind == ProfileKind.WORK }
     // With Work turned off in Settings the switch goes away and only personal apps are listed.
     val workSwitch = hasWork && state.libraryWork
     var showWork by remember { mutableStateOf(false) }
@@ -80,7 +81,7 @@ internal fun AppLibrary(
         val text = query.trim()
         // At a start Home's apps come first; the library waits for all of them rather than show a part as everything.
         // A renamed app answers to both names here, the same as in Spotlight.
-        (if (state.loading) emptyList() else state.apps).filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) &&
+        (if (state.loading) emptyList() else state.apps).filter { (if (workSwitch) (it.kind == ProfileKind.WORK) == showWork else !(hasWork && it.kind == ProfileKind.WORK)) &&
             appMatches(it, text) && (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
