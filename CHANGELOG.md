@@ -58,6 +58,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Notification badges show on apps inside an open folder (#362):** a folder showed its total on Home, but once open its apps had no badges. Each app now has its own badge on the top-left corner of its icon, clear of its options button.
 - **Create Folder always makes the folder:** picking the second app did nothing when the app came from the dock or the App Library and the page had no free spot. The folder now goes on the first page with room, or on a new page at the end, and Home turns to it. Its list also stops offering apps that are already in a folder, which did nothing when picked. Its title, its "New folder with" heading (which was nearly invisible on the dark dialog) and a new folder's name now follow your language.
 - **No outlines through widgets while moving an app:** the faint outlines that show where a carried app could go no longer appear on the cells under a widget, which showed through the widget.
 - **Back closes a folder again:** since folders got their own window in beta 1, the Back button and the back swipe did nothing while a folder was open; only a tap outside closed it. Back closes it again, and the back swipe shrinks it toward its icon as before.
