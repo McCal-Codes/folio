@@ -432,7 +432,7 @@ fun StatusRail(
                 }
                 // The percentage is already inside the ring in that style.
                 // Glyphs that carry the number themselves don't need it repeated underneath.
-                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) Text(if (status.airplane) "Airplane" else status.battery?.let { "$it%" } ?: "—",
+                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) Text(if (status.airplane) stringResource(R.string.status_airplane) else status.battery?.let { "$it%" } ?: "—",
                     color = if (status.charging && style.colorfulBattery) charging else ink,
                     fontSize = detailSize, fontWeight = FontWeight.Medium,
                     maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)

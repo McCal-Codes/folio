@@ -15,7 +15,7 @@ import androidx.lifecycle.LifecycleEventObserver
 enum class AppearanceMode { LIGHT, DARK, SYSTEM, SUNRISE_SUNSET }
 data class AppearanceState(val mode: AppearanceMode = AppearanceMode.LIGHT, val accent: AccentChoice = AccentChoice.FOLIO_TEAL, val place: String = "",
     val latitude: Double? = null, val longitude: Double? = null, val locationTime: Long = 0,
-    val deviceLocation: Boolean = false, val dark: Boolean = false, val fallback: String? = null,
+    val deviceLocation: Boolean = false, val dark: Boolean = false, @androidx.annotation.StringRes val fallback: Int? = null,
     val locationStatus: String? = null)
 
 class AppearanceStore(private val context: Context) {
@@ -66,11 +66,11 @@ class AppearanceStore(private val context: Context) {
         AppearanceMode.SYSTEM -> value.copy(dark = systemDark, fallback = null)
         AppearanceMode.SUNRISE_SUNSET -> {
             val lat = value.latitude; val lon = value.longitude
-            if (lat == null || lon == null) value.copy(dark = systemDark, fallback = "Using system theme until a location is set")
+            if (lat == null || lon == null) value.copy(dark = systemDark, fallback = R.string.appearance_system_until_location)
             else if (value.deviceLocation && System.currentTimeMillis() - value.locationTime > 30L * 24 * 60 * 60 * 1000)
-                value.copy(dark = systemDark, fallback = "Using system theme because the device location is stale")
+                value.copy(dark = systemDark, fallback = R.string.appearance_system_location_stale)
             else runCatching { val now = ZonedDateTime.now(); value.copy(dark = solarSchedule(now.toLocalDate(), lat, lon, now.zone).isDark(now), fallback = null) }
-                .getOrElse { value.copy(dark = systemDark, fallback = "Using system theme because this location is unavailable") }
+                .getOrElse { value.copy(dark = systemDark, fallback = R.string.appearance_system_location_unavailable) }
         }
     }
 }
