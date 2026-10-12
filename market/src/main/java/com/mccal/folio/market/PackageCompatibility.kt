@@ -44,6 +44,45 @@ sealed interface CompatCheck {
     data class Screens(val supported: Set<Screen>, val device: Set<Screen>) : CompatCheck {
         override val state get() = if (supported.containsAll(device)) CompatState.OK else CompatState.NOTE
     }
+
+    /**
+     * `minSdk`/`maxSdk` against this phone's Android (ADR 0013). The one hard limit nothing on the phone can fix, so it
+     * blocks. [have] is null only in tests, which skip the check.
+     */
+    data class Android(val min: Int?, val max: Int?, val have: Int?) : CompatCheck {
+        override val state get() = when {
+            have == null -> CompatState.OK
+            min != null && have < min -> CompatState.BLOCKED
+            max != null && have > max -> CompatState.BLOCKED
+            else -> CompatState.OK
+        }
+    }
+
+    /** `maxFolio`, the newest Folio its author tried. Advice only: a newer Folio is a note, never a block (ADR 0013). */
+    data class FolioRange(val max: FolioMinor, val have: FolioVersion?) : CompatCheck {
+        override val state get() = if (have != null && !max.covers(have)) CompatState.NOTE else CompatState.OK
+    }
+
+    /** `breaks`: installed packages at versions this one doesn't work with. They have to be updated first. */
+    data class Breaks(val relations: List<PackageRelation>, val broken: List<InstalledPackage>) : CompatCheck {
+        override val state get() = if (broken.isEmpty()) CompatState.OK else CompatState.BLOCKED
+    }
+}
+
+/** Android's own name for an API level, for the words around `minSdk` and `maxSdk`. */
+object AndroidRelease {
+    fun name(api: Int): String = when (api) {
+        31 -> "12"; 32 -> "12L"; 33 -> "13"; 34 -> "14"; 35 -> "15"; 36 -> "16"; 37 -> "17"
+        else -> "API $api"
+    }
+
+    /** "Android 13 to 17", "Android 13 or later", "Android 16 or earlier": English, for the installer's messages. */
+    fun range(min: Int?, max: Int?): String = when {
+        min != null && max != null -> "Android ${name(min)} to ${name(max)}"
+        min != null -> "Android ${name(min)} or later"
+        max != null -> "Android ${name(max)} or earlier"
+        else -> "any Android"
+    }
 }
 
 /** What a check needs to know about this phone and what is on it. */
@@ -55,6 +94,8 @@ class CompatContext(
     val hasTweak: (String) -> Boolean = { false },
     /** The screens this phone has, or null when that is not known (nothing is said about screens then). */
     val screens: Set<Screen>? = null,
+    /** This phone's Android API level. Null skips `minSdk`/`maxSdk`, which only a test does. */
+    val androidSdk: Int? = null,
 )
 
 /**
@@ -73,6 +114,9 @@ object PackageCompatibility {
         changes: List<PackageChange> = emptyList(),
         builtIn: Boolean = false,
     ): List<CompatCheck> = buildList {
+        // First, because nothing the person could do here would change it.
+        if (manifest.minSdk != null || manifest.maxSdk != null) add(CompatCheck.Android(manifest.minSdk, manifest.maxSdk, context.androidSdk))
+
         val unsupported = manifest.kinds.filter { it.reserved }
         if (unsupported.isNotEmpty()) add(CompatCheck.Kinds(unsupported))
 
@@ -81,6 +125,7 @@ object PackageCompatibility {
         add(CompatCheck.Features(missingFeatures.toList()))
 
         add(CompatCheck.Release(manifest.minFolio, context.folioVersion.takeUnless { builtIn }))
+        manifest.maxFolio?.let { add(CompatCheck.FolioRange(it, context.folioVersion.takeUnless { builtIn })) }
 
         val required = (if (changes.isNotEmpty()) changes.mapNotNull { it.hostTweak } else manifest.kinds.mapNotNull { it.hostTweak }).distinct()
         if (required.isNotEmpty()) add(CompatCheck.Hosts(required, required.filterNot(context.hasTweak)))
@@ -88,6 +133,11 @@ object PackageCompatibility {
         if (manifest.conflicts.isNotEmpty()) {
             add(CompatCheck.Replaces(context.installed.firstOrNull { other ->
                 other.id != manifest.id && manifest.conflicts.any { it.id == other.id && it.matches(other.version) }
+            }))
+        }
+        if (manifest.breaks.isNotEmpty()) {
+            add(CompatCheck.Breaks(manifest.breaks, context.installed.filter { other ->
+                other.id != manifest.id && manifest.breaks.any { it.id == other.id && it.matches(other.version) }
             }))
         }
         if (manifest.depends.isNotEmpty()) {

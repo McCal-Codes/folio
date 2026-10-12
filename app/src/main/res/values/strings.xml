@@ -1788,6 +1788,15 @@
     <string name="compat_screen_inner_only_detail">It doesn\'t change the cover screen. Nothing is wrong; it just won\'t show there.</string>
     <string name="compat_screen_cover_only">Cover screen only</string>
     <string name="compat_screen_cover_only_detail">It doesn\'t change the inner screen. Nothing is wrong; it just won\'t show there.</string>
+    <string name="compat_android_between">Android %1$s to %2$s</string>
+    <string name="compat_android_from">Android %1$s or later</string>
+    <string name="compat_android_up_to">Android %1$s or earlier</string>
+    <string name="compat_android_ok_detail">This phone has Android %1$s.</string>
+    <string name="compat_android_blocked_detail">This phone has Android %1$s. No update to Folio can change that.</string>
+    <string name="compat_folio_untried">Not tried on Folio %1$s yet</string>
+    <string name="compat_folio_untried_detail">Made for Folio %1$s. You can still get it, and if it makes Folio close, Safe Mode turns it off.</string>
+    <string name="compat_breaks">Doesn\'t work with %1$s %2$s</string>
+    <string name="compat_breaks_detail">Update %1$s first, then this package.</string>
     <string name="roadmap_now">Now</string>
     <string name="roadmap_next">Next</string>
     <string name="roadmap_shipped">Shipped</string>

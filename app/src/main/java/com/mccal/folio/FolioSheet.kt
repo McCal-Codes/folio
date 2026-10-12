@@ -58,7 +58,8 @@ internal fun rememberEntrance(stiffness: Float, dampingRatio: Float = 1f, from: 
         scenario?.let(PerfLog::begin)
         try {
             entrance.animateTo(to, if (FolioMotion.v2) MotionSpeed.spring(dampingRatio, stiffness)
-                else androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness))
+                // motion-ratchet: the old entrance, kept as it was while the 0.6.9 motion pass is off.
+                else androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness)) // motion-ratchet
         } finally { scenario?.let(PerfLog::end) }
     }
     // The timeout must not depend on frames, so it runs on the main thread alone. Snapping cancels the animation.
@@ -195,7 +196,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                 // half-readable competes with Home (only the dragged slider's capsule shows).
                 // Predictive back: the page eases right and shrinks a little with the swipe, like Android's own screens.
                 val back = androidx.compose.animation.core.animateFloatAsState(SheetBackProgress.floatValue,
-                    androidx.compose.animation.core.spring(stiffness = 1400f), label = "sheet back").value
+                    FolioMotion.spring(1f to 1400f), label = "sheet back").value
                 androidx.compose.material3.Surface(Modifier.fillMaxSize().graphicsLayer {
                     translationX = size.width * slide.value + size.width * .08f * back
                     alpha = pageFade.value
