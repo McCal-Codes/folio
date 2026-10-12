@@ -59,7 +59,9 @@ internal fun OverlayBackHandler(open: Boolean, onClose: () -> Unit) {
         onCancel = { scope.launch { OverlayBack.swipe.animateTo(0f, FolioMotion.spring(FolioMotion.Quick)) } },
         onBack = onClose)
     else androidx.activity.compose.BackHandler(open) { onClose() }
+}
 
+/**
  * [PredictiveBack] for an overlay drawn in its own Dialog window; call it inside the Dialog's content. While the dialog
  * has focus, Android sends Back to the dialog's own dispatcher, but a Compose back handler there still registers on the
  * activity's (the dialog's composition inherits it), so it never hears Back. This registers on the dialog's, the way
