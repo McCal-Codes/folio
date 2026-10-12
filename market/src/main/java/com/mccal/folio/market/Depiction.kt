@@ -42,11 +42,13 @@ data class Depiction(val tint: Int?, val blocks: List<DepictionBlock>) {
                 "markdown" -> fields("text").text("text", true, MAX_MARKDOWN)?.let(DepictionBlock::Markdown)
                 "featureList" -> readFeatures(fields("items"))?.let(DepictionBlock::FeatureList)
                 "compatibility" -> {
-                    val c = fields("screens", "notes")
+                    val c = fields("screens", "notes", "testedOn", "fallback")
                     val screens = c.ids("screens", false, Screen::from, unique = false, unknownIsIgnored = true)
                     val notes = c.text("notes", false)
+                    val testedOn = readTestedOn(c)
+                    val fallback = c.text("fallback", false)
                     if (screens == null && c.has("screens")) null
-                    else DepictionBlock.Compatibility(screens?.toSet() ?: Screen.entries.toSet(), notes)
+                    else DepictionBlock.Compatibility(screens?.toSet() ?: Screen.entries.toSet(), notes, testedOn.orEmpty(), fallback)
                 }
                 "changelog" -> readChangelog(fields("entries"))?.let(DepictionBlock::Changelog)
                 "link" -> {
@@ -82,6 +84,23 @@ data class Depiction(val tint: Int?, val blocks: List<DepictionBlock>) {
             return if (f.problems.errors.size == before) out else null
         }
 
+        /** `testedOn` (ADR 0013): where the author tried it. Folio checks the shape, not the claim. */
+        private fun readTestedOn(f: Fields): List<TestedOn>? {
+            val items = f.objects("testedOn", false, maxItems = MAX_TESTED_ON) ?: return null
+            return items.mapNotNull { (i, json) ->
+                val t = f.child(json, "${f.where("testedOn")}[$i]", setOf("device", "android", "folio", "date"))
+                val device = t.text("device", true, MAX_DEVICE)
+                val android = t.long("android", true, PackageManifest.MIN_SDK.toLong()..PackageManifest.MAX_SDK.toLong())?.toInt()
+                val folio = t.string("folio", true, maxLength = 40)?.let { raw ->
+                    FolioVersion.parse(raw) ?: null.also { f.problems.errors += "${t.where("folio")} must look like 0.7.0" }
+                }
+                val date = t.string("date", true, DATE, 10, "must be a date like 2026-10-03")
+                if (device != null && android != null && folio != null && date != null) TestedOn(device, android, folio, date) else null
+            }
+        }
+
+        const val MAX_TESTED_ON = 10
+        const val MAX_DEVICE = 60
         private const val PATH_RULE = "must be a relative path inside the package"
         private const val URL_RULE = "must be an https:// link"
     }
@@ -94,11 +113,23 @@ sealed interface DepictionBlock {
     /** Folio's safe Markdown subset: paragraphs, bold, italic, lists and links. HTML and images are shown as text. */
     data class Markdown(val text: LocalizedText) : DepictionBlock
     data class FeatureList(val items: List<LocalizedText>) : DepictionBlock
-    data class Compatibility(val screens: Set<Screen>, val notes: LocalizedText?) : DepictionBlock
+    /**
+     * [testedOn] is where the author tried it, and [fallback] what still works without the access it needs
+     * (ADR 0013). Both are words for the page; nothing is decided from them.
+     */
+    data class Compatibility(
+        val screens: Set<Screen>,
+        val notes: LocalizedText?,
+        val testedOn: List<TestedOn> = emptyList(),
+        val fallback: LocalizedText? = null,
+    ) : DepictionBlock
     data class Changelog(val entries: List<ChangelogEntry>) : DepictionBlock
     data class Link(val title: LocalizedText, val url: String) : DepictionBlock
     data class Donation(val url: String) : DepictionBlock
 }
+
+/** One phone the author tried a package on. [android] is the API level; [date] is `yyyy-mm-dd`. */
+data class TestedOn(val device: LocalizedText, val android: Int, val folio: FolioVersion, val date: String)
 
 /** One release in a package's changelog. [date] is `yyyy-mm-dd` as the author wrote it. */
 data class ChangelogEntry(val version: DebVersion, val date: String?, val notes: LocalizedText)
