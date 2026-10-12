@@ -2015,6 +2015,34 @@
     <string name="simple_remove_from_home">从主屏幕移除</string>
     <string name="simple_remove_note">应用仍保留在手机上，只更改主屏幕。</string>
     <string name="simple_list_separator">、</string>
+    <string name="simple_setup_row_title">在为别人设置这部手机？</string>
+    <string name="simple_setup_row_detail">简易模式：大按钮，锁定的主屏幕</string>
+    <string name="simple_setup_style_title">主屏幕要怎么显示？</string>
+    <string name="simple_setup_style_body">两种都是带文字的大按钮。以后可以在协助者设置中更改。</string>
+    <string name="simple_setup_apps_title">放哪些应用？</string>
+    <string name="simple_setup_apps_body">这部手机自带的电话、信息、相机、照片、时钟和通讯录应用。取消勾选他们不会用的。</string>
+    <string name="simple_setup_apps_none">这部手机上没有找到这些应用。以后可以在协助者设置的“编辑主屏幕”中添加。</string>
+    <string name="simple_setup_shows_as">显示为“%1$s”</string>
+    <string name="simple_setup_ready_title">准备好了</string>
+    <string name="simple_setup_see_title">他们会看到什么</string>
+    <string name="simple_setup_back_in_title">你如何回到设置</string>
+    <string name="simple_setup_back_in_lock">轻点主屏幕底部的“协助者设置”，然后使用这部手机的屏幕锁。</string>
+    <string name="simple_setup_back_in_hold">轻点主屏幕底部的“协助者设置”，然后按住按钮 2 秒。</string>
+    <string name="simple_setup_leave_title">如何退出</string>
+    <string name="simple_setup_leave_body">在协助者设置中轻点“退出简易模式”。Folio 平常的主屏幕会回来。</string>
+    <string name="simple_setup_lock_title">添加屏幕锁？</string>
+    <string name="simple_setup_lock_body">这部手机没有设置屏幕锁。设置后，打开协助者设置前会要求输入，手机唤醒时也会要求输入。</string>
+    <string name="simple_setup_set_lock">设置屏幕锁</string>
+    <string name="simple_first_open">协助者设置在最下方</string>
+    <plurals name="simple_setup_apps_note">
+        <item quantity="other">主屏幕上有 %1$d 个。其他的以后可在协助者设置的“编辑主屏幕”中添加。</item>
+    </plurals>
+    <plurals name="simple_setup_see_list">
+        <item quantity="other">一个有 %1$d 个应用的列表，文字大，顶部显示时间、日期和电量。主屏幕保持不变。</item>
+    </plurals>
+    <plurals name="simple_setup_see_grid">
+        <item quantity="other">一个有 %1$d 个应用的大网格，文字大，顶部显示时间、日期和电量。主屏幕保持不变。</item>
+    </plurals>
     <string name="simple_open_confirm_title">打开协助者设置？</string>
     <string name="simple_open_confirm_body">这是给帮忙设置这部手机的人使用的。</string>
     <string name="simple_open_settings">打开设置</string>

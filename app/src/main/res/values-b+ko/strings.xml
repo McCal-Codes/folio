@@ -2036,6 +2036,34 @@
     <string name="simple_remove_from_home">홈에서 제거</string>
     <string name="simple_remove_note">앱은 휴대전화에 그대로 남고 홈만 바뀝니다.</string>
     <string name="simple_list_separator">,\u0020</string>
+    <string name="simple_setup_row_title">다른 사람을 위해 설정하고 있나요?</string>
+    <string name="simple_setup_row_detail">간편 모드: 큰 버튼, 잠긴 홈</string>
+    <string name="simple_setup_style_title">홈을 어떻게 보이게 할까요?</string>
+    <string name="simple_setup_style_body">둘 다 이름이 표시되는 큰 버튼입니다. 나중에 도우미 설정에서 바꿀 수 있습니다.</string>
+    <string name="simple_setup_apps_title">어떤 앱을 넣을까요?</string>
+    <string name="simple_setup_apps_body">이 휴대전화의 기본 전화, 메시지, 카메라, 사진, 시계, 연락처 앱입니다. 쓰지 않을 앱은 선택을 해제하세요.</string>
+    <string name="simple_setup_apps_none">이 휴대전화에서 해당 앱을 찾지 못했습니다. 나중에 도우미 설정의 홈 편집에서 앱을 추가하세요.</string>
+    <string name="simple_setup_shows_as">%1$s(으)로 표시됨</string>
+    <string name="simple_setup_ready_title">준비되었습니다</string>
+    <string name="simple_setup_see_title">보게 될 화면</string>
+    <string name="simple_setup_back_in_title">다시 들어오는 방법</string>
+    <string name="simple_setup_back_in_lock">홈 아래쪽의 도우미 설정을 누른 다음 이 휴대전화의 화면 잠금을 사용하세요.</string>
+    <string name="simple_setup_back_in_hold">홈 아래쪽의 도우미 설정을 누른 다음 버튼을 2초 동안 길게 누르세요.</string>
+    <string name="simple_setup_leave_title">나가는 방법</string>
+    <string name="simple_setup_leave_body">도우미 설정에서 간편 모드 나가기를 누르세요. Folio의 원래 홈이 돌아옵니다.</string>
+    <string name="simple_setup_lock_title">화면 잠금을 추가할까요?</string>
+    <string name="simple_setup_lock_body">이 휴대전화에는 화면 잠금이 없습니다. 화면 잠금이 있으면 도우미 설정을 열기 전에 묻고, 휴대전화를 켤 때도 묻습니다.</string>
+    <string name="simple_setup_set_lock">화면 잠금 설정</string>
+    <string name="simple_first_open">도우미 설정은 맨 아래에 있습니다</string>
+    <plurals name="simple_setup_apps_note">
+        <item quantity="other">홈에 %1$d개. 나머지는 나중에 도우미 설정의 홈 편집에서 추가하세요.</item>
+    </plurals>
+    <plurals name="simple_setup_see_list">
+        <item quantity="other">앱 %1$d개가 있는 목록, 큰 이름, 맨 위에 시간, 날짜, 배터리가 표시됩니다. 홈은 그대로 유지됩니다.</item>
+    </plurals>
+    <plurals name="simple_setup_see_grid">
+        <item quantity="other">앱 %1$d개가 있는 큰 격자, 큰 이름, 맨 위에 시간, 날짜, 배터리가 표시됩니다. 홈은 그대로 유지됩니다.</item>
+    </plurals>
     <string name="simple_open_confirm_title">도우미 설정을 여시겠습니까?</string>
     <string name="simple_open_confirm_body">이 휴대전화의 설정을 도와주는 사람을 위한 페이지입니다.</string>
     <string name="simple_open_settings">설정 열기</string>

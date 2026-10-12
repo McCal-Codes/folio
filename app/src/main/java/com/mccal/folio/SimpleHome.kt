@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -65,6 +66,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -239,6 +243,10 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
     var screen by rememberSaveable { mutableStateOf(SimpleScreen.HOME) }
     var hint by remember { mutableStateOf(false) }
     var holding by remember { mutableStateOf(false) }
+    // Armed by setup's Simple branch: one line, once, saying where Helper Settings is. Placed over Home by where the
+    // button is, so nothing on Home moves for it.
+    var firstOpen by remember { mutableStateOf(SimpleFirstOpen.pending(context)) }
+    var helperButton by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     // How many apps Home had room for, so More Apps lists the rest. Written while Home lays out, read only by More Apps.
     val shownOnHome = remember { mutableIntStateOf(SIMPLE_MAX_APPS) }
     // The Home button, or Folio going to the background: back to Home, so Helper Settings never stays open.
@@ -261,7 +269,7 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
                 val fade by rememberSimpleFade()
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade }) {
                     when (screen) {
-                        SimpleScreen.HOME -> SimpleHomeScreen(apps, setup.style, label, shownOnHome,
+                        SimpleScreen.HOME -> SimpleHomeScreen(apps, setup.style, label, shownOnHome, onFootPlaced = { helperButton = it },
                             onLaunch = { hint = false; onLaunch(it) }, onHold = { hint = true },
                             onMore = { hint = false; screen = SimpleScreen.MORE }, onHelper = { hint = false; openHelper() })
                         SimpleScreen.MORE -> SimpleMoreApps(apps.drop(shownOnHome.intValue), label, onLaunch = { hint = false; onLaunch(it) },
@@ -271,6 +279,9 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
                 }
             }
             if (hint && (screen == SimpleScreen.HOME || screen == SimpleScreen.MORE)) SimpleHint(Modifier.align(Alignment.BottomCenter)) { hint = false }
+            else if (firstOpen && screen == SimpleScreen.HOME) helperButton?.let { button ->
+                SimpleFirstOpenLine(button) { firstOpen = false; SimpleFirstOpen.done(context) }
+            }
         }
         if (holding) SimpleHoldDialog(onCancel = { holding = false }, onOpen = { holding = false; screen = SimpleScreen.SETTINGS })
     }
@@ -285,7 +296,7 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
  */
 @Composable
 private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (AppEntry) -> String, shownOnHome: androidx.compose.runtime.MutableIntState,
-    onLaunch: (AppEntry) -> Unit, onHold: () -> Unit, onMore: () -> Unit, onHelper: () -> Unit) {
+    onFootPlaced: (androidx.compose.ui.geometry.Rect) -> Unit, onLaunch: (AppEntry) -> Unit, onHold: () -> Unit, onMore: () -> Unit, onHelper: () -> Unit) {
     val hinge = LocalHinge.current
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -316,7 +327,7 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
                 val block = subcompose("apps-$compact-$shown") {
                     SimpleAppsBlock(items, style, compact, label, onLaunch, onHold, onMore)
                 }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
-                val foot = subcompose("foot-$compact") { SimpleFoot(compact, onHelper) }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
+                val foot = subcompose("foot-$compact") { SimpleFoot(compact, onHelper, onFootPlaced) }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
                 return listOf(head.single(), block.single(), foot.single())
             }
             fun gap(compact: Boolean) = (if (compact) FolioSpace.MEDIUM else FolioSpace.XL).dp.roundToPx()
@@ -414,12 +425,34 @@ private fun batteryIcon(level: Int, charging: Boolean): ImageVector = when {
 
 /** Helper Settings, as a quiet outlined button under the apps, and the preview label. */
 @Composable
-private fun SimpleFoot(compact: Boolean, onHelper: () -> Unit) {
-    val colors = simpleTheme
+private fun SimpleFoot(compact: Boolean, onHelper: () -> Unit, onPlaced: (androidx.compose.ui.geometry.Rect) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) FolioSpace.SNUG.dp else FolioSpace.SMALL.dp)) {
         SimpleButton(stringResource(R.string.simple_helper_settings), SimpleButtonKind.QUIET, Icons.Rounded.Lock, onClick = onHelper,
-            textSize = if (compact) 20f else 22f)
+            modifier = Modifier.onGloballyPositioned { onPlaced(it.boundsInRoot()) }, textSize = if (compact) 20f else 22f)
         SimplePreviewLabel()
+    }
+}
+
+/**
+ * "Helper Settings is at the bottom", with OK, just above the button and as wide as it. It lies over Home rather than
+ * in it, so no app moves, and is read out once.
+ */
+@Composable
+private fun SimpleFirstOpenLine(button: androidx.compose.ui.geometry.Rect, onOk: () -> Unit) {
+    val colors = simpleTheme
+    val shape = RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)
+    val gap = with(LocalDensity.current) { FolioSpace.COMPACT.dp.roundToPx() }
+    val okWidth = (96 * simpleGrowth(SimpleGrowth.LABEL)).dp
+    Row(Modifier.layout { measurable, constraints ->
+            val width = button.width.toInt().coerceIn(0, constraints.maxWidth)
+            val line = measurable.measure(Constraints(minWidth = width, maxWidth = width))
+            layout(constraints.maxWidth, constraints.maxHeight) { line.place(button.left.toInt(), (button.top.toInt() - line.height - gap).coerceAtLeast(0)) }
+        }.clip(shape).background(colors.raised).border(2.dp, colors.line, shape)
+        .padding(start = FolioSpace.LARGE.dp, end = FolioSpace.SNUG.dp, top = FolioSpace.SNUG.dp, bottom = FolioSpace.SNUG.dp)
+        .semantics { liveRegion = LiveRegionMode.Polite }, verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.simple_first_open), Modifier.weight(1f), color = colors.text, fontSize = simpleText(20f), fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.size(FolioSpace.MEDIUM.dp))
+        SimpleButton(stringResource(R.string.ok), SimpleButtonKind.PRIMARY, modifier = Modifier.width(okWidth), onClick = onOk)
     }
 }
 

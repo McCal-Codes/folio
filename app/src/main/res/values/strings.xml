@@ -2068,6 +2068,37 @@
     <string name="simple_remove_from_home">Remove from Home</string>
     <string name="simple_remove_note">Apps stay on the phone; only Home changes.</string>
     <string name="simple_list_separator">,\u0020</string>
+    <string name="simple_setup_row_title">Setting this up for someone else?</string>
+    <string name="simple_setup_row_detail">Simple Mode: big buttons, a locked Home</string>
+    <string name="simple_setup_style_title">How should Home look?</string>
+    <string name="simple_setup_style_body">Both have big buttons with labels. You can change this later in Helper Settings.</string>
+    <string name="simple_setup_apps_title">Which apps?</string>
+    <string name="simple_setup_apps_body">This phone\'s own phone, messages, camera, photos, clock and contacts apps. Uncheck any they won\'t use.</string>
+    <string name="simple_setup_apps_none">None of them were found on this phone. Add apps later in Helper Settings, Edit Home.</string>
+    <string name="simple_setup_shows_as">Shows as %1$s</string>
+    <string name="simple_setup_ready_title">Ready for them</string>
+    <string name="simple_setup_see_title">What they see</string>
+    <string name="simple_setup_back_in_title">How you get back in</string>
+    <string name="simple_setup_back_in_lock">Tap Helper Settings at the bottom of Home, then use this phone\'s screen lock.</string>
+    <string name="simple_setup_back_in_hold">Tap Helper Settings at the bottom of Home, then hold the button for 2 seconds.</string>
+    <string name="simple_setup_leave_title">How to leave</string>
+    <string name="simple_setup_leave_body">In Helper Settings, tap Leave Simple Mode. Folio\'s usual Home comes back.</string>
+    <string name="simple_setup_lock_title">Add a screen lock?</string>
+    <string name="simple_setup_lock_body">This phone has no screen lock. With one, Helper Settings asks for it before opening. The phone asks for it when it wakes, too.</string>
+    <string name="simple_setup_set_lock">Set a Screen Lock</string>
+    <string name="simple_first_open">Helper Settings is at the bottom</string>
+    <plurals name="simple_setup_apps_note">
+        <item quantity="one">%1$d on Home. Add others later in Helper Settings, Edit Home.</item>
+        <item quantity="other">%1$d on Home. Add others later in Helper Settings, Edit Home.</item>
+    </plurals>
+    <plurals name="simple_setup_see_list">
+        <item quantity="one">A List with %1$d app, big labels, and the time, date and battery on top. Home stays put.</item>
+        <item quantity="other">A List with %1$d apps, big labels, and the time, date and battery on top. Home stays put.</item>
+    </plurals>
+    <plurals name="simple_setup_see_grid">
+        <item quantity="one">A Big Grid with %1$d app, big labels, and the time, date and battery on top. Home stays put.</item>
+        <item quantity="other">A Big Grid with %1$d apps, big labels, and the time, date and battery on top. Home stays put.</item>
+    </plurals>
     <string name="simple_open_confirm_title">Open Helper Settings?</string>
     <string name="simple_open_confirm_body">This is for the person who helps set up this phone.</string>
     <string name="simple_open_settings">Open Settings</string>
