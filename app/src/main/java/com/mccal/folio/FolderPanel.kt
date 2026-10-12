@@ -93,9 +93,6 @@ internal fun FolderPanel(
     }
     val tile = remember(folder.id) { IconBounds.of(folder.id) }
     var panelBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    // Predictive back: the folder shrinks toward its icon as you swipe, and closes (or springs back) when you let go.
-    PredictiveBack(enabled = !closing, onProgress = { p -> scope.launch { appear.snapTo(1f - .35f * p) } },
-        onCancel = { scope.launch { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) } }, onBack = close)
     DisposableEffect(folder.id) { onDispose { if (title.isNotBlank() && title != folder.title) onRename(title) } }
     DisposableEffect(drag, folder.id) {
         drag.activeSourceScope = folder.id
@@ -126,6 +123,10 @@ internal fun FolderPanel(
     // FLAG_LAYOUT_NO_LIMITS, all tried and measured with zero effect. AppContextMenu.kt and WidgetContextMenu.kt
     // already sidestep this the same way, with their own window and their own decorFitsSystemWindows = false.
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnBackPress = false)) {
+        // Predictive back: the folder shrinks toward its icon as you swipe, and closes (or springs back) when you let go.
+        // Inside the Dialog, on its own window's dispatcher: Back goes to the folder's window while it is open.
+        DialogPredictiveBack(enabled = !closing, onProgress = { p -> scope.launch { appear.snapTo(1f - .35f * p) } },
+            onCancel = { scope.launch { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) } }, onBack = close)
         val view = LocalView.current
         LaunchedEffect(view) {
             (view.parent as? DialogWindowProvider)?.window?.let { w ->

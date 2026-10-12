@@ -1756,6 +1756,15 @@
     <string name="compat_screen_inner_only_detail">커버 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
     <string name="compat_screen_cover_only">커버 화면 전용</string>
     <string name="compat_screen_cover_only_detail">내부 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
+    <string name="compat_android_between">Android %1$s~%2$s</string>
+    <string name="compat_android_from">Android %1$s 이상</string>
+    <string name="compat_android_up_to">Android %1$s 이하</string>
+    <string name="compat_android_ok_detail">이 휴대전화는 Android %1$s입니다.</string>
+    <string name="compat_android_blocked_detail">이 휴대전화는 Android %1$s입니다. Folio를 업데이트해도 바뀌지 않습니다.</string>
+    <string name="compat_folio_untried">Folio %1$s에서는 아직 확인되지 않음</string>
+    <string name="compat_folio_untried_detail">Folio %1$s용으로 만들어졌습니다. 그래도 받을 수 있으며, 이 패키지 때문에 Folio가 닫히면 안전 모드가 패키지를 끕니다.</string>
+    <string name="compat_breaks">%1$s %2$s과(와) 호환되지 않음</string>
+    <string name="compat_breaks_detail">먼저 %1$s을(를) 업데이트한 다음 이 패키지를 설치하세요.</string>
     <string name="roadmap_now">지금</string>
     <string name="roadmap_next">다음</string>
     <string name="roadmap_shipped">출시됨</string>

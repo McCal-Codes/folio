@@ -385,6 +385,34 @@ class PackageInstallerTest {
         assertEquals("that package replaces Cabinet", failure(installer.install(rival)).message)
     }
 
+    @Test fun `a package made for another Android is refused, never installed (ADR 0013)`() {
+        val newer = pack(replace = mapOf("\"name\": \"Cabinet\"" to "\"name\": \"Cabinet\",\n  \"minSdk\": 36"))
+        val onThirteen = PackageInstaller(store, host, clock = { now }, androidSdk = 33)
+        val failed = failure(onThirteen.install(newer))
+        assertEquals(InstallResult.Reason.ANDROID, failed.reason)
+        assertEquals("that package is made for Android 16 or later", failed.message)
+        assertTrue(host.applied.isEmpty())
+        installed(PackageInstaller(store, host, clock = { now }, androidSdk = 36).install(newer))
+    }
+
+    @Test fun `a package that breaks an installed version is refused until that one is updated (ADR 0013)`() {
+        installer.install(pack())
+        val glow = pack(
+            replace = mapOf(
+                "\"com.mccal.folio.cabinet\"" to "\"dev.example.glow\"",
+                "\"name\": \"Cabinet\"" to "\"name\": \"Glow\",\n  \"breaks\": [\"com.mccal.folio.cabinet (<< 1.1)\"]",
+            ),
+        )
+        val failed = failure(installer.install(glow))
+        assertEquals(InstallResult.Reason.BREAKS, failed.reason)
+        assertEquals("that package doesn't work with Cabinet 1.0.0; update it first", failed.message)
+    }
+
+    @Test fun `a package past its tested Folio still installs, since maxFolio is advice (ADR 0013)`() {
+        val tried = pack(replace = mapOf("\"name\": \"Cabinet\"" to "\"name\": \"Cabinet\",\n  \"maxFolio\": \"0.6\""))
+        installed(PackageInstaller(store, host, clock = { now }, folioVersion = FolioVersion(0, 9, 0)).install(tried))
+    }
+
     @Test fun `a package whose dependency isn't installed is refused`() {
         val needsBase = pack(
             replace = mapOf(
