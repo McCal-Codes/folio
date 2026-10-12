@@ -299,18 +299,55 @@ enum class Provides(val id: String) {
     }
 }
 
-/** Folio capabilities a package can configure (`requires.features`). The table in format-v1.md says when each arrived. */
-enum class Capability(val id: String) {
-    THEME("theme"), HOME_LAYOUT("home.layout"), WALLPAPER("wallpaper"), ICONS("icons"), ICON_PACKS("icons.packs"),
-    APP_PANELS("tweaks.appPanels"), DOCK_MAGNIFY("tweaks.dockMagnify"), NOTIFICATION_APP_ROW("tweaks.notificationAppRow"),
-    TINT_NOTIFICATIONS("tweaks.tintNotifications"), TINT_MEDIA("tweaks.tintMedia"),
-    PAGE_EFFECTS("tweaks.pageEffects"), FOLD_TRANSITION("tweaks.foldTransition"),
-    ISLAND_MESSAGES("island.messages"), FOCUS_MODES("focus.modes"), SETTINGS_PAGES("settings.pages"), SCRIPTS("scripts");
+/**
+ * The access a package needs on this phone, the same three Android grants as ADR 0008's A0 to A2 (Standard needs nothing,
+ * then notification access, then Folio's accessibility service), ordered from least to most. Nobody declares it: it
+ * follows from a package's `requires.features` ([packageAccess]). It stops at Accessibility on purpose: Shizuku, root and
+ * hooks are never a package tier; a package that ever needs one asks for it as its own, separate requirement.
+ */
+enum class PackageAccess { STANDARD, NOTIFICATIONS, ACCESSIBILITY }
+
+/**
+ * Folio capabilities a package can configure (`requires.features`). The table in format-v1.md says when each arrived.
+ * [needs] is the access the capability can't work without; [betterWith] is access that makes it do more (it works
+ * without it). Every capability names [needs], so a new one can't arrive without saying what it needs.
+ */
+enum class Capability(val id: String, val needs: PackageAccess, val betterWith: PackageAccess? = null) {
+    THEME("theme", PackageAccess.STANDARD),
+    HOME_LAYOUT("home.layout", PackageAccess.STANDARD),
+    WALLPAPER("wallpaper", PackageAccess.STANDARD),
+    ICONS("icons", PackageAccess.STANDARD),
+    ICON_PACKS("icons.packs", PackageAccess.STANDARD),
+    /** Cabinet: shortcuts without notification access, the app's notifications and music with it (AppPanel.kt). */
+    APP_PANELS("tweaks.appPanels", PackageAccess.STANDARD, betterWith = PackageAccess.NOTIFICATIONS),
+    DOCK_MAGNIFY("tweaks.dockMagnify", PackageAccess.STANDARD),
+    /** Roll Call: Notification Center only says "allow notification access" without it (TopPanels.kt). */
+    NOTIFICATION_APP_ROW("tweaks.notificationAppRow", PackageAccess.NOTIFICATIONS),
+    /** Palette tints notifications, which Folio only has with notification access. */
+    TINT_NOTIFICATIONS("tweaks.tintNotifications", PackageAccess.NOTIFICATIONS),
+    /** Afterglow: what's playing comes only from the notification listener's media sessions (Island.kt). */
+    TINT_MEDIA("tweaks.tintMedia", PackageAccess.NOTIFICATIONS),
+    PAGE_EFFECTS("tweaks.pageEffects", PackageAccess.STANDARD),
+    FOLD_TRANSITION("tweaks.foldTransition", PackageAccess.STANDARD),
+    /** On Home without accessibility, over other apps with it. Nothing consumes it yet, so this is the plan, not a fact. */
+    ISLAND_MESSAGES("island.messages", PackageAccess.STANDARD, betterWith = PackageAccess.ACCESSIBILITY),
+    /** Silencing needs Do Not Disturb access, a Folio permission prompt rather than a tier, so it isn't counted here. */
+    FOCUS_MODES("focus.modes", PackageAccess.STANDARD),
+    SETTINGS_PAGES("settings.pages", PackageAccess.STANDARD),
+    /** A reserved kind that is refused today. When scripts exist, their access is per action, not per capability. */
+    SCRIPTS("scripts", PackageAccess.STANDARD);
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }
     }
 }
+
+/** The access a package with these features needs: the most any of them needs, and Standard for none. */
+fun packageAccess(features: Set<Capability>): PackageAccess = features.maxOfOrNull { it.needs } ?: PackageAccess.STANDARD
+
+/** Access that would let a package with these features do more than [packageAccess] allows, or null if none would. */
+fun packageBetterWith(features: Set<Capability>): PackageAccess? =
+    features.mapNotNull { it.betterWith }.maxOrNull()?.takeIf { it > packageAccess(features) }
 
 /** Where an `externalApp` package installs from. */
 data class ExternalSource(val store: Store, val appId: String?, val repoUrl: String?) {
