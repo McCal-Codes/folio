@@ -181,20 +181,23 @@ fun LauncherScreen(
     // Delete App: Android's own confirmation, then a notice that says what happened. A delete can't be undone, so no Undo;
     // Folio's Home and folders let go of the app when Android says the package is gone, as for any uninstall.
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingPackage by rememberSaveable { mutableStateOf<String?>(null) }
     val uninstall = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
         val label = deleting ?: return@rememberLauncherForActivityResult
-        deleting = null
-        when (result.resultCode) {
-            android.app.Activity.RESULT_OK -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_deleted, label))
-            android.app.Activity.RESULT_CANCELED -> Unit
-            else -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, label))
+        val pkg = deletingPackage
+        deleting = null; deletingPackage = null
+        when (deleteOutcome(result.resultCode, installResultOf(result.data), pkg == null || isInstalled(launcherActivity, pkg))) {
+            DeleteOutcome.DELETED -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_deleted, label))
+            DeleteOutcome.CANCELED -> Unit
+            DeleteOutcome.FAILED -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, label))
         }
     }
     val deleteApp: (AppEntry) -> Unit = { app ->
         deleting = app.label
+        deletingPackage = app.packageName
         runCatching { uninstall.launch(uninstallIntent(app.packageName)) }.onFailure {
-            deleting = null
+            deleting = null; deletingPackage = null
             IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, app.label))
         }
     }

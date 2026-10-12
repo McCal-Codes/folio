@@ -47,6 +47,24 @@ class AppRemovalTest {
         assertTrue(canDelete(cameWithPhone = false, isWork = false))
     }
 
+    @Test fun `Cancel on Android's confirmation is not a failure, and a package that is gone was deleted`() {
+        val firstUser = android.app.Activity.RESULT_FIRST_USER
+        // Cancel: Android answers RESULT_FIRST_USER with DELETE_FAILED_ABORTED (-5), and the app is still there.
+        assertEquals(DeleteOutcome.CANCELED, deleteOutcome(firstUser, -5, stillInstalled = true))
+        assertEquals(DeleteOutcome.CANCELED, deleteOutcome(android.app.Activity.RESULT_CANCELED, null, stillInstalled = true))
+        // Deleted: the package is gone, whatever the code.
+        assertEquals(DeleteOutcome.DELETED, deleteOutcome(android.app.Activity.RESULT_OK, 1, stillInstalled = false))
+        assertEquals(DeleteOutcome.DELETED, deleteOutcome(firstUser, null, stillInstalled = false))
+        // A real failure: another error, or OK while the app is still installed.
+        assertEquals(DeleteOutcome.FAILED, deleteOutcome(firstUser, -1, stillInstalled = true))
+        assertEquals(DeleteOutcome.FAILED, deleteOutcome(android.app.Activity.RESULT_OK, null, stillInstalled = true))
+
+        // The status code is read from the screen's answer when it sends one.
+        assertEquals(-5, installResultOf(Intent().putExtra("android.intent.extra.INSTALL_RESULT", -5)))
+        assertEquals(null, installResultOf(Intent()))
+        assertEquals(null, installResultOf(null))
+    }
+
     @Test fun `delete asks Android's own uninstall confirmation for that one package, and wants the result back`() {
         val intent = uninstallIntent("com.spotify.music")
         @Suppress("DEPRECATION") assertEquals(Intent.ACTION_UNINSTALL_PACKAGE, intent.action)

@@ -61,6 +61,31 @@ internal fun cameWithPhone(context: Context, packageName: String): Boolean = run
 internal fun uninstallIntent(packageName: String): Intent =
     Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.fromParts("package", packageName, null)).putExtra(Intent.EXTRA_RETURN_RESULT, true)
 
+/** What came of a Delete App, read from Android's answer and whether the package is still there. */
+internal enum class DeleteOutcome { DELETED, CANCELED, FAILED }
+
+/**
+ * Android's uninstall screen answers Cancel with RESULT_FIRST_USER and an install result of DELETE_FAILED_ABORTED,
+ * not RESULT_CANCELED, so reading the code alone called a Cancel a failure (seen on the emulator, 12 Oct). The
+ * package being gone is the surest sign of a delete, whatever the code says.
+ */
+internal fun deleteOutcome(resultCode: Int, installResult: Int?, stillInstalled: Boolean): DeleteOutcome = when {
+    !stillInstalled -> DeleteOutcome.DELETED
+    resultCode == android.app.Activity.RESULT_CANCELED || installResult == DELETE_FAILED_ABORTED -> DeleteOutcome.CANCELED
+    else -> DeleteOutcome.FAILED
+}
+
+/** PackageManager.DELETE_FAILED_ABORTED, hidden in the SDK: the person backed out of Android's confirmation. */
+private const val DELETE_FAILED_ABORTED = -5
+
+/** Intent.EXTRA_INSTALL_RESULT, hidden in the SDK: the uninstall screen's status code, when it sends one. */
+private const val EXTRA_INSTALL_RESULT = "android.intent.extra.INSTALL_RESULT"
+
+internal fun installResultOf(data: Intent?): Int? = data?.takeIf { it.hasExtra(EXTRA_INSTALL_RESULT) }?.getIntExtra(EXTRA_INSTALL_RESULT, 0)
+
+internal fun isInstalled(context: Context, packageName: String): Boolean =
+    runCatching { context.packageManager.getApplicationInfo(packageName, 0); true }.getOrDefault(false)
+
 /** Remove App's one alert: the choices [options] allows, and Cancel. */
 @Composable
 internal fun RemoveAppAlert(app: AppEntry, options: RemoveOptions, onChoice: (RemoveChoice) -> Unit, onDismiss: () -> Unit) {
