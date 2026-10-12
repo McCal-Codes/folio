@@ -2022,4 +2022,28 @@
     <string name="screenshot_swap_none">No app matches</string>
     <string name="screenshot_swap_footnote">Widgets of swapped apps are hidden while Screenshot Mode is on, and their shortcuts aren’t shown. Folder names are your own and don’t change. Android’s own screens, the dock over other apps and the app itself once it opens still show the real app.</string>
     <string name="settings_keywords_screenshot_swap">screenshot swap replace hide apps stock icons privacy blacklist</string>
+    <!-- Moved out of Kotlin (DES-21), English unchanged. ko and zh-Hans are Claude's drafts and need a native read. -->
+    <string name="in_stack">In stack</string>
+    <string name="not_in_stack">Not in stack</string>
+    <string name="install_waiting">Waiting…</string>
+    <!-- The Dynamic Island's call, when the caller has no name; and its navigation, when the app gives no title. -->
+    <string name="island_call">Call</string>
+    <string name="island_navigating">Navigating</string>
+    <string name="unavailable_app">Unavailable app</string>
+    <!-- The status rail's battery line while Airplane mode is on. -->
+    <string name="status_airplane">Airplane</string>
+    <string name="discover_unavailable_right_now">Discover is unavailable right now.</string>
+    <string name="discover_feed_refused">Google didn\'t accept the feed connection. Restart Google, then retry.</string>
+    <!-- "Retry" is the retry button (R.string.retry). -->
+    <string name="discover_disconnected">Discover disconnected. Tap Retry to reconnect.</string>
+    <string name="discover_needs_google_app">Install or enable the Google app to use Discover.</string>
+    <string name="discover_google_couldnt_connect">The Google app couldn\'t connect to Discover.</string>
+    <string name="discover_taking_a_while">Discover is taking a while. You can retry or open Google.</string>
+    <string name="discover_google_version">This Google app version couldn\'t open Discover.</string>
+    <string name="discover_couldnt_start">Discover couldn\'t start. Tap Retry to reconnect.</string>
+    <string name="discover_couldnt_fit">Discover couldn\'t fit beside the dock.</string>
+    <!-- Settings › Wallpaper & Appearance, under Sunrise to Sunset when Folio can't follow the sun. -->
+    <string name="appearance_system_until_location">Using system theme until a location is set</string>
+    <string name="appearance_system_location_stale">Using system theme because the device location is stale</string>
+    <string name="appearance_system_location_unavailable">Using system theme because this location is unavailable</string>
 </resources>

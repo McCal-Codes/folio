@@ -30,7 +30,7 @@ internal fun LayoutRestorePreview(preview: LayoutImportPreview, onRestore: () ->
                     Text(stringResource(R.string.unavailable_apps_1, preview.missingApps.size), style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.error)
                     preview.missingApps.forEach { saved ->
-                        val label = saved.substringAfterLast('(').removeSuffix(")").takeIf { it.isNotBlank() } ?: "Unavailable app"
+                        val label = saved.substringAfterLast('(').removeSuffix(")").takeIf { it.isNotBlank() } ?: stringResource(R.string.unavailable_app)
                         Text(stringResource(R.string.its_saved_position_will_stay_empty_1, label))
                     }
                 }
