@@ -81,7 +81,7 @@ internal fun AppearanceSettings(state: AppearanceState, onMode: (AppearanceMode)
             }
         }
         if (state.mode == AppearanceMode.SUNRISE_SUNSET) {
-            state.fallback?.let { Text(it, color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(horizontal = FolioSpace.LARGE.dp)) }
+            state.fallback?.let { Text(stringResource(it), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(horizontal = FolioSpace.LARGE.dp)) }
             SheetGroupLabel(stringResource(R.string.location))
             SheetGroup {
                 InlineField(stringResource(R.string.place_name), place, { place = it }, "appearance-place")

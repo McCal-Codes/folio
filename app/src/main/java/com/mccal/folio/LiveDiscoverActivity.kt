@@ -120,7 +120,7 @@ internal object LiveDiscover {
                 if (activity.isFinishing || activity.isDestroyed ||
                     !activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED))
                     startGate.reset(activity)
-                else message.value = "Discover couldn't start. Tap Retry to reconnect."
+                else message.value = activity.getString(R.string.discover_couldnt_start)
             }
         }
     }
@@ -254,7 +254,7 @@ class LiveDiscoverActivity : ComponentActivity() {
                 client.connect()
                 client.page(LiveDiscover.nativeProgress(LiveDiscover.progress), LiveDiscover.pagerOwnsMotion)
             } else if (remaining > 0) decor.postOnAnimation { attach(remaining - 1) }
-            else LiveDiscover.message.value = "Discover couldn't fit beside the dock."
+            else LiveDiscover.message.value = getString(R.string.discover_couldnt_fit)
         }
         window.decorView.postOnAnimation { attach(30) }
     }
