@@ -5,7 +5,7 @@ plugins {
 // The Folio Market: package format, sources, installer and (later) its screens. See docs/sdk/.
 android {
     namespace = "com.mccal.folio.market"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig { minSdk = 31 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
