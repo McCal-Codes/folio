@@ -102,6 +102,9 @@ internal class MarketSession(
     /** Folio's own source, as a [Source], so built-in packages carry a source like any other. */
     val builtIn = Source("folio://built-in/", name = appContext.getString(R.string.folio), kind = Source.Kind.BUILT_IN)
 
+    /** The key each source was trusted with, the same store [sources] pins them in. */
+    private val sourceKeys = SourceStore(files)
+
     /**
      * Every package the store can show: Folio's own first, then each source the user added, from its cached list.
      * Revoked packages keep their place with the reason, so nothing disappears without an explanation.
@@ -114,6 +117,8 @@ internal class MarketSession(
         revocations = source.revocations(),
         fromSources = sources.cached().mapNotNull { status -> status.snapshot?.let { status.source to it } },
         folio = folioVersion,
+        // The key the source was trusted with, not the one its files name: only Folio's own key makes it first-party.
+        isFirstParty = { isFirstParty(it.url, sourceKeys.state(it.url).pinnedKey) },
     )
 
     /**
