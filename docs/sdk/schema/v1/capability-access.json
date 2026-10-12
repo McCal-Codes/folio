@@ -1,0 +1,22 @@
+{
+  "$comment": "What access each requires.features capability needs on the phone (ADR 0013). A package's tier is the most any of its features needs; betterWith is access that lets a feature do more (it works without it). Authors never declare either. folio-pkg reads this file, and Folio's Capability enum is tested against it, so the two can't drift. Tiers, least to most: standard, notifications, accessibility.",
+  "tiers": ["standard", "notifications", "accessibility"],
+  "capabilities": {
+    "theme": { "needs": "standard" },
+    "home.layout": { "needs": "standard" },
+    "wallpaper": { "needs": "standard" },
+    "icons": { "needs": "standard" },
+    "icons.packs": { "needs": "standard" },
+    "tweaks.appPanels": { "needs": "standard", "betterWith": "notifications" },
+    "tweaks.dockMagnify": { "needs": "standard" },
+    "tweaks.notificationAppRow": { "needs": "notifications" },
+    "tweaks.tintNotifications": { "needs": "notifications" },
+    "tweaks.tintMedia": { "needs": "notifications" },
+    "tweaks.pageEffects": { "needs": "standard" },
+    "tweaks.foldTransition": { "needs": "standard" },
+    "island.messages": { "needs": "standard", "betterWith": "accessibility" },
+    "focus.modes": { "needs": "standard" },
+    "settings.pages": { "needs": "standard" },
+    "scripts": { "needs": "standard" }
+  }
+}

@@ -21,7 +21,8 @@
       "screens": [
         "cover",
         "inner"
-      ]
+      ],
+      "fallback": "Without notification access there are no notification cards to tint, so nothing changes. Notification Center shows a button to allow access instead."
     },
     {
       "type": "changelog",

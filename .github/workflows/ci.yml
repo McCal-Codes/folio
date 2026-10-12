@@ -41,6 +41,9 @@ jobs:
       # run. The Kotlin parser and the published schemas are separate lists, and this is what keeps them agreeing.
       - name: Folio's own packages pass the SDK validator
         run: python3 tools/folio-pkg.py validate docs/sdk/source
+      # The validator's own rules (the fallback rule above Standard, ADR 0013), checked on cases built to fail.
+      - name: The SDK validator's tests
+        run: python3 -m unittest tools/test_folio_pkg.py
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
 

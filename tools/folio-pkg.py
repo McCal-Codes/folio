@@ -48,6 +48,16 @@ def _schema_dir() -> pathlib.Path:
 
 SCHEMA_DIR = _schema_dir()
 
+
+def _load_access() -> dict | None:
+    """What access each capability needs (capability-access.json beside the schemas, ADR 0013). None in an older copy
+    of the schemas, from before the file existed: then the fallback rule can't be checked and says so."""
+    path = SCHEMA_DIR / "capability-access.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+
+ACCESS = _load_access()
+
 # The extensions a source or a package may contain. Anything else is rejected on sight by the phone, so it is an
 # error here. `.sig` and `.pub` belong to a source rather than a package.
 PACKAGE_SUFFIXES = {".json", ".png", ".webp", ".jpg", ".jpeg", ".js"}
@@ -397,6 +407,33 @@ def check_limits(manifest: dict, where: str, report: Report):
             report.error(f"{where}: maxFolio {newest} is older than minFolio {version}")
 
 
+def package_access(features, access: dict) -> str:
+    """The access a package with these features needs: the most any of them needs, and "standard" for none."""
+    needs = [access["capabilities"].get(f, {}).get("needs", "standard") for f in features if isinstance(f, str)]
+    return max(needs, key=access["tiers"].index, default="standard")
+
+
+def check_fallback(manifest: dict, depiction, where: str, report: Report, access: dict | None = None) -> None:
+    """Above Standard, a package's page says what still works without the access it needs (ADR 0013): its
+    compatibility block has a fallback. The tier comes from requires.features; authors never declare it."""
+    access = ACCESS if access is None else access
+    requires = manifest.get("requires")
+    features = requires.get("features") if isinstance(requires, dict) else None
+    if not isinstance(features, list) or not features:
+        return
+    if access is None:
+        report.warn(f"{where}: fallback not checked: this copy of the schemas has no capability-access.json "
+                    f"(copy it from Folio's docs/sdk/schema/v1)")
+        return
+    tier = package_access(features, access)
+    if tier == "standard":
+        return
+    blocks = depiction.get("blocks") if isinstance(depiction, dict) else None
+    if not any(isinstance(b, dict) and b.get("type") == "compatibility" and b.get("fallback") for b in blocks or []):
+        report.error(f"{where}: needs {tier} access, so its page needs a compatibility block with a fallback: "
+                     f"what still works without that access")
+
+
 def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: SchemaSet, report: Report) -> dict | None:
     """One package folder: its manifest, its page, and the files its manifest promises."""
     name = folder.name
@@ -432,6 +469,7 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
     if manifest.get("icon"):
         check_picture(source_root, manifest["icon"], f"{name}/manifest.json: icon", report)
 
+    depiction = None
     named_depiction = manifest.get("depiction")
     if named_depiction:
         depiction_path = inside(folder, named_depiction, report, f"{name}/manifest.json: depiction")
@@ -446,6 +484,7 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
                 if block.get("type") == "screenshots":
                     for picture in block.get("images", []):
                         check_picture(source_root, picture, spot, report)
+    check_fallback(manifest, depiction, f"{name}/manifest.json", report)
 
     for extra, schema_name in (("tweaks.json", "tweaks.schema.json"), ("settings.json", "settings.schema.json")):
         path = folder / extra
@@ -676,6 +715,13 @@ def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report, stand
     check_limits(manifest, label, report)
     if "depiction" in manifest and manifest["depiction"] not in names:
         report.error(f"{label}: names {manifest['depiction']}, which is not in the archive")
+    depiction = None
+    if isinstance(manifest.get("depiction"), str) and manifest["depiction"] in names:
+        try:
+            depiction = json.loads(archive.read(manifest["depiction"]).decode("utf-8"))
+        except ValueError:
+            pass  # a broken page is reported where the page itself is checked
+    check_fallback(manifest, depiction, label, report)
     # A published source carries only archives, so what a phone installs gets the same effect checks as a folder.
     kinds = manifest.get("kind")
     if isinstance(kinds, list) and "pageEffect" in kinds:
