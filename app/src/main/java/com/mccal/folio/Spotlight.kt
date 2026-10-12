@@ -210,7 +210,9 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
 
     val apps = remember(state.apps, state.hiddenApps) { state.apps.filter { it.id !in state.hiddenApps } }
     // Suggestions for this time of day first, then recent and dock apps to fill the row.
-    val timely by produceState(emptyList<AppEntry>(), apps, active) { if (active) value = withContext(Dispatchers.IO) { Suggestions.forNow(context, apps) } }
+    // Starts from the shared ranking when it is fresh, so the row is there on the first frame of the opening spring.
+    val cachedTimely = remember(apps) { Suggestions.cachedForNow(context, apps) ?: emptyList() }
+    val timely by produceState(cachedTimely, apps, active) { if (active) value = withContext(Dispatchers.IO) { Suggestions.forNow(context, apps) } }
     val recent = remember(apps, frecency, timely) {
         val byId = apps.associateBy { it.id }
         (timely + frecency.entries.sortedByDescending { it.value }.mapNotNull { byId[it.key] } +

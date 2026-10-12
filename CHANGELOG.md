@@ -45,6 +45,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **See where back goes:** with the new motion on (supporters first), Spotlight, Control Center, Notification Center and Market pages ease back as you swipe back from the edge, so you can see what's behind; let go and they close from there, or change your mind and they spring back. With Reduce Motion on they close as before.
 
 ### Changed
+- **Spotlight opens with suggestions ready:** Spotlight, Today View and the Suggestions widget share one ranking of your suggested apps for a quarter hour, so opening Spotlight no longer reads four weeks of app use each time, and its suggestions are there from the first frame. Opening an app from Folio, or turning Usage Access on or off, ranks them again at once.
 - **Bottom of Home says where Search goes (#325):** the first choice is now called Search bar, and the note says that with Page dots or Nothing, Search moves to a round button in the bottom corner. The switch below it is now Search opens the Google app, since it covers both.
 - **Folio Dev has a Developer page:** in Folio Dev, Settings › General › Advanced has a Developer page locked with a passphrase you set (five free tries, then a growing wait). It can show the current build's welcome page again. Release builds of Folio never show it.
 - **The Market lists bigger apps:** an app in a source can now be up to 100 MB, up from 20 MB, so larger apps can be listed and installed from the Market. A package (a tweak, theme or effect) is still limited to 20 MB.
