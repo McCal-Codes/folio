@@ -24,7 +24,8 @@ To switch back to another launcher, open **Folio Settings › Change home app**,
 ## Editing Home
 
 - **Long press an app** for its menu, then **Edit Home Screen** to make the icons wiggle.
-- While they wiggle, drag apps around, onto another app to make a folder, or to the screen edge to change pages.
+- While they wiggle, drag apps around, or to the screen edge to change pages. To make a folder, long press an app and
+  choose **Create Folder** (from 0.6.9 you can also drop an app onto another).
   Tap **+** to add widgets and **Done** when you're finished. **Edit** has Add Widget, Wallpaper & Appearance, Add Page and Folio Settings.
 - **Long press an empty spot** for **Add Widget**, **Wallpaper & Appearance**, **Add Page** and **Folio Settings**.
 - **Rename an app** with **More › Rename…** in that menu. The new name shows on Home, in the dock, in folders, in the

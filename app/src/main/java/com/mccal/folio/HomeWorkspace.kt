@@ -408,6 +408,8 @@ internal fun SharedHomeGrid(
     val pending = widgets.pendingPlacement?.takeIf { it.page == page }
     val pendingIsReplacement = pending != null && widgetPlacements.any { it.slot == pending.slot }
     val pageWidgets = widgetPlacements.filter { it.page == page } + listOfNotNull(pending?.takeUnless { pendingIsReplacement })
+    // Cells under a widget take no app, so they get no empty-cell hint during a drag (it showed through the widget).
+    val widgetCells = remember(pageWidgets) { pageWidgets.flatMapTo(mutableSetOf()) { it.coveredIndices() } }
     // More rows: the rows Home shows, or more where apps or widgets already sit lower; cells past them aren't drawn.
     val shownRows = shownHomeRows(geometry.appRows, pageRange.map { previewAt(it) ?: savedAt(it) }, pageWidgets)
     // The retained overflow widget (stored under the grid) draws right after the shown rows.
@@ -423,7 +425,7 @@ internal fun SharedHomeGrid(
     val fold = hinge?.let { h -> with(density) {
         foldDisplacement(cells, renderedRows, gridTopDp, h.startPx.toDp().value, h.endPx.toDp().value, widgetRows)
     } }
-    val foldShift by animateFloatAsState(fold?.second ?: 0f, androidx.compose.animation.core.spring(dampingRatio = .85f, stiffness = 380f), label = "fold shift")
+    val foldShift by animateFloatAsState(fold?.second ?: 0f, FolioMotion.spring(.85f to 380f), label = "fold shift")
     val foldRow = fold?.first ?: Int.MAX_VALUE
     fun rowTop(row: Int) = cells.y(row) + if (row >= foldRow) foldShift else 0f
     CompositionLocalProvider(LocalHomeIconSize provides geometry.iconSize) {
@@ -439,7 +441,8 @@ internal fun SharedHomeGrid(
             val savedApp = appsById[savedId]
             val savedFolder = folders.firstOrNull { it.id == savedId }
             val previewId = previewAt(globalIndex)
-            val highlighted = drag.active && target == cell
+            // With a folder plate showing (FolderOrRoom), the plate is the feedback; the cell outline would double it.
+            val highlighted = drag.active && target == cell && (drag.mergePreview == null || savedId != drag.mergePreview)
             val gap = hiddenIndex == globalIndex
             val row = localIndex / GRID_COLUMNS
             val cellHeight = cells.spanHeight(row, 1)
@@ -457,7 +460,7 @@ internal fun SharedHomeGrid(
                 .border(if (highlighted) 2.dp else 0.dp,
                     if (highlighted) Color.White.copy(alpha = .8f) else Color.Transparent, RoundedCornerShape(FolioRadius.GROUP.dp)),
                 contentAlignment = Alignment.TopCenter) {
-                if (drag.active && drag.source?.appId != null && (gap || previewId == null)) Box(
+                if (showsDropHint(drag.active, drag.source?.appId != null, gap, previewId, globalIndex in widgetCells)) Box(
                     Modifier.size(iconSize.dp).testTag(if (gap) "drag-gap-home-$globalIndex" else "empty-home-slot-$globalIndex")
                         .background(Glass.copy(alpha = if (gap) .16f else .08f), RoundedCornerShape(18.dp))
                         .border(if (gap) 2.dp else 1.dp, Color.White.copy(alpha = if (gap) .55f else .3f), RoundedCornerShape(18.dp)))
@@ -477,7 +480,7 @@ internal fun SharedHomeGrid(
                 // Slide only while rearranging; a new screen size (folding) must place icons immediately.
                 val animatedOffset by animateIntOffsetAsState(
                     with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) },
-                    animationSpec = if (drag.active || edit.active) androidx.compose.animation.core.spring(visibilityThreshold = IntOffset(1, 1))
+                    animationSpec = if (drag.active || edit.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
                         else androidx.compose.animation.core.snap(),
                     label = "home insertion $id",
                 )
@@ -486,11 +489,15 @@ internal fun SharedHomeGrid(
                     if (dimDragged && id == draggedId) .28f else 1f,
                     label = "home insertion visibility $id",
                 )
+                val plateOn = drag.mergePreview == id
+                val plateGrowth by animateFloatAsState(if (plateOn) 1f else 0f,
+                    FolioMotion.spring(if (plateOn) FolioMotion.Quick else FolioMotion.Firm), label = "folderPlate $id")
                 Box(Modifier.offset { animatedOffset }.width(cellWidth).height(rowHeight.dp)
-                    .alpha(opacity).moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
+                    .graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }.moveActions(id, page, onMove).testTag("home-app-$id"), contentAlignment = Alignment.TopCenter) {
                     if (visible) AppTile(app, iconSize, labels,
                         onClick = { if (!edit.active) onLaunch(app, it) }, onLongClick = { onActions(app) },
-                        onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null)
+                        onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null,
+                        plate = if (plateOn || plateGrowth > .001f) ({ plateGrowth }) else null)
                 }
             }
         }
@@ -498,13 +505,20 @@ internal fun SharedHomeGrid(
             val savedIndex = savedIndexOf(folder.id)
             val previewIndex = previewIndexOf(folder.id)
             val renderIndex = previewIndex?.takeIf { it in pageRange } ?: savedIndex?.takeIf { it in pageRange } ?: return@forEach
-            val localIndex = renderIndex - pageStart
-            val row = localIndex / GRID_COLUMNS
-            val x = cellX(localIndex % GRID_COLUMNS, row)
-            val y = rowTop(row).dp
-            FolderTile(folder, appsById, iconSize, labels, drag, page,
-                Modifier.offset(x = x, y = y).width(cellWidth).height(rowHeight.dp)
-                    .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+            key(folder.id) {
+                val localIndex = renderIndex - pageStart
+                val row = localIndex / GRID_COLUMNS
+                val place = with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) }
+                // With the motion pass, a folder pushed along by a drag slides with the apps around it, on the same stiff spring;
+                // without it, it jumps as it always did. Only while rearranging: a new screen size (folding) places it at once.
+                val slides = FolioMotion.v2 && (drag.active || edit.active)
+                val placed by animateIntOffsetAsState(place,
+                    animationSpec = if (slides) FolioMotion.spring<IntOffset>(FolioMotion.Snap) else androidx.compose.animation.core.snap(),
+                    label = "folderSlide ${folder.id}")
+                FolderTile(folder, appsById, iconSize, labels, drag, page,
+                    Modifier.offset { placed }.width(cellWidth).height(rowHeight.dp)
+                        .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+            }
         }
         pageWidgets.forEach { placement ->
             key("widget-${placement.slot}") {
@@ -582,3 +596,10 @@ private fun Modifier.moveActions(id: String, page: Int, onMove: (String, Int) ->
         perform(action); true
     }
 }
+
+/**
+ * Whether a Home cell shows its hint while an app is carried: the outlined gap where the app will go, or a faint outline on
+ * an empty cell it could go to. Never on a cell under a widget, which takes no app.
+ */
+internal fun showsDropHint(dragging: Boolean, carryingApp: Boolean, gap: Boolean, previewId: String?, underWidget: Boolean) =
+    dragging && carryingApp && !underWidget && (gap || previewId == null)

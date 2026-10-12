@@ -314,6 +314,9 @@
     <string name="folders">文件夹</string>
     <string name="columns">列数</string>
     <string name="animation_speed">动画速度</string>
+    <string name="reduce_motion">减弱动态效果</string>
+    <string name="reduce_motion_note">页面、表单和菜单在原位淡入，而不是滑入或放大；编辑主屏幕时图标不再抖动；开关停下时不再回弹。</string>
+    <string name="reduce_motion_note_removed">Android 的“移除动画”开启时此项也会开启。此时 Folio 会立即显示每个变化。</string>
     <string name="swipe_down_on_home">在主屏幕下滑</string>
     <string name="nothing">无</string>
     <string name="background_blur">背景模糊</string>
@@ -1060,6 +1063,9 @@
     <string name="add_to_home">添加到主屏幕</string>
     <string name="add_to_folder">添加到文件夹</string>
     <string name="create_folder">创建文件夹</string>
+    <string name="create_folder_with_1_s">用%1$s创建文件夹</string>
+    <string name="add_1_s_to_a_folder">将%1$s添加到文件夹</string>
+    <string name="new_folder_name">文件夹</string>
     <string name="stack_apps">叠放 App…</string>
     <string name="show_in_app_library">在 App 资源库中显示</string>
     <string name="hide_from_app_library">在 App 资源库中隐藏</string>
@@ -1209,6 +1215,7 @@
     <string name="settings_keywords_tweak_library">插件库 插件 获取 安装 移除 软件包 tweak library get install remove packages sileo cydia</string>
     <string name="settings_animation_speed">动画速度</string>
     <string name="settings_keywords_animation_speed">动画 动效 速度 快 慢 animation motion speed fast slow snappy relaxed</string>
+    <string name="settings_keywords_reduce_motion">减弱动态效果 动画 辅助功能 淡入 抖动 头晕 reduce motion animation accessibility fade</string>
     <string name="settings_app_name_size">App 名称大小</string>
     <string name="settings_keywords_app_name_size">标签 名称 文字 大小 label name text size small large</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">玻璃 着色 磨砂 模糊 glass tint frost blur</string>
@@ -1320,6 +1327,8 @@
     <string name="text_1_s_version_2_s">%1$s · 版本 %2$s</string>
     <string name="installing_1_s">正在安装 %1$s</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">%1$s 已被其源撤下：%2$s</string>
+    <string name="doesn_t_work_with_this_folio_1_s">无法在此版本的 Folio 上使用：%1$s</string>
+    <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s 无法在 Folio %2$s 上使用：%3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s 使用了属于 Folio 自带软件包的名称来提供这个软件包</string>
     <string name="that_file_uses_a_name_that_belongs">那个文件使用了属于 Folio 自带软件包的名称。</string>
     <string name="folio_couldn_t_find_that_package">Folio 找不到那个软件包</string>

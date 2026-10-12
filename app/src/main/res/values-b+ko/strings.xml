@@ -313,6 +313,9 @@
     <string name="folders">폴더</string>
     <string name="columns">열 수</string>
     <string name="animation_speed">애니메이션 속도</string>
+    <string name="reduce_motion">동작 줄이기</string>
+    <string name="reduce_motion_note">페이지, 시트, 메뉴가 미끄러지거나 커지는 대신 제자리에서 서서히 나타나고, 홈 화면을 편집할 때 아이콘이 흔들리지 않으며, 스위치가 튕기지 않고 멈춥니다.</string>
+    <string name="reduce_motion_note_removed">Android의 애니메이션 삭제가 켜져 있는 동안 켜집니다. 그러면 Folio는 모든 변화를 바로 보여 줍니다.</string>
     <string name="swipe_down_on_home">홈 화면에서 아래로 쓸어내리기</string>
     <string name="nothing">없음</string>
     <string name="background_blur">배경 흐림</string>
@@ -1094,6 +1097,9 @@
     <string name="add_to_home">홈 화면에 추가</string>
     <string name="add_to_folder">폴더에 추가</string>
     <string name="create_folder">폴더 생성</string>
+    <string name="create_folder_with_1_s">%1$s와(과) 함께 폴더 만들기</string>
+    <string name="add_1_s_to_a_folder">%1$s을(를) 폴더에 추가</string>
+    <string name="new_folder_name">폴더</string>
     <string name="stack_apps">앱 쌓기…</string>
     <string name="show_in_app_library">앱 보관함에 표시</string>
     <string name="hide_from_app_library">앱 보관함에서 숨기기</string>
@@ -1245,6 +1251,7 @@
     <string name="settings_keywords_tweak_library">트윅 보관함 받기 설치 제거 패키지 Sileo Cydia</string>
     <string name="settings_animation_speed">애니메이션 속도</string>
     <string name="settings_keywords_animation_speed">애니메이션 동작 속도 빠르게 느리게 느긋하게</string>
+    <string name="settings_keywords_reduce_motion">동작 줄이기 애니메이션 접근성 페이드 흔들림 어지러움</string>
     <string name="settings_app_name_size">앱 이름 크기</string>
     <string name="settings_keywords_app_name_size">이름 텍스트 글자 크기 작게 크게</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">글래스 색조 반투명 흐림</string>
@@ -1386,6 +1393,8 @@
     <string name="text_1_s_version_2_s">%1$s · 버전 %2$s</string>
     <string name="installing_1_s">%1$s 설치 중</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">소스에서 %1$s의 배포를 중단했습니다: %2$s</string>
+    <string name="doesn_t_work_with_this_folio_1_s">이 버전의 Folio에서는 작동하지 않습니다: %1$s</string>
+    <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s은(는) Folio %2$s에서 작동하지 않습니다: %3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s에서 Folio 자체 패키지의 이름으로 이 항목을 제공합니다</string>
     <string name="that_file_uses_a_name_that_belongs">이 파일은 Folio 자체 패키지의 이름을 사용합니다.</string>
     <string name="folio_couldn_t_find_that_package">패키지를 찾지 못했습니다</string>

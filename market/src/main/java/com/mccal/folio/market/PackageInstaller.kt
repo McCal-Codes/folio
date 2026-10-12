@@ -70,7 +70,7 @@ sealed interface InstallResult {
 
     data class Failed(val reason: Reason, val message: String) : InstallResult
 
-    enum class Reason { HASH, SIZE, ARCHIVE, MANIFEST, MISMATCH, CONFLICT, DEPENDS, APPLY, REVOKED, NEEDS_NEWER, AUTHOR, ANDROID, BREAKS }
+    enum class Reason { HASH, SIZE, ARCHIVE, MANIFEST, MISMATCH, CONFLICT, DEPENDS, APPLY, REVOKED, NEEDS_NEWER, AUTHOR, ANDROID, BREAKS, INCOMPATIBLE }
 }
 
 /**

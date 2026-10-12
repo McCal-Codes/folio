@@ -112,6 +112,7 @@ internal class MarketSession(
         // package offered by a source that hasn't admitted it yet.
         revocations = source.revocations(),
         fromSources = sources.cached().mapNotNull { status -> status.snapshot?.let { status.source to it } },
+        folio = folioVersion,
     )
 
     /**
@@ -126,6 +127,7 @@ internal class MarketSession(
                 InstallResult.Reason.REVOKED,
                 appContext.getString(R.string.text_1_s_was_pulled_by_its_source_2_s, entry.name, entry.revokedReason),
             )
+        entry.incompatibleReason != null -> incompatible(entry.name, entry.incompatibleReason)
         // A source claiming an id that belongs to a package inside Folio is claiming to be that package.
         entry.clash == MarketEntry.Impostor.BUILT_IN -> InstallResult.Failed(
             InstallResult.Reason.MISMATCH,
@@ -138,6 +140,12 @@ internal class MarketSession(
             onApplying = { MarketWork.applying() },
         )
     }
+
+    /** The refusal for a version its source says doesn't work with this Folio (ADR 0013), worded the same everywhere. */
+    private fun incompatible(name: String, reason: String) = InstallResult.Failed(
+        InstallResult.Reason.INCOMPATIBLE,
+        appContext.getString(R.string.text_1_s_doesn_t_work_with_folio_2_s_3_s, name, folioVersion?.toString().orEmpty(), reason),
+    )
 
     fun installed(): List<InstalledPackage> = store.installed()
 
@@ -155,6 +163,7 @@ internal class MarketSession(
      */
     suspend fun installStaged(entry: MarketEntry, bytes: ByteArray): InstallResult = withContext(io) {
         if (entry.revokedReason != null || entry.clash != null) return@withContext InstallResult.Failed(InstallResult.Reason.REVOKED, "that listing can't be installed")
+        entry.incompatibleReason?.let { return@withContext incompatible(entry.name, it) }
         if (sources.isStale(entry.source)) return@withContext InstallResult.Failed(InstallResult.Reason.ARCHIVE, "that source's list is too old to install from, so refresh it first")
         installer.updateKeepingSettings(bytes, expected = entry.entry, origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = entry.source.url)
     }
@@ -216,6 +225,11 @@ internal class MarketSession(
                 InstallResult.Reason.REVOKED,
                 appContext.getString(R.string.text_1_s_was_pulled_by_its_source_2_s, pkg.manifest.name.english, revoked),
             )
+            // And a version a source says doesn't work with this Folio, the same way (ADR 0013).
+            val broken = folioVersion?.let { folio ->
+                sources.cached().firstNotNullOfOrNull { it.snapshot?.revocation?.incompatibleReason(pkg.id, pkg.version, folio) }
+            }
+            if (broken != null) return@withContext incompatible(pkg.manifest.name.english, broken)
         }
         installer.install(bytes, origin = InstalledPackage.Origin.FILE)
     }
