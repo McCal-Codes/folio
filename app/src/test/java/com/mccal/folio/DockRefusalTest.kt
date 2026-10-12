@@ -8,14 +8,14 @@ import org.junit.Test
 class DockRefusalTest {
     private val social = FolderEntry("folder:00000000-0000-0000-0000-000000000001", "Social", listOf("chat", "photos"))
 
-    @Test fun `an app in a folder names the folder`() {
+    @Test fun `an app in a folder says which folder`() {
         val layout = HomeLayout(listOf("home"), listOf("a", null), folders = listOf(social))
-        assertEquals(DockRefusal.InFolder(social.id, "Social"), dockRefusal(layout, "chat"))
+        assertEquals(DockRefusal.InFolder(social.id), dockRefusal(layout, "chat"))
     }
 
     @Test fun `the folder reason wins over a full dock`() {
         val layout = HomeLayout(listOf("home"), listOf("a", "b", "c", "d", "e", "f"), folders = listOf(social))
-        assertEquals(DockRefusal.InFolder(social.id, "Social"), dockRefusal(layout, "photos"))
+        assertEquals(DockRefusal.InFolder(social.id), dockRefusal(layout, "photos"))
     }
 
     @Test fun `a full dock says full`() {

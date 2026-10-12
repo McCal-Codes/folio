@@ -187,6 +187,8 @@
     <string name="place">배치</string>
     <string name="no_room_here">공간이 부족합니다</string>
     <string name="dock_full_move_an_app_out_first">Dock이 가득 찼습니다 • 먼저 앱을 하나 옮기세요</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">폴더 안에 있음 · 먼저 꺼내세요</string>
     <string name="remove">제거</string>
     <string name="move_this_widget_into_the_six_row_grid_b">크기를 조절하기 전에 이 위젯을 6행 격자 안으로 옮기세요.</string>
     <string name="layout_document">레이아웃 문서</string>

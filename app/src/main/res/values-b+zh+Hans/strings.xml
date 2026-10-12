@@ -188,6 +188,8 @@
     <string name="place">放置</string>
     <string name="no_room_here">这里没有空间</string>
     <string name="dock_full_move_an_app_out_first">程序坞已满 • 请先移出一个 App</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">在文件夹中 · 请先移出</string>
     <string name="remove">移除</string>
     <string name="move_this_widget_into_the_six_row_grid_b">调整大小前，请先把这个小组件移到六行网格中。</string>
     <string name="layout_document">布局文件</string>
