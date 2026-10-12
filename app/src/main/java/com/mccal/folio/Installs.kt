@@ -141,7 +141,7 @@ internal fun DownloadingApps(labelColor: androidx.compose.ui.graphics.Color) {
                         d.icon?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, androidx.compose.ui.Modifier.fillMaxSize()) }
                         InstallRing(d.progress, androidx.compose.ui.Modifier.fillMaxSize())
                     }
-                    androidx.compose.material3.Text(d.label ?: "Waiting…", color = labelColor, fontSize = 11.sp, maxLines = 1,
+                    androidx.compose.material3.Text(d.label ?: androidx.compose.ui.res.stringResource(R.string.install_waiting), color = labelColor, fontSize = 11.sp, maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.TINY.dp))
                 }
             }

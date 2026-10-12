@@ -59,6 +59,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **More of Folio follows your language:** Discover's connection messages, the notes under Sunrise to Sunset in Appearance, the Dynamic Island's call and navigation when an app gives no name, the status rail's Airplane line, the check list for an Icon Stack and a few other labels were English in every language. They are now in Korean and Chinese too.
 - **Create Folder always makes the folder:** picking the second app did nothing when the app came from the dock or the App Library and the page had no free spot. The folder now goes on the first page with room, or on a new page at the end, and Home turns to it. Its list also stops offering apps that are already in a folder, which did nothing when picked. Its title, its "New folder with" heading (which was nearly invisible on the dark dialog) and a new folder's name now follow your language.
 - **No outlines through widgets while moving an app:** the faint outlines that show where a carried app could go no longer appear on the cells under a widget, which showed through the widget.
 - **Back closes a folder again:** since folders got their own window in beta 1, the Back button and the back swipe did nothing while a folder was open; only a tap outside closed it. Back closes it again, and the back swipe shrinks it toward its icon as before.
@@ -83,6 +84,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Even rows under a widget (#13):** a widget at the top of Home now fills exactly two rows, so every row has the same spacing and the dock lines up with them, where the rows below a widget used to sit a little off. The Widget Size slider is hidden while this is on, because the widget's height is now set by the rows. For supporters and Folio Dev for now, and for everyone in 0.6.9.
 - **An install cut short is put back:** if Folio is killed while a package is being installed or updated, the next start puts things back as they were and says which package didn't finish installing, instead of leaving it half applied. Safe Mode now counts only real crashes, not Android closing Folio for memory.
 - **Native crashes and freezes count toward Safe Mode:** a crash in Folio's own native code, or a freeze right at the start, now counts the same as any other quick crash, so Folio offers Safe Mode instead of starting the same way again.
+- **Updating a tweak keeps your settings:** updating a tweak package from the Market turned a screen you had turned off for it back on, cleared its options, and put Duet's look back to the package's. Your changes now stay: an update only changes what its new version changes, and not where you had already changed it yourself. Undo after an update keeps them too.
 
 ## [0.6.8] - 2026-10-06
 

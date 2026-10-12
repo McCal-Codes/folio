@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.mccal.folio.baselineprofile"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // Baseline profiles are generated on a connected device running API 33 or newer; a rooted

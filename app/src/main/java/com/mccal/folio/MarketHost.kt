@@ -210,12 +210,99 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         }
     }
 
+    // Only tweaks for now: they are what a person changes after a package sets them (screens, options, Duet's look).
+    override fun canUpdateInPlace(old: PackageChange, new: PackageChange): Boolean =
+        old is PackageChange.Tweaks && new is PackageChange.Tweaks
+
+    override fun updateInPlace(old: PackageChange, snapshot: String, new: PackageChange): String {
+        check(old is PackageChange.Tweaks && new is PackageChange.Tweaks) { "only tweaks update in place" }
+        return updateTweaks(old.bundle, snapshot, new.bundle)
+    }
+
+    /**
+     * Why an update keeps the person's settings: it moves each tweak from what the old version set to what the new
+     * one sets, one setting at a time, instead of putting everything back as it was before the package and setting it
+     * again.
+     *
+     * - A setting both versions give the same value is left as it is now, whatever the person did with it since.
+     * - A setting the new version changes takes the new value, unless the person had already moved it off the old
+     *   version's value; then theirs stays ("Keep my changes", McCal 4 Oct).
+     * - A tweak only the new version names goes on as at a first install; one only the old version named goes back to
+     *   how it was before the package, as Remove would put it.
+     * - A tweak's options in Settings, which no package sets, are never touched.
+     *
+     * Returns the snapshot the new version keeps: still what was there before the package, so Remove puts back the same
+     * Home it would have before the update.
+     */
+    private fun updateTweaks(old: TweakBundle, snapshot: String, new: TweakBundle): String {
+        val before = snapshotEntries(snapshot)
+        val kept = JSONArray()
+        for (setting in new.tweaks) {
+            val feature = featureFor(setting.id) ?: continue
+            val was = old.tweaks.firstOrNull { it.id == setting.id }
+            // Written before anything changes, as at install, when the old version had nothing to say for this tweak.
+            val entry = before[setting.id.id]?.takeIf { was != null } ?: tweakEntry(launcher.state, setting, feature)
+            // The old version left Duet's look alone, so the look now is the one to put back if this one changes it.
+            if (setting.id == TweakId.DUET && setting.options.isNotEmpty() && !entry.has("duet")) {
+                entry.put("duet", launcher.state.duet.toJson()).put("foldIntensity", launcher.state.foldIntensity.toDouble())
+            }
+            kept.put(entry)
+            if (was == null) applyTweak(setting) else moveTweak(was, setting, feature)
+        }
+        // Last, so a tweak both versions name is settled first.
+        for (gone in old.tweaks) {
+            if (new.tweaks.none { it.id == gone.id }) before[gone.id.id]?.let(::restoreTweak)
+        }
+        return kept.toString()
+    }
+
+    /** One tweak both versions name, moved from what [was] set to what [now] sets, keeping what the person chose. */
+    private fun moveTweak(was: TweakSetting, now: TweakSetting, feature: TweakFeature) {
+        val installed = feature.id in launcher.state.installedTweaks
+        if (was.enabled != now.enabled) {
+            // The new version turns the tweak on or off. If the person hadn't already done that themselves, it goes the
+            // way a first install of the new version would; otherwise their choice is the one asked for anyway.
+            if (installed == was.enabled) {
+                applyTweak(now)
+                return
+            }
+        }
+        for ((screen, from, to) in listOf(
+            Triple(FolioScreen.COVER, was.cover, now.cover),
+            Triple(FolioScreen.INNER, was.inner, now.inner),
+        )) {
+            if (from == to) continue
+            // The value the old version set, still there: the person left this screen alone.
+            if (FeatureScopes.value(launcher.state.featureScopes, feature.id, screen) == scopeFor(from)) {
+                launcher.setFeatureScope(feature.id, screen, scopeFor(to))
+            }
+        }
+        if (now.id == TweakId.DUET && now.enabled) moveDuet(was.options, now.options)
+    }
+
+    /** Duet's look, one key at a time by the same rule. A key the new version leaves out stays as it is now. */
+    private fun moveDuet(was: Map<String, Any>, now: Map<String, Any>) {
+        val state = launcher.state
+        val look = state.duet.toJson()
+        var intensity = state.foldIntensity
+        var changed = false
+        for (key in DUET_KEYS + INTENSITY) {
+            val to = now[key] ?: continue
+            val from = was[key]
+            if (from != null && same(from, to)) continue
+            val mine: Any? = if (key == INTENSITY) state.foldIntensity.toDouble() else look.opt(key)
+            if (from != null && !same(mine, from)) continue
+            if (key == INTENSITY) intensity = (to as? Number)?.toFloat() ?: continue else look.put(key, to)
+            changed = true
+        }
+        if (changed) launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(look), intensity)
+    }
+
     private fun applyTweak(setting: TweakSetting) {
         val feature = featureFor(setting.id) ?: return
         if (setting.enabled) launcher.installTweak(feature) else launcher.removeTweak(feature)
-        // A bundle that leaves out a screen means "not there": an override, not the tweak's own default.
-        launcher.setFeatureScope(feature.id, FolioScreen.COVER, if (setting.cover) ScopeValue.DEFAULT else ScopeValue.OFF)
-        launcher.setFeatureScope(feature.id, FolioScreen.INNER, if (setting.inner) ScopeValue.DEFAULT else ScopeValue.OFF)
+        launcher.setFeatureScope(feature.id, FolioScreen.COVER, scopeFor(setting.cover))
+        launcher.setFeatureScope(feature.id, FolioScreen.INNER, scopeFor(setting.inner))
         // A package that turns Duet off sets no options for it.
         if (setting.id == TweakId.DUET && setting.enabled && setting.options.isNotEmpty()) applyDuet(setting.options)
     }
@@ -224,51 +311,75 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
     private fun applyDuet(options: Map<String, Any>) {
         val state = launcher.state
         val merged = state.duet.toJson()
-        for (key in listOf("style", "frost", "darkening", "perspective", "direction")) options[key]?.let { merged.put(key, it) }
-        val intensity = (options["intensity"] as? Double)?.toFloat() ?: state.foldIntensity
+        for (key in DUET_KEYS) options[key]?.let { merged.put(key, it) }
+        val intensity = (options[INTENSITY] as? Double)?.toFloat() ?: state.foldIntensity
         launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(merged), intensity)
     }
 
     private fun restoreTweaks(snapshot: String) {
         val array = runCatching { JSONArray(snapshot) }.getOrNull() ?: return
-        for (i in 0 until array.length()) {
-            val json = array.optJSONObject(i) ?: continue
-            val feature = featureFor(TweakId.from(json.optString("id")) ?: continue) ?: continue
-            if (json.optBoolean("installed")) launcher.installTweak(feature) else launcher.removeTweak(feature)
-            for (screen in FolioScreen.entries) {
-                val value = ScopeValue.entries.firstOrNull { it.name == json.optString(screen.name) } ?: ScopeValue.DEFAULT
-                launcher.setFeatureScope(feature.id, screen, value)
-            }
-            // Turning a tweak off forgets its options, so removing the package has to put them back with it.
-            launcher.setTweakOptions(feature.id, json.optJSONObject("options")?.let { o -> o.keys().asSequence().associateWith { o.optString(it) } }.orEmpty())
-            // Removing the package puts back the look it replaced, not the default.
-            json.optJSONObject("duet")?.let { launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(it), json.optDouble("foldIntensity", 1.0).toFloat()) }
+        for (i in 0 until array.length()) array.optJSONObject(i)?.let(::restoreTweak)
+    }
+
+    /** Puts one tweak back the way a snapshot entry ([tweakEntry]) says it was. */
+    private fun restoreTweak(json: JSONObject) {
+        val feature = featureFor(TweakId.from(json.optString("id")) ?: return) ?: return
+        if (json.optBoolean("installed")) launcher.installTweak(feature) else launcher.removeTweak(feature)
+        for (screen in FolioScreen.entries) {
+            val value = ScopeValue.entries.firstOrNull { it.name == json.optString(screen.name) } ?: ScopeValue.DEFAULT
+            launcher.setFeatureScope(feature.id, screen, value)
         }
+        // Turning a tweak off forgets its options, so removing the package has to put them back with it.
+        launcher.setTweakOptions(feature.id, json.optJSONObject("options")?.let { o -> o.keys().asSequence().associateWith { o.optString(it) } }.orEmpty())
+        // Removing the package puts back the look it replaced, not the default.
+        json.optJSONObject("duet")?.let { launcher.setDuet(com.mccal.folio.duet.DuetOptions.fromJson(it), json.optDouble("foldIntensity", 1.0).toFloat()) }
     }
 
     private companion object {
         const val PREVIOUS_THEME = "Before this package"
+        const val INTENSITY = "intensity"
+
+        /** Duet's options a package may set, apart from [INTENSITY], which is the fold's own slider. */
+        val DUET_KEYS = listOf("style", "frost", "darkening", "perspective", "direction")
 
         fun featureFor(id: TweakId): TweakFeature? = TweakFeatures.firstOrNull { it.id == id.id }
+
+        /** A bundle that leaves out a screen means "not there": an override, not the tweak's own default. */
+        fun scopeFor(on: Boolean) = if (on) ScopeValue.DEFAULT else ScopeValue.OFF
+
+        /** Equal as options: numbers by value, since a look read back from JSON has floats where a package had doubles. */
+        fun same(a: Any?, b: Any?): Boolean =
+            if (a is Number && b is Number) kotlin.math.abs(a.toDouble() - b.toDouble()) < 1e-4 else a?.toString() == b?.toString()
+
+        /** A snapshot's entries by tweak id. */
+        fun snapshotEntries(snapshot: String): Map<String, JSONObject> {
+            val array = runCatching { JSONArray(snapshot) }.getOrNull() ?: return emptyMap()
+            return (0 until array.length()).mapNotNull { array.optJSONObject(it) }.associateBy { it.optString("id") }
+        }
 
         /** What the tweaks in [bundle] looked like before, so removing the package puts them back exactly. */
         fun tweakSnapshot(state: LauncherState, bundle: TweakBundle): String {
             val array = JSONArray()
             for (setting in bundle.tweaks) {
                 val feature = featureFor(setting.id) ?: continue
-                val json = JSONObject()
-                    .put("id", setting.id.id)
-                    .put("installed", feature.id in state.installedTweaks)
-                for (screen in FolioScreen.entries) {
-                    json.put(screen.name, FeatureScopes.value(state.featureScopes, feature.id, screen).name)
-                }
-                json.put("options", JSONObject(state.tweakOptions[feature.id].orEmpty()))
-                if (setting.id == TweakId.DUET && setting.options.isNotEmpty()) {
-                    json.put("duet", state.duet.toJson()).put("foldIntensity", state.foldIntensity.toDouble())
-                }
-                array.put(json)
+                array.put(tweakEntry(state, setting, feature))
             }
             return array.toString()
+        }
+
+        /** One tweak as it is now, for a snapshot: on the phone or not, each screen, its options, and Duet's look. */
+        fun tweakEntry(state: LauncherState, setting: TweakSetting, feature: TweakFeature): JSONObject {
+            val json = JSONObject()
+                .put("id", setting.id.id)
+                .put("installed", feature.id in state.installedTweaks)
+            for (screen in FolioScreen.entries) {
+                json.put(screen.name, FeatureScopes.value(state.featureScopes, feature.id, screen).name)
+            }
+            json.put("options", JSONObject(state.tweakOptions[feature.id].orEmpty()))
+            if (setting.id == TweakId.DUET && setting.options.isNotEmpty()) {
+                json.put("duet", state.duet.toJson()).put("foldIntensity", state.foldIntensity.toDouble())
+            }
+            return json
         }
     }
 }
