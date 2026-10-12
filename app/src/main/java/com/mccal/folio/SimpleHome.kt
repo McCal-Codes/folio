@@ -230,7 +230,11 @@ private const val SIMPLE_FADE_TIMEOUT_MS = 600L
 @Composable
 internal fun SimpleSurface(textSize: SimpleTextSize, content: @Composable () -> Unit) {
     val colors = simpleColors()
-    CompositionLocalProvider(LocalSimpleColors provides colors, LocalSimpleScale provides textSize.scale, content = content)
+    // Simple's text sizes are bigger than the default style's fixed 24 sp line height, so a label or date that wraps
+    // drew its lines on top of each other. Each line takes its own font's height instead.
+    val style = androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified)
+    CompositionLocalProvider(LocalSimpleColors provides colors, LocalSimpleScale provides textSize.scale,
+        androidx.compose.material3.LocalTextStyle provides style, content = content)
 }
 
 internal val simpleTheme: SimpleColors @Composable get() = LocalSimpleColors.current ?: simpleColors()
