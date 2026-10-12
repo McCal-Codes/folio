@@ -1959,4 +1959,24 @@
     <string name="action_a11y_shade">Android 通知栏</string>
     <string name="action_a11y_splitscreen">分屏</string>
     <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
+    <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
+    <string name="in_stack">在叠放中</string>
+    <string name="not_in_stack">不在叠放中</string>
+    <string name="install_waiting">等待中…</string>
+    <string name="island_call">通话</string>
+    <string name="island_navigating">正在导航</string>
+    <string name="unavailable_app">不可用的 App</string>
+    <string name="status_airplane">飞行</string>
+    <string name="discover_unavailable_right_now">Discover 暂时不可用。</string>
+    <string name="discover_feed_refused">Google 未接受信息流连接。请重新启动 Google，然后重试。</string>
+    <string name="discover_disconnected">Discover 已断开连接。轻点“重试”重新连接。</string>
+    <string name="discover_needs_google_app">要使用 Discover，请安装或启用 Google App。</string>
+    <string name="discover_google_couldnt_connect">Google App 无法连接到 Discover。</string>
+    <string name="discover_taking_a_while">Discover 加载较慢。你可以重试或打开 Google。</string>
+    <string name="discover_google_version">此版本的 Google App 无法打开 Discover。</string>
+    <string name="discover_couldnt_start">Discover 无法启动。轻点“重试”重新连接。</string>
+    <string name="discover_couldnt_fit">Discover 无法放在程序坞旁边。</string>
+    <string name="appearance_system_until_location">设置位置前将使用系统主题</string>
+    <string name="appearance_system_location_stale">设备位置已过时，正在使用系统主题</string>
+    <string name="appearance_system_location_unavailable">此位置不可用，正在使用系统主题</string>
 </resources>
