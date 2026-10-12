@@ -22,6 +22,7 @@ import com.mccal.folio.market.SourceKey
 import com.mccal.folio.market.SourceList
 import com.mccal.folio.market.SourceStore
 import com.mccal.folio.market.UrlHttpClient
+import com.mccal.folio.market.normalizeSourceUrl
 import com.mccal.folio.market.AuthorTrust
 import com.mccal.folio.market.MarketPrefs
 import com.mccal.folio.market.PackageInstaller
@@ -336,6 +337,32 @@ internal const val SUPPORTER_SOURCE = "https://mccal-codes.github.io/folio-keyd/
 // is nowhere else in any repository.
 internal const val SUPPORTER_SOURCE_KEY =
     "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOn02K6Fhi4Gto1Kb/q7I/iBZd4C0jqD/Y9yI9TyvRXBUy0qx3PqntQIUcFbw2bicxQOgdCLGS1rPevg+ninbOA=="
+
+/**
+ * Folio's own tweaks source, Folio Community Tweaks (McCal-Codes/folio-tweaks): the tweaks Folio also ships built in,
+ * published and signed on their own so they can be updated between Folio releases.
+ *
+ * A copy of a built-in package from here is that package's update rather than a claim on its name ([mergeEntries]),
+ * but only when the source was trusted with [FIRST_PARTY_SOURCE_KEY]: the same address under another key, or the
+ * same id from any other source, is still an impostor. The key ships in the app for that reason, as
+ * [SUPPORTER_SOURCE_KEY] does, so a new key for this source needs a Folio release.
+ *
+ * Nothing adds this source by itself yet; it counts as Folio's own once someone has added it.
+ */
+internal const val FIRST_PARTY_SOURCE = "https://mccal-codes.github.io/folio-tweaks/"
+
+// The source's public key, key id 7028F4F54A35A055, as published at FIRST_PARTY_SOURCE + "key.pub" and checked
+// against its signed entry.json on 12 Oct 2026. The private half signs the source in folio-tweaks' publishing
+// workflow (the FOLIO_SOURCE_KEY secret) and is nowhere in any repository.
+internal const val FIRST_PARTY_SOURCE_KEY =
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETzFnQluMpyJhOofDTJKap1ReL56EalQ32gPmRq32wNW+TnwKMZ7RKgLAoet4j9TY6ie/2W6626K+bCv9VQVjJQ=="
+
+/** Whether [url], trusted with [pinned], is [FIRST_PARTY_SOURCE]: that address, however it was typed, with that key. */
+internal fun isFirstParty(url: String, pinned: SourceKey?): Boolean {
+    val key = SourceKey.parse(FIRST_PARTY_SOURCE_KEY) ?: return false
+    return pinned == key &&
+        normalizeSourceUrl(url).equals(FIRST_PARTY_SOURCE, ignoreCase = true)
+}
 
 /**
  * Whether this phone sees the Market: Folio Dev or a supporter's code. Everything the Market hands out is also in
