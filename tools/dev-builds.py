@@ -7,6 +7,9 @@
     tools/dev-builds.py install [NAME]         put a kept build on the phone (latest if NAME is left out)
     tools/dev-builds.py where                  what is on the phone now, and whether something else replaced it
     tools/dev-builds.py source --base-url URL  write a signed Folio source for the kept builds (to host later)
+    tools/dev-builds.py drive [NAME] --test "..." --by "..." [--copy]
+                                               put a kept build and its notes in Google Drive's Dev Builds folder
+                                               (shows what it would do; --copy does it)
 
 Why a script as well as a source: a debug Folio is about 80 MB, which the Market only accepts since its app limit went to
 100 MiB, and a phone-side list still needs somewhere to be hosted. Folio also refuses to install an app from a local source on purpose (T19), and any other
@@ -15,6 +18,10 @@ over wireless debugging; `source` makes the files for that later, and publishes 
 
 On Windows, run it as `python tools/dev-builds.py ...`. It finds JDK 17, the Android SDK, adb and openssl on its own
 (Git for Windows brings openssl); set JAVA_HOME, ANDROID_HOME or ANDROID_SERIAL to choose others.
+
+`drive` is for when adb can't reach the phone: McCal installs from Google Drive's Dev Builds folder (its README.txt
+has the rules). It finds that folder on H: on the PC or under ~/Library/CloudStorage on a Mac (override with
+FOLIO_DRIVE_BUILDS), never overwrites a file and never deletes one.
 
 Builds are kept in ~/.folio-dev-builds (override with FOLIO_DEV_BUILDS), outside every repository. A build is named
 <branch>-<commit>. Every build is signed with the local debug key, so any of them installs over any other and keeps
@@ -127,6 +134,55 @@ def listing_version(base: str, built_at: str, sha: str) -> str:
     """
     stamp = re.sub(r"[^0-9]", "", built_at)[:14] or "0"
     return f"{base}+dev.{stamp}.{sha[:8]}"
+
+
+def version_code(version: str) -> int:
+    """Android's versionCode for a versionName, by the same rule as app/build.gradle.kts: 0.6.9-beta.2 is 6090."""
+    parts = [int(p) for p in version.split("-")[0].split(".")]
+    return (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + (parts[3] if len(parts) > 3 else 0)
+
+
+def version_line(version: str) -> str:
+    """The Dev Builds folder a version goes in: 0.6.9-beta.2 and 0.6.9.1 both go in 0.6.9."""
+    return ".".join(version.split("-")[0].split(".")[:3])
+
+
+def drive_stem(build: dict, day: str) -> str:
+    """YYYY-MM-DD_Folio-Dev_<versionName>_<branch>_<commit>, as the Dev Builds README names them."""
+    return f"{day}_Folio-Dev_{build['version']}_{slug(build['branch'])}_{build['sha'][:7]}" + ("-dirty" if build.get("dirty") else "")
+
+
+def drive_note(build: dict, by: str, test: str, pr: str | None = None, today: datetime.date | None = None) -> str:
+    """The .txt that goes beside a build in Drive: what it is, how to check it is the right file, and what to test."""
+    today = today or datetime.date.today()
+    branch = f"Branch: {build['branch']}" + (f" (PR #{pr.lstrip('#')})" if pr else "") + f", commit {build['sha'][:7]}"
+    if build.get("dirty"):
+        branch += ", with uncommitted changes (not in any commit)"
+    lines = [f"Folio Dev {build['version']} (versionCode {version_code(build['version'])}), debug build, package {APP_ID}",
+             f"SHA-256: {build['sha256']}",
+             branch]
+    if build.get("subject"):
+        lines.append(f"  latest commit: {build['subject']}")
+    lines += [f"Built: {build.get('builtAt', '')[:16].replace('T', ' ')}",
+              f"Uploaded by: {by}, {today.day} {today.strftime('%b %Y')}",
+              "Installs over the Folio Dev already on the phone; Home and settings stay. Your daily Folio is not touched.",
+              "Check the SHA-256 before installing.",
+              "",
+              "What to test",
+              test.strip()]
+    return "\n".join(lines) + "\n"
+
+
+def drive_root() -> pathlib.Path | None:
+    """Google Drive's Dev Builds folder on this computer, if Drive for desktop is running."""
+    if os.environ.get("FOLIO_DRIVE_BUILDS"):
+        return pathlib.Path(os.environ["FOLIO_DRIVE_BUILDS"]).expanduser()
+    tail = pathlib.Path("My Drive", "07 - Programing", "Folio", "Dev Builds")
+    if WINDOWS:
+        candidates = [pathlib.Path(f"{letter}:/") / tail for letter in "HGDEFIJKLMNOPQRSTUVWXYZ"]
+    else:
+        candidates = [pathlib.Path(p) / tail for p in sorted(glob.glob(os.path.expanduser("~/Library/CloudStorage/GoogleDrive-*")))]
+    return next((c for c in candidates if c.is_dir()), None)
 
 
 def listable(builds: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -288,18 +344,22 @@ def phone_state(serial: str) -> dict:
     return {"updated": updated.group(1).strip() if updated else None}
 
 
+def pick_build(index: dict, name: str | None) -> dict:
+    """A kept build by its name or part of it, or the latest one."""
+    builds = index["builds"]
+    if not builds:
+        sys.exit("Nothing kept yet. Run: tools/dev-builds.py build")
+    if name in (None, "latest"):
+        return builds[-1]
+    hits = [b for b in builds if b["name"] == name] or [b for b in builds if name in b["name"]]
+    if len(hits) != 1:
+        sys.exit(f"{'No build' if not hits else 'More than one build'} matches '{name}'. Run: tools/dev-builds.py list")
+    return hits[0]
+
+
 def cmd_install(args) -> int:
     index = load_index()
-    if not index["builds"]:
-        sys.exit("Nothing kept yet. Run: tools/dev-builds.py build")
-    builds = index["builds"]
-    if args.name in (None, "latest"):
-        chosen = builds[-1]
-    else:
-        hits = [b for b in builds if b["name"] == args.name] or [b for b in builds if args.name in b["name"]]
-        if len(hits) != 1:
-            sys.exit(f"{'No build' if not hits else 'More than one build'} matches '{args.name}'. Run: tools/dev-builds.py list")
-        chosen = hits[0]
+    chosen = pick_build(index, args.name)
     apk = STORE / "apks" / f"{chosen['name']}.apk"
     print(f"Installing {chosen['name']}: {chosen['subject']}")
     if args.dry_run:
@@ -405,6 +465,45 @@ def cmd_source(args) -> int:
     return 0
 
 
+# ---- Google Drive ----------------------------------------------------------------------------------------------
+
+def cmd_drive(args) -> int:
+    """Put a kept build and its notes in Drive's Dev Builds folder. Without --copy it only shows what it would do."""
+    build = pick_build(load_index(), args.name)
+    apk = STORE / "apks" / f"{build['name']}.apk"
+    if not apk.exists():
+        sys.exit(f"{apk} is missing. Run: tools/dev-builds.py build")
+    if build.get("dirty") and not args.allow_dirty:
+        sys.exit(f"{build['name']} has uncommitted changes, so its name points at a commit it isn't. Commit first, "
+                 "or pass --allow-dirty and its notes will say so.")
+    test = pathlib.Path(args.test_file).read_text(encoding="utf-8") if args.test_file else (args.test or "")
+    if args.copy and not (test.strip() and args.by):
+        sys.exit("Say what to test (--test or --test-file) and who is uploading (--by), so the build arrives with its steps.")
+    root = drive_root()
+    if root is None:
+        sys.exit("No Google Drive Dev Builds folder found. Start Drive for desktop, or set FOLIO_DRIVE_BUILDS to the folder.")
+    folder = root / version_line(build["version"])
+    stem = drive_stem(build, datetime.date.today().isoformat())
+    target, note = folder / f"{stem}.apk", folder / f"{stem}.txt"
+    text = drive_note(build, args.by or "<--by>", test or "<--test>", args.pr)
+    taken = [p.name for p in (target, note) if p.exists()]
+    if taken:
+        sys.exit(f"Already in Drive: {', '.join(taken)}. Builds are never overwritten; nothing was copied.")
+    print(f"{'Copying' if args.copy else 'Would copy'} {build['name']} ({build['size'] / 1e6:.1f} MB) to\n  {target}\n  {note}\n")
+    print(text)
+    if not args.copy:
+        print("Nothing copied. Run again with --copy to put both files in Drive.")
+        return 0
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(apk, target)
+    if sha256_of(target) != build["sha256"]:
+        target.unlink(missing_ok=True)
+        sys.exit("The copy in Drive did not match the kept build's SHA-256, so it was removed. Nothing else changed.")
+    note.write_text(text, encoding="utf-8")
+    print("Copied, and the SHA-256 in Drive matches.")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Keep and switch between Folio Dev builds.")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -421,6 +520,15 @@ def main() -> int:
     s.add_argument("--base-url", required=True, help="the https:// address the folder will be served from")
     s.add_argument("--key", help="a PEM key to sign with (a local one is made if left out)")
     s.set_defaults(run=cmd_source)
+    d = commands.add_parser("drive", help="put a kept build and its notes in Google Drive's Dev Builds folder")
+    d.add_argument("name", nargs="?", help="a build name, part of one, or 'latest' (the default)")
+    d.add_argument("--test", help="what to test, in plain steps")
+    d.add_argument("--test-file", help="a text file with what to test, for longer steps")
+    d.add_argument("--by", help="who is uploading, e.g. 'PC session 3'")
+    d.add_argument("--pr", help="the pull request number, if there is one")
+    d.add_argument("--allow-dirty", action="store_true", help="allow a build with uncommitted changes (its notes say so)")
+    d.add_argument("--copy", action="store_true", help="copy the files; without it, only show what would happen")
+    d.set_defaults(run=cmd_drive)
     args = parser.parse_args()
     return args.run(args)
 
