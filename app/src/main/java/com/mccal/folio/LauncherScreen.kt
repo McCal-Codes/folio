@@ -167,6 +167,7 @@ fun LauncherScreen(
     val gateContext = androidx.compose.ui.platform.LocalContext.current
     val homeView = androidx.compose.ui.platform.LocalView.current
     val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val newFolderTitle = stringResource(R.string.new_folder_name) // in the phone's language, not always English
     val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
@@ -175,6 +176,7 @@ fun LauncherScreen(
     }
     var savedPage by rememberSaveable { mutableIntStateOf(0) }
     var lastHomePage by rememberSaveable { mutableIntStateOf(0) }
+    var revealFolderPage by remember { mutableStateOf<Int?>(null) }
     var libraryQuery by rememberSaveable { mutableStateOf("") }
     var pinQuery by rememberSaveable { mutableStateOf("") }
     val launcherActivity = androidx.activity.compose.LocalActivity.current as MainActivity
@@ -609,7 +611,7 @@ fun LauncherScreen(
             // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
             // places. Dropping on an existing folder already goes through DropTarget.Folder above.
             destination is DropTarget.Home && mergesAt(source.appId, destination.index) != null ->
-                model.createFolder(source.appId!!, mergesAt(source.appId, destination.index)!!, destination.index) != null
+                model.createFolder(source.appId!!, mergesAt(source.appId, destination.index)!!, destination.index, newFolderTitle) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
@@ -1869,12 +1871,19 @@ fun LauncherScreen(
                     if (model.removeLastEmptyPage()) scope.launch { pager.animateScrollToPage(homePages - 2) }
                 }} else null)
         }
+        revealFolderPage?.let { page ->
+            LaunchedEffect(page, homePages) { if (page < homePages) { pager.animateScrollToPage(page); revealFolderPage = null } }
+        }
         overlays.newFolder?.let { firstId ->
             val first = appsById[firstId]
             // Existing folders first (the only other way in is dragging onto one), then a new folder with another app.
             val folders = state.folders.filter { firstId !in it.appIds }
             AlertDialog(onDismissRequest = { overlays.newFolder = null },
-                title = { Text(if (folders.isEmpty()) "Create folder with ${first?.label ?: "app"}" else "Add ${first?.label ?: "app"} to a folder") },
+                title = { Text(when {
+                    first == null -> stringResource(if (folders.isEmpty()) R.string.create_folder else R.string.add_to_folder)
+                    folders.isEmpty() -> stringResource(R.string.create_folder_with_1_s, first.label)
+                    else -> stringResource(R.string.add_1_s_to_a_folder, first.label)
+                }) },
                 text = { LazyColumn(Modifier.heightIn(max = 420.dp).testTag("folder-app-picker")) {
                     items(folders, key = { it.id }) { folder ->
                         TextButton(onClick = { model.addAppToFolder(folder.id, firstId); overlays.newFolder = null },
@@ -1884,18 +1893,19 @@ fun LauncherScreen(
                         }
                     }
                     if (folders.isNotEmpty()) item("new-folder-header") {
-                        Text(stringResource(R.string.new_folder_with), style = MaterialTheme.typography.labelLarge,
+                        Text(stringResource(R.string.new_folder_with), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f),
                             modifier = Modifier.padding(start = FolioSpace.MEDIUM.dp, top = FolioSpace.COMFY.dp, bottom = FolioSpace.TINY.dp))
                     }
-                    items(pickerApps(state).filter { it.id != firstId && it.available }, key = { it.id }) { second ->
+                    items(pickerApps(state).filter { it.id != firstId && it.available && canStartFolderWith(state.layout, it.id) }, key = { it.id }) { second ->
                         TextButton(onClick = {
                             val preferredPage = state.layout.indexOfShortcut(firstId)?.let(::homeCellPage)
                                 ?.takeIf { it >= 0 || expandedWorkspace } ?: lastHomePage.coerceIn(0, homePages - 1)
                             val blocked = state.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }
-                            val targetIndex = (0 until HOME_CELLS).map { homeCellIndex(preferredPage, it) }
-                                .firstOrNull { it !in blocked && homeCellShown(it, homeAppRows) && state.layout.slotAt(it) in listOf(null, firstId, second.id) }
-                                ?: state.layout.indexOfShortcut(firstId)
-                            if (targetIndex != null) model.createFolder(firstId, second.id, targetIndex)
+                            val pages = (if (expandedWorkspace) listOf(-1) else emptyList()) + (0 until homePages)
+                            val targetIndex = newFolderCell(state.layout, firstId, second.id, preferredPage, pages, blocked) { homeCellShown(it, homeAppRows) }
+                            // Another page, or a new one, would leave the folder out of sight, so Home turns to it.
+                            if (model.createFolder(firstId, second.id, targetIndex, newFolderTitle) != null && homeCellPage(targetIndex) != preferredPage)
+                                revealFolderPage = homeCellPage(targetIndex)
                             overlays.newFolder = null
                         }, modifier = Modifier.fillMaxWidth().testTag("folder-app-${second.id}")) {
                             Text(second.label, Modifier.fillMaxWidth())

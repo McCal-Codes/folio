@@ -1114,6 +1114,12 @@
     <string name="add_to_home">Add to Home</string>
     <string name="add_to_folder">Add to Folder</string>
     <string name="create_folder">Create Folder</string>
+    <!-- Title of the Create Folder dialog; %1$s is the app's name. -->
+    <string name="create_folder_with_1_s">Create folder with %1$s</string>
+    <!-- Title when folders already exist; %1$s is the app's name. -->
+    <string name="add_1_s_to_a_folder">Add %1$s to a folder</string>
+    <!-- The name a new folder gets until it is renamed. -->
+    <string name="new_folder_name">Folder</string>
     <string name="stack_apps">Stack Apps…</string>
     <string name="show_in_app_library">Show in App Library</string>
     <string name="hide_from_app_library">Hide from App Library</string>
