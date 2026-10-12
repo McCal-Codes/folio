@@ -76,6 +76,14 @@ class PerfScenariosTest {
         assertTrue(text, "Menu or alert opening: 2 frames" in text)
     }
 
+    @Test fun `moving an icon is a scenario of its own, named in the report`() {
+        val all = FrameHistogram().also { it.record(8_000_000L, false) }
+        val s = PerfScenarios()
+        s.begin(PerfScenario.ICON_MOVE); repeat(3) { s.record(10_000_000L, false) }; s.end(PerfScenario.ICON_MOVE)
+        val text = PerfReport.build(header, listOf(sample(0, 0), sample(60_000, 3_000)), all, s)
+        assertTrue(text, "Moving an icon: 3 frames" in text)
+    }
+
     /** A new sheet or menu entrance that forgets its scenario would be invisible in the report; this keeps them all counted. */
     @Test fun `every sheet and menu entrance names its scenario`() {
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }

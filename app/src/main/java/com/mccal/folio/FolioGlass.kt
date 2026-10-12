@@ -98,8 +98,8 @@ enum class MotionSpeed(@androidx.annotation.StringRes val label: Int, val factor
     RELAXED(R.string.relaxed, .55f), STANDARD(R.string.standard, 1f), SNAPPY(R.string.snappy, 1.8f);
     companion object {
         @Volatile var current: MotionSpeed = STANDARD
-        fun <T> spring(dampingRatio: Float, stiffness: Float) =
-            androidx.compose.animation.core.spring<T>(dampingRatio = dampingRatio, stiffness = stiffness * current.factor)
+        fun <T> spring(dampingRatio: Float, stiffness: Float, visibilityThreshold: T? = null) =
+            androidx.compose.animation.core.spring(dampingRatio = dampingRatio, stiffness = stiffness * current.factor, visibilityThreshold = visibilityThreshold)
     }
 }
 
