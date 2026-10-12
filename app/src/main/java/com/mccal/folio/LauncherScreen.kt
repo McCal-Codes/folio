@@ -374,7 +374,7 @@ fun LauncherScreen(
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
         (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))?.let { pager.animateScrollToPage(it) }
     }
-    LaunchedEffect(settingsRequests) { if (settingsRequests > 0) {
+    LaunchedEffect(settingsRequests) { if (launcherActivity.settingsRequestsSeen.take(settingsRequests)) {
         drag.clear(); widgetSession = null; resize.stop(); overlays.menu = null; homeEdit.stop()
         if (SoftwareUpdate.openRequested) { SoftwareUpdate.openRequested = false; customizationPage = CustomizationPage.SOFTWARE_UPDATE }
         val linked = SettingsLink.page?.also { customizationPage = it; SettingsLink.page = null }

@@ -2054,7 +2054,8 @@
     <string name="simple_leave_title">Leave Simple Mode?</string>
     <string name="simple_leave_body">Your saved Home comes back, just as it was before Simple.</string>
     <string name="simple_settings_note">This page opens with the phone\'s screen lock. Android\'s own Settings still open from the status bar.</string>
-    <string name="simple_edit_note">Home stays locked. Changes made here show on Home when you tap Done.</string>
+    <string name="simple_settings_note_hold">This page opens with a 2-second hold. Set a screen lock in Android\'s Settings to protect it.</string>
+    <string name="simple_edit_note">Home stays locked. Changes show on Home right away.</string>
     <string name="simple_add_apps">Add Apps</string>
     <string name="simple_home_full">Home is full. Remove one first.</string>
     <string name="simple_home_full_short">Home is full.</string>

@@ -2022,7 +2022,8 @@
     <string name="simple_leave_title">간편 모드에서 나가시겠습니까?</string>
     <string name="simple_leave_body">저장된 홈이 간편 모드를 켜기 전 그대로 돌아옵니다.</string>
     <string name="simple_settings_note">이 페이지는 휴대전화의 화면 잠금으로 열립니다. Android 설정은 상태 표시줄에서 계속 열 수 있습니다.</string>
-    <string name="simple_edit_note">홈은 잠긴 상태로 유지됩니다. 여기서 바꾼 내용은 완료를 누르면 홈에 표시됩니다.</string>
+    <string name="simple_settings_note_hold">이 페이지는 2초 동안 길게 눌러 엽니다. 보호하려면 Android 설정에서 화면 잠금을 설정하세요.</string>
+    <string name="simple_edit_note">홈은 잠긴 상태로 유지됩니다. 바꾼 내용은 홈에 바로 표시됩니다.</string>
     <string name="simple_add_apps">앱 추가</string>
     <string name="simple_home_full">홈이 가득 찼습니다. 먼저 하나를 제거하세요.</string>
     <string name="simple_home_full_short">홈이 가득 찼습니다.</string>

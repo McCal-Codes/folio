@@ -2001,7 +2001,8 @@
     <string name="simple_leave_title">退出简易模式？</string>
     <string name="simple_leave_body">已保存的主屏幕会恢复，和开启简易模式前完全一样。</string>
     <string name="simple_settings_note">此页面需要用手机的屏幕锁打开。Android 自带的设置仍可从状态栏打开。</string>
-    <string name="simple_edit_note">主屏幕保持锁定。在此所做的更改会在轻点“完成”后显示在主屏幕上。</string>
+    <string name="simple_settings_note_hold">此页面需按住 2 秒打开。在 Android 设置中设置屏幕锁即可保护它。</string>
+    <string name="simple_edit_note">主屏幕保持锁定。更改会立即显示在主屏幕上。</string>
     <string name="simple_add_apps">添加应用</string>
     <string name="simple_home_full">主屏幕已满。请先移除一个。</string>
     <string name="simple_home_full_short">主屏幕已满。</string>

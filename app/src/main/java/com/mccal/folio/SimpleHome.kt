@@ -84,6 +84,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -152,6 +153,9 @@ private fun SimpleWindow(content: @Composable () -> Unit) {
         val view = LocalView.current
         val dark = LocalDuoPalette.current == DarkDuoPalette
         LaunchedEffect(view, dark) {
+            // After Simple's first frame: its opaque surface covers Folio before the status bar comes back and moves
+            // anything under it.
+            androidx.compose.runtime.withFrameNanos { }
             (view.parent as? DialogWindowProvider)?.window?.let { w ->
                 w.setDimAmount(0f)
                 w.setWindowAnimations(0)
@@ -466,6 +470,48 @@ private fun SimpleFirstOpenLine(button: androidx.compose.ui.geometry.Rect, onOk:
     }
 }
 
+/**
+ * Text that breaks only between words. When the longest word doesn't fit the width, the text gets a step smaller,
+ * down to [SIMPLE_MIN_TEXT_SP], rather than a word being split ("Mess-ages"). With [oneLineFirst] it also takes a step
+ * smaller before it wraps at all, for buttons side by side.
+ */
+@Composable
+internal fun SimpleFitText(text: String, size: TextUnit, modifier: Modifier = Modifier, color: Color, weight: FontWeight,
+    align: TextAlign? = null, oneLineFirst: Boolean = false) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val style = androidx.compose.material3.LocalTextStyle.current.copy(fontWeight = weight)
+    BoxWithConstraints(modifier) {
+        val width = constraints.maxWidth
+        val fitted = remember(text, size, width, weight, oneLineFirst) {
+            if (width == Constraints.Infinity) size.value
+            else simpleFitSize(text, size.value, width, oneLineFirst) { piece, sp ->
+                measurer.measure(piece, style.copy(fontSize = sp.sp), maxLines = 1, softWrap = false).size.width
+            }
+        }
+        Text(text, color = color, fontSize = fitted.sp, fontWeight = weight, textAlign = align)
+    }
+}
+
+/** The smallest size Simple shrinks text to rather than split a word: Simple's labels stay at least this big. */
+internal const val SIMPLE_MIN_TEXT_SP = 20f
+private const val SIMPLE_TEXT_STEP_SP = 2f
+
+/**
+ * The size for [text] at [size] sp in [width] px, by [widthOf] (a piece's one-line width at a size): unchanged when
+ * every word fits; else a step at a time down to [SIMPLE_MIN_TEXT_SP] (or [size], if that is smaller) until the longest
+ * word fits. With [oneLineFirst], the whole text on one line at [size] or a step smaller comes first. Chinese and
+ * Japanese text has no spaces and breaks between characters, so each of those characters counts as a word.
+ */
+internal fun simpleFitSize(text: String, size: Float, width: Int, oneLineFirst: Boolean, widthOf: (String, Float) -> Int): Float {
+    val floor = minOf(size, SIMPLE_MIN_TEXT_SP)
+    val sizes = generateSequence(size) { (it - SIMPLE_TEXT_STEP_SP).takeIf { next -> next >= floor } }.toList().ifEmpty { listOf(size) }
+    if (oneLineFirst) sizes.take(2).firstOrNull { widthOf(text, it) <= width }?.let { return it }
+    val cjk = Regex("[\u3040-\u30FF\u3400-\u9FFF\uF900-\uFAFF]")
+    val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }.flatMap { word -> if (cjk.containsMatchIn(word)) word.map(Char::toString) else listOf(word) }
+    val start = if (oneLineFirst) sizes.drop(1).ifEmpty { sizes } else sizes
+    return start.firstOrNull { sp -> words.all { widthOf(it, sp) <= width } } ?: start.last()
+}
+
 /** Every Simple screen says it is a preview, until Simple ships in 0.7.2. */
 @Composable
 internal fun SimplePreviewLabel(modifier: Modifier = Modifier) {
@@ -543,12 +589,12 @@ private fun SimpleItemFrame(label: String, tile: Boolean, compact: Boolean, onCl
     if (tile) Column(clickable.heightIn(min = if (compact) 120.dp else 140.dp).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.COMFY.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp, Alignment.CenterVertically)) {
         icon(64.dp)
-        Text(label, color = colors.text, fontSize = simpleText(22f), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        SimpleFitText(label, simpleText(22f), color = colors.text, weight = FontWeight.SemiBold, align = TextAlign.Center)
     } else Row(clickable.heightIn(min = if (compact) 76.dp else 88.dp)
         .padding(horizontal = if (compact) FolioSpace.COMFY.dp else FolioSpace.LARGE.dp, vertical = if (compact) FolioSpace.SMALL.dp else FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.LARGE.dp)) {
         icon(if (compact) 52.dp else 56.dp)
-        Text(label, Modifier.weight(1f), color = colors.text, fontSize = simpleText(24f), fontWeight = FontWeight.SemiBold)
+        SimpleFitText(label, simpleText(24f), Modifier.weight(1f), color = colors.text, weight = FontWeight.SemiBold)
     }
 }
 
@@ -604,8 +650,9 @@ internal fun SimpleButton(text: String, kind: SimpleButtonKind, icon: ImageVecto
         .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(28.dp)); Spacer(Modifier.size(FolioSpace.COMPACT.dp)) }
-        Text(text, color = ink, fontSize = simpleText(textSize), fontWeight = if (kind == SimpleButtonKind.QUIET) FontWeight.Medium else FontWeight.SemiBold,
-            textAlign = TextAlign.Center)
+        // A step smaller before it wraps, so a pair of buttons ("Move Up", "Move Down") reads the same in one row.
+        SimpleFitText(text, simpleText(textSize), color = ink, weight = if (kind == SimpleButtonKind.QUIET) FontWeight.Medium else FontWeight.SemiBold,
+            align = TextAlign.Center, oneLineFirst = true)
     }
 }
 

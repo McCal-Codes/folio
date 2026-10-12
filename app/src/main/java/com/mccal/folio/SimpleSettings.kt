@@ -286,7 +286,9 @@ private fun SimpleHelperSettings(setup: SimpleSetup, appCount: Int, model: Launc
         Spacer(Modifier.size(FolioSpace.LARGE.dp))
         SimpleRow(stringResource(R.string.simple_leave), stringResource(R.string.simple_leave_detail), icon = Icons.AutoMirrored.Rounded.Logout,
             destructive = true) { leaving = true }
-        SimpleLead(stringResource(R.string.simple_settings_note))
+        // Only promise the screen lock where there is one; otherwise say how it opens, and how to protect it.
+        val secure = remember { context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true }
+        SimpleLead(stringResource(if (secure) R.string.simple_settings_note else R.string.simple_settings_note_hold))
     }
     if (leaving) SimpleDialog(stringResource(R.string.simple_leave_title), stringResource(R.string.simple_leave_body), onCancel = { leaving = false }) {
         SimpleButton(stringResource(R.string.simple_leave), SimpleButtonKind.DANGER) { leaving = false; model.leaveSimple() }
@@ -308,12 +310,17 @@ private fun SimpleEditHome(appCount: Int, go: (SimpleScreen) -> Unit) {
     }
 }
 
-/** Add Apps: pick up to the room left, then Add to Home. Apps already on Home and hidden apps aren't listed. */
+/** Folio itself, the release or Folio Dev: Simple Home is already Folio, so it is never offered as an app on it. */
+internal fun isFolio(packageName: String, ownPackage: String) = packageName == ownPackage || packageName == "com.mccal.folio" || packageName == "com.mccal.folio.dev"
+
+/** Add Apps: pick up to the room left, then Add to Home. Apps already on Home, hidden apps and Folio aren't listed. */
 @Composable
 private fun SimpleAddApps(state: LauncherState, setup: SimpleSetup, onHome: List<String>, label: (AppEntry) -> String, model: LauncherModel, go: (SimpleScreen) -> Unit) {
+    val context = LocalContext.current
     val picked = remember { mutableStateListOf<String>() }
     val choices = remember(state.apps, onHome) {
-        state.apps.filter { it.id !in onHome && it.id !in state.hiddenApps && it.available }.sortedBy { it.label.lowercase() }
+        state.apps.filter { it.id !in onHome && it.id !in state.hiddenApps && it.available && !isFolio(it.packageName, context.packageName) }
+            .sortedBy { it.label.lowercase() }
     }
     val room = SIMPLE_MAX_APPS - onHome.size - picked.size
     SimplePage(primary = { SimpleButton(stringResource(R.string.add_to_home), SimpleButtonKind.PRIMARY) {
@@ -440,7 +447,7 @@ internal fun SimpleRow(title: String, subtitle: String? = null, icon: ImageVecto
             icon != null -> SimpleGlyph(icon, if (destructive) colors.danger else iconColor, 48.dp)
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (destructive) colors.danger else colors.text, fontSize = simpleText(22f), fontWeight = FontWeight.SemiBold)
+            SimpleFitText(title, simpleText(22f), color = if (destructive) colors.danger else colors.text, weight = FontWeight.SemiBold)
             subtitle?.let { Text(it, color = colors.secondary, fontSize = simpleText(17f)) }
         }
         mark?.let { SimpleMark(it) }
@@ -484,11 +491,16 @@ internal fun SimpleExperienceCard(state: LauncherState, model: LauncherModel) {
         if (now == ExperienceProfile.CUSTOM) CardNote(stringResource(R.string.profile_custom_detail))
         CardNote(stringResource(R.string.simple_experience_note))
     }
-    if (confirming) SimpleTurnOnSheet(onCancel = { confirming = false }) {
-        confirming = false
+    var turningOn by remember { mutableStateOf(false) }
+    if (confirming) SimpleTurnOnSheet(onCancel = { confirming = false }) { confirming = false; turningOn = true }
+    // Simple's window, and the status bar it brings back, come only once the sheet has gone, so the page under the
+    // sheet doesn't jump while it closes.
+    if (turningOn) LaunchedEffect(Unit) {
+        repeat(2) { androidx.compose.runtime.withFrameNanos { } }
         val apps = state.apps
         val appContext = context.applicationContext
         model.turnOnSimple { simpleRoleApps(appContext, apps).inOrder() }
+        turningOn = false
     }
 }
 
@@ -622,6 +634,8 @@ internal fun simpleFeedback(context: Context): Boolean {
  */
 internal fun openAllSettings(context: Context) {
     SimpleQuiet.allSettings.value = true
+    // Settings' own first page, never the Market (which Folio's icon opens when the Market is on).
+    SettingsLink.page = CustomizationPage.OVERVIEW
     runCatching {
         context.startActivity(Intent(Intent.ACTION_APPLICATION_PREFERENCES).setClass(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

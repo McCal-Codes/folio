@@ -54,6 +54,8 @@ class MainActivity : ComponentActivity() {
     private val searchRequests = mutableIntStateOf(0)
     /** Opened from Android Settings (Home app gear / "Additional settings in the app"). */
     private val settingsRequests = mutableIntStateOf(0)
+    /** The requests Home has acted on, so one that already opened Settings doesn't open it again when Home draws anew. */
+    internal val settingsRequestsSeen = RequestLatch()
     private val defaultHome = mutableStateOf(false)
     private val showFirstRun = mutableStateOf(false)
     private val showWhatsNew = mutableStateOf(false)
@@ -823,4 +825,13 @@ class MainActivity : ComponentActivity() {
         const val SHADE_SETTINGS_PENDING = "duo.shade.settings_pending"
         const val PENDING_THEME = "folio.theme.pending"
     }
+}
+
+/**
+ * Turns a count of requests into events: [take] is true once for each new request. Home is drawn again after Simple
+ * Mode, and a plain "the count is above zero" opened Settings again for a request it had already handled.
+ */
+internal class RequestLatch {
+    private var handled = 0
+    fun take(request: Int): Boolean = (request > handled).also { if (it) handled = request }
 }
