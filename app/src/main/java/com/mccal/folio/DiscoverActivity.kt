@@ -74,6 +74,8 @@ class DuoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashLog.install(this)
+        // Before anything can post a notice or a toast: Simple Mode keeps quiet from the first moment, not Home's first frame.
+        SimpleQuiet.start(SimpleRestoreStore.of(this))
         DiscoverEmbedding.initialize(this)
         DiscoverBounds.initialize(this)
         FolioMotion.initialize(this)

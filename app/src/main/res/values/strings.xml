@@ -2068,6 +2068,9 @@
     <string name="simple_remove_from_home">Remove from Home</string>
     <string name="simple_remove_note">Apps stay on the phone; only Home changes.</string>
     <string name="simple_list_separator">,\u0020</string>
+    <string name="simple_open_confirm_title">Open Helper Settings?</string>
+    <string name="simple_open_confirm_body">This is for the person who helps set up this phone.</string>
+    <string name="simple_open_settings">Open Settings</string>
     <string name="simple_send_feedback">Send Feedback</string>
     <string name="simple_send_feedback_detail">An email you write to Folio. Nothing else is sent.</string>
     <string name="simple_feedback_subject">Folio Simple Mode feedback</string>

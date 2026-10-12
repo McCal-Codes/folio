@@ -67,6 +67,20 @@ class SimpleModeTest {
         assertNull(SimpleRestoreStore(file).load())
     }
 
+    @Test fun `a fresh start knows Simple is on from the saved copy, before Home draws`() {
+        val store = SimpleRestoreStore(java.io.File(temp.root, "simple_restore.json"))
+        try {
+            SimpleQuiet.start(store)
+            assertFalse(SimpleQuiet.active)
+            assertTrue(store.save(SimpleRestore.of(mine)))
+            SimpleQuiet.start(store)
+            assertTrue("notices stay quiet from the first moment", SimpleQuiet.active)
+            store.clear()
+            SimpleQuiet.start(store)
+            assertFalse(SimpleQuiet.active)
+        } finally { SimpleQuiet.active = false }
+    }
+
     @Test fun `saving again replaces the old copy whole`() {
         val file = java.io.File(temp.root, "simple_restore.json")
         val store = SimpleRestoreStore(file)

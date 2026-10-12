@@ -126,6 +126,9 @@ internal class SimpleRestoreStore(private val file: File) {
 
     fun clear() { file.delete() }
 
+    /** Whether a copy is saved, which is while Simple is on. */
+    fun exists(): Boolean = file.isFile
+
     companion object {
         fun of(context: Context) = SimpleRestoreStore(File(context.filesDir, "simple_restore.json"))
     }
@@ -163,4 +166,11 @@ internal fun SimpleRestore.homeToKeep(live: LauncherState): HomeLayout? = layout
 internal object SimpleQuiet {
     @Volatile var active = false
     val allSettings = androidx.compose.runtime.mutableStateOf(false)
+
+    /**
+     * Read once as Folio's process starts, before any notice or toast can show. The saved copy is on disk exactly while
+     * Simple is on (written before it turns on, removed when it turns off), so its being there is the answer, without
+     * reading the whole saved state. The Home's state keeps it right from then on.
+     */
+    fun start(store: SimpleRestoreStore) { active = store.exists() }
 }

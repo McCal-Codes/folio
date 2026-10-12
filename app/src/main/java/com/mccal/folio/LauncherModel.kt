@@ -1157,6 +1157,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
             }
+            // Simple didn't turn on, so no copy may be left: its being on disk is what says Simple is on at a start.
+            if (mutable.value.simple == null) withContext(Dispatchers.IO) { store.clear() }
         }
     }
     /** Simple Mode off: the settings it changed come back; a Home from before Simple that differs goes to Layout History. */

@@ -71,6 +71,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -137,20 +138,22 @@ internal enum class SimpleScreen(val parent: SimpleScreen?) {
 /**
  * Simple's own full-screen window. On the Fold8 a full-screen surface drawn in Home's own window is cut short at the top
  * and bottom, which no insets setting fixes, so Simple sits in a window of its own, as Folio's other full-screen
- * surfaces do. No dim and no blur behind it: Simple is opaque.
+ * surfaces do. No dim and no blur behind it: Simple is opaque. Android's status bar stays, so signal, Wi-Fi and battery
+ * are always in sight (a call that fails has a visible reason), with Simple's content padded below it.
  */
 @Composable
 private fun SimpleWindow(content: @Composable () -> Unit) {
     Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false,
         usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
-        LaunchedEffect(view) {
+        val dark = LocalDuoPalette.current == DarkDuoPalette
+        LaunchedEffect(view, dark) {
             (view.parent as? DialogWindowProvider)?.window?.let { w ->
                 w.setDimAmount(0f)
                 w.setWindowAnimations(0)
                 androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).apply {
-                    systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                    show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                    isAppearanceLightStatusBars = !dark
                 }
             }
         }
@@ -353,7 +356,7 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
     }
 }
 
-/** Status bar room at the top (Folio hides Android's on Home, but the camera is still there) and the navigation bar's. */
+/** Room for Android's status bar and the camera at the top, and the navigation bar at the bottom. */
 @Composable
 private fun Modifier.simpleInsets(): Modifier = windowInsetsPadding(WindowInsets.folioSafeTop.only(WindowInsetsSides.Top)
     .union(WindowInsets.navigationBars).union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)))
@@ -441,13 +444,29 @@ private fun SimpleAppsBlock(items: List<AppEntry?>, style: SimpleStyle, compact:
         }
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(gap)) {
             if (!tiles) items.forEach { item(it, Modifier.fillMaxWidth()) }
-            else items.chunked(2).forEach { pair ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    pair.forEach { item(it, Modifier.weight(1f)) }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
+            else items.chunked(2).forEach { pair -> SimpleTileRow(gap, pair.size) { index, modifier -> item(pair[index], modifier) } }
         }
+    }
+}
+
+/**
+ * Two tiles side by side, always the same height: the taller one's. Tiles hold app icons, and a live Clock or Calendar
+ * icon can't be asked for its intrinsic size, so each tile is first measured in a copy that is never drawn and has no
+ * semantics, then the real ones are laid out at the common height. A lone tile takes the left half.
+ */
+@Composable
+private fun SimpleTileRow(gap: Dp, count: Int, tile: @Composable (Int, Modifier) -> Unit) {
+    SubcomposeLayout(Modifier.fillMaxWidth()) { c ->
+        val gapPx = gap.roundToPx()
+        val width = ((c.maxWidth - gapPx) / 2).coerceAtLeast(0)
+        val height = (0 until count).maxOfOrNull { index ->
+            subcompose("size-$index") { tile(index, Modifier.clearAndSetSemantics {}) }.single()
+                .measure(Constraints(minWidth = width, maxWidth = width)).height
+        } ?: 0
+        val tiles = (0 until count).map { index ->
+            subcompose("tile-$index") { tile(index, Modifier) }.single().measure(Constraints.fixed(width, height))
+        }
+        layout(c.maxWidth, height) { tiles.forEachIndexed { index, placeable -> placeable.placeRelative(index * (width + gapPx), 0) } }
     }
 }
 

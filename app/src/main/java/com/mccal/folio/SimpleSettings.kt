@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.automirrored.rounded.ViewList
@@ -84,7 +85,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -133,7 +141,8 @@ internal fun unlockHelper(context: Context, onOpen: () -> Unit, onNoLock: () -> 
 
 /**
  * No screen lock on this phone: hold the button for [SIMPLE_HOLD_MS] while a ring fills. Letting go early starts over.
- * Cancel comes first and is the default. With TalkBack, a double tap and hold does the same.
+ * Cancel comes first and is the default. For TalkBack, Switch Access and keyboards, which can't hold, an "Open Helper
+ * Settings" accessibility action and Enter or Space open a plain confirm instead, with Cancel as its default too.
  */
 @Composable
 internal fun SimpleHoldDialog(onCancel: () -> Unit, onOpen: () -> Unit) {
@@ -142,11 +151,22 @@ internal fun SimpleHoldDialog(onCancel: () -> Unit, onOpen: () -> Unit) {
         val progress = remember { Animatable(0f) }
         val scope = rememberCoroutineScope()
         var holding by remember { mutableStateOf(false) }
+        var confirming by remember { mutableStateOf(false) }
         val label = stringResource(if (holding) R.string.simple_keep_holding else R.string.simple_hold)
         val description = stringResource(R.string.simple_hold_description)
+        val openLabel = stringResource(R.string.simple_unlock_title)
         Box(Modifier.align(Alignment.CenterHorizontally).padding(top = FolioSpace.SNUG.dp).size(140.dp * simpleGrowth(SimpleGrowth.LABEL))
             .clip(CircleShape).background(colors.background)
-            .semantics { contentDescription = description; role = Role.Button }
+            .semantics {
+                contentDescription = description; role = Role.Button
+                customActions = listOf(CustomAccessibilityAction(openLabel) { confirming = true; true })
+            }
+            .onKeyEvent { event ->
+                val open = event.type == KeyEventType.KeyUp && event.key in setOf(Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.DirectionCenter)
+                if (open) confirming = true
+                open
+            }
+            .focusable()
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown()
@@ -171,6 +191,10 @@ internal fun SimpleHoldDialog(onCancel: () -> Unit, onOpen: () -> Unit) {
             }
             Text(label, color = colors.text, fontSize = simpleText(20f), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(FolioSpace.LARGE.dp))
+        }
+        if (confirming) SimpleDialog(stringResource(R.string.simple_open_confirm_title), stringResource(R.string.simple_open_confirm_body),
+            onCancel = { confirming = false }) {
+            SimpleButton(stringResource(R.string.simple_open_settings), SimpleButtonKind.PLAIN) { confirming = false; onOpen() }
         }
     }
 }
@@ -255,15 +279,17 @@ private fun SimpleHelperSettings(setup: SimpleSetup, appCount: Int, model: Launc
         val context = LocalContext.current
         SimpleRow(stringResource(R.string.simple_send_feedback), stringResource(R.string.simple_send_feedback_detail),
             icon = Icons.Rounded.MailOutline) { simpleFeedback(context) }
-        // Set apart, like Assistive Access's exit: hard to reach by accident, easy to find on purpose.
-        Spacer(Modifier.size(FolioSpace.LARGE.dp))
-        SimpleRow(stringResource(R.string.simple_leave), stringResource(R.string.simple_leave_detail), icon = Icons.AutoMirrored.Rounded.Logout) { leaving = true }
         SimpleRow(stringResource(R.string.simple_all_settings), stringResource(R.string.simple_all_settings_detail),
             icon = Icons.Rounded.Settings) { openAllSettings(context) }
+        // Last, in a group of its own and in red, as Apple's Settings sets apart what can't be done by accident: easy to
+        // find on purpose, hard to reach by mistake, like Assistive Access's exit.
+        Spacer(Modifier.size(FolioSpace.LARGE.dp))
+        SimpleRow(stringResource(R.string.simple_leave), stringResource(R.string.simple_leave_detail), icon = Icons.AutoMirrored.Rounded.Logout,
+            destructive = true) { leaving = true }
         SimpleLead(stringResource(R.string.simple_settings_note))
     }
     if (leaving) SimpleDialog(stringResource(R.string.simple_leave_title), stringResource(R.string.simple_leave_body), onCancel = { leaving = false }) {
-        SimpleButton(stringResource(R.string.simple_leave), SimpleButtonKind.PLAIN) { leaving = false; model.leaveSimple() }
+        SimpleButton(stringResource(R.string.simple_leave), SimpleButtonKind.DANGER) { leaving = false; model.leaveSimple() }
     }
 }
 
@@ -396,7 +422,8 @@ private fun SimpleAppChoice(app: AppEntry, label: (AppEntry) -> String, on: Bool
  */
 @Composable
 internal fun SimpleRow(title: String, subtitle: String? = null, icon: ImageVector? = null, iconColor: Color = FolioColors.Gray,
-    mark: Boolean? = null, role: Role = Role.Button, app: AppEntry? = null, minHeight: Dp = 72.dp, enabled: Boolean = true, onClick: () -> Unit) {
+    mark: Boolean? = null, role: Role = Role.Button, app: AppEntry? = null, minHeight: Dp = 72.dp, enabled: Boolean = true,
+    destructive: Boolean = false, onClick: () -> Unit) {
     val colors = simpleTheme
     val shape = RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)
     val target = when {
@@ -410,10 +437,10 @@ internal fun SimpleRow(title: String, subtitle: String? = null, icon: ImageVecto
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.LARGE.dp)) {
         when {
             app != null -> AppIcon(app, null, Modifier.size(48.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp), badge = false)
-            icon != null -> SimpleGlyph(icon, iconColor, 48.dp)
+            icon != null -> SimpleGlyph(icon, if (destructive) colors.danger else iconColor, 48.dp)
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = colors.text, fontSize = simpleText(22f), fontWeight = FontWeight.SemiBold)
+            Text(title, color = if (destructive) colors.danger else colors.text, fontSize = simpleText(22f), fontWeight = FontWeight.SemiBold)
             subtitle?.let { Text(it, color = colors.secondary, fontSize = simpleText(17f)) }
         }
         mark?.let { SimpleMark(it) }

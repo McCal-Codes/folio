@@ -2015,6 +2015,9 @@
     <string name="simple_remove_from_home">从主屏幕移除</string>
     <string name="simple_remove_note">应用仍保留在手机上，只更改主屏幕。</string>
     <string name="simple_list_separator">、</string>
+    <string name="simple_open_confirm_title">打开协助者设置？</string>
+    <string name="simple_open_confirm_body">这是给帮忙设置这部手机的人使用的。</string>
+    <string name="simple_open_settings">打开设置</string>
     <string name="simple_send_feedback">发送反馈</string>
     <string name="simple_send_feedback_detail">一封由你撰写、发给 Folio 的邮件。不会发送其他内容。</string>
     <string name="simple_feedback_subject">Folio 简易模式反馈</string>

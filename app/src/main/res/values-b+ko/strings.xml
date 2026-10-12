@@ -2036,6 +2036,9 @@
     <string name="simple_remove_from_home">홈에서 제거</string>
     <string name="simple_remove_note">앱은 휴대전화에 그대로 남고 홈만 바뀝니다.</string>
     <string name="simple_list_separator">,\u0020</string>
+    <string name="simple_open_confirm_title">도우미 설정을 여시겠습니까?</string>
+    <string name="simple_open_confirm_body">이 휴대전화의 설정을 도와주는 사람을 위한 페이지입니다.</string>
+    <string name="simple_open_settings">설정 열기</string>
     <string name="simple_send_feedback">의견 보내기</string>
     <string name="simple_send_feedback_detail">직접 쓴 이메일만 Folio로 보내집니다. 다른 정보는 보내지 않습니다.</string>
     <string name="simple_feedback_subject">Folio 간편 모드 의견</string>
