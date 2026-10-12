@@ -246,5 +246,5 @@ internal object FolioMotion {
 
     /** The new spring when the motion pass is on, and the numbers the caller used before it when it is not. */
     fun pick(old: Pair<Float, Float>, new: Pair<Float, Float>) = if (v2) new else old
-    fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
+    fun <T> spring(pair: Pair<Float, Float>, visibilityThreshold: T? = null) = MotionSpeed.spring(pair.first, pair.second, visibilityThreshold)
 }

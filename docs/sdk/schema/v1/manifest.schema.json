@@ -365,6 +365,37 @@
           }
         }
       }
+    },
+    "minSdk": {
+      "description": "Oldest Android API level the package works on (ADR 0013). A hard limit. Needs minFolio 0.7.0 or later.",
+      "type": "integer",
+      "minimum": 31,
+      "maximum": 99
+    },
+    "maxSdk": {
+      "description": "Newest Android API level the package works on (ADR 0013). A hard limit. Needs minFolio 0.7.0 or later.",
+      "type": "integer",
+      "minimum": 31,
+      "maximum": 99
+    },
+    "maxFolio": {
+      "description": "The newest Folio release line its author tried, like 0.7 (ADR 0013). Advice: never blocks an install.",
+      "type": "string",
+      "pattern": "^[0-9]{1,9}\\.[0-9]{1,9}$"
+    },
+    "slot": {
+      "description": "One package at a time per slot, named after one of this package's own requires.features (ADR 0013).",
+      "$ref": "#/properties/requires/properties/features/items"
+    },
+    "breaks": {
+      "description": "Installed versions this package doesn't work with, in the depends syntax (ADR 0013). Those are updated first.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9.-]*( \\((<<|<=|=|>=|>>) (?=[^)]{1,64}\\))([0-9]+:)?[0-9][A-Za-z0-9.+~]*(-[A-Za-z0-9.+~]+)?\\))?$",
+        "maxLength": 200
+      },
+      "maxItems": 32
     }
   },
   "allOf": [

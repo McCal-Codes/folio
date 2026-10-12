@@ -853,6 +853,8 @@ fun LauncherScreen(
             var gestureOriginInRoot by remember { mutableStateOf(Offset.Zero) }
             var gestureOriginInWindow by remember { mutableStateOf(Offset.Zero) }
             var scrubberBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+            // The edit-mode dock grabber, so a downward drag on it moves the dock instead of opening Spotlight or the shade (#326).
+            var grabberBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
             val pagerInputEnabled = pager.currentPage in -firstHome..visibleHomePages && !drag.active &&
                 widgetSession == null && !resize.active && sheet.isEmpty() && !showFirstRun && overlays.menu == null &&
                 overlays.folder == null && overlays.emptyCell == null && overlays.newFolder == null &&
@@ -875,7 +877,10 @@ fun LauncherScreen(
                     // App Library: like iOS, Notification Center and Control Center pull down from the top edge; lower
                     // down, a downward drag scrolls the library.
                     if (pager.currentPage == visibleHomePages) point.y < libraryPullZone
-                    else if (pager.currentPage !in 0 until visibleHomePages) false else {
+                    else if (pager.currentPage !in 0 until visibleHomePages) false
+                    // Home's page gestures see a touch before the grabber does, so a pull down on it opened Spotlight and only
+                    // drags upward reached it: "the dock handle rarely works" (#326).
+                    else if (homeEdit.active && grabberBounds.contains(point + gestureOriginInRoot)) false else {
                         val region = drag.hit(point + gestureOriginInRoot, eligibleDragPages)
                         val rootOnScreen = IntArray(2).also(launcherRootView::getLocationOnScreen)
                         val screenPoint = point + gestureOriginInWindow +
@@ -1058,6 +1063,8 @@ fun LauncherScreen(
                 val windowHeight by rememberUpdatedState(boxHeightDp)
                 val currentPreset by rememberUpdatedState(preset)
                 // The drag is added up here from where it started, so two moves before the screen redraws are both counted.
+                // Forget where it was once it's gone, so a stale spot never blocks a pull down later.
+                DisposableEffect(Unit) { onDispose { grabberBounds = androidx.compose.ui.geometry.Rect.Zero } }
                 var dragStartCenter by remember { mutableFloatStateOf(0f) }
                 var dragged by remember { mutableFloatStateOf(0f) }
                 val moveLabel = stringResource(R.string.move_dock)
@@ -1066,6 +1073,7 @@ fun LauncherScreen(
                 Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
                     // Under the dock, but never lower than a touch target above the bottom of the window.
                     .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
+                    .onGloballyPositioned { grabberBounds = it.boundsInRoot() }
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(onDragStart = { dragStartCenter = centerDp; dragged = 0f }) { change, dy ->
                             change.consume()
