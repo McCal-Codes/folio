@@ -41,7 +41,7 @@ internal object MarketAutoUpdate {
         return session.installed().mapNotNull { installed ->
             entries.filter { it.id == installed.id && "${it.id}@${it.entry.version}" !in skipped }.filter { e ->
                 isCandidate(installed.origin, installed.enabled, installed.sourceUrl, installed.version, e.source.url, e.entry.version,
-                    e.revokedReason != null, e.clash != null, e.entry.needs.isNotEmpty(), e.entry.installable)
+                    e.unavailable, e.clash != null, e.entry.needs.isNotEmpty(), e.entry.installable)
             }.maxByOrNull { it.entry.version }?.let { installed to it }
         }
     }
