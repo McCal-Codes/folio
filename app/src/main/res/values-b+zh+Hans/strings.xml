@@ -1498,6 +1498,8 @@
     <string name="brightness">亮度</string>
     <string name="work_apps_are_paused">工作 App 已暂停</string>
     <string name="work_profile_is_unavailable">工作资料不可用</string>
+    <!-- Claude's draft, needs a native read. 分身 is the usual word for a cloned app in Chinese Android skins. -->
+    <string name="profile_dual">分身</string>
     <string name="loading_apps">正在载入 App…</string>
     <string name="remove_from_home_3">从主屏幕移除 %1$s</string>
     <string name="pin_to_home">将 %1$s 固定到主屏幕</string>

@@ -1555,6 +1555,8 @@
     <string name="brightness">Brightness</string>
     <string name="work_apps_are_paused">Work apps are paused</string>
     <string name="work_profile_is_unavailable">Work profile is unavailable</string>
+    <!-- The line under a cloned app (Samsung's Dual Messenger, Android's App cloning) in the App Library and in folders. -->
+    <string name="profile_dual">Dual</string>
     <string name="loading_apps">Loading apps…</string>
     <string name="remove_from_home_3">Remove %1$s from home</string>
     <string name="pin_to_home">Pin %1$s to home</string>

@@ -122,6 +122,21 @@ class DualAppsTest {
         assertEquals(setOf(cloneId), removed)
     }
 
+    @Test fun `a clone profile lists only apps the person cloned`() {
+        val system = android.content.pm.ApplicationInfo.FLAG_SYSTEM
+        val updated = android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP or system
+        val other = android.content.pm.ApplicationInfo.FLAG_HAS_CODE
+        // A clone of an app the person installed is listed; a preinstalled app Android also put in the clone is not.
+        assertTrue(listedInProfile(ProfileKind.CLONE, 0))
+        assertTrue(listedInProfile(ProfileKind.CLONE, other))
+        assertFalse(listedInProfile(ProfileKind.CLONE, system))
+        assertFalse(listedInProfile(ProfileKind.CLONE, updated))
+        assertFalse(listedInProfile(ProfileKind.CLONE, android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP))
+        // Personal and Work keep every app, system ones included.
+        for (kind in listOf(ProfileKind.PERSONAL, ProfileKind.WORK)) for (flags in listOf(0, other, system, updated))
+            assertTrue("$kind $flags", listedInProfile(kind, flags))
+    }
+
     @Test fun `while the clone profile is listed nothing is removed`() {
         assertEquals(emptySet<Long>(), removedProfileSerials(listOf(personalApp(chat), cloneApp()), setOf(personalSerial, cloneSerial)))
     }

@@ -37,6 +37,16 @@ fun profileKind(userType: String?): ProfileKind = when {
     else -> ProfileKind.SKIP
 }
 
+/**
+ * Whether an app from a profile of [kind] is listed. A clone profile lists only what the person cloned: Android can put
+ * preinstalled system apps in it too ([android.content.pm.ApplicationInfo.FLAG_SYSTEM], or
+ * [android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP] once updated), and those would double the App Library.
+ * Personal and Work list everything, as before.
+ */
+fun listedInProfile(kind: ProfileKind, applicationFlags: Int): Boolean =
+    kind != ProfileKind.CLONE || (applicationFlags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or
+        android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) == 0
+
 /** How the app cache and layout backups write a kind next to `work`: only a clone says so, so older files read the same. */
 fun storedProfileKind(kind: ProfileKind): String? = if (kind == ProfileKind.CLONE) "clone" else null
 

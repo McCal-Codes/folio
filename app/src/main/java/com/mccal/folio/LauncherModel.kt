@@ -577,7 +577,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                         val descriptor = profiles.first { it.userSerial == serial }
                         val activityList = if (descriptor.available) runCatching { launcherApps.getActivityList(null, profile) }.getOrNull() else null
                         if (activityList == null) emptyList() else activityList.also { authoritativeProfiles += serial }.mapNotNull { info ->
-                            activityId(info, serial, personalSerial)?.let { id -> activityEntry(info, id, profile, descriptor, invalidated) }
+                            activityId(info, serial, personalSerial)?.takeIf { listedInProfile(descriptor.kind, info.applicationInfo?.flags ?: 0) }
+                                ?.let { id -> activityEntry(info, id, profile, descriptor, invalidated) }
                         }
                     }
                     // Pinned shortcuts (e.g. Chrome's "Add to Home screen"). Only the default Home app may read them;
@@ -789,7 +790,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return handles.zip(profiles).filter { (_, descriptor) -> descriptor.available }.flatMap { (profile, descriptor) ->
             val serial = descriptor.userSerial
             val apps = runCatching { launcherApps.getActivityList(null, profile) }.getOrNull().orEmpty().mapNotNull { info ->
-                activityId(info, serial, personalSerial)?.takeIf(ids::contains)?.let { activityEntry(info, it, profile, descriptor, invalidated) }
+                activityId(info, serial, personalSerial)?.takeIf { it in ids && listedInProfile(descriptor.kind, info.applicationInfo?.flags ?: 0) }
+                    ?.let { activityEntry(info, it, profile, descriptor, invalidated) }
             }
             val shortcuts = runCatching { launcherApps.getShortcuts(LauncherApps.ShortcutQuery()
                 .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED), profile) }.getOrNull().orEmpty()

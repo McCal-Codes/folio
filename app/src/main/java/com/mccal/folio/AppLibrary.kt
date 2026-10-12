@@ -185,7 +185,12 @@ internal fun AppLibrary(
                                 .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
                             Row(Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                                 NewAppDot(app.packageName, 7.dp)
-                                Text(app.label, maxLines = 2, fontSize = 14.sp)
+                                // A clone sits right beside its original with the same name; the line under it tells them apart.
+                                Column {
+                                    Text(app.label, maxLines = 2, fontSize = 14.sp)
+                                    if (app.kind == ProfileKind.CLONE) Text(profileName(app), color = ink.copy(alpha = .6f),
+                                        fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, modifier = Modifier.testTag("library-profile-${app.id}"))
+                                }
                             }
                             if (editing) IconButton(onClick = { onPin(app.id, !isPinned) }, Modifier.testTag("pin-${app.id}")) {
                                 // iOS selection: filled blue check when on Home, empty ring when not.
@@ -218,3 +223,8 @@ private fun WebSearchRow(query: String, engine: String, onSearch: (WebSearchTarg
         }
     }
 }
+
+/** The profile an app is from, as people read it: a clone says Dual, the rest keep the name their profile was given. */
+@Composable
+internal fun profileName(app: AppEntry): String =
+    if (app.kind == ProfileKind.CLONE) stringResource(R.string.profile_dual) else app.profileLabel

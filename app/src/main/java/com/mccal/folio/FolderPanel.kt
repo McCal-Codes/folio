@@ -448,7 +448,7 @@ private fun FolderChild(
                 AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp), badge = false)
                 Text(app.label, Modifier.padding(top = FolioSpace.SNUG.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium)
-                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else stringResource(R.string.text_1_s_unavailable, app.profileLabel),
+                if (app.isWork || !app.available) Text(if (app.available) profileName(app) else stringResource(R.string.text_1_s_unavailable, profileName(app)),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)
