@@ -65,13 +65,15 @@ internal fun uninstallIntent(packageName: String): Intent =
 internal enum class DeleteOutcome { DELETED, CANCELED, FAILED }
 
 /**
- * Android's uninstall screen answers Cancel with RESULT_FIRST_USER and an install result of DELETE_FAILED_ABORTED,
- * not RESULT_CANCELED, so reading the code alone called a Cancel a failure (seen on the emulator, 12 Oct). The
- * package being gone is the surest sign of a delete, whatever the code says.
+ * Android's uninstall screen answers Cancel with RESULT_FIRST_USER, not RESULT_CANCELED: the newer screen
+ * (packageinstaller v2, seen on the Android 17 emulator, 12 Oct) sends no status with it, the older one sends
+ * DELETE_FAILED_ABORTED. A real failure always carries its status code. So reading the result code alone called a
+ * Cancel a failure. The package being gone is the surest sign of a delete, whatever the code says.
  */
 internal fun deleteOutcome(resultCode: Int, installResult: Int?, stillInstalled: Boolean): DeleteOutcome = when {
     !stillInstalled -> DeleteOutcome.DELETED
-    resultCode == android.app.Activity.RESULT_CANCELED || installResult == DELETE_FAILED_ABORTED -> DeleteOutcome.CANCELED
+    resultCode == android.app.Activity.RESULT_CANCELED || installResult == null || installResult == DELETE_FAILED_ABORTED ->
+        DeleteOutcome.CANCELED
     else -> DeleteOutcome.FAILED
 }
 
