@@ -66,7 +66,7 @@ internal object MarketAppUpdate {
      */
     fun offered(context: Context, listing: MarketEntry): OnPhone? {
         if (!MarketExternalApp.isExternal(listing.entry.manifest)) return null
-        if (listing.revokedReason != null || listing.clash == MarketEntry.Impostor.BUILT_IN || listing.entry.needs.isNotEmpty()) {
+        if (listing.unavailable || listing.clash == MarketEntry.Impostor.BUILT_IN || listing.entry.needs.isNotEmpty()) {
             return null
         }
         val ids = listing.entry.manifest?.via.orEmpty().mapNotNull { it.appId }.distinct()
