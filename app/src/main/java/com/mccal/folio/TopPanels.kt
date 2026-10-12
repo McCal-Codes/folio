@@ -86,7 +86,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncSplit: Boolean = true,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
-    BackHandler(open) { onClose() }
+    OverlayBackHandler(open, onClose)
     var shown by remember { mutableStateOf<ShadePanel?>(null) }
     if (open) shown = panel
     val current = shown ?: return
@@ -128,11 +128,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 if (current == ShadePanel.NOTIFICATIONS) {
                     // iOS: Notification Center slides down from the top edge and doesn't zoom; it's fully opaque
                     // early so the list reads as one sheet moving, not a fade.
-                    alpha = (p * 1.6f).coerceAtMost(1f)
+                    alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f)
                     translationY = -lift * 3f * (1f - p)
                 } else {
-                    // Control Center grows out of the corner it was pulled from.
-                    alpha = p
+                    // Control Center grows out of the corner it was pulled from; it fades only as it closes, not in a back preview.
+                    alpha = OverlayBack.unpreviewed(p)
                     translationY = -lift * (1f - p)
                     scaleX = .92f + .08f * p; scaleY = scaleX
                     transformOrigin = TransformOrigin(1f, 0f)
@@ -141,7 +141,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (split) {
             val clockLift = lift
             SplitClock(Modifier.align(Alignment.CenterStart).fillMaxWidth(.4f).graphicsLayer {
-                val p = progress(); alpha = p; translationY = -clockLift * (1f - p)
+                val p = progress(); alpha = OverlayBack.unpreviewed(p); translationY = -clockLift * (1f - p)
             })
         }
         if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier, showClock && !split, grouped, tall = split, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
