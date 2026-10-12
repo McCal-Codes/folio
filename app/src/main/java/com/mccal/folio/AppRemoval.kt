@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +92,10 @@ internal fun isInstalled(context: Context, packageName: String): Boolean =
 /** Remove App's one alert: the choices [options] allows, and Cancel. */
 @Composable
 internal fun RemoveAppAlert(app: AppEntry, options: RemoveOptions, onChoice: (RemoveChoice) -> Unit, onDismiss: () -> Unit) {
+    // The alert follows the light or dark theme, so the choices take the buttons' own color (white on a light alert
+    // was all but invisible, seen on the emulator 12 Oct) and Delete a red that holds contrast on either.
+    val darkAlert = androidx.compose.material3.MaterialTheme.colorScheme.surface.luminance() < .5f
+    val deleteInk = if (darkAlert) FolioColors.RedOnDark else androidx.compose.material3.MaterialTheme.colorScheme.error
     AlertDialog(onDismissRequest = onDismiss, modifier = Modifier.testTag("remove-app-alert"),
         title = { Text(stringResource(R.string.remove_app_title, app.label)) },
         text = {
@@ -107,7 +112,7 @@ internal fun RemoveAppAlert(app: AppEntry, options: RemoveOptions, onChoice: (Re
                             RemoveChoice.HIDE -> R.string.hide_from_app_library
                             RemoveChoice.REMOVE_FROM_HOME -> R.string.remove_from_home
                             RemoveChoice.APP_INFO -> R.string.app_info
-                        }), color = if (choice == RemoveChoice.DELETE) FolioColors.RedOnDark else androidx.compose.ui.graphics.Color.White,
+                        }), color = if (choice == RemoveChoice.DELETE) deleteInk else androidx.compose.ui.graphics.Color.Unspecified,
                             fontWeight = if (choice == RemoveChoice.DELETE) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
