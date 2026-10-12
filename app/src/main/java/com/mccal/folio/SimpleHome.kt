@@ -320,15 +320,21 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
             val width = c.maxWidth
             val gapPx = columnGap.roundToPx()
             val columnWidth = if (wide) ((width - gapPx) / 2).coerceAtLeast(0) else width
+            // A slot can be subcomposed once per pass, and the compact header and foot are the same for every number of
+            // apps tried, so each is measured once and reused.
+            val heads = HashMap<Boolean, androidx.compose.ui.layout.Placeable>()
+            val feet = HashMap<Boolean, androidx.compose.ui.layout.Placeable>()
             fun measureAll(compact: Boolean, shown: Int): List<androidx.compose.ui.layout.Placeable> {
                 val items: List<AppEntry?> = apps.take(shown) + if (shown < apps.size) listOf(null) else emptyList()
                 val loose = Constraints(maxWidth = columnWidth)
-                val head = subcompose("head-$compact") { SimpleHeader(compact) }.map { it.measure(loose) }
+                val head = heads.getOrPut(compact) { subcompose("head-$compact") { SimpleHeader(compact) }.single().measure(loose) }
                 val block = subcompose("apps-$compact-$shown") {
                     SimpleAppsBlock(items, style, compact, label, onLaunch, onHold, onMore)
                 }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
-                val foot = subcompose("foot-$compact") { SimpleFoot(compact, onHelper, onFootPlaced) }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
-                return listOf(head.single(), block.single(), foot.single())
+                val foot = feet.getOrPut(compact) {
+                    subcompose("foot-$compact") { SimpleFoot(compact, onHelper, onFootPlaced) }.single().measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth))
+                }
+                return listOf(head, block.single(), foot)
             }
             fun gap(compact: Boolean) = (if (compact) FolioSpace.MEDIUM else FolioSpace.XL).dp.roundToPx()
             fun height(parts: List<androidx.compose.ui.layout.Placeable>, compact: Boolean): Int {
