@@ -480,6 +480,18 @@ private fun FolderChild(
     }
 }
 
+/**
+ * An app's badge inside an open folder (#362). The app's "..." button owns the cell's top-right [BUTTON] dp square,
+ * so a badge on the icon's top-right corner has to stop short of it.
+ */
+internal object FolderBadge {
+    const val ICON = 58f
+    const val BUTTON = 36f
+
+    /** How far right, in dp from the icon's left edge, a badge may reach in a cell [cellWidth] dp wide (icon centered). */
+    fun endLimit(cellWidth: Float, icon: Float = ICON, button: Float = BUTTON) = (cellWidth - button) - (cellWidth - icon) / 2f
+}
+
 private val FolderSwatches = listOf(0xFFFF6B63, 0xFFFFA94D, 0xFFFFD84D, 0xFF63D98B, 0xFF4DB8FF, 0xFF8E7CFF, 0xFFFF7EB9)
 
 /**
