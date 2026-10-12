@@ -28,6 +28,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
@@ -161,7 +162,9 @@ internal fun ModalBottomSheet(
 
 @Composable
 private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
+    // New motion: Done and Back (through LocalOverlayExit) slide the page back out the way it came.
+    val exit = rememberOverlayExit()
+    androidx.compose.ui.window.Dialog(onDismissRequest = { exit.close(onDismissRequest) },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = false)) {
         val view = androidx.compose.ui.platform.LocalView.current
@@ -179,7 +182,9 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
         val pageFade = rememberReducedFade()
         // Once the page covers Home, drawing and blurring Home is work nobody sees, and it shows up as stutter
         // while you're moving between Folio and Android's permission screens. It comes back the moment it's needed.
-        val covering = slide.value == 0f
+        // A page on its way out uncovers Home again, so Home draws behind it from the first frame of the exit.
+        val leaving by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { exit.progress.value != 0f } }
+        val covering = OverlayExits.covering(slide.value, if (leaving) 1f else 0f)
         DisposableEffect(covering) {
             if (covering) LauncherPagesOpen.intValue++
             onDispose { if (covering) LauncherPagesOpen.intValue-- }
@@ -190,6 +195,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
         val fade = androidx.compose.animation.core.animateFloatAsState(if (peek != null) .14f else 1f,
             if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(250), label = "settings peek")
         DisposableEffect(Unit) { onDispose { SettingsPeek.value = null } }
+        androidx.compose.runtime.CompositionLocalProvider(LocalOverlayExit provides exit) {
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             Box(Modifier.fillMaxSize()) {
                 // The page background stays as a faint trace; its text and controls fade out completely, so nothing
@@ -198,8 +204,10 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                 val back = androidx.compose.animation.core.animateFloatAsState(SheetBackProgress.floatValue,
                     FolioMotion.spring(1f to 1400f), label = "sheet back").value
                 androidx.compose.material3.Surface(Modifier.fillMaxSize().graphicsLayer {
-                    translationX = size.width * slide.value + size.width * .08f * back
-                    alpha = pageFade.value
+                    val leave = exit.progress.value
+                    translationX = size.width * slide.value + size.width * .08f * back +
+                        size.width * OverlayExits.pageShift(leave, exit.reduce)
+                    alpha = pageFade.value * OverlayExits.alpha(leave, fades = false, reduce = exit.reduce)
                     scaleX = 1f - .1f * back; scaleY = scaleX
                     shape = androidx.compose.foundation.shape.RoundedCornerShape((28 * back).dp); clip = back > 0f
                 }, color = Color.Black.copy(alpha = fade.value), contentColor = Color.White) {
@@ -210,6 +218,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                 }
                 peek?.let { PeekCapsule(it) }
             }
+        }
         }
     }
 }
@@ -246,29 +255,36 @@ private fun PeekCapsule(peek: PeekSlider) {
 @Composable
 private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, width: androidx.compose.ui.unit.Dp, modifier: Modifier,
     content: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
+    // New motion: a tap outside, Back, or Done (through LocalOverlayExit) drops the sheet back the way it rose.
+    val exit = rememberOverlayExit()
+    val dismiss = { exit.close(onDismissRequest) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = dismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = dismissOnBack)) {
         FolioDialogWindow(dim = 0f)
         val appear = rememberEntrance(FolioMotion.pick(old = 1f to 520f, new = FolioMotion.Sheet), scenario = PerfScenario.SHEET)
         val fade = rememberReducedFade()
+        androidx.compose.runtime.CompositionLocalProvider(LocalOverlayExit provides exit) {
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value }.background(Color.Black.copy(alpha = .35f))
-                .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismissRequest))
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value * OverlayExits.alpha(exit.progress.value, fades = true, reduce = exit.reduce) }
+                .background(Color.Black.copy(alpha = .35f))
+                .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = dismiss))
             FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
                 androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                     val maxSheetHeight = minOf(maxHeight, 760.dp)
                     androidx.compose.material3.Surface(modifier.widthIn(max = width).fillMaxWidth().heightIn(max = maxSheetHeight)
                         .graphicsLayer {
                             // Slides up into place, like a sheet presented on iPad.
-                            alpha = appear.value * fade.value
-                            translationY = (1f - appear.value) * size.height * .12f
+                            val leave = exit.progress.value
+                            alpha = appear.value * fade.value * OverlayExits.alpha(leave, fades = true, reduce = exit.reduce)
+                            translationY = (1f - appear.value) * size.height * .12f + OverlayExits.formDrop(leave, exit.reduce) * size.height
                         },
                         shape = RoundedCornerShape(FolioRadius.CARD.dp), color = FolioColors.SecondaryBackground, contentColor = Color.White) {
                         androidx.compose.foundation.layout.Column(Modifier.padding(top = FolioSpace.COMFY.dp), content = content)
                     }
                 }
             }
+        }
         }
     }
 }
@@ -281,8 +297,12 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
 internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable () -> Unit, modifier: Modifier = Modifier,
     dismissButton: (@Composable () -> Unit)? = null, title: (@Composable () -> Unit)? = null, text: (@Composable () -> Unit)? = null,
     /** A third choice between the two: with it the buttons stack, the preferred one first and in bold, like iOS. */
-    neutralButton: (@Composable () -> Unit)? = null) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
+    neutralButton: (@Composable () -> Unit)? = null,
+    /** False for an alert that must be answered (its dismiss does nothing): a tap outside or Back then plays no exit. */
+    dismissible: Boolean = true) {
+    // New motion: a tap outside, Back, or a button that closes through LocalOverlayExit shrinks the alert a little as it fades.
+    val exit = rememberOverlayExit()
+    androidx.compose.ui.window.Dialog(onDismissRequest = { if (dismissible) exit.close(onDismissRequest) else onDismissRequest() },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = .3f)
         val appear = rememberEntrance(FolioMotion.pick(old = .85f to 900f, new = FolioMotion.Menu), scenario = PerfScenario.MENU)
@@ -293,9 +313,14 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         val blue = LocalAccent.current.ink
         fun buttons(weight: androidx.compose.ui.text.font.FontWeight) = base.copy(labelLarge = androidx.compose.ui.text.TextStyle(fontSize = FolioType.BODY.sp, fontWeight = weight))
         FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing), role = FoldRole.INFO) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalOverlayExit provides exit) {
             MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = base) {
                 androidx.compose.foundation.layout.Column(modifier.width(270.dp)
-                    .graphicsLayer { alpha = appear.value * fade.value; scaleX = 1.12f - .12f * appear.value; scaleY = scaleX }
+                    .graphicsLayer {
+                        val leave = exit.progress.value
+                        alpha = appear.value * fade.value * OverlayExits.alpha(leave, fades = true, reduce = exit.reduce)
+                        scaleX = (1.12f - .12f * appear.value) * OverlayExits.alertScale(leave, exit.reduce); scaleY = scaleX
+                    }
                     .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface.copy(alpha = .98f))) {
                     androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = 19.dp, bottom = FolioSpace.LARGE.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.TINY.dp)) {
@@ -332,6 +357,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
                         }
                     }
                 }
+            }
             }
         }
     }

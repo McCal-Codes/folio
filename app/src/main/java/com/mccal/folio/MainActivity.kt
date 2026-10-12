@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
                 .let { if (solidGlass) it.withSolidGlass() else it }
             androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(31_000); SafeMode.markStable(this@MainActivity) }
             val safeAcknowledged = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {},
+            if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {}, dismissible = false,
                 title = { androidx.compose.material3.Text(getString(R.string.folio_started_in_safe_mode)) },
                 text = { androidx.compose.material3.Text(stringResource(R.string.folio_closed_unexpectedly_twice_so_opt)) },
                 confirmButton = { androidx.compose.material3.TextButton(onClick = { SafeMode.exit(this@MainActivity); safeMode.value = false }) {
