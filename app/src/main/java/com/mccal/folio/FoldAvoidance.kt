@@ -2,7 +2,6 @@ package com.mccal.folio
 
 import android.app.Activity
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -92,7 +91,7 @@ internal fun FoldAvoidingBox(modifier: Modifier = Modifier, contentAlignment: Al
     val density = LocalDensity.current
     BoxWithConstraints(modifier.fillMaxSize()) {
         val gap = 12.dp
-        val motion = spring<androidx.compose.ui.unit.Dp>(dampingRatio = .9f, stiffness = 380f)
+        val motion = FolioMotion.spring<androidx.compose.ui.unit.Dp>(.9f to 380f)
         // Window coordinates: close enough for these full-window overlays. Book folds use the trailing panel; on a
         // table, controls take the bottom panel and information the top one. Any number of hinges (tri-folds).
         val extentPx = with(density) { (if (hinge?.vertical == true) maxWidth else maxHeight).roundToPx() }

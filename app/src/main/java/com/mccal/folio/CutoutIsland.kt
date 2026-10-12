@@ -14,7 +14,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.togetherWith
@@ -171,7 +170,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val cardW = placement?.width?.dp ?: 340.dp.coerceAtMost(windowWidth.toDp() - 16.dp)
         // One shape morphs between pill and card: width, corner radius and height all spring together,
         // anchored to the camera like the real Dynamic Island.
-        val morph = spring<Dp>(dampingRatio = .74f, stiffness = Spring.StiffnessMediumLow)
+        val morph = FolioMotion.spring<Dp>(.74f to Spring.StiffnessMediumLow)
         val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
         val corner by animateDpAsState(if (open) 34.dp else pillH / 2, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
