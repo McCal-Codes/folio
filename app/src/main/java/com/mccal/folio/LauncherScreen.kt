@@ -658,6 +658,10 @@ fun LauncherScreen(
         // Only Google Discover's hosted feed needs it; with Today View an extra offscreen pass just costs frames.
         compositingStrategy = if (!hostedDiscover) androidx.compose.ui.graphics.CompositingStrategy.Auto
             else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        // The 0.6.9 motion pass (MO5): Home steps back a little while a folder is open; not under Reduce Motion.
+        if (FolioMotion.v2 && !dockReduceMotion && FolderOpening.id != null) {
+            val s = FolderOpening.homeScale(FolderOpening.progress); scaleX = s; scaleY = s
+        }
     }.onSizeChanged { LiveDiscover.fullSize = androidx.compose.ui.geometry.Size(it.width.toFloat(), it.height.toFloat()) }.testTag("launcher-root").onGloballyPositioned { drag.landing.rootInWindow = it.boundsInWindow().topLeft }.homeDragInput(drag,
         enabled = sheet.isEmpty() && !showFirstRun && overlays.menu == null && !resize.active && pager.currentPage >= 0,
         page = pager.currentPage, eligiblePages = eligibleDragPages, onStart = {
