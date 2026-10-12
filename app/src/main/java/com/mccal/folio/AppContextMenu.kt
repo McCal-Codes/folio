@@ -50,6 +50,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** Last on-screen bounds of each app icon, so a long-press menu can lift the icon in place. */
@@ -102,12 +103,28 @@ internal fun AppContextMenu(
     val density = LocalDensity.current
     val appear = remember { Animatable(0f) }
     var more by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, MotionSpeed.spring(.72f, Spring.StiffnessMediumLow)) }
+    // The 0.6.9 motion pass (MO5, the Lab's "Grow from the icon"): the menu opens on the Menu token instead of its own numbers,
+    // closes back into the icon instead of vanishing, and under Reduce Motion only fades. Without the pass it is as before.
+    val pass = FolioMotion.v2
+    val still = pass && LocalReduceMotion.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.pick(old = .72f to Spring.StiffnessMediumLow, new = FolioMotion.Menu))) }
+    /** Tapping outside or going back: with the pass the menu goes back into the icon first. An action closes it at once. */
+    val dismiss: () -> Unit = {
+        if (!pass) onDismiss() else if (!closing) {
+            closing = true
+            scope.launch {
+                appear.animateTo(0f, if (still) androidx.compose.animation.core.tween(MENU_FADE_MS) else FolioMotion.spring(FolioMotion.Firm))
+                onDismiss()
+            }
+        }
+    }
     DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
 
     val actions by produceState(emptyList<QuickAction>(), app.id) { if (!app.isShortcut) value = withContext(Dispatchers.IO) { loadQuickActions(context, app) } }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
         LaunchedEffect(view) {
             (view.parent as? DialogWindowProvider)?.window?.let { w ->
@@ -121,7 +138,7 @@ internal fun AppContextMenu(
         var origin by remember { mutableStateOf(Offset.Zero) }
         BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionOnScreen() }
             .graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) }.background(Color.Black.copy(alpha = .28f))
-            .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)) {
+            .clickable(remember { MutableInteractionSource() }, null, onClick = dismiss)) {
             val screenW = with(density) { maxWidth.toPx() }
             val screenH = with(density) { maxHeight.toPx() }
             val icon = IconBounds.of(app.id) ?: Rect((screenW / 2 - 80).toInt(), (screenH / 3).toInt(), (screenW / 2 + 80).toInt(), (screenH / 3 + 160).toInt())
@@ -132,7 +149,7 @@ internal fun AppContextMenu(
             // Lifted icon, exactly where it was.
             AppIcon(app, null, Modifier.offset { IntOffset(iconLeft.roundToInt(), iconTop.roundToInt()) }
                 .size(with(density) { iconSize.toDp() })
-                .graphicsLayer { val s = 1f + .1f * appear.value; scaleX = s; scaleY = s }
+                .graphicsLayer { if (!still) { val s = 1f + .1f * appear.value; scaleX = s; scaleY = s } }
                 , shape = RoundedCornerShape(with(density) { (iconSize * .24f).toDp() }))
 
             // Menu below the icon, or above when there's no room; aligned to the icon, kept on screen.
@@ -166,8 +183,10 @@ internal fun AppContextMenu(
                 .width(260.dp)
                 .heightIn(max = maxMenuH)
                 .graphicsLayer {
-                    val s = .7f + .3f * appear.value; scaleX = s; scaleY = s
+                    if (!still) { val s = .7f + .3f * appear.value; scaleX = s; scaleY = s }
                     transformOrigin = TransformOrigin(origX, if (below) 0f else 1f)
+                    // With the pass the menu fades as it grows and shrinks, so closing reads as going back into the icon.
+                    if (pass) alpha = (appear.value * 1.4f).coerceIn(0f, 1f)
                 }
                 .clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2A2E).copy(alpha = .96f))
                 .border(FolioGlass.edge, RoundedCornerShape(18.dp))
@@ -274,3 +293,6 @@ internal fun RenameAppAlert(app: AppEntry, onDismiss: () -> Unit, onRename: (Str
         dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })
 // The buttons stay Material's TextButton: Folio's AlertDialog restyles them itself, the way its other alerts do.
 }
+
+/** Reduce Motion with the motion pass: the menu fades out over this long instead of going back into the icon. */
+private const val MENU_FADE_MS = 150

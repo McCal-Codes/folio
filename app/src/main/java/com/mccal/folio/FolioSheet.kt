@@ -74,6 +74,24 @@ internal fun rememberEntrance(stiffness: Float, dampingRatio: Float = 1f, from: 
 private const val ENTRANCE_TIMEOUT_MS = 900L
 
 /**
+ * Reduce Motion's entrance, used next to [rememberEntrance]: with Reduce Motion on, the entrance starts in place and this
+ * fades the surface in over [FolioMotion.FADE_MS]; with it off this stays at 1. Like the entrance, it never leaves the
+ * surface invisible when frames stop.
+ */
+@Composable
+internal fun rememberReducedFade(): androidx.compose.runtime.State<Float> {
+    val reduceMotion = LocalReduceMotion.current
+    val fade = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 0f else 1f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { if (fade.value < 1f) fade.animateTo(1f, androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) }
+    DisposableEffect(Unit) {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate)
+        scope.launch { kotlinx.coroutines.delay(ENTRANCE_TIMEOUT_MS); if (fade.value != 1f) fade.snapTo(1f) }
+        onDispose { scope.cancel() }
+    }
+    return fade.asState()
+}
+
+/**
  * A 0–1 overlay progress that springs to [target] and, like [rememberEntrance], snaps there if frames stall (Folio in
  * the background, a stuck window), so a closed panel can never stay on screen or leave Home blurred.
  */
@@ -158,6 +176,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
             }
         }
         val slide = rememberEntrance(FolioMotion.pick(old = 1f to 500f, new = FolioMotion.Sheet), from = 1f, to = 0f, scenario = PerfScenario.SHEET)
+        val pageFade = rememberReducedFade()
         // Once the page covers Home, drawing and blurring Home is work nobody sees, and it shows up as stutter
         // while you're moving between Folio and Android's permission screens. It comes back the moment it's needed.
         val covering = slide.value == 0f
@@ -180,6 +199,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
                     FolioMotion.spring(1f to 1400f), label = "sheet back").value
                 androidx.compose.material3.Surface(Modifier.fillMaxSize().graphicsLayer {
                     translationX = size.width * slide.value + size.width * .08f * back
+                    alpha = pageFade.value
                     scaleX = 1f - .1f * back; scaleY = scaleX
                     shape = androidx.compose.foundation.shape.RoundedCornerShape((28 * back).dp); clip = back > 0f
                 }, color = Color.Black.copy(alpha = fade.value), contentColor = Color.White) {
@@ -231,8 +251,9 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
             dismissOnBackPress = dismissOnBack)) {
         FolioDialogWindow(dim = 0f)
         val appear = rememberEntrance(FolioMotion.pick(old = 1f to 520f, new = FolioMotion.Sheet), scenario = PerfScenario.SHEET)
+        val fade = rememberReducedFade()
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .35f))
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value }.background(Color.Black.copy(alpha = .35f))
                 .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismissRequest))
             FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
                 androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
@@ -240,7 +261,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
                     androidx.compose.material3.Surface(modifier.widthIn(max = width).fillMaxWidth().heightIn(max = maxSheetHeight)
                         .graphicsLayer {
                             // Slides up into place, like a sheet presented on iPad.
-                            alpha = appear.value
+                            alpha = appear.value * fade.value
                             translationY = (1f - appear.value) * size.height * .12f
                         },
                         shape = RoundedCornerShape(FolioRadius.CARD.dp), color = FolioColors.SecondaryBackground, contentColor = Color.White) {
@@ -265,6 +286,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = .3f)
         val appear = rememberEntrance(FolioMotion.pick(old = .85f to 900f, new = FolioMotion.Menu), scenario = PerfScenario.MENU)
+        val fade = rememberReducedFade()
         val base = MaterialTheme.typography
         // The accent's ink, not its fill: the alert is always dark, and a fill-weight color on its grey fails
         // contrast (iOS blue measures 3.82:1 there).
@@ -273,7 +295,7 @@ internal fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composabl
         FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing), role = FoldRole.INFO) {
             MaterialTheme(colorScheme = FolioSheetColors.copy(primary = blue), typography = base) {
                 androidx.compose.foundation.layout.Column(modifier.width(270.dp)
-                    .graphicsLayer { alpha = appear.value; scaleX = 1.12f - .12f * appear.value; scaleY = scaleX }
+                    .graphicsLayer { alpha = appear.value * fade.value; scaleX = 1.12f - .12f * appear.value; scaleY = scaleX }
                     .clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(FolioColors.SheetSurface.copy(alpha = .98f))) {
                     androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = 19.dp, bottom = FolioSpace.LARGE.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(FolioSpace.TINY.dp)) {

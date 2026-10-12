@@ -78,19 +78,18 @@ internal fun RollingCount(count: Int, text: (Int) -> String, color: Color, fontS
 
 /**
  * True for a moment after an install or update finishes: [busy] has just gone from true to false and the package is on
- * the phone. It is the cue to show [InstallDonePop] before the row settles back to its button. Never true with the
- * motion pass off or Reduce Motion on, and never after a failure (the package has to be there).
+ * the phone. It is the cue to show [InstallDonePop] before the row settles back to its button (under Reduce Motion the
+ * check fades in instead of popping). Never true with the motion pass off, and never after a failure (the package has to be there).
  */
 @Composable
 internal fun rememberJustInstalled(busy: Boolean, installed: Boolean): Boolean {
-    val reduce = LocalReduceMotion.current
     val installedNow = rememberUpdatedState(installed)
     var wasBusy by remember { mutableStateOf(busy) }
     var show by remember { mutableStateOf(false) }
     LaunchedEffect(busy) {
         val finished = wasBusy && !busy
         wasBusy = busy
-        if (finished && FolioMotion.v2 && !reduce) {
+        if (finished && FolioMotion.v2) {
             // The package list updates a beat after the work ends; look again before calling it a success.
             delay(250)
             if (installedNow.value) { show = true; delay(900); show = false }
@@ -99,15 +98,20 @@ internal fun rememberJustInstalled(busy: Boolean, installed: Boolean): Boolean {
     return show
 }
 
-/** The ring's last beat: a check pops in on [FolioMotion.Bounce], with a small overshoot, in the size the ring had. */
+/**
+ * The ring's last beat: a check pops in on [FolioMotion.Bounce], with a small overshoot, in the size the ring had. Under
+ * Reduce Motion it fades in at full size instead of growing.
+ */
 @Composable
 internal fun InstallDonePop() {
-    val scale = remember { Animatable(.2f) }
+    val reduce = LocalReduceMotion.current
+    val scale = remember { Animatable(if (reduce) 1f else .2f) }
+    val fade = rememberReducedFade()
     LaunchedEffect(Unit) { scale.animateTo(1f, FolioMotion.spring(FolioMotion.Bounce)) }
     Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) {
         Icon(
             Icons.Rounded.Check, contentDescription = null, tint = FolioColors.Green,
-            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale.value; scaleY = scale.value; alpha = scale.value.coerceIn(0f, 1f) },
+            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale.value; scaleY = scale.value; alpha = scale.value.coerceIn(0f, 1f) * fade.value },
         )
     }
 }
