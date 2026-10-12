@@ -153,6 +153,8 @@ class IslandEvents private constructor(private val context: Context) {
          * screen, and as a toast otherwise (island off, another app in front).
          */
         fun notice(context: Context, text: String, appIcon: android.graphics.Bitmap? = null, action: NoticeAction? = null, toastFallback: Boolean = true): Boolean {
+            // Simple Mode shows no notices or toasts of its own accord, except to a helper in All Settings.
+            if (SimpleQuiet.active && !SimpleQuiet.allSettings.value) return false
             // A sheet or full-screen page (Settings) would cover Home's island, so those keep the toast (which has no button).
             val covered = LauncherSheetsOpen.intValue > 0 || LauncherPagesOpen.intValue > 0
             return if (noticeIslands > 0 && FolioForeground.visible.value && !covered) { post(IslandEvent.Notice(text, appIcon, action)); true }

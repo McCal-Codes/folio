@@ -147,6 +147,7 @@ fun LauncherScreen(
     onShowWelcome: () -> Unit = {},
     onShowWhatsNew: () -> Unit = {},
 ) {
+    if (simpleHomeShown(state, model, homeRequests, onLaunch)) return // Simple Mode draws its own Home (SimpleHome.kt)
     val cancelLabel = stringResource(R.string.cancel)
     var sheet by rememberSaveable { mutableStateOf("") }
     var dockSlot by rememberSaveable { mutableIntStateOf(0) }

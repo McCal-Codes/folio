@@ -39,6 +39,13 @@ class FeatureGateTest {
         }
     }
 
+    @Test fun `Simple Mode is a preview held until Simple Mode v1`() {
+        val gate = FeatureGate.SIMPLE_MODE
+        assertEquals("simpleMode", gate.key)
+        assertEquals("0.7.2", gate.opensIn)
+        assertTrue("shut for everyone but Folio Dev and beta supporters", !gate.open)
+    }
+
     @Test fun `the Market is the gate it used to be`() {
         // The behaviour this replaced: released, or a .dev build, or a supporter code with the beta scope.
         val market = FeatureGate.MARKET

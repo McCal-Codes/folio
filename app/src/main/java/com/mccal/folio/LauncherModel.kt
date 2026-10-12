@@ -313,6 +313,8 @@ data class LauncherState(
     /** App rows that last fit the cover-class and the inner-class Home (0 = not measured yet); see [homeAppRows]. */
     val homeFitCompact: Int = 0,
     val homeFitExpanded: Int = 0,
+    /** Simple Mode's Home (SimpleMode.kt) while it is on; null when it is off. */
+    val simple: SimpleSetup? = null,
     val loading: Boolean = true,
     /** Home's own apps are in. At a start they come ahead of the rest, while [loading] stays true (not saved). */
     val homeAppsLoaded: Boolean = false,
@@ -1134,6 +1136,43 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setFolderBackground(value: FolderBackground) = updateSettings(soon = false) { it.copy(folderBackground = value) }
     fun setLabelSize(value: LabelSize) = updateSettings(soon = false) { it.copy(labelSize = value) }
     fun setExperienceProfile(profile: ExperienceProfile) = updateSettings(soon = false) { it.withProfile(profile) }
+    /**
+     * Simple Mode on, in [style] with [apps] (worked out off the main thread) on its Home: the one way in, for Settings
+     * and for setup. Home and the settings Simple changes are written to disk first ([SimpleRestoreStore]), and Simple
+     * turns on only once they are, so leaving can always put them back.
+     */
+    internal fun turnOnSimple(style: SimpleStyle = SimpleStyle.LIST, apps: () -> List<String>) {
+        if (statePayloadInvalid || mutable.value.simple != null) return
+        val store = SimpleRestoreStore.of(getApplication())
+        viewModelScope.launch {
+            val chosen = withContext(Dispatchers.IO) { apps() }
+            // The saved copy must be exactly what Simple replaces: if Home or those settings changed while it was being
+            // written (a refresh can land then), it is written again.
+            repeat(3) {
+                val before = SimpleRestore.of(mutable.value)
+                if (!withContext(Dispatchers.IO) { store.save(before) }) return@launch
+                if (mutable.value.simple == null && SimpleRestore.of(mutable.value) == before) {
+                    SimpleQuiet.active = true
+                    updateSettings(soon = false) { it.turnedSimple(chosen, style) }
+                    return@launch
+                }
+            }
+        }
+    }
+    /** Simple Mode off: the settings it changed come back; a Home from before Simple that differs goes to Layout History. */
+    internal fun leaveSimple() {
+        val now = mutable.value
+        if (statePayloadInvalid || now.simple == null) return
+        val store = SimpleRestoreStore.of(getApplication())
+        val restore = store.load()
+        restore?.homeToKeep(now)?.let { LayoutHistory.add(getApplication(), SIMPLE_HISTORY_REASON, it) }
+        updateSettings(soon = false) { it.leftSimple(restore) }
+        store.clear()
+        SimpleQuiet.active = false
+        SimpleQuiet.allSettings.value = false
+    }
+    /** The helper's changes to Simple Home: its apps, style and text size. Nothing while Simple is off. */
+    internal fun setSimpleSetup(setup: SimpleSetup) = updateSettings(soon = false) { if (it.simple == null) it else it.copy(simple = setup.sanitized()) }
     /** Setup's first question: where you are coming from (see [StartingPoint]). */
     internal fun setStartingPoint(point: StartingPoint) = updateSettings(soon = false) { it.withStartingPoint(point) }
     fun setHoldDelay(value: HoldDelay) = updateSettings(soon = false) { it.copy(holdDelay = value) }
@@ -1554,6 +1593,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             .put("compact", preset(s.compact)).put("expanded", preset(s.expanded))
             .also { o -> s.portrait?.let { o.put("portrait", preset(it)) } }
             .put("homeRows", s.homeRows).put("homeFitCompact", s.homeFitCompact).put("homeFitExpanded", s.homeFitExpanded)
+            .also { o -> s.simple?.let { o.put("simple", it.toJson()) } }
         val editor = prefs.edit()
         if (legacyRaw != null && sourceSchema == 2 && !prefs.contains("state_v2_backup"))
             editor.putString("state_v2_backup", legacyRaw)
@@ -1881,7 +1921,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         homeRows = j.optInt("homeRows", if (j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
             .takeIf { it == BASE_APP_ROWS } ?: 0,
         homeFitCompact = j.optInt("homeFitCompact", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
-        homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0)
+        homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
+        simple = j.optJSONObject("simple")?.let(SimpleSetup::fromJson))
         .let { st ->
             val saved = j.optJSONArray("installedTweaks")
             when {

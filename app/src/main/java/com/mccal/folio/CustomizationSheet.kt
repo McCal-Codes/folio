@@ -716,6 +716,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     LayoutHistoryCard(state, model, onClose)
                 }
                 CustomizationPage.ACCESSIBILITY -> {
+                    SimpleExperienceCard(state, model)
                     SettingsCard(null) {
                         // Android's Remove animations already means no motion at all, so the switch shows on and waits.
                         val removed = reduceMotionEnabled(androidx.compose.ui.platform.LocalContext.current)

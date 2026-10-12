@@ -1980,4 +1980,83 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <!-- Simple Mode preview (0.6.9 beta 4). A draft translation, waiting for a native speaker to review it. -->
+    <string name="experience">사용 환경</string>
+    <string name="profile_simple">간편</string>
+    <string name="profile_simple_detail">이름이 표시되는 큰 버튼, 그대로 유지되는 홈, 직접 고른 앱만 표시합니다.</string>
+    <string name="simple_experience_note">사용 환경 목록은 미리보기입니다. Folio Dev와 베타 후원자에게 간편 모드가 먼저 제공됩니다.</string>
+    <string name="simple_use_title">간편 모드를 사용하시겠습니까?</string>
+    <string name="simple_change_buttons">항상 이름이 표시되는 큰 버튼</string>
+    <string name="simple_change_locked">홈이 그대로 유지됩니다. 도우미가 도우미 설정에서 변경합니다.</string>
+    <string name="simple_change_hidden">설정, Market, 트윅, Spotlight 추가 기능이 홈에서 사라집니다</string>
+    <string name="simple_change_solid">단색 화면, 흐림 효과 없음, 동작 줄이기</string>
+    <string name="simple_change_saved">현재 홈이 저장되며 간편 모드를 끄면 다시 돌아옵니다.</string>
+    <string name="simple_how_to_leave">나가는 방법: 간편 홈 아래쪽의 도우미 설정을 누르고 휴대전화의 화면 잠금으로 잠금을 해제한 다음 간편 모드 나가기를 누릅니다.</string>
+    <string name="simple_use">간편 모드 사용</string>
+    <string name="simple_preview_label">간편 모드 미리보기</string>
+    <string name="simple_call">전화</string>
+    <string name="simple_charging">충전 중</string>
+    <string name="simple_battery_percent">%1$d%%</string>
+    <string name="simple_helper_settings">도우미 설정</string>
+    <string name="simple_more_apps">더 많은 앱</string>
+    <string name="simple_back_to_home">홈으로 돌아가기</string>
+    <string name="simple_home_stays_put">홈은 그대로 유지됩니다</string>
+    <string name="simple_home_stays_put_detail">도우미가 도우미 설정의 홈 편집에서 이곳의 앱을 바꿀 수 있습니다.</string>
+    <string name="simple_unlock_title">도우미 설정 열기</string>
+    <string name="simple_unlock_subtitle">계속하려면 화면 잠금을 사용하세요</string>
+    <string name="simple_hold_body">이 휴대전화에는 화면 잠금이 없습니다. 열려면 버튼을 2초 동안 길게 누르세요.</string>
+    <string name="simple_hold">길게 누르기</string>
+    <string name="simple_keep_holding">계속 누르세요</string>
+    <string name="simple_hold_description">도우미 설정을 열려면 2초 동안 길게 누르세요</string>
+    <string name="simple_edit_home">홈 편집</string>
+    <string name="simple_home_style">홈 스타일</string>
+    <string name="simple_style_list">목록</string>
+    <string name="simple_style_grid">큰 격자</string>
+    <string name="simple_text_size">텍스트 크기</string>
+    <string name="simple_text_size_detail">%1$s. Folio에만 적용되며 다른 앱은 바뀌지 않습니다.</string>
+    <string name="simple_text_size_note">Folio에만 적용되며 다른 앱은 바뀌지 않습니다.</string>
+    <string name="simple_text_larger">더 크게</string>
+    <string name="simple_text_largest">가장 크게</string>
+    <string name="simple_leave">간편 모드 나가기</string>
+    <string name="simple_leave_detail">저장된 홈이 다시 돌아옵니다</string>
+    <string name="simple_leave_title">간편 모드에서 나가시겠습니까?</string>
+    <string name="simple_leave_body">저장된 홈이 간편 모드를 켜기 전 그대로 돌아옵니다.</string>
+    <string name="simple_settings_note">이 페이지는 휴대전화의 화면 잠금으로 열립니다. Android 설정은 상태 표시줄에서 계속 열 수 있습니다.</string>
+    <string name="simple_edit_note">홈은 잠긴 상태로 유지됩니다. 여기서 바꾼 내용은 완료를 누르면 홈에 표시됩니다.</string>
+    <string name="simple_add_apps">앱 추가</string>
+    <string name="simple_home_full">홈이 가득 찼습니다. 먼저 하나를 제거하세요.</string>
+    <string name="simple_home_full_short">홈이 가득 찼습니다.</string>
+    <string name="simple_two_sentences">%1$s %2$s</string>
+    <string name="simple_shows_as">홈에는 %1$s(으)로 표시됩니다</string>
+    <string name="simple_reorder_apps">앱 순서 변경</string>
+    <string name="simple_reorder_note">앱을 누른 다음 위로 이동 또는 아래로 이동을 누르세요. 이 순서대로 홈에 표시됩니다.</string>
+    <string name="simple_home_order">홈 순서</string>
+    <string name="simple_save_order">순서 저장</string>
+    <string name="simple_remove_apps">앱 제거</string>
+    <string name="simple_remove_from_home">홈에서 제거</string>
+    <string name="simple_remove_note">앱은 휴대전화에 그대로 남고 홈만 바뀝니다.</string>
+    <string name="simple_list_separator">,\u0020</string>
+    <string name="simple_send_feedback">의견 보내기</string>
+    <string name="simple_send_feedback_detail">직접 쓴 이메일만 Folio로 보내집니다. 다른 정보는 보내지 않습니다.</string>
+    <string name="simple_feedback_subject">Folio 간편 모드 의견</string>
+    <string name="simple_all_settings">모든 설정</string>
+    <string name="simple_all_settings_detail">Folio의 전체 설정입니다. 닫으면 간편 모드로 돌아옵니다.</string>
+    <plurals name="simple_apps_on_home">
+        <item quantity="other">홈에 앱 %1$d개</item>
+    </plurals>
+    <plurals name="simple_room_for">
+        <item quantity="other">%1$d개 더 추가 가능</item>
+    </plurals>
+    <plurals name="simple_room_for_sentence">
+        <item quantity="other">%1$d개 더 추가할 수 있습니다.</item>
+    </plurals>
+    <plurals name="simple_selected">
+        <item quantity="other">%1$d개 선택됨.</item>
+    </plurals>
+    <plurals name="simple_remove_title">
+        <item quantity="other">홈에서 앱 %1$d개를 제거하시겠습니까?</item>
+    </plurals>
+    <plurals name="simple_remove_body">
+        <item quantity="other">%2$s. 휴대전화에는 그대로 남으며 앱 추가에서 다시 추가할 수 있습니다.</item>
+    </plurals>
 </resources>
