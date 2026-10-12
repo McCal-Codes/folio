@@ -1064,6 +1064,9 @@
     <string name="add_to_home">添加到主屏幕</string>
     <string name="add_to_folder">添加到文件夹</string>
     <string name="create_folder">创建文件夹</string>
+    <string name="create_folder_with_1_s">用%1$s创建文件夹</string>
+    <string name="add_1_s_to_a_folder">将%1$s添加到文件夹</string>
+    <string name="new_folder_name">文件夹</string>
     <string name="stack_apps">叠放 App…</string>
     <string name="show_in_app_library">在 App 资源库中显示</string>
     <string name="hide_from_app_library">在 App 资源库中隐藏</string>
