@@ -116,4 +116,46 @@ class FolderEditingTest {
         assertEquals(null, next.folder(other))
         assertEquals(listOf(folderId), next.slots)
     }
+
+    private val fullPage = List(HOME_CELLS) { "app$it" }
+
+    @Test fun newFolderCellTakesTheFirstFreeCellOnThePreferredPage() {
+        val layout = HomeLayout(listOf("a", null, "b"), emptyList())
+        assertEquals(1, newFolderCell(layout, "x", "y", 0, listOf(0), emptySet()) { true })
+    }
+
+    @Test fun newFolderCellSkipsCoveredAndHiddenCells() {
+        val layout = HomeLayout(emptyList(), emptyList())
+        assertEquals(3, newFolderCell(layout, "x", "y", 0, listOf(0), setOf(0, 1)) { it != 2 })
+    }
+
+    @Test fun newFolderCellMovesOnWhenThePreferredPageIsFull() {
+        val layout = HomeLayout(fullPage + listOf("c", null), emptyList())
+        assertEquals(HOME_CELLS + 1, newFolderCell(layout, "x", "y", 0, listOf(0, 1), emptySet()) { true })
+    }
+
+    @Test fun newFolderCellCanUseTheCellOfEitherApp() {
+        val layout = HomeLayout(fullPage.toMutableList().apply { this[5] = "y" }, emptyList())
+        assertEquals(5, newFolderCell(layout, "x", "y", 0, listOf(0), emptySet()) { true })
+    }
+
+    @Test fun aFullHomeGetsTheFolderOnANewPageInsteadOfNothing() {
+        // Long-pressed in the dock, second app only in the App Library, every Home cell taken: this used to do nothing.
+        val layout = HomeLayout(fullPage, listOf("x", null, null, null))
+        val target = newFolderCell(layout, "x", "y", 0, listOf(0), emptySet()) { true }
+        assertEquals(HOME_CELLS, target)
+        val next = createFolder(layout, FolderEntry(folderId, "Folder", emptyList()), "x", "y", target)
+        assertEquals(folderId, next.slotAt(target))
+        assertEquals(listOf("x", "y"), next.folder(folderId)?.appIds)
+        assertEquals(listOf(null, null, null, null), next.dock)
+        assertEquals(2, next.pageCount)
+    }
+
+    @Test fun createFolderOffersOnlyAppsThatCanJoinANewFolder() {
+        // An app already in a folder used to be listed under New folder with…, and picking it did nothing.
+        val layout = HomeLayout(listOf(folderId), emptyList(), folders = listOf(FolderEntry(folderId, "Folder", listOf("a", "b"))))
+        assertEquals(false, canStartFolderWith(layout, "a"))
+        assertSame(layout, createFolder(layout, FolderEntry("folder:223e4567-e89b-12d3-a456-426614174000", "New", emptyList()), "x", "a", 1))
+        assertEquals(true, canStartFolderWith(layout, "x"))
+    }
 }

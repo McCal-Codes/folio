@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import com.mccal.folio.market.FolioVersion
 import com.mccal.folio.market.HttpClient
 import com.mccal.folio.market.HttpResult
 import com.mccal.folio.market.IndexPackage
@@ -33,12 +34,20 @@ internal data class MarketEntry(
      * be installed at all, and anything else is shown with both sources named.
      */
     val clash: Impostor? = null,
+    /**
+     * Why this version doesn't work with this Folio, from its own source's `incompatible` list (ADR 0013). Null when
+     * nothing says so. Unlike a revocation, it can pass: a later version, or another Folio, may be fine.
+     */
+    val incompatibleReason: String? = null,
 ) {
     /**
      * This listing, not just its id: two sources can list one id, and a sheet that looked the id back up got whichever
      * source came first rather than the row that was tapped.
      */
     val listingKey: String get() = source.url + "\n" + entry.id
+
+    /** Whether nothing may install this listing, update included: pulled by its source, or known not to work here. */
+    val unavailable: Boolean get() = revokedReason != null || incompatibleReason != null
 
     enum class Impostor {
         /** It claims an id that belongs to a package inside Folio. There's no honest reason to do that. */
@@ -65,9 +74,15 @@ internal fun mergeEntries(
     builtInSource: Source,
     revocations: RevocationList?,
     fromSources: List<Pair<Source, SourceSnapshot>>,
+    /** This build's release, for `incompatible` entries. Null says nothing about them, which only a test does. */
+    folio: FolioVersion? = null,
 ): List<MarketEntry> = buildList {
     val builtInIds = builtIn.map { it.id }.toSet()
-    builtIn.forEach { add(MarketEntry(it, builtInSource, revocations?.reasonFor(it.id, it.version))) }
+    // A source speaks only for its own packages here (ADR 0013): Folio's list for Folio's, each source's for its own.
+    fun incompatible(list: RevocationList?, entry: IndexPackage) = folio?.let { list?.incompatibleReason(entry.id, entry.version, it) }
+    builtIn.forEach {
+        add(MarketEntry(it, builtInSource, revocations?.reasonFor(it.id, it.version), incompatibleReason = incompatible(revocations, it)))
+    }
 
     val seen = fromSources.flatMap { (_, snapshot) -> snapshot.index.packages.map { it.id } }
         .groupingBy { it }.eachCount()
@@ -81,7 +96,7 @@ internal fun mergeEntries(
                 (seen[entry.id] ?: 0) > 1 -> MarketEntry.Impostor.ANOTHER_SOURCE
                 else -> null
             }
-            add(MarketEntry(entry, source, reason, unsigned, clash))
+            add(MarketEntry(entry, source, reason, unsigned, clash, incompatible(snapshot.revocation, entry)))
         }
     }
 }
