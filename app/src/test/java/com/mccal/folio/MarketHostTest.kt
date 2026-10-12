@@ -25,11 +25,16 @@ class MarketHostTest {
         var background = BackgroundChoice.None.save()
         val artwork = mutableMapOf<String, Artwork>()
 
+        /** Each tweak added or taken out, in order: the real ones also flip the tweak's main switch. */
+        val switched = mutableListOf<String>()
+
         override fun installTweak(feature: TweakFeature) {
+            switched += "+${feature.id}"
             state = state.copy(installedTweaks = state.installedTweaks + feature.id)
         }
 
         override fun removeTweak(feature: TweakFeature) {
+            switched += "-${feature.id}"
             state = state.copy(
                 installedTweaks = state.installedTweaks - feature.id,
                 featureScopes = state.featureScopes - feature.id,
@@ -66,6 +71,8 @@ class MarketHostTest {
             state = state.withTheme(theme, installedPacks = emptySet())
         }
     }
+
+    private val harborlineId = "com.mccal.folio.harborline"
 
     private fun bundle(vararg tweaks: com.mccal.folio.market.TweakSetting) = TweakBundle(tweaks.toList())
 
@@ -260,5 +267,147 @@ class MarketHostTest {
         assertTrue(host.hasTweak("pageEffects"))
         launcher.removeTweak(TweakFeatures.first { it.id == "pageEffects" })
         assertFalse(host.hasTweak("pageEffects"))
+    }
+
+    // Until 0.6.9 an update undid the old version, which put each setting back as it was before the package, and then
+    // applied the new one with its own values, so whatever the person had changed since was gone.
+    @Test fun `updating Folio's own Harborline keeps the screen and options the person changed, through Undo too`() {
+        val launcher = FakeLauncher()
+        val store = com.mccal.folio.market.InstalledStore(com.mccal.folio.market.MemoryStore())
+        val installer = com.mccal.folio.market.PackageInstaller(store, MarketHost(launcher))
+        val files = requireNotNull(builtInSourceForTests().filesFor(harborlineId))
+        assertTrue(installer.installBuiltIn(files) is com.mccal.folio.market.InstallResult.Installed)
+        launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.OFF)
+        launcher.setTweakOptions("dockMagnify", mapOf("amount" to "strong", "tick" to "off"))
+        val mine = launcher.state.tweakOptions.getValue("dockMagnify")
+
+        val manifest = requireNotNull(files["manifest.json"]).decodeToString()
+        assertTrue(manifest.contains(""""version": "1.0.0""""))
+        val newer = files + ("manifest.json" to manifest.replace(""""version": "1.0.0"""", """"version": "1.0.1"""").toByteArray())
+        val update = installer.installBuiltIn(newer)
+        assertTrue("$update", update is com.mccal.folio.market.InstallResult.Installed)
+        assertEquals(ScopeValue.OFF, scope(launcher, "dockMagnify", FolioScreen.INNER))
+        assertEquals(mine, launcher.state.tweakOptions["dockMagnify"])
+
+        assertTrue(installer.undo(update as com.mccal.folio.market.InstallResult.Installed))
+        assertEquals("1.0.0", requireNotNull(store.find(harborlineId)).version.text)
+        assertEquals(ScopeValue.OFF, scope(launcher, "dockMagnify", FolioScreen.INNER))
+        assertEquals(mine, launcher.state.tweakOptions["dockMagnify"])
+
+        // Remove still puts back what was there before the package came: no Harborline, nothing set for it.
+        assertTrue(installer.remove(harborlineId))
+        assertFalse("dockMagnify" in launcher.state.installedTweaks)
+        assertEquals(ScopeValue.DEFAULT, scope(launcher, "dockMagnify", FolioScreen.INNER))
+        assertTrue(launcher.state.tweakOptions.isEmpty())
+    }
+
+    private fun scope(launcher: FakeLauncher, id: String, screen: FolioScreen) = FeatureScopes.value(launcher.state.featureScopes, id, screen)
+
+    @Test fun `only tweak changes move in place`() {
+        val host = MarketHost(FakeLauncher())
+        val tweaks = PackageChange.Tweaks(cabinetBundle())
+        val theme = PackageChange.Theme(FolioTheme.PRESETS.first().toJson().toString())
+        assertTrue(host.canUpdateInPlace(tweaks, PackageChange.Tweaks(cabinetBundle(inner = false))))
+        assertFalse(host.canUpdateInPlace(theme, theme))
+        assertFalse(host.canUpdateInPlace(tweaks, theme))
+    }
+
+    @Test fun `an update that sets the same values leaves everything the person changed`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val harborline = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DOCK_MAGNIFY, true)))
+        val before = host.apply(harborline)
+        launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.OFF)
+        launcher.setTweakOptions("dockMagnify", mapOf("amount" to "strong"))
+        val mine = launcher.state.tweakOptions.getValue("dockMagnify")
+        launcher.switched.clear()
+
+        val kept = host.updateInPlace(harborline, before, harborline.copy())
+
+        assertEquals(ScopeValue.OFF, scope(launcher, "dockMagnify", FolioScreen.INNER))
+        assertEquals(mine, launcher.state.tweakOptions["dockMagnify"])
+        assertTrue("the tweak's switch was never flipped: ${launcher.switched}", launcher.switched.isEmpty())
+        // What the new version keeps still describes Home before the package.
+        host.restore(harborline, kept)
+        assertFalse("dockMagnify" in launcher.state.installedTweaks)
+        assertEquals(ScopeValue.DEFAULT, scope(launcher, "dockMagnify", FolioScreen.INNER))
+        assertTrue(launcher.state.tweakOptions.isEmpty())
+    }
+
+    @Test fun `a screen the update changes follows it, unless the person had already changed that screen`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val first = PackageChange.Tweaks(cabinetBundle(cover = true, inner = true))
+        val before = host.apply(first)
+        launcher.setFeatureScope("appPanels", FolioScreen.COVER, ScopeValue.ON)
+
+        host.updateInPlace(first, before, PackageChange.Tweaks(cabinetBundle(cover = false, inner = false)))
+
+        assertEquals("the person's own choice stays", ScopeValue.ON, scope(launcher, "appPanels", FolioScreen.COVER))
+        assertEquals("left alone, so it follows the update", ScopeValue.OFF, scope(launcher, "appPanels", FolioScreen.INNER))
+    }
+
+    @Test fun `a tweak the person took out stays out through an update`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val first = PackageChange.Tweaks(cabinetBundle())
+        val before = host.apply(first)
+        launcher.removeTweak(TweakFeatures.first { it.id == "appPanels" })
+        launcher.switched.clear()
+
+        host.updateInPlace(first, before, PackageChange.Tweaks(cabinetBundle(inner = false)))
+
+        assertFalse("appPanels" in launcher.state.installedTweaks)
+        assertTrue(launcher.switched.isEmpty())
+    }
+
+    @Test fun `an update that turns a tweak off turns it off`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val first = PackageChange.Tweaks(cabinetBundle())
+        val before = host.apply(first)
+
+        host.updateInPlace(first, before, PackageChange.Tweaks(cabinetBundle(enabled = false)))
+
+        assertFalse("appPanels" in launcher.state.installedTweaks)
+    }
+
+    @Test fun `a tweak new in the update goes on, and one it drops goes back to how it was before the package`() {
+        val launcher = FakeLauncher()
+        val host = MarketHost(launcher)
+        val first = PackageChange.Tweaks(cabinetBundle())
+        val before = host.apply(first)
+        val next = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DOCK_MAGNIFY, true, cover = false)))
+
+        val kept = host.updateInPlace(first, before, next)
+
+        assertFalse("appPanels" in launcher.state.installedTweaks)
+        assertTrue("dockMagnify" in launcher.state.installedTweaks)
+        assertEquals(ScopeValue.OFF, scope(launcher, "dockMagnify", FolioScreen.COVER))
+        host.restore(next, kept)
+        assertFalse("dockMagnify" in launcher.state.installedTweaks)
+        assertEquals(ScopeValue.DEFAULT, scope(launcher, "dockMagnify", FolioScreen.COVER))
+    }
+
+    @Test fun `Duet's look moves key by key, keeping what the person changed`() {
+        val mine = com.mccal.folio.duet.DuetOptions(style = "subtle", frost = .7f)
+        val launcher = FakeLauncher(LauncherState(duet = mine, foldIntensity = .9f, installedTweaks = setOf(DUET_ID)))
+        val host = MarketHost(launcher)
+        fun duet(vararg options: Pair<String, Any>) =
+            PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.DUET, true, options = options.toMap())))
+        val first = duet("style" to "deep", "frost" to 1.2, "intensity" to 1.4)
+        val before = host.apply(first)
+        // The person picks another style afterwards; frost and intensity stay as the package set them.
+        launcher.setDuet(launcher.state.duet.copy(style = "minimal"), launcher.state.foldIntensity)
+
+        val kept = host.updateInPlace(first, before, duet("style" to "classic", "frost" to 1.5, "intensity" to 1.4))
+
+        assertEquals("changed by both: the person's stays", "minimal", launcher.state.duet.style)
+        assertEquals("changed by the update only: it follows", 1.5f, launcher.state.duet.frost, 1e-4f)
+        assertEquals("the same in both: as it is", 1.4f, launcher.state.foldIntensity, 1e-4f)
+        // Remove still puts back the look from before the package.
+        host.restore(duet(), kept)
+        assertEquals(mine, launcher.state.duet)
+        assertEquals(.9f, launcher.state.foldIntensity, 1e-4f)
     }
 }

@@ -1980,4 +1980,24 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
+    <string name="in_stack">스택에 있음</string>
+    <string name="not_in_stack">스택에 없음</string>
+    <string name="install_waiting">대기 중…</string>
+    <string name="island_call">통화</string>
+    <string name="island_navigating">길 안내 중</string>
+    <string name="unavailable_app">사용할 수 없는 앱</string>
+    <string name="status_airplane">비행기</string>
+    <string name="discover_unavailable_right_now">지금은 Discover를 사용할 수 없습니다.</string>
+    <string name="discover_feed_refused">Google이 피드 연결을 받아들이지 않았습니다. Google을 다시 시작한 뒤 다시 시도하세요.</string>
+    <string name="discover_disconnected">Discover 연결이 끊겼습니다. 다시 연결하려면 다시 시도를 탭하세요.</string>
+    <string name="discover_needs_google_app">Discover를 사용하려면 Google 앱을 설치하거나 사용 설정하세요.</string>
+    <string name="discover_google_couldnt_connect">Google 앱이 Discover에 연결하지 못했습니다.</string>
+    <string name="discover_taking_a_while">Discover가 오래 걸리고 있습니다. 다시 시도하거나 Google을 열 수 있습니다.</string>
+    <string name="discover_google_version">이 버전의 Google 앱으로는 Discover를 열 수 없었습니다.</string>
+    <string name="discover_couldnt_start">Discover를 시작하지 못했습니다. 다시 연결하려면 다시 시도를 탭하세요.</string>
+    <string name="discover_couldnt_fit">Discover를 Dock 옆에 맞출 수 없었습니다.</string>
+    <string name="appearance_system_until_location">위치를 설정할 때까지 시스템 테마를 사용합니다</string>
+    <string name="appearance_system_location_stale">기기 위치 정보가 오래되어 시스템 테마를 사용합니다</string>
+    <string name="appearance_system_location_unavailable">이 위치를 사용할 수 없어 시스템 테마를 사용합니다</string>
 </resources>

@@ -303,8 +303,8 @@ internal fun VisualWidgetPicker(
             }
             if (!selectedProfile.available || !selectedProfile.unlocked || selectedProfile.quiet) {
                 Column(Modifier.fillMaxWidth().padding(FolioSpace.XXL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (selectedProfile.quiet) "${selectedProfile.label} apps are paused"
-                        else "${selectedProfile.label} profile is unavailable", color = secondary)
+                    Text(if (selectedProfile.quiet) stringResource(R.string.work_apps_are_paused)
+                        else stringResource(R.string.work_profile_is_unavailable), color = secondary)
                     if (selectedProfile.isWork) FolioButton(stringResource(R.string.turn_on), { onTurnOnWork(selectedProfile.userSerial) },
                         Modifier.padding(top = FolioSpace.MEDIUM.dp))
                 }

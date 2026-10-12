@@ -356,7 +356,7 @@ class IslandListenerService : NotificationListenerService() {
             val person = runCatching { androidx.core.os.BundleCompat.getParcelable(n.extras, Notification.EXTRA_CALL_PERSON, android.app.Person::class.java) }.getOrNull()
             val avatar = runCatching { person?.icon?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
                 ?: runCatching { n.getLargeIcon()?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
-            return IslandActivity.Call(sbn.packageName, person?.name?.toString() ?: title(sbn) ?: "Call", appIcon(sbn.packageName), since, sbn.key,
+            return IslandActivity.Call(sbn.packageName, person?.name?.toString() ?: title(sbn) ?: getString(R.string.island_call), appIcon(sbn.packageName), since, sbn.key,
                 incoming = incoming, avatar = avatar,
                 canAnswer = CallControls.intent(n, CallControls.Kind.ANSWER) != null,
                 canDecline = CallControls.intent(n, CallControls.Kind.DECLINE) != null,
@@ -366,7 +366,7 @@ class IslandListenerService : NotificationListenerService() {
         }
         ongoing.firstOrNull { it.notification.category == Notification.CATEGORY_NAVIGATION }?.let { sbn ->
             val extras = sbn.notification.extras
-            return IslandActivity.Navigation(sbn.packageName, title(sbn) ?: "Navigating",
+            return IslandActivity.Navigation(sbn.packageName, title(sbn) ?: getString(R.string.island_navigating),
                 extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(), appIcon(sbn.packageName), sbn.key)
         }
         ongoing.firstOrNull { it.notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) }?.let { sbn ->
