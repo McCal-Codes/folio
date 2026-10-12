@@ -341,9 +341,21 @@ internal fun MarketScreen(
 
     // Back unwinds one step at a time, in the order things were opened: the package first, then the source it
     // was listed on, then the store itself (handled by the launcher).
-    BackHandler(enabled = openId != null || openSourceUrl != null) {
-        if (openId != null) openId = null else openSourceUrl = null
-    }
+    // With the motion pass (MO7), the open page follows the back swipe: it eases right and shrinks a little over the list it goes
+    // back to, slides away when let go, and springs back if not (see pagePreview below). Otherwise the plain handler.
+    val backOnePage = { if (openId != null) openId = null else openSourceUrl = null }
+    val pageBackPass = FolioMotion.v2 && !LocalReduceMotion.current
+    val pageSwipe = remember { androidx.compose.animation.core.Animatable(0f) }
+    val pageGone = remember { androidx.compose.animation.core.Animatable(0f) }
+    var listBeside by remember { mutableStateOf(false) }
+    if (pageBackPass) PredictiveBack(enabled = openId != null || openSourceUrl != null,
+        onProgress = { p -> if (!listBeside) scope.launch { pageSwipe.snapTo(p) } },
+        onCancel = { scope.launch { pageSwipe.animateTo(0f, FolioMotion.spring(FolioMotion.Quick)) } },
+        onBack = { scope.launch {
+            if (!listBeside) pageGone.animateTo(1f, FolioMotion.spring(FolioMotion.Firm))
+            backOnePage(); pageGone.snapTo(0f); pageSwipe.snapTo(0f)
+        } })
+    else BackHandler(enabled = openId != null || openSourceUrl != null) { backOnePage() }
 
     // A .foliopkg someone opened, then the same confirm sheet as anything else. The file stays in MarketImport.pending
     // until it's installed or cancelled, and the sheet is read from it, not held here: on the phone the Market sits in
@@ -447,17 +459,9 @@ internal fun MarketScreen(
 
         // Kept here rather than in the list, so coming Back from a package lands where the list was, per tab.
         val listState = rememberSaveable(tab, saver = LazyListState.Saver) { LazyListState() }
-        Row(Modifier.fillMaxSize()) {
-        if (tabs == TabPlacement.SIDEBAR) MarketSidebar(tab) { tab = it; openId = null; openSourceUrl = null }
-        Column(Modifier.weight(1f)) {
-            Row(Modifier.weight(1f)) {
-                if (tab == MarketTab.SETTINGS && settingsContent != null) {
-                    Box(Modifier.fillMaxSize()) {
-                        CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
-                    }
-                } else if (beside || (open == null && openSource == null && !betaOpen)) {
-                    val narrow = beside && (open != null || openSource != null || betaOpen)
-                    BoxWithConstraints(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight()) {
+        androidx.compose.runtime.SideEffect { listBeside = beside }
+        val listPane: @Composable (Modifier, Boolean) -> Unit = { paneModifier, narrow ->
+            BoxWithConstraints(paneModifier) {
                         MarketList(
                             session = session,
                             tab = tab,
@@ -491,17 +495,40 @@ internal fun MarketScreen(
                             onTryAgain = { id, name -> tryAgain(id, name) },
                             onChanged = { refresh() },
                         )
+            }
+        }
+        // While a page previews going back (narrow windows only: beside, the list is already there), the list is drawn under it.
+        val pageOpen = open != null || openSource != null || betaOpen
+        val peeking = pageBackPass && !beside && pageOpen && (pageSwipe.value > 0f || pageGone.value > 0f)
+        val pagePreview = if (pageBackPass && !beside) Modifier.graphicsLayer {
+            val sw = pageSwipe.value.coerceIn(0f, 1f); val gone = pageGone.value
+            translationX = size.width * (MarketBack.SHIFT * sw + gone * (1f - MarketBack.SHIFT * sw))
+            val shrink = 1f - MarketBack.SHRINK * sw; scaleX = shrink; scaleY = shrink
+            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
+        }.then(if (peeking) Modifier.background(FolioColors.SecondaryBackground) else Modifier) else Modifier
+        Row(Modifier.fillMaxSize()) {
+        if (tabs == TabPlacement.SIDEBAR) MarketSidebar(tab) { tab = it; openId = null; openSourceUrl = null }
+        Column(Modifier.weight(1f)) {
+            Box(Modifier.weight(1f)) {
+            if (peeking) listPane(Modifier.fillMaxSize(), false)
+            Row(Modifier.fillMaxSize()) {
+                if (tab == MarketTab.SETTINGS && settingsContent != null) {
+                    Box(Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
                     }
+                } else if (beside || (open == null && openSource == null && !betaOpen)) {
+                    val narrow = beside && (open != null || openSource != null || betaOpen)
+                    listPane(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight(), narrow)
                 }
                 if (betaOpen) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         MarketFolioBetaPage(showBack = !beside, backTitle = stringResource(tab.label), onBack = { openSourceUrl = null })
                     }
                 }
                 if (openSource != null) {
                     val (sourceOpen, statusOpen) = openSource
                     val fromSource = entries.filter { it.source.url == sourceOpen.url }
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         MarketSourcePage(
                             name = if (sourceOpen.kind == Source.Kind.BUILT_IN) {
                                 index?.name?.english ?: stringResource(R.string.folio)
@@ -536,7 +563,7 @@ internal fun MarketScreen(
                     }
                 }
                 if (open != null) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         val openHost = hostFor(open.entry.manifest)
                         MarketPackagePage(
                             entry = open.entry,
@@ -568,6 +595,7 @@ internal fun MarketScreen(
                         )
                     }
                 }
+            }
             }
             // A plain message goes away by itself, as an iOS banner does; it used to stay until tapped or replaced,
             // so "Keyd updated" could sit over the page for as long as the store was open. One with Undo stays until
@@ -1965,4 +1993,10 @@ internal sealed interface MarketLink {
         /** Where the Market is asked to go before it opens, set by the activity that received the link. */
         var pending: MarketLink? by mutableStateOf(null)
     }
+}
+
+/** A Market page previewing back (MO7): it eases right by [SHIFT] of its width and shrinks by [SHRINK], as Folio's sheet pages do. */
+internal object MarketBack {
+    const val SHIFT = .08f
+    const val SHRINK = .1f
 }
