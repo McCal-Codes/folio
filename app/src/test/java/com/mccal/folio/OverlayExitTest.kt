@@ -76,6 +76,15 @@ class OverlayExitTest {
         assertFalse(OverlayExits.covering(slide = .3f, exit = 0f))
     }
 
+    @Test fun `a closing page wakes Home before it moves, so the heavy frames come while nothing slides`() {
+        // Emulator, 12 Oct: waking Home on the first slide frame put about two frames over 50 ms into every close (p95 +6 ms).
+        assertEquals(2, PAGE_UNCOVER_FRAMES)
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val sheet = java.io.File(root, "app/src/main/java/com/mccal/folio/FolioSheet.kt").readText()
+        assertTrue("the page waits for Home", "rememberOverlayExit(uncoverFrames = PAGE_UNCOVER_FRAMES)" in sheet)
+        assertTrue("Home wakes when the close starts, not when the page first moves", "if (exit.leaving) 1f else 0f" in sheet)
+    }
+
     @Test fun `outside a page, sheet or alert a close happens at once`() {
         var closed = false
         null.closeWithExit { closed = true }

@@ -4,6 +4,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,9 +28,15 @@ import kotlinx.coroutines.launch
  * happens after [EXIT_TIMEOUT_MS], and if the caller keeps the surface after its close (a required alert) it comes back.
  */
 @Stable
-internal class OverlayExit(private val frames: CoroutineScope, val reduce: Boolean) {
+internal class OverlayExit(private val frames: CoroutineScope, val reduce: Boolean, private val uncoverFrames: Int = 0) {
     /** 0 while the surface is shown, 1 when it has left. Read it in drawing only. */
     val progress = Animatable(0f)
+    /**
+     * True from the moment a close starts. A page uncovers Home on it, [uncoverFrames] frames before it moves, so Home's
+     * first frames back (recomposing and redrawing behind the page) are done while nothing is moving yet.
+     */
+    var leaving by mutableStateOf(false)
+        private set
     private val gate = ExitGate()
     private val clock = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -34,7 +44,9 @@ internal class OverlayExit(private val frames: CoroutineScope, val reduce: Boole
     fun close(action: () -> Unit) {
         if (!FolioMotion.v2) { action(); return }
         if (!gate.begin(action)) return
+        leaving = true
         frames.launch {
+            repeat(uncoverFrames) { withFrameNanos { } }
             progress.animateTo(1f, if (reduce) tween(FolioMotion.FADE_MS) else FolioMotion.spring(FolioMotion.Firm, .01f))
             end()
         }
@@ -45,7 +57,7 @@ internal class OverlayExit(private val frames: CoroutineScope, val reduce: Boole
         val action = gate.finish() ?: return
         action()
         // Still here a moment later: the close did not remove it. Show it again rather than leave an invisible window.
-        clock.launch { delay(EXIT_RESTORE_MS); gate.reopen(); progress.snapTo(0f) }
+        clock.launch { delay(EXIT_RESTORE_MS); gate.reopen(); leaving = false; progress.snapTo(0f) }
     }
 
     fun dispose() = clock.cancel()
@@ -58,10 +70,10 @@ internal fun OverlayExit?.closeWithExit(action: () -> Unit) = if (this == null) 
 internal val LocalOverlayExit = staticCompositionLocalOf<OverlayExit?> { null }
 
 @Composable
-internal fun rememberOverlayExit(): OverlayExit {
+internal fun rememberOverlayExit(uncoverFrames: Int = 0): OverlayExit {
     val reduce = LocalReduceMotion.current
     val scope = rememberCoroutineScope()
-    val exit = remember { OverlayExit(scope, reduce) }
+    val exit = remember { OverlayExit(scope, reduce, uncoverFrames) }
     DisposableEffect(exit) { onDispose { exit.dispose() } }
     return exit
 }
@@ -70,6 +82,8 @@ internal fun rememberOverlayExit(): OverlayExit {
 private const val EXIT_TIMEOUT_MS = 900L
 /** Long enough for the caller to take the surface away after its close. */
 private const val EXIT_RESTORE_MS = 500L
+/** Frames a page waits after uncovering Home before it starts to slide: Home's heavy first frame, and one to spare. */
+internal const val PAGE_UNCOVER_FRAMES = 2
 
 /** One overlay's close: the action runs exactly once, whichever of the animation and the timeout ends first. */
 internal class ExitGate {

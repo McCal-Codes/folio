@@ -163,7 +163,7 @@ internal fun ModalBottomSheet(
 @Composable
 private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     // New motion: Done and Back (through LocalOverlayExit) slide the page back out the way it came.
-    val exit = rememberOverlayExit()
+    val exit = rememberOverlayExit(uncoverFrames = PAGE_UNCOVER_FRAMES)
     androidx.compose.ui.window.Dialog(onDismissRequest = { exit.close(onDismissRequest) },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = false)) {
@@ -182,9 +182,9 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
         val pageFade = rememberReducedFade()
         // Once the page covers Home, drawing and blurring Home is work nobody sees, and it shows up as stutter
         // while you're moving between Folio and Android's permission screens. It comes back the moment it's needed.
-        // A page on its way out uncovers Home again, so Home draws behind it from the first frame of the exit.
-        val leaving by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { exit.progress.value != 0f } }
-        val covering = OverlayExits.covering(slide.value, if (leaving) 1f else 0f)
+        // A closing page uncovers Home the moment the close starts, and slides only after Home's first frames back are done
+        // (PAGE_UNCOVER_FRAMES), so the heavy frames land while the page still hides everything and the slide stays smooth.
+        val covering = OverlayExits.covering(slide.value, if (exit.leaving) 1f else 0f)
         DisposableEffect(covering) {
             if (covering) LauncherPagesOpen.intValue++
             onDispose { if (covering) LauncherPagesOpen.intValue-- }
