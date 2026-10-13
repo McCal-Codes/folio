@@ -105,8 +105,9 @@ the source speaks for what is found later.
 
 #### Page effects
 
-A page effect package describes how Home's pages turn as you swipe, as four numbers. Folio's engine draws it, the
-same engine that draws the built-in Cube and Carousel, so a page effect is data and never code (ADR 0004, ADR 0008).
+A page effect package describes how Home's pages turn as you swipe, as four numbers, and from 0.7.0 as curves too
+(see Channels). Folio's engine draws it, the same engine that draws the built-in Cube and Carousel, so a page effect is
+data and never code (ADR 0004, ADR 0008).
 
 A page effect is an add-on to the Flipbook tweak, the way a script is an add-on to jailbreak Cylinder: the kind says so,
 so a package doesn't list it. Folio installs one only where Flipbook is on the phone, whether it was added from the
@@ -127,6 +128,52 @@ Folio clamps every number to its range rather than trusting it: past 90 degrees 
 nearer than 1.5 widths tears the perspective. `folio-pkg validate` warns about a number outside its range. A settled
 page is always drawn as it is, and Reduce Motion and Safe Mode turn every effect off. The package needs
 `tweaks.pageEffects` in `requires.features`.
+
+##### Channels *(0.7.0)*
+
+`channels` refines the four numbers with curves, and adds ways to move that a straight line from four numbers can't
+describe: a drop, a turn in the page's own plane, a sideways shift, a hinge on a page's outer edge. Each channel
+replaces the one thing it names; a channel left out still comes from the four numbers, which stay required.
+
+```json
+{
+  "maxRotation": 0, "pivot": "center", "shrink": 0.15, "cameraWidths": 3,
+  "channels": {
+    "translateY": { "keys": [{ "at": 0.1, "value": 0 }, { "at": 1, "value": 0.12 }], "ease": "inOut" },
+    "scale": { "keys": [{ "at": 1, "value": 0.85 }], "ease": "out" }
+  }
+}
+```
+
+| Channel | Meaning | Mirrored on the left | Folio holds it to |
+|---|---|---|---|
+| `rotationY` | Degrees around the vertical axis (replaces `maxRotation`) | yes | -90 to 90 |
+| `rotationZ` | Degrees in the page's own plane, clockwise for a page on the right | yes | -45 to 45 |
+| `translateX` | A sideways shift as a share of the page's travel, outward on the right; -1 keeps a page in place | yes | -1 to 1 |
+| `translateY` | A drop, in page heights | no | 0 to 0.25 |
+| `scale` | The page's size (replaces `shrink`) | no | 0.6 to 1 |
+| `pivotX` | `seam`, `center`, `outer`, or a share from the seam edge (0) to the outer edge (1); replaces `pivot` | yes | 0 to 1 |
+| `pivotY` | Where the turn's axis crosses the page, in page heights from the top; 0.5 is the middle, 1.3 is below it | no | 0 to 2 |
+
+Each curve has 1 to 8 `keys`, each a `value` at `at` pages out (0 settled, 1 a full page), every `at` later than the
+one before, and an `ease` between keys: `linear` (the default), `in`, `out` or `inOut` (quadratic). Mirrored means a
+page on the left does the opposite of a page on the right, so a cube's edges stay met; a drop and a scale are the same
+on both sides.
+
+- **A settled page is always at rest.** At 0 every channel is its resting value (no turn, no shift, full size),
+  whatever a key there says, and a curve holds its last value past its last key and past a full page out.
+- **Clamped, not trusted.** Folio clamps every value to its range, as it does the four numbers, and bakes each curve
+  into 33 samples (every 1/32 of a page) when it reads the effect, so drawing a frame does no curve math. A key
+  between two samples has its corner softened across 1/32 of a page.
+- **Transforms only.** No fading, clipping, shadows or blur: each one would cost an extra page-sized buffer per frame.
+- **Needs 0.7.0.** A package with `channels` lists `tweaks.pageEffects.channels` in `requires.features` and has
+  `minFolio` 0.7.0 or later, so an older Folio says it needs a newer Folio rather than drawing only the four numbers.
+  `folio-pkg validate` requires both, refuses keys out of order, and warns about values Folio will clamp.
+- **`icons` is reserved** for effects on each icon. Folio refuses a package that uses it, and `folio-pkg` reports it.
+- **Newer words.** A channel this Folio doesn't know is skipped, like any newer field; an `ease` it doesn't know means
+  the package needs a newer Folio.
+
+`effect.schema.json` describes the whole file.
 
 #### Tweak options
 
@@ -489,6 +536,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `tweaks.tintNotifications` | Palette (formerly Tinted Notifications) | 0.6.0 |
 | `tweaks.tintMedia` | Afterglow (formerly Colored Albums, and before that Album Art Colors) | 0.6.0 |
 | `tweaks.pageEffects` | Flipbook: Home pages turn in 3D as you swipe (supporters in 0.6.7, everyone in 0.6.8) | 0.6.7 |
+| `tweaks.pageEffects.channels` | Page effect channels: curves, drops, turns in the page's plane and outer-edge hinges in `effect.json` | 0.7.0 |
 | `tweaks.foldTransition` | Duet, the fold animation, and its `options` in `tweaks.json` | 0.6.8 |
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |
 | `focus.modes` | Switching Home Modes / Focus | 0.7.x |
