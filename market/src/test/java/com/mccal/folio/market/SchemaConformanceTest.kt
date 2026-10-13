@@ -44,6 +44,7 @@ class SchemaConformanceTest {
     private val indexSchema = schema("index")
     private val revokedSchema = schema("revoked")
     private val tweaksSchema = schema("tweaks")
+    private val effectSchema = schema("effect")
     private val sourceDir = File(root, "docs/sdk/source")
 
     private fun schema(name: String): JsonSchema = factory.getSchema(File(schemaDir, "$name.schema.json").readText())
@@ -102,6 +103,40 @@ class SchemaConformanceTest {
             tweak("appPanels", """{"style":"deep"}"""),         // options on a tweak that takes none
             tweak("appPanels", "{}"),
         )) assertEquals(text, null, agree(tweaksSchema, text, TweakBundle::parse))
+    }
+
+    // effect.json: the Tilt example, and channels (format 0.7.0) in general. One rule the parser applies that a schema
+    // can't state is left out of these cases on purpose: every key's `at` comes after the one before it.
+    @Test fun `page effects, with and without channels, get the same answer from the schema and the parser`() {
+        val tilt = File(root, "docs/sdk/examples/page-effect-tilt/effect.json").readText()
+        assertEquals(emptyList<String>(), schemaErrors(effectSchema, tilt))
+        fun read(text: String) = PackageChange.PageEffect.read("dev.example.effect", "Example", text)
+        assertEquals(null, agree(effectSchema, tilt, ::read))
+        fun effect(channels: String) = """{"maxRotation":0,"pivot":"center","shrink":0.1,"cameraWidths":3,"channels":$channels}"""
+        val curve = """{"keys":[{"at":0.1,"value":0},{"at":1,"value":0.12}],"ease":"inOut"}"""
+        for (text in listOf(
+            effect("""{"translateY":$curve,"scale":{"keys":[{"at":1,"value":0.85}]},"pivotX":"outer","pivotY":1.3}"""),
+            effect("""{"rotationY":$curve,"rotationZ":$curve,"translateX":$curve,"translateY":$curve,"scale":$curve,"pivotX":0.25,"pivotY":0}"""),
+            effect("""{"rotationZ":{"keys":[{"at":1,"value":200}]},"pivotX":5,"pivotY":-1}"""), // out of range: clamped, not refused
+            """{"maxRotation":400,"pivot":"seam","shrink":2,"cameraWidths":0.1}""",           // the same for v1
+            effect("{}"),                                                                            // no channel at all
+            effect("""{"scale":{"keys":[]}}"""),
+            effect("""{"scale":{}}"""),
+            effect("""{"scale":{"keys":[${(1..9).joinToString(",") { """{"at":${it / 10.0},"value":0.9}""" }}]}}"""),
+            effect("""{"scale":{"keys":[{"at":1.5,"value":0.9}]}}"""),
+            effect("""{"scale":{"keys":[{"at":1,"value":"0.9"}]}}"""),
+            effect("""{"scale":{"keys":[[1,0.9]]}}"""),
+            effect("""{"scale":{"keys":[{"at":1,"value":0.9}],"ease":"spring"}}"""),             // an ease from a newer Folio
+            effect("""{"skewX":{"keys":[{"at":1,"value":4}]}}"""),                               // a channel from a newer Folio
+            effect("""{"pivotX":"hinge"}"""),
+            effect("""{"pivotY":"low"}"""),
+            effect("[]"),
+            tilt.trimEnd().removeSuffix("}") + ""","icons":{}}""",                                     // reserved
+            tilt.trimEnd().removeSuffix("}") + ""","sparkle":true}""",                                 // a newer field
+            """{"pivot":"seam","shrink":0,"cameraWidths":2}""",
+            """{"maxRotation":"90","pivot":"seam","shrink":0,"cameraWidths":2}""",
+            """{"maxRotation":90,"pivot":"outer","shrink":0,"cameraWidths":2}""",
+        )) assertEquals(text, null, agree(effectSchema, text, ::read))
     }
 
     @Test fun `mutated source files get the same answer from the schema and the parser`() {
