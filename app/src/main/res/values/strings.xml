@@ -182,6 +182,8 @@
     <string name="place">Place</string>
     <string name="no_room_here">No room here</string>
     <string name="dock_full_move_an_app_out_first">Dock full • Move an app out first</string>
+    <!-- The line under an app the dock's app picker greys out because it is in a folder. -->
+    <string name="dock_picker_in_folder">In a folder · Move it out first</string>
     <string name="remove">Remove</string>
     <string name="move_this_widget_into_the_six_row_grid_b">Move this widget into the six-row grid before resizing.</string>
     <string name="layout_document">Layout document</string>
