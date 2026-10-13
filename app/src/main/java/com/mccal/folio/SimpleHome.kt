@@ -52,6 +52,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -137,8 +138,23 @@ private const val SIMPLE_SETTINGS_WAIT_MS = 5_000L
 
 /** The Simple screens. Home and More Apps are the person's; the rest are the helper's, behind the screen lock. */
 internal enum class SimpleScreen(val parent: SimpleScreen?) {
-    HOME(null), MORE(HOME), SETTINGS(HOME), TEXT_SIZE(SETTINGS), EDIT(SETTINGS), ADD(EDIT), REORDER(EDIT), REMOVE(EDIT),
+    HOME(null), MORE(HOME), SETTINGS(HOME), TEXT_SIZE(SETTINGS), EDIT(SETTINGS), ADD(EDIT), REORDER(EDIT), REMOVE(EDIT);
+
+    /** A helper page, open only after the screen lock (or the hold). */
+    val unlocked: Boolean get() = this != HOME && this != MORE
 }
+
+/** Helper Settings locks itself after this long untouched. */
+internal const val SIMPLE_IDLE_RELOCK_MS = 5 * 60_000L
+
+/** Folio stopping locks Helper Settings, unless it is only being recreated for a fold, a turn, a font size or dark mode. */
+internal fun relocksOnStop(changingConfigurations: Boolean) = !changingConfigurations
+
+/**
+ * Only a new press of Home locks it. A recreated Folio counts its Home presses from zero again, so a count lower than
+ * the one remembered is a new window, not a press.
+ */
+internal fun relocksOnHomeRequest(request: Int, seen: Int) = request > seen
 
 /**
  * Simple's own full-screen window. On the Fold8 a full-screen surface drawn in Home's own window is cut short at the top
@@ -257,9 +273,21 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
     var helperButton by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     // How many apps Home had room for, so More Apps lists the rest. Written while Home lays out, read only by More Apps.
     val shownOnHome = remember { mutableIntStateOf(SIMPLE_MAX_APPS) }
-    // The Home button, or Folio going to the background: back to Home, so Helper Settings never stays open.
-    LaunchedEffect(homeRequests) { screen = SimpleScreen.HOME; hint = false }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { screen = SimpleScreen.HOME; hint = false; holding = false }
+    // Helper Settings locks again when Folio leaves the screen, the Home button is pressed, or after 5 idle minutes,
+    // but not for a fold, a turn, a font size or dark mode: those recreate Folio and must not throw a helper out mid-edit.
+    val activity = androidx.activity.compose.LocalActivity.current
+    var homeSeen by rememberSaveable { mutableIntStateOf(homeRequests) }
+    LaunchedEffect(homeRequests) {
+        if (relocksOnHomeRequest(homeRequests, homeSeen)) { screen = SimpleScreen.HOME; hint = false }
+        homeSeen = homeRequests
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        if (relocksOnStop(activity?.isChangingConfigurations == true)) { screen = SimpleScreen.HOME; hint = false; holding = false }
+    }
+    var touched by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(screen, touched) {
+        if (screen.unlocked) { kotlinx.coroutines.delay(SIMPLE_IDLE_RELOCK_MS); screen = SimpleScreen.HOME }
+    }
     // Back, like Home, just returns to Simple Home. On Home it does nothing, as on any Home.
     BackHandler { hint = false; screen = SimpleScreen.HOME }
     val byId = remember(state.apps) { state.apps.associateBy { it.id } }
@@ -272,7 +300,12 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
     val openHelper = { unlockHelper(context, onOpen = { screen = SimpleScreen.SETTINGS }, onNoLock = { holding = true }) }
     SimpleSurface(setup.textSize) {
         val colors = simpleTheme
-        Box(Modifier.fillMaxSize().background(colors.background)) {
+        Box(Modifier.fillMaxSize().background(colors.background).pointerInput(screen.unlocked) {
+            // Any touch on a helper page restarts the idle clock. It only watches; the touch goes on to what was touched.
+            if (screen.unlocked) awaitPointerEventScope {
+                while (true) { awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial); touched = System.currentTimeMillis() }
+            }
+        }) {
             key(screen) {
                 val fade by rememberSimpleFade()
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade }) {
@@ -332,11 +365,11 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
             // apps tried, so each is measured once and reused.
             val heads = HashMap<Boolean, androidx.compose.ui.layout.Placeable>()
             val feet = HashMap<Boolean, androidx.compose.ui.layout.Placeable>()
-            fun measureAll(compact: Boolean, shown: Int): List<androidx.compose.ui.layout.Placeable> {
+            fun measureAll(style: SimpleStyle, compact: Boolean, shown: Int): List<androidx.compose.ui.layout.Placeable> {
                 val items: List<AppEntry?> = apps.take(shown) + if (shown < apps.size) listOf(null) else emptyList()
                 val loose = Constraints(maxWidth = columnWidth)
                 val head = heads.getOrPut(compact) { subcompose("head-$compact") { SimpleHeader(compact) }.single().measure(loose) }
-                val block = subcompose("apps-$compact-$shown") {
+                val block = subcompose("apps-$style-$compact-$shown") {
                     SimpleAppsBlock(items, style, compact, label, onLaunch, onHold, onMore)
                 }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
                 val foot = feet.getOrPut(compact) {
@@ -356,13 +389,23 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
                 // One row becomes More Apps, so each step down shows one app fewer and More Apps in its place.
                 for (shown in (n - 2) downTo 1) add(true to shown)
             }
-            var chosen = tries.first()
-            var parts = measureAll(chosen.first, chosen.second)
-            for (attempt in tries.drop(1)) {
-                if (height(parts, chosen.first) <= fitHeight) break
-                chosen = attempt
-                parts = measureAll(attempt.first, attempt.second)
+            fun fit(style: SimpleStyle): Pair<Pair<Boolean, Int>, List<androidx.compose.ui.layout.Placeable>> {
+                var chosen = tries.first()
+                var parts = measureAll(style, chosen.first, chosen.second)
+                for (attempt in tries.drop(1)) {
+                    if (height(parts, chosen.first) <= fitHeight) break
+                    chosen = attempt
+                    parts = measureAll(style, attempt.first, attempt.second)
+                }
+                return chosen to parts
             }
+            // Design note, Big Grid at very big text (Hick, no hidden content): a two-column tile is about twice as tall
+            // as a list row, so at 200% text with Largest only one row of tiles fits, Call and More Apps, and a third of
+            // the screen stays empty. Where fewer than four tiles would show, this Home is drawn as the List at that
+            // size, which holds more apps in the same height. The saved style stays Big Grid, so it comes back as soon
+            // as the text is smaller again.
+            var (chosen, parts) = fit(style)
+            if (simpleGridFallsBack(style, shown = chosen.second, total = n)) fit(SimpleStyle.LIST).let { chosen = it.first; parts = it.second }
             shownOnHome.intValue = chosen.second
             val compact = chosen.first
             val (head, block, foot) = parts
@@ -380,6 +423,10 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
         }
     }
 }
+
+/** Big Grid shows as the List when it would hold fewer than four tiles (counting More Apps) and some apps don't fit. */
+internal fun simpleGridFallsBack(style: SimpleStyle, shown: Int, total: Int) =
+    style == SimpleStyle.GRID && shown < total && shown + 1 < 4
 
 /** Room for Android's status bar and the camera at the top, and the navigation bar at the bottom. */
 @Composable
@@ -472,8 +519,8 @@ private fun SimpleFirstOpenLine(button: androidx.compose.ui.geometry.Rect, onOk:
 
 /**
  * Text that breaks only between words. When the longest word doesn't fit the width, the text gets a step smaller,
- * down to [SIMPLE_MIN_TEXT_SP], rather than a word being split ("Mess-ages"). With [oneLineFirst] it also takes a step
- * smaller before it wraps at all, for buttons side by side.
+ * down to [SIMPLE_MIN_TEXT_SP], rather than a word being split ("Mess-ages"). With [oneLineFirst] (buttons) it gets
+ * smaller, down to the same floor, before it wraps at all.
  */
 @Composable
 internal fun SimpleFitText(text: String, size: TextUnit, modifier: Modifier = Modifier, color: Color, weight: FontWeight,
@@ -499,17 +546,16 @@ private const val SIMPLE_TEXT_STEP_SP = 2f
 /**
  * The size for [text] at [size] sp in [width] px, by [widthOf] (a piece's one-line width at a size): unchanged when
  * every word fits; else a step at a time down to [SIMPLE_MIN_TEXT_SP] (or [size], if that is smaller) until the longest
- * word fits. With [oneLineFirst], the whole text on one line at [size] or a step smaller comes first. Chinese and
+ * word fits. With [oneLineFirst], the whole text on one line at any of those sizes comes first. Chinese and
  * Japanese text has no spaces and breaks between characters, so each of those characters counts as a word.
  */
 internal fun simpleFitSize(text: String, size: Float, width: Int, oneLineFirst: Boolean, widthOf: (String, Float) -> Int): Float {
     val floor = minOf(size, SIMPLE_MIN_TEXT_SP)
     val sizes = generateSequence(size) { (it - SIMPLE_TEXT_STEP_SP).takeIf { next -> next >= floor } }.toList().ifEmpty { listOf(size) }
-    if (oneLineFirst) sizes.take(2).firstOrNull { widthOf(text, it) <= width }?.let { return it }
+    if (oneLineFirst) sizes.firstOrNull { widthOf(text, it) <= width }?.let { return it }
     val cjk = Regex("[\u3040-\u30FF\u3400-\u9FFF\uF900-\uFAFF]")
     val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }.flatMap { word -> if (cjk.containsMatchIn(word)) word.map(Char::toString) else listOf(word) }
-    val start = if (oneLineFirst) sizes.drop(1).ifEmpty { sizes } else sizes
-    return start.firstOrNull { sp -> words.all { widthOf(it, sp) <= width } } ?: start.last()
+    return sizes.firstOrNull { sp -> words.all { widthOf(it, sp) <= width } } ?: sizes.last()
 }
 
 /** Every Simple screen says it is a preview, until Simple ships in 0.7.2. */
@@ -649,8 +695,8 @@ internal fun SimpleButton(text: String, kind: SimpleButtonKind, icon: ImageVecto
         .simpleClickable(Role.Button, onClick)
         .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(28.dp)); Spacer(Modifier.size(FolioSpace.COMPACT.dp)) }
-        // A step smaller before it wraps, so a pair of buttons ("Move Up", "Move Down") reads the same in one row.
+        icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(28.dp)); Spacer(Modifier.size(FolioSpace.SMALL.dp)) }
+        // On one line: a step smaller at a time rather than wrap.
         SimpleFitText(text, simpleText(textSize), color = ink, weight = if (kind == SimpleButtonKind.QUIET) FontWeight.Medium else FontWeight.SemiBold,
             align = TextAlign.Center, oneLineFirst = true)
     }

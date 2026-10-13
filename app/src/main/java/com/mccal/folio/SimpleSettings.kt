@@ -352,10 +352,8 @@ private fun SimpleReorder(apps: List<AppEntry>, setup: SimpleSetup, label: (AppE
         model.setSimpleSetup(setup.copy(apps = order.toList())); go(SimpleScreen.EDIT)
     } }, title = stringResource(R.string.simple_reorder_apps)) {
         SimpleLead(stringResource(R.string.simple_reorder_note))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
-            SimpleButton(stringResource(R.string.move_up), SimpleButtonKind.PLAIN, Icons.Rounded.ArrowUpward, Modifier.weight(1f)) { move(-1) }
-            SimpleButton(stringResource(R.string.move_down), SimpleButtonKind.PLAIN, Icons.Rounded.ArrowDownward, Modifier.weight(1f)) { move(1) }
-        }
+        SimpleButtonPair(stringResource(R.string.move_up), Icons.Rounded.ArrowUpward, { move(-1) },
+            stringResource(R.string.move_down), Icons.Rounded.ArrowDownward, { move(1) })
         SimpleChoiceGroup(stringResource(R.string.simple_home_order)) {
             order.mapNotNull { byId[it] }.forEach { app ->
                 SimpleRow(label(app), mark = chosen == app.id, role = Role.RadioButton, app = app) { chosen = app.id }
@@ -388,6 +386,32 @@ private fun SimpleRemove(apps: List<AppEntry>, setup: SimpleSetup, label: (AppEn
                 model.setSimpleSetup(setup.copy(apps = setup.apps.filterNot { it in picked }))
                 go(SimpleScreen.EDIT)
             }
+        }
+    }
+}
+
+/**
+ * Two buttons side by side when both labels fit on one line at this text size, otherwise stacked full width, the first
+ * above, each 76 dp or taller. A label never wraps, and the two never differ in size.
+ */
+@Composable
+private fun SimpleButtonPair(first: String, firstIcon: ImageVector, onFirst: () -> Unit, second: String, secondIcon: ImageVector, onSecond: () -> Unit) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val size = simpleText(22f)
+    val style = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = size, fontWeight = FontWeight.SemiBold)
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val gap = FolioSpace.MEDIUM.dp
+        // A button's padding, icon and the 8 dp between icon and label, around the label's one-line width.
+        val chrome = with(density) { (FolioSpace.LARGE.dp * 2 + 28.dp + FolioSpace.SMALL.dp).roundToPx() }
+        val half = with(density) { ((maxWidth - gap) / 2).roundToPx() }
+        val sideBySide = listOf(first, second).all { measurer.measure(it, style, maxLines = 1, softWrap = false).size.width + chrome <= half }
+        if (sideBySide) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
+            SimpleButton(first, SimpleButtonKind.PLAIN, firstIcon, Modifier.weight(1f), onClick = onFirst)
+            SimpleButton(second, SimpleButtonKind.PLAIN, secondIcon, Modifier.weight(1f), onClick = onSecond)
+        } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(gap)) {
+            SimpleButton(first, SimpleButtonKind.PLAIN, firstIcon, Modifier.heightIn(min = 76.dp), onClick = onFirst)
+            SimpleButton(second, SimpleButtonKind.PLAIN, secondIcon, Modifier.heightIn(min = 76.dp), onClick = onSecond)
         }
     }
 }
@@ -525,9 +549,24 @@ private fun ExperienceRow(profile: ExperienceProfile, selected: Boolean, onClick
  */
 @Composable
 private fun SimpleTurnOnSheet(onCancel: () -> Unit, onUse: () -> Unit) {
+    // The status bar as Settings has it now. A dialog window shows the bar by default, which changed the insets of the
+    // page under the sheet and made it jump as the sheet opened; the sheet keeps it as it was instead.
+    val host = LocalView.current
+    val barShown = remember {
+        androidx.core.view.ViewCompat.getRootWindowInsets(host)?.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars()) ?: true
+    }
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
-        LaunchedEffect(view) { (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f) }
+        androidx.compose.runtime.SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.let { w ->
+                w.setDimAmount(0f)
+                androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).apply {
+                    systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    if (barShown) show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                    else hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                }
+            }
+        }
         val title = stringResource(R.string.simple_use_title)
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .5f)).windowInsetsPadding(WindowInsets.navigationBars),
             contentAlignment = Alignment.BottomCenter) {

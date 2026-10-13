@@ -33,6 +33,24 @@ class SimpleFixesTest {
         assertEquals("Move Up fits as it is", 22f, simpleFitSize("Move Up", 22f, 190, oneLineFirst = true, width), 0f)
     }
 
+    @Test fun `Helper Settings stays open across a fold, a turn, a font size or dark mode`() {
+        assertFalse("recreated for a configuration change: stays unlocked", relocksOnStop(changingConfigurations = true))
+        assertTrue("Folio left the screen: locks", relocksOnStop(changingConfigurations = false))
+        assertFalse("a recreated Folio counts Home presses from zero", relocksOnHomeRequest(request = 0, seen = 3))
+        assertFalse("the same press seen again", relocksOnHomeRequest(request = 3, seen = 3))
+        assertTrue("a new press of Home locks", relocksOnHomeRequest(request = 4, seen = 3))
+        assertTrue(SimpleScreen.EDIT.unlocked); assertFalse(SimpleScreen.HOME.unlocked); assertFalse(SimpleScreen.MORE.unlocked)
+        assertEquals(5 * 60_000L, SIMPLE_IDLE_RELOCK_MS)
+    }
+
+    @Test fun `Big Grid shows as the List when fewer than four tiles would fit`() {
+        assertTrue("Call and More Apps only", simpleGridFallsBack(SimpleStyle.GRID, shown = 1, total = 6))
+        assertTrue(simpleGridFallsBack(SimpleStyle.GRID, shown = 2, total = 6))
+        assertFalse("four tiles with More Apps", simpleGridFallsBack(SimpleStyle.GRID, shown = 3, total = 6))
+        assertFalse("everything fits", simpleGridFallsBack(SimpleStyle.GRID, shown = 2, total = 2))
+        assertFalse(simpleGridFallsBack(SimpleStyle.LIST, shown = 1, total = 6))
+    }
+
     @Test fun `Folio is never offered as an app on Simple Home`() {
         assertTrue(isFolio("com.mccal.folio", "com.mccal.folio.dev"))
         assertTrue(isFolio("com.mccal.folio.dev", "com.mccal.folio"))
