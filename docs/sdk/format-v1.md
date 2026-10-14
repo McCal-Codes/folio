@@ -436,7 +436,10 @@ signature. Folio never calls a repository API, which is what keeps it clear of G
 { "format": 1, "timestamp": 1789660320, "packages": [{ "id": "dev.bad.pkg", "versions": ["*"], "reason": "Malware" }], "sources": [] }
 ```
 
-It's signed the same way as `entry.json`. Revoked packages are turned off, and the user is told why. `"*"` in
+It's signed the same way as `entry.json`. A revoked version can't be installed or updated to. One already on the phone is
+turned off the way Package Safe Mode does it, its settings kept, the next time Home starts or the source is refreshed by
+hand, and the user is told why; it can be removed but not tried again. Folio's own list speaks for every package, a
+source's list for its own, and any source's for a package installed from a file. `"*"` in
 `versions` means every version. An unsigned, broken or older revocation list is ignored rather than trusted, so a host
 can't un-revoke something by serving an older list. A source can also be listed in a source the user already trusts,
 which drops it before Folio calls it at all.
@@ -449,8 +452,8 @@ From 0.7.0 the list can also say a version doesn't work with some Folio releases
 
 `folio` uses the `depends` operators on a Folio release (`0.8` reads as `0.8.0`). A source lists only its own packages.
 A matching version is shown as unavailable with the reason, and Folio won't install it, as a new install, an update
-(automatic or not) or a shared file. One that is already installed keeps working and can be removed, as a pulled one can
-today.
+(automatic or not) or a shared file. One that is already installed keeps working and can be removed; unlike a pulled one, it
+isn't turned off.
 
 ### Trust
 

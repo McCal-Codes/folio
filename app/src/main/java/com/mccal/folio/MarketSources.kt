@@ -5,6 +5,7 @@ import com.mccal.folio.market.HttpClient
 import com.mccal.folio.market.HttpResult
 import com.mccal.folio.market.IndexPackage
 import com.mccal.folio.market.InstallResult
+import com.mccal.folio.market.InstalledPackage
 import com.mccal.folio.market.PackageInstaller
 import com.mccal.folio.market.RefreshResult
 import com.mccal.folio.market.RepoClient
@@ -141,6 +142,23 @@ internal fun mergeEntries(
             add(MarketEntry(entry, source, reason, unsigned, clash, incompatible(snapshot.revocation, entry)))
         }
     }
+}
+
+/**
+ * Why the version of [installed] that is on the phone has been pulled, or null when it hasn't. Folio's own list rules
+ * everywhere, as it does for listings. Then the source it came from speaks for it; a package installed from a file has
+ * no source, so any source's list counts, the same check a file install gets. A package built into Folio answers to
+ * Folio's list alone.
+ */
+internal fun pulledReason(installed: InstalledPackage, folio: RevocationList?, cached: List<SourceStatus>): String? {
+    folio?.reasonFor(installed.id, installed.version)?.let { return it }
+    val from = installed.sourceUrl?.trimEnd('/')
+    val lists = when {
+        installed.origin == InstalledPackage.Origin.FILE -> cached
+        from != null -> cached.filter { it.source.url.trimEnd('/').equals(from, ignoreCase = true) }
+        else -> emptyList()
+    }
+    return lists.firstNotNullOfOrNull { it.snapshot?.revocation?.reasonFor(installed.id, installed.version) }
 }
 
 /** What happened the last time Folio asked a source for its list. */
