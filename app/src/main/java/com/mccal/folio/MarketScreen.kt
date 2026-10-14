@@ -260,7 +260,7 @@ internal fun MarketScreen(
         // A newer version than the one on the phone: Folio installs it over the old one when it may, and otherwise
         // the sheet offers the places it installs from, the same as Get.
         MarketAppUpdate.offered(appContext, entry)?.let { onPhone ->
-            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.revokedReason != null)) {
+            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.unavailable)) {
                 installApp(entry, onPhone)
             } else {
                 choosing = entry.listingKey
@@ -343,9 +343,21 @@ internal fun MarketScreen(
 
     // Back unwinds one step at a time, in the order things were opened: the package first, then the source it
     // was listed on, then the store itself (handled by the launcher).
-    BackHandler(enabled = openId != null || openSourceUrl != null) {
-        if (openId != null) openId = null else openSourceUrl = null
-    }
+    // With the motion pass (MO7), the open page follows the back swipe: it eases right and shrinks a little over the list it goes
+    // back to, slides away when let go, and springs back if not (see pagePreview below). Otherwise the plain handler.
+    val backOnePage = { if (openId != null) openId = null else openSourceUrl = null }
+    val pageBackPass = FolioMotion.v2 && !LocalReduceMotion.current
+    val pageSwipe = remember { androidx.compose.animation.core.Animatable(0f) }
+    val pageGone = remember { androidx.compose.animation.core.Animatable(0f) }
+    var listBeside by remember { mutableStateOf(false) }
+    if (pageBackPass) PredictiveBack(enabled = openId != null || openSourceUrl != null,
+        onProgress = { p -> if (!listBeside) scope.launch { pageSwipe.snapTo(p) } },
+        onCancel = { scope.launch { pageSwipe.animateTo(0f, FolioMotion.spring(FolioMotion.Quick)) } },
+        onBack = { scope.launch {
+            if (!listBeside) pageGone.animateTo(1f, FolioMotion.spring(FolioMotion.Firm))
+            backOnePage(); pageGone.snapTo(0f); pageSwipe.snapTo(0f)
+        } })
+    else BackHandler(enabled = openId != null || openSourceUrl != null) { backOnePage() }
 
     // A .foliopkg someone opened, then the same confirm sheet as anything else. The file stays in MarketImport.pending
     // until it's installed or cancelled, and the sheet is read from it, not held here: on the phone the Market sits in
@@ -449,17 +461,9 @@ internal fun MarketScreen(
 
         // Kept here rather than in the list, so coming Back from a package lands where the list was, per tab.
         val listState = rememberSaveable(tab, saver = LazyListState.Saver) { LazyListState() }
-        Row(Modifier.fillMaxSize()) {
-        if (tabs == TabPlacement.SIDEBAR) MarketSidebar(tab) { tab = it; openId = null; openSourceUrl = null }
-        Column(Modifier.weight(1f)) {
-            Row(Modifier.weight(1f)) {
-                if (tab == MarketTab.SETTINGS && settingsContent != null) {
-                    Box(Modifier.fillMaxSize()) {
-                        CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
-                    }
-                } else if (beside || (open == null && openSource == null && !betaOpen)) {
-                    val narrow = beside && (open != null || openSource != null || betaOpen)
-                    BoxWithConstraints(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight()) {
+        androidx.compose.runtime.SideEffect { listBeside = beside }
+        val listPane: @Composable (Modifier, Boolean) -> Unit = { paneModifier, narrow ->
+            BoxWithConstraints(paneModifier) {
                         MarketList(
                             session = session,
                             tab = tab,
@@ -493,17 +497,40 @@ internal fun MarketScreen(
                             onTryAgain = { id, name -> tryAgain(id, name) },
                             onChanged = { refresh() },
                         )
+            }
+        }
+        // While a page previews going back (narrow windows only: beside, the list is already there), the list is drawn under it.
+        val pageOpen = open != null || openSource != null || betaOpen
+        val peeking = pageBackPass && !beside && pageOpen && (pageSwipe.value > 0f || pageGone.value > 0f)
+        val pagePreview = if (pageBackPass && !beside) Modifier.graphicsLayer {
+            val sw = pageSwipe.value.coerceIn(0f, 1f); val gone = pageGone.value
+            translationX = size.width * (MarketBack.SHIFT * sw + gone * (1f - MarketBack.SHIFT * sw))
+            val shrink = 1f - MarketBack.SHRINK * sw; scaleX = shrink; scaleY = shrink
+            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
+        }.then(if (peeking) Modifier.background(FolioColors.SecondaryBackground) else Modifier) else Modifier
+        Row(Modifier.fillMaxSize()) {
+        if (tabs == TabPlacement.SIDEBAR) MarketSidebar(tab) { tab = it; openId = null; openSourceUrl = null }
+        Column(Modifier.weight(1f)) {
+            Box(Modifier.weight(1f)) {
+            if (peeking) listPane(Modifier.fillMaxSize(), false)
+            Row(Modifier.fillMaxSize()) {
+                if (tab == MarketTab.SETTINGS && settingsContent != null) {
+                    Box(Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
                     }
+                } else if (beside || (open == null && openSource == null && !betaOpen)) {
+                    val narrow = beside && (open != null || openSource != null || betaOpen)
+                    listPane(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight(), narrow)
                 }
                 if (betaOpen) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         MarketFolioBetaPage(showBack = !beside, backTitle = stringResource(tab.label), onBack = { openSourceUrl = null })
                     }
                 }
                 if (openSource != null) {
                     val (sourceOpen, statusOpen) = openSource
                     val fromSource = entries.filter { it.source.url == sourceOpen.url }
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         MarketSourcePage(
                             name = if (sourceOpen.kind == Source.Kind.BUILT_IN) {
                                 index?.name?.english ?: stringResource(R.string.folio)
@@ -538,7 +565,7 @@ internal fun MarketScreen(
                     }
                 }
                 if (open != null) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         val openHost = hostFor(open.entry.manifest)
                         MarketPackagePage(
                             entry = open.entry,
@@ -549,6 +576,7 @@ internal fun MarketScreen(
                             installedAll = installed,
                             appUpdate = appUpdateFor(open),
                             revoked = open.revokedReason,
+                            incompatible = open.incompatibleReason,
                             source = open.source,
                             showBack = !beside,
                             // Back from a package opened on a source's page goes to that page, so it says its name.
@@ -570,6 +598,7 @@ internal fun MarketScreen(
                         )
                     }
                 }
+            }
             }
             // A plain message goes away by itself, as an iOS banner does; it used to stay until tapped or replaced,
             // so "Keyd updated" could sit over the page for as long as the store was open. One with Undo stays until
@@ -720,7 +749,7 @@ internal fun MarketScreen(
                             manifest = manifest,
                             signed = listing.source.kind != Source.Kind.LOCAL_DEV,
                             onInstallHere = if (
-                                MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.revokedReason != null)
+                                MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.unavailable)
                             ) {
                                 { choosing = null; installApp(listing) }
                             } else {
@@ -1141,6 +1170,7 @@ private fun MarketRow(
                     installed?.enabled == false && installed.offCause == com.mccal.folio.market.InstalledPackage.OffCause.PULLED -> stringResource(R.string.pulled_by_its_source)
                     installed?.enabled == false -> stringResource(R.string.turned_off_after_a_crash)
                     entry.revokedReason != null -> entry.revokedReason
+                    entry.incompatibleReason != null -> stringResource(R.string.doesn_t_work_with_this_folio_1_s, entry.incompatibleReason)
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.entry.version}"
                     update -> "${installed?.version} → ${entry.entry.version}"
                     // A package from somewhere other than Folio says where it came from.
@@ -1148,7 +1178,7 @@ private fun MarketRow(
                     else -> author
                 },
                 color = when {
-                    installed?.enabled == false || entry.revokedReason != null -> FolioColors.Warning
+                    installed?.enabled == false || entry.unavailable -> FolioColors.Warning
                     else -> Color.White.copy(alpha = .55f)
                 },
                 fontSize = FolioType.FOOTNOTE.sp,
@@ -1172,8 +1202,8 @@ private fun MarketRow(
             justInstalled -> InstallDonePop()
             // A revoked package can be removed but never installed again - including as an update, which is how a
             // pulled package used to slip back in.
-            entry.revokedReason != null && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-            entry.revokedReason != null -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            entry.unavailable && installed != null -> MarketActionButton(R.string.remove, name, onRemove)
+            entry.unavailable -> Text(stringResource(R.string.unavailable), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
             // Nothing can be installed under a name that belongs to a package inside Folio.
             entry.clash == MarketEntry.Impostor.BUILT_IN ->
                 Text(stringResource(R.string.refused), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
@@ -1306,6 +1336,8 @@ private fun MarketPackagePage(
     /** The app on the phone this listing would update, when it is an app of its own and newer. */
     appUpdate: MarketAppUpdate.OnPhone? = null,
     revoked: String?,
+    /** Why its source says this version doesn't work with this Folio (ADR 0013), or null. */
+    incompatible: String? = null,
     source: Source,
     showBack: Boolean,
     backTitle: String? = null,
@@ -1391,6 +1423,11 @@ private fun MarketPackagePage(
                     Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 }
+                // Known not to work with this Folio: the same place and weight as a pulled one, with its own words.
+                incompatible != null && installed == null -> Column(Modifier.testTag("package-incompatible")) {
+                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.doesn_t_work_with_this_folio_1_s, incompatible), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                }
                 MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
                 justInstalled -> InstallDonePop()
                 appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
@@ -1398,7 +1435,8 @@ private fun MarketPackagePage(
                 // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
                 entry.needs.isNotEmpty() && installed == null ->
                     Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
-                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null -> MarketActionButton(R.string.update, name, onGet)
+                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null && revoked == null && incompatible == null ->
+                    MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
                 else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
@@ -1973,4 +2011,10 @@ internal sealed interface MarketLink {
         /** Where the Market is asked to go before it opens, set by the activity that received the link. */
         var pending: MarketLink? by mutableStateOf(null)
     }
+}
+
+/** A Market page previewing back (MO7): it eases right by [SHIFT] of its width and shrinks by [SHRINK], as Folio's sheet pages do. */
+internal object MarketBack {
+    const val SHIFT = .08f
+    const val SHRINK = .1f
 }

@@ -449,7 +449,7 @@
           "icon": "history",
           "color": "#30D158",
           "title": "What Folio can use, and what it did",
-          "detail": "Capabilities and Recent Activity in Settings › Advanced, and Copy Diagnostics.",
+          "detail": "Capabilities and Recent Activity in Settings › General › Advanced, and Copy Diagnostics.",
           "status": "building",
           "beta": true,
           "inBeta": 1

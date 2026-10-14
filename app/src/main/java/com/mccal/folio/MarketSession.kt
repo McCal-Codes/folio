@@ -22,6 +22,7 @@ import com.mccal.folio.market.SourceKey
 import com.mccal.folio.market.SourceList
 import com.mccal.folio.market.SourceStore
 import com.mccal.folio.market.UrlHttpClient
+import com.mccal.folio.market.normalizeSourceUrl
 import com.mccal.folio.market.AuthorTrust
 import com.mccal.folio.market.MarketPrefs
 import com.mccal.folio.market.PackageInstaller
@@ -101,6 +102,9 @@ internal class MarketSession(
     /** Folio's own source, as a [Source], so built-in packages carry a source like any other. */
     val builtIn = Source("folio://built-in/", name = appContext.getString(R.string.folio), kind = Source.Kind.BUILT_IN)
 
+    /** The key each source was trusted with, the same store [sources] pins them in. */
+    private val sourceKeys = SourceStore(files)
+
     /**
      * Every package the store can show: Folio's own first, then each source the user added, from its cached list.
      * Revoked packages keep their place with the reason, so nothing disappears without an explanation.
@@ -112,6 +116,9 @@ internal class MarketSession(
         // package offered by a source that hasn't admitted it yet.
         revocations = source.revocations(),
         fromSources = sources.cached().mapNotNull { status -> status.snapshot?.let { status.source to it } },
+        folio = folioVersion,
+        // The key the source was trusted with, not the one its files name: only Folio's own key makes it first-party.
+        isFirstParty = { isFirstParty(it.url, sourceKeys.state(it.url).pinnedKey) },
     )
 
     /**
@@ -126,6 +133,7 @@ internal class MarketSession(
                 InstallResult.Reason.REVOKED,
                 appContext.getString(R.string.text_1_s_was_pulled_by_its_source_2_s, entry.name, entry.revokedReason),
             )
+        entry.incompatibleReason != null -> incompatible(entry.name, entry.incompatibleReason)
         // A source claiming an id that belongs to a package inside Folio is claiming to be that package.
         entry.clash == MarketEntry.Impostor.BUILT_IN -> InstallResult.Failed(
             InstallResult.Reason.MISMATCH,
@@ -138,6 +146,12 @@ internal class MarketSession(
             onApplying = { MarketWork.applying() },
         )
     }
+
+    /** The refusal for a version its source says doesn't work with this Folio (ADR 0013), worded the same everywhere. */
+    private fun incompatible(name: String, reason: String) = InstallResult.Failed(
+        InstallResult.Reason.INCOMPATIBLE,
+        appContext.getString(R.string.text_1_s_doesn_t_work_with_folio_2_s_3_s, name, folioVersion?.toString().orEmpty(), reason),
+    )
 
     fun installed(): List<InstalledPackage> = store.installed()
 
@@ -155,6 +169,7 @@ internal class MarketSession(
      */
     suspend fun installStaged(entry: MarketEntry, bytes: ByteArray): InstallResult = withContext(io) {
         if (entry.revokedReason != null || entry.clash != null) return@withContext InstallResult.Failed(InstallResult.Reason.REVOKED, "that listing can't be installed")
+        entry.incompatibleReason?.let { return@withContext incompatible(entry.name, it) }
         if (sources.isStale(entry.source)) return@withContext InstallResult.Failed(InstallResult.Reason.ARCHIVE, "that source's list is too old to install from, so refresh it first")
         installer.updateKeepingSettings(bytes, expected = entry.entry, origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = entry.source.url)
     }
@@ -216,6 +231,11 @@ internal class MarketSession(
                 InstallResult.Reason.REVOKED,
                 appContext.getString(R.string.text_1_s_was_pulled_by_its_source_2_s, pkg.manifest.name.english, revoked),
             )
+            // And a version a source says doesn't work with this Folio, the same way (ADR 0013).
+            val broken = folioVersion?.let { folio ->
+                sources.cached().firstNotNullOfOrNull { it.snapshot?.revocation?.incompatibleReason(pkg.id, pkg.version, folio) }
+            }
+            if (broken != null) return@withContext incompatible(pkg.manifest.name.english, broken)
         }
         installer.install(bytes, origin = InstalledPackage.Origin.FILE)
     }
@@ -343,6 +363,32 @@ internal const val SUPPORTER_SOURCE = "https://mccal-codes.github.io/folio-keyd/
 // is nowhere else in any repository.
 internal const val SUPPORTER_SOURCE_KEY =
     "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOn02K6Fhi4Gto1Kb/q7I/iBZd4C0jqD/Y9yI9TyvRXBUy0qx3PqntQIUcFbw2bicxQOgdCLGS1rPevg+ninbOA=="
+
+/**
+ * Folio's own tweaks source, Folio Community Tweaks (McCal-Codes/folio-tweaks): the tweaks Folio also ships built in,
+ * published and signed on their own so they can be updated between Folio releases.
+ *
+ * A copy of a built-in package from here is that package's update rather than a claim on its name ([mergeEntries]),
+ * but only when the source was trusted with [FIRST_PARTY_SOURCE_KEY]: the same address under another key, or the
+ * same id from any other source, is still an impostor. The key ships in the app for that reason, as
+ * [SUPPORTER_SOURCE_KEY] does, so a new key for this source needs a Folio release.
+ *
+ * Nothing adds this source by itself yet; it counts as Folio's own once someone has added it.
+ */
+internal const val FIRST_PARTY_SOURCE = "https://mccal-codes.github.io/folio-tweaks/"
+
+// The source's public key, key id 7028F4F54A35A055, as published at FIRST_PARTY_SOURCE + "key.pub" and checked
+// against its signed entry.json on 12 Oct 2026. The private half signs the source in folio-tweaks' publishing
+// workflow (the FOLIO_SOURCE_KEY secret) and is nowhere in any repository.
+internal const val FIRST_PARTY_SOURCE_KEY =
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETzFnQluMpyJhOofDTJKap1ReL56EalQ32gPmRq32wNW+TnwKMZ7RKgLAoet4j9TY6ie/2W6626K+bCv9VQVjJQ=="
+
+/** Whether [url], trusted with [pinned], is [FIRST_PARTY_SOURCE]: that address, however it was typed, with that key. */
+internal fun isFirstParty(url: String, pinned: SourceKey?): Boolean {
+    val key = SourceKey.parse(FIRST_PARTY_SOURCE_KEY) ?: return false
+    return pinned == key &&
+        normalizeSourceUrl(url).equals(FIRST_PARTY_SOURCE, ignoreCase = true)
+}
 
 /**
  * Whether this phone sees the Market: Folio Dev or a supporter's code. Everything the Market hands out is also in

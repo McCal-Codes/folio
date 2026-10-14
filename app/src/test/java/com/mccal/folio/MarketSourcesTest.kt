@@ -226,6 +226,31 @@ class MarketSourcesTest {
         assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), revoked, emptyList()))
     }
 
+    @Test fun `a version its own source marks broken on this Folio is unavailable, and only its own source can say so`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val plain = requireNotNull(sources.cached().single().snapshot)
+        val pkg = plain.index.packages.single()
+        val broken = com.mccal.folio.market.IncompatiblePackage(pkg.id, listOf(null), requireNotNull(com.mccal.folio.market.FolioRelation.parse("(>= 0.8)")), "The panel opens off screen")
+        val marked = plain.copy(revocation = com.mccal.folio.market.RevocationList(now, emptyList(), emptyList(), listOf(broken)))
+        val mine = Source("folio://built-in/", name = "Folio", kind = Source.Kind.BUILT_IN)
+        val theirs = sources.sources().single()
+        val on08 = com.mccal.folio.market.FolioVersion(0, 8, 0)
+
+        val listed = mergeEntries(emptyList(), mine, null, listOf(theirs to marked), folio = on08).single()
+        assertEquals("The panel opens off screen", listed.incompatibleReason)
+        assertTrue(listed.unavailable)
+        assertEquals(null, listed.revokedReason)
+
+        // On a Folio the range doesn't cover, it's fine.
+        assertEquals(null, mergeEntries(emptyList(), mine, null, listOf(theirs to marked), folio = com.mccal.folio.market.FolioVersion(0, 7, 9)).single().incompatibleReason)
+        // Folio's own list speaks for Folio's packages, not for a package another source offers (ADR 0013).
+        val folioList = com.mccal.folio.market.RevocationList(now, emptyList(), emptyList(), listOf(broken))
+        val fromFolio = mergeEntries(emptyList(), mine, folioList, listOf(theirs to plain), folio = on08).single()
+        assertEquals(null, fromFolio.incompatibleReason)
+        assertTrue(!fromFolio.unavailable)
+    }
+
     @Test fun `removing a source forgets its list and its key`() = runTest {
         publish()
         sources.trust(base, key)

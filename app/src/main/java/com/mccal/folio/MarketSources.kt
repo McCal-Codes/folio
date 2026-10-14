@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import com.mccal.folio.market.FolioVersion
 import com.mccal.folio.market.HttpClient
 import com.mccal.folio.market.HttpResult
 import com.mccal.folio.market.IndexPackage
@@ -34,12 +35,20 @@ internal data class MarketEntry(
      * be installed at all, and anything else is shown with both sources named.
      */
     val clash: Impostor? = null,
+    /**
+     * Why this version doesn't work with this Folio, from its own source's `incompatible` list (ADR 0013). Null when
+     * nothing says so. Unlike a revocation, it can pass: a later version, or another Folio, may be fine.
+     */
+    val incompatibleReason: String? = null,
 ) {
     /**
      * This listing, not just its id: two sources can list one id, and a sheet that looked the id back up got whichever
      * source came first rather than the row that was tapped.
      */
     val listingKey: String get() = source.url + "\n" + entry.id
+
+    /** Whether nothing may install this listing, update included: pulled by its source, or known not to work here. */
+    val unavailable: Boolean get() = revokedReason != null || incompatibleReason != null
 
     enum class Impostor {
         /** It claims an id that belongs to a package inside Folio. There's no honest reason to do that. */
@@ -54,35 +63,83 @@ internal data class MarketEntry(
 }
 
 /**
+ * The listings from Folio's own tweaks source ([FIRST_PARTY_SOURCE]) that should stand in for a package built into
+ * Folio, by id. One does only when it is newer than the built-in copy and nothing stops it on this phone: its source
+ * and Folio haven't pulled it, its source doesn't mark it broken on this Folio, it can be downloaded, and it doesn't
+ * need a newer Folio. The newest such listing wins.
+ */
+private fun firstPartyUpdates(
+    builtIn: List<IndexPackage>,
+    revocations: RevocationList?,
+    fromSources: List<Pair<Source, SourceSnapshot>>,
+    folio: FolioVersion?,
+    isFirstParty: (Source) -> Boolean,
+): Map<String, Pair<Source, IndexPackage>> {
+    val versions = builtIn.associate { it.id to it.version }
+    return fromSources.filter { (source, _) -> isFirstParty(source) }.flatMap { (source, snapshot) ->
+        snapshot.index.packages.filter { entry ->
+            val current = versions[entry.id] ?: return@filter false
+            entry.version > current &&
+                snapshot.revokedReason(entry) == null && revocations?.reasonFor(entry.id, entry.version) == null &&
+                (folio == null || snapshot.revocation?.incompatibleReason(entry.id, entry.version, folio) == null) &&
+                entry.installable &&
+                entry.manifest.let { it != null && (folio == null || it.minFolio <= folio) }
+        }.map { entry -> entry.id to (source to entry) }
+    }.groupBy({ it.first }, { it.second }).mapValues { (_, offers) -> offers.maxBy { it.second.version } }
+}
+
+/**
  * Every package the store can show, from Folio's own index and from each source the user added.
  *
  * A package id is its identity - settings, updates and Undo all hang off it - so the same id from two places is two
  * different things wearing one name. Nothing is hidden and nothing is silently preferred: both are listed, and each
  * says who else is using the name. [MarketEntry.Impostor.BUILT_IN] is the one that can't be installed, because a
  * source claiming a name that belongs to a package inside Folio is claiming to be it.
+ *
+ * The one exception is Folio's own tweaks source, which [isFirstParty] recognizes by its address and the key built
+ * into Folio. Its copy of a built-in package is the same package from the same author, so it is that package's update
+ * rather than a claim on its name: a newer copy that nothing stops takes the built-in package's place in the list, and
+ * otherwise the built-in package stays and the copy isn't listed, since it would only offer the same package again.
  */
 internal fun mergeEntries(
     builtIn: List<IndexPackage>,
     builtInSource: Source,
     revocations: RevocationList?,
     fromSources: List<Pair<Source, SourceSnapshot>>,
+    /** This build's release, for `incompatible` entries. Null says nothing about them, which only a test does. */
+    folio: FolioVersion? = null,
+    /** Whether a source is Folio's own tweaks source with the key Folio ships ([isFirstParty]). */
+    isFirstParty: (Source) -> Boolean = { false },
 ): List<MarketEntry> = buildList {
     val builtInIds = builtIn.map { it.id }.toSet()
-    builtIn.forEach { add(MarketEntry(it, builtInSource, revocations?.reasonFor(it.id, it.version))) }
+    // A source speaks only for its own packages here (ADR 0013): Folio's list for Folio's, each source's for its own.
+    fun incompatible(list: RevocationList?, entry: IndexPackage) = folio?.let { list?.incompatibleReason(entry.id, entry.version, it) }
+    val updates = firstPartyUpdates(builtIn, revocations, fromSources, folio, isFirstParty)
+    builtIn.forEach {
+        val update = updates[it.id]
+        if (update != null) {
+            add(MarketEntry(update.second, update.first))
+        } else {
+            add(MarketEntry(it, builtInSource, revocations?.reasonFor(it.id, it.version), incompatibleReason = incompatible(revocations, it)))
+        }
+    }
 
     val seen = fromSources.flatMap { (_, snapshot) -> snapshot.index.packages.map { it.id } }
         .groupingBy { it }.eachCount()
 
     for ((source, snapshot) in fromSources) {
         val unsigned = source.kind == Source.Kind.LOCAL_DEV
+        // Folio's own copy of a built-in package already has its place above, as the update or not at all.
+        val firstParty = isFirstParty(source)
         snapshot.index.packages.forEach { entry ->
+            if (firstParty && entry.id in builtInIds) return@forEach
             val reason = snapshot.revokedReason(entry) ?: revocations?.reasonFor(entry.id, entry.version)
             val clash = when {
                 entry.id in builtInIds -> MarketEntry.Impostor.BUILT_IN
                 (seen[entry.id] ?: 0) > 1 -> MarketEntry.Impostor.ANOTHER_SOURCE
                 else -> null
             }
-            add(MarketEntry(entry, source, reason, unsigned, clash))
+            add(MarketEntry(entry, source, reason, unsigned, clash, incompatible(snapshot.revocation, entry)))
         }
     }
 }

@@ -57,7 +57,7 @@ internal object MarketUpdateNotice {
         val installed = session.installed().associateBy { it.id }
         val entries = session.entries()
         // The same rules as an automatic update: never announce one the Market would refuse (pulled, clashing, needing another).
-        val packages = entries.filter { e -> e.revokedReason == null && e.clash == null && e.entry.needs.isEmpty() && installed[e.id]?.let { e.entry.version > it.version } == true }
+        val packages = entries.filter { e -> !e.unavailable && e.clash == null && e.entry.needs.isEmpty() && installed[e.id]?.let { e.entry.version > it.version } == true }
         val apps = entries.filter { MarketAppUpdate.offered(context, it) != null }
         val locale = listOf(java.util.Locale.getDefault().toLanguageTag())
         return (packages + apps).distinctBy { it.id }.map { PendingUpdate(it.id, it.entry.manifest?.name?.resolve(locale) ?: it.id, it.entry.version.text) }
