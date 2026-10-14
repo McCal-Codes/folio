@@ -1975,6 +1975,14 @@
     <string name="screenshot_swap_none">没有匹配的 App</string>
     <string name="screenshot_swap_footnote">截图模式开启时，被替换 App 的小组件会隐藏，其快捷方式也不会显示。文件夹名称是你自己起的，不会改变。Android 自身的界面、其他 App 上方的程序坞以及打开后的 App 本身仍会显示真实的 App。</string>
     <string name="settings_keywords_screenshot_swap">截图 替换 隐藏 App 系统 图标 隐私</string>
+    <string name="remove_app">移除 App</string>
+    <string name="remove_app_title">要移除“%1$s”吗？</string>
+    <string name="remove_app_message">从主屏幕移除后，这个 App 仍会保留在 App 资源库中。</string>
+    <string name="remove_app_came_with_phone">%1$s 是手机自带的 App，只有 Android 才能删除它。你可以隐藏它，或在应用信息中停用它。</string>
+    <string name="remove_app_work">%1$s 是工作 App。请在应用信息中删除它。</string>
+    <string name="delete_app">删除 App</string>
+    <string name="app_deleted">已删除 %1$s</string>
+    <string name="app_not_deleted">无法删除 %1$s</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">在叠放中</string>
     <string name="not_in_stack">不在叠放中</string>
