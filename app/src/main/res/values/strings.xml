@@ -2027,6 +2027,14 @@
     <string name="screenshot_swap_none">No app matches</string>
     <string name="screenshot_swap_footnote">Widgets of swapped apps are hidden while Screenshot Mode is on, and their shortcuts aren’t shown. Folder names are your own and don’t change. Android’s own screens, the dock over other apps and the app itself once it opens still show the real app.</string>
     <string name="settings_keywords_screenshot_swap">screenshot swap replace hide apps stock icons privacy blacklist</string>
+    <string name="remove_app">Remove App</string>
+    <string name="remove_app_title">Remove “%1$s”?</string>
+    <string name="remove_app_message">Removing it from Home keeps the app in your App Library.</string>
+    <string name="remove_app_came_with_phone">%1$s came with your phone, so only Android can delete it. You can hide it, or turn it off in App Info.</string>
+    <string name="remove_app_work">%1$s is a work app. Delete it from App Info.</string>
+    <string name="delete_app">Delete App</string>
+    <string name="app_deleted">%1$s deleted</string>
+    <string name="app_not_deleted">Couldn’t delete %1$s</string>
     <string name="clock_font">Font</string>
     <string name="clock_colors_android_wallpaper">With Android’s wallpaper, the colors are its main colors, and a soft shade behind the time keeps it readable.</string>
     <string name="clock_no_android_wallpaper_colors">Android hasn’t shared colors for this wallpaper, so only Automatic and White are offered. Some live wallpapers never share them.</string>
