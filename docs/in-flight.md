@@ -22,7 +22,6 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `delete-apps` | Delete apps from Folio for beta 3 (Lab scene `delete-apps`, no archive): Remove App on Home with a choice, Delete App in the App Library, Android's confirmation. | `AppRemoval.kt`, `AppContextMenu.kt`, `LauncherScreen.kt`, `HomeOverlays.kt`, `AndroidManifest.xml` (`REQUEST_DELETE_PACKAGES`), `PERMISSIONS.md`, strings |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.
