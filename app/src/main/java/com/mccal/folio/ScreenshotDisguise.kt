@@ -34,35 +34,73 @@ data class DisguiseRules(
  * the phone's own apps (Phone, Camera, Clock...), so nothing is drawn or bundled.
  *
  * Apps that shipped with the phone are never swapped and are the only stand-ins. A work-profile app is never a
- * stand-in, since its badge is part of the icon. The stand-in is picked from the app's id, so the same app shows as
- * the same stock app every time; two apps may share one. With no stand-in on the phone nothing is swapped.
+ * stand-in, since its badge is part of the icon. With no stand-in on the phone nothing is swapped.
+ *
+ * A stand-in gives the swap away when the real app shows next to it, so the pick ([pickStandIns]) avoids a stock app
+ * that is already on Home and gives no two swapped apps the same one, for as long as the phone has enough stock apps.
+ * It starts from a hash of the app's id, so the same app shows as the same stock app every time unless what is on
+ * Home or the set of swapped apps changes.
  */
 object ScreenshotDisguise {
     /**
      * [apps] with the swapped ones disguised and re-sorted by the name shown, or [apps] itself when nothing is
-     * swapped. [systemPackages] are the packages that shipped with the phone.
+     * swapped. [systemPackages] are the packages that shipped with the phone, and [onHome] the app ids Home shows
+     * (pages, dock, folders, stacks; see [LauncherState.homeAppIds]).
      */
-    fun apply(apps: List<AppEntry>, rules: DisguiseRules, systemPackages: Set<String>): List<AppEntry> {
+    fun apply(
+        apps: List<AppEntry>,
+        rules: DisguiseRules,
+        systemPackages: Set<String>,
+        onHome: Set<String> = emptySet(),
+    ): List<AppEntry> {
         if (rules.isEmpty) return apps
         val pool = standIns(apps, systemPackages)
         if (pool.isEmpty()) return apps
-        var changed = false
+        val swapped = apps.filter { isSwapped(it, rules, systemPackages) }
+        if (swapped.isEmpty()) return apps
+        val homePackages = apps.filter { it.id in onHome }.mapTo(mutableSetOf()) { it.packageName }
+        val picks = pickStandIns(swapped.map { it.id }, pool, homePackages, onHome)
         val disguised = apps.map { app ->
-            if (!isSwapped(app, rules, systemPackages)) app
-            else {
-                changed = true
-                val standIn = pool[Math.floorMod(app.id.hashCode(), pool.size)]
-                // systemLabel too, so search finds the app only by the name on screen.
-                app.copy(label = standIn.label, systemLabel = standIn.label, icon = standIn.icon, iconFrom = standIn)
-            }
+            val standIn = picks[app.id] ?: return@map app
+            // systemLabel too, so search finds the app only by the name on screen.
+            app.copy(label = standIn.label, systemLabel = standIn.label, icon = standIn.icon, iconFrom = standIn)
         }
-        if (!changed) return apps
         val collator = Collator.getInstance()
         return disguised.sortedWith { a, b -> collator.compare(a.label, b.label) }
     }
 
+    /**
+     * A stand-in from [pool] for each of [swappedIds]. Apps on Home ([onHome]) pick first, since that is where a
+     * repeat shows; each group goes in id order. Each app starts at its hash in [pool] and takes the first stock app
+     * that is neither on Home ([homePackages]) nor taken. Only when none is left does it repeat: the least used stock
+     * app that is not on Home, and after those the least used of the rest. Same input, same picks.
+     */
+    internal fun pickStandIns(
+        swappedIds: Collection<String>,
+        pool: List<AppEntry>,
+        homePackages: Set<String>,
+        onHome: Set<String>,
+    ): Map<String, AppEntry> {
+        if (pool.isEmpty()) return emptyMap()
+        val uses = IntArray(pool.size)
+        val home = BooleanArray(pool.size) { pool[it].packageName in homePackages }
+        val best = compareBy<Int>({ home[it] }, { uses[it] })
+        val order = swappedIds.distinct().sortedWith(compareBy<String> { it !in onHome }.thenBy { it })
+        return order.associateWith { id ->
+            val start = Math.floorMod(id.hashCode(), pool.size)
+            // minWith keeps the first of equals, so ties go to the nearest stock app after the hash.
+            val at = pool.indices.map { (start + it) % pool.size }.minWith(best)
+            uses[at]++
+            pool[at]
+        }
+    }
+
     fun isSwapped(app: AppEntry, rules: DisguiseRules, systemPackages: Set<String>): Boolean =
         app.packageName !in systemPackages && (app.id in rules.chosen || rules.allThirdParty)
+
+    /** How many of [apps] the rules swap, counted the way the Swap Apps rows show them (shortcuts are not listed). */
+    fun swapCount(apps: List<AppEntry>, rules: DisguiseRules, systemPackages: Set<String>): Int =
+        apps.count { !it.isShortcut && isSwapped(it, rules, systemPackages) }
 
     /** The phone's own apps that can stand in, in a fixed order so a pick does not move when apps are added. */
     internal fun standIns(apps: List<AppEntry>, systemPackages: Set<String>): List<AppEntry> =
@@ -142,7 +180,8 @@ internal fun rememberDisguised(state: LauncherState): LauncherState {
     }
     val shown = system
     if (!active || shown == null) return state
-    val apps = remember(state.apps, rules, shown) { ScreenshotDisguise.apply(state.apps, rules, shown) }
+    val onHome = remember(state.homeSlots, state.leadingSlots, state.dock, state.folders, state.iconStacks) { state.homeAppIds() }
+    val apps = remember(state.apps, rules, shown, onHome) { ScreenshotDisguise.apply(state.apps, rules, shown, onHome) }
     return remember(state, apps) { if (apps === state.apps) state else state.copy(apps = apps) }
 }
 

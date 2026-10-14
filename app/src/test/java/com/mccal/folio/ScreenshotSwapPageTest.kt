@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -60,5 +62,15 @@ class ScreenshotSwapPageTest {
         compose.waitForIdle()
         assertTrue(ScreenshotSwap.rules.value.allThirdParty)
         compose.onNodeWithTag("screenshot-swap-${reddit.id}").assertIsNotEnabled()
+    }
+
+    @Test fun `the count matches the rows that are on, Swap All included`() {
+        compose.onNodeWithText(context.getString(R.string.screenshot_swap_count, 0)).assertExists()
+        compose.onNodeWithTag("screenshot-swap-all", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        // Reddit is swapped; Camera came with the phone and is not.
+        compose.onNodeWithText(context.getString(R.string.screenshot_swap_count, 1)).assertExists()
+        compose.onNodeWithTag("screenshot-swap-${reddit.id}").assertIsOn()
+        compose.onNodeWithTag("screenshot-swap-${camera.id}").assertIsOff()
     }
 }

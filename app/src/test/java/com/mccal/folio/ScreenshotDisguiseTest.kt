@@ -62,10 +62,84 @@ class ScreenshotDisguiseTest {
         assertSame(apps, out)
     }
 
-    @Test fun `two apps may share a stand-in`() {
+    @Test fun `with one stock app every swapped app shares it`() {
         val one = listOf(camera) + (1..10).map { app("com.example.app$it", "App $it") }
         val out = ScreenshotDisguise.apply(one, DisguiseRules(allThirdParty = true), setOf(camera.packageName))
         assertTrue(out.filter { it.iconFrom != null }.all { it.label == "Camera" })
+    }
+
+    private val maps = app("com.google.android.apps.maps", "Maps")
+    private val gallery = app("com.android.gallery", "Gallery")
+    private val settings = app("com.android.settings", "Settings")
+    private val stock = listOf(camera, clock, phone, maps, gallery, settings)
+    private val stockPackages = stock.mapTo(mutableSetOf()) { it.packageName }
+    private fun thirdParty(n: Int) = (1..n).map { app("com.example.app$it", "App $it") }
+    private fun picks(swapped: List<AppEntry>, homeStock: List<AppEntry>, onHome: Set<String> = emptySet()) =
+        ScreenshotDisguise.pickStandIns(swapped.map { it.id }, ScreenshotDisguise.standIns(stock, stockPackages),
+            homeStock.mapTo(mutableSetOf()) { it.packageName }, onHome)
+
+    @Test fun `a stock app that is on Home is never a stand-in while others are free`() {
+        // The Fold8 case: Notes showed as Maps next to the real Maps, Spotify as Camera next to the real Camera.
+        val notes = app("com.example.notes", "Notes")
+        val spotify = app("com.spotify.music", "Spotify")
+        val all = stock + notes + spotify
+        val onHome = setOf(maps.id, camera.id, notes.id, spotify.id)
+        val out = ScreenshotDisguise.apply(all, DisguiseRules(allThirdParty = true), stockPackages, onHome)
+        val home = out.filter { it.id in onHome }.map { it.label }
+        assertEquals("no name twice on Home: $home", home.size, home.toSet().size)
+        assertTrue(out.filter { it.iconFrom != null }.none { it.iconFrom!!.packageName in setOf(maps.packageName, camera.packageName) })
+    }
+
+    @Test fun `swapped apps take the stock apps that are not on Home, one each`() {
+        // Six stock apps, three on Home, three swapped: whatever the hashes, the three free ones are used once each.
+        val swapped = thirdParty(3)
+        val got = picks(swapped, homeStock = listOf(camera, maps, phone)).values.map { it.packageName }
+        assertEquals(setOf(clock, gallery, settings).map { it.packageName }.toSet(), got.toSet())
+        assertEquals(3, got.size)
+    }
+
+    @Test fun `no two swapped apps share a stand-in while the stock apps last`() {
+        val got = picks(thirdParty(6), homeStock = emptyList()).values.map { it.packageName }
+        assertEquals(6, got.toSet().size)
+    }
+
+    @Test fun `when the stock apps run out, repeats use the ones not on Home, evenly`() {
+        // Two free stock apps (four are on Home) and five swapped apps: only the free two, used 3 and 2 times.
+        val got = picks(thirdParty(5), homeStock = listOf(camera, maps, phone, settings)).values.groupingBy { it.packageName }.eachCount()
+        assertEquals(setOf(clock.packageName, gallery.packageName), got.keys)
+        assertEquals(listOf(2, 3), got.values.sorted())
+    }
+
+    @Test fun `with every stock app on Home a swapped app still gets one`() {
+        val got = picks(thirdParty(8), homeStock = stock).values.groupingBy { it.packageName }.eachCount()
+        assertEquals(stock.size, got.size)
+        assertTrue(got.values.all { it in 1..2 })
+    }
+
+    @Test fun `swapped apps on Home pick first, so they get the free stock apps`() {
+        // Two free stock apps and nine swapped apps: the two on Home get different ones, whatever the rest do.
+        val swapped = thirdParty(9)
+        val home = setOf(swapped[3].id, swapped[7].id)
+        val got = picks(swapped, homeStock = listOf(camera, maps, phone, settings), onHome = home)
+        assertTrue(got.getValue(swapped[3].id) != got.getValue(swapped[7].id))
+    }
+
+    @Test fun `the count is the apps that will be swapped, not only the chosen ones`() {
+        val shortcut = AppEntry("com.reddit.frontpage/${SHORTCUT_CLASS_PREFIX}popular", "Popular", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+        val list = apps + shortcut
+        assertEquals(0, ScreenshotDisguise.swapCount(list, DisguiseRules(), system))
+        assertEquals(1, ScreenshotDisguise.swapCount(list, DisguiseRules(chosen = setOf(reddit.id, camera.id, "gone/.Main")), system))
+        // Swap All: Reddit and Bank, not the three stock apps and not the shortcut (it has no row).
+        assertEquals(2, ScreenshotDisguise.swapCount(list, DisguiseRules(allThirdParty = true), system))
+    }
+
+    @Test fun `the picks are the same for the same apps in any order`() {
+        val all = stock + thirdParty(10)
+        val onHome = setOf(maps.id, camera.id, "com.example.app2/.Main", "com.example.app7/.Main")
+        fun run(list: List<AppEntry>) = ScreenshotDisguise.apply(list, DisguiseRules(allThirdParty = true), stockPackages, onHome)
+            .associate { it.id to it.label }
+        val first = run(all)
+        repeat(5) { assertEquals(first, run(all.shuffled())) }
     }
 
     @Test fun `a work app is never a stand-in`() {

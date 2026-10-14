@@ -52,7 +52,9 @@ internal fun ScreenshotSwapPage(apps: List<AppEntry>) {
         CardNote(stringResource(R.string.screenshot_swap_all_third_party_note))
     }
     SettingsCard(stringResource(R.string.screenshot_swap_choose)) {
-        Text(stringResource(R.string.screenshot_swap_count, rules.chosen.size), style = MaterialTheme.typography.bodySmall,
+        // What the rows below show as on: the chosen apps, or every third-party app under Swap All.
+        val count = remember(choosable, rules, system) { ScreenshotDisguise.swapCount(choosable, rules, system.orEmpty()) }
+        Text(stringResource(R.string.screenshot_swap_count, count), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("screenshot-swap-count"))
         IosSearchField(query, { query = it }, stringResource(R.string.search_apps), Modifier.padding(vertical = FolioSpace.MEDIUM.dp))
         if (shown.isEmpty()) Text(stringResource(R.string.screenshot_swap_none), style = MaterialTheme.typography.bodyMedium,
