@@ -82,7 +82,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
     DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
-    val actions by produceState(emptyList<QuickAction>(), app.id) { value = withContext(Dispatchers.IO) { loadQuickActions(context, app, 4) } }
+    val actions by produceState(emptyList<QuickAction>(), app.id, app.iconFrom) { value = withContext(Dispatchers.IO) { loadQuickActions(context, app, 4) } }
     val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.filter { it.packageName == app.component.packageName }.take(3)
     val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)?.takeIf { it.packageName == app.component.packageName }
 

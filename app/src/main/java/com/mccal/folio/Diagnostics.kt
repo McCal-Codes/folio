@@ -215,6 +215,29 @@ internal object Diagnostics {
         append("Folio has seen the hinge as: ${learned?.lowercase() ?: "not moved yet"}")
     }
 
+    /**
+     * The camera cutout of each screen as Android reports it (#61): the rects Folio wraps the island around, and the
+     * bounds of the cutout's own outline, which on a punch hole is the lens. A rect much taller than its outline is
+     * what makes the island too tall at the camera.
+     */
+    fun cutoutReport(context: Context): String = buildString {
+        appendLine("Camera cutouts:")
+        val displays = context.getSystemService(android.hardware.display.DisplayManager::class.java)?.displays.orEmpty()
+        if (displays.isEmpty()) appendLine("  (no displays)")
+        displays.forEach { d ->
+            val cutout = runCatching { d.cutout }.getOrNull()
+            val size = android.graphics.Point().also { @Suppress("DEPRECATION") d.getRealSize(it) }
+            append("  display ${d.displayId} ${size.x}×${size.y}: ")
+            if (cutout == null) { appendLine("none"); return@forEach }
+            append("rects ${cutout.boundingRects.joinToString { it.toShortString() }}")
+            append(", safe insets ${cutout.safeInsetLeft} ${cutout.safeInsetTop} ${cutout.safeInsetRight} ${cutout.safeInsetBottom}")
+            val bounds = android.graphics.RectF()
+            cutout.cutoutPath?.computeBounds(bounds, true)
+            append(", outline ${if (bounds.isEmpty) "none" else "[${bounds.left.toInt()},${bounds.top.toInt()}][${bounds.right.toInt()},${bounds.bottom.toInt()}]"}")
+            appendLine()
+        }
+    }.trimEnd()
+
     fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"
 
     /**
@@ -226,6 +249,8 @@ internal object Diagnostics {
         appendLine(CrashLog.environment(context))
         appendLine()
         appendLine(hingeReport(context))
+        appendLine()
+        appendLine(cutoutReport(context))
         appendLine()
         appendLine("Recent events:")
         appendLine(trailText().ifBlank { "(none)" })
