@@ -60,7 +60,8 @@ class LayoutBackupIntegrationTest {
         val oldWidgetIds = before.widgetPlacements.map { it.id }.filter { it >= 0 }.toSet()
         val preview = LayoutImportPreview(before.layout.copy(widgetPlacements = emptyList(), widgetRestores = emptyList()),
             emptyList(), emptyList(), before.homeSlots.filterNotNull().size, before.folders.size, 0,
-            before.compact, before.expanded, !before.labels, !before.googleSearch, !before.verticalStatus)
+            before.compact, before.expanded, labels = !before.labels, googleSearch = !before.googleSearch,
+            verticalStatus = !before.verticalStatus)
         try {
             compose.runOnIdle { assertTrue(model().applyImportedLayout(preview)) }
             assertTrue(oldWidgetIds.all { it in model().retainedWidgetIds })
