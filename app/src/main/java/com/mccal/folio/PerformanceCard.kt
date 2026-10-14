@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -26,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 /** Advanced › Diagnostics: start and stop the Performance log (see [PerfLog]), then copy or share its report. */
 @Composable internal fun PerformanceCard() {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val status by PerfLog.status.collectAsState()
     SettingsCard(stringResource(R.string.performance_log)) {
         val minutes = (status.elapsedMs / 60_000).toInt()
@@ -44,7 +46,7 @@ import androidx.compose.ui.semantics.semantics
                 copied = true
             }, modifier = Modifier.testTag("performance-copy"))
             CardAction(stringResource(R.string.performance_share), onClick = {
-                runCatching { context.startActivity(PerfLog.shareIntent(PerfLog.reportText(), context.getString(R.string.performance_share))) }
+                runCatching { context.startActivity(PerfLog.shareIntent(PerfLog.reportText(), resources.getString(R.string.performance_share))) }
             }, modifier = Modifier.testTag("performance-share"))
             if (copied) {
                 LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); copied = false }

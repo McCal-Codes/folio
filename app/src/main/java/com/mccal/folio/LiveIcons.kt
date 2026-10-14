@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.TextStyle
-import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -343,7 +342,7 @@ private fun CalendarIcon(modifier: Modifier, palette: LivePalette) {
         val small = with(density) { (maxWidth * .17f).toSp() }
         val big = with(density) { (maxWidth * .46f).toSp() }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(today.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
+            Text(today.dayOfWeek.getDisplayName(TextStyle.SHORT, androidx.compose.ui.platform.LocalLocale.current.platformLocale).uppercase(),
                 color = palette.accent, fontSize = small, fontWeight = FontWeight.SemiBold, lineHeight = small * 1.15f)
             Text(today.dayOfMonth.toString(), color = palette.calendarNumber, fontSize = big,
                 fontWeight = FontWeight.Light, lineHeight = big * 1.08f)

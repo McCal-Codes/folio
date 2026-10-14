@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -502,6 +503,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     size: PanelSize, wide: Boolean, onClose: () -> Unit,
     focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
     val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)
@@ -541,7 +543,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             // (A main-thread post, not a composition scope: the panel leaves composition as it closes.)
             CcControl.SCREENSHOT -> { onClose(); android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT))
-                    IslandEvents.notice(context, context.getString(R.string.needs_accessibility_service)) }, 450) }
+                    IslandEvents.notice(context, resources.getString(R.string.needs_accessibility_service)) }, 450) }
             CcControl.LOCK -> { onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)) onSystem() }
             CcControl.WALLET -> launchFirst(CcControl.WALLETS)?.let(open)
             CcControl.NOTES -> launchFirst(CcControl.NOTE_APPS)?.let(open)
