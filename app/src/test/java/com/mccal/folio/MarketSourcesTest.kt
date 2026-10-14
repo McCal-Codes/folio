@@ -201,6 +201,31 @@ class MarketSourcesTest {
         assertEquals(listOf(base, other.url), between.map { it.source.url })
     }
 
+    @Test fun `an installed version is pulled by Folio's list or its own source's, never by another source's`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val plain = requireNotNull(sources.cached().single())
+        val snapshot = requireNotNull(plain.snapshot)
+        val pkg = snapshot.index.packages.single()
+        val revoked = com.mccal.folio.market.RevocationList(now, listOf(com.mccal.folio.market.RevokedPackage(pkg.id, listOf(pkg.version.text), "Malware")), emptyList())
+        val pulledHere = plain.copy(snapshot = snapshot.copy(revocation = revoked))
+        val elsewhere = plain.copy(source = Source("https://someone.example/folio/", name = "Someone else"), snapshot = snapshot.copy(revocation = revoked))
+        fun installed(origin: com.mccal.folio.market.InstalledPackage.Origin, url: String?, version: String = pkg.version.text) =
+            com.mccal.folio.market.InstalledPackage(pkg.id, requireNotNull(com.mccal.folio.market.DebVersion.parse(version)), "Cabinet", origin, url, 0L, emptyList())
+        val fromHere = installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base)
+
+        assertEquals("Malware", pulledReason(fromHere, null, listOf(pulledHere)))
+        // The address is matched with or without its last slash.
+        assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base.trimEnd('/')), null, listOf(pulledHere)))
+        assertEquals(null, pulledReason(fromHere, null, listOf(plain, elsewhere)))
+        // Another version isn't pulled.
+        assertEquals(null, pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base, "9.0"), null, listOf(pulledHere)))
+        // A file has no source, so any source's list counts; a built-in package answers to Folio's list alone.
+        assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FILE, null), null, listOf(elsewhere)))
+        assertEquals(null, pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), null, listOf(pulledHere)))
+        assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), revoked, emptyList()))
+    }
+
     @Test fun `a version its own source marks broken on this Folio is unavailable, and only its own source can say so`() = runTest {
         publish()
         sources.trust(base, key)
