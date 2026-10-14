@@ -251,6 +251,21 @@ class PackageInstallerTest {
         return result as InstallResult.Failed
     }
 
+    @Test fun `a package turned off keeps what turned it off, and putting it back on clears it`() {
+        installer.install(pack())
+        assertTrue(installer.disable("com.mccal.folio.cabinet", "Its source pulled it: Malware", InstalledPackage.OffCause.PULLED))
+        val off = requireNotNull(store.find("com.mccal.folio.cabinet"))
+        assertEquals(false, off.enabled)
+        assertEquals(InstalledPackage.OffCause.PULLED, off.offCause)
+        // It survives being read back, the way a restart reads it.
+        assertEquals(InstalledPackage.OffCause.PULLED, InstalledStore(store.keyValue).find("com.mccal.folio.cabinet")?.offCause)
+        assertTrue(installer.enable("com.mccal.folio.cabinet"))
+        assertNull(store.find("com.mccal.folio.cabinet")?.offCause)
+        // Turned off with no cause given (a record from before causes were kept) reads as no cause.
+        assertTrue(installer.disable("com.mccal.folio.cabinet", "Folio stopped twice"))
+        assertNull(store.find("com.mccal.folio.cabinet")?.offCause)
+    }
+
     @Test fun `installs the real Cabinet package and records what it changed`() {
         val result = installed(installer.install(pack()))
         assertEquals("com.mccal.folio.cabinet", result.installed.id)

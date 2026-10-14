@@ -22,6 +22,7 @@ import com.mccal.folio.market.SourceKey
 import com.mccal.folio.market.SourceList
 import com.mccal.folio.market.SourceStore
 import com.mccal.folio.market.UrlHttpClient
+import com.mccal.folio.market.normalizeSourceUrl
 import com.mccal.folio.market.AuthorTrust
 import com.mccal.folio.market.MarketPrefs
 import com.mccal.folio.market.PackageInstaller
@@ -101,6 +102,9 @@ internal class MarketSession(
     /** Folio's own source, as a [Source], so built-in packages carry a source like any other. */
     val builtIn = Source("folio://built-in/", name = appContext.getString(R.string.folio), kind = Source.Kind.BUILT_IN)
 
+    /** The key each source was trusted with, the same store [sources] pins them in. */
+    private val sourceKeys = SourceStore(files)
+
     /**
      * Every package the store can show: Folio's own first, then each source the user added, from its cached list.
      * Revoked packages keep their place with the reason, so nothing disappears without an explanation.
@@ -113,6 +117,8 @@ internal class MarketSession(
         revocations = source.revocations(),
         fromSources = sources.cached().mapNotNull { status -> status.snapshot?.let { status.source to it } },
         folio = folioVersion,
+        // The key the source was trusted with, not the one its files name: only Folio's own key makes it first-party.
+        isFirstParty = { isFirstParty(it.url, sourceKeys.state(it.url).pinnedKey) },
     )
 
     /**
@@ -270,7 +276,7 @@ internal class MarketSession(
      */
     fun noteCrash(): InstalledPackage? {
         val id = safeMode.noteCrash() ?: return null
-        val off = installer.disable(id, appContext.getString(R.string.folio_stopped_twice_just_after_this_package))
+        val off = installer.disable(id, appContext.getString(R.string.folio_stopped_twice_just_after_this_package), InstalledPackage.OffCause.CRASH)
         Diagnostics.marketTurnedOff(id, off, bySafeMode = true)
         return store.find(id)
     }
@@ -279,8 +285,29 @@ internal class MarketSession(
     fun disable(id: String, reason: String): Boolean =
         installer.disable(id, reason).also { Diagnostics.marketTurnedOff(id, it, bySafeMode = false) }
 
-    /** Try Again, after Safe Mode turned a package off: its changes go back on. */
-    fun enable(id: String): Boolean = installer.enable(id).also { Diagnostics.marketTurnedOn(id, it) }
+    /**
+     * Try Again, after Safe Mode turned a package off: its changes go back on. Never for one its source pulled: that
+     * one stays off until it's removed, or a later version that isn't pulled replaces it.
+     */
+    fun enable(id: String): Boolean {
+        val pulled = store.find(id)?.let { pulledReason(it, source.revocations(), sources.cached()) } != null
+        return (!pulled && installer.enable(id)).also { Diagnostics.marketTurnedOn(id, it) }
+    }
+
+    /** Why the version of [installed] on the phone was pulled, by Folio's list or its own source's, or null. */
+    fun pulledReason(installed: InstalledPackage): String? = pulledReason(installed, source.revocations(), sources.cached())
+
+    /**
+     * Turns off every installed package whose version was pulled, the way Safe Mode does: its changes come off Home,
+     * its record and settings stay, and Remove still works. Needs a real Home to take the changes off, so it runs as
+     * Home starts and after a source is refreshed by hand, never from the background refresh. Returns what it turned off.
+     */
+    fun turnOffPulled(): List<InstalledPackage> = store.installed().filter { it.enabled }.mapNotNull { installed ->
+        val reason = pulledReason(installed) ?: return@mapNotNull null
+        val off = installer.disable(installed.id, appContext.getString(R.string.its_source_pulled_it_1_s, reason), InstalledPackage.OffCause.PULLED)
+        Diagnostics.marketTurnedOff(installed.id, off, bySafeMode = false)
+        if (off) store.find(installed.id) else null
+    }
 
     /** Whether tweak [id] is on this phone, asked the way the installer asks before putting an add-on on. */
     fun hasTweak(id: String): Boolean = host.hasTweak(id)
@@ -336,6 +363,32 @@ internal const val SUPPORTER_SOURCE = "https://mccal-codes.github.io/folio-keyd/
 // is nowhere else in any repository.
 internal const val SUPPORTER_SOURCE_KEY =
     "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOn02K6Fhi4Gto1Kb/q7I/iBZd4C0jqD/Y9yI9TyvRXBUy0qx3PqntQIUcFbw2bicxQOgdCLGS1rPevg+ninbOA=="
+
+/**
+ * Folio's own tweaks source, Folio Community Tweaks (McCal-Codes/folio-tweaks): the tweaks Folio also ships built in,
+ * published and signed on their own so they can be updated between Folio releases.
+ *
+ * A copy of a built-in package from here is that package's update rather than a claim on its name ([mergeEntries]),
+ * but only when the source was trusted with [FIRST_PARTY_SOURCE_KEY]: the same address under another key, or the
+ * same id from any other source, is still an impostor. The key ships in the app for that reason, as
+ * [SUPPORTER_SOURCE_KEY] does, so a new key for this source needs a Folio release.
+ *
+ * Nothing adds this source by itself yet; it counts as Folio's own once someone has added it.
+ */
+internal const val FIRST_PARTY_SOURCE = "https://mccal-codes.github.io/folio-tweaks/"
+
+// The source's public key, key id 7028F4F54A35A055, as published at FIRST_PARTY_SOURCE + "key.pub" and checked
+// against its signed entry.json on 12 Oct 2026. The private half signs the source in folio-tweaks' publishing
+// workflow (the FOLIO_SOURCE_KEY secret) and is nowhere in any repository.
+internal const val FIRST_PARTY_SOURCE_KEY =
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETzFnQluMpyJhOofDTJKap1ReL56EalQ32gPmRq32wNW+TnwKMZ7RKgLAoet4j9TY6ie/2W6626K+bCv9VQVjJQ=="
+
+/** Whether [url], trusted with [pinned], is [FIRST_PARTY_SOURCE]: that address, however it was typed, with that key. */
+internal fun isFirstParty(url: String, pinned: SourceKey?): Boolean {
+    val key = SourceKey.parse(FIRST_PARTY_SOURCE_KEY) ?: return false
+    return pinned == key &&
+        normalizeSourceUrl(url).equals(FIRST_PARTY_SOURCE, ignoreCase = true)
+}
 
 /**
  * Whether this phone sees the Market: Folio Dev or a supporter's code. Everything the Market hands out is also in

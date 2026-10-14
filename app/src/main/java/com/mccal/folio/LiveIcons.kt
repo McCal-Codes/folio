@@ -194,7 +194,8 @@ private fun filterFor(look: IconLook): androidx.compose.ui.graphics.ColorFilter?
  */
 @Composable
 internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape? = null, badge: Boolean = shape != null) {
+    shape: androidx.compose.ui.graphics.Shape? = null, badge: Boolean = shape != null,
+    badgePlacement: BadgePlacement = BadgePlacement.DEFAULT) {
     val context = LocalContext.current
     val launcherLook = LocalIconLook.current
     // While Screenshot Mode swaps this app, every lookup below is the stand-in's, so none of the real app's picture,
@@ -267,7 +268,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
                     accent?.let { Color(it) } ?: if (soft) SoftNeutral else BadgeRed
                 }
             }
-            IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale)
+            IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale, badgePlacement)
         }
         // Updating: the icon dims under an iOS-style progress ring until the installer finishes.
         if (app.iconFrom == null) installProgressFor(app.component.packageName)?.let { progress -> InstallRing(progress, fill) }
@@ -431,10 +432,10 @@ private val IconOrange = FolioColors.Orange
 internal val BadgeRed = FolioColors.RedLight
 private val SoftNeutral = Color(0xFFE5E5EA)
 
-/** iOS-style badge: sits over the icon's top-right corner, a dot or a pill that widens for 2+ digits. */
+/** iOS-style badge: sits over the icon's top-right corner (or where [placement] says), a dot or a pill that widens for 2+ digits. */
 @Composable
 internal fun androidx.compose.foundation.layout.BoxScope.IconBadge(count: Int, style: BadgeStyle, color: Color,
-    badgeLook: BadgeLook = BadgeLook.IOS, scale: Float = 1f) {
+    badgeLook: BadgeLook = BadgeLook.IOS, scale: Float = 1f, placement: BadgePlacement = BadgePlacement.DEFAULT) {
     BoxWithConstraints(Modifier.matchParentSize()) {
         val density = androidx.compose.ui.platform.LocalDensity.current
         val h = (if (style == BadgeStyle.COUNT) maxWidth * .34f else maxWidth * .22f) * scale
@@ -457,7 +458,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.IconBadge(count: Int, s
                 .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.White.copy(alpha = .35f), .5f to Color.Transparent), pill)
             BadgeLook.GLASS -> Modifier.background(fill, pill).border(1.dp, Color.White.copy(alpha = .25f), pill)
         }
-        Box(Modifier.align(Alignment.TopEnd).offset(h * .32f, -h * .32f)
+        Box(Modifier.align(placement.corner.alignment).offset(placement.offsetX(maxWidth.value, h.value).dp, placement.offsetY(h.value).dp)
             .heightIn(min = h).widthIn(min = h)
             .then(look)
             .padding(horizontal = if (style == BadgeStyle.COUNT && count > 9) h * .22f else 0.dp),
