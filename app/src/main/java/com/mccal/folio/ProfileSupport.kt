@@ -3,10 +3,59 @@ package com.mccal.folio
 import android.content.pm.LauncherApps
 import android.os.Build
 import android.os.UserHandle
-import android.os.UserManager
 
 /** Persisted app identity. Personal-profile IDs intentionally retain the legacy component string. */
 data class ProfileAppIdentity(val component: String, val userSerial: Long?)
+
+/**
+ * The profiles Folio lists apps from. Every kind but [PERSONAL] is "not personal", which is what `isWork` on an
+ * [AppEntry] and `work` in the app cache and layout backups have always meant; [AppProfile.isWork] is the Work profile
+ * alone, the one behind the App Library's Work switch.
+ */
+enum class ProfileKind {
+    PERSONAL,
+    /** A managed (work) profile. */
+    WORK,
+    /** A clone profile, where Android keeps a second copy of an app (Samsung's Dual Messenger, "App cloning"). */
+    CLONE,
+    /** Not listed: Private Space, and any type Folio doesn't know yet, since showing it could expose a hidden space. */
+    SKIP,
+}
+
+/** Android's user types (UserManager.USER_TYPE_*), as text so the mapping is the same on every API level. */
+const val USER_TYPE_FULL_PREFIX = "android.os.usertype.full."
+const val USER_TYPE_PROFILE_MANAGED = "android.os.usertype.profile.MANAGED"
+const val USER_TYPE_PROFILE_CLONE = "android.os.usertype.profile.CLONE"
+const val USER_TYPE_PROFILE_PRIVATE = "android.os.usertype.profile.PRIVATE"
+
+/** What kind of profile a user type is. Unknown and missing types are skipped rather than guessed at. */
+fun profileKind(userType: String?): ProfileKind = when {
+    userType == null -> ProfileKind.SKIP
+    userType.startsWith(USER_TYPE_FULL_PREFIX) -> ProfileKind.PERSONAL
+    userType == USER_TYPE_PROFILE_MANAGED -> ProfileKind.WORK
+    userType == USER_TYPE_PROFILE_CLONE -> ProfileKind.CLONE
+    else -> ProfileKind.SKIP
+}
+
+/**
+ * Whether an app from a profile of [kind] is listed. A clone profile lists only what the person cloned: Android can put
+ * preinstalled system apps in it too ([android.content.pm.ApplicationInfo.FLAG_SYSTEM], or
+ * [android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP] once updated), and those would double the App Library.
+ * Personal and Work list everything, as before.
+ */
+fun listedInProfile(kind: ProfileKind, applicationFlags: Int): Boolean =
+    kind != ProfileKind.CLONE || (applicationFlags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or
+        android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) == 0
+
+/** How the app cache and layout backups write a kind next to `work`: only a clone says so, so older files read the same. */
+fun storedProfileKind(kind: ProfileKind): String? = if (kind == ProfileKind.CLONE) "clone" else null
+
+/** The kind back from [storedProfileKind] and the `work` flag beside it. */
+fun storedProfileKind(stored: String?, notPersonal: Boolean): ProfileKind = when {
+    !notPersonal -> ProfileKind.PERSONAL
+    stored == "clone" -> ProfileKind.CLONE
+    else -> ProfileKind.WORK
+}
 
 data class AppProfile(
     val userSerial: Long,
@@ -16,6 +65,7 @@ data class AppProfile(
     val quiet: Boolean,
     val unlocked: Boolean,
     val available: Boolean,
+    val kind: ProfileKind = if (isPersonal) ProfileKind.PERSONAL else if (isWork) ProfileKind.WORK else ProfileKind.CLONE,
 )
 
 private const val PROFILE_APP_PREFIX = "duo-profile:v1:"
@@ -40,6 +90,14 @@ fun parseProfileAppId(id: String): ProfileAppIdentity? {
 fun removedAssociatedProfileSerials(cachedWorkSerials: Set<Long>, associatedSerials: Set<Long>): Set<Long> =
     cachedWorkSerials - associatedSerials
 
+/**
+ * The profiles that cached apps came from and Android no longer lists, work and clone alike: turning Dual Messenger
+ * off removes its profile, and its apps go from Home the way a removed work profile's do.
+ */
+fun removedProfileSerials(cached: List<AppEntry>, associatedSerials: Set<Long>): Set<Long> =
+    removedAssociatedProfileSerials(cached.filter { it.kind != ProfileKind.PERSONAL }.mapTo(mutableSetOf(), AppEntry::userSerial),
+        associatedSerials)
+
 fun removedAppIds(
     savedIds: Collection<String>,
     availableIds: Set<String>,
@@ -57,8 +115,15 @@ fun removedAppIds(
         (serial in authoritativeProfiles && id !in availableIds && serial to packageName !in temporarilyUnavailable)
 }
 
-/** API 35 identifies managed profiles exactly; earlier LauncherApps exposed associated managed profiles. */
+/**
+ * The kind of a profile Folio isn't running in. API 35 names its user type exactly; earlier LauncherApps exposed only
+ * associated managed profiles, so there every one is Work, as before. A profile claiming to be a full user is skipped.
+ */
+fun launcherProfileKind(launcherApps: LauncherApps, user: UserHandle): ProfileKind =
+    if (Build.VERSION.SDK_INT < 35) ProfileKind.WORK
+    else runCatching { profileKind(launcherApps.getLauncherUserInfo(user)?.userType) }.getOrDefault(ProfileKind.SKIP)
+        .takeIf { it != ProfileKind.PERSONAL } ?: ProfileKind.SKIP
+
+/** A work profile Folio can use (widgets restored into it, for one). */
 fun isSupportedWorkProfile(launcherApps: LauncherApps, user: UserHandle): Boolean =
-    Build.VERSION.SDK_INT < 35 || runCatching {
-        launcherApps.getLauncherUserInfo(user)?.userType == UserManager.USER_TYPE_PROFILE_MANAGED
-    }.getOrDefault(false)
+    launcherProfileKind(launcherApps, user) == ProfileKind.WORK

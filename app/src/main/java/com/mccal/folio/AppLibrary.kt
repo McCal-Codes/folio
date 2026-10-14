@@ -56,7 +56,8 @@ internal fun AppLibrary(
     val pinned = remember(state.homeSlots, state.leadingSlots) {
         (state.homeSlots.asSequence() + state.leadingSlots.asSequence()).filterNotNull().toSet()
     }
-    val hasWork = state.profiles.any { it.isWork } || state.apps.any { it.isWork }
+    // Only a work profile gets the Work switch; clones (Dual Messenger) stay in the main list beside their originals.
+    val hasWork = state.profiles.any { it.isWork } || state.apps.any { it.kind == ProfileKind.WORK }
     // With Work turned off in Settings the switch goes away and only personal apps are listed.
     val workSwitch = hasWork && state.libraryWork
     var showWork by remember { mutableStateOf(false) }
@@ -80,7 +81,7 @@ internal fun AppLibrary(
         val text = query.trim()
         // At a start Home's apps come first; the library waits for all of them rather than show a part as everything.
         // A renamed app answers to both names here, the same as in Spotlight.
-        (if (state.loading) emptyList() else state.apps).filter { (if (workSwitch) it.isWork == showWork else !(hasWork && it.isWork)) &&
+        (if (state.loading) emptyList() else state.apps).filter { (if (workSwitch) (it.kind == ProfileKind.WORK) == showWork else !(hasWork && it.kind == ProfileKind.WORK)) &&
             appMatches(it, text) && (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
@@ -92,7 +93,7 @@ internal fun AppLibrary(
             val pm = context.packageManager
             val byId = visibleApps.associateBy { it.id }
             val suggestions = RecentApps.load(context).mapNotNull(byId::get).take(8)
-            val grouped = visibleApps.groupBy { LibraryCategory.of(pm, it.component.packageName) }
+            val grouped = visibleApps.groupBy { LibraryCategory.of(pm, (it.iconFrom ?: it).component.packageName) }
                 .mapValues { (_, apps) -> apps.sortedWith(compareBy(java.text.Collator.getInstance()) { it.label }) }
             buildMap {
                 if (suggestions.isNotEmpty()) put(LibraryCategory.SUGGESTIONS, suggestions)
@@ -183,8 +184,14 @@ internal fun AppLibrary(
                             AppIcon(app, null, Modifier.size(40.dp)
                                 .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
                             Row(Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
-                                NewAppDot(app.packageName, 7.dp)
-                                Text(app.label, maxLines = 2, fontSize = 14.sp)
+                                if (app.iconFrom == null) NewAppDot(app.packageName, 7.dp)
+                                // A clone sits right beside its original with the same name; the line under it tells them apart.
+                                // Not while Screenshot Mode swaps it: the profile's name would give the swap away.
+                                Column {
+                                    Text(app.label, maxLines = 2, fontSize = 14.sp)
+                                    if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = ink.copy(alpha = .6f),
+                                        fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, modifier = Modifier.testTag("library-profile-${app.id}"))
+                                }
                             }
                             if (editing) IconButton(onClick = { onPin(app.id, !isPinned) }, Modifier.testTag("pin-${app.id}")) {
                                 // iOS selection: filled blue check when on Home, empty ring when not.
@@ -217,3 +224,8 @@ private fun WebSearchRow(query: String, engine: String, onSearch: (WebSearchTarg
         }
     }
 }
+
+/** The profile an app is from, as people read it: a clone says Dual, the rest keep the name their profile was given. */
+@Composable
+internal fun profileName(app: AppEntry): String =
+    if (app.kind == ProfileKind.CLONE) stringResource(R.string.profile_dual) else app.profileLabel

@@ -63,7 +63,9 @@ fun encodeLayoutBackup(
     val descriptorBySlot = widgetDescriptors.associateBy(BackupWidgetDescriptor::slot)
     val apps = JSONArray().also { array -> state.apps.forEach { app -> array.put(JSONObject()
         .put("id", app.id).put("label", app.label).put("component", app.component.flattenToString())
-        .put("userSerial", app.userSerial).put("profileLabel", app.profileLabel).put("work", app.isWork)) } }
+        .put("userSerial", app.userSerial).put("profileLabel", app.profileLabel).put("work", app.isWork)
+        // A clone also says so (since 0.6.9); `work` still means "not personal", so older Folio reads it as before.
+        .putOpt("kind", storedProfileKind(app.kind))) } }
     val folders = JSONArray().also { array -> state.folders.forEach { folder -> array.put(JSONObject()
         .put("id", folder.id).put("title", folder.title).put("apps", JSONArray(folder.appIds))) } }
     val widgets = JSONArray().also { array -> state.widgetPlacements.forEach { placement ->
