@@ -439,19 +439,20 @@ private fun FolderChild(
     var menu by remember { mutableStateOf(false) }
     Surface(reorderModifier.fillMaxWidth().testTag("folder-child-${app.id}"), color = Color.Transparent, contentColor = Color.White,
         shape = RoundedCornerShape(18.dp)) {
-        Box {
+        androidx.compose.foundation.layout.BoxWithConstraints {
+            val badgePlacement = FolderBadge.placement(maxWidth.value)
             Column(Modifier.fillMaxWidth().dropRegion(drag, DropTarget.Library(app.id), app.id, page,
                 folderId = folderId, scope = folderId).clickable(enabled = app.available) { onLaunch(app, null) }
                 .padding(horizontal = FolioSpace.SNUG.dp, vertical = FolioSpace.COMPACT.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // No per-app badge dot here: it would land on the same corner as the "..." button below, and the
-                // folder's own Home icon already shows the combined total (HomeTiles.kt) before you even open it.
-                AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp), badge = false)
+                // The badge goes where FolderBadge.CORNER says, kept clear of the "..." button below (#362).
+                AppIcon(app, null, Modifier.size(FolderBadge.ICON.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp),
+                    badgePlacement = badgePlacement)
                 Text(app.label, Modifier.padding(top = FolioSpace.SNUG.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium)
-                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else stringResource(R.string.text_1_s_unavailable, app.profileLabel),
+                if (app.isWork || !app.available) Text(if (app.available) profileName(app) else stringResource(R.string.text_1_s_unavailable, profileName(app)),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
-            IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)
+            IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(FolderBadge.BUTTON.dp)
                 .testTag("folder-options-${app.id}")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.move_1_s, app.label)) }
             // Folio's menu: anchored under this button, growing from the corner it was opened at, and scrolling
             // when a layout has more pages than the window can show.
@@ -478,6 +479,26 @@ private fun FolderChild(
             }
         }
     }
+}
+
+/**
+ * An app's badge inside an open folder (#362). The app's "..." button owns the cell's top-right [BUTTON] dp square,
+ * so a badge on the icon's top-right corner has to stop short of it.
+ */
+internal object FolderBadge {
+    /**
+     * McCal's pick (12 Oct): the top start corner, which is top-left and mirrors to top-right in right-to-left languages
+     * (Alignment and offset both follow the layout direction). TOP_END would pull the badge in clear of the button instead.
+     */
+    val CORNER = BadgeCorner.TOP_START
+    const val ICON = 58f
+    const val BUTTON = 36f
+
+    /** How far right, in dp from the icon's left edge, a badge may reach in a cell [cellWidth] dp wide (icon centered). */
+    fun endLimit(cellWidth: Float, icon: Float = ICON, button: Float = BUTTON) = (cellWidth - button) - (cellWidth - icon) / 2f
+
+    /** The badge's placement for a cell [cellWidth] dp wide. */
+    fun placement(cellWidth: Float, corner: BadgeCorner = CORNER) = BadgePlacement(corner, endLimit(cellWidth))
 }
 
 private val FolderSwatches = listOf(0xFFFF6B63, 0xFFFFA94D, 0xFFFFD84D, 0xFF63D98B, 0xFF4DB8FF, 0xFF8E7CFF, 0xFFFF7EB9)

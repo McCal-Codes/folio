@@ -182,6 +182,8 @@
     <string name="place">Place</string>
     <string name="no_room_here">No room here</string>
     <string name="dock_full_move_an_app_out_first">Dock full • Move an app out first</string>
+    <!-- The line under an app the dock's app picker greys out because it is in a folder. -->
+    <string name="dock_picker_in_folder">In a folder · Move it out first</string>
     <string name="remove">Remove</string>
     <string name="move_this_widget_into_the_six_row_grid_b">Move this widget into the six-row grid before resizing.</string>
     <string name="layout_document">Layout document</string>
@@ -1428,6 +1430,8 @@
     <string name="text_1_s_version_2_s">%1$s · version %2$s</string>
     <string name="installing_1_s">Installing %1$s</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">%1$s was pulled by its source: %2$s</string>
+    <string name="pulled_by_its_source">Pulled by its source</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">%1$s was pulled by its source, so it\'s off. Its settings are kept.</string>
     <string name="doesn_t_work_with_this_folio_1_s">Doesn\'t work with this Folio: %1$s</string>
     <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s doesn\'t work with Folio %2$s: %3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s offers this under a name that belongs to one of Folio\'s own packages</string>
@@ -1555,6 +1559,8 @@
     <string name="brightness">Brightness</string>
     <string name="work_apps_are_paused">Work apps are paused</string>
     <string name="work_profile_is_unavailable">Work profile is unavailable</string>
+    <!-- The line under a cloned app (Samsung's Dual Messenger, Android's App cloning) in the App Library and in folders. -->
+    <string name="profile_dual">Dual</string>
     <string name="loading_apps">Loading apps…</string>
     <string name="remove_from_home_3">Remove %1$s from home</string>
     <string name="pin_to_home">Pin %1$s to home</string>
@@ -2012,6 +2018,16 @@
     <string name="action_a11y_shade">Android notification shade</string>
     <string name="action_a11y_splitscreen">Split screen</string>
     <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
+    <string name="screenshot_swap_apps">Swap Apps</string>
+    <string name="screenshot_swap_intro">While Screenshot Mode is on, the apps you choose show as a stock app on this phone, with its icon and name. Tapping one still opens the real app; only the screen changes. Apps that came with the phone are never swapped.</string>
+    <string name="screenshot_swap_all_third_party">Swap All Third-Party Apps</string>
+    <string name="screenshot_swap_all_third_party_note">Every app that didn’t come with this phone, including ones you install later.</string>
+    <string name="screenshot_swap_choose">Apps to Swap</string>
+    <string name="screenshot_swap_count">%1$d chosen</string>
+    <string name="screenshot_swap_system_app">Came with the phone, never swapped</string>
+    <string name="screenshot_swap_none">No app matches</string>
+    <string name="screenshot_swap_footnote">Widgets of swapped apps are hidden while Screenshot Mode is on, and their shortcuts aren’t shown. Folder names are your own and don’t change. Android’s own screens, the dock over other apps and the app itself once it opens still show the real app.</string>
+    <string name="settings_keywords_screenshot_swap">screenshot swap replace hide apps stock icons privacy blacklist</string>
     <string name="remove_app">Remove App</string>
     <string name="remove_app_title">Remove “%1$s”?</string>
     <string name="remove_app_message">Removing it from Home keeps the app in your App Library.</string>
