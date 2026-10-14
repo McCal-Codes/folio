@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ internal fun rememberSetupSteps(isDefaultHome: Boolean, onMakeDefault: () -> Uni
     messagesApp: String? = null, onMessagesApp: (String?) -> Unit = {},
     systemWallpaper: Boolean = false, onSystemWallpaper: (Boolean) -> Unit = {}): List<SetupStep> {
     val context = LocalContext.current
+    val resources = LocalResources.current
     // Re-check every time Folio comes back from a settings screen.
     var tick by remember { mutableIntStateOf(0) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -50,43 +52,43 @@ internal fun rememberSetupSteps(isDefaultHome: Boolean, onMakeDefault: () -> Uni
     val contacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
     fun open(intent: Intent) = runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 
-    return remember(tick, isDefaultHome, messagesApp, systemWallpaper) {
+    return remember(tick, isDefaultHome, messagesApp, systemWallpaper, resources) {
         val notifications = context.getSystemService(NotificationManager::class.java)
         listOfNotNull(
-            SetupStep(Icons.Rounded.Home, context.getString(R.string.make_folio_your_home_app), context.getString(R.string.so_home_gestures_and_the_fold_effect_are),
-                isDefaultHome, true, context.getString(R.string.set)) { onMakeDefault() },
-            SetupStep(Icons.Rounded.Notifications, context.getString(R.string.notification_access),
-                context.getString(R.string.powers_the_dynamic_island_and_notificati),
-                IslandListenerService.hasAccess(context), true, context.getString(R.string.allow)) { open(IslandListenerService.accessSettingsIntent(context)) },
-            SetupStep(Icons.Rounded.Accessibility, context.getString(R.string.folio_gestures_service),
-                context.getString(R.string.lets_pull_downs_open_system_panels_and_s),
-                SystemShadeAccessibilityService.isConnected(), true, context.getString(R.string.turn_on)) { onShadeSetup() },
+            SetupStep(Icons.Rounded.Home, resources.getString(R.string.make_folio_your_home_app), resources.getString(R.string.so_home_gestures_and_the_fold_effect_are),
+                isDefaultHome, true, resources.getString(R.string.set)) { onMakeDefault() },
+            SetupStep(Icons.Rounded.Notifications, resources.getString(R.string.notification_access),
+                resources.getString(R.string.powers_the_dynamic_island_and_notificati),
+                IslandListenerService.hasAccess(context), true, resources.getString(R.string.allow)) { open(IslandListenerService.accessSettingsIntent(context)) },
+            SetupStep(Icons.Rounded.Accessibility, resources.getString(R.string.folio_gestures_service),
+                resources.getString(R.string.lets_pull_downs_open_system_panels_and_s),
+                SystemShadeAccessibilityService.isConnected(), true, resources.getString(R.string.turn_on)) { onShadeSetup() },
             // Samsung's setting; on phones without it there's nothing to set, so it isn't a step.
-            if (foldLockSetting(context) != null) SetupStep(Icons.Rounded.Devices, context.getString(R.string.continue_apps_on_cover_screen_always),
-                context.getString(R.string.keeps_the_cover_screen_on_when_you_fold),
-                foldStaysAwake(context), true, context.getString(R.string.open)) { open(Intent(Settings.ACTION_DISPLAY_SETTINGS)) } else null,
-            SetupStep(Icons.Rounded.LightMode, context.getString(R.string.modify_system_settings),
-                context.getString(R.string.lets_control_center_change_brightness_an),
-                Settings.System.canWrite(context), false, context.getString(R.string.allow)) {
+            if (foldLockSetting(context) != null) SetupStep(Icons.Rounded.Devices, resources.getString(R.string.continue_apps_on_cover_screen_always),
+                resources.getString(R.string.keeps_the_cover_screen_on_when_you_fold),
+                foldStaysAwake(context), true, resources.getString(R.string.open)) { open(Intent(Settings.ACTION_DISPLAY_SETTINGS)) } else null,
+            SetupStep(Icons.Rounded.LightMode, resources.getString(R.string.modify_system_settings),
+                resources.getString(R.string.lets_control_center_change_brightness_an),
+                Settings.System.canWrite(context), false, resources.getString(R.string.allow)) {
                 open(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${context.packageName}")))
             },
-            SetupStep(Icons.Rounded.DarkMode, context.getString(R.string.do_not_disturb_access), context.getString(R.string.lets_control_center_turn_do_not_disturb),
-                notifications.isNotificationPolicyAccessGranted, false, context.getString(R.string.allow)) { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
-            SetupStep(Icons.Rounded.Wallpaper, context.getString(R.string.keep_your_wallpaper),
-                context.getString(R.string.coming_from_samsung_s_or_another_launche),
-                systemWallpaper, false, context.getString(R.string.use)) { onSystemWallpaper(true); context.asActivity()?.applyWallpaperWindow(true) },
-            SetupStep(Icons.Rounded.Assistant, context.getString(R.string.folio_as_your_digital_assistant),
-                context.getString(R.string.holding_the_side_key_opens_folio_s_picke),
-                AssistPickerActivity.isDefaultAssistant(context), false, context.getString(R.string.choose)) { open(AssistPickerActivity.settingsIntent()) },
-            if (sideKeySettings(context) != null) SetupStep(Icons.Rounded.TouchApp, context.getString(R.string.hold_side_key_digital_assistant),
-                context.getString(R.string.samsung_side_button_press_and_hold_digit),
-                sideKeyHoldIsAssistant(context), false, context.getString(R.string.open)) { sideKeySettings(context)?.let(::open) } else null,
-            SetupStep(Icons.Rounded.Contacts, context.getString(R.string.contacts_in_spotlight), context.getString(R.string.search_your_contacts_from_spotlight),
-                granted(context, Manifest.permission.READ_CONTACTS), false, context.getString(R.string.allow)) { contacts.launch(Manifest.permission.READ_CONTACTS) },
+            SetupStep(Icons.Rounded.DarkMode, resources.getString(R.string.do_not_disturb_access), resources.getString(R.string.lets_control_center_turn_do_not_disturb),
+                notifications.isNotificationPolicyAccessGranted, false, resources.getString(R.string.allow)) { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
+            SetupStep(Icons.Rounded.Wallpaper, resources.getString(R.string.keep_your_wallpaper),
+                resources.getString(R.string.coming_from_samsung_s_or_another_launche),
+                systemWallpaper, false, resources.getString(R.string.use)) { onSystemWallpaper(true); context.asActivity()?.applyWallpaperWindow(true) },
+            SetupStep(Icons.Rounded.Assistant, resources.getString(R.string.folio_as_your_digital_assistant),
+                resources.getString(R.string.holding_the_side_key_opens_folio_s_picke),
+                AssistPickerActivity.isDefaultAssistant(context), false, resources.getString(R.string.choose)) { open(AssistPickerActivity.settingsIntent()) },
+            if (sideKeySettings(context) != null) SetupStep(Icons.Rounded.TouchApp, resources.getString(R.string.hold_side_key_digital_assistant),
+                resources.getString(R.string.samsung_side_button_press_and_hold_digit),
+                sideKeyHoldIsAssistant(context), false, resources.getString(R.string.open)) { sideKeySettings(context)?.let(::open) } else null,
+            SetupStep(Icons.Rounded.Contacts, resources.getString(R.string.contacts_in_spotlight), resources.getString(R.string.search_your_contacts_from_spotlight),
+                granted(context, Manifest.permission.READ_CONTACTS), false, resources.getString(R.string.allow)) { contacts.launch(Manifest.permission.READ_CONTACTS) },
             // Only for people who already use OpenBubbles (iMessage on Android); Folio just opens it.
-            if (Messaging.installed(context, Messaging.OPENBUBBLES)) SetupStep(Icons.Rounded.Forum, context.getString(R.string.imessage_with_openbubbles),
-                context.getString(R.string.message_contacts_from_spotlight_in_openb),
-                messagesApp == Messaging.OPENBUBBLES, false, context.getString(R.string.use)) { onMessagesApp(Messaging.OPENBUBBLES) } else null,
+            if (Messaging.installed(context, Messaging.OPENBUBBLES)) SetupStep(Icons.Rounded.Forum, resources.getString(R.string.imessage_with_openbubbles),
+                resources.getString(R.string.message_contacts_from_spotlight_in_openb),
+                messagesApp == Messaging.OPENBUBBLES, false, resources.getString(R.string.use)) { onMessagesApp(Messaging.OPENBUBBLES) } else null,
         )
     }
 }

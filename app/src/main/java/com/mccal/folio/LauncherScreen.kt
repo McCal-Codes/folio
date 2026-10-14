@@ -80,6 +80,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -193,11 +194,12 @@ fun LauncherScreen(
     // Package Safe Mode: a package that was applied just before Folio crashed twice is turned off, so a bad one cannot
     // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold.
     val recoveryContext = LocalContext.current
+    val recoveryResources = LocalResources.current
     LaunchedEffect(marketSession) {
         val interrupted = withContext(Dispatchers.IO) {
             marketSession.recoverInterrupted().also { if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash() }
         }
-        interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
+        interrupted?.let { IslandEvents.notice(recoveryContext, recoveryResources.getString(R.string.market_install_put_back, it.name)) }
     }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"

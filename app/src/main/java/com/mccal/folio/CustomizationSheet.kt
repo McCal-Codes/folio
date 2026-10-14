@@ -332,6 +332,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.WHAT_TO_TEST -> WhatToTestPage(onOpenSetup = { onClose(); onShowWelcome() })
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
+                    val wallpaperResources = androidx.compose.ui.platform.LocalResources.current
                     // The order is the one every well-regarded product uses, sourced in docs/mockups/wallpaper-page.html:
                     // the preview first because it is what the rest edits, then the picture, then the mode that dims it,
                     // then the colors, then the things drawn over it. App Icon lives on the Icons page. That is the
@@ -370,7 +371,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             state.systemWallpaper, { system -> model.setSystemWallpaper(system); wallpaperContext.asActivity()?.applyWallpaperWindow(system) },
                             Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "background-choice")
                         if (state.systemWallpaper) CardAction(stringResource(R.string.change_android_wallpaper), onClick = {
-                            runCatching { wallpaperContext.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER), wallpaperContext.getString(R.string.change_wallpaper))
+                            runCatching { wallpaperContext.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER), wallpaperResources.getString(R.string.change_wallpaper))
                                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                         }, modifier = Modifier.testTag("background-change-system"))
                         // Only Android's wallpaper drifts now, and the system moves it, so the switch lives with the
@@ -775,7 +776,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // Android's own per-app language screen (13+), which lists every language Folio ships, as iOS does.
                         if (android.os.Build.VERSION.SDK_INT >= 33) {
                             TweakRow(Icons.Rounded.Translate, FolioColors.Value.Blue, stringResource(R.string.language), "customization-language",
-                                generalContext.resources.configuration.locales[0].let { it.getDisplayLanguage(it).replaceFirstChar { c -> c.titlecase(it) } }) {
+                                androidx.compose.ui.platform.LocalConfiguration.current.locales[0].let { it.getDisplayLanguage(it).replaceFirstChar { c -> c.titlecase(it) } }) {
                                 runCatching { generalContext.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_LOCALE_SETTINGS,
                                     android.net.Uri.parse("package:${generalContext.packageName}")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                             }
@@ -1593,6 +1594,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 /** Every permission Folio can use, whether it's allowed, and which features rely on it (shared ownership). */
 @Composable private fun PermissionsPage(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onShadeSetup: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var tick by remember { mutableIntStateOf(0) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { tick++ } }
@@ -1600,21 +1602,21 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val appSettings = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
     data class Perm(val name: String, val usedBy: String, val allowed: Boolean, val action: () -> Unit)
     val perms = remember(tick, isDefaultHome) { listOf(
-        Perm(context.getString(R.string.home_app), context.getString(R.string.home_button_folding_gestures), isDefaultHome, onMakeDefault),
-        Perm(context.getString(R.string.notification_access), context.getString(R.string.dynamic_island_notification_center_quick),
+        Perm(resources.getString(R.string.home_app), resources.getString(R.string.home_button_folding_gestures), isDefaultHome, onMakeDefault),
+        Perm(resources.getString(R.string.notification_access), resources.getString(R.string.dynamic_island_notification_center_quick),
             IslandListenerService.hasAccess(context)) { open(IslandListenerService.accessSettingsIntent(context)) },
-        Perm(context.getString(R.string.gestures_service_accessibility), context.getString(R.string.pull_down_panels_island_and_dock_in_othe),
+        Perm(resources.getString(R.string.gestures_service_accessibility), resources.getString(R.string.pull_down_panels_island_and_dock_in_othe),
             SystemShadeAccessibilityService.isConnected(), onShadeSetup),
-        Perm(context.getString(R.string.do_not_disturb_access), context.getString(R.string.focus_control_center_actions),
+        Perm(resources.getString(R.string.do_not_disturb_access), resources.getString(R.string.focus_control_center_actions),
             context.getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted) {
             open(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
-        Perm(context.getString(R.string.modify_system_settings), context.getString(R.string.control_center_brightness_and_rotation_l), android.provider.Settings.System.canWrite(context)) {
+        Perm(resources.getString(R.string.modify_system_settings), resources.getString(R.string.control_center_brightness_and_rotation_l), android.provider.Settings.System.canWrite(context)) {
             open(android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))) },
-        Perm(context.getString(R.string.usage_access_optional), context.getString(R.string.better_suggestions_counts_apps_you_open), Suggestions.hasUsageAccess(context)) {
+        Perm(resources.getString(R.string.usage_access_optional), resources.getString(R.string.better_suggestions_counts_apps_you_open), Suggestions.hasUsageAccess(context)) {
             open(Suggestions.usageAccessIntent(context)) },
-        Perm(context.getString(R.string.calendar_optional), context.getString(R.string.up_next_widget), UpNext.hasCalendar(context)) { open(appSettings) },
-        Perm(context.getString(R.string.contacts), context.getString(R.string.spotlight_contact_search), context.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == android.content.pm.PackageManager.PERMISSION_GRANTED) { open(appSettings) },
-        Perm(context.getString(R.string.digital_assistant), context.getString(R.string.side_key_picker), AssistPickerActivity.isDefaultAssistant(context)) { open(AssistPickerActivity.settingsIntent()) },
+        Perm(resources.getString(R.string.calendar_optional), resources.getString(R.string.up_next_widget), UpNext.hasCalendar(context)) { open(appSettings) },
+        Perm(resources.getString(R.string.contacts), resources.getString(R.string.spotlight_contact_search), context.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == android.content.pm.PackageManager.PERMISSION_GRANTED) { open(appSettings) },
+        Perm(resources.getString(R.string.digital_assistant), resources.getString(R.string.side_key_picker), AssistPickerActivity.isDefaultAssistant(context)) { open(AssistPickerActivity.settingsIntent()) },
     ) }
     CardNote(stringResource(R.string.everything_stays_on_your_phone_folio_has), Modifier.padding(horizontal = FolioSpace.TINY.dp))
     SheetGroup {
@@ -1696,6 +1698,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 /** Themes (after SnowBoard): built-in looks with a live preview, plus saving and importing theme files. */
 @Composable private fun ThemesPage(state: LauncherState, model: LauncherModel, stagedBitmap: android.graphics.Bitmap?) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var message by remember { mutableStateOf<String?>(null) }
     var undo by remember { mutableStateOf(model.themeUndo != null) }
@@ -1704,8 +1707,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             val theme = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 readThemeText(context, uri)?.let(FolioTheme::fromJson)
             }
-            if (theme == null) message = context.getString(R.string.that_file_isn_t_a_folio_theme)
-            else { model.applyTheme(theme); undo = true; message = context.getString(R.string.applied, theme.name) }
+            if (theme == null) message = resources.getString(R.string.that_file_isn_t_a_folio_theme)
+            else { model.applyTheme(theme); undo = true; message = resources.getString(R.string.applied, theme.name) }
         }
     }
     MiniHomePreview(stagedBitmap, state, 220.dp)
@@ -1726,9 +1729,9 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             scope.launch {
                 val name = FolioFiles.datedName("folio-theme")
                 val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    FolioFiles.save(context, name, "application/json", FolioTheme.of(state, context.getString(R.string.my_folio_theme)).toJson().toString(2).toByteArray())
+                    FolioFiles.save(context, name, "application/json", FolioTheme.of(state, resources.getString(R.string.my_folio_theme)).toJson().toString(2).toByteArray())
                 }
-                message = if (saved != null) context.getString(R.string.saved_to_as, FolioFiles.displayPath, FolioFiles.displayName(context, saved) ?: name) else context.getString(R.string.the_theme_couldn_t_be_saved)
+                message = if (saved != null) resources.getString(R.string.saved_to_as, FolioFiles.displayPath, FolioFiles.displayName(context, saved) ?: name) else resources.getString(R.string.the_theme_couldn_t_be_saved)
             }
         }
         MenuDivider()
@@ -1800,16 +1803,17 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                 }
             }
             // iOS day picker: one letter per day, filled when the schedule runs that day.
+            val dayLocale = androidx.compose.ui.platform.LocalLocale.current.platformLocale
             Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 java.time.DayOfWeek.entries.forEach { day ->
                     val on = day.value in schedule.days
                     Box(Modifier.size(38.dp).clip(androidx.compose.foundation.shape.CircleShape)
                         .background(if (on) androidx.compose.ui.graphics.Color(mode.color) else androidx.compose.ui.graphics.Color.White.copy(alpha = .1f))
-                        .clickable(onClickLabel = day.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())) {
+                        .clickable(onClickLabel = day.getDisplayName(java.time.format.TextStyle.FULL, dayLocale)) {
                             val days = if (on) schedule.days - day.value else schedule.days + day.value
                             if (days.isNotEmpty()) model.updateFocusMode(mode.copy(schedule = schedule.copy(days = days)))
                         }, contentAlignment = Alignment.Center) {
-                        Text(day.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()),
+                        Text(day.getDisplayName(java.time.format.TextStyle.NARROW, dayLocale),
                             color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -1936,6 +1940,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
 
 @Composable private fun CrashReportsCard() {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var reports by remember { mutableStateOf(CrashLog.reports(context)) }
     SettingsCard(stringResource(R.string.crash_reports)) {
         Text(if (reports.isEmpty()) stringResource(R.string.no_problems_recorded) else pluralStringResource(R.plurals.reports_saved, reports.size, reports.size),
@@ -1951,7 +1956,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {
-            shareScope.launch { runCatching { Diagnostics.copy(context); IslandEvents.notice(context, context.getString(R.string.diagnostics_copied)) } }
+            shareScope.launch { runCatching { Diagnostics.copy(context); IslandEvents.notice(context, resources.getString(R.string.diagnostics_copied)) } }
         }, modifier = Modifier.testTag("copy-diagnostics"))
         CardNote(stringResource(R.string.diagnostics_file_note))
     }
@@ -2263,6 +2268,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
  */
 @Composable private fun HiddenAppsRow(state: LauncherState, model: LauncherModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val hidden = state.apps.filter { it.id in state.hiddenApps }.sortedBy { it.label.lowercase() }
     var unlocked by remember { mutableStateOf(false) }
     if (hidden.isEmpty()) return
@@ -2271,8 +2277,8 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
             val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or
                 android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
             runCatching {
-                android.hardware.biometrics.BiometricPrompt.Builder(context).setTitle(context.getString(R.string.hidden_apps_title))
-                    .setSubtitle(context.getString(R.string.unlock_to_see_the_apps_you_ve_hidden)).setAllowedAuthenticators(authenticators).build()
+                android.hardware.biometrics.BiometricPrompt.Builder(context).setTitle(resources.getString(R.string.hidden_apps_title))
+                    .setSubtitle(resources.getString(R.string.unlock_to_see_the_apps_you_ve_hidden)).setAllowedAuthenticators(authenticators).build()
                     .authenticate(android.os.CancellationSignal(), context.mainExecutor,
                         object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
                             override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult) { unlocked = true }
@@ -2698,8 +2704,8 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
 
 /** iOS-style "Save Backup" alert with a name field; the file lands in Download/Folio. */
 @Composable private fun BackupNameAlert(onCancel: () -> Unit, onSave: (String) -> Unit) {
-    val backupContext = androidx.compose.ui.platform.LocalContext.current
-    var name by remember { mutableStateOf(backupContext.getString(R.string.default_backup_name, java.time.LocalDate.now().toString())) }
+    val backupResources = androidx.compose.ui.platform.LocalResources.current
+    var name by remember { mutableStateOf(backupResources.getString(R.string.default_backup_name, java.time.LocalDate.now().toString())) }
     val focus = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     AlertDialog(onDismissRequest = onCancel,
