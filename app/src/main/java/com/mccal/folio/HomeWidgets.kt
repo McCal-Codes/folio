@@ -210,7 +210,13 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
             return@BoxWithConstraints
         }
         val info = remember(id) { if (id >= 0) controller.manager.getAppWidgetInfo(id) else null }
+        // Screenshot Mode: a swapped app's widget would show its real content, so it is a plain card instead.
+        val standIn = info?.provider?.packageName?.let { LocalSwappedApps.current[it] }
         if (info == null) fallback()
+        else if (standIn != null) Surface(Modifier.fillMaxSize().testTag("widget-swapped-$slot"), color = Glass.copy(alpha = .88f),
+            shape = RoundedCornerShape(FolioRadius.PANEL.dp)) {
+            Box(contentAlignment = Alignment.Center) { Text(standIn.label, color = Ink, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center) }
+        }
         else {
             key(id) {
                 AndroidView(factory = { context -> controller.host.createView(context, id, info) },
@@ -220,7 +226,7 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
     }
 }
 
-internal fun widgetLabel(context: android.content.Context, id: Int, controller: WidgetController) = when (id) {
+internal fun widgetLabel(context: android.content.Context, id: Int, controller: WidgetController, swapped: Map<String, AppEntry> = emptyMap()) = when (id) {
     CLOCK_WIDGET -> context.getString(R.string.clock)
     DATE_WIDGET -> context.getString(R.string.date)
     UP_NEXT_WIDGET -> context.getString(R.string.up_next)
@@ -228,7 +234,7 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
     BIG_CLOCK_WIDGET -> context.getString(R.string.big_clock)
     INFO_WIDGET -> context.getString(R.string.widget_panel)
     EMPTY_WIDGET -> context.getString(R.string.add_widget)
-    else -> controller.label(id)
+    else -> controller.manager.getAppWidgetInfo(id)?.provider?.packageName?.let { swapped[it]?.label } ?: controller.label(id)
 }
 
 @Composable

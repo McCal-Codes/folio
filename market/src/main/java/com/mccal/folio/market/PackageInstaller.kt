@@ -64,7 +64,20 @@ data class InstalledPackage(
     val enabled: Boolean = true,
     /** Why Safe Mode turned this package off, when it did. */
     val disabledReason: String? = null,
+    /**
+     * What turned it off, so the store can say so: a crash can be tried again, a pulled version can't. Null for a
+     * record from before this was kept, or one turned off for another reason; those read as before.
+     */
+    val offCause: OffCause? = null,
 ) {
+    enum class OffCause(val id: String) {
+        CRASH("crash"), PULLED("pulled");
+
+        companion object {
+            fun from(id: String) = entries.firstOrNull { it.id == id }
+        }
+    }
+
     enum class Origin(val id: String) {
         FOLIO_SOURCE("folio-source"), FILE("file"), PLAY_ICON_PACK("play-icon-pack"), LAUNCHER_IMPORT("launcher-import");
 
@@ -409,11 +422,11 @@ class PackageInstaller(
      * Taking the changes off is the point. Marking the record and leaving a theme applied turns nothing off — Folio
      * would start, crash on the same thing, and say it had already dealt with it.
      */
-    fun disable(id: String, reason: String): Boolean {
+    fun disable(id: String, reason: String, cause: InstalledPackage.OffCause? = null): Boolean {
         val installed = store.find(id)?.takeIf { it.enabled } ?: return false
         safeMode.beginChange(id)
         undoChanges(installed)
-        store.setEnabled(id, enabled = false, reason = reason)
+        store.setEnabled(id, enabled = false, reason = reason, cause = cause)
         safeMode.endChange()
         return true
     }
@@ -925,11 +938,11 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
      * Marks a package off or on again, keeping its record and what it changed. Only the record: putting the changes
      * back or taking them off is [PackageInstaller.disable] and [PackageInstaller.enable], because that touches Home.
      */
-    fun setEnabled(id: String, enabled: Boolean, reason: String? = null, snapshots: List<String>? = null) {
+    fun setEnabled(id: String, enabled: Boolean, reason: String? = null, snapshots: List<String>? = null, cause: InstalledPackage.OffCause? = null) {
         val all = read().toMutableMap()
         all[id]?.let {
             all[id] = it.copy(enabled = enabled, disabledReason = if (enabled) null else reason,
-                snapshots = snapshots ?: it.snapshots)
+                offCause = if (enabled) null else cause, snapshots = snapshots ?: it.snapshots)
         }
         write(all)
     }
@@ -1025,6 +1038,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 snapshots = json.optJSONArray("snapshots")?.let { a -> (0 until a.length()).map(a::optString) }.orEmpty(),
                 enabled = json.optBoolean("enabled", true),
                 disabledReason = json.optString("disabledReason").takeIf { it.isNotEmpty() },
+                offCause = InstalledPackage.OffCause.from(json.optString("offCause")),
             ).takeIf { it.id.isNotEmpty() }
         }
 
@@ -1035,7 +1049,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 JSONObject()
                     .put("id", p.id).put("version", p.version.text).put("name", p.name)
                     .put("origin", p.origin.id).put("sourceUrl", p.sourceUrl).put("installedAt", p.installedAt)
-                    .put("snapshots", JSONArray(p.snapshots)).put("enabled", p.enabled).put("disabledReason", p.disabledReason),
+                    .put("snapshots", JSONArray(p.snapshots)).put("enabled", p.enabled).put("disabledReason", p.disabledReason)
+                    .put("offCause", p.offCause?.id),
             )
         }
         return keyValue.set(KEY, array.toString())

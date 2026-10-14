@@ -188,6 +188,8 @@
     <string name="place">放置</string>
     <string name="no_room_here">这里没有空间</string>
     <string name="dock_full_move_an_app_out_first">程序坞已满 • 请先移出一个 App</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">在文件夹中 · 请先移出</string>
     <string name="remove">移除</string>
     <string name="move_this_widget_into_the_six_row_grid_b">调整大小前，请先把这个小组件移到六行网格中。</string>
     <string name="layout_document">布局文件</string>
@@ -1328,6 +1330,8 @@
     <string name="text_1_s_version_2_s">%1$s · 版本 %2$s</string>
     <string name="installing_1_s">正在安装 %1$s</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">%1$s 已被其源撤下：%2$s</string>
+    <string name="pulled_by_its_source">已被其源撤下</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">%1$s 已被其源撤下，因此已关闭。它的设置会保留。</string>
     <string name="doesn_t_work_with_this_folio_1_s">无法在此版本的 Folio 上使用：%1$s</string>
     <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s 无法在 Folio %2$s 上使用：%3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s 使用了属于 Folio 自带软件包的名称来提供这个软件包</string>
@@ -1498,6 +1502,8 @@
     <string name="brightness">亮度</string>
     <string name="work_apps_are_paused">工作 App 已暂停</string>
     <string name="work_profile_is_unavailable">工作资料不可用</string>
+    <!-- Claude's draft, needs a native read. 分身 is the usual word for a cloned app in Chinese Android skins. -->
+    <string name="profile_dual">分身</string>
     <string name="loading_apps">正在载入 App…</string>
     <string name="remove_from_home_3">从主屏幕移除 %1$s</string>
     <string name="pin_to_home">将 %1$s 固定到主屏幕</string>
@@ -2070,6 +2076,16 @@
     <plurals name="simple_remove_body">
         <item quantity="other">%2$s。它们仍保留在手机上，你可以在“添加应用”中重新添加。</item>
     </plurals>
+    <string name="screenshot_swap_apps">替换 App</string>
+    <string name="screenshot_swap_intro">截图模式开启时，你选择的 App 会显示为这部手机上的一个系统自带 App，使用它的图标和名称。点按后仍会打开真实的 App，只有屏幕显示会改变。手机自带的 App 不会被替换。</string>
+    <string name="screenshot_swap_all_third_party">替换所有第三方 App</string>
+    <string name="screenshot_swap_all_third_party_note">所有不是这部手机自带的 App，包括你以后安装的 App。</string>
+    <string name="screenshot_swap_choose">要替换的 App</string>
+    <string name="screenshot_swap_count">已选 %1$d 个</string>
+    <string name="screenshot_swap_system_app">手机自带，不会被替换</string>
+    <string name="screenshot_swap_none">没有匹配的 App</string>
+    <string name="screenshot_swap_footnote">截图模式开启时，被替换 App 的小组件会隐藏，其快捷方式也不会显示。文件夹名称是你自己起的，不会改变。Android 自身的界面、其他 App 上方的程序坞以及打开后的 App 本身仍会显示真实的 App。</string>
+    <string name="settings_keywords_screenshot_swap">截图 替换 隐藏 App 系统 图标 隐私</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">在叠放中</string>
     <string name="not_in_stack">不在叠放中</string>

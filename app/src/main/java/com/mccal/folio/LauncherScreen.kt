@@ -149,6 +149,7 @@ fun LauncherScreen(
 ) {
     if (simpleHomeShown(state, model, homeRequests, onLaunch)) return // Simple Mode draws its own Home (SimpleHome.kt)
     val cancelLabel = stringResource(R.string.cancel)
+    val swappedApps = LocalSwappedApps.current
     var sheet by rememberSaveable { mutableStateOf("") }
     var dockSlot by rememberSaveable { mutableIntStateOf(0) }
     var widgetSession by remember { mutableStateOf<WidgetPickerSession?>(null) }
@@ -192,13 +193,19 @@ fun LauncherScreen(
     val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model, launcherActivity)) }
     // Package recovery, as Home starts. First, an install the last process died in the middle of is put back. Then
     // Package Safe Mode: a package that was applied just before Folio crashed twice is turned off, so a bad one cannot
-    // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold.
+    // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold. Last, a
+    // package whose source has pulled the version on the phone is turned off, its settings kept.
     val recoveryContext = LocalContext.current
     LaunchedEffect(marketSession) {
+        var pulled = emptyList<com.mccal.folio.market.InstalledPackage>()
         val interrupted = withContext(Dispatchers.IO) {
-            marketSession.recoverInterrupted().also { if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash() }
+            marketSession.recoverInterrupted().also {
+                if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash()
+                pulled = marketSession.turnOffPulled()
+            }
         }
         interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
+        pulled.forEach { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
     }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"
@@ -1276,7 +1283,7 @@ fun LauncherScreen(
                             },
                             onClear = { model.removePlacement(DropTarget.Dock(dockSlot)) },
                             onLongClick = { overlays.menu = it.id; sheet = "" },
-                            canSelect = { canPlaceInDock(state.layout, it.id) },
+                            canSelect = { canPlaceInDock(state.layout, it.id) }, refusal = { dockRefusal(state.layout, it.id) },
                             blockedHint = if (state.dock.none { it == null }) stringResource(R.string.dock_full_move_an_app_out_first) else null)
                         "pins" -> Column(Modifier.fillMaxHeight(.9f).imePadding()) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.XL.dp), horizontalArrangement = Arrangement.End) {
@@ -1325,7 +1332,7 @@ fun LauncherScreen(
                                 topRowHeightDp = topPitch, appRowHeightDp = geometry.rowHeight)
                             val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) } ?: builtinWidgetConstraints(placement.id)
                             WidgetActions(placement, constraints, rows = pageRows(placement.page),
-                                stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets) },
+                                stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets, swappedApps) },
                                 stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
                                 onAddToStack = {
                                     picker.stackSlot = placement.slot; picker.slot = placement.slot
@@ -1704,7 +1711,7 @@ fun LauncherScreen(
                     Column(Modifier.padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Rounded.Widgets, null, tint = Ink)
                         Spacer(Modifier.height(8.dp))
-                        Text(remember(id, widgets) { widgetLabel(launcherActivity, id, widgets) }, color = Ink, maxLines = 2, textAlign = TextAlign.Center)
+                        Text(remember(id, widgets, swappedApps) { widgetLabel(launcherActivity, id, widgets, swappedApps) }, color = Ink, maxLines = 2, textAlign = TextAlign.Center)
                     }
                 }
             }
