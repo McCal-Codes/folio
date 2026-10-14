@@ -240,23 +240,40 @@ internal object Diagnostics {
 
     /**
      * What Android shares about its wallpaper, and which background Folio puts behind Home (#353). With Android's
-     * wallpaper the Big Clock's colors come from the home colors here; "none" means Android gave Folio no colors.
+     * wallpaper the Big Clock's colors come from the home colors here, then from the system palette when Android shares
+     * none; "none" means neither gave Folio any colors.
      */
     fun wallpaperReport(context: Context): String {
         val manager = runCatching { android.app.WallpaperManager.getInstance(context) }.getOrNull()
         fun colors(which: Int) = manager?.let { m -> runCatching { m.getWallpaperColors(which) }.getOrNull() }
             ?.let { c -> listOfNotNull(c.primaryColor.toArgb(), c.secondaryColor?.toArgb(), c.tertiaryColor?.toArgb()) }
+        // AOSP's record of where the theme colors come from (a readable setting); One UI may keep its own instead.
+        val themeSetting = runCatching { android.provider.Settings.Secure.getString(context.contentResolver, "theme_customization_overlay_packages") }.getOrNull()
         return wallpaperReportText(usesSystemWallpaper(context), runCatching { launcherBackgroundEnabled(context) }.getOrDefault(false),
-            colors(android.app.WallpaperManager.FLAG_SYSTEM), colors(android.app.WallpaperManager.FLAG_LOCK))
+            colors(android.app.WallpaperManager.FLAG_SYSTEM), colors(android.app.WallpaperManager.FLAG_LOCK),
+            systemPalette(context)?.colors, themeColorSource(themeSetting))
     }
 
-    internal fun wallpaperReportText(systemWallpaper: Boolean, folioPictureSaved: Boolean, home: List<Int>?, lock: List<Int>?): String = buildString {
+    /** The `color_source` in AOSP's theme setting ("home_wallpaper", "lock_wallpaper" or "preset"), or null when not set. */
+    internal fun themeColorSource(setting: String?): String? =
+        setting?.let { Regex(""""android\.theme\.customization\.color_source"\s*:\s*"([^"]*)"""").find(it)?.groupValues?.get(1) }
+
+    internal fun wallpaperReportText(systemWallpaper: Boolean, folioPictureSaved: Boolean, home: List<Int>?, lock: List<Int>?,
+        palette: List<Int>? = null, themeColorSource: String? = null): String = buildString {
         fun text(colors: List<Int>?) = colors?.takeIf { it.isNotEmpty() }?.joinToString(" ") { String.format(java.util.Locale.ROOT, "#%06X", it and 0xFFFFFF) } ?: "none"
+        val clockSource = WallpaperTone(primary = home?.firstOrNull(), fromAndroid = systemWallpaper,
+            palette = palette?.takeIf { it.size >= 3 }?.let { SystemPalette(it[0], it[1], it[2]) }).colorSource()
         appendLine("Wallpaper:")
         appendLine("  behind Home: ${if (systemWallpaper) "Android's wallpaper" else "Folio's background"}" +
             " (a Folio picture is ${if (folioPictureSaved) "saved" else "not saved"})")
         appendLine("  Android's colors, home: ${text(home)}")
-        append("  Android's colors, lock: ${text(lock)}")
+        appendLine("  Android's colors, lock: ${text(lock)}")
+        appendLine("  system palette (accent 1, 2, 3 at 500): ${text(palette)}, theme color source: ${themeColorSource ?: "not set"}")
+        append("  Big Clock colors: " + if (!systemWallpaper) "from Folio's background" else when (clockSource) {
+            WallpaperColorSource.ANDROID_COLORS -> "from Android's wallpaper colors"
+            WallpaperColorSource.SYSTEM_PALETTE -> "from the system palette"
+            WallpaperColorSource.NONE -> "none"
+        })
     }
 
     fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"

@@ -249,9 +249,15 @@ internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fall
     return ClockInkResult(Color.White, true, shadedWhite)
 }
 
-/** The clock's sample from Android's wallpaper colors in [tone], or null when Android shared none for it. */
-internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? =
-    tone.primary?.let { sampleFromWallpaperColors(it, listOfNotNull(tone.secondary, tone.tertiary)) }
+/**
+ * The clock's sample with Android's wallpaper, from the first source that has colors ([WallpaperTone.colorSource]):
+ * Android's wallpaper colors, then the phone's theme colors (the system palette), else null, and nothing is made up.
+ */
+internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? = when (tone.colorSource()) {
+    WallpaperColorSource.ANDROID_COLORS -> sampleFromWallpaperColors(tone.primary!!, listOfNotNull(tone.secondary, tone.tertiary))
+    WallpaperColorSource.SYSTEM_PALETTE -> tone.palette!!.let { sampleFromWallpaperColors(it.accent1, listOf(it.accent2, it.accent3)) }
+    WallpaperColorSource.NONE -> null
+}
 
 /**
  * Samples the picture under [box] (fractions of the whole background, 0..1) whenever the background or the box
@@ -316,7 +322,8 @@ internal fun ClockEditBar(
         if (bounds == null || window.width <= 0 || window.height <= 0) Rect.Zero
         else Rect(bounds.left / window.width, bounds.top / window.height, bounds.right / window.width, bounds.bottom / window.height)
     }
-    val systemWallpaper = LocalWallpaperTone.current.fromAndroid
+    val tone = LocalWallpaperTone.current
+    val systemWallpaper = tone.fromAndroid
     val sample = rememberClockInkSample(fraction, enabled = true, windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
     var s by remember(slot) { mutableStateOf(style.orDefault()) }
     var fine by remember(slot) { mutableStateOf(false) }
@@ -368,7 +375,12 @@ internal fun ClockEditBar(
         }
         // Android can share no colors for its wallpaper (some live wallpapers, or just after a restart): then there is
         // nothing to tint with, and the note says so rather than leaving two dots unexplained.
-        if (systemWallpaper) Text(stringResource(if (sample != null) R.string.clock_colors_android_wallpaper else R.string.clock_no_android_wallpaper_colors), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+        // The note also says which source the colors came from: the wallpaper's own, or the phone's theme colors.
+        if (systemWallpaper) Text(stringResource(when (tone.colorSource()) {
+            WallpaperColorSource.ANDROID_COLORS -> R.string.clock_colors_android_wallpaper
+            WallpaperColorSource.SYSTEM_PALETTE -> R.string.clock_colors_system_palette
+            WallpaperColorSource.NONE -> R.string.clock_no_android_wallpaper_colors
+        }), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
         // The font sits beside Color, where people look for it, not inside Fine tune (#330).
         Choice(stringResource(R.string.clock_font), s.face, listOf("SANS" to R.string.default_choice, "ROUNDED" to R.string.face_rounded, "SERIF" to R.string.face_serif, "MONO" to R.string.face_mono)) { push(s.copy(face = it)) }
         AnimatedVisibility(fine, enter = fadeIn(clockMotion<Float>()) + expandVertically(clockMotion<androidx.compose.ui.unit.IntSize>()),

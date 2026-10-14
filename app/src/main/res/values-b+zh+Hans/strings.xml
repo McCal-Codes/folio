@@ -1984,6 +1984,7 @@
     <string name="app_not_deleted">无法删除 %1$s</string>
     <string name="clock_font">字体</string>
     <string name="clock_colors_android_wallpaper">使用 Android 壁纸时，颜色取自壁纸的主要颜色，时间后面的柔和阴影让它保持清晰。</string>
+    <string name="clock_colors_system_palette">Android 没有提供这张壁纸的颜色，所以这里使用手机的主题颜色（调色板）。调色板取自壁纸时，这些颜色会跟随壁纸。时间后面的柔和阴影让它保持清晰。</string>
     <string name="clock_no_android_wallpaper_colors">Android 没有提供这张壁纸的颜色，所以只能选择自动和白色。有些动态壁纸从不提供颜色。</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">在叠放中</string>

@@ -102,4 +102,61 @@ class ClockWallpaperColorsTest {
         assertTrue(text, text.contains("Android's colors, lock: none"))
         assertTrue(Diagnostics.wallpaperReportText(false, false, null, emptyList()).contains("Folio's background (a Folio picture is not saved)"))
     }
+
+    // ---- the Fold8 check of 14 Oct: One UI shares no wallpaper colors, so the phone's theme colors come second ----
+
+    private val purple = 0xFF6750A4.toInt()
+    private val mauve = 0xFF625B71.toInt()
+    private val rose = 0xFF7D5260.toInt()
+    private val palette = SystemPalette(purple, mauve, rose)
+
+    @Test fun `Android's wallpaper colors win over the system palette`() {
+        val both = androidTone.copy(palette = palette)
+        assertEquals(WallpaperColorSource.ANDROID_COLORS, both.colorSource())
+        assertEquals(clockSampleFromTone(androidTone), clockSampleFromTone(both))
+    }
+
+    @Test fun `with no wallpaper colors the system palette gives the clock its three accents`() {
+        val tone = WallpaperTone(fromAndroid = true, palette = palette)
+        assertEquals(WallpaperColorSource.SYSTEM_PALETTE, tone.colorSource())
+        val sample = clockSampleFromTone(tone)!!
+        assertTrue("still estimated, so the soft shade goes behind the time", sample.estimated)
+        assertEquals(listOf(purple, mauve, rose).map(::vividTint).distinct(), sample.readableSuggestions())
+        assertEquals(vividTint(purple), sample.wallpaperTint())
+        assertTrue(resolveClockInk(BigClockStyle(mode = "WALLPAPER"), sample, fallbackDark = false).shade)
+    }
+
+    @Test fun `neither source leaves none, and a Folio picture never uses the palette`() {
+        assertEquals(WallpaperColorSource.NONE, WallpaperTone(fromAndroid = true).colorSource())
+        assertEquals(WallpaperColorSource.NONE, WallpaperTone(primary = blue, palette = palette).colorSource())
+    }
+
+    @Test fun `the palette stays out of the wallpaper's own colors that the rail and glass read`() {
+        val none: android.app.WallpaperColors? = null
+        val tone = none.tone(fromAndroid = true, palette = palette)
+        assertNull(tone.primary); assertNull(tone.secondary); assertNull(tone.tertiary)
+        assertFalse("no hints from a palette, so Home's ink is unchanged", tone.prefersDarkText)
+        assertEquals(palette, tone.palette)
+    }
+
+    @Test fun `Automatic draws the same ink with palette colors`() {
+        val sample = clockSampleFromTone(WallpaperTone(fromAndroid = true, palette = palette))
+        for (dark in listOf(false, true)) assertEquals(HomeInk(dark).primary, resolveClockInk(BigClockStyle(), sample, fallbackDark = dark).color)
+    }
+
+    @Test fun `Diagnostics names the source of the Big Clock's colors`() {
+        assertTrue(Diagnostics.wallpaperReportText(true, false, listOf(blue), null, palette.colors).contains("Big Clock colors: from Android's wallpaper colors"))
+        val fromPalette = Diagnostics.wallpaperReportText(true, false, null, null, palette.colors, "home_wallpaper")
+        assertTrue(fromPalette, fromPalette.contains("Big Clock colors: from the system palette"))
+        assertTrue(fromPalette, fromPalette.contains("system palette (accent 1, 2, 3 at 500): #6750A4 #625B71 #7D5260, theme color source: home_wallpaper"))
+        assertTrue(Diagnostics.wallpaperReportText(true, false, null, null, null).contains("Big Clock colors: none"))
+        assertTrue(Diagnostics.wallpaperReportText(false, true, listOf(blue), null, palette.colors).contains("Big Clock colors: from Folio's background"))
+    }
+
+    @Test fun `the theme color source is read from AOSP's setting`() {
+        assertEquals("home_wallpaper", Diagnostics.themeColorSource("""{"android.theme.customization.color_source":"home_wallpaper","android.theme.customization.system_palette":"B1611C"}"""))
+        assertEquals("preset", Diagnostics.themeColorSource("""{ "android.theme.customization.color_source" : "preset" }"""))
+        assertNull(Diagnostics.themeColorSource("""{"android.theme.customization.system_palette":"B1611C"}"""))
+        assertNull(Diagnostics.themeColorSource(null))
+    }
 }
