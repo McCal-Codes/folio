@@ -92,7 +92,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             windowHeight = view.rootView.height
             // Reported cutout first; otherwise a known under-display camera (e.g. Galaxy Z Fold8 inner screen).
             val reported = view.rootWindowInsets?.displayCutout
-            cutout = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath) }
+            cutout = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath, density.density) }
                 ?: CameraArea.hiddenCamera(view.display)
         }
         view.viewTreeObserver.addOnGlobalLayoutListener(update)
@@ -268,22 +268,49 @@ internal fun islandGeometryAt(centerXPx: Float, topDp: Float, windowWidthPx: Int
 
 /**
  * The camera to wrap (#61): the cutout's own outline when it lies inside the reported rect and is shorter, else the
- * rect. The Galaxy Z Fold8 cover reports its punch hole as a rect from the screen edge down past the lens (48 x 104 px),
- * so wrapping the rect made the island far taller than the lens. The outline is the hole itself.
+ * rect. On Android's punch-hole emulation the outline is the hole itself, so the island wraps the lens.
+ *
+ * The Galaxy Z Fold8 cover is different: it reports its camera as a strip from the top edge down past the lens
+ * (589,0 - 659,104 px at 2.625) and its outline is that same rectangle, so there is no smaller hole to wrap. For such a
+ * strip the island wraps a band of it instead, sized so the pill keeps the usual height ([cameraStripBand]).
  */
-internal fun cameraRect(rect: Rect, outline: android.graphics.Path?): Rect {
+internal fun cameraRect(rect: Rect, outline: android.graphics.Path?, density: Float): Rect {
     val bounds = android.graphics.RectF().also { outline?.computeBounds(it, true) }
     val lens = if (outline == null || bounds.isEmpty) null
         else intArrayOf(bounds.left.toInt(), bounds.top.toInt(), kotlin.math.ceil(bounds.right).toInt(), kotlin.math.ceil(bounds.bottom).toInt())
-    return cameraRect(intArrayOf(rect.left, rect.top, rect.right, rect.bottom), lens).let { Rect(it[0], it[1], it[2], it[3]) }
+    return cameraRect(intArrayOf(rect.left, rect.top, rect.right, rect.bottom), lens, density).let { Rect(it[0], it[1], it[2], it[3]) }
 }
 
 /** [rect] and [outline] are left, top, right, bottom in px. An outline that spans other cutouts too is not inside. */
-internal fun cameraRect(rect: IntArray, outline: IntArray?): IntArray {
+internal fun cameraRect(rect: IntArray, outline: IntArray?, density: Float): IntArray {
     if (outline == null || outline[2] <= outline[0] || outline[3] <= outline[1]) return rect
     val inside = outline[0] >= rect[0] - OUTLINE_SLACK && outline[1] >= rect[1] - OUTLINE_SLACK &&
         outline[2] <= rect[2] + OUTLINE_SLACK && outline[3] <= rect[3] + OUTLINE_SLACK
-    return if (inside && outline[3] - outline[1] < rect[3] - rect[1]) outline else rect
+    if (inside && outline[3] - outline[1] < rect[3] - rect[1] - OUTLINE_SLACK) return outline
+    return if (isCameraStrip(rect, outline, density)) cameraStripBand(rect, density) else rect
+}
+
+/**
+ * A camera reported as a strip with no smaller hole inside it: the outline's bounds are the rect (give or take
+ * rounding), it starts at the top edge, it is taller than it is wide, and taller than the usual pill. Notches are
+ * wider than tall and punch holes stand off the edge, so neither counts.
+ */
+internal fun isCameraStrip(rect: IntArray, outline: IntArray, density: Float): Boolean {
+    val same = (0..3).all { kotlin.math.abs(outline[it] - rect[it]) <= OUTLINE_SLACK }
+    val width = rect[2] - rect[0]; val height = rect[3] - rect[1]
+    return same && rect[1] in 0..OUTLINE_SLACK && height > width && height / density > ISLAND_MIN_HEIGHT
+}
+
+/**
+ * The part of a [isCameraStrip] strip the island wraps: as wide as the strip, and as tall as a camera that gives the
+ * usual pill height. It sits on the strip's center, but never so high that the pill would come closer to the edge
+ * than the usual gap, which Home keeps when it draws the island anyway; that way Home and the island over other apps
+ * place it the same.
+ */
+internal fun cameraStripBand(rect: IntArray, density: Float): IntArray {
+    val half = ISLAND_MIN_HEIGHT / 2 - ISLAND_CAMERA_MARGIN
+    val center = maxOf((rect[1] + rect[3]) / 2f / density, ISLAND_EDGE_GAP + ISLAND_MIN_HEIGHT / 2)
+    return intArrayOf(rect[0], kotlin.math.floor((center - half) * density).toInt(), rect[2], kotlin.math.floor((center + half) * density).toInt())
 }
 
 /** Pixels an outline may stick out of its rect and still count as inside (rounding). */

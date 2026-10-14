@@ -380,7 +380,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         if (island != null) return
         val metrics = wm.currentWindowMetrics
         val reported = metrics.windowInsets.displayCutout
-        val cutout: Rect? = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath) }
+        val cutout: Rect? = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath, density) }
             ?: CameraArea.hiddenCamera(wm.defaultDisplay)
         val wide = fitsRegularHomeLayout(metrics.bounds.width() / density, metrics.bounds.height() / density, service.resources.configuration.classScale)
         val g = (IslandPosition.load(service, wide, metrics.bounds.width() > metrics.bounds.height())?.let { islandGeometryAt(it.xFraction * metrics.bounds.width(), it.topDp, metrics.bounds.width(), density) }
