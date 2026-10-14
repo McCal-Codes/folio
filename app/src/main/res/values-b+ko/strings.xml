@@ -187,6 +187,8 @@
     <string name="place">배치</string>
     <string name="no_room_here">공간이 부족합니다</string>
     <string name="dock_full_move_an_app_out_first">Dock이 가득 찼습니다 • 먼저 앱을 하나 옮기세요</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">폴더 안에 있음 · 먼저 꺼내세요</string>
     <string name="remove">제거</string>
     <string name="move_this_widget_into_the_six_row_grid_b">크기를 조절하기 전에 이 위젯을 6행 격자 안으로 옮기세요.</string>
     <string name="layout_document">레이아웃 문서</string>
@@ -1393,6 +1395,8 @@
     <string name="text_1_s_version_2_s">%1$s · 버전 %2$s</string>
     <string name="installing_1_s">%1$s 설치 중</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">소스에서 %1$s의 배포를 중단했습니다: %2$s</string>
+    <string name="pulled_by_its_source">소스에서 배포 중단됨</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">소스에서 %1$s의 배포를 중단해 꺼졌습니다. 설정은 유지됩니다.</string>
     <string name="doesn_t_work_with_this_folio_1_s">이 버전의 Folio에서는 작동하지 않습니다: %1$s</string>
     <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s은(는) Folio %2$s에서 작동하지 않습니다: %3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s에서 Folio 자체 패키지의 이름으로 이 항목을 제공합니다</string>
@@ -1518,6 +1522,8 @@
     <string name="brightness">밝기</string>
     <string name="work_apps_are_paused">업무용 앱이 일시 중지됨</string>
     <string name="work_profile_is_unavailable">업무용 프로필을 사용할 수 없음</string>
+    <!-- Claude's draft, needs a native read. Samsung's own Korean name for the feature is 듀얼 메신저. -->
+    <string name="profile_dual">듀얼</string>
     <string name="loading_apps">앱 불러오는 중…</string>
     <string name="remove_from_home_3">홈 화면에서 %1$s 제거</string>
     <string name="pin_to_home">홈 화면에 %1$s 고정</string>
@@ -1979,6 +1985,16 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
+    <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
+    <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
+    <string name="screenshot_swap_choose">바꿀 앱</string>
+    <string name="screenshot_swap_count">%1$d개 선택됨</string>
+    <string name="screenshot_swap_system_app">기본 앱이므로 바뀌지 않음</string>
+    <string name="screenshot_swap_none">일치하는 앱이 없습니다</string>
+    <string name="screenshot_swap_footnote">스크린샷 모드가 켜져 있는 동안 바뀐 앱의 위젯은 숨겨지고 바로가기도 표시되지 않습니다. 폴더 이름은 직접 지은 것이므로 바뀌지 않습니다. Android 자체 화면, 다른 앱 위의 Dock, 그리고 열린 앱 자체에는 실제 앱이 표시됩니다.</string>
+    <string name="settings_keywords_screenshot_swap">스크린샷 바꾸기 교체 앱 숨기기 기본 아이콘 개인정보</string>
     <string name="clock_font">서체</string>
     <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
