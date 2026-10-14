@@ -33,7 +33,7 @@ dependencies {
     testImplementation("com.code-intelligence:jazzer-junit:0.30.0")
     // Checks the parsers against the published JSON Schemas (draft 2020-12). 1.5.x on purpose: 3.x changes both the API
     // and its Jackson version, and this only ever runs in tests.
-    testImplementation("com.networknt:json-schema-validator:1.5.9")
+    testImplementation("com.networknt:json-schema-validator:3.0.8")
 }
 
 kotlin {
