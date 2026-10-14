@@ -86,6 +86,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **An install cut short is put back:** if Folio is killed while a package is being installed or updated, the next start puts things back as they were and says which package didn't finish installing, instead of leaving it half applied. Safe Mode now counts only real crashes, not Android closing Folio for memory.
 - **Native crashes and freezes count toward Safe Mode:** a crash in Folio's own native code, or a freeze right at the start, now counts the same as any other quick crash, so Folio offers Safe Mode instead of starting the same way again.
 - **Updating a tweak keeps your settings:** updating a tweak package from the Market turned a screen you had turned off for it back on, cleared its options, and put Duet's look back to the package's. Your changes now stay: an update only changes what its new version changes, and not where you had already changed it yourself. Undo after an update keeps them too.
+- **A pulled package turns off:** when a package's source pulls the version on your phone, Folio now turns it off the next time Home starts or you refresh that source, keeps its settings, and tells you why, instead of leaving it running. Its row says Pulled by its source, and Remove takes it away; Try Again isn't offered for it.
 
 ## [0.6.8] - 2026-10-06
 
