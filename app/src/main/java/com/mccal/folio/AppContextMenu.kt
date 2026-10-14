@@ -100,6 +100,10 @@ internal fun AppContextMenu(
     onEditIcon: (() -> Unit)? = null,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
+    /** On Home: Remove App opens the choice to delete it or just take it off Home. Null keeps Remove from Home. */
+    onRemoveApp: (() -> Unit)? = null,
+    /** In the App Library: Delete App, straight to Android's confirmation. Null where the app can't be deleted here. */
+    onDeleteApp: (() -> Unit)? = null,
     /** This icon's Icon Actions as menu rows ("Swipe up: Flashlight"), the path for a keyboard or Switch Access (INT-16). */
     iconActions: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
@@ -225,10 +229,16 @@ internal fun AppContextMenu(
                     MenuDivider()
                 }
                 // A shortcut exists only as this icon, so removing it deletes it (like iOS's "Delete Bookmark").
-                MenuRow(when { app.isShortcut -> stringResource(R.string.delete_shortcut); onHome -> stringResource(R.string.remove_from_home); else -> stringResource(R.string.add_to_home) },
+                val removeApp = onRemoveApp.takeIf { onHome && !app.isShortcut }
+                MenuRow(when { app.isShortcut -> stringResource(R.string.delete_shortcut); removeApp != null -> stringResource(R.string.remove_app)
+                    onHome -> stringResource(R.string.remove_from_home); else -> stringResource(R.string.add_to_home) },
                     if (onHome || app.isShortcut) Icons.Rounded.RemoveCircleOutline else Icons.Rounded.AddCircleOutline,
-                    destructive = onHome || app.isShortcut) { onAddOrRemove() }
+                    destructive = onHome || app.isShortcut, tag = "menu-remove-or-add") { removeApp?.invoke() ?: onAddOrRemove() }
                 MenuDivider()
+                onDeleteApp?.takeIf { !onHome && !app.isShortcut }?.let {
+                    MenuRow(stringResource(R.string.delete_app), Icons.Rounded.DeleteOutline, destructive = true, tag = "menu-delete-app") { it() }
+                    MenuDivider()
+                }
                 }
                 // iOS keeps context menus short: the less common actions sit behind "More".
                 if (!more) MenuRow(stringResource(R.string.more), Icons.Rounded.MoreHoriz) { more = true }

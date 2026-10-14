@@ -44,4 +44,9 @@ class HomeOverlaysTest {
         assertEquals(null, back.menu)
         assertEquals(null, back.emptyCell)
     }
+
+    @Test fun `the Remove App choice comes back too`() {
+        assertEquals("spotify", roundTrip(HomeOverlays(removeApp = "spotify")).removeApp)
+        assertEquals(null, roundTrip(HomeOverlays(menu = "x")).removeApp)
+    }
 }
