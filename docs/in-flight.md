@@ -22,7 +22,6 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `island-cutout` | #61 for beta 3: the Dynamic Island wraps the camera hole's outline instead of the taller strip Android reports, on Home and over other apps; Diagnostics lists camera cutouts. | `CutoutIsland.kt` (`cameraRect`), `EverywhereOverlay.kt`, `Diagnostics.kt`, `CHANGELOG.md` |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.
