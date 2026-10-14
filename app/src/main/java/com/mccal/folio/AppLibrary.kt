@@ -93,7 +93,7 @@ internal fun AppLibrary(
             val pm = context.packageManager
             val byId = visibleApps.associateBy { it.id }
             val suggestions = RecentApps.load(context).mapNotNull(byId::get).take(8)
-            val grouped = visibleApps.groupBy { LibraryCategory.of(pm, it.component.packageName) }
+            val grouped = visibleApps.groupBy { LibraryCategory.of(pm, (it.iconFrom ?: it).component.packageName) }
                 .mapValues { (_, apps) -> apps.sortedWith(compareBy(java.text.Collator.getInstance()) { it.label }) }
             buildMap {
                 if (suggestions.isNotEmpty()) put(LibraryCategory.SUGGESTIONS, suggestions)
@@ -184,11 +184,12 @@ internal fun AppLibrary(
                             AppIcon(app, null, Modifier.size(40.dp)
                                 .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
                             Row(Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
-                                NewAppDot(app.packageName, 7.dp)
+                                if (app.iconFrom == null) NewAppDot(app.packageName, 7.dp)
                                 // A clone sits right beside its original with the same name; the line under it tells them apart.
+                                // Not while Screenshot Mode swaps it: the profile's name would give the swap away.
                                 Column {
                                     Text(app.label, maxLines = 2, fontSize = 14.sp)
-                                    if (app.kind == ProfileKind.CLONE) Text(profileName(app), color = ink.copy(alpha = .6f),
+                                    if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = ink.copy(alpha = .6f),
                                         fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, modifier = Modifier.testTag("library-profile-${app.id}"))
                                 }
                             }
