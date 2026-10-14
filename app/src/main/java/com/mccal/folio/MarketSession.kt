@@ -276,7 +276,7 @@ internal class MarketSession(
      */
     fun noteCrash(): InstalledPackage? {
         val id = safeMode.noteCrash() ?: return null
-        val off = installer.disable(id, appContext.getString(R.string.folio_stopped_twice_just_after_this_package))
+        val off = installer.disable(id, appContext.getString(R.string.folio_stopped_twice_just_after_this_package), InstalledPackage.OffCause.CRASH)
         Diagnostics.marketTurnedOff(id, off, bySafeMode = true)
         return store.find(id)
     }
@@ -285,8 +285,29 @@ internal class MarketSession(
     fun disable(id: String, reason: String): Boolean =
         installer.disable(id, reason).also { Diagnostics.marketTurnedOff(id, it, bySafeMode = false) }
 
-    /** Try Again, after Safe Mode turned a package off: its changes go back on. */
-    fun enable(id: String): Boolean = installer.enable(id).also { Diagnostics.marketTurnedOn(id, it) }
+    /**
+     * Try Again, after Safe Mode turned a package off: its changes go back on. Never for one its source pulled: that
+     * one stays off until it's removed, or a later version that isn't pulled replaces it.
+     */
+    fun enable(id: String): Boolean {
+        val pulled = store.find(id)?.let { pulledReason(it, source.revocations(), sources.cached()) } != null
+        return (!pulled && installer.enable(id)).also { Diagnostics.marketTurnedOn(id, it) }
+    }
+
+    /** Why the version of [installed] on the phone was pulled, by Folio's list or its own source's, or null. */
+    fun pulledReason(installed: InstalledPackage): String? = pulledReason(installed, source.revocations(), sources.cached())
+
+    /**
+     * Turns off every installed package whose version was pulled, the way Safe Mode does: its changes come off Home,
+     * its record and settings stay, and Remove still works. Needs a real Home to take the changes off, so it runs as
+     * Home starts and after a source is refreshed by hand, never from the background refresh. Returns what it turned off.
+     */
+    fun turnOffPulled(): List<InstalledPackage> = store.installed().filter { it.enabled }.mapNotNull { installed ->
+        val reason = pulledReason(installed) ?: return@mapNotNull null
+        val off = installer.disable(installed.id, appContext.getString(R.string.its_source_pulled_it_1_s, reason), InstalledPackage.OffCause.PULLED)
+        Diagnostics.marketTurnedOff(installed.id, off, bySafeMode = false)
+        if (off) store.find(installed.id) else null
+    }
 
     /** Whether tweak [id] is on this phone, asked the way the installer asks before putting an add-on on. */
     fun hasTweak(id: String): Boolean = host.hasTweak(id)
