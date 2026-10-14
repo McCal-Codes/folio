@@ -1746,7 +1746,7 @@ fun LauncherScreen(
                 val clockLow = (BigClockBounds.bySlot[slot]?.center?.y ?: 0f) > windowHeight / 2f
                 Box(Modifier.fillMaxSize(), contentAlignment = if (clockLow) Alignment.TopCenter else Alignment.BottomCenter) {
                     ClockEditBar(slot, state.bigClockStyles[slot], { model.setBigClockStyle(slot, it) },
-                        systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onDone = { clockEditSlot = null }, enterFromTop = clockLow,
+                        onDone = { clockEditSlot = null }, enterFromTop = clockLow,
                         modifier = if (clockLow) Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
                             else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
                 }

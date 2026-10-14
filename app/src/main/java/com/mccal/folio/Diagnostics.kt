@@ -238,6 +238,27 @@ internal object Diagnostics {
         }
     }.trimEnd()
 
+    /**
+     * What Android shares about its wallpaper, and which background Folio puts behind Home (#353). With Android's
+     * wallpaper the Big Clock's colors come from the home colors here; "none" means Android gave Folio no colors.
+     */
+    fun wallpaperReport(context: Context): String {
+        val manager = runCatching { android.app.WallpaperManager.getInstance(context) }.getOrNull()
+        fun colors(which: Int) = manager?.let { m -> runCatching { m.getWallpaperColors(which) }.getOrNull() }
+            ?.let { c -> listOfNotNull(c.primaryColor.toArgb(), c.secondaryColor?.toArgb(), c.tertiaryColor?.toArgb()) }
+        return wallpaperReportText(usesSystemWallpaper(context), runCatching { launcherBackgroundEnabled(context) }.getOrDefault(false),
+            colors(android.app.WallpaperManager.FLAG_SYSTEM), colors(android.app.WallpaperManager.FLAG_LOCK))
+    }
+
+    internal fun wallpaperReportText(systemWallpaper: Boolean, folioPictureSaved: Boolean, home: List<Int>?, lock: List<Int>?): String = buildString {
+        fun text(colors: List<Int>?) = colors?.takeIf { it.isNotEmpty() }?.joinToString(" ") { String.format(java.util.Locale.ROOT, "#%06X", it and 0xFFFFFF) } ?: "none"
+        appendLine("Wallpaper:")
+        appendLine("  behind Home: ${if (systemWallpaper) "Android's wallpaper" else "Folio's background"}" +
+            " (a Folio picture is ${if (folioPictureSaved) "saved" else "not saved"})")
+        appendLine("  Android's colors, home: ${text(home)}")
+        append("  Android's colors, lock: ${text(lock)}")
+    }
+
     fun buildDisplay(): String = "${Build.DISPLAY} (${Build.HARDWARE}, ${Build.SOC_MODEL})"
 
     /**
@@ -251,6 +272,8 @@ internal object Diagnostics {
         appendLine(hingeReport(context))
         appendLine()
         appendLine(cutoutReport(context))
+        appendLine()
+        appendLine(wallpaperReport(context))
         appendLine()
         appendLine("Recent events:")
         appendLine(trailText().ifBlank { "(none)" })

@@ -249,31 +249,23 @@ internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fall
     return ClockInkResult(Color.White, true, shadedWhite)
 }
 
+/** The clock's sample from Android's wallpaper colors in [tone], or null when Android shared none for it. */
+internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? =
+    tone.primary?.let { sampleFromWallpaperColors(it, listOfNotNull(tone.secondary, tone.tertiary)) }
+
 /**
  * Samples the picture under [box] (fractions of the whole background, 0..1) whenever the background or the box
- * changes. With Android's own wallpaper behind Home ([systemWallpaper]), whose pixels no app can read, it is built from
- * the wallpaper's main colors instead ([sampleFromWallpaperColors]) and follows them when the wallpaper changes.
+ * changes. With Android's own wallpaper behind Home ([WallpaperTone.fromAndroid]), whose pixels no app can read, it is
+ * built from the wallpaper's main colors instead ([clockSampleFromTone]), from the same tone Home's ink uses, so it
+ * follows the wallpaper and is there on the first frame. Whether that is the case comes from the user's setting, never
+ * from whether a Folio picture is saved: switching to Android's wallpaper keeps the picture for later, and reading it
+ * then sampled a picture nobody could see (the Fold8 check of #353).
  */
 @Composable
-internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: Float = 0f, systemWallpaper: Boolean = false): ClockInkSample? {
+internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: Float = 0f): ClockInkSample? {
     val context = LocalContext.current
-    if (systemWallpaper) {
-        val manager = remember(context) { android.app.WallpaperManager.getInstance(context) }
-        fun read(colors: android.app.WallpaperColors?) = colors?.let { c ->
-            sampleFromWallpaperColors(c.primaryColor.toArgb(), listOfNotNull(c.secondaryColor?.toArgb(), c.tertiaryColor?.toArgb()))
-        }
-        var fromColors by remember { mutableStateOf<ClockInkSample?>(null) }
-        androidx.compose.runtime.DisposableEffect(manager, enabled) {
-            if (!enabled) { fromColors = null; return@DisposableEffect onDispose { } }
-            fromColors = read(runCatching { manager.getWallpaperColors(android.app.WallpaperManager.FLAG_SYSTEM) }.getOrNull())
-            val listener = android.app.WallpaperManager.OnColorsChangedListener { colors, which ->
-                if (which and android.app.WallpaperManager.FLAG_SYSTEM != 0) fromColors = read(colors)
-            }
-            runCatching { manager.addOnColorsChangedListener(listener, android.os.Handler(android.os.Looper.getMainLooper())) }
-            onDispose { runCatching { manager.removeOnColorsChangedListener(listener) } }
-        }
-        return fromColors
-    }
+    val tone = LocalWallpaperTone.current
+    if (tone.fromAndroid) return remember(tone, enabled) { if (enabled) clockSampleFromTone(tone) else null }
     val revision = LauncherBackgroundCache.revision.intValue
     var sample by remember { mutableStateOf<ClockInkSample?>(null) }
     LaunchedEffect(box, revision, enabled, windowAspect) {
@@ -301,13 +293,14 @@ internal val ClockLooks = listOf(
 
 /**
  * Edits a Big Clock on Home itself, with the real clock in view: Looks, one color row, and a Fine tune panel that stays
- * closed until asked for. It sits in the half of the screen the clock is not in. [systemWallpaper] is true when Android's
- * own wallpaper is behind Home, which Folio cannot read, so only Automatic and White are offered then.
+ * closed until asked for. It sits in the half of the screen the clock is not in. With Android's own wallpaper behind Home,
+ * which Folio cannot read, the colors are the ones Android shares for it; when it shares none, only Automatic and White
+ * are offered and a note says why.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ClockEditBar(
-    slot: Int, style: BigClockStyle?, onStyle: (BigClockStyle?) -> Unit, systemWallpaper: Boolean,
+    slot: Int, style: BigClockStyle?, onStyle: (BigClockStyle?) -> Unit,
     onDone: () -> Unit, modifier: Modifier = Modifier, enterFromTop: Boolean = false,
 ) {
     val density = LocalDensity.current
@@ -323,8 +316,8 @@ internal fun ClockEditBar(
         if (bounds == null || window.width <= 0 || window.height <= 0) Rect.Zero
         else Rect(bounds.left / window.width, bounds.top / window.height, bounds.right / window.width, bounds.bottom / window.height)
     }
-    val sample = rememberClockInkSample(fraction, enabled = true, windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f,
-        systemWallpaper = systemWallpaper)
+    val systemWallpaper = LocalWallpaperTone.current.fromAndroid
+    val sample = rememberClockInkSample(fraction, enabled = true, windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
     var s by remember(slot) { mutableStateOf(style.orDefault()) }
     var fine by remember(slot) { mutableStateOf(false) }
     fun push(next: BigClockStyle) { s = next; onStyle(next) }
@@ -373,7 +366,9 @@ internal fun ClockEditBar(
             }
             ColorDot(selected = s.mode == "WHITE", label = stringResource(R.string.white), color = Color.White, onClick = { push(s.copy(mode = "WHITE")) })
         }
-        if (systemWallpaper) Text(stringResource(R.string.clock_colors_android_wallpaper), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+        // Android can share no colors for its wallpaper (some live wallpapers, or just after a restart): then there is
+        // nothing to tint with, and the note says so rather than leaving two dots unexplained.
+        if (systemWallpaper) Text(stringResource(if (sample != null) R.string.clock_colors_android_wallpaper else R.string.clock_no_android_wallpaper_colors), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
         // The font sits beside Color, where people look for it, not inside Fine tune (#330).
         Choice(stringResource(R.string.clock_font), s.face, listOf("SANS" to R.string.default_choice, "ROUNDED" to R.string.face_rounded, "SERIF" to R.string.face_serif, "MONO" to R.string.face_mono)) { push(s.copy(face = it)) }
         AnimatedVisibility(fine, enter = fadeIn(clockMotion<Float>()) + expandVertically(clockMotion<androidx.compose.ui.unit.IntSize>()),

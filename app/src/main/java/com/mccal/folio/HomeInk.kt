@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -38,13 +39,23 @@ internal fun homeInkFor(setting: String, wallpaperPrefersDarkText: Boolean) = Ho
 internal fun WallpaperColors?.prefersDarkText(): Boolean =
     this != null && colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0
 
-/** What Folio knows about the wallpaper behind Home, without reading its pixels. */
+/**
+ * What Folio knows about the wallpaper behind Home, without reading its pixels. [fromAndroid] is true when Android's own
+ * wallpaper is behind Home (the user's setting, not whether a Folio picture happens to be saved): the colors are then
+ * the ones Android shares for it, and all null when it shares none.
+ */
 @Immutable
-internal data class WallpaperTone(val prefersDarkText: Boolean = false, val primary: Int? = null, val secondary: Int? = null)
+internal data class WallpaperTone(val prefersDarkText: Boolean = false, val primary: Int? = null, val secondary: Int? = null,
+    val tertiary: Int? = null, val fromAndroid: Boolean = false)
 
 internal val LocalWallpaperTone = staticCompositionLocalOf { WallpaperTone() }
 
-internal fun WallpaperColors?.tone() = WallpaperTone(prefersDarkText(), this?.primaryColor?.toArgb(), this?.secondaryColor?.toArgb())
+internal fun WallpaperColors?.tone(fromAndroid: Boolean = false) = WallpaperTone(prefersDarkText(), this?.primaryColor?.toArgb(),
+    this?.secondaryColor?.toArgb(), this?.tertiaryColor?.toArgb(), fromAndroid)
+
+/** Android's colors for the home screen's wallpaper, or a tone with no colors when it shares none (or the call fails). */
+internal fun WallpaperManager.androidWallpaperTone(): WallpaperTone =
+    runCatching { getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }.getOrNull().tone(fromAndroid = true)
 
 /**
  * The wallpaper's tone. Android's wallpaper: the system's own colors and hints (no permission needed, updates
@@ -56,14 +67,21 @@ internal fun rememberWallpaperTone(systemWallpaper: Boolean): WallpaperTone {
     val context = LocalContext.current
     if (systemWallpaper) {
         val manager = remember(context) { WallpaperManager.getInstance(context) }
-        var tone by remember { mutableStateOf(runCatching { manager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }.getOrNull().tone()) }
+        // Read once where it is composed, so the first frame already has the colors; later reads go off the main thread.
+        var tone by remember { mutableStateOf(manager.androidWallpaperTone()) }
+        val scope = rememberCoroutineScope()
+        val refresh = { scope.launch { tone = withContext(Dispatchers.IO) { manager.androidWallpaperTone() } }; Unit }
         DisposableEffect(manager) {
-            val listener = WallpaperManager.OnColorsChangedListener { colors, which ->
-                if (which and WallpaperManager.FLAG_SYSTEM != 0) tone = colors.tone()
-            }
+            // Any change reads the home screen's colors again rather than trusting the ones handed over: One UI reports
+            // `which` with its own display bits added (5 is home on the main screen), and the colors in a callback can
+            // be the lock screen's or the other screen's.
+            val listener = WallpaperManager.OnColorsChangedListener { _, _ -> refresh() }
             runCatching { manager.addOnColorsChangedListener(listener, Handler(Looper.getMainLooper())) }
             onDispose { runCatching { manager.removeOnColorsChangedListener(listener) } }
         }
+        // The listener only hears changes. Android can have no colors yet right after boot or while a live wallpaper
+        // starts, so Home asks again each time it comes back rather than keeping a first empty answer for good.
+        androidx.lifecycle.compose.LifecycleResumeEffect(manager) { refresh(); onPauseOrDispose { } }
         return tone
     }
     val revision = LauncherBackgroundCache.revision.intValue

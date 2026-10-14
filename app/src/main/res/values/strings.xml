@@ -2029,6 +2029,7 @@
     <string name="settings_keywords_screenshot_swap">screenshot swap replace hide apps stock icons privacy blacklist</string>
     <string name="clock_font">Font</string>
     <string name="clock_colors_android_wallpaper">With Android’s wallpaper, the colors are its main colors, and a soft shade behind the time keeps it readable.</string>
+    <string name="clock_no_android_wallpaper_colors">Android hasn’t shared colors for this wallpaper, so only Automatic and White are offered. Some live wallpapers never share them.</string>
     <!-- Moved out of Kotlin (DES-21), English unchanged. ko and zh-Hans are Claude's drafts and need a native read. -->
     <string name="in_stack">In stack</string>
     <string name="not_in_stack">Not in stack</string>

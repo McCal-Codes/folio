@@ -1997,6 +1997,7 @@
     <string name="settings_keywords_screenshot_swap">스크린샷 바꾸기 교체 앱 숨기기 기본 아이콘 개인정보</string>
     <string name="clock_font">서체</string>
     <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_no_android_wallpaper_colors">Android가 이 배경화면의 색상을 알려 주지 않아 자동과 흰색만 쓸 수 있습니다. 일부 라이브 배경화면은 색상을 알려 주지 않습니다.</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">스택에 있음</string>
     <string name="not_in_stack">스택에 없음</string>
