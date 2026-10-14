@@ -997,7 +997,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
                 CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsState().value.apps)
-                CustomizationPage.ICON_ACTIONS -> IconActionsSettingsPage(state.apps, state.iconActions, model::setIconActions, model::setAllIconActions)
+                // The real apps for the same reason: in Screenshot Mode the editor should name the apps it changes.
+                CustomizationPage.ICON_ACTIONS -> IconActionsSettingsPage(model.state.collectAsState().value.apps, state.iconActions, model::setIconActions, model::setAllIconActions)
                 CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ })
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
