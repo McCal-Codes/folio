@@ -1523,6 +1523,8 @@
     <string name="brightness">밝기</string>
     <string name="work_apps_are_paused">업무용 앱이 일시 중지됨</string>
     <string name="work_profile_is_unavailable">업무용 프로필을 사용할 수 없음</string>
+    <!-- Claude's draft, needs a native read. Samsung's own Korean name for the feature is 듀얼 메신저. -->
+    <string name="profile_dual">듀얼</string>
     <string name="loading_apps">앱 불러오는 중…</string>
     <string name="remove_from_home_3">홈 화면에서 %1$s 제거</string>
     <string name="pin_to_home">홈 화면에 %1$s 고정</string>
