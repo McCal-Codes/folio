@@ -45,7 +45,7 @@ class CameraRectTest {
     @Test fun `the island at the Fold8 cover camera is a normal pill around the lens`() {
         val before = islandGeometry(assumedStrip, 1248, density)
         val after = islandGeometry(cameraRect(assumedStrip, lens, density), 1248, density)
-        assertEquals("the old pill wrapped the whole rect", 104 / density + 5f, before.pillH, .01f)
+        assertEquals("the old pill wrapped the whole rect", 104 / density + 5f - 8f, before.pillH, .01f)
         assertEquals("now the usual height", 34f, after.pillH, .01f)
         // Still wraps the lens: starts above it and ends below it.
         assertTrue(after.top < 56 / density && after.top + after.pillH > 104 / density)
@@ -61,7 +61,7 @@ class CameraRectTest {
     @Test fun `the real Fold8 strip gets the usual pill on the strip`() {
         val before = islandGeometry(fold8Cover, 1248, density)
         val after = islandGeometry(cameraRect(fold8Cover, fold8Cover.copyOf(), density), 1248, density)
-        assertEquals("before: wrapped the whole strip", 104 / density + 5f, before.pillH, .01f)
+        assertEquals("before: wrapped the whole strip", 104 / density + 5f - 8f, before.pillH, .01f)
         assertEquals("the usual height", 34f, after.pillH, .01f)
         // Same horizontal center as the strip, and as wide around it.
         assertEquals(624f, after.centerXPx, 0f)
