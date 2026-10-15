@@ -2602,8 +2602,11 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             .padding(horizontal = 5.dp, vertical = 1.dp))
 }
 
+/** Whether Layout History lists its saved layouts: when it's on, and always while the saved layout is damaged. */
+internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean) = layoutHistory || layoutDamaged
+
 /** Layout History: automatic snapshots of Home before big changes, each restorable. */
-@Composable private fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
+@Composable internal fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { LayoutHistory.load(context) }
     val snapshots by LayoutHistory.snapshots.collectAsState()
@@ -2613,10 +2616,13 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.save_home_before_big_changes), Modifier.weight(1f, fill = false)) }
             IosSwitch(state.layoutHistory, model::setLayoutHistory, Modifier.testTag("layout-history-switch"))
         }
-        if (state.layoutHistory) {
+        // While the layout is damaged the setting reads off (Home shows a stand-in), but the damaged-layout notice sends
+        // people here to put an earlier layout back, so the saved ones are listed anyway. There's nothing to save then.
+        val damaged = model.layoutDamaged
+        if (layoutSnapshotsShown(state.layoutHistory, damaged)) {
             // Read here rather than in the click: the name is what the snapshot is called in the list below it.
             val savedByYou = stringResource(R.string.saved_by_you)
-            CardAction(stringResource(R.string.save_current_layout), onClick = { model.saveLayoutSnapshot(savedByYou, force = true) }, modifier = Modifier.testTag("layout-history-save"))
+            if (!damaged) CardAction(stringResource(R.string.save_current_layout), onClick = { model.saveLayoutSnapshot(savedByYou, force = true) }, modifier = Modifier.testTag("layout-history-save"))
             snapshots.forEach { snapshot ->
                 // Merged, like the switch row above: without it every saved layout offers a button TalkBack reads as
                 // just "Restore", and there is no way to hear which layout it would put back. Merged, the row is one
