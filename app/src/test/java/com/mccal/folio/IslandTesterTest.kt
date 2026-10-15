@@ -76,4 +76,38 @@ class IslandTesterTest {
         IslandTester.clear(public)
         assertSame(fake, IslandTester.fake.value)
     }
+
+    @Test fun `a delayed press waits, and the minute starts when it shows`() = runTest(StandardTestDispatcher()) {
+        IslandTester.scope = this
+        IslandTester.onMain = { it() }
+        assertTrue(IslandTester.fire(dev, 5_000) { IslandTester.show(dev, fake) })
+        advanceTimeBy(4_999); runCurrent()
+        assertNull(IslandTester.fake.value)
+        advanceTimeBy(2); runCurrent()
+        assertSame(fake, IslandTester.fake.value)
+        // The 60 s runs from when it showed (5 s in), not from the press.
+        advanceTimeBy(IslandTester.FAKE_MS - 1_000); runCurrent()
+        assertSame(fake, IslandTester.fake.value)
+        advanceTimeBy(2_000); runCurrent()
+        assertNull(IslandTester.fake.value)
+    }
+
+    @Test fun `Clear cancels a press that is still waiting`() = runTest(StandardTestDispatcher()) {
+        IslandTester.scope = this
+        IslandTester.onMain = { it() }
+        IslandTester.fire(dev, 5_000) { IslandTester.show(dev, fake) }
+        advanceTimeBy(2_000); runCurrent()
+        IslandTester.clear(dev)
+        advanceTimeBy(10_000); runCurrent()
+        assertNull(IslandTester.fake.value)
+    }
+
+    @Test fun `a public build cannot schedule a press`() = runTest(StandardTestDispatcher()) {
+        IslandTester.scope = this
+        IslandTester.onMain = { it() }
+        var ran = false
+        assertFalse(IslandTester.fire(public, 0) { ran = true })
+        advanceTimeBy(1_000); runCurrent()
+        assertFalse(ran)
+    }
 }

@@ -6,7 +6,14 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +47,9 @@ object IslandTester {
 
     internal var scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var timeout: Job? = null
+    private var pending: Job? = null
+    /** Runs a delayed button on the main thread (a media session wants a looper); tests run it in place. */
+    internal var onMain: (() -> Unit) -> Unit = { run -> android.os.Handler(android.os.Looper.getMainLooper()).post(run) }
     private var session: MediaSession? = null
 
     /** The island shows [fake] when one is set, else the [real] activity. */
@@ -56,9 +66,22 @@ object IslandTester {
         return true
     }
 
-    /** Puts the real activity back. Does nothing outside Folio Dev. */
+    /**
+     * Runs [action] once after [delayMs] (a button the island is not yet visible for: Settings covers it, so the press
+     * waits for you to close Settings or switch apps). A later press replaces a pending one; [clear] cancels it.
+     * The 60 s clear starts when [action] shows the fake, not now. Does nothing outside Folio Dev.
+     */
+    fun fire(context: Context, delayMs: Long, action: () -> Unit): Boolean {
+        if (!DevBuild.isDevApp(context)) return false
+        pending?.cancel()
+        pending = scope.launch { delay(delayMs); pending = null; onMain(action) }
+        return true
+    }
+
+    /** Puts the real activity back and drops any press still waiting. Does nothing outside Folio Dev. */
     fun clear(context: Context) {
         if (!DevBuild.isDevApp(context)) return
+        pending?.cancel(); pending = null
         clearNow()
     }
 
@@ -94,7 +117,7 @@ object IslandTester {
         val s = MediaSession(context, "FolioIslandTester") // english-only
         s.setMetadata(MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, "Example Song")
             .putString(MediaMetadata.METADATA_KEY_ARTIST, "Example Artist").putLong(MediaMetadata.METADATA_KEY_DURATION, 180_000L).build())
-        s.setPlaybackState(PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 30_000L, 0f)
+        s.setPlaybackState(PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 30_000L, 1f)
             .setActions(PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS).build())
         s.isActive = true
         val media = IslandActivity.Media(context.packageName, "Example Song", "Example Artist", icon(context), true, s.sessionToken) // english-only
@@ -135,31 +158,41 @@ object IslandTester {
 
 /** Settings > Developer > Island tester (Folio Dev only). Words stay English, like the rest of the Developer page. */
 @Composable
-internal fun IslandTesterCard() {
+internal fun IslandTesterCard(onClose: () -> Unit) {
     val context = LocalContext.current
     if (!DevBuild.isDevApp(context)) return
+    // Settings covers Home's island, so "Now" closes Settings first; 5 and 10 seconds leave it open to switch apps.
+    var wait by remember { mutableStateOf(0) }
+    fun go(action: () -> Unit) {
+        if (wait == 0) { onClose(); IslandTester.fire(context, CLOSE_MS, action) } else IslandTester.fire(context, wait * 1_000L, action)
+    }
     SettingsCard("Island tester") { // english-only
         CardNote("Shows made-up Example calls, timers, music and messages in the island so you can check where it sits, how it expands and how it moves. It tests the island's own screen, not how Android reads notifications. Each button fires once, and an activity clears itself after 1 minute.") // english-only
+        IosSegmented(listOf(0 to "Now", 5 to "5 seconds", 10 to "10 seconds"), wait, { wait = it }, Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "island-tester-delay") // english-only
+        CardNote("Fire: Now closes Settings first. 5 or 10 seconds waits, so you can close Settings or open another app.") // english-only
     }
     SettingsCard("Activities") { // english-only
-        IosActionRow("Incoming call") { IslandTester.incomingCall(context) } // english-only
-        IosActionRow("Ongoing call") { IslandTester.ongoingCall(context) } // english-only
-        IosActionRow("Timer (countdown)") { IslandTester.countdown(context) } // english-only
-        IosActionRow("Navigation") { IslandTester.navigation(context) } // english-only
-        IosActionRow("Progress (40%)") { IslandTester.progress(context) } // english-only
-        IosActionRow("Music") { IslandTester.music(context) } // english-only
+        IosActionRow("Incoming call") { go { IslandTester.incomingCall(context) } } // english-only
+        IosActionRow("Ongoing call") { go { IslandTester.ongoingCall(context) } } // english-only
+        IosActionRow("Timer (countdown)") { go { IslandTester.countdown(context) } } // english-only
+        IosActionRow("Navigation") { go { IslandTester.navigation(context) } } // english-only
+        IosActionRow("Progress (40%)") { go { IslandTester.progress(context) } } // english-only
+        IosActionRow("Music") { go { IslandTester.music(context) } } // english-only
         IosActionRow("Clear") { IslandTester.clear(context) } // english-only
     }
     SettingsCard("Events") { // english-only
-        IosActionRow("Message with reply") { IslandTester.messageWithReply(context) } // english-only
-        IosActionRow("Notification from another app") { IslandTester.otherAppNotification(context) } // english-only
-        IosActionRow("Long message") { IslandTester.longMessage(context) } // english-only
-        IosActionRow("Notice") { IslandTester.notice(context) } // english-only
-        IosActionRow("Notice with Undo") { IslandTester.noticeWithUndo(context) } // english-only
-        IosActionRow("Charging 82%") { IslandTester.charging(context) } // english-only
-        IosActionRow("Silent on") { IslandTester.silent(context, true) } // english-only
-        IosActionRow("Silent off") { IslandTester.silent(context, false) } // english-only
-        IosActionRow("Focus on") { IslandTester.focusOn(context) } // english-only
-        IosActionRow("Bluetooth headphones") { IslandTester.bluetooth(context) } // english-only
+        IosActionRow("Message with reply") { go { IslandTester.messageWithReply(context) } } // english-only
+        IosActionRow("Notification from another app") { go { IslandTester.otherAppNotification(context) } } // english-only
+        IosActionRow("Long message") { go { IslandTester.longMessage(context) } } // english-only
+        IosActionRow("Notice") { go { IslandTester.notice(context) } } // english-only
+        IosActionRow("Notice with Undo") { go { IslandTester.noticeWithUndo(context) } } // english-only
+        IosActionRow("Charging 82%") { go { IslandTester.charging(context) } } // english-only
+        IosActionRow("Silent on") { go { IslandTester.silent(context, true) } } // english-only
+        IosActionRow("Silent off") { go { IslandTester.silent(context, false) } } // english-only
+        IosActionRow("Focus on") { go { IslandTester.focusOn(context) } } // english-only
+        IosActionRow("Bluetooth headphones") { go { IslandTester.bluetooth(context) } } // english-only
     }
 }
+
+/** Long enough for the Settings dialog to be gone before the island is shown. */
+private const val CLOSE_MS = 600L
