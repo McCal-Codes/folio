@@ -41,6 +41,9 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
         fun of(pm: PackageManager, packageName: String): LibraryCategory =
             known.getOrPut(packageName) { lookup(pm, packageName) }
 
+        /** An installed, updated or removed package may declare another category now; the next list asks again. */
+        fun forget(packageName: String) { known.remove(packageName) }
+
         private fun lookup(pm: PackageManager, packageName: String): LibraryCategory {
             val p0 = packageName.lowercase()
             // Browsers and system tools often declare odd categories; our hints win for them.
