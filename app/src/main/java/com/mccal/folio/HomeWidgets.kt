@@ -308,6 +308,20 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
  * iOS Smart Stack: swipe up or down between the widgets in one spot. Dots on the side show while flipping;
  * with Smart Rotate on, the stack moves to the most relevant widget while Home is open.
  */
+/** When each stack last looked, by slot, for as long as the process lives (a stack's page can leave composition and come back). */
+internal object SmartRotateClock {
+    private val checks = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    /** The last check for [slot], or [now] when it has none yet (a new stack waits the full time once). */
+    fun lastCheck(slot: Int, now: Long): Long = checks.getOrPut(slot) { now }
+
+    fun record(slot: Int, now: Long) { checks[slot] = now }
+
+    fun forget(slot: Int) { checks.remove(slot) }
+
+    internal fun clearForTest() = checks.clear()
+}
+
 @Composable
 internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetController, modifier: Modifier, onAdd: () -> Unit) {
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { cards.size })
@@ -325,13 +339,14 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     // When the stack last looked, on a clock that keeps running while Home is away, so a resume picks up the wait
     // where it was instead of starting 15 minutes over (W-3: before, opening any app reset it and it rarely fired).
-    var lastRotateCheck by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+    // Kept per stack outside this composable: swiping several pages away drops the page from the pager, and a remembered
+    // value would go with it and start the wait over on return.
     LaunchedEffect(rotate, cards, lifecycleOwner) {
         // Only while Home is in front: a stack that rotates behind another app burns a read of usage stats and the
         // calendar for a screen nobody is looking at (DYN-15).
         if (rotate) lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) {
-            delay(Suggestions.smartRotateWait(android.os.SystemClock.elapsedRealtime(), lastRotateCheck))
-            lastRotateCheck = android.os.SystemClock.elapsedRealtime()
+            delay(Suggestions.smartRotateWait(android.os.SystemClock.elapsedRealtime(), SmartRotateClock.lastCheck(slot, android.os.SystemClock.elapsedRealtime())))
+            SmartRotateClock.record(slot, android.os.SystemClock.elapsedRealtime())
             val relevance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val apps = Suggestions.packageRelevance(context, homeApps.apps)
                 val soon = UpNext.events(context, limit = 1).firstOrNull()?.let { !it.allDay && it.begin - System.currentTimeMillis() in 0..60 * 60_000L } == true

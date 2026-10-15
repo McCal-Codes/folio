@@ -43,4 +43,14 @@ class SuggestionsTest {
         // A clock that reads earlier than the last look never waits past one interval.
         org.junit.Assert.assertEquals(interval, Suggestions.smartRotateWait(last - 60_000L, last))
     }
+
+    @Test fun `a stack keeps its last check when its page leaves and comes back`() {
+        SmartRotateClock.clearForTest()
+        org.junit.Assert.assertEquals("a new stack starts its wait now", 1_000L, SmartRotateClock.lastCheck(7, 1_000L))
+        SmartRotateClock.record(7, 5_000L)
+        org.junit.Assert.assertEquals("coming back later finds the old check, not a new one", 5_000L, SmartRotateClock.lastCheck(7, 900_000L))
+        org.junit.Assert.assertEquals("another stack is separate", 900_000L, SmartRotateClock.lastCheck(8, 900_000L))
+        SmartRotateClock.forget(7)
+        org.junit.Assert.assertEquals(2_000_000L, SmartRotateClock.lastCheck(7, 2_000_000L))
+    }
 }
