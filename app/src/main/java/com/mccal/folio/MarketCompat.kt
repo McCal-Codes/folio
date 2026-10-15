@@ -52,8 +52,12 @@ internal fun compatLines(checks: List<CompatCheck>): List<CompatLine> = checks.m
             check.have != null -> CompatLine(CompatState.OK, R.string.compat_works, R.string.compat_works_detail, listOf(check.have.toString()))
             else -> null
         }
-        is CompatCheck.Kinds ->
-            if (check.state == CompatState.BLOCKED) CompatLine(CompatState.BLOCKED, R.string.needs_a_newer_folio, R.string.compat_kind_detail) else null
+        // A script is code, and Folio doesn't run code from a source (ADR 0004), so a newer Folio is no answer for it.
+        is CompatCheck.Kinds -> when {
+            check.state != CompatState.BLOCKED -> null
+            com.mccal.folio.market.PackageKind.SCRIPT in check.unsupported -> CompatLine(CompatState.BLOCKED, R.string.compat_no_scripts, R.string.compat_no_scripts_detail)
+            else -> CompatLine(CompatState.BLOCKED, R.string.needs_a_newer_folio, R.string.compat_kind_detail)
+        }
         is CompatCheck.Features ->
             if (check.state == CompatState.BLOCKED) CompatLine(CompatState.BLOCKED, R.string.needs_a_newer_folio, R.string.compat_features_detail) else null
         is CompatCheck.Hosts -> null
