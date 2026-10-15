@@ -124,6 +124,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var expanded by remember(activity?.packageName) { mutableStateOf(false) }
     // A ringing call card swiped away shrinks to the pill; the call keeps ringing and a tap opens the card again.
     var ringPutAway by remember { mutableStateOf<String?>(null) }
+    // A later call can reuse the same notification key, so the marker goes once that call is no longer ringing.
+    LaunchedEffect(activity) { if ((activity as? IslandActivity.Call)?.incoming != true) ringPutAway = null }
     androidx.activity.compose.BackHandler(expanded) { expanded = false }
 
     val context = androidx.compose.ui.platform.LocalContext.current
