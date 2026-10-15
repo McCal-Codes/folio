@@ -930,16 +930,19 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * has already taken this phone's packages off, and it is what Layout History and Undo should give back.
      */
     fun applyImportedLayout(preview: LayoutImportPreview, before: LauncherState? = null): Boolean {
-        if (statePayloadInvalid) return false
+        // Over a damaged layout this is the way back (the notice's Restore): the basic Home shown in its place is
+        // nothing to undo to or keep in Layout History.
+        val recovering = statePayloadInvalid
         val old = mutable.value
         val kept = before ?: old
-        if (old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
+        if (!recovering && old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
             old.portrait == preview.portrait && old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
             old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles &&
             old.iconActions + preview.iconActions == old.iconActions) return false
-        if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
-        undoLayout = kept.layout to preview.layout
-        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
+        if (recovering) leaveDamagedLayout(restoring = true)
+        else if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
+        undoLayout = (kept.layout to preview.layout).takeUnless { recovering }
+        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait).takeUnless { recovering }
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
@@ -954,8 +957,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
-            fullWidthRestore = emptyMap(),
-            editRevision = old.editRevision + 1, canUndoEdit = true)
+            fullWidthRestore = emptyMap(), error = old.error.takeUnless { recovering },
+            editRevision = old.editRevision + 1, canUndoEdit = !recovering)
         persist()
         return true
     }
@@ -1043,7 +1046,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * widgets Android no longer has are left out, and Undo is offered like any other layout change.
      */
     fun restoreLayoutSnapshot(snapshot: LayoutSnapshot): Boolean {
-        if (statePayloadInvalid || mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        if (mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        // Over a damaged layout this is the way back, like a restored backup (see applyImportedLayout).
+        val recovering = statePayloadInvalid
         saveLayoutSnapshot("Before restoring", force = true)
         val old = mutable.value
         val before = snapshot.layout
@@ -1056,15 +1061,16 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             old.profiles.filter { it.available }.mapTo(mutableSetOf(), AppProfile::userSerial), emptySet(), emptySet(),
             userManager.getSerialNumberForUser(Process.myUserHandle()))
         val next = reconcileFolders(before.copy(widgetPlacements = widgets), removed)
-        if (old.layout == next) return false
-        undoLayout = old.layout to next
+        if (!recovering && old.layout == next) return false
+        if (recovering) leaveDamagedLayout(restoring = true)
+        undoLayout = (old.layout to next).takeUnless { recovering }
         undoImportSettings = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = trimmedDock(next.dock),
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in next.widgetPlacements.map { it.slot }.toSet() },
-            editRevision = old.editRevision + 1, canUndoEdit = true)
+            error = old.error.takeUnless { recovering }, editRevision = old.editRevision + 1, canUndoEdit = !recovering)
         persist()
         return true
     }
@@ -1468,16 +1474,31 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** Starts over with a default Home after a damaged save; the damaged copy stays as `state_damaged_backup`. */
     fun resetDamagedLayout() {
         if (!statePayloadInvalid) return
+        leaveDamagedLayout(restoring = false)
+        mutable.update { it.copy(error = null) }
+        persist()
+        refresh()
+    }
+
+    /**
+     * Keeps the damaged save as `state_damaged_backup` and lets Home save again. A restored layout replaces what was
+     * loaded, so there is nothing left to migrate either, and a refresh that follows must not migrate it.
+     */
+    private fun leaveDamagedLayout(restoring: Boolean) {
         // Once, like the schema backups beside it: a second damaged layout must not write over the first one,
         // which may be the only copy of a Home someone spent an evening arranging.
         if (!prefs.contains("state_damaged_backup")) {
             prefs.getString("state", null)?.let { prefs.edit().putString("state_damaged_backup", it).apply() }
         }
         statePayloadInvalid = false
-        mutable.update { it.copy(error = null) }
-        persist()
-        refresh()
+        if (restoring) needsMigration = false
     }
+
+    /**
+     * What a Layout Backup saves, or null while the layout is damaged: Home then shows a basic stand-in, and a backup
+     * of it would be an empty Home.
+     */
+    fun stateForBackup(): LauncherState? = mutable.value.takeUnless { statePayloadInvalid }
 
     private fun persist() {
         persistPending = false

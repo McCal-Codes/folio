@@ -78,7 +78,7 @@ class BackupController(
     }
 
     fun startExport(fileName: String = "folio-layout.json") {
-        val state = model.state.value
+        val state = model.stateForBackup() ?: run { errorMessage = damagedMessage(); return }
         val raw = runCatching { encodeBackup(state) }.getOrElse {
             errorMessage = it.message ?: activity.getString(R.string.layout_backup_could_not_be_prepared); return
         }
@@ -89,7 +89,7 @@ class BackupController(
 
     /** Saves a backup straight to Download/Folio, no picker. */
     fun saveToFolioFolder(name: String? = null) {
-        val state = model.state.value
+        val state = model.stateForBackup() ?: run { errorMessage = damagedMessage(); return }
         val raw = runCatching { encodeBackup(state) }.getOrElse {
             errorMessage = it.message ?: activity.getString(R.string.layout_backup_could_not_be_prepared); return
         }
@@ -158,6 +158,10 @@ class BackupController(
             encodeLayoutBackup(state, descriptors, scope, null)
         }
     }
+
+    /** Why no backup is made while the saved layout can't be read: the Home on screen is only a stand-in. */
+    private fun damagedMessage() = listOf(R.string.layout_backup_could_not_be_prepared, R.string.saved_home_layout_could_not_be_read)
+        .joinToString(" ") { activity.getString(it) }
 
     /** What this phone has installed from the Market, for the backup to carry. */
     private fun savedPackages(): String? = caught("Backup: reading Market packages") { market.exportPackages() }.getOrNull()
