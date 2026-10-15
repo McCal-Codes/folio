@@ -98,12 +98,11 @@ internal object Suggestions {
     /**
      * Suggested apps for right now, best first. Call off the main thread. Spotlight, Today View and the Suggestions widget
      * share one ranking for [RankingCache.FRESH_MS], so opening Spotlight does not read four weeks of Usage Access events
-     * each time; a new launch, a changed app list or Usage Access turned on or off ranks again at once.
+     * each time; a new launch, a changed app list, Usage Access turned on or off, or a new time zone ranks again.
      */
     fun forNow(context: Context, apps: List<AppEntry>, limit: Int = 8, now: Long = System.currentTimeMillis()): List<AppEntry> {
         val byId = apps.associateBy { it.id }
-        val key = RankingCache.Key(apps.map { it.id }, launchLog(context).hashCode(), hasUsageAccess(context))
-        return ranking.get(key, now) { rank(context, apps, byId, now) }.mapNotNull { byId[it] }.take(limit)
+        return ranking.get(rankingKey(context, apps, now), now) { rank(context, apps, byId, now) }.mapNotNull { byId[it] }.take(limit)
     }
 
     /**
@@ -112,10 +111,14 @@ internal object Suggestions {
      */
     fun cachedForNow(context: Context, apps: List<AppEntry>, limit: Int = 8, now: Long = System.currentTimeMillis()): List<AppEntry>? {
         val byId = apps.associateBy { it.id }
-        return ranking.peek(apps.map { it.id }, launchLog(context).hashCode(), now)?.mapNotNull { byId[it] }?.take(limit)
+        return ranking.peek(rankingKey(context, apps, now), now)?.mapNotNull { byId[it] }?.take(limit)
     }
 
     private val ranking = RankingCache()
+
+    // The time-of-day scores use the zone's offset, so a new time zone (or a daylight saving change) ranks again.
+    private fun rankingKey(context: Context, apps: List<AppEntry>, now: Long) = RankingCache.Key(apps.map { it.id },
+        launchLog(context).hashCode(), hasUsageAccess(context), java.util.TimeZone.getDefault().getOffset(now))
 
     private fun rank(context: Context, apps: List<AppEntry>, byId: Map<String, AppEntry>, now: Long): List<String> {
         val byPackage = apps.filter { !it.isWork }.groupBy { it.packageName }
@@ -128,28 +131,35 @@ internal object Suggestions {
     }
 }
 
-/** One shared suggestion ranking (app ids, best first) and when it was made. */
-internal class RankingCache {
-    /** What a ranking depends on besides the time: the apps, Folio's launch log, and whether Usage Access is on. */
-    data class Key(val appIds: List<String>, val launchStamp: Int, val usageAccess: Boolean)
+/**
+ * The shared suggestion rankings (app ids, best first) and when each was made. It keeps a few, one per key, because the
+ * Suggestions widget ranks every app while Spotlight and Today View leave hidden ones out; with one slot they would keep
+ * replacing each other's ranking.
+ */
+internal class RankingCache(private val size: Int = 4) {
+    /** What a ranking depends on besides the time: the apps, Folio's launch log, Usage Access and the zone's offset. */
+    data class Key(val appIds: List<String>, val launchStamp: Int, val usageAccess: Boolean, val zoneOffset: Int = 0)
 
-    private var key: Key? = null
-    private var at = 0L
-    private var ids: List<String> = emptyList()
+    private class Entry(val key: Key, val at: Long, val ids: List<String>)
 
-    /** The ranking for [key] at [now]: the shared one while it is fresh and made for the same key, otherwise [compute]'s. */
-    @Synchronized fun get(key: Key, now: Long, compute: () -> List<String>): List<String> {
-        if (key == this.key && fresh(at, now)) return ids
+    // Replaced whole and read without a lock, so Spotlight's first frame never waits for a ranking in progress.
+    @Volatile private var entries: List<Entry> = emptyList()
+
+    /** The ranking for [key] at [now]: a fresh one made for the same key, otherwise [compute]'s. */
+    fun get(key: Key, now: Long, compute: () -> List<String>): List<String> {
+        peek(key, now)?.let { return it }
+        // Ranked outside the lock: reading four weeks of Usage Access events can take a while.
         val made = compute()
-        this.key = key; at = now; ids = made
+        synchronized(this) {
+            // When two rankings for one key finish out of order, the one made for the later time stays.
+            val current = entries.firstOrNull { it.key == key }
+            if (current == null || current.at <= now) entries = (listOf(Entry(key, now, made)) + entries.filter { it.key != key }).take(size)
+        }
         return made
     }
 
-    /** The shared ranking if it is fresh and made for these apps and this launch log; null otherwise. */
-    @Synchronized fun peek(appIds: List<String>, launchStamp: Int, now: Long): List<String>? {
-        val k = key ?: return null
-        return ids.takeIf { k.appIds == appIds && k.launchStamp == launchStamp && fresh(at, now) }
-    }
+    /** The ranking for [key] if it is fresh at [now]; null otherwise. Never waits. */
+    fun peek(key: Key, now: Long): List<String>? = entries.firstOrNull { it.key == key && fresh(it.at, now) }?.ids
 
     companion object {
         /** A quarter hour, the same step the Suggestions widget re-ranks on. */
