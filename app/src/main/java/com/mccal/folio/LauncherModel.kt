@@ -938,20 +938,26 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles &&
             old.iconActions + preview.iconActions == old.iconActions) return false
         if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
-        undoLayout = kept.layout to preview.layout
+        // The backup's widgets get slot numbers nothing here uses, so a stack or clock look kept for Undo stays on its own widget.
+        val (restored, newSlots) = renumberRestoredWidgets(preview.layout,
+            maxOf(nextWidgetSlot(), kept.widgetPlacements.maxOfOrNull { it.slot + 1 } ?: 0))
+        val restoredSlots = restored.widgetPlacements.mapTo(mutableSetOf()) { it.slot }
+        undoLayout = kept.layout to restored
         undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
-            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
-            widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
-            widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
-            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
-            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            widgetPlacements = restored.widgetPlacements, folders = restored.folders,
+            widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
+            // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
+            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet() - restoredSlots),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot, and
+            // follows that clock to its new number; a clock that lands where another widget was does not inherit that look.
             bigClockStyles = old.bigClockStyles.filterKeys { slot ->
                 old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
-                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } }
+                .let { same -> same + same.mapNotNull { (slot, style) -> newSlots[slot]?.let { it to style } } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
             fullWidthRestore = emptyMap(),

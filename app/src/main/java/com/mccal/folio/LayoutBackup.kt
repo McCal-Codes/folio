@@ -259,9 +259,29 @@ internal fun validBackupPlacement(value: WidgetPlacement): Boolean {
     val base = value.slot in 0..10_000 && value.page in -1..99 && value.column >= 0 && value.row >= 0 &&
         value.spanX in 1..GRID_COLUMNS && value.spanY in 1..GRID_ROWS && value.column + value.spanX <= GRID_COLUMNS
     val inside = value.row + value.spanY <= GRID_ROWS
-    val overflow = value.page > 0 && value.slot / 3 == value.page && value.slot % 3 == 2 && value.column == 0 &&
-        value.row == GRID_ROWS && value.spanX == GRID_COLUMNS && value.spanY == 4
-    return base && (inside || overflow)
+    return base && (inside || legacyOverflowPlacement(value))
+}
+
+/** An overflow widget from a layout before schema 6. Its slot number names its page, so that number can't change. */
+internal fun legacyOverflowPlacement(value: WidgetPlacement) = value.page > 0 && value.slot / 3 == value.page &&
+    value.slot % 3 == 2 && value.column == 0 && value.row == GRID_ROWS && value.spanX == GRID_COLUMNS && value.spanY == 4
+
+/**
+ * Gives a restored backup's widgets slot numbers from [firstFree] on, so a Smart Stack or Big Clock look this Home still
+ * keeps for Undo can't land on an unrelated restored widget. Each new number keeps the old one's remainder by 3, which
+ * older layouts and the Your Widgets card still read; a [legacyOverflowPlacement] keeps its number. Returns the layout
+ * and each restored slot's new number.
+ */
+internal fun renumberRestoredWidgets(layout: HomeLayout, firstFree: Int): Pair<HomeLayout, Map<Int, Int>> {
+    val fixed = layout.widgetPlacements.filter(::legacyOverflowPlacement).mapTo(mutableSetOf()) { it.slot }
+    var next = firstFree
+    fun fresh(remainder: Int): Int {
+        while (next % 3 != remainder || next in fixed) next++
+        return next++
+    }
+    val slots = layout.widgetPlacements.sortedBy { it.slot }.associate { it.slot to if (it.slot in fixed) it.slot else fresh(it.slot % 3) }
+    return layout.copy(widgetPlacements = layout.widgetPlacements.map { it.copy(slot = slots.getValue(it.slot)) }.sortedBy { it.slot },
+        widgetRestores = layout.widgetRestores.mapNotNull { restore -> slots[restore.slot]?.let { restore.copy(slot = it) } }) to slots
 }
 
 private fun backupOverlaps(a: WidgetPlacement, b: WidgetPlacement) = a.page == b.page &&
