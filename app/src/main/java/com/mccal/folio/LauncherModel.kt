@@ -315,6 +315,8 @@ data class LauncherState(
     /** The island steps aside for full-screen video and games (on), and for landscape apps (off). */
     val islandHideFullScreen: Boolean = true,
     val islandHideLandscape: Boolean = false,
+    /** With [islandHideLandscape] on, hide the island on the unfolded screen too; it is always wider than tall, so off keeps it showing there. */
+    val islandHideLandscapeInner: Boolean = false,
     /** Home Screen & Dock › Layout › Rows: 0 = Automatic (More rows), 4 = always four app rows. */
     val homeRows: Int = 0,
     /** App rows that last fit the cover-class and the inner-class Home (0 = not measured yet); see [homeAppRows]. */
@@ -430,10 +432,10 @@ fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int, fitUprigh
         .coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
 
 /**
- * The newest saved-state schema this build reads. 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
+ * The newest saved-state schema this build reads. 11: Hide in Landscape on the unfolded screen; 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
  * A save is written with [stateSchemaFor], not always with this number.
  */
-const val STATE_SCHEMA = 10
+const val STATE_SCHEMA = 11
 
 /**
  * The schema a save is written with: the lowest one that holds everything in it. A phone that uses nothing from schema 10
@@ -441,10 +443,17 @@ const val STATE_SCHEMA = 10
  * the file and says so (the damaged-state path) instead of reading it, dropping the actions on its next save, and losing
  * them without a word when the newer Folio comes back.
  */
-internal fun stateSchemaFor(s: LauncherState) = if (s.iconActions.isNotEmpty()) 10 else 9
+internal fun stateSchemaFor(s: LauncherState) = when {
+    s.islandHideLandscapeInner -> 11
+    s.iconActions.isNotEmpty() -> 10
+    else -> 9
+}
 
 /** Whether this save should keep the schema 9 file it is about to replace: it writes schema 10 over an older read and no copy exists yet. */
 internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 10 && writtenSchema >= 10 && !hasBackup
+
+/** Same for the first save that writes schema 11 over a schema 10 file. */
+internal fun v10BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 11 && writtenSchema >= 11 && !hasBackup
 
 /**
  * The schema that brought More rows. A save older than this was arranged in four rows, and keeps them; anything
@@ -1400,6 +1409,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandEverywhere(value: Boolean) = updateSettings(soon = false) { it.copy(islandEverywhere = value) }
     fun setIslandHideFullScreen(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideFullScreen = value) }
     fun setIslandHideLandscape(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscape = value) }
+    fun setIslandHideLandscapeInner(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscapeInner = value) }
     fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value == BASE_APP_ROWS) value else 0) }
     /** Remembers how many app rows fit this screen class's full-screen Home (see [effectiveHomeRows]). */
     fun recordHomeFit(screen: LayoutScreen, rows: Int) {
@@ -1654,6 +1664,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                 .apply { style.labels?.let { put("labels", it) } }) } })
             .put(SettingKeys.DOCK_EVERYWHERE, s.dockEverywhere).put(SettingKeys.ISLAND_EVERYWHERE, s.islandEverywhere)
             .put(SettingKeys.ISLAND_HIDE_FULL_SCREEN, s.islandHideFullScreen).put(SettingKeys.ISLAND_HIDE_LANDSCAPE, s.islandHideLandscape)
+            .also { o -> if (s.islandHideLandscapeInner) o.put(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, true) }
             .put(SettingKeys.BUTTON_BAR, s.buttonBar).put(SettingKeys.BUTTON_BAR_HEIGHT, s.buttonBarHeight.toDouble())
             .put(SettingKeys.BUTTON_BAR_WIDTH, s.buttonBarWidth.toDouble()).put(SettingKeys.BUTTON_BAR_ANDROID_ORDER, s.buttonBarAndroidOrder)
             .put(SettingKeys.BUTTON_BAR_LIGHT, s.buttonBarLight).put(SettingKeys.BUTTON_BAR_FADE, s.buttonBarFade)
@@ -1678,6 +1689,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         // The first save that writes schema 10 (one with icon actions) keeps the schema 9 file it replaces, like every step before it.
         if (legacyRaw != null && v9BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v9_backup")))
             editor.putString("state_v9_backup", legacyRaw)
+        if (legacyRaw != null && v10BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v10_backup")))
+            editor.putString("state_v10_backup", legacyRaw)
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
@@ -1977,6 +1990,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         dockEverywhere = j.optBoolean("dockEverywhere", false), islandEverywhere = j.optBoolean("islandEverywhere", false),
         islandHideFullScreen = j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true),
         islandHideLandscape = j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
+        islandHideLandscapeInner = j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false),
         buttonBar = j.optBoolean(SettingKeys.BUTTON_BAR, false),
         buttonBarHeight = j.optDouble(SettingKeys.BUTTON_BAR_HEIGHT, 52.0).toFloat().coerceIn(44f, 60f),
         buttonBarWidth = j.optDouble(SettingKeys.BUTTON_BAR_WIDTH, .5).toFloat().coerceIn(.3f, .8f),

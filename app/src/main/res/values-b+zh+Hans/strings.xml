@@ -345,6 +345,8 @@
     <string name="status_colors_green_while_charging_orang">状态颜色：充电时为绿色，电量低时为橙色，静音铃铛为红色，圆环为彩色。</string>
     <string name="hide_in_full_screen">全屏时隐藏</string>
     <string name="hide_in_landscape">横屏时隐藏</string>
+    <string name="also_on_the_unfolded_screen">展开的屏幕上也隐藏</string>
+    <string name="the_unfolded_screen_is_always_wider_than_tall">展开的屏幕始终是宽大于高，所以除非你打开此项，灵动岛会一直显示在那里。</string>
     <string name="the_island_comes_back_as_soon_as_the_app">一旦 App 再次显示状态栏，或你把手机竖过来，灵动岛就会回来。</string>
     <string name="big_buttons">大按钮</string>
     <string name="extra_large">特大</string>

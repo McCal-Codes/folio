@@ -14,6 +14,7 @@ internal object SettingKeys {
     /** Keep the island out of full-screen video and games, and optionally out of landscape. */
     const val ISLAND_HIDE_FULL_SCREEN = "islandHideFullScreen"
     const val ISLAND_HIDE_LANDSCAPE = "islandHideLandscape"
+    const val ISLAND_HIDE_LANDSCAPE_INNER = "islandHideLandscapeInner"
     /** Island message cards skip notifications Android will already show as a pop-up. */
     const val MESSAGES_AVOID_DOUBLE = "messagesAvoidDouble"
     /** Brief pop-ups › Other Notifications: any app's new notifications in the island (off by default). */

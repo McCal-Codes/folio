@@ -106,6 +106,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Restore on the damaged-layout notice works:** when Folio can't read your saved Home, Restore on its notice now really restores the backup or earlier layout you pick, instead of saying it is already active. Folio keeps a copy of the damaged layout first, as Start Fresh does, and won't export an empty Home as a Layout Backup while the layout is damaged.
 - **Restored widgets keep their own Smart Stacks:** restoring a Layout Backup no longer puts an old Smart Stack on top of a different widget. Restored widgets get slot numbers nothing on your Home is using, so the stacks Folio keeps for Undo stay with their own widgets, and a Big Clock that was in the same place keeps its look.
 - **The island sits in the same place on Home and over apps:** it now has the same height in both, and stays on screen when the camera is on a side edge.
+- **Hide in Landscape on the unfolded screen:** the island now stays visible over apps on the unfolded screen when Hide in Landscape is on; Also on the Unfolded Screen turns the old behavior back on. Turning the cover sideways still hides it.
 
 ## [0.6.8] - 2026-10-06
 
