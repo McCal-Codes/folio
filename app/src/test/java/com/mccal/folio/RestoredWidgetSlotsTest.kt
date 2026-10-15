@@ -29,12 +29,15 @@ class RestoredWidgetSlotsTest {
         JSONObject().put("slot", slot).put("id", id).put("page", 0).put("column", column).put("row", 0).put("spanX", 2).put("spanY", 2)
 
     /** Home now: a widget (id 41) with a Smart Stack behind it (id 42) in slot 0, and a white Big Clock in slot 1. */
-    private fun home(): LauncherModel {
+    private fun home(
+        widgets: JSONArray = JSONArray().put(widget(0, 41, 0)).put(widget(1, BIG_CLOCK_WIDGET, 2)),
+        stacks: JSONObject = JSONObject().put("0", JSONArray().put(42)),
+    ): LauncherModel {
         val empty = JSONArray().apply { repeat(HOME_CELLS) { put(JSONObject.NULL) } }
         val saved = JSONObject().put("schema", 9).put("pinned", JSONArray()).put("homeSlots", empty).put("leadingSlots", empty)
             .put("dock", JSONArray()).put("folders", JSONArray())
-            .put("widgets", JSONArray().put(widget(0, 41, 0)).put(widget(1, BIG_CLOCK_WIDGET, 2)))
-            .put("widgetStacks", JSONObject().put("0", JSONArray().put(42)))
+            .put("widgets", widgets)
+            .put("widgetStacks", stacks)
             .put("bigClockStyles", JSONObject().put("1", JSONObject().put("mode", "WHITE")))
         prefs.edit().clear().putString(SettingKeys.STATE, saved.toString()).commit()
         return ViewModelProvider.create(store, ViewModelProvider.AndroidViewModelFactory(), MutableCreationExtras().apply {
@@ -64,6 +67,23 @@ class RestoredWidgetSlotsTest {
         // Undo puts the old widget back with its stack.
         assertTrue(model.undoEdit())
         assertEquals(listOf(41, 42), model.stackCards(0))
+    }
+
+    @Test fun `a stack whose number an old overflow widget keeps comes back whole with Undo`() {
+        // Home: widget 51 with 52 stacked behind it, in slot 5. The backup's pre-schema-6 overflow widget keeps slot 5.
+        val model = home(JSONArray().put(widget(5, 51, 0)), JSONObject().put("5", JSONArray().put(52)))
+        val overflow = WidgetPlacement(5, CLOCK_WIDGET, 1, 0, GRID_ROWS, GRID_COLUMNS, 4)
+        val defaults = LauncherState()
+        assertTrue(model.applyImportedLayout(LayoutImportPreview(HomeLayout(List(HOME_CELLS) { null }, listOf(null, null, null, null),
+            widgetPlacements = listOf(overflow)), emptyList(), emptyList(), appCount = 0, folderCount = 0, widgetCount = 1,
+            compact = defaults.compact, expanded = defaults.expanded, labels = true, googleSearch = true, verticalStatus = true)))
+
+        assertEquals("the old stack isn't on the restored widget", listOf(CLOCK_WIDGET), model.stackCards(5))
+        assertTrue("its widgets stay bound while Undo can bring them back", model.retainedWidgetIds.containsAll(setOf(51, 52)))
+
+        assertTrue(model.undoEdit())
+        assertEquals(listOf(51, 52), model.stackCards(5))
+        assertTrue(model.retainedWidgetIds.containsAll(setOf(51, 52)))
     }
 
     @Test fun `new numbers keep their remainder by 3, and an old overflow widget keeps its number`() {

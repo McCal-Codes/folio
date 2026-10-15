@@ -452,6 +452,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
+    /**
+     * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
+     * layout that restore made. They count only while that restore is still the one Undo would take back.
+     */
+    private var setAsideStacks: Pair<HomeLayout, Map<Int, List<Int>>>? = null
+    private fun stacksForUndo(): Map<Int, List<Int>> = setAsideStacks?.takeIf { it.first == undoLayout?.second }?.second.orEmpty()
     private var refreshing = false
     private var refreshPending = false
     private val invalidatedPackages = mutableSetOf<Pair<Long, String>>()
@@ -943,6 +949,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             maxOf(nextWidgetSlot(), kept.widgetPlacements.maxOfOrNull { it.slot + 1 } ?: 0))
         val restoredSlots = restored.widgetPlacements.mapTo(mutableSetOf()) { it.slot }
         undoLayout = kept.layout to restored
+        // A stack on a number the restored layout still uses can't stay on Home, but Undo brings it back whole.
+        setAsideStacks = restored to old.widgetStacks.filterKeys { it in restoredSlots }
         undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
@@ -1251,7 +1259,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            widgetStacks = WidgetStacks.prune(old.widgetStacks + stacksForUndo(), before.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
@@ -1260,6 +1268,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editRevision = old.editRevision + 1)
         undoLayout = null
         undoImportSettings = null
+        setAsideStacks = null
         persist()
         return true
     }
@@ -1410,8 +1419,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val state = mutable.value
         val undoPlacements = if (state.canUndoEdit) undoLayout?.first?.widgetPlacements.orEmpty() else emptyList()
         val placements = state.widgetPlacements + undoPlacements
+        val slots = placements.map { it.slot }.toSet()
+        val setAside = if (state.canUndoEdit) WidgetStacks.retained(stacksForUndo(), undoPlacements.map { it.slot }.toSet()) else emptySet()
         // Stacked widgets are retained exactly as long as their placement (or its undoable copy) exists.
-        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, placements.map { it.slot }.toSet()) +
+        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, slots) + setAside +
             TodayWidgets.retained(state.todayWidgets)).toSet()
     }
     val canPruneWidgetIds get() = !statePayloadInvalid
