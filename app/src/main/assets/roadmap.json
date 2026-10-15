@@ -500,6 +500,33 @@
           "inBeta": 2
         },
         {
+          "icon": "grid",
+          "color": "#5E5CE6",
+          "title": "Swap apps in Screenshot Mode",
+          "detail": "Chosen apps, or every app you installed, show as the phone's own apps while Screenshot Mode is on; a tap still opens the real app.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 3
+        },
+        {
+          "icon": "apps",
+          "color": "#FF453A",
+          "title": "Delete apps from Folio",
+          "detail": "Remove App on Home and Delete App in the App Library, with Android's own confirmation.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 3
+        },
+        {
+          "icon": "accessibility",
+          "color": "#0A84FF",
+          "title": "Reduce Motion",
+          "detail": "A setting between all motion and none: things fade in where they land instead of sliding or growing.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 3
+        },
+        {
           "icon": "speed",
           "color": "#32ADE6",
           "title": "Smoother swiping",

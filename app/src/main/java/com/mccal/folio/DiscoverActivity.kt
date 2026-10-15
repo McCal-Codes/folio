@@ -190,7 +190,8 @@ abstract class DiscoverPageActivity : ComponentActivity() {
 }
 
 class DiscoverActivity : DiscoverPageActivity() {
-    private val model: LauncherModel by viewModels()
+    // Read-only: Home owns the saved state, and a second model saving its own copy put old settings back.
+    private val model: LauncherModel by viewModels { LauncherModel.readOnlyFactory }
     private val fullSize = mutableStateOf(Size.Zero)
     private var feedLaunched = false
     private var viewportReady = false

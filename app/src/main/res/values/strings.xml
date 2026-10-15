@@ -420,6 +420,7 @@
     <string name="focus_fold_tent">Half Open</string>
     <string name="focus_triggers_note">These only turn this Focus on and off. If you turn it off yourself, it stays off until the next change.</string>
     <string name="focus_on_because">On · %1$s</string>
+    <string name="focus_home_only">%1$s (Home only)</string>
     <string name="focus_island_on">%1$s on · %2$s</string>
     <string name="focus_island_off">%1$s off</string>
     <string name="from">From</string>
@@ -769,7 +770,6 @@
     <string name="color">Color</string>
     <string name="white">White</string>
     <string name="weight">Weight</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android doesn\'t let apps read the system wallpaper, so Wallpaper and Custom need a Folio picture behind Home.</string>
     <string name="text_1_s_unavailable">%1$s unavailable</string>
     <string name="headphones">Headphones</string>
     <string name="fixes_and_improvements">Fixes and Improvements</string>
@@ -1791,6 +1791,10 @@
     <string name="compat_needs_folio_detail">This phone has Folio %2$s. Update Folio, then it can be installed.</string>
     <string name="compat_kind_detail">It is a kind of package this version of Folio can\'t use yet.</string>
     <string name="compat_features_detail">It uses something this version of Folio doesn\'t have yet.</string>
+    <string name="compat_no_scripts">Folio doesn\'t run scripts</string>
+    <string name="compat_no_scripts_detail">This package is a script. Folio doesn\'t run code from a source.</string>
+    <string name="text_1_s_is_a_script">%1$s is a script, and Folio doesn\'t run scripts</string>
+    <string name="that_package_is_a_script">That package is a script, and Folio doesn\'t run scripts</string>
     <string name="compat_replaces">Replaces %1$s</string>
     <string name="compat_replaces_detail">Both can\'t be on at once. Remove %1$s first.</string>
     <string name="compat_needs_package">Needs %1$s</string>
@@ -1869,7 +1873,7 @@
     <string name="home_strip_note">Page dots appear while you swipe or edit Home, and dragging along the bottom still moves between pages. With Page dots or Nothing, Search moves to a round button in the bottom corner.</string>
     <string name="stronger_rings">Stronger rings</string>
     <string name="stronger_rings_note">Thicker rings and a clearer track, easier to tell apart at a glance. Also on while Android’s Bold text is on.</string>
-    <string name="fine_tune_look_note">Looks set weight, style and shadow together. Change one and it becomes your own.</string>
+    <string name="fine_tune_look_note">Looks set weight, font and shadow together. Change one and it becomes your own.</string>
     <string name="fine_tune_hours_note">System follows your phone\'s 12 or 24-hour setting.</string>
     <string name="fine_tune_next_note">Your next calendar event or alarm, under the time.</string>
     <string name="capability_risk_line">What it does: %1$s</string>
@@ -2148,6 +2152,18 @@
     <string name="screenshot_swap_none">No app matches</string>
     <string name="screenshot_swap_footnote">Widgets of swapped apps are hidden while Screenshot Mode is on, and their shortcuts aren’t shown. Folder names are your own and don’t change. Android’s own screens, the dock over other apps and the app itself once it opens still show the real app.</string>
     <string name="settings_keywords_screenshot_swap">screenshot swap replace hide apps stock icons privacy blacklist</string>
+    <string name="remove_app">Remove App</string>
+    <string name="remove_app_title">Remove “%1$s”?</string>
+    <string name="remove_app_message">Removing it from Home keeps the app in your App Library.</string>
+    <string name="remove_app_came_with_phone">%1$s came with your phone, so only Android can delete it. You can hide it, or turn it off in App Info.</string>
+    <string name="remove_app_work">%1$s is a work app. Delete it from App Info.</string>
+    <string name="delete_app">Delete App</string>
+    <string name="app_deleted">%1$s deleted</string>
+    <string name="app_not_deleted">Couldn’t delete %1$s</string>
+    <string name="clock_font">Font</string>
+    <string name="clock_colors_android_wallpaper">With Android’s wallpaper, the colors are its main colors, and a soft shade behind the time keeps it readable.</string>
+    <string name="clock_colors_system_palette">Android hasn’t shared this wallpaper’s colors, so these are your phone’s theme colors (its color palette). They follow the wallpaper when the palette is made from it. A soft shade behind the time keeps it readable.</string>
+    <string name="clock_no_android_wallpaper_colors">Android hasn’t shared colors for this wallpaper, so only Automatic and White are offered. Some live wallpapers never share them.</string>
     <!-- Moved out of Kotlin (DES-21), English unchanged. ko and zh-Hans are Claude's drafts and need a native read. -->
     <string name="in_stack">In stack</string>
     <string name="not_in_stack">Not in stack</string>

@@ -179,6 +179,7 @@ internal fun SettingsPageBack(page: CustomizationPage, onBack: () -> Unit) =
 
 @Composable
 internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, model: LauncherModel,
+    initiallyUpright: Boolean = false,
     isDefaultHome: Boolean, page: CustomizationPage, onPage: (CustomizationPage) -> Unit,
     onMakeDefault: () -> Unit, onClose: () -> Unit, onEditPins: () -> Unit, onWidget: (Int) -> Unit,
     onAddWidget: (Int) -> Unit, onRemoveWidget: (Int) -> Unit, onWallpaperPreview: () -> Unit,
@@ -193,7 +194,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 ) {
     var wide by rememberSaveable { mutableStateOf(initiallyWide) }
     // Which inner layout the layout sliders edit, when the upright one is separate.
-    var upright by rememberSaveable { mutableStateOf(false) }
+    var upright by rememberSaveable { mutableStateOf(initiallyUpright) }
     var tweakId by rememberSaveable { mutableStateOf(SettingsMemory.tweakId) }
     var focusId by rememberSaveable { mutableStateOf(SettingsMemory.focusId) }
     SideEffect { SettingsMemory.tweakId = tweakId; SettingsMemory.focusId = focusId }
@@ -528,7 +529,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             // Wallpaper color (follows the wallpaper when it changes)
                             val tone = LocalWallpaperTone.current
                             Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(tone.primary?.let { androidx.compose.ui.graphics.Color(vividTint(it)) } ?: androidx.compose.ui.graphics.Color.Gray)
+                                .background(wallpaperIconTint(tone)?.let { androidx.compose.ui.graphics.Color(it) } ?: androidx.compose.ui.graphics.Color.Gray)
                                 .then(if (state.iconTintFromWallpaper) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
                                 .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(true) }
                                 .description(R.string.wallpaper_color).semantics { selected = state.iconTintFromWallpaper },
@@ -1745,6 +1746,16 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     message?.let { CardNote(it, Modifier.padding(horizontal = FolioSpace.TINY.dp)) }
 }
 
+/**
+ * The line under a Focus in the list. Without Do Not Disturb access a Focus only changes Home (Android is not told to
+ * silence anything), so an "on" Focus says so instead of promising more than it does (A-17).
+ */
+internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, on: Boolean, reason: FocusReason?, access: Boolean): String? {
+    if (!on) return if (mode.schedule != null) context.getString(R.string.scheduled) else null
+    val line = reason?.let { context.getString(R.string.focus_on_because, context.getString(it.label(mode))) } ?: context.getString(R.string.on)
+    return if (access) line else context.getString(R.string.focus_home_only, line)
+}
+
 /** iOS Settings › Focus: the list of Focuses, with the one that's on. */
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1755,7 +1766,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     SheetGroup {
         state.focusModes.forEachIndexed { index, mode ->
             if (index > 0) MenuDivider()
-            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) (reason?.let { stringResource(R.string.focus_on_because, stringResource(it.label(mode))) } ?: stringResource(R.string.on)) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
+            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", focusRowStatus(context, mode, state.activeFocus == mode.id, reason, access)) { onOpen(mode.id) }
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -2603,8 +2614,11 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             .padding(horizontal = 5.dp, vertical = 1.dp))
 }
 
+/** Whether Layout History lists its saved layouts: when it's on, and always while the saved layout is damaged. */
+internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean) = layoutHistory || layoutDamaged
+
 /** Layout History: automatic snapshots of Home before big changes, each restorable. */
-@Composable private fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
+@Composable internal fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { LayoutHistory.load(context) }
     val snapshots by LayoutHistory.snapshots.collectAsState()
@@ -2614,10 +2628,13 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.save_home_before_big_changes), Modifier.weight(1f, fill = false)) }
             IosSwitch(state.layoutHistory, model::setLayoutHistory, Modifier.testTag("layout-history-switch"))
         }
-        if (state.layoutHistory) {
+        // While the layout is damaged the setting reads off (Home shows a stand-in), but the damaged-layout notice sends
+        // people here to put an earlier layout back, so the saved ones are listed anyway. There's nothing to save then.
+        val damaged = model.layoutDamaged
+        if (layoutSnapshotsShown(state.layoutHistory, damaged)) {
             // Read here rather than in the click: the name is what the snapshot is called in the list below it.
             val savedByYou = stringResource(R.string.saved_by_you)
-            CardAction(stringResource(R.string.save_current_layout), onClick = { model.saveLayoutSnapshot(savedByYou, force = true) }, modifier = Modifier.testTag("layout-history-save"))
+            if (!damaged) CardAction(stringResource(R.string.save_current_layout), onClick = { model.saveLayoutSnapshot(savedByYou, force = true) }, modifier = Modifier.testTag("layout-history-save"))
             snapshots.forEach { snapshot ->
                 // Merged, like the switch row above: without it every saved layout offers a button TalkBack reads as
                 // just "Restore", and there is no way to hear which layout it would put back. Merged, the row is one
@@ -2913,7 +2930,8 @@ internal fun releaseNoteLines(markdown: String): List<String> = markdown.lines()
 /** Why Automatic landed on this many rows: which screens Folio has measured, and which one sets the limit. */
 internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
     val cover = state.homeFitCompact
-    val inner = state.homeFitExpanded
+    // The inner screen's number is the smaller of its sideways and upright fits (0 = not measured), the one that limits it.
+    val inner = listOf(state.homeFitExpanded, state.homeFitUpright).filter { it > 0 }.minOrNull() ?: 0
     return when {
         state.homeRows > 0 -> strings.plural(R.plurals.rows_note_fixed, state.homeRows, state.homeRows)
         cover == 0 && inner == 0 -> strings.get(R.string.rows_note_unmeasured)

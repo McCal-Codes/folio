@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class DiscoverHostStartGateTest {
+    @Test fun discoverHostStartsOnlyWhileHomeIsResumed() {
+        // #371: after a Spotlight launch Home is started but not resumed; starting Discover then covered the new app.
+        assertFalse(mayStartDiscoverHost(androidx.lifecycle.Lifecycle.State.STARTED))
+        assertFalse(mayStartDiscoverHost(androidx.lifecycle.Lifecycle.State.CREATED))
+        assertTrue(mayStartDiscoverHost(androidx.lifecycle.Lifecycle.State.RESUMED))
+    }
+
     @Test fun skippedLaunchCannotBlockAReplacementMainActivity() {
         val gate = DiscoverHostStartGate(10)
         val oldMain = Any()

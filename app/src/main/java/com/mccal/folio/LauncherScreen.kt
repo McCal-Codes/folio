@@ -182,6 +182,29 @@ fun LauncherScreen(
     var libraryQuery by rememberSaveable { mutableStateOf("") }
     var pinQuery by rememberSaveable { mutableStateOf("") }
     val launcherActivity = androidx.activity.compose.LocalActivity.current as MainActivity
+    // Delete App: Android's own confirmation, then a notice that says what happened. A delete can't be undone, so no Undo;
+    // Folio's Home and folders let go of the app when Android says the package is gone, as for any uninstall.
+    var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    val uninstall = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+        val label = deleting ?: return@rememberLauncherForActivityResult
+        val pkg = deletingPackage
+        deleting = null; deletingPackage = null
+        when (deleteOutcome(result.resultCode, installResultOf(result.data), pkg == null || isInstalled(launcherActivity, pkg))) {
+            DeleteOutcome.DELETED -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_deleted, label))
+            DeleteOutcome.CANCELED -> Unit
+            DeleteOutcome.FAILED -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, label))
+        }
+    }
+    val deleteApp: (AppEntry) -> Unit = { app ->
+        deleting = app.label
+        deletingPackage = app.packageName
+        runCatching { uninstall.launch(uninstallIntent(app.packageName)) }.onFailure {
+            deleting = null; deletingPackage = null
+            IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, app.label))
+        }
+    }
     // The setting says Android's wallpaper but the window was built without it: rebuild it once to match.
     LaunchedEffect(state.systemWallpaper) {
         if (state.systemWallpaper && !launcherActivity.showsWallpaper && !WallpaperWindowRepair.tried) {
@@ -594,7 +617,7 @@ fun LauncherScreen(
     fun finishDrag(cancelled: Boolean) {
         val source = drag.source ?: return
         val moved = drag.moved
-        val rawDestination = if (moved && !cancelled) drag.destination(drag.pointer, eligibleDragPages)?.target else null
+        val rawDestination = drag.dropTarget(cancelled, eligibleDragPages)
         val destination = if (rawDestination is DropTarget.Home && source.target is DropTarget.Widget) {
             model.placement(source.target.index)?.let {
                 DropTarget.Home(adjustedWidgetDropIndex(rawDestination.index, it, source.bounds, drag.origin))
@@ -805,7 +828,7 @@ fun LauncherScreen(
             // (micro covers never get here).
             val measuresRows = !geometry.splitColumns && maxHeight.value * classScale >= HOME_REGULAR_MIN_HEIGHT_DP &&
                 !launcherActivity.isInMultiWindowMode
-            LaunchedEffect(measuresRows, wide, geometry.fitAppRows) { if (measuresRows) model.recordHomeFit(wide, geometry.fitAppRows) }
+            LaunchedEffect(measuresRows, layoutScreen, geometry.fitAppRows) { if (measuresRows) model.recordHomeFit(layoutScreen, geometry.fitAppRows) }
             SideEffect {
                 resize.pitchX = with(density) { geometry.cellWidth.dp.toPx() }
                 resize.pitchY = with(density) { minOf((geometry.widgetHeight + 18f) / 2f, geometry.rowHeight).dp.toPx() }
@@ -1296,7 +1319,7 @@ fun LauncherScreen(
                         "settings", "settings:wallpaper", "market" -> {
                           val settingsSheet: @Composable (String) -> Unit = { host ->
                             CompositionLocalProvider(LocalPreviewPage provides pager.currentPage.coerceIn(0, homePages - 1)) {
-                            CustomizationSheet(state, wide, model, isDefaultHome,
+                            CustomizationSheet(state, wide, model, initiallyUpright = layoutScreen == LayoutScreen.INNER_UPRIGHT, isDefaultHome = isDefaultHome,
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
                             onClose = { sheet = "" }, onEditPins = { sheet = "pins" },
@@ -1747,7 +1770,7 @@ fun LauncherScreen(
                 val clockLow = (BigClockBounds.bySlot[slot]?.center?.y ?: 0f) > windowHeight / 2f
                 Box(Modifier.fillMaxSize(), contentAlignment = if (clockLow) Alignment.TopCenter else Alignment.BottomCenter) {
                     ClockEditBar(slot, state.bigClockStyles[slot], { model.setBigClockStyle(slot, it) },
-                        systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onDone = { clockEditSlot = null }, enterFromTop = clockLow,
+                        onDone = { clockEditSlot = null }, enterFromTop = clockLow,
                         modifier = if (clockLow) Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
                             else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
                 }
@@ -1857,7 +1880,23 @@ fun LauncherScreen(
                 onInfo = { onAppInfo(app); overlays.menu = null },
                 onRename = { overlays.rename = app.id; overlays.menu = null },
                 onEditIcon = if (app.isShortcut) null else {{ overlays.iconEditor = app.id; overlays.menu = null }},
-                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null)
+                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null,
+                onRemoveApp = { overlays.removeApp = app.id; overlays.menu = null },
+                onDeleteApp = if (!app.isShortcut && canDelete(cameWithPhone(launcherActivity, app), app.isWork)) {{
+                    overlays.menu = null; deleteApp(app) }} else null)
+        }
+        appsById[overlays.removeApp]?.let { app ->
+            val onHome = state.layout.indexOfShortcut(app.id) != null
+            val options = remember(app.id, app.iconFrom, onHome) { removeOptions(cameWithPhone(launcherActivity, app), app.isWork, onHome) }
+            RemoveAppAlert(app, options, onDismiss = { overlays.removeApp = null }, onChoice = { choice ->
+                overlays.removeApp = null
+                when (choice) {
+                    RemoveChoice.DELETE -> deleteApp(app)
+                    RemoveChoice.HIDE -> model.setHidden(app.id, true)
+                    RemoveChoice.REMOVE_FROM_HOME -> model.setPinned(app.id, false)
+                    RemoveChoice.APP_INFO -> onAppInfo(app)
+                }
+            })
         }
         appsById[overlays.iconEditor]?.let { app ->
             ModalBottomSheet(onDismissRequest = { overlays.iconEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
