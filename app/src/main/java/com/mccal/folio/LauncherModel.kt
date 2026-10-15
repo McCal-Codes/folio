@@ -1524,6 +1524,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     /** Whether the saved Home layout couldn't be read (it's kept untouched and editing is paused until the user decides). */
     val layoutDamaged get() = statePayloadInvalid
 
+    /**
+     * Whether the layout that couldn't be read was saved by a newer Folio (a downgrade). It isn't broken: updating Folio
+     * reads it again, so Home offers no Start Fresh for it.
+     */
+    val layoutFromNewerFolio get() = statePayloadInvalid && sourceSchema > STATE_SCHEMA
+
     /** Starts over with a default Home after a damaged save; the damaged copy stays as `state_damaged_backup`. */
     fun resetDamagedLayout() {
         if (!statePayloadInvalid) return
@@ -1666,7 +1672,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
-        LauncherState(loading = false, error = getApplication<Application>().getString(R.string.saved_home_layout_could_not_be_read))
+        LauncherState(loading = false, error = getApplication<Application>().getString(
+            if (statePayloadInvalid && sourceSchema > STATE_SCHEMA) R.string.home_layout_saved_by_newer_folio_short
+            else R.string.saved_home_layout_could_not_be_read))
     } }
 
     override fun onCleared() {
