@@ -80,6 +80,19 @@ class RootSettingsGrantTest {
         assertFalse("the approval is off", RootSettingsGrantTester.allowed(context))
     }
 
+    @Test fun `the system access switch and Safe Mode refuse the root grant even with everything else on`() {
+        RootHingeStore.clear(context)
+        val ready = RootTestReport(RootTestReport.Outcome.MOVING, RootState.READY, "su", "3.3.0:KernelSU", 124, 80, 0f, 179f, "")
+        RootHingeStore.save(context, ready, ready.text("SM-F971U", "17", "0.6.9"))
+        RootHingeStore.setAdvanced(context, true); RootHingeStore.setAllowRootGrant(context, true)
+        assertTrue(RootSettingsGrantTester.allowed(context, safe = false))
+        assertFalse("Safe Mode is on", RootSettingsGrantTester.allowed(context, safe = true))
+        SystemBridge.setOff(context, true)
+        assertFalse("system access is off", RootSettingsGrantTester.allowed(context, safe = false))
+        SystemBridge.setOff(context, false)
+        assertTrue(RootSettingsGrantTester.allowed(context, safe = false))
+    }
+
     @Test fun `a root test that fails takes both approvals back`() {
         RootHingeStore.clear(context)
         val ready = RootTestReport(RootTestReport.Outcome.MOVING, RootState.READY, "su", null, 1, 1, 0f, 0f, "")

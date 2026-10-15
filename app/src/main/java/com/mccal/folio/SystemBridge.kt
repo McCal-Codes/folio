@@ -5,10 +5,12 @@ import android.hardware.Sensor
 import android.hardware.SensorManager
 
 /**
- * What Settings › Advanced › System Bridge shows (ADR 0011). The broker is wired to the three tiers Folio really uses
- * today (A0 to A2); Shizuku, root and system integration have no provider yet, so they read "Not available yet" and
- * nothing is detected or probed. The switch is stored apart from the launcher state, so a backup or a layout restore
- * never turns system access back on.
+ * What Settings › Advanced › System Bridge shows (ADR 0011). The broker has a provider for each way Folio uses today: the
+ * hinge sensor (A0), notification access (A1), the accessibility service (A2), the WRITE_SECURE_SETTINGS grant (shell tier)
+ * and the root hinge helper (A4), which runs only after the owner tests root on this page. Shizuku itself and system
+ * integration have no provider, so they read "Not available yet" and Folio never calls them. The switch and Safe Mode turn
+ * off every provider above A2. The switch is stored apart from the launcher state, so a backup or a layout restore never
+ * turns system access back on.
  */
 internal object SystemBridge {
     internal const val PREFS = "system_bridge"
