@@ -2919,7 +2919,8 @@ internal fun releaseNoteLines(markdown: String): List<String> = markdown.lines()
 /** Why Automatic landed on this many rows: which screens Folio has measured, and which one sets the limit. */
 internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
     val cover = state.homeFitCompact
-    val inner = state.homeFitExpanded
+    // The inner screen's number is the smaller of its sideways and upright fits (0 = not measured), the one that limits it.
+    val inner = listOf(state.homeFitExpanded, state.homeFitUpright).filter { it > 0 }.minOrNull() ?: 0
     return when {
         state.homeRows > 0 -> strings.plural(R.plurals.rows_note_fixed, state.homeRows, state.homeRows)
         cover == 0 && inner == 0 -> strings.get(R.string.rows_note_unmeasured)
