@@ -120,7 +120,21 @@ private fun luminance(argb: Int) = luminance((argb shr 16 and 0xFF).toFloat(), (
 internal fun contrastRatio(a: Float, b: Float) = (max(a, b) + .05f) / (min(a, b) + .05f)
 
 internal data class RegionStats(val mean: Float, val p15: Float, val p85: Float, val r: Float, val g: Float, val b: Float)
-internal data class ClockInkSample(val under: RegionStats, val whole: RegionStats, val suggestions: List<Int>)
+internal data class ClockInkSample(val under: RegionStats, val whole: RegionStats, val suggestions: List<Int>,
+    /** Built from Android's wallpaper colors, not the pixels under the clock: contrast there can't be measured. */
+    val estimated: Boolean = false)
+
+/**
+ * A sample for Android's own wallpaper, whose pixels no app can read: the three main colors Android shares with every app
+ * ([android.app.WallpaperColors], no permission), the first standing in for what is under the clock. The colors are offered
+ * as they are, since their contrast under the clock can't be checked; [resolveClockInk] puts the soft shade behind them.
+ */
+internal fun sampleFromWallpaperColors(primary: Int, others: List<Int>): ClockInkSample {
+    val r = (primary shr 16 and 0xFF).toFloat(); val g = (primary shr 8 and 0xFF).toFloat(); val b = (primary and 0xFF).toFloat()
+    val lum = luminance(r, g, b)
+    val region = RegionStats(lum, lum, lum, r, g, b)
+    return ClockInkSample(region, region, (listOf(primary) + others).map(::vividTint).distinct(), estimated = true)
+}
 
 /** The worst case for an ink: a light ink fights the brightest 15% behind it, a dark one the darkest 15%. */
 private fun worstCase(inkLuminance: Float, region: RegionStats) =
@@ -198,11 +212,11 @@ internal fun sampleClockRegion(bitmap: Bitmap, box: Rect, windowAspect: Float = 
 }
 
 /** The picture's own colors that still hold WCAG AA (4.5:1) under the clock, in ranked order. */
-internal fun ClockInkSample.readableSuggestions(): List<Int> = suggestions.filter { worstCase(luminance(it), under) >= 4.5f }
+internal fun ClockInkSample.readableSuggestions(): List<Int> = if (estimated) suggestions else suggestions.filter { worstCase(luminance(it), under) >= 4.5f }
 
 /** The vivid tint of the picture under the clock, when it holds AA there. */
 internal fun ClockInkSample.wallpaperTint(): Int? =
-    vividTint(android.graphics.Color.rgb(under.r.toInt(), under.g.toInt(), under.b.toInt())).takeIf { worstCase(luminance(it), under) >= 4.5f }
+    vividTint(android.graphics.Color.rgb(under.r.toInt(), under.g.toInt(), under.b.toInt())).takeIf { estimated || worstCase(luminance(it), under) >= 4.5f }
 
 /** What `BigClockCard` draws: an ink and whether a soft dark halo goes behind the digits to keep it readable. */
 internal data class ClockInkResult(val color: Color, val shade: Boolean, val ratio: Float)
@@ -210,16 +224,19 @@ internal data class ClockInkResult(val color: Color, val shade: Boolean, val rat
 private val DarkInk = FolioColors.SecondaryBackground
 
 internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fallbackDark: Boolean): ClockInkResult {
-    // No picture to read (Android's own wallpaper, or still sampling): the whole-wallpaper ink, or White when asked for.
-    if (sample == null) return ClockInkResult(if (style.mode != "WHITE" && fallbackDark) DarkInk else Color.White, false, 21f)
+    // No picture to read (still sampling), or Android's wallpaper with Automatic or White: the whole-wallpaper ink, or
+    // White when asked for. A color from Android's wallpaper gets the soft shade, since its contrast can't be measured.
+    if (sample == null || (sample.estimated && style.mode != "WALLPAPER" && style.mode != "CUSTOM"))
+        return ClockInkResult(if (style.mode != "WHITE" && fallbackDark) DarkInk else Color.White, false, 21f)
     when (style.mode) {
-        "WALLPAPER" -> sample.wallpaperTint()?.let { return ClockInkResult(Color(it), false, worstCase(luminance(it), sample.under)) }
+        "WALLPAPER" -> sample.wallpaperTint()?.let { return ClockInkResult(Color(it), sample.estimated, worstCase(luminance(it), sample.under)) }
         "CUSTOM" -> {
             val readable = sample.readableSuggestions()
             val argb = readable.getOrNull(style.customIndex) ?: readable.firstOrNull()
-            if (argb != null) return ClockInkResult(Color(argb), false, worstCase(luminance(argb), sample.under))
+            if (argb != null) return ClockInkResult(Color(argb), sample.estimated, worstCase(luminance(argb), sample.under))
         }
     }
+    if (sample.estimated) return ClockInkResult(if (fallbackDark) DarkInk else Color.White, false, 21f)
     val shadedWhite = contrastRatio(1f, sample.under.p85 * .6f.toDouble().pow(2.2).toFloat())
     if (style.mode == "WHITE") {
         val ratio = contrastRatio(1f, sample.under.p85)
@@ -233,13 +250,28 @@ internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fall
 }
 
 /**
+ * The clock's sample with Android's wallpaper, from the first source that has colors ([WallpaperTone.colorSource]):
+ * Android's wallpaper colors, then the phone's theme colors (the system palette), else null, and nothing is made up.
+ */
+internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? = when (tone.colorSource()) {
+    WallpaperColorSource.ANDROID_COLORS -> sampleFromWallpaperColors(tone.primary!!, listOfNotNull(tone.secondary, tone.tertiary))
+    WallpaperColorSource.SYSTEM_PALETTE -> tone.palette!!.let { sampleFromWallpaperColors(it.accent1, listOf(it.accent2, it.accent3)) }
+    WallpaperColorSource.NONE -> null
+}
+
+/**
  * Samples the picture under [box] (fractions of the whole background, 0..1) whenever the background or the box
- * changes. Only runs when Folio's own picture is behind Home: Android gives no API to read the system wallpaper's
- * pixels, so Wallpaper and Custom need a Folio picture and this returns null without one.
+ * changes. With Android's own wallpaper behind Home ([WallpaperTone.fromAndroid]), whose pixels no app can read, it is
+ * built from the wallpaper's main colors instead ([clockSampleFromTone]), from the same tone Home's ink uses, so it
+ * follows the wallpaper and is there on the first frame. Whether that is the case comes from the user's setting, never
+ * from whether a Folio picture is saved: switching to Android's wallpaper keeps the picture for later, and reading it
+ * then sampled a picture nobody could see (the Fold8 check of #353).
  */
 @Composable
 internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: Float = 0f): ClockInkSample? {
     val context = LocalContext.current
+    val tone = LocalWallpaperTone.current
+    if (tone.fromAndroid) return remember(tone, enabled) { if (enabled) clockSampleFromTone(tone) else null }
     val revision = LauncherBackgroundCache.revision.intValue
     var sample by remember { mutableStateOf<ClockInkSample?>(null) }
     LaunchedEffect(box, revision, enabled, windowAspect) {
@@ -267,13 +299,14 @@ internal val ClockLooks = listOf(
 
 /**
  * Edits a Big Clock on Home itself, with the real clock in view: Looks, one color row, and a Fine tune panel that stays
- * closed until asked for. It sits in the half of the screen the clock is not in. [systemWallpaper] is true when Android's
- * own wallpaper is behind Home, which Folio cannot read, so only Automatic and White are offered then.
+ * closed until asked for. It sits in the half of the screen the clock is not in. With Android's own wallpaper behind Home,
+ * which Folio cannot read, the colors are the ones Android shares for it; when it shares none, only Automatic and White
+ * are offered and a note says why.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ClockEditBar(
-    slot: Int, style: BigClockStyle?, onStyle: (BigClockStyle?) -> Unit, systemWallpaper: Boolean,
+    slot: Int, style: BigClockStyle?, onStyle: (BigClockStyle?) -> Unit,
     onDone: () -> Unit, modifier: Modifier = Modifier, enterFromTop: Boolean = false,
 ) {
     val density = LocalDensity.current
@@ -289,7 +322,9 @@ internal fun ClockEditBar(
         if (bounds == null || window.width <= 0 || window.height <= 0) Rect.Zero
         else Rect(bounds.left / window.width, bounds.top / window.height, bounds.right / window.width, bounds.bottom / window.height)
     }
-    val sample = rememberClockInkSample(fraction, enabled = !systemWallpaper, windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
+    val tone = LocalWallpaperTone.current
+    val systemWallpaper = tone.fromAndroid
+    val sample = rememberClockInkSample(fraction, enabled = true, windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
     var s by remember(slot) { mutableStateOf(style.orDefault()) }
     var fine by remember(slot) { mutableStateOf(false) }
     fun push(next: BigClockStyle) { s = next; onStyle(next) }
@@ -305,7 +340,7 @@ internal fun ClockEditBar(
         FlowRow(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             ClockLooks.forEach { look ->
                 val on = s.mode == look.mode && s.weight == look.weight && s.face == look.face && s.shadow == look.shadow && s.stacked == look.stacked
-                val unavailable = look.mode == "WALLPAPER" && (systemWallpaper || tint == null)
+                val unavailable = look.mode == "WALLPAPER" && tint == null
                 val name = stringResource(look.name)
                 val fill by animateFloatAsState(if (on) .22f else .12f, clockMotion(), label = "look fill")
                 val ring by animateColorAsState(if (on) Color.White else Color.Transparent, clockMotion(), label = "look ring")
@@ -338,7 +373,16 @@ internal fun ClockEditBar(
             }
             ColorDot(selected = s.mode == "WHITE", label = stringResource(R.string.white), color = Color.White, onClick = { push(s.copy(mode = "WHITE")) })
         }
-        if (systemWallpaper) Text(stringResource(R.string.wallpaper_from_folios_own_pictures_only), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+        // Android can share no colors for its wallpaper (some live wallpapers, or just after a restart): then there is
+        // nothing to tint with, and the note says so rather than leaving two dots unexplained.
+        // The note also says which source the colors came from: the wallpaper's own, or the phone's theme colors.
+        if (systemWallpaper) Text(stringResource(when (tone.colorSource()) {
+            WallpaperColorSource.ANDROID_COLORS -> R.string.clock_colors_android_wallpaper
+            WallpaperColorSource.SYSTEM_PALETTE -> R.string.clock_colors_system_palette
+            WallpaperColorSource.NONE -> R.string.clock_no_android_wallpaper_colors
+        }), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+        // The font sits beside Color, where people look for it, not inside Fine tune (#330).
+        Choice(stringResource(R.string.clock_font), s.face, listOf("SANS" to R.string.default_choice, "ROUNDED" to R.string.face_rounded, "SERIF" to R.string.face_serif, "MONO" to R.string.face_mono)) { push(s.copy(face = it)) }
         AnimatedVisibility(fine, enter = fadeIn(clockMotion<Float>()) + expandVertically(clockMotion<androidx.compose.ui.unit.IntSize>()),
             exit = fadeOut(clockMotion<Float>()) + shrinkVertically(clockMotion<androidx.compose.ui.unit.IntSize>())) {
           Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
@@ -350,7 +394,6 @@ internal fun ClockEditBar(
                 Text(s.weight.toString(), color = Color.White, modifier = Modifier.width(44.dp), textAlign = TextAlign.End)
             }
             Choice(stringResource(R.string.size), s.size, listOf(.85f to R.string.small, 1f to R.string.default_choice, 1.15f to R.string.large)) { push(s.copy(size = it)) }
-            Choice(stringResource(R.string.style), s.face, listOf("SANS" to R.string.default_choice, "ROUNDED" to R.string.face_rounded, "SERIF" to R.string.face_serif, "MONO" to R.string.face_mono)) { push(s.copy(face = it)) }
             Choice(stringResource(R.string.shadow), s.shadow, listOf("OFF" to R.string.off, "SOFT" to R.string.soft, "GLOW" to R.string.glow)) { push(s.copy(shadow = it)) }
             FineNote(R.string.fine_tune_look_note)
             Choice(stringResource(R.string.date), s.date, listOf("LONG" to R.string.date_long, "SHORT" to R.string.date_short, "OFF" to R.string.off)) { push(s.copy(date = it)) }
