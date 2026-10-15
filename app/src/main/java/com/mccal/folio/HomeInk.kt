@@ -45,8 +45,9 @@ internal fun WallpaperColors?.prefersDarkText(): Boolean =
  * the ones Android shares for it, and all null when it shares none.
  *
  * [palette] is the phone's theme colors (Android's system palette), kept only with Android's wallpaper and only for the
- * Big Clock, as its second source when Android shares no wallpaper colors (One UI on the Fold8 shares none). It stays
- * out of [primary]: the status rail and the glass read [primary] as the wallpaper's own color, which the palette is not.
+ * colors a person picks as the wallpaper's (the Big Clock's, and tinted icons' "Wallpaper color" through [choiceColor]),
+ * as their second source when Android shares no wallpaper colors (One UI on the Fold8 shares none). It stays out of
+ * [primary]: the status rail and the glass read [primary] as the wallpaper's own color, which the palette is not.
  */
 @Immutable
 internal data class WallpaperTone(val prefersDarkText: Boolean = false, val primary: Int? = null, val secondary: Int? = null,
@@ -81,6 +82,17 @@ internal fun WallpaperTone.colorSource(): WallpaperColorSource = when {
     palette != null -> WallpaperColorSource.SYSTEM_PALETTE
     else -> WallpaperColorSource.NONE
 }
+
+/**
+ * The color a "Wallpaper color" choice stands for, from the same sources in the same order as the Big Clock
+ * ([colorSource]): the wallpaper's own main color, else with Android's wallpaper the phone's theme color (the palette's
+ * first accent), else null. Unlike [WallpaperTone.primary], which the status rail and the glass read as the wallpaper's
+ * own color, this can be the palette's, so it is only for things a person picks as "the wallpaper's color".
+ */
+internal fun WallpaperTone.choiceColor(): Int? = primary ?: palette?.accent1?.takeIf { fromAndroid }
+
+/** What tinted icons draw with "Wallpaper color" picked, and what its dot in Home customization shows: one source for both. */
+internal fun wallpaperIconTint(tone: WallpaperTone): Int? = tone.choiceColor()?.let(::vividTint)
 
 /**
  * Android's colors for the home screen's wallpaper, or a tone with no colors when it shares none (or the call fails).
