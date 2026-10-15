@@ -333,7 +333,21 @@ internal class MarketSession(
         }
         // The restore removes this phone's packages through the installer itself, past remove() above, so it prunes
         // for itself too: a wallpaper the backup doesn't carry would otherwise stay in the Installed grid.
-        return installer.restoreBackup(text, offReason, putLayoutBack).also(Diagnostics::marketRestored).also { pruneArt() }
+        return installer.restoreBackup(text, offReason, restoreChecks, putLayoutBack).also(Diagnostics::marketRestored).also { pruneArt() }
+    }
+
+    /** What a restore asks instead of taking the backup's word: Folio's own packages and the lists its sources signed. */
+    private val restoreChecks = object : PackageInstaller.RestoreChecks {
+        override fun builtIn(id: String): FolioPackage? = read(id)
+
+        override fun listed(record: InstalledPackage) = sources.cached().flatMap { it.packages }
+            .filter { it.id == record.id && it.version == record.version }.mapNotNull { it.manifest }
+
+        override fun pulled(record: InstalledPackage) =
+            pulledReason(record)?.let { appContext.getString(R.string.its_source_pulled_it_1_s, it) }
+
+        override fun incompatible(record: InstalledPackage) =
+            incompatibleReason(record, source.revocations(), sources.cached(), folioVersion) != null
     }
 }
 

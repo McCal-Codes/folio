@@ -152,13 +152,30 @@ internal fun mergeEntries(
  */
 internal fun pulledReason(installed: InstalledPackage, folio: RevocationList?, cached: List<SourceStatus>): String? {
     folio?.reasonFor(installed.id, installed.version)?.let { return it }
+    return sourceListsFor(installed, cached).firstNotNullOfOrNull { it.reasonFor(installed.id, installed.version) }
+}
+
+/**
+ * Why the version of [installed] that is on the phone doesn't work with [version] of Folio (ADR 0013), or null. A list
+ * speaks only for its own packages here, as it does for listings: Folio's for a package built into Folio, its source's
+ * for one from a source, and any source's for one from a file, the same check a file install gets.
+ */
+internal fun incompatibleReason(installed: InstalledPackage, folio: RevocationList?, cached: List<SourceStatus>, version: FolioVersion?): String? {
+    val v = version ?: return null
+    val builtIn = installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl == null
+    val lists = if (builtIn) listOfNotNull(folio) else sourceListsFor(installed, cached)
+    return lists.firstNotNullOfOrNull { it.incompatibleReason(installed.id, installed.version, v) }
+}
+
+/** The source lists that speak for [installed]: its own source's, every source's for one from a file, or none. */
+private fun sourceListsFor(installed: InstalledPackage, cached: List<SourceStatus>): List<RevocationList> {
     val from = installed.sourceUrl?.trimEnd('/')
-    val lists = when {
+    val sources = when {
         installed.origin == InstalledPackage.Origin.FILE -> cached
         from != null -> cached.filter { it.source.url.trimEnd('/').equals(from, ignoreCase = true) }
         else -> emptyList()
     }
-    return lists.firstNotNullOfOrNull { it.snapshot?.revocation?.reasonFor(installed.id, installed.version) }
+    return sources.mapNotNull { it.snapshot?.revocation }
 }
 
 /** What happened the last time Folio asked a source for its list. */

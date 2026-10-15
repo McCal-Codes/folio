@@ -251,6 +251,31 @@ class MarketSourcesTest {
         assertTrue(!fromFolio.unavailable)
     }
 
+    @Test fun `an installed version's own lists say whether it works with this Folio, as a listing's do`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val plain = requireNotNull(sources.cached().single())
+        val snapshot = requireNotNull(plain.snapshot)
+        val pkg = snapshot.index.packages.single()
+        val broken = com.mccal.folio.market.IncompatiblePackage(pkg.id, listOf(null), requireNotNull(com.mccal.folio.market.FolioRelation.parse("(>= 0.8)")), "The panel opens off screen")
+        val list = com.mccal.folio.market.RevocationList(now, emptyList(), emptyList(), listOf(broken))
+        val markedHere = plain.copy(snapshot = snapshot.copy(revocation = list))
+        val on08 = com.mccal.folio.market.FolioVersion(0, 8, 0)
+        fun installed(origin: com.mccal.folio.market.InstalledPackage.Origin, url: String?) =
+            com.mccal.folio.market.InstalledPackage(pkg.id, pkg.version, "Cabinet", origin, url, 0L, emptyList())
+        val fromHere = installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base)
+        val fromFile = installed(com.mccal.folio.market.InstalledPackage.Origin.FILE, null)
+        val builtIn = installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null)
+
+        assertEquals("The panel opens off screen", incompatibleReason(fromHere, null, listOf(markedHere), on08))
+        assertEquals("The panel opens off screen", incompatibleReason(fromFile, null, listOf(markedHere), on08))
+        assertEquals(null, incompatibleReason(fromHere, null, listOf(markedHere), com.mccal.folio.market.FolioVersion(0, 7, 9)))
+        // Folio's list speaks for Folio's packages, a source's for its own (ADR 0013).
+        assertEquals(null, incompatibleReason(fromHere, list, listOf(plain), on08))
+        assertEquals(null, incompatibleReason(builtIn, null, listOf(markedHere), on08))
+        assertEquals("The panel opens off screen", incompatibleReason(builtIn, list, emptyList(), on08))
+    }
+
     @Test fun `removing a source forgets its list and its key`() = runTest {
         publish()
         sources.trust(base, key)

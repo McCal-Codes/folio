@@ -221,14 +221,16 @@ class PackageInstaller(
     }
 
     /** What stops [pkg] from going on this phone, as the result an install gives, or null when nothing does. */
-    private fun compatStop(pkg: FolioPackage, builtIn: Boolean): InstallResult? {
+    private fun compatStop(pkg: FolioPackage, builtIn: Boolean): InstallResult? = compatStop(pkg.manifest, pkg.changes, builtIn)
+
+    private fun compatStop(manifest: PackageManifest, changes: List<PackageChange>, builtIn: Boolean): InstallResult? {
         // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
         // page would have said before the person tapped Get, in the same order.
         val already = store.installed()
         val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak, androidSdk = androidSdk)
         // No `else`: a new kind of check that can block must be given its result here, or this stops compiling. One
         // that fell through to `else -> null` would install.
-        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(manifest, context, changes, builtIn))) {
             // Nothing on the phone can change its Android version, so this is said plainly and never offered as a fix.
             is CompatCheck.Android -> InstallResult.Failed(InstallResult.Reason.ANDROID, "that package is made for ${AndroidRelease.range(stop.min, stop.max)}")
             is CompatCheck.Breaks -> InstallResult.Failed(
@@ -597,6 +599,25 @@ class PackageInstaller(
     )
 
     /**
+     * What a restore asks of what Folio already trusts, never of the backup: a backup is a file, and anyone can write
+     * one. The launcher answers from the packages Folio ships and the lists its sources signed. Every answer defaults
+     * to "nothing known", which only a test relies on.
+     */
+    interface RestoreChecks {
+        /** The package Folio ships under [id], read from its own files, or null when it ships none by that name. */
+        fun builtIn(id: String): FolioPackage? = null
+
+        /** The manifests the lists Folio trusts give for [record]'s id and version, for the checks an install makes. */
+        fun listed(record: InstalledPackage): List<PackageManifest> = emptyList()
+
+        /** Why [record]'s version was pulled, worded for the person, or null when it wasn't. */
+        fun pulled(record: InstalledPackage): String? = null
+
+        /** Whether a list Folio trusts says [record]'s version doesn't work with this Folio (ADR 0013). */
+        fun incompatible(record: InstalledPackage): Boolean = false
+    }
+
+    /**
      * Puts back the packages a layout backup carried, around the launcher putting its own layout back.
      *
      * A backup records what each package *changed*, never what Home looked like when it changed: its snapshots were
@@ -604,6 +625,14 @@ class PackageInstaller(
      * in turned off, and the ones that were on when the backup was taken have their recorded changes applied again
      * from where this phone is now - which is what [enable] does for Try Again, and why a package Safe Mode had
      * turned off comes back off, with its changes not applied and its reason kept.
+     *
+     * A backup is a file, so nothing in it is taken on its word. A record keeps the source it names only when this
+     * phone already had that exact package, the same version with the same changes; one that is a package Folio ships,
+     * with that package's own changes, is Folio's; anything else is recorded as opened from a file. A name that
+     * belongs to an author's key here, or to a package Folio ships, stays off unless it is that package, as an install
+     * from a file would be refused. Then every package that was on gets the checks an install makes, as far as
+     * [checks] can answer them: pulled, not working with this Folio, its manifest's Android range, conflicts, breaks
+     * and dependencies, and what this build can do. One that fails any of them stays off.
      *
      * The order is the point, because a package's changes and the layout being restored are the same launcher:
      *  1. this phone's packages come off first, while the snapshots saying what they replaced still describe it;
@@ -613,9 +642,14 @@ class PackageInstaller(
      * [offReason] is what the user is told about a package this Folio couldn't put back on. Returns null, leaving
      * this phone's own packages alone, when the backup's packages can't be read; [putLayoutBack] runs either way.
      */
-    fun restoreBackup(text: String, offReason: String, putLayoutBack: () -> Unit): Restore? {
-        val backup = store.readBackup(text)
-        if (backup == null) {
+    fun restoreBackup(
+        text: String,
+        offReason: String,
+        checks: RestoreChecks = object : RestoreChecks {},
+        putLayoutBack: () -> Unit,
+    ): Restore? {
+        val read = store.readBackup(text)
+        if (read == null) {
             putLayoutBack()
             return null
         }
@@ -625,6 +659,11 @@ class PackageInstaller(
         // This phone's own packages, kept so a restore that fails after they come off can put them back. Without it
         // the caller said "this phone's were left as they are" about packages that were already gone.
         val mine = store.readBackup(store.export())
+        // Settled before anything comes off, while this phone's own records are still what they were.
+        val vetted = read.records.map { vet(it, read, mine, checks) }
+        val backup = InstalledStore.Backup(vetted.map { it.record }, read.changes)
+        val refused = vetted.filter { !it.trusted }.mapTo(mutableSetOf()) { it.record.id }
+        val shipped = vetted.mapNotNull { v -> v.shipped?.let { v.record.id to it } }.toMap()
         store.installed().reversed().forEach { remove(it.id) }
         putLayoutBack()
         try {
@@ -640,11 +679,17 @@ class PackageInstaller(
         val failed = mutableListOf<InstalledPackage>()
         for (id in backup.wasOn) {
             val record = store.find(id) ?: continue
-            // A backup can come from a Folio that does more than this one. A package needing something this build
-            // hasn't got is left off rather than failing halfway through being applied, as at install.
+            // Pulled says so, as it does for one Folio turns off at start, so Try Again isn't offered for it.
+            val pulled = checks.pulled(record)
+            if (pulled != null) {
+                store.setEnabled(id, enabled = false, reason = pulled, cause = InstalledPackage.OffCause.PULLED)
+                store.find(id)?.let { failed += it }
+                continue
+            }
             val changes = store.changesFor(record.id, record.version)
-            val supported = changes != null && changes.flatMap { it.capabilities }.all { it in host.capabilities }
-            if (supported && enable(id)) {
+            val passes = id !in refused && changes != null && !checks.incompatible(record) &&
+                installable(record, changes, shipped[id], checks)
+            if (passes && enable(id)) {
                 store.find(id)?.let { on += it }
             } else {
                 store.setEnabled(id, enabled = false, reason = offReason)
@@ -653,6 +698,48 @@ class PackageInstaller(
         }
         val couldNot = failed.mapTo(mutableSetOf()) { it.id }
         return Restore(on, store.installed().filter { !it.enabled && it.id !in couldNot }, failed)
+    }
+
+    /** A backup's record with the origin Folio can stand behind, and whether its changes may go on at all. */
+    private class Vetted(val record: InstalledPackage, val trusted: Boolean, val shipped: FolioPackage? = null)
+
+    private fun vet(record: InstalledPackage, backup: InstalledStore.Backup, mine: InstalledStore.Backup?, checks: RestoreChecks): Vetted {
+        val key = "${record.id}@${record.version}"
+        val changes = backup.changes[key]
+        // This phone's own package, unchanged: it passed every check when it went on here, so its origin is its own.
+        val own = mine?.records?.firstOrNull { it.id == record.id && it.version == record.version }
+            ?.takeIf { changes != null && mine.changes[key] == changes }
+        if (own != null) return Vetted(record.copy(origin = own.origin, sourceUrl = own.sourceUrl), trusted = true)
+        val asFile = record.copy(origin = InstalledPackage.Origin.FILE, sourceUrl = null)
+        // A name Folio ships is Folio's: the backup's copy is that package only if it changes exactly what it does.
+        checks.builtIn(record.id)?.let { pkg ->
+            val same = pkg.version == record.version && changes != null && sameChanges(pkg.changes, changes)
+            return if (same) {
+                Vetted(record.copy(origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = null), trusted = true, shipped = pkg)
+            } else {
+                Vetted(asFile, trusted = false)
+            }
+        }
+        // A backup carries no signature, so a name an author's key owns here can't be shown to be theirs.
+        return Vetted(asFile, trusted = authors.keyFor(record.id) == null)
+    }
+
+    /** Whether [changes] are [pkg]'s, compared the way the store writes them down. */
+    private fun sameChanges(pkg: List<PackageChange>, changes: String): Boolean {
+        val written = store.decodeChanges(store.encodeChanges(pkg))?.let(store::encodeChanges)
+        return written != null && written == store.decodeChanges(changes)?.let(store::encodeChanges)
+    }
+
+    /**
+     * The checks an install makes that a backup's record can still be given: what this build can do, and, where Folio
+     * ships the package or a list it trusts has the manifest for that version, everything [compatStop] asks of one.
+     */
+    private fun installable(record: InstalledPackage, changes: List<PackageChange>, shipped: FolioPackage?, checks: RestoreChecks): Boolean {
+        // A backup can come from a Folio that does more than this one. A package needing something this build
+        // hasn't got is left off rather than failing halfway through being applied, as at install.
+        if (!changes.flatMap { it.capabilities }.all { it in host.capabilities }) return false
+        if (shipped != null) return compatStop(shipped.manifest, changes, builtIn = true) == null
+        return checks.listed(record).none { compatStop(it, changes, builtIn = false) != null }
     }
 
     /** Takes [installed]'s changes off Home, newest first, except the ones at the indexes in [keep]. */
