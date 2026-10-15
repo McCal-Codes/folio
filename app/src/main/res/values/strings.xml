@@ -339,6 +339,8 @@
     <string name="status_colors_green_while_charging_orang">Status colors: green while charging, orange when low, a red Silent bell, and colored Rings.</string>
     <string name="hide_in_full_screen">Hide in Full Screen</string>
     <string name="hide_in_landscape">Hide in Landscape</string>
+    <string name="also_on_the_unfolded_screen">Also on the Unfolded Screen</string>
+    <string name="the_unfolded_screen_is_always_wider_than_tall">The unfolded screen is always wider than tall, so the island stays visible there unless you turn this on.</string>
     <string name="the_island_comes_back_as_soon_as_the_app">The island comes back as soon as the app shows the status bar again, or you turn the phone upright.</string>
     <string name="big_buttons">Big Buttons</string>
     <string name="extra_large">Extra Large</string>

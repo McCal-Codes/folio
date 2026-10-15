@@ -98,7 +98,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private val dockOpen = MutableStateFlow(false)
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
-        val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false)
+        val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -178,6 +178,11 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun landscapeNow(): Boolean =
         service.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
+    /** The unfolded screen: the same size-class rule Home uses, so it is wide in any pose and never "turned sideways". */
+    private fun onUnfoldedScreen(): Boolean = service.resources.configuration.let {
+        layoutScreenFor(it.screenWidthDp.toFloat(), it.screenHeightDp.toFloat(), it.classScale) != LayoutScreen.COVER
+    }
+
     private fun watchFullScreen(needed: Boolean) {
         if (!needed) { fullScreenJob?.cancel(); fullScreenJob = null; fullScreen = false; return }
         if (fullScreenJob != null) return
@@ -200,7 +205,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 j.optDouble(SettingKeys.BUTTON_BAR_WIDTH, .5).toFloat().coerceIn(.3f, .8f),
                 j.optBoolean(SettingKeys.BUTTON_BAR_ANDROID_ORDER, false), j.optBoolean(SettingKeys.BUTTON_BAR_LIGHT, false),
                 j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true)),
-            j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false))
+            j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
+            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -212,7 +218,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         if (s.dockEverywhere && !home) addHandle(s.leftHanded) else { removeHandle(); removeDock() }
         // The bar presses the same buttons the system's does, so it steps aside where the system's bar does.
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
-        val stepAside = overlayStepsAside(s.islandHideFullScreen, s.islandHideLandscape, fullScreen, landscapeNow())
+        val stepAside = overlayStepsAside(s.islandHideFullScreen, s.islandHideLandscape, fullScreen, landscapeNow(), onUnfoldedScreen(), s.islandHideLandscapeInner)
         if (islandWanted && !stepAside) { addIsland(); resizeIsland(content!!) } else removeIsland()
     }
 
@@ -473,8 +479,9 @@ internal object ButtonBarPosition {
 }
 
 /** Whether the island should step aside right now: shared by the service and its tests. */
-internal fun overlayStepsAside(hideFullScreen: Boolean, hideLandscape: Boolean, fullScreen: Boolean, landscape: Boolean): Boolean =
-    (hideFullScreen && fullScreen) || (hideLandscape && landscape)
+internal fun overlayStepsAside(hideFullScreen: Boolean, hideLandscape: Boolean, fullScreen: Boolean, landscape: Boolean,
+    onUnfoldedScreen: Boolean = false, hideLandscapeUnfolded: Boolean = false): Boolean =
+    (hideFullScreen && fullScreen) || (hideLandscape && landscape && (!onUnfoldedScreen || hideLandscapeUnfolded))
 
 /**
  * The Buttons in Every App bar: one glass pill with three large targets. It fades while you're not using it, and

@@ -636,6 +636,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             // A pill over a full-screen film or game is in the way, so it steps aside by default.
                             SettingsSwitch(stringResource(R.string.hide_in_full_screen), state.islandHideFullScreen, model::setIslandHideFullScreen, "island-hide-full-screen-switch")
                             SettingsSwitch(stringResource(R.string.hide_in_landscape), state.islandHideLandscape, model::setIslandHideLandscape, "island-hide-landscape-switch")
+                            if (state.islandHideLandscape) {
+                                SettingsSwitch(stringResource(R.string.also_on_the_unfolded_screen), state.islandHideLandscapeInner, model::setIslandHideLandscapeInner, "island-hide-landscape-inner-switch")
+                                CardNote(stringResource(R.string.the_unfolded_screen_is_always_wider_than_tall))
+                            }
                             CardNote(stringResource(R.string.the_island_comes_back_as_soon_as_the_app))
                         }
                         SettingsSwitch(stringResource(R.string.dock_handle_on_the_rail_edge), state.dockEverywhere, { on ->
@@ -1471,6 +1475,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.control_center_size to CustomizationPage.NOTIFICATIONS,
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
+    R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,
     R.string.other_notifications_2 to CustomizationPage.ISLAND,
     R.string.suggestions to CustomizationPage.TODAY,
     R.string.rounded_corners to CustomizationPage.WALLPAPER,
