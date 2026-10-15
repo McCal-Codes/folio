@@ -774,7 +774,6 @@
     <string name="color">색상</string>
     <string name="white">흰색</string>
     <string name="weight">굵기</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android는 앱이 시스템 배경화면을 읽을 수 없게 하므로, 배경화면 및 사용자 지정 색상에는 Folio의 사진이 필요합니다.</string>
     <string name="text_1_s_unavailable">%1$s 사용 불가</string>
     <string name="headphones">헤드폰</string>
     <string name="fixes_and_improvements">수정 및 개선 사항</string>
@@ -1986,6 +1985,28 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
+    <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
+    <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
+    <string name="screenshot_swap_choose">바꿀 앱</string>
+    <string name="screenshot_swap_count">%1$d개 선택됨</string>
+    <string name="screenshot_swap_system_app">기본 앱이므로 바뀌지 않음</string>
+    <string name="screenshot_swap_none">일치하는 앱이 없습니다</string>
+    <string name="screenshot_swap_footnote">스크린샷 모드가 켜져 있는 동안 바뀐 앱의 위젯은 숨겨지고 바로가기도 표시되지 않습니다. 폴더 이름은 직접 지은 것이므로 바뀌지 않습니다. Android 자체 화면, 다른 앱 위의 Dock, 그리고 열린 앱 자체에는 실제 앱이 표시됩니다.</string>
+    <string name="settings_keywords_screenshot_swap">스크린샷 바꾸기 교체 앱 숨기기 기본 아이콘 개인정보</string>
+    <string name="remove_app">앱 제거</string>
+    <string name="remove_app_title">“%1$s”을(를) 제거하시겠습니까?</string>
+    <string name="remove_app_message">홈 화면에서 제거해도 앱은 앱 보관함에 남아 있습니다.</string>
+    <string name="remove_app_came_with_phone">%1$s은(는) 휴대전화에 기본으로 들어 있던 앱이므로 Android만 삭제할 수 있습니다. 숨기거나 앱 정보에서 끌 수 있습니다.</string>
+    <string name="remove_app_work">%1$s은(는) 업무용 앱입니다. 앱 정보에서 삭제하세요.</string>
+    <string name="delete_app">앱 삭제</string>
+    <string name="app_deleted">%1$s 삭제됨</string>
+    <string name="app_not_deleted">%1$s을(를) 삭제하지 못했습니다</string>
+    <string name="clock_font">서체</string>
+    <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_colors_system_palette">Android가 이 배경화면의 색상을 알려 주지 않아, 휴대폰의 테마 색상(색상 팔레트)을 사용합니다. 팔레트를 배경화면에서 만들면 배경화면을 따라갑니다. 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_no_android_wallpaper_colors">Android가 이 배경화면의 색상을 알려 주지 않아 자동과 흰색만 쓸 수 있습니다. 일부 라이브 배경화면은 색상을 알려 주지 않습니다.</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">스택에 있음</string>
     <string name="not_in_stack">스택에 없음</string>
