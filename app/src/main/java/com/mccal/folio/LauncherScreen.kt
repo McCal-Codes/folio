@@ -827,7 +827,7 @@ fun LauncherScreen(
             // (micro covers never get here).
             val measuresRows = !geometry.splitColumns && maxHeight.value * classScale >= HOME_REGULAR_MIN_HEIGHT_DP &&
                 !launcherActivity.isInMultiWindowMode
-            LaunchedEffect(measuresRows, wide, geometry.fitAppRows) { if (measuresRows) model.recordHomeFit(wide, geometry.fitAppRows) }
+            LaunchedEffect(measuresRows, layoutScreen, geometry.fitAppRows) { if (measuresRows) model.recordHomeFit(layoutScreen, geometry.fitAppRows) }
             SideEffect {
                 resize.pitchX = with(density) { geometry.cellWidth.dp.toPx() }
                 resize.pitchY = with(density) { minOf((geometry.widgetHeight + 18f) / 2f, geometry.rowHeight).dp.toPx() }
@@ -1318,7 +1318,7 @@ fun LauncherScreen(
                         "settings", "settings:wallpaper", "market" -> {
                           val settingsSheet: @Composable (String) -> Unit = { host ->
                             CompositionLocalProvider(LocalPreviewPage provides pager.currentPage.coerceIn(0, homePages - 1)) {
-                            CustomizationSheet(state, wide, model, isDefaultHome,
+                            CustomizationSheet(state, wide, model, initiallyUpright = layoutScreen == LayoutScreen.INNER_UPRIGHT, isDefaultHome = isDefaultHome,
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
                             onClose = { sheet = "" }, onEditPins = { sheet = "pins" },
