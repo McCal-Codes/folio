@@ -1881,12 +1881,12 @@ fun LauncherScreen(
                 onEditIcon = if (app.isShortcut) null else {{ overlays.iconEditor = app.id; overlays.menu = null }},
                 onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null,
                 onRemoveApp = { overlays.removeApp = app.id; overlays.menu = null },
-                onDeleteApp = if (!app.isShortcut && canDelete(cameWithPhone(launcherActivity, packageName), app.isWork)) {{
+                onDeleteApp = if (!app.isShortcut && canDelete(cameWithPhone(launcherActivity, app), app.isWork)) {{
                     overlays.menu = null; deleteApp(app) }} else null)
         }
         appsById[overlays.removeApp]?.let { app ->
             val onHome = state.layout.indexOfShortcut(app.id) != null
-            val options = remember(app.id, onHome) { removeOptions(cameWithPhone(launcherActivity, app.packageName), app.isWork, onHome) }
+            val options = remember(app.id, app.iconFrom, onHome) { removeOptions(cameWithPhone(launcherActivity, app), app.isWork, onHome) }
             RemoveAppAlert(app, options, onDismiss = { overlays.removeApp = null }, onChoice = { choice ->
                 overlays.removeApp = null
                 when (choice) {
