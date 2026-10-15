@@ -50,8 +50,12 @@ internal object RootSettingsGrantTester {
     private val _status = kotlinx.coroutines.flow.MutableStateFlow<Status>(Status.Idle)
     val status: kotlinx.coroutines.flow.StateFlow<Status> = _status
 
-    /** Only with advanced options on, root tested and working, and the owner's approval switch on; anything else is a refusal. */
-    fun allowed(context: Context) = RootHingeStore.advanced(context) && RootHingeStore.allowRootGrant(context) && RootHingeStore.state(context) == RootState.READY
+    /**
+     * Only with system access on and Folio out of Safe Mode, advanced options on, root tested and working, and the owner's
+     * approval switch on; anything else is a refusal. The page hides the button in the same cases, and this says so again.
+     */
+    fun allowed(context: Context, safe: Boolean = SafeMode.active) = !SystemBridge.isOff(context) && !safe &&
+        RootHingeStore.advanced(context) && RootHingeStore.allowRootGrant(context) && RootHingeStore.state(context) == RootState.READY
 
     fun start(context: Context, grant: Boolean) {
         if (!_status.compareAndSet(_status.value.takeIf { it !is Status.Running } ?: return, Status.Running)) return

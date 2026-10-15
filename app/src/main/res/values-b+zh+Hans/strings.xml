@@ -1738,6 +1738,10 @@
     <string name="compat_needs_folio_detail">这部手机的 Folio 是 %2$s。更新 Folio 后即可安装。</string>
     <string name="compat_kind_detail">这是此版本 Folio 暂时还无法使用的软件包类型。</string>
     <string name="compat_features_detail">它用到了此版本 Folio 还没有的功能。</string>
+    <string name="compat_no_scripts">Folio 不运行脚本</string>
+    <string name="compat_no_scripts_detail">这个软件包是脚本。Folio 不运行来自源的代码。</string>
+    <string name="text_1_s_is_a_script">%1$s 是脚本，Folio 不运行脚本</string>
+    <string name="that_package_is_a_script">那个软件包是脚本，Folio 不运行脚本</string>
     <string name="compat_replaces">取代 %1$s</string>
     <string name="compat_replaces_detail">两者不能同时启用。请先移除 %1$s。</string>
     <string name="compat_needs_package">需要 %1$s</string>

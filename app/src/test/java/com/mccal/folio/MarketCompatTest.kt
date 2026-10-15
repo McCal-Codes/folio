@@ -44,6 +44,14 @@ class MarketCompatTest {
         assertEquals(lines.single(), compatBlocked(lines))
     }
 
+    @Test fun `a script says Folio doesn't run scripts, and another reserved kind still asks for a newer Folio`() {
+        val script = compatLines(listOf(CompatCheck.Kinds(listOf(com.mccal.folio.market.PackageKind.SCRIPT, com.mccal.folio.market.PackageKind.SETTINGS_SCHEMA)))).single()
+        assertEquals(CompatState.BLOCKED to R.string.compat_no_scripts, script.state to script.title)
+        val schema = compatLines(listOf(CompatCheck.Kinds(listOf(com.mccal.folio.market.PackageKind.SETTINGS_SCHEMA)))).single()
+        assertEquals(CompatState.BLOCKED to R.string.needs_a_newer_folio, schema.state to schema.title)
+        assertTrue(compatLines(listOf(CompatCheck.Kinds(emptyList()))).isEmpty())
+    }
+
     @Test fun `a screen the package skips is a note, never a block`() {
         val both = setOf(Screen.COVER, Screen.INNER)
         val inner = compatLines(listOf(CompatCheck.Screens(setOf(Screen.INNER), both))).single()

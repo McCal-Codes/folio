@@ -205,7 +205,8 @@ internal fun MarketScreen(
     fun announce(name: String, result: InstallResult) {
         when (result) {
             is InstallResult.Installed -> { message = context.getString(R.string.text_1_s_is_on, result.installed.name); undo = result; said++ }
-            is InstallResult.NeedsNewerFolio -> say(context.getString(R.string.text_1_s_needs_a_newer_folio, name))
+            is InstallResult.NeedsNewerFolio -> say(context.getString(
+                if (com.mccal.folio.market.PackageKind.SCRIPT.id in result.missing) R.string.text_1_s_is_a_script else R.string.text_1_s_needs_a_newer_folio, name))
             is InstallResult.NeedsHost -> {
                 // An add-on whose tweak isn't here: say which, and offer the tweak's own page to get it from.
                 val tweak = TweakFeatures.firstOrNull { it.id == result.tweaks.first() }
@@ -374,7 +375,8 @@ internal fun MarketScreen(
             is com.mccal.folio.market.PackageInstaller.ReadResult.Ok -> value = bytes to read.pkg
             is com.mccal.folio.market.PackageInstaller.ReadResult.NeedsNewerFolio -> {
                 MarketImport.pending = null
-                say(context.getString(R.string.that_package_needs_a_newer_folio))
+                say(context.getString(
+                    if (com.mccal.folio.market.PackageKind.SCRIPT.id in read.missing) R.string.that_package_is_a_script else R.string.that_package_needs_a_newer_folio))
             }
             is com.mccal.folio.market.PackageInstaller.ReadResult.Failed -> {
                 MarketImport.pending = null
