@@ -101,8 +101,9 @@ internal fun hingeCapabilityKey(source: HingeSource) = when (source) {
 
 /**
  * The one-time permission that lets Folio change Android's protected settings. The owner grants it from a computer with adb
- * (`pm grant`); Folio never grants it to itself, and nothing in Folio uses it yet. It sits at the shell tier, so the system-access switch and
- * Safe Mode turn it off like every other provider above accessibility.
+ * (`pm grant`), or, on a rooted phone, lets System Bridge run the same `pm grant` on Folio through root ([RootSettingsGrantRunner]);
+ * nothing in Folio uses it yet. It sits at the shell tier, so the system-access switch and Safe Mode turn it off like every other
+ * provider above accessibility.
  */
 internal object SecureSettingsGrant {
     const val PERMISSION = "android.permission.WRITE_SECURE_SETTINGS"
