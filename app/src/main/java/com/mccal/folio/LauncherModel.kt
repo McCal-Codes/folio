@@ -467,6 +467,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
+    /**
+     * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
+     * layout that restore made. They count only while that restore is still the one Undo would take back.
+     */
+    private var setAsideStacks: Pair<HomeLayout, Map<Int, List<Int>>>? = null
+    private fun stacksForUndo(): Map<Int, List<Int>> = setAsideStacks?.takeIf { it.first == undoLayout?.second }?.second.orEmpty()
     private var refreshing = false
     private var refreshPending = false
     private val invalidatedPackages = mutableSetOf<Pair<Long, String>>()
@@ -965,20 +971,28 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             old.iconActions + preview.iconActions == old.iconActions) return false
         if (recovering) leaveDamagedLayout(restoring = true)
         else if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
-        undoLayout = (kept.layout to preview.layout).takeUnless { recovering }
+        // The backup's widgets get slot numbers nothing here uses, so a stack or clock look kept for Undo stays on its own widget.
+        val (restored, newSlots) = renumberRestoredWidgets(preview.layout,
+            maxOf(nextWidgetSlot(), kept.widgetPlacements.maxOfOrNull { it.slot + 1 } ?: 0))
+        val restoredSlots = restored.widgetPlacements.mapTo(mutableSetOf()) { it.slot }
+        undoLayout = (kept.layout to restored).takeUnless { recovering }
+        // A stack on a number the restored layout still uses can't stay on Home, but Undo brings it back whole.
+        setAsideStacks = (restored to old.widgetStacks.filterKeys { it in restoredSlots }).takeUnless { recovering }
         undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait).takeUnless { recovering }
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
-            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
-            widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
-            widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
-            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
-            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            widgetPlacements = restored.widgetPlacements, folders = restored.folders,
+            widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
+            // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
+            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet() - restoredSlots),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot, and
+            // follows that clock to its new number; a clock that lands where another widget was does not inherit that look.
             bigClockStyles = old.bigClockStyles.filterKeys { slot ->
                 old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
-                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } }
+                .let { same -> same + same.mapNotNull { (slot, style) -> newSlots[slot]?.let { it to style } } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
             fullWidthRestore = emptyMap(), error = old.error.takeUnless { recovering },
@@ -1275,7 +1289,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            widgetStacks = WidgetStacks.prune(old.widgetStacks + stacksForUndo(), before.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
@@ -1284,6 +1298,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             editRevision = old.editRevision + 1)
         undoLayout = null
         undoImportSettings = null
+        setAsideStacks = null
         persist()
         return true
     }
@@ -1434,8 +1449,10 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val state = mutable.value
         val undoPlacements = if (state.canUndoEdit) undoLayout?.first?.widgetPlacements.orEmpty() else emptyList()
         val placements = state.widgetPlacements + undoPlacements
+        val slots = placements.map { it.slot }.toSet()
+        val setAside = if (state.canUndoEdit) WidgetStacks.retained(stacksForUndo(), undoPlacements.map { it.slot }.toSet()) else emptySet()
         // Stacked widgets are retained exactly as long as their placement (or its undoable copy) exists.
-        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, placements.map { it.slot }.toSet()) +
+        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, slots) + setAside +
             TodayWidgets.retained(state.todayWidgets)).toSet()
     }
     val canPruneWidgetIds get() = !statePayloadInvalid
