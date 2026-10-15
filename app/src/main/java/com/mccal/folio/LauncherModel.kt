@@ -1036,14 +1036,23 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val old = mutable.value
         val placement = old.layout.placement(slot) ?: return false
         val (primary, extras) = change(placement.id, old.widgetStacks[slot].orEmpty()) ?: return false
-        // Changing which widget a placement shows isn't undoable (like replacing a widget); clearing undo keeps
-        // retained ids and the stack map consistent.
-        undoLayout = null
-        undoImportSettings = null
-        mutable.value = old.copy(
+        // Changing which widget a placement shows isn't itself undoable, but it must not take an earlier Undo with it:
+        // the removal before it still has bindings waiting on that Undo. So the new id goes into both sides of the Undo.
+        val pending = undoLayout.takeIf { old.canUndoEdit && it?.second == old.layout }
+        fun HomeLayout.withPrimary() = copy(widgetPlacements = widgetPlacements.map { if (it.slot == slot) it.copy(id = primary) else it })
+        val next = old.copy(
             widgetPlacements = old.widgetPlacements.map { if (it.slot == slot) it.copy(id = primary) else it },
             widgetStacks = if (extras.isEmpty()) old.widgetStacks - slot else old.widgetStacks + (slot to extras),
-            canUndoEdit = false, editRevision = old.editRevision + 1)
+            canUndoEdit = pending != null, editRevision = old.editRevision + 1)
+        if (pending != null) {
+            val swapped = pending.first.withPrimary() to next.layout
+            setAsideStacks = setAsideStacks?.takeIf { it.first == pending.second }?.let { next.layout to it.second }
+            undoLayout = swapped
+        } else {
+            undoLayout = null
+            undoImportSettings = null
+        }
+        mutable.value = next
         persist()
         return true
     }
@@ -1134,9 +1143,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     // What turned the Focus on survives the app being closed, so a Focus a trigger turned on is still turned off when the trigger ends.
     private var triggerState = FocusTriggerState(
         byTrigger = triggerPrefs().getString("trigger_by", null),
-        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) })
+        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) },
+        // A Focus turned off by hand while its trigger held stays off after the app is closed too, until its signals change.
+        suppressed = FocusTriggers.decodeSuppressed(triggerPrefs().getString("trigger_suppressed", null)))
     private fun triggerPrefs() = getApplication<android.app.Application>().getSharedPreferences("focus_rules", 0)
-    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key).apply()
+    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key)
+        .putString("trigger_suppressed", FocusTriggers.encodeSuppressed(triggerState.suppressed)).apply()
     private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(triggerState.reason)
     /** Why the Focus that is on turned on by itself (unfolded, charging, headphones), or null when it was turned on by hand. */
     val focusReason: kotlinx.coroutines.flow.StateFlow<FocusReason?> get() = focusReasonState
