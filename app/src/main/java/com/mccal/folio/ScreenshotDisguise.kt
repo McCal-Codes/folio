@@ -1,7 +1,6 @@
 package com.mccal.folio
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -188,10 +187,7 @@ internal fun rememberDisguised(state: LauncherState): LauncherState {
 /** The packages in [packages] that shipped with the phone, updated or not. */
 internal fun systemPackages(context: Context, packages: Set<String>): Set<String> {
     val pm = context.packageManager
-    val system = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
-    return packages.filterTo(mutableSetOf()) { pkg ->
-        runCatching { pm.getApplicationInfo(pkg, 0).flags and system != 0 }.getOrDefault(false)
-    }
+    return packages.filterTo(mutableSetOf()) { pkg -> shippedWithPhone(pm, pkg) == true }
 }
 
 /** Swapped apps by package, each with its stand-in, for what Home draws by package rather than by app (widgets). */
