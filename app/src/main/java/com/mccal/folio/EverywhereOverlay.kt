@@ -10,7 +10,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
-import android.graphics.Rect
+import kotlin.math.roundToInt
 import android.os.Process
 import android.view.Gravity
 import android.view.MotionEvent
@@ -375,16 +375,18 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private var islandParams: WindowManager.LayoutParams? = null
     private var geometry: IslandGeometry? = null
+    private var islandWindowWidth = 0
 
     private fun addIsland() {
         if (island != null) return
         val metrics = wm.currentWindowMetrics
-        val reported = metrics.windowInsets.displayCutout
-        val cutout: Rect? = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath, density) }
-            ?: CameraArea.hiddenCamera(wm.defaultDisplay)
-        val wide = fitsRegularHomeLayout(metrics.bounds.width() / density, metrics.bounds.height() / density, service.resources.configuration.classScale)
-        val g = (IslandPosition.load(service, wide, metrics.bounds.width() > metrics.bounds.height())?.let { islandGeometryAt(it.xFraction * metrics.bounds.width(), it.topDp, metrics.bounds.width(), density) }
-            ?: islandGeometry(cutout, metrics.bounds.width(), density)).also { geometry = it }
+        val windowWidth = metrics.bounds.width(); val windowHeight = metrics.bounds.height()
+        // The same camera, saved spot and placement as Home's island, so both sit at the same height (#394).
+        val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
+        val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
+        val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density).also { geometry = it }
+        islandWindowWidth = windowWidth
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
@@ -414,13 +416,13 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 }
             }
         }
-        val params = WindowManager.LayoutParams(1, (g.pillH * density).toInt(),
+        val params = WindowManager.LayoutParams(1, (g.pillH * density).roundToInt(),
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.START
-            y = (g.top * density).toInt()
+            y = (g.top * density).roundToInt()
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
         runCatching { wm.addView(view, params); island = view; islandParams = params }
@@ -434,7 +436,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val widthPx = (g.widthFor(content) * density).toInt()
         if (params.width == widthPx) return
         params.width = widthPx
-        params.x = (g.centerXPx - widthPx / 2f).toInt()
+        params.x = islandLeftPx(g.centerXPx, widthPx.toFloat(), islandWindowWidth, density).roundToInt()
         runCatching { wm.updateViewLayout(view, params) }
     }
 

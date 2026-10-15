@@ -91,9 +91,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             windowWidth = view.rootView.width
             windowHeight = view.rootView.height
             // Reported cutout first; otherwise a known under-display camera (e.g. Galaxy Z Fold8 inner screen).
-            val reported = view.rootWindowInsets?.displayCutout
-            cutout = reported?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, reported.cutoutPath, density.density) }
-                ?: CameraArea.hiddenCamera(view.display)
+            cutout = islandCamera(view.rootWindowInsets?.displayCutout, view.display, density.density)
         }
         view.viewTreeObserver.addOnGlobalLayoutListener(update)
         update.onGlobalLayout()
@@ -127,7 +125,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     androidx.activity.compose.BackHandler(expanded) { expanded = false }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    val wide = with(density) { windowWidth.toDp() }.value * androidx.compose.ui.platform.LocalConfiguration.current.classScale >= 600f
+    val wide = islandWideWindow(windowWidth, density.density, androidx.compose.ui.platform.LocalConfiguration.current.classScale)
     val landscape = windowWidth > windowHeight
     // Camera on a side edge (a screen turned sideways): the island stands upright around it, like iPhone Duo's.
     val side = cameraSideEdge(cutout, windowWidth, windowHeight)
@@ -151,9 +149,11 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     with(density) {
-        val cameraGeometry = islandGeometry(cutout, windowWidth, density.density)
-        val geometry = custom?.clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
-            ?.let { islandGeometryAt(it.xFraction * windowWidth, it.topDp, windowWidth, density.density) } ?: cameraGeometry
+        val camera = cutout?.ltrb()
+        val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density)
+        // Where the camera really is: the snap target for a drag, even when the pill is drawn at top center instead.
+        val realCamera = islandGeometry(camera, windowWidth, density.density)
+        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density)
         val camW = geometry.camW.dp
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
@@ -175,10 +175,10 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
         val corner by animateDpAsState(if (open) 34.dp else pillH / 2, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
-        val edge = ISLAND_SIDE_MARGIN.dp.toPx()
         val left = if (placement != null && open) noticeLeft(placement, centerX.toDp().value, width.value).dp.toPx()
-            else (centerX - width.toPx() / 2f).coerceIn(edge, maxOf(edge, windowWidth - width.toPx() - edge))
-        val top = geometry.top.coerceAtLeast(ISLAND_EDGE_GAP).dp
+            else islandLeftPx(centerX, width.toPx(), windowWidth, density.density)
+        // No floor here: the edge gap is the shared placement's call, so Home and the island over apps match (#394).
+        val top = geometry.top.dp
 
         Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + dragOffset.y).roundToInt()) }.width(width)
             .then(if (placement != null && open) Modifier.heightIn(max = placement.maxHeight.dp) else Modifier)
@@ -192,8 +192,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         dragging = false
                         val newCenterX = (geometry.centerXPx + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
                         val newTopDp = (geometry.top + dragOffset.y / density.density).coerceAtLeast(4f)
-                        val nearCamera = kotlin.math.abs(newCenterX - cameraGeometry.centerXPx) < 56.dp.toPx() &&
-                            kotlin.math.abs(newTopDp - cameraGeometry.top) < 40f && cutout != null
+                        val nearCamera = cutout != null && islandSnapsToCamera(newCenterX, newTopDp, realCamera, density.density)
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
                             .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
                         IslandPosition.save(context, wide, landscape, custom)
@@ -322,9 +321,54 @@ internal data class IslandGeometry(val camW: Float, val camH: Float, val centerX
     fun widthFor(content: IslandContent): Float = minOf(islandWantWidth(content, camW.dp).value, maxW).coerceAtLeast(camW + pillH)
 }
 
-internal fun islandGeometry(cutout: Rect?, windowWidthPx: Int, density: Float): IslandGeometry =
-    if (cutout == null) islandGeometry(null as IntArray?, windowWidthPx, density)
-    else islandGeometry(intArrayOf(cutout.left, cutout.top, cutout.right, cutout.bottom), windowWidthPx, density)
+internal fun Rect.ltrb(): IntArray = intArrayOf(left, top, right, bottom)
+
+/** The camera the island wraps on this window: the reported cutout ([cameraRect]), else a known hidden camera. */
+internal fun islandCamera(cutout: android.view.DisplayCutout?, display: android.view.Display?, density: Float): Rect? =
+    cutout?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, cutout.cutoutPath, density) }
+        ?: CameraArea.hiddenCamera(display)
+
+/**
+ * Which saved spot a window uses ([IslandPosition.load]). Home and the island over apps share it, so a spot dragged
+ * to on Home is the one used over apps on the same screen.
+ */
+internal fun islandWideWindow(windowWidthPx: Int, density: Float, classScale: Float): Boolean =
+    windowWidthPx / density * classScale >= 600f
+
+/**
+ * Where the compact island goes on one window. Home and the island over other apps both place it with this, so it
+ * sits at the same spot and height in both. [camera] is left, top, right, bottom in px after [cameraRect], or null;
+ * [custom] is a spot the user dragged it to on this screen and orientation, kept on screen ([IslandPosition.clamped]).
+ */
+internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowWidthPx: Int, windowHeightPx: Int, density: Float): IslandGeometry {
+    val atCamera = islandCameraGeometry(camera, windowWidthPx, windowHeightPx, density)
+    return custom?.clamped(windowWidthPx, windowHeightPx, density, atCamera.pillH)
+        ?.let { islandGeometryAt(it.xFraction * windowWidthPx, it.topDp, windowWidthPx, density) } ?: atCamera
+}
+
+/**
+ * The island wrapped around the camera. A camera that is not on the top edge (a screen turned sideways or upside
+ * down) has no pill to sit in: wrapping it put the pill mid-edge and partly off screen, so the island goes to the top
+ * center instead. Home stands an upright island at a side camera itself ([VerticalIsland]).
+ */
+internal fun islandCameraGeometry(camera: IntArray?, windowWidthPx: Int, windowHeightPx: Int, density: Float): IslandGeometry =
+    islandGeometry(camera?.takeIf { cameraOnTopEdge(it, windowWidthPx, windowHeightPx) }, windowWidthPx, density)
+
+/** Whether the top is the screen edge [camera] is nearest. An unknown window size counts as top. */
+internal fun cameraOnTopEdge(camera: IntArray, windowWidthPx: Int, windowHeightPx: Int): Boolean {
+    if (windowWidthPx <= 0 || windowHeightPx <= 0) return true
+    return camera[1] <= minOf(camera[0], windowWidthPx - camera[2], windowHeightPx - camera[3])
+}
+
+/** Whether a pill dropped at [centerXPx], [topDp] is close enough to the real camera ([camera]) to snap back to it. */
+internal fun islandSnapsToCamera(centerXPx: Float, topDp: Float, camera: IslandGeometry, density: Float): Boolean =
+    kotlin.math.abs(centerXPx - camera.centerXPx) < 56f * density && kotlin.math.abs(topDp - camera.top) < 40f
+
+/** Left of a pill [widthPx] wide centered on [centerXPx], kept the usual margin in from both screen edges. */
+internal fun islandLeftPx(centerXPx: Float, widthPx: Float, windowWidthPx: Int, density: Float): Float {
+    val edge = ISLAND_SIDE_MARGIN * density
+    return (centerXPx - widthPx / 2f).coerceIn(edge, maxOf(edge, windowWidthPx - widthPx - edge))
+}
 
 /** [cutoutLtrb] is left, top, right, bottom in px (or null when the display has no cutout). */
 internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: Float): IslandGeometry {
@@ -337,8 +381,11 @@ internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: 
     val camTop = (cutoutLtrb?.get(1) ?: (12 * density).toInt()) / density
     val camBottom = camTop + camH
     // The island always starts above the camera, even when the camera sits closer to the edge than the usual gap
-    // (a punch-hole near the top, as on the Galaxy Z Fold7's inner screen); otherwise the lens peeks over it.
-    val top = if (cutoutLtrb == null) ISLAND_EDGE_GAP
+    // (a punch-hole near the top, as on the Galaxy Z Fold7's inner screen); otherwise the lens peeks over it. A
+    // cutout that starts at the edge itself (a notch, or a strip too short for [cameraStripBand]) cannot be started
+    // above, so the island keeps the usual gap from the edge there.
+    val atEdge = cutoutLtrb != null && cutoutLtrb[1] <= OUTLINE_SLACK
+    val top = if (cutoutLtrb == null || atEdge) ISLAND_EDGE_GAP
         else minOf(maxOf(ISLAND_EDGE_GAP, camTop - ISLAND_CAMERA_MARGIN), camTop - ISLAND_CAMERA_MIN_OVERLAP).coerceAtLeast(0f)
     val pillH = maxOf(camBottom + ISLAND_CAMERA_MARGIN - top, ISLAND_MIN_HEIGHT)
     // Width stays symmetric around the camera, capped by the room on the narrower side.
