@@ -40,7 +40,7 @@ class DiscoverModelTest {
     @After fun clear() { discoverStore.clear(); homeStore.clear(); FolioSettingsBridge.liveModel = null }
 
     @Test fun `a tile change made after a Discover visit is still there after Home's next save`() {
-        val home = model(homeStore, ViewModelProvider.AndroidViewModelFactory.getInstance(context))
+        val home = model(homeStore, ViewModelProvider.AndroidViewModelFactory())
         model(discoverStore, LauncherModel.readOnlyFactory)
         discoverStore.clear() // Discover closes
 
