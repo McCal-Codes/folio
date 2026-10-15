@@ -98,6 +98,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **A cancelled drag puts the app back:** a drag that Android cancels (the power button, a call, unfolding) puts the app back where it was instead of dropping it where your finger was, so nothing is removed by accident.
 - **Settings changed after a visit to Discover stick:** Quick Settings tiles and Focus changes now stick after you visit Discover, instead of Home putting back the old setting. Discover only reads your Home now and never saves a copy of its own.
 - **A Layout Backup lists only your Home apps:** a backup now names only the apps your layout uses (on Home, in the dock or a folder, or with a name, icon look or icon action you set), not every app on the phone in every profile, hidden ones included. Older Folio still reads it.
+- **Restoring a backup checks its packages:** restoring a Layout Backup now checks its Market packages like an install does, and turns off any that fail. A package keeps its source only when it is the same package already on this phone; anything else is recorded as opened from a file.
 - **Restored widgets keep their own Smart Stacks:** restoring a Layout Backup no longer puts an old Smart Stack on top of a different widget. Restored widgets get slot numbers nothing on your Home is using, so the stacks Folio keeps for Undo stay with their own widgets, and a Big Clock that was in the same place keeps its look.
 
 ## [0.6.8] - 2026-10-06
