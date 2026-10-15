@@ -92,6 +92,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Updating a tweak keeps your settings:** updating a tweak package from the Market turned a screen you had turned off for it back on, cleared its options, and put Duet's look back to the package's. Your changes now stay: an update only changes what its new version changes, and not where you had already changed it yourself. Undo after an update keeps them too.
 - **A pulled package turns off:** when a package's source pulls the version on your phone, Folio now turns it off the next time Home starts or you refresh that source, keeps its settings, and tells you why, instead of leaving it running. Its row says Pulled by its source, and Remove takes it away; Try Again isn't offered for it.
 - **Dual Messenger and other cloned apps show in the App Library:** a second copy of an app, made with Samsung's Dual Messenger or Android's app cloning, is listed right beside the original with Dual under its name, and in a folder too. Only the apps you cloned show, not the system apps Android keeps in the clone's space. Cloned apps stay out of the first dock and Suggestions, and leave Home when you turn cloning off. Work apps stay behind the Work switch as before.
+- **A cancelled drag puts the app back:** a drag that Android cancels (the power button, a call, unfolding) puts the app back where it was instead of dropping it where your finger was, so nothing is removed by accident.
 
 ## [0.6.8] - 2026-10-06
 
