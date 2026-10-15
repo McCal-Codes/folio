@@ -340,7 +340,8 @@ internal class MarketSession(
     private val restoreChecks = object : PackageInstaller.RestoreChecks {
         override fun builtIn(id: String): FolioPackage? = read(id)
 
-        override fun listed(record: InstalledPackage) = sources.cached().flatMap { it.packages }
+        // Only the sources that speak for the record, as for its lists: another source listing the same version can't hold it off.
+        override fun listed(record: InstalledPackage) = sourcesFor(record, sources.cached()).flatMap { it.packages }
             .filter { it.id == record.id && it.version == record.version }.mapNotNull { it.manifest }
 
         override fun pulled(record: InstalledPackage) =

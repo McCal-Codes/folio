@@ -276,6 +276,21 @@ class MarketSourcesTest {
         assertEquals("The panel opens off screen", incompatibleReason(builtIn, list, emptyList(), on08))
     }
 
+    @Test fun `a package from a source is checked against that source alone, one from a file against them all`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val here = requireNotNull(sources.cached().single())
+        val other = here.copy(source = here.source.copy(url = "https://other.example/folio/"))
+        val pkg = requireNotNull(here.snapshot).index.packages.single()
+        fun installed(origin: com.mccal.folio.market.InstalledPackage.Origin, url: String?) =
+            com.mccal.folio.market.InstalledPackage(pkg.id, pkg.version, "Cabinet", origin, url, 0L, emptyList())
+        val both = listOf(here, other)
+        assertEquals(listOf(here), sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base), both))
+        assertEquals(listOf(here), sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base.trimEnd('/') + "/"), both))
+        assertEquals(both, sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FILE, null), both))
+        assertEquals(emptyList<SourceStatus>(), sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), both))
+    }
+
     @Test fun `removing a source forgets its list and its key`() = runTest {
         publish()
         sources.trust(base, key)

@@ -167,16 +167,19 @@ internal fun incompatibleReason(installed: InstalledPackage, folio: RevocationLi
     return lists.firstNotNullOfOrNull { it.incompatibleReason(installed.id, installed.version, v) }
 }
 
-/** The source lists that speak for [installed]: its own source's, every source's for one from a file, or none. */
-private fun sourceListsFor(installed: InstalledPackage, cached: List<SourceStatus>): List<RevocationList> {
+/** The sources that speak for [installed]: its own source, every source for one from a file, or none. */
+internal fun sourcesFor(installed: InstalledPackage, cached: List<SourceStatus>): List<SourceStatus> {
     val from = installed.sourceUrl?.trimEnd('/')
-    val sources = when {
+    return when {
         installed.origin == InstalledPackage.Origin.FILE -> cached
         from != null -> cached.filter { it.source.url.trimEnd('/').equals(from, ignoreCase = true) }
         else -> emptyList()
     }
-    return sources.mapNotNull { it.snapshot?.revocation }
 }
+
+/** The source lists that speak for [installed] (see [sourcesFor]). */
+private fun sourceListsFor(installed: InstalledPackage, cached: List<SourceStatus>): List<RevocationList> =
+    sourcesFor(installed, cached).mapNotNull { it.snapshot?.revocation }
 
 /** What happened the last time Folio asked a source for its list. */
 internal data class SourceStatus(
