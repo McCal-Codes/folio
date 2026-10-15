@@ -990,7 +990,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
                 CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsState().value.apps)
-                CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ })
+                CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ }, onClose = onClose)
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
                 CustomizationPage.FOCUS -> FocusListPage(state, model) { focusId = it; onPage(CustomizationPage.FOCUS_MODE) }
