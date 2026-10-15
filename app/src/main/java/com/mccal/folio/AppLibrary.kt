@@ -76,6 +76,8 @@ internal fun AppLibrary(
     LaunchedEffect(showWork, selectedProfile?.available, selectedProfile?.quiet) {
         listState.scrollToItem(0)
     }
+    // The list keeps its place by item, so typing replaced the tiles and left the results scrolled past the web search row.
+    LaunchedEffect(query) { listState.scrollToItem(0) }
     // Hidden apps stay out of the App Library entirely, like iOS; they're listed (after unlocking) in Settings.
     val visibleApps = remember(state.apps, state.loading, query, showWork, workSwitch, hasWork, state.hiddenApps, editing) {
         val text = query.trim()
