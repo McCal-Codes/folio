@@ -119,8 +119,9 @@ internal fun UpNextCard(onClick: () -> Unit) {
  *
  * Once customized ([BigClockStyle], from the widget's Customize row) it also takes a color, weight, size, typeface,
  * shadow, date format and alignment. Reading the picture under the clock needs Folio's own picture behind Home (Android
- * gives no API to read the system wallpaper's pixels), so Wallpaper and Custom fall back to the whole-wallpaper ink
- * without one. A clock that was never customized draws exactly what it always did.
+ * gives no API to read the system wallpaper's pixels). With Android's wallpaper, Wallpaper and Custom use the main colors
+ * Android shares for it, and Automatic draws the same whole-wallpaper ink as a clock never customized, so the first change
+ * in Customize does not flip it. A clock that was never customized draws exactly what it always did.
  */
 @Composable
 internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = false) {
@@ -150,7 +151,7 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
             boxInWindow.right / window.width, boxInWindow.bottom / window.height)
     }
     // Only a customized clock reads the picture; an untouched one keeps the whole-wallpaper ink it always had.
-    val sample = rememberClockInkSample(fraction, enabled = stored != null && launcherBackgroundEnabled(context),
+    val sample = rememberClockInkSample(fraction, enabled = stored != null,
         windowAspect = if (window.height > 0) window.width.toFloat() / window.height else 0f)
     val resolved = if (stored == null) null else resolveClockInk(style, sample, fallbackDark = ink.dark)
     // Everything about the clock eases to a new value instead of jumping, so the weight slider and a Look change glide.

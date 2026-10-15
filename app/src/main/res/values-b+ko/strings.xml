@@ -774,7 +774,6 @@
     <string name="color">색상</string>
     <string name="white">흰색</string>
     <string name="weight">굵기</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android는 앱이 시스템 배경화면을 읽을 수 없게 하므로, 배경화면 및 사용자 지정 색상에는 Folio의 사진이 필요합니다.</string>
     <string name="text_1_s_unavailable">%1$s 사용 불가</string>
     <string name="headphones">헤드폰</string>
     <string name="fixes_and_improvements">수정 및 개선 사항</string>
@@ -2004,6 +2003,10 @@
     <string name="delete_app">앱 삭제</string>
     <string name="app_deleted">%1$s 삭제됨</string>
     <string name="app_not_deleted">%1$s을(를) 삭제하지 못했습니다</string>
+    <string name="clock_font">서체</string>
+    <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_colors_system_palette">Android가 이 배경화면의 색상을 알려 주지 않아, 휴대폰의 테마 색상(색상 팔레트)을 사용합니다. 팔레트를 배경화면에서 만들면 배경화면을 따라갑니다. 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_no_android_wallpaper_colors">Android가 이 배경화면의 색상을 알려 주지 않아 자동과 흰색만 쓸 수 있습니다. 일부 라이브 배경화면은 색상을 알려 주지 않습니다.</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">스택에 있음</string>
     <string name="not_in_stack">스택에 없음</string>
