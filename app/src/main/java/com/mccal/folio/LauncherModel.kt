@@ -16,6 +16,9 @@ import android.os.UserHandle
 import android.os.UserManager
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -312,11 +315,15 @@ data class LauncherState(
     /** The island steps aside for full-screen video and games (on), and for landscape apps (off). */
     val islandHideFullScreen: Boolean = true,
     val islandHideLandscape: Boolean = false,
+    /** With [islandHideLandscape] on, hide the island on the unfolded screen too; it is always wider than tall, so off keeps it showing there. */
+    val islandHideLandscapeInner: Boolean = false,
     /** Home Screen & Dock › Layout › Rows: 0 = Automatic (More rows), 4 = always four app rows. */
     val homeRows: Int = 0,
     /** App rows that last fit the cover-class and the inner-class Home (0 = not measured yet); see [homeAppRows]. */
     val homeFitCompact: Int = 0,
     val homeFitExpanded: Int = 0,
+    /** The same for the upright inner screen, kept apart so it and the sideways inner screen stop overwriting each other. */
+    val homeFitUpright: Int = 0,
     val loading: Boolean = true,
     /** Home's own apps are in. At a start they come ahead of the rest, while [loading] stays true (not saved). */
     val homeAppsLoaded: Boolean = false,
@@ -327,7 +334,7 @@ data class LauncherState(
     val layout: HomeLayout get() = HomeLayout(homeSlots, dock, widgetPlacements, folders, widgetRestores, leadingSlots, minPages)
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
-    val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded)
+    val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
@@ -378,6 +385,19 @@ internal fun LauncherState.withoutFullWidthEntry(screen: LayoutScreen): Launcher
 }
 
 /** [preset] saved for [screen]; the upright inner screen without a layout of its own edits the inner one. */
+/** The app rows last measured for [screen] (0 = not measured yet). */
+internal fun LauncherState.homeFitFor(screen: LayoutScreen): Int = when (screen) {
+    LayoutScreen.COVER -> homeFitCompact
+    LayoutScreen.INNER -> homeFitExpanded
+    LayoutScreen.INNER_UPRIGHT -> homeFitUpright
+}
+
+internal fun LauncherState.withHomeFit(screen: LayoutScreen, rows: Int): LauncherState = when (screen) {
+    LayoutScreen.COVER -> copy(homeFitCompact = rows)
+    LayoutScreen.INNER -> copy(homeFitExpanded = rows)
+    LayoutScreen.INNER_UPRIGHT -> copy(homeFitUpright = rows)
+}
+
 internal fun LauncherState.withPreset(screen: LayoutScreen, preset: LayoutPreset): LauncherState = when (screen) {
     LayoutScreen.COVER -> copy(compact = preset)
     LayoutScreen.INNER -> copy(expanded = preset)
@@ -407,15 +427,15 @@ internal fun LauncherState.withHomeApps(home: List<AppEntry>): LauncherState =
  * Automatic: the fewest rows any of this device's screens has room for (screens not measured yet don't count, and
  * nothing measured means four). A fixed setting is used as is.
  */
-fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int): Int =
-    (if (setting > 0) setting else listOf(fitCompact, fitExpanded).filter { it > 0 }.minOrNull() ?: BASE_APP_ROWS)
+fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int, fitUpright: Int = 0): Int =
+    (if (setting > 0) setting else listOf(fitCompact, fitExpanded, fitUpright).filter { it > 0 }.minOrNull() ?: BASE_APP_ROWS)
         .coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
 
 /**
- * The newest saved-state schema this build reads. 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
+ * The newest saved-state schema this build reads. 11: Hide in Landscape on the unfolded screen; 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
  * A save is written with [stateSchemaFor], not always with this number.
  */
-const val STATE_SCHEMA = 10
+const val STATE_SCHEMA = 11
 
 /**
  * The schema a save is written with: the lowest one that holds everything in it. A phone that uses nothing from schema 10
@@ -423,10 +443,17 @@ const val STATE_SCHEMA = 10
  * the file and says so (the damaged-state path) instead of reading it, dropping the actions on its next save, and losing
  * them without a word when the newer Folio comes back.
  */
-internal fun stateSchemaFor(s: LauncherState) = if (s.iconActions.isNotEmpty()) 10 else 9
+internal fun stateSchemaFor(s: LauncherState) = when {
+    s.islandHideLandscapeInner -> 11
+    s.iconActions.isNotEmpty() -> 10
+    else -> 9
+}
 
 /** Whether this save should keep the schema 9 file it is about to replace: it writes schema 10 over an older read and no copy exists yet. */
 internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 10 && writtenSchema >= 10 && !hasBackup
+
+/** Same for the first save that writes schema 11 over a schema 10 file. */
+internal fun v10BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 11 && writtenSchema >= 11 && !hasBackup
 
 /**
  * The schema that brought More rows. A save older than this was arranged in four rows, and keeps them; anything
@@ -435,7 +462,19 @@ internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Bo
  */
 const val MORE_ROWS_SCHEMA = 9
 
-class LauncherModel(application: Application) : AndroidViewModel(application) {
+/**
+ * Home's state. A [readOnly] model (Discover's) shows the saved Home but never saves it, and never takes Home's place as
+ * [FolioSettingsBridge.liveModel], so a tile or Focus change made while it exists still reaches the model Home saves from.
+ */
+class LauncherModel(application: Application, private val readOnly: Boolean) : AndroidViewModel(application) {
+    constructor(application: Application) : this(application, readOnly = false)
+
+    companion object {
+        /** For windows beside Home, like Discover: see [readOnly]. */
+        val readOnlyFactory = viewModelFactory {
+            initializer { LauncherModel(this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!, readOnly = true) }
+        }
+    }
     private data class RefreshedApps(val entries: List<AppEntry>, val profiles: List<AppProfile>,
         val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>)
     private data class UndoImportSettings(val compact: LayoutPreset, val expanded: LayoutPreset, val labels: Boolean,
@@ -452,6 +491,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
+    /**
+     * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
+     * layout that restore made. They count only while that restore is still the one Undo would take back.
+     */
+    private var setAsideStacks: Pair<HomeLayout, Map<Int, List<Int>>>? = null
+    private fun stacksForUndo(): Map<Int, List<Int>> = setAsideStacks?.takeIf { it.first == undoLayout?.second }?.second.orEmpty()
     private var refreshing = false
     private var refreshPending = false
     private val invalidatedPackages = mutableSetOf<Pair<Long, String>>()
@@ -495,6 +540,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
     internal var completedRefreshes = 0
         private set
+    /** Whether a refresh has listed this phone's apps. A damaged layout's stand-in starts with none, and with loading already false. */
+    val appsListed get() = completedRefreshes > 0
+    /** Whether apps are being listed right now (so not listed yet is still loading, not a failure). */
+    val listingApps get() = refreshing
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
             // A package Folio didn't know is a new download (not an update or a profile coming back).
@@ -528,7 +577,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    init { launcherApps.registerCallback(callback); refresh(); FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this) }
+    init {
+        launcherApps.registerCallback(callback); refresh()
+        if (!readOnly) FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this)
+    }
 
     /** Settings › Refresh Icons: for a theme app that changes icons without telling launchers (#19). */
     fun reloadIcons() { iconsStale = true; IconPacks.clear(); refresh() }
@@ -930,32 +982,45 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * has already taken this phone's packages off, and it is what Layout History and Undo should give back.
      */
     fun applyImportedLayout(preview: LayoutImportPreview, before: LauncherState? = null): Boolean {
-        if (statePayloadInvalid) return false
+        // Over a damaged layout this is the way back (the notice's Restore): the basic Home shown in its place is
+        // nothing to undo to or keep in Layout History.
+        val recovering = statePayloadInvalid
+        // Before this phone's apps are listed, a backup reads every app as missing; leaving the damaged state then would save an empty Home.
+        if (recovering && !appsListed) return false
         val old = mutable.value
         val kept = before ?: old
-        if (old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
+        if (!recovering && old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
             old.portrait == preview.portrait && old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
             old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles &&
             old.iconActions + preview.iconActions == old.iconActions) return false
-        if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
-        undoLayout = kept.layout to preview.layout
-        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
+        if (recovering) leaveDamagedLayout(restoring = true)
+        else if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
+        // The backup's widgets get slot numbers nothing here uses, so a stack or clock look kept for Undo stays on its own widget.
+        val (restored, newSlots) = renumberRestoredWidgets(preview.layout,
+            maxOf(nextWidgetSlot(), kept.widgetPlacements.maxOfOrNull { it.slot + 1 } ?: 0))
+        val restoredSlots = restored.widgetPlacements.mapTo(mutableSetOf()) { it.slot }
+        undoLayout = (kept.layout to restored).takeUnless { recovering }
+        // A stack on a number the restored layout still uses can't stay on Home, but Undo brings it back whole.
+        setAsideStacks = (restored to old.widgetStacks.filterKeys { it in restoredSlots }).takeUnless { recovering }
+        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait).takeUnless { recovering }
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
-            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
-            widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
-            widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
-            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
-            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            widgetPlacements = restored.widgetPlacements, folders = restored.folders,
+            widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
+            // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
+            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet() - restoredSlots),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot, and
+            // follows that clock to its new number; a clock that lands where another widget was does not inherit that look.
             bigClockStyles = old.bigClockStyles.filterKeys { slot ->
                 old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
-                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } }
+                .let { same -> same + same.mapNotNull { (slot, style) -> newSlots[slot]?.let { it to style } } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
-            fullWidthRestore = emptyMap(),
-            editRevision = old.editRevision + 1, canUndoEdit = true)
+            fullWidthRestore = emptyMap(), error = old.error.takeUnless { recovering },
+            editRevision = old.editRevision + 1, canUndoEdit = !recovering)
         persist()
         return true
     }
@@ -995,14 +1060,23 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val old = mutable.value
         val placement = old.layout.placement(slot) ?: return false
         val (primary, extras) = change(placement.id, old.widgetStacks[slot].orEmpty()) ?: return false
-        // Changing which widget a placement shows isn't undoable (like replacing a widget); clearing undo keeps
-        // retained ids and the stack map consistent.
-        undoLayout = null
-        undoImportSettings = null
-        mutable.value = old.copy(
+        // Changing which widget a placement shows isn't itself undoable, but it must not take an earlier Undo with it:
+        // the removal before it still has bindings waiting on that Undo. So the new id goes into both sides of the Undo.
+        val pending = undoLayout.takeIf { old.canUndoEdit && it?.second == old.layout }
+        fun HomeLayout.withPrimary() = copy(widgetPlacements = widgetPlacements.map { if (it.slot == slot) it.copy(id = primary) else it })
+        val next = old.copy(
             widgetPlacements = old.widgetPlacements.map { if (it.slot == slot) it.copy(id = primary) else it },
             widgetStacks = if (extras.isEmpty()) old.widgetStacks - slot else old.widgetStacks + (slot to extras),
-            canUndoEdit = false, editRevision = old.editRevision + 1)
+            canUndoEdit = pending != null, editRevision = old.editRevision + 1)
+        if (pending != null) {
+            val swapped = pending.first.withPrimary() to next.layout
+            setAsideStacks = setAsideStacks?.takeIf { it.first == pending.second }?.let { next.layout to it.second }
+            undoLayout = swapped
+        } else {
+            undoLayout = null
+            undoImportSettings = null
+        }
+        mutable.value = next
         persist()
         return true
     }
@@ -1043,7 +1117,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * widgets Android no longer has are left out, and Undo is offered like any other layout change.
      */
     fun restoreLayoutSnapshot(snapshot: LayoutSnapshot): Boolean {
-        if (statePayloadInvalid || mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        if (mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        // Over a damaged layout this is the way back, like a restored backup (see applyImportedLayout).
+        val recovering = statePayloadInvalid
         saveLayoutSnapshot("Before restoring", force = true)
         val old = mutable.value
         val before = snapshot.layout
@@ -1056,15 +1132,16 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             old.profiles.filter { it.available }.mapTo(mutableSetOf(), AppProfile::userSerial), emptySet(), emptySet(),
             userManager.getSerialNumberForUser(Process.myUserHandle()))
         val next = reconcileFolders(before.copy(widgetPlacements = widgets), removed)
-        if (old.layout == next) return false
-        undoLayout = old.layout to next
+        if (!recovering && old.layout == next) return false
+        if (recovering) leaveDamagedLayout(restoring = true)
+        undoLayout = (old.layout to next).takeUnless { recovering }
         undoImportSettings = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = trimmedDock(next.dock),
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in next.widgetPlacements.map { it.slot }.toSet() },
-            editRevision = old.editRevision + 1, canUndoEdit = true)
+            error = old.error.takeUnless { recovering }, editRevision = old.editRevision + 1, canUndoEdit = !recovering)
         persist()
         return true
     }
@@ -1090,9 +1167,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     // What turned the Focus on survives the app being closed, so a Focus a trigger turned on is still turned off when the trigger ends.
     private var triggerState = FocusTriggerState(
         byTrigger = triggerPrefs().getString("trigger_by", null),
-        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) })
+        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) },
+        // A Focus turned off by hand while its trigger held stays off after the app is closed too, until its signals change.
+        suppressed = FocusTriggers.decodeSuppressed(triggerPrefs().getString("trigger_suppressed", null)))
     private fun triggerPrefs() = getApplication<android.app.Application>().getSharedPreferences("focus_rules", 0)
-    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key).apply()
+    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key)
+        .putString("trigger_suppressed", FocusTriggers.encodeSuppressed(triggerState.suppressed)).apply()
     private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(triggerState.reason)
     /** Why the Focus that is on turned on by itself (unfolded, charging, headphones), or null when it was turned on by hand. */
     val focusReason: kotlinx.coroutines.flow.StateFlow<FocusReason?> get() = focusReasonState
@@ -1245,7 +1325,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            widgetStacks = WidgetStacks.prune(old.widgetStacks + stacksForUndo(), before.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
@@ -1254,6 +1334,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editRevision = old.editRevision + 1)
         undoLayout = null
         undoImportSettings = null
+        setAsideStacks = null
         persist()
         return true
     }
@@ -1328,13 +1409,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     fun setIslandEverywhere(value: Boolean) = updateSettings(soon = false) { it.copy(islandEverywhere = value) }
     fun setIslandHideFullScreen(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideFullScreen = value) }
     fun setIslandHideLandscape(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscape = value) }
+    fun setIslandHideLandscapeInner(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscapeInner = value) }
     fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value == BASE_APP_ROWS) value else 0) }
     /** Remembers how many app rows fit this screen class's full-screen Home (see [effectiveHomeRows]). */
-    fun recordHomeFit(expanded: Boolean, rows: Int) {
+    fun recordHomeFit(screen: LayoutScreen, rows: Int) {
         val value = rows.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
         val old = mutable.value
-        if ((if (expanded) old.homeFitExpanded else old.homeFitCompact) == value) return
-        updateSettings(soon = false) { if (expanded) it.copy(homeFitExpanded = value) else it.copy(homeFitCompact = value) }
+        if (old.homeFitFor(screen) == value) return
+        updateSettings(soon = false) { it.withHomeFit(screen, value) }
     }
     fun setPanelBlur(value: Float) = updateSettings(soon = true) { it.copy(panelBlur = value) }
     fun setNotificationClock(value: Boolean) = updateSettings(soon = false) { it.copy(notificationClock = value) }
@@ -1406,8 +1488,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val state = mutable.value
         val undoPlacements = if (state.canUndoEdit) undoLayout?.first?.widgetPlacements.orEmpty() else emptyList()
         val placements = state.widgetPlacements + undoPlacements
+        val slots = placements.map { it.slot }.toSet()
+        val setAside = if (state.canUndoEdit) WidgetStacks.retained(stacksForUndo(), undoPlacements.map { it.slot }.toSet()) else emptySet()
         // Stacked widgets are retained exactly as long as their placement (or its undoable copy) exists.
-        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, placements.map { it.slot }.toSet()) +
+        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, slots) + setAside +
             TodayWidgets.retained(state.todayWidgets)).toSet()
     }
     val canPruneWidgetIds get() = !statePayloadInvalid
@@ -1467,23 +1551,44 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** Whether the saved Home layout couldn't be read (it's kept untouched and editing is paused until the user decides). */
     val layoutDamaged get() = statePayloadInvalid
 
+    /**
+     * Whether the layout that couldn't be read was saved by a newer Folio (a downgrade). It isn't broken: updating Folio
+     * reads it again, so Home offers no Start Fresh for it.
+     */
+    val layoutFromNewerFolio get() = statePayloadInvalid && sourceSchema > STATE_SCHEMA
+
     /** Starts over with a default Home after a damaged save; the damaged copy stays as `state_damaged_backup`. */
     fun resetDamagedLayout() {
         if (!statePayloadInvalid) return
+        leaveDamagedLayout(restoring = false)
+        mutable.update { it.copy(error = null) }
+        persist()
+        refresh()
+    }
+
+    /**
+     * Keeps the damaged save as `state_damaged_backup` and lets Home save again. A restored layout replaces what was
+     * loaded, so there is nothing left to migrate either, and a refresh that follows must not migrate it.
+     */
+    private fun leaveDamagedLayout(restoring: Boolean) {
         // Once, like the schema backups beside it: a second damaged layout must not write over the first one,
         // which may be the only copy of a Home someone spent an evening arranging.
         if (!prefs.contains("state_damaged_backup")) {
             prefs.getString("state", null)?.let { prefs.edit().putString("state_damaged_backup", it).apply() }
         }
         statePayloadInvalid = false
-        mutable.update { it.copy(error = null) }
-        persist()
-        refresh()
+        if (restoring) needsMigration = false
     }
+
+    /**
+     * What a Layout Backup saves, or null while the layout is damaged: Home then shows a basic stand-in, and a backup
+     * of it would be an empty Home.
+     */
+    fun stateForBackup(): LauncherState? = mutable.value.takeUnless { statePayloadInvalid }
 
     private fun persist() {
         persistPending = false
-        if (needsMigration || statePayloadInvalid) return
+        if (readOnly || needsMigration || statePayloadInvalid) return
         traced("Folio.persist", ::writeState)
     }
 
@@ -1561,12 +1666,13 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                 .apply { style.labels?.let { put("labels", it) } }) } })
             .put(SettingKeys.DOCK_EVERYWHERE, s.dockEverywhere).put(SettingKeys.ISLAND_EVERYWHERE, s.islandEverywhere)
             .put(SettingKeys.ISLAND_HIDE_FULL_SCREEN, s.islandHideFullScreen).put(SettingKeys.ISLAND_HIDE_LANDSCAPE, s.islandHideLandscape)
+            .also { o -> if (s.islandHideLandscapeInner) o.put(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, true) }
             .put(SettingKeys.BUTTON_BAR, s.buttonBar).put(SettingKeys.BUTTON_BAR_HEIGHT, s.buttonBarHeight.toDouble())
             .put(SettingKeys.BUTTON_BAR_WIDTH, s.buttonBarWidth.toDouble()).put(SettingKeys.BUTTON_BAR_ANDROID_ORDER, s.buttonBarAndroidOrder)
             .put(SettingKeys.BUTTON_BAR_LIGHT, s.buttonBarLight).put(SettingKeys.BUTTON_BAR_FADE, s.buttonBarFade)
             .put("compact", preset(s.compact)).put("expanded", preset(s.expanded))
             .also { o -> s.portrait?.let { o.put("portrait", preset(it)) } }
-            .put("homeRows", s.homeRows).put("homeFitCompact", s.homeFitCompact).put("homeFitExpanded", s.homeFitExpanded)
+            .put("homeRows", s.homeRows).put("homeFitCompact", s.homeFitCompact).put("homeFitExpanded", s.homeFitExpanded).put("homeFitUpright", s.homeFitUpright)
         val editor = prefs.edit()
         if (legacyRaw != null && sourceSchema == 2 && !prefs.contains("state_v2_backup"))
             editor.putString("state_v2_backup", legacyRaw)
@@ -1585,6 +1691,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         // The first save that writes schema 10 (one with icon actions) keeps the schema 9 file it replaces, like every step before it.
         if (legacyRaw != null && v9BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v9_backup")))
             editor.putString("state_v9_backup", legacyRaw)
+        if (legacyRaw != null && v10BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v10_backup")))
+            editor.putString("state_v10_backup", legacyRaw)
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
@@ -1594,7 +1702,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
-        LauncherState(loading = false, error = getApplication<Application>().getString(R.string.saved_home_layout_could_not_be_read))
+        LauncherState(loading = false, error = getApplication<Application>().getString(
+            if (statePayloadInvalid && sourceSchema > STATE_SCHEMA) R.string.home_layout_saved_by_newer_folio_short
+            else R.string.saved_home_layout_could_not_be_read))
     } }
 
     override fun onCleared() {
@@ -1882,6 +1992,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         dockEverywhere = j.optBoolean("dockEverywhere", false), islandEverywhere = j.optBoolean("islandEverywhere", false),
         islandHideFullScreen = j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true),
         islandHideLandscape = j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
+        islandHideLandscapeInner = j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false),
         buttonBar = j.optBoolean(SettingKeys.BUTTON_BAR, false),
         buttonBarHeight = j.optDouble(SettingKeys.BUTTON_BAR_HEIGHT, 52.0).toFloat().coerceIn(44f, 60f),
         buttonBarWidth = j.optDouble(SettingKeys.BUTTON_BAR_WIDTH, .5).toFloat().coerceIn(.3f, .8f),
@@ -1894,7 +2005,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         homeRows = j.optInt("homeRows", if (j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
             .takeIf { it == BASE_APP_ROWS } ?: 0,
         homeFitCompact = j.optInt("homeFitCompact", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
-        homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0)
+        homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
+        homeFitUpright = j.optInt("homeFitUpright", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0)
         .let { st ->
             val saved = j.optJSONArray("installedTweaks")
             when {

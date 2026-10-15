@@ -605,6 +605,91 @@ class PackageInstallerTest {
         assertEquals("Cabinet", fresh.find("com.mccal.folio.cabinet")?.name)
     }
 
+    // A Layout Backup is a file, and its Market packages get the checks an install makes before any goes back on.
+    /** A backup made on another phone, holding Cabinet as it went on there, from [sourceUrl]. */
+    private fun backupFromElsewhere(sourceUrl: String? = "https://example.com/source/"): String {
+        val there = InstalledStore(MemoryStore())
+        installed(PackageInstaller(there, FakeHost(), clock = { now }).install(pack(), sourceUrl = sourceUrl))
+        return there.export()
+    }
+
+    private fun checks(
+        builtIn: FolioPackage? = null,
+        listed: List<PackageManifest> = emptyList(),
+        pulled: String? = null,
+        incompatible: Boolean = false,
+    ) = object : PackageInstaller.RestoreChecks {
+        override fun builtIn(id: String) = builtIn?.takeIf { it.id == id }
+        override fun listed(record: InstalledPackage) = listed
+        override fun pulled(record: InstalledPackage) = pulled
+        override fun incompatible(record: InstalledPackage) = incompatible
+    }
+
+    @Test fun `a restored package keeps no source the backup names, and a clean one still goes back on`() {
+        val restored = installer.restoreBackup(backupFromElsewhere("https://evil.example/"), "couldn't", checks()) {}!!
+        assertEquals(listOf(cabinetId), restored.on.map { it.id })
+        val record = store.find(cabinetId)!!
+        assertTrue(record.enabled)
+        assertEquals(InstalledPackage.Origin.FILE, record.origin)
+        assertNull(record.sourceUrl)
+        assertEquals(listOf(TweakId.APP_PANELS), (host.applied.single() as PackageChange.Tweaks).bundle.tweaks.map { it.id })
+    }
+
+    @Test fun `this phone's own package comes back from its own backup with its source`() {
+        installed(installer.install(pack(), sourceUrl = "https://example.com/source/"))
+        AuthorTrust(store.keyValue).remember(cabinetId, "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEexample")
+        val restored = installer.restoreBackup(store.export(), "couldn't", checks()) {}!!
+        assertEquals(listOf(cabinetId), restored.on.map { it.id })
+        assertEquals(InstalledPackage.Origin.FOLIO_SOURCE, store.find(cabinetId)!!.origin)
+        assertEquals("https://example.com/source/", store.find(cabinetId)!!.sourceUrl)
+    }
+
+    @Test fun `a backup's copy of a name an author's key owns here stays off`() {
+        AuthorTrust(store.keyValue).remember(cabinetId, "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEexample")
+        val restored = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks()) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        assertFalse(store.find(cabinetId)!!.enabled)
+        assertEquals(InstalledPackage.Origin.FILE, store.find(cabinetId)!!.origin)
+        assertTrue("nothing was applied", host.applied.isEmpty())
+    }
+
+    @Test fun `a backup's copy of a package Folio ships goes on only if it is that package`() {
+        val shipped = cabinet()
+        val same = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks(builtIn = shipped)) {}!!
+        assertEquals(listOf(cabinetId), same.on.map { it.id })
+        assertEquals(InstalledPackage.Origin.FOLIO_SOURCE, store.find(cabinetId)!!.origin)
+
+        val altered = backupFromElsewhere().replace("\"cover\":true", "\"cover\":false")
+        val other = PackageInstaller(InstalledStore(MemoryStore()), FakeHost(), clock = { now })
+        assertEquals(listOf(cabinetId), other.restoreBackup(altered, "couldn't", checks(builtIn = shipped)) {}!!.failed.map { it.id })
+    }
+
+    @Test fun `a pulled version in a backup stays off and says it was pulled`() {
+        val restored = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks(pulled = "Its source pulled it: broken")) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        val record = store.find(cabinetId)!!
+        assertFalse(record.enabled)
+        assertEquals(InstalledPackage.OffCause.PULLED, record.offCause)
+        assertEquals("Its source pulled it: broken", record.disabledReason)
+        assertTrue(host.applied.isEmpty())
+    }
+
+    @Test fun `a version a list says doesn't work with this Folio stays off after a restore`() {
+        val restored = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks(incompatible = true)) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        assertEquals("couldn't", store.find(cabinetId)!!.disabledReason)
+        assertTrue(host.applied.isEmpty())
+    }
+
+    @Test fun `a restored package whose listed manifest is for another Android stays off`() {
+        val newer = (installer.read(pack(replace = mapOf("\"name\": \"Cabinet\"" to "\"name\": \"Cabinet\",\n  \"minSdk\": 36")))
+            as PackageInstaller.ReadResult.Ok).pkg.manifest
+        val onThirteen = PackageInstaller(store, host, clock = { now }, androidSdk = 33)
+        val restored = onThirteen.restoreBackup(backupFromElsewhere(), "couldn't", checks(listed = listOf(newer))) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        assertTrue(host.applied.isEmpty())
+    }
+
     private fun index(sha256: String, size: Int, id: String = "com.mccal.folio.cabinet", version: String = "1.0.0") = IndexPackage(
         id = id,
         version = DebVersion.parse(version)!!,

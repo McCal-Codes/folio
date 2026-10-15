@@ -345,6 +345,8 @@
     <string name="status_colors_green_while_charging_orang">状态颜色：充电时为绿色，电量低时为橙色，静音铃铛为红色，圆环为彩色。</string>
     <string name="hide_in_full_screen">全屏时隐藏</string>
     <string name="hide_in_landscape">横屏时隐藏</string>
+    <string name="also_on_the_unfolded_screen">展开的屏幕上也隐藏</string>
+    <string name="the_unfolded_screen_is_always_wider_than_tall">展开的屏幕始终是宽大于高，所以除非你打开此项，灵动岛会一直显示在那里。</string>
     <string name="the_island_comes_back_as_soon_as_the_app">一旦 App 再次显示状态栏，或你把手机竖过来，灵动岛就会回来。</string>
     <string name="big_buttons">大按钮</string>
     <string name="extra_large">特大</string>
@@ -426,6 +428,7 @@
     <string name="focus_fold_tent">半开</string>
     <string name="focus_triggers_note">这些仅用于开启和关闭此专注模式。如果你手动关闭，它会保持关闭，直到下一次变化。</string>
     <string name="focus_on_because">已开启 · %1$s</string>
+    <string name="focus_home_only">%1$s（仅限主屏幕）</string>
     <string name="focus_island_on">%1$s 已开启 · %2$s</string>
     <string name="focus_island_off">%1$s 已关闭</string>
     <string name="from">从</string>
@@ -888,6 +891,9 @@
     <string name="unavailable_apps_1">不可用的 App（%1$d）</string>
     <string name="its_saved_position_will_stay_empty_1">• %1$s，它存储的位置将保持为空</string>
     <string name="folio_kept_your_saved_layout_untouched">Folio 没有改动你存储的布局，目前显示的是一个基本的主屏幕。你可以从备份或更早的布局恢复，或者重新开始（Folio 会保留旧布局的副本）。</string>
+    <string name="home_layout_saved_by_newer_folio">由更新版本的 Folio 存储</string>
+    <string name="home_layout_saved_by_newer_folio_detail">你的主屏幕布局是由更新版本的 Folio 存储的。请更新 Folio 以使用它。在此之前，Folio 不会改动你存储的布局，并显示一个基本的主屏幕；你也可以从备份恢复。</string>
+    <string name="home_layout_saved_by_newer_folio_short">主屏幕布局由更新版本的 Folio 存储，请更新 Folio 以使用它。</string>
     <string name="folio_closed_unexpectedly_twice_so_opt">Folio 意外关闭了两次，所以可选功能已暂停：Cabinet、操作、折叠动画、锁定封面、在其他 App 上方显示的灵动岛和程序坞，以及着色。你的设置没有改变。</string>
     <string name="apply_1">要应用“%1$s”吗？</string>
     <string name="this_changes_icons_badges_glass_text_on">这会更改图标、标记、玻璃、主屏幕上的文字和状态栏。你的 App、页面和小组件保持不变。你可以在“设置 › 主题”中撤销。</string>

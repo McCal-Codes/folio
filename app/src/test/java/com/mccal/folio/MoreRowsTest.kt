@@ -84,6 +84,17 @@ class MoreRowsTest {
         assertEquals(4, LauncherState(homeRows = 4, homeFitCompact = 5, homeFitExpanded = 6).homeAppRows)
     }
 
+    @Test fun `the upright inner screen records its own fit and Automatic takes the fewest of all three`() {
+        val s = LauncherState(homeFitCompact = 6, homeFitExpanded = 6)
+        assertEquals(6, s.homeAppRows)
+        val measured = s.withHomeFit(LayoutScreen.INNER_UPRIGHT, 5)
+        assertEquals(6, measured.homeFitExpanded) // upright no longer overwrites the sideways inner fit
+        assertEquals(5, measured.homeFitFor(LayoutScreen.INNER_UPRIGHT))
+        assertEquals(5, measured.homeAppRows)
+        assertEquals(4, effectiveHomeRows(0, 6, 6, 4))
+        assertEquals(6, effectiveHomeRows(0, 6, 6, 0)) // not measured yet doesn't count
+    }
+
     @Test fun `new apps skip rows Home doesn't show and continue on the next page`() {
         val full = List(visibleHomeRows(4) * GRID_COLUMNS) { "a$it" }
         val pinned = pinHomeApp(full, "new", true, appRows = 4)

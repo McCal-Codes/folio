@@ -339,6 +339,8 @@
     <string name="status_colors_green_while_charging_orang">Status colors: green while charging, orange when low, a red Silent bell, and colored Rings.</string>
     <string name="hide_in_full_screen">Hide in Full Screen</string>
     <string name="hide_in_landscape">Hide in Landscape</string>
+    <string name="also_on_the_unfolded_screen">Also on the Unfolded Screen</string>
+    <string name="the_unfolded_screen_is_always_wider_than_tall">The unfolded screen is always wider than tall, so the island stays visible there unless you turn this on.</string>
     <string name="the_island_comes_back_as_soon_as_the_app">The island comes back as soon as the app shows the status bar again, or you turn the phone upright.</string>
     <string name="big_buttons">Big Buttons</string>
     <string name="extra_large">Extra Large</string>
@@ -420,6 +422,7 @@
     <string name="focus_fold_tent">Half Open</string>
     <string name="focus_triggers_note">These only turn this Focus on and off. If you turn it off yourself, it stays off until the next change.</string>
     <string name="focus_on_because">On · %1$s</string>
+    <string name="focus_home_only">%1$s (Home only)</string>
     <string name="focus_island_on">%1$s on · %2$s</string>
     <string name="focus_island_off">%1$s off</string>
     <string name="from">From</string>
@@ -884,6 +887,9 @@
     <string name="unavailable_apps_1">Unavailable apps (%1$d)</string>
     <string name="its_saved_position_will_stay_empty_1">• %1$s, its saved position will stay empty</string>
     <string name="folio_kept_your_saved_layout_untouched">Folio kept your saved layout untouched and is showing a basic Home for now. Restore a backup or an earlier layout, or start fresh (Folio keeps a copy of the old one).</string>
+    <string name="home_layout_saved_by_newer_folio">Saved by a Newer Folio</string>
+    <string name="home_layout_saved_by_newer_folio_detail">Your Home layout was saved by a newer version of Folio. Update Folio to use it. Until then Folio keeps it untouched and shows a basic Home, or you can restore a backup.</string>
+    <string name="home_layout_saved_by_newer_folio_short">Home layout saved by a newer Folio; update Folio to use it.</string>
     <string name="folio_closed_unexpectedly_twice_so_opt">Folio closed unexpectedly twice, so optional features are paused: Cabinet, Actions, the fold animation, Lock Cover, the island and dock over other apps, and tinting. Your settings haven’t changed.</string>
     <string name="apply_1">Apply “%1$s”?</string>
     <string name="this_changes_icons_badges_glass_text_on">This changes icons, badges, glass, text on Home and the status bar. Your apps, pages and widgets stay as they are. You can undo it in Settings › Themes.</string>

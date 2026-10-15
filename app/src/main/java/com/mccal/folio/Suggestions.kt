@@ -83,6 +83,17 @@ internal object Suggestions {
         return best.takeIf { it != current && relevance[it] >= .3 && relevance[it] > now * 1.5 }
     }
 
+    /** How often Smart Rotate looks for a more relevant card. */
+    const val SMART_ROTATE_INTERVAL_MS = 15 * 60_000L
+
+    /**
+     * Smart Rotate: how long to wait before the next look, given when the last one was (both on a clock that keeps
+     * running while Home is in the background). Time away from Home counts, so coming back after the interval
+     * looks at once instead of starting a fresh wait on every resume.
+     */
+    fun smartRotateWait(now: Long, lastCheck: Long, interval: Long = SMART_ROTATE_INTERVAL_MS): Long =
+        (interval - (now - lastCheck)).coerceIn(0L, interval)
+
     /** Relevance by package for right now (same scoring as [forNow]). Call off the main thread. */
     fun packageRelevance(context: Context, apps: List<AppEntry>, now: Long = System.currentTimeMillis()): Map<String, Double> {
         val byId = apps.associateBy { it.id }

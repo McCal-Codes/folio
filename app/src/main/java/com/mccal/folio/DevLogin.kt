@@ -90,7 +90,7 @@ private enum class DevMode { AUTO, SET }
 
 /** Settings › Advanced › Developer (Folio Dev only): a passphrase, then the developer actions that exist today. */
 @Composable
-internal fun DeveloperPage(onShowBuild: () -> Unit) {
+internal fun DeveloperPage(onShowBuild: () -> Unit, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var record by remember { mutableStateOf(DevLockStore.load(context)) }
     var unlocked by remember { mutableStateOf(DevLockSession.unlocked() && record != null) }
@@ -163,6 +163,8 @@ internal fun DeveloperPage(onShowBuild: () -> Unit) {
             })
         }
     }
+    // Made-up island activity only; it changes nothing on the phone, so it needs no passphrase.
+    IslandTesterCard(onClose)
 }
 
 @Composable private fun PassField(label: String, value: String, tag: String, onChange: (String) -> Unit) {
