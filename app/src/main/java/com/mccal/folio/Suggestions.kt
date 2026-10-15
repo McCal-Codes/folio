@@ -40,9 +40,12 @@ internal object Suggestions {
         return result
     }
 
+    /** Folio's launch log as it is stored: one "id|time" line per launch. */
+    private fun launchLog(context: Context) = context.getSharedPreferences("folio", 0).getString("launch_log", "") ?: ""
+
     /** Folio's launch log as (app id, time). */
     private fun launches(context: Context): List<Pair<String, Long>> =
-        (context.getSharedPreferences("folio", 0).getString("launch_log", "") ?: "").split('\n').mapNotNull { line ->
+        launchLog(context).split('\n').mapNotNull { line ->
             val cut = line.lastIndexOf('|')
             if (cut <= 0) null else line.substring(cut + 1).toLongOrNull()?.let { line.substring(0, cut) to it }
         }
@@ -92,15 +95,75 @@ internal object Suggestions {
         return out
     }
 
-    /** Suggested apps for right now, best first. Call off the main thread. */
+    /**
+     * Suggested apps for right now, best first. Call off the main thread. Spotlight, Today View and the Suggestions widget
+     * share one ranking for [RankingCache.FRESH_MS], so opening Spotlight does not read four weeks of Usage Access events
+     * each time; a new launch, a changed app list, Usage Access turned on or off, or a new time zone ranks again.
+     */
     fun forNow(context: Context, apps: List<AppEntry>, limit: Int = 8, now: Long = System.currentTimeMillis()): List<AppEntry> {
         val byId = apps.associateBy { it.id }
+        return ranking.get(rankingKey(context, apps, now), now) { rank(context, apps, byId, now) }.mapNotNull { byId[it] }.take(limit)
+    }
+
+    /**
+     * The last ranking for [apps] if it is still fresh, without reading anything slow, so Spotlight can show its
+     * suggestions on its first frame instead of laying them out in the middle of its opening spring. Null if there is none.
+     */
+    fun cachedForNow(context: Context, apps: List<AppEntry>, limit: Int = 8, now: Long = System.currentTimeMillis()): List<AppEntry>? {
+        val byId = apps.associateBy { it.id }
+        return ranking.peek(rankingKey(context, apps, now), now)?.mapNotNull { byId[it] }?.take(limit)
+    }
+
+    private val ranking = RankingCache()
+
+    // The time-of-day scores use the zone's offset, so a new time zone (or a daylight saving change) ranks again.
+    private fun rankingKey(context: Context, apps: List<AppEntry>, now: Long) = RankingCache.Key(apps.map { it.id },
+        launchLog(context).hashCode(), hasUsageAccess(context), java.util.TimeZone.getDefault().getOffset(now))
+
+    private fun rank(context: Context, apps: List<AppEntry>, byId: Map<String, AppEntry>, now: Long): List<String> {
         val byPackage = apps.filter { !it.isWork }.groupBy { it.packageName }
         val launchScores = scores(launches(context).filter { it.first in byId }, now)
         val usageScores = scores(usage(context, now), now)
         val total = HashMap<String, Double>(launchScores)
         // Usage events name a package; credit its main app (a package with several launchers counts once).
         usageScores.forEach { (pkg, score) -> byPackage[pkg]?.firstOrNull()?.let { total.merge(it.id, score * .6, Double::plus) } }
-        return total.entries.sortedByDescending { it.value }.mapNotNull { byId[it.key] }.take(limit)
+        return total.entries.sortedByDescending { it.value }.map { it.key }
+    }
+}
+
+/**
+ * The shared suggestion rankings (app ids, best first) and when each was made. It keeps a few, one per key, because the
+ * Suggestions widget ranks every app while Spotlight and Today View leave hidden ones out; with one slot they would keep
+ * replacing each other's ranking.
+ */
+internal class RankingCache(private val size: Int = 4) {
+    /** What a ranking depends on besides the time: the apps, Folio's launch log, Usage Access and the zone's offset. */
+    data class Key(val appIds: List<String>, val launchStamp: Int, val usageAccess: Boolean, val zoneOffset: Int = 0)
+
+    private class Entry(val key: Key, val at: Long, val ids: List<String>)
+
+    // Replaced whole and read without a lock, so Spotlight's first frame never waits for a ranking in progress.
+    @Volatile private var entries: List<Entry> = emptyList()
+
+    /** The ranking for [key] at [now]: a fresh one made for the same key, otherwise [compute]'s. */
+    fun get(key: Key, now: Long, compute: () -> List<String>): List<String> {
+        peek(key, now)?.let { return it }
+        // Ranked outside the lock: reading four weeks of Usage Access events can take a while.
+        val made = compute()
+        synchronized(this) {
+            // When two rankings for one key finish out of order, the one made for the later time stays.
+            val current = entries.firstOrNull { it.key == key }
+            if (current == null || current.at <= now) entries = (listOf(Entry(key, now, made)) + entries.filter { it.key != key }).take(size)
+        }
+        return made
+    }
+
+    /** The ranking for [key] if it is fresh at [now]; null otherwise. Never waits. */
+    fun peek(key: Key, now: Long): List<String>? = entries.firstOrNull { it.key == key && fresh(it.at, now) }?.ids
+
+    companion object {
+        /** A quarter hour, the same step the Suggestions widget re-ranks on. */
+        const val FRESH_MS = 15 * 60 * 1000L
+        fun fresh(madeAt: Long, now: Long) = now - madeAt in 0 until FRESH_MS
     }
 }
