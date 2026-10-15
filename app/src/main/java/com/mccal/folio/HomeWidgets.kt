@@ -323,11 +323,15 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     val context = androidx.compose.ui.platform.LocalContext.current
     val homeApps = LocalHomeApps.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    // When the stack last looked, on a clock that keeps running while Home is away, so a resume picks up the wait
+    // where it was instead of starting 15 minutes over (W-3: before, opening any app reset it and it rarely fired).
+    var lastRotateCheck by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
     LaunchedEffect(rotate, cards, lifecycleOwner) {
         // Only while Home is in front: a stack that rotates behind another app burns a read of usage stats and the
         // calendar for a screen nobody is looking at (DYN-15).
         if (rotate) lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) {
-            delay(15 * 60_000L)
+            delay(Suggestions.smartRotateWait(android.os.SystemClock.elapsedRealtime(), lastRotateCheck))
+            lastRotateCheck = android.os.SystemClock.elapsedRealtime()
             val relevance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val apps = Suggestions.packageRelevance(context, homeApps.apps)
                 val soon = UpNext.events(context, limit = 1).firstOrNull()?.let { !it.allDay && it.begin - System.currentTimeMillis() in 0..60 * 60_000L } == true

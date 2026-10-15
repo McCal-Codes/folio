@@ -30,4 +30,17 @@ class SuggestionsTest {
         org.junit.Assert.assertNull(Suggestions.smartStackPick(listOf(0.0, .2), 0)) // below the floor
         org.junit.Assert.assertNull(Suggestions.smartStackPick(listOf(.1, .9), 1)) // already showing the best
     }
+
+    @Test fun `smart rotate counts time away from Home toward its wait`() {
+        val interval = Suggestions.SMART_ROTATE_INTERVAL_MS
+        val last = 1_000_000L
+        // Just looked: the full wait.
+        org.junit.Assert.assertEquals(interval, Suggestions.smartRotateWait(last, last))
+        // Back after 10 minutes in another app: only the rest of the wait, not 15 minutes over.
+        org.junit.Assert.assertEquals(5 * 60_000L, Suggestions.smartRotateWait(last + 10 * 60_000L, last))
+        // Away longer than the interval: look right away.
+        org.junit.Assert.assertEquals(0L, Suggestions.smartRotateWait(last + 2 * interval, last))
+        // A clock that reads earlier than the last look never waits past one interval.
+        org.junit.Assert.assertEquals(interval, Suggestions.smartRotateWait(last - 60_000L, last))
+    }
 }
