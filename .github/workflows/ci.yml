@@ -44,9 +44,10 @@ jobs:
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
       # The instrumented tests only run on a device, so nothing else compiles them; from 0.6.8 to #381 they didn't build
-      # at all and no check noticed. Compiling them is enough to catch that.
+      # at all and no check noticed. Compiling them is enough to catch that. The javac task runs the Kotlin compile
+      # first, so this covers both the Kotlin tests and the Java fixtures.
       - name: Instrumented tests compile
-        run: ./gradlew :app:compileDebugAndroidTestKotlin
+        run: ./gradlew :app:compileDebugAndroidTestJavaWithJavac
 
   # The parts of the releases standard a machine can see: a change to what ships carries its own changelog line,
   # and a version bump comes on its own (docs/standards/releases.md, REL-7 and REL-13). Pull requests only, since
