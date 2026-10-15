@@ -163,6 +163,8 @@ internal fun DeveloperPage(onShowBuild: () -> Unit) {
             })
         }
     }
+    // Made-up island activity only; it changes nothing on the phone, so it needs no passphrase.
+    IslandTesterCard()
 }
 
 @Composable private fun PassField(label: String, value: String, tag: String, onChange: (String) -> Unit) {

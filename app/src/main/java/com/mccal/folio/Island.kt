@@ -514,7 +514,8 @@ class IslandListenerService : NotificationListenerService() {
                 ?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
         }
         private val mutable = MutableStateFlow<IslandActivity?>(null)
-        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(mutable.asStateFlow(), null)
+        /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
+        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
         val connected = MutableStateFlow(false)
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)
