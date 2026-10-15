@@ -99,6 +99,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Settings changed after a visit to Discover stick:** Quick Settings tiles and Focus changes now stick after you visit Discover, instead of Home putting back the old setting. Discover only reads your Home now and never saves a copy of its own.
 - **A Layout Backup lists only your Home apps:** a backup now names only the apps your layout uses (on Home, in the dock or a folder, or with a name, icon look or icon action you set), not every app on the phone in every profile, hidden ones included. Older Folio still reads it.
 - **Restoring a backup checks its packages:** restoring a Layout Backup now checks its Market packages like an install does, and turns off any that fail. A package keeps its source only when it is the same package already on this phone; anything else is recorded as opened from a file.
+- **Restore on the damaged-layout notice works:** when Folio can't read your saved Home, Restore on its notice now really restores the backup or earlier layout you pick, instead of saying it is already active. Folio keeps a copy of the damaged layout first, as Start Fresh does, and won't export an empty Home as a Layout Backup while the layout is damaged.
 
 ## [0.6.8] - 2026-10-06
 
