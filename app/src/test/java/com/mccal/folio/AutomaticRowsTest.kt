@@ -47,6 +47,14 @@ class AutomaticRowsTest {
         assertTrue("Both screens fit 5" in note(unmeasured.copy(homeFitCompact = 5, homeFitExpanded = 5)))
         val mixed = note(unmeasured.copy(homeFitCompact = 5, homeFitExpanded = 4))
         assertTrue("cover screen fits 5" in mixed && "inner screen fits 4" in mixed && "shows 4" in mixed)
+        // The upright inner screen counts as part of the inner screen: its fit limits the rows when it is the smallest.
+        val upright = unmeasured.copy(homeFitCompact = 6, homeFitExpanded = 6, homeFitUpright = 4)
+        val limited = note(upright)
+        assertTrue("cover screen fits 6" in limited && "inner screen fits 4" in limited && "shows 4" in limited)
+        assertEquals(4, upright.homeAppRows)
+        assertTrue("Both screens fit 6" in note(upright.copy(homeFitUpright = 6)))
+        assertTrue("Both screens fit 6" in note(upright.copy(homeFitUpright = 0)))
+        assertTrue("inner screen fits 5" in note(unmeasured.copy(homeFitExpanded = 6, homeFitUpright = 5)))
         assertTrue("Fixed at 4" in note(unmeasured.copy(homeRows = 4, homeFitCompact = 6)))
     }
 }
