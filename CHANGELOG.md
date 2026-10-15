@@ -60,6 +60,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Smart Rotate turns a stack again:** its 15 minute wait started over every time you came back to Home, so it almost never moved. Time away from Home now counts toward the wait, and coming back after it has passed checks right away.
 - **Safe Mode stays on until you leave it, and a newer layout says so:** Safe Mode no longer forgets its crashes after half a minute while you stay in it (the Market's refresh and auto-update kept resuming), and its dialog does not come back after a theme or language change. A Home layout saved by a newer Folio, after a downgrade, now says to update Folio and offers only Not Now and Restore instead of Start Fresh.
 - **Permissions and Privacy say exactly what Folio does:** they now list everything the accessibility service does, every host Folio talks to (including the supporter worker for beta updates), that updates are checked once a day by default, and how root can grant the secure settings permission. A package that is a script now says Folio doesn't run scripts instead of asking for a newer Folio.
 - **Notification badges show on apps inside an open folder (#362):** a folder showed its total on Home, but once open its apps had no badges. Each app now has its own badge on the top-left corner of its icon, clear of its options button.
@@ -102,6 +103,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Restoring a backup checks its packages:** restoring a Layout Backup now checks its Market packages like an install does, and turns off any that fail. A package keeps its source only when it is the same package already on this phone; anything else is recorded as opened from a file.
 - **Restore on the damaged-layout notice works:** when Folio can't read your saved Home, Restore on its notice now really restores the backup or earlier layout you pick, instead of saying it is already active. Folio keeps a copy of the damaged layout first, as Start Fresh does, and won't export an empty Home as a Layout Backup while the layout is damaged.
 - **Restored widgets keep their own Smart Stacks:** restoring a Layout Backup no longer puts an old Smart Stack on top of a different widget. Restored widgets get slot numbers nothing on your Home is using, so the stacks Folio keeps for Undo stay with their own widgets, and a Big Clock that was in the same place keeps its look.
+- **The island sits in the same place on Home and over apps:** it now has the same height in both, and stays on screen when the camera is on a side edge.
 
 ## [0.6.8] - 2026-10-06
 
