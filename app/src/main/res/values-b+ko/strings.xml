@@ -425,6 +425,7 @@
     <string name="focus_fold_tent">반쯤 펼침</string>
     <string name="focus_triggers_note">이 집중 모드를 켜고 끄는 데에만 쓰입니다. 직접 끄면 다음 변화가 있을 때까지 꺼진 상태로 유지됩니다.</string>
     <string name="focus_on_because">켜짐 · %1$s</string>
+    <string name="focus_home_only">%1$s (홈 화면만)</string>
     <string name="focus_island_on">%1$s 켜짐 · %2$s</string>
     <string name="focus_island_off">%1$s 꺼짐</string>
     <string name="from">시작</string>

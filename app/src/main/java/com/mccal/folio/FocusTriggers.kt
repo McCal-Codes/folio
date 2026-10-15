@@ -106,6 +106,24 @@ internal object FocusTriggers {
             suppressed = if (holds && mode != null) state.suppressed + (mode.id to mode.triggers.sliceOf(signals)) else state.suppressed)
     }
 
+    /** The "turned off by hand" memory as text for [FocusTriggerState.suppressed], so it survives the process ending. */
+    fun encodeSuppressed(suppressed: Map<String, TriggerSlice>): String = org.json.JSONObject().also { o ->
+        suppressed.forEach { (id, slice) ->
+            o.put(id, org.json.JSONObject().put("fold", slice.fold?.key ?: org.json.JSONObject.NULL)
+                .put("charging", slice.charging).put("headphones", slice.headphones))
+        }
+    }.toString()
+
+    /** Back from [encodeSuppressed]; anything unreadable is a memory of nothing, never a crash. */
+    fun decodeSuppressed(text: String?): Map<String, TriggerSlice> = runCatching {
+        val o = org.json.JSONObject(text ?: return emptyMap())
+        o.keys().asSequence().associateWith { id ->
+            val e = o.getJSONObject(id)
+            TriggerSlice(FoldState.parse(e.optString("fold").takeIf { e.has("fold") && !e.isNull("fold") }),
+                e.optBoolean("charging"), e.optBoolean("headphones"))
+        }
+    }.getOrDefault(emptyMap())
+
     /** A Focus was turned on by hand: it is no longer "turned on by a trigger", so a trigger ending won't turn it off. */
     fun onTurnedOnByHand(state: FocusTriggerState) = state.copy(byTrigger = null, reason = null)
 }

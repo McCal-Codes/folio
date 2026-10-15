@@ -1744,6 +1744,16 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     message?.let { CardNote(it, Modifier.padding(horizontal = FolioSpace.TINY.dp)) }
 }
 
+/**
+ * The line under a Focus in the list. Without Do Not Disturb access a Focus only changes Home (Android is not told to
+ * silence anything), so an "on" Focus says so instead of promising more than it does (A-17).
+ */
+internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, on: Boolean, reason: FocusReason?, access: Boolean): String? {
+    if (!on) return if (mode.schedule != null) context.getString(R.string.scheduled) else null
+    val line = reason?.let { context.getString(R.string.focus_on_because, context.getString(it.label(mode))) } ?: context.getString(R.string.on)
+    return if (access) line else context.getString(R.string.focus_home_only, line)
+}
+
 /** iOS Settings › Focus: the list of Focuses, with the one that's on. */
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1754,7 +1764,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     SheetGroup {
         state.focusModes.forEachIndexed { index, mode ->
             if (index > 0) MenuDivider()
-            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) (reason?.let { stringResource(R.string.focus_on_because, stringResource(it.label(mode))) } ?: stringResource(R.string.on)) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
+            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", focusRowStatus(context, mode, state.activeFocus == mode.id, reason, access)) { onOpen(mode.id) }
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
