@@ -89,6 +89,10 @@ internal object LiveDiscover {
         DiscoverBounds.updateViewport(activity, bounds)
         owner = WeakReference(activity)
         if (host.get() != null) return
+        // Start the Discover host only once Home is really in front. Spotlight closes it, and a launch from a result
+        // leaves Home started but not resumed; starting it then put Home back over the app just opened (#371).
+        // onResume calls prepare() again, so Discover still comes back when Home returns.
+        if (!mayStartDiscoverHost(activity.lifecycle.currentState)) return
         val token = startGate.request(activity) ?: return
         message.value = "Connecting to Discover…"
         val options = ActivityOptions.makeCustomAnimation(activity, 0, 0).toBundle().apply {
@@ -276,3 +280,7 @@ class LiveDiscoverActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+
+/** Whether Home may start the Discover host now: only while it is resumed, never while an app it just opened takes over (#371). */
+internal fun mayStartDiscoverHost(state: androidx.lifecycle.Lifecycle.State): Boolean =
+    state.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
