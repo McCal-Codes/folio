@@ -66,6 +66,9 @@ internal class HomeDragState {
             }
         }.maxByOrNull(::dragRegionPriority)
     }
+    /** Where the drag drops when it ends: nowhere if nothing moved or it was cancelled, so a cancel never lands, not even on Remove. */
+    fun dropTarget(cancelled: Boolean, pages: Set<Int>): DropTarget? =
+        if (moved && !cancelled) destination(pointer, pages)?.target else null
     fun clear() { source = null; moved = false; trail.clear(); mergePreview = null }
 
     fun register(owner: Any, region: DragRegion) {
@@ -97,6 +100,17 @@ internal fun releaseVelocity(trail: List<Pair<Long, Offset>>): Offset {
     val (t0, p0) = trail.first(); val (t1, p1) = trail.last()
     val seconds = (t1 - t0) / 1000f
     return if (seconds <= 0f) Offset.Zero else (p1 - p0) / seconds
+}
+
+/**
+ * How the carried pointer's latest change ends a drag: null while the finger is still down, false when it lifts (a drop),
+ * true for a cancel. Compose hands a system cancel (the power button, a call, unfolding, a system gesture taking the
+ * pointer) to the gesture as a release that is already consumed, so only an unconsumed release is a real lift.
+ */
+internal fun dragEnding(change: PointerInputChange?, otherPointerDown: Boolean): Boolean? = when {
+    change == null || otherPointerDown -> true
+    change.pressed -> null
+    else -> change.isConsumed
 }
 
 /** Page turning follows the window edges, including the space beside the fixed dock. */
@@ -209,16 +223,17 @@ internal fun Modifier.homeDragInput(
                 while (true) {
                     val event = awaitPointerEvent(PointerEventPass.Initial)
                     val change = event.changes.firstOrNull { it.id == down.id }
-                    if (change == null || event.changes.any { it.id != down.id && it.pressed }) {
+                    val ending = dragEnding(change, event.changes.any { it.id != down.id && it.pressed })
+                    if (ending == true) {
                         event.changes.forEach { it.consume() }
                         finish(true)
                         break
                     }
-                    drag.pointer = change.position + drag.rootOrigin
+                    drag.pointer = change!!.position + drag.rootOrigin
                     drag.track(change.uptimeMillis, drag.pointer)
                     if ((drag.pointer - drag.origin).getDistance() > viewConfiguration.touchSlop) drag.moved = true
                     change.consume()
-                    if (!change.pressed) {
+                    if (ending == false) {
                         finish(false)
                         break
                     }
