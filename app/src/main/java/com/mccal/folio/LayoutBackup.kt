@@ -61,7 +61,12 @@ fun encodeLayoutBackup(
     require(sourceScope.isNotBlank())
     require(state.leadingSlots.size == HOME_CELLS) { "Unfolded-only page must contain exactly $HOME_CELLS cells" }
     val descriptorBySlot = widgetDescriptors.associateBy(BackupWidgetDescriptor::slot)
-    val apps = JSONArray().also { array -> state.apps.forEach { app -> array.put(JSONObject()
+    val iconStyles = withoutPictures(state.appIconStyles)
+    // Only the apps this file names, which are all a restore reads. Every app on the phone, in every profile and
+    // including the ones behind the Hidden Apps lock, is not the layout's to hand to whoever gets the file.
+    val named = (state.homeSlots + state.leadingSlots + state.dock).filterNotNullTo(mutableSetOf()) +
+        state.folders.flatMap { it.appIds } + state.appNames.keys + iconStyles.keys + state.iconActions.keys
+    val apps = JSONArray().also { array -> state.apps.filter { it.id in named }.forEach { app -> array.put(JSONObject()
         .put("id", app.id).put("label", app.label).put("component", app.component.flattenToString())
         .put("userSerial", app.userSerial).put("profileLabel", app.profileLabel).put("work", app.isWork)
         // A clone also says so (since 0.6.9); `work` still means "not personal", so older Folio reads it as before.
@@ -101,7 +106,7 @@ fun encodeLayoutBackup(
     // The names people typed themselves (since 0.6.5): they exist nowhere else on the phone.
     root.put("appNames", JSONObject().apply { state.appNames.forEach { (id, name) -> put(id, name) } })
     // Only when there are some, so a backup from a phone that uses none is exactly what it was before this existed.
-    withoutPictures(state.appIconStyles).let { styles -> if (styles.isNotEmpty()) root.put("appIconStyles", appIconStylesToJson(styles)) }
+    if (iconStyles.isNotEmpty()) root.put("appIconStyles", appIconStylesToJson(iconStyles))
     if (state.iconActions.isNotEmpty()) root.put("iconActions", iconActionsToJson(state.iconActions))
     // Added in 0.7.0, and deliberately not a new backup version: a Folio that has never heard of the Market reads
     // everything else in this file and ignores a key it doesn't know, so backups still travel backwards.
