@@ -616,7 +616,7 @@ fun LauncherScreen(
     fun finishDrag(cancelled: Boolean) {
         val source = drag.source ?: return
         val moved = drag.moved
-        val rawDestination = if (moved && !cancelled) drag.destination(drag.pointer, eligibleDragPages)?.target else null
+        val rawDestination = drag.dropTarget(cancelled, eligibleDragPages)
         val destination = if (rawDestination is DropTarget.Home && source.target is DropTarget.Widget) {
             model.placement(source.target.index)?.let {
                 DropTarget.Home(adjustedWidgetDropIndex(rawDestination.index, it, source.bounds, drag.origin))
