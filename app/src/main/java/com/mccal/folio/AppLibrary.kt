@@ -93,8 +93,9 @@ internal fun AppLibrary(
             val pm = context.packageManager
             val byId = visibleApps.associateBy { it.id }
             val suggestions = RecentApps.load(context).mapNotNull(byId::get).take(8)
+            val collator = java.text.Collator.getInstance()
             val grouped = visibleApps.groupBy { LibraryCategory.of(pm, (it.iconFrom ?: it).component.packageName) }
-                .mapValues { (_, apps) -> apps.sortedWith(compareBy(java.text.Collator.getInstance()) { it.label }) }
+                .mapValues { (_, apps) -> apps.sortedWith(compareBy(collator) { it.label }) }
             buildMap {
                 if (suggestions.isNotEmpty()) put(LibraryCategory.SUGGESTIONS, suggestions)
                 grouped.entries.sortedWith(compareBy({ it.key == LibraryCategory.OTHER }, { -it.value.size })).forEach { put(it.key, it.value) }
@@ -159,7 +160,8 @@ internal fun AppLibrary(
                         }
                     }
                 } else if (groups.isEmpty()) item { Text(if (state.loading) stringResource(R.string.loading_apps) else stringResource(R.string.no_apps_found), Modifier.padding(vertical = FolioSpace.XL.dp)) }
-                if (!(browsing && categorized.isNotEmpty())) groups.forEach { (letter, entries) ->
+                // While the tiles are still being worked out, show nothing rather than the whole A to Z list for a moment.
+                if (!browsing) groups.forEach { (letter, entries) ->
                     stickyHeader(key = "heading-$letter") {
                         Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp, bottom = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                             // An opaque small chip prevents text from showing through the sticky letter.
@@ -175,14 +177,22 @@ internal fun AppLibrary(
                     items(entries, key = { it.id }) { app ->
                         val isPinned = app.id in pinned
                         val launchBounds = remember { android.graphics.Rect() }
+                        val iconPlace = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
                         val dragModifier = if (drag != null) Modifier.dropRegion(drag, DropTarget.Library(app.id), app.id, page) else Modifier
-                        val click = { if (editing) onPin(app.id, !isPinned) else onLaunchFrom(app, launchBounds) }
+                        val click = {
+                            if (editing) onPin(app.id, !isPinned)
+                            else {
+                                // Measured when the icon is tapped, not on every frame it moves while scrolling.
+                                iconPlace[0]?.takeIf { it.isAttached }?.let { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }
+                                onLaunchFrom(app, launchBounds)
+                            }
+                        }
                         Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(dragModifier).clip(RoundedCornerShape(FolioRadius.CARD.dp)).testTag("library-app-${app.id}")
                             .then(if (drag == null) Modifier.combinedClickable(onClick = click, onLongClick = { onActions(app) })
                                 else Modifier.clickable(onClick = click).semantics { onLongClick(appOptionsLabel) { onActions(app); true } })
                             .padding(vertical = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                             AppIcon(app, null, Modifier.size(40.dp)
-                                .onGloballyPositioned { launchBounds.set(it.boundsInWindow().toAndroidBounds()) }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
+                                .onGloballyPositioned { iconPlace[0] = it }.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
                             Row(Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
                                 if (app.iconFrom == null) NewAppDot(app.packageName, 7.dp)
                                 // A clone sits right beside its original with the same name; the line under it tells them apart.
