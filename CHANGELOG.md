@@ -97,6 +97,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Apps open from Spotlight with Discover as the left page:** on Android 17, an app opened from Spotlight could close again a moment later and leave you on Home, while it stayed in Recents (#371). Folio now waits until Home is back in front before it reconnects Discover.
 - **A cancelled drag puts the app back:** a drag that Android cancels (the power button, a call, unfolding) puts the app back where it was instead of dropping it where your finger was, so nothing is removed by accident.
 - **Settings changed after a visit to Discover stick:** Quick Settings tiles and Focus changes now stick after you visit Discover, instead of Home putting back the old setting. Discover only reads your Home now and never saves a copy of its own.
+- **A Layout Backup lists only your Home apps:** a backup now names only the apps your layout uses (on Home, in the dock or a folder, or with a name, icon look or icon action you set), not every app on the phone in every profile, hidden ones included. Older Folio still reads it.
 
 ## [0.6.8] - 2026-10-06
 
