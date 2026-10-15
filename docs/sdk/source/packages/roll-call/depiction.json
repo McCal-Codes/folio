@@ -21,7 +21,8 @@
       "screens": [
         "cover",
         "inner"
-      ]
+      ],
+      "fallback": "Without notification access Folio has no notifications to sort, so the row doesn't appear. Notification Center shows a button to allow access instead."
     },
     {
       "type": "changelog",
