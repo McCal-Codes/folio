@@ -495,6 +495,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
     internal var completedRefreshes = 0
         private set
+    /** Whether a refresh has listed this phone's apps. A damaged layout's stand-in starts with none, and with loading already false. */
+    val appsListed get() = completedRefreshes > 0
+    /** Whether apps are being listed right now (so not listed yet is still loading, not a failure). */
+    val listingApps get() = refreshing
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
             // A package Folio didn't know is a new download (not an update or a profile coming back).
@@ -933,6 +937,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         // Over a damaged layout this is the way back (the notice's Restore): the basic Home shown in its place is
         // nothing to undo to or keep in Layout History.
         val recovering = statePayloadInvalid
+        // Before this phone's apps are listed, a backup reads every app as missing; leaving the damaged state then would save an empty Home.
+        if (recovering && !appsListed) return false
         val old = mutable.value
         val kept = before ?: old
         if (!recovering && old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&

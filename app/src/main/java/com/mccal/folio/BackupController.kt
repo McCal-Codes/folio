@@ -112,6 +112,7 @@ class BackupController(
         val token = generation
         activity.lifecycleScope.launch {
             val state = model.state.first { !it.loading }
+            appsNotListed()?.let { if (token == generation) { errorMessage = it; clearTransaction(clearMessages = false) }; return@launch }
             val result = runCatching { withContext(Dispatchers.Default) {
                 decodeLayoutBackup(raw, state.apps, state.profiles, scope)
             } }
@@ -158,6 +159,13 @@ class BackupController(
             encodeLayoutBackup(state, descriptors, scope, null)
         }
     }
+
+    /**
+     * Why a backup can't be read over a damaged layout yet, or null when it can. The stand-in Home has no apps until a
+     * refresh lists them, and a backup read before that would leave every app out.
+     */
+    private fun appsNotListed(): String? = if (!model.layoutDamaged || model.appsListed) null
+        else activity.getString(if (model.listingApps) R.string.loading_apps else R.string.apps_could_not_be_loaded)
 
     /** Why no backup is made while the saved layout can't be read: the Home on screen is only a stand-in. */
     private fun damagedMessage() = listOf(R.string.layout_backup_could_not_be_prepared, R.string.saved_home_layout_could_not_be_read)
@@ -232,6 +240,7 @@ class BackupController(
         val token = generation
         activity.lifecycleScope.launch {
             val state = model.state.first { !it.loading }
+            appsNotListed()?.let { if (token == generation) { errorMessage = it; clearTransaction(clearMessages = false) }; return@launch }
             val result = runCatching { withContext(Dispatchers.Default) {
                 val imported = decodeLayoutBackup(raw, state.apps, state.profiles, scope)
                 // Only the Market can read what it wrote, so the count is filled in here rather than in the decoder,
