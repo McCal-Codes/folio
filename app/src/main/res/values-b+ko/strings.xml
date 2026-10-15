@@ -887,6 +887,9 @@
     <string name="unavailable_apps_1">사용할 수 없는 앱(%1$d개)</string>
     <string name="its_saved_position_will_stay_empty_1">• %1$s, 저장된 위치는 비워 둡니다</string>
     <string name="folio_kept_your_saved_layout_untouched">저장된 레이아웃은 그대로 보관하고 임시로 기본 홈 화면을 표시합니다. 백업이나 이전 레이아웃을 복원하거나 새로 시작할 수 있습니다. 새로 시작해도 기존 레이아웃의 사본은 보관됩니다.</string>
+    <string name="home_layout_saved_by_newer_folio">최신 버전의 Folio에서 저장됨</string>
+    <string name="home_layout_saved_by_newer_folio_detail">홈 화면 레이아웃이 최신 버전의 Folio에서 저장되었습니다. 사용하려면 Folio를 업데이트하세요. 그때까지 저장된 레이아웃은 그대로 보관하고 기본 홈 화면을 표시합니다. 백업을 복원할 수도 있습니다.</string>
+    <string name="home_layout_saved_by_newer_folio_short">홈 화면 레이아웃이 최신 버전의 Folio에서 저장되었습니다. 사용하려면 Folio를 업데이트하세요.</string>
     <string name="folio_closed_unexpectedly_twice_so_opt">Folio가 두 번 예기치 않게 종료되어 Cabinet, 동작, 접기 애니메이션, 잠금 커버, 다른 앱 위의 Dynamic Island와 Dock, 색조 적용 기능을 일시 중지했습니다. 설정은 변경되지 않았습니다.</string>
     <string name="apply_1">“%1$s”을(를) 적용할까요?</string>
     <string name="this_changes_icons_badges_glass_text_on">아이콘, 배지, 글래스, 홈 화면 텍스트 및 상태 막대가 변경됩니다. 앱, 페이지 및 위젯은 그대로 유지됩니다. 설정 › 테마에서 실행 취소할 수 있습니다.</string>

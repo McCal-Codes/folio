@@ -421,14 +421,9 @@ fun LauncherScreen(
     // Saved layout damaged, or apps failed to load: say so instead of quietly showing an empty Home.
     var problemDismissed by rememberSaveable(state.error) { mutableStateOf(false) }
     state.error?.takeIf { !problemDismissed && sheet.isEmpty() }?.let {
-        if (model.layoutDamaged) AlertDialog(onDismissRequest = { problemDismissed = true },
-            title = { Text(stringResource(R.string.your_home_layout_couldn_t_be_loaded)) },
-            text = { Text(stringResource(R.string.folio_kept_your_saved_layout_untouched)) },
-            confirmButton = { TextButton(onClick = { SettingsLink.page = CustomizationPage.BACKUP; customizationPage = CustomizationPage.BACKUP; sheet = "settings" }) { Text(stringResource(R.string.restore_2)) } },
-            dismissButton = { Row {
-                TextButton(onClick = { problemDismissed = true }) { Text(stringResource(R.string.not_now)) }
-                TextButton(onClick = { model.resetDamagedLayout() }) { Text(stringResource(R.string.start_fresh), color = FolioColors.Red) }
-            } })
+        if (model.layoutDamaged) DamagedLayoutDialog(newerFolio = model.layoutFromNewerFolio,
+            onRestore = { SettingsLink.page = CustomizationPage.BACKUP; customizationPage = CustomizationPage.BACKUP; sheet = "settings" },
+            onNotNow = { problemDismissed = true }, onStartFresh = { model.resetDamagedLayout() })
         else AlertDialog(onDismissRequest = { problemDismissed = true },
             title = { Text(stringResource(R.string.apps_couldn_t_be_loaded)) },
             text = { Text(stringResource(R.string.apps_could_not_be_loaded)) },
@@ -2078,3 +2073,19 @@ private fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
 
 /** A backup message this short is shown as an island notice; longer ones stay a dialog, because they have to be read. */
 private const val SHORT_CONFIRMATION = 48
+
+/**
+ * The notice for a saved Home layout Folio couldn't read. One saved by a newer Folio (a downgrade) isn't damaged:
+ * updating Folio reads it again, so it says that and offers no Start Fresh.
+ */
+@Composable
+internal fun DamagedLayoutDialog(newerFolio: Boolean, onRestore: () -> Unit, onNotNow: () -> Unit, onStartFresh: () -> Unit) {
+    AlertDialog(onDismissRequest = onNotNow,
+        title = { Text(stringResource(if (newerFolio) R.string.home_layout_saved_by_newer_folio else R.string.your_home_layout_couldn_t_be_loaded)) },
+        text = { Text(stringResource(if (newerFolio) R.string.home_layout_saved_by_newer_folio_detail else R.string.folio_kept_your_saved_layout_untouched)) },
+        confirmButton = { TextButton(onClick = onRestore) { Text(stringResource(R.string.restore_2)) } },
+        dismissButton = { Row {
+            TextButton(onClick = onNotNow) { Text(stringResource(R.string.not_now)) }
+            if (!newerFolio) TextButton(onClick = onStartFresh) { Text(stringResource(R.string.start_fresh), color = FolioColors.Red) }
+        } })
+}

@@ -884,6 +884,9 @@
     <string name="unavailable_apps_1">Unavailable apps (%1$d)</string>
     <string name="its_saved_position_will_stay_empty_1">• %1$s, its saved position will stay empty</string>
     <string name="folio_kept_your_saved_layout_untouched">Folio kept your saved layout untouched and is showing a basic Home for now. Restore a backup or an earlier layout, or start fresh (Folio keeps a copy of the old one).</string>
+    <string name="home_layout_saved_by_newer_folio">Saved by a Newer Folio</string>
+    <string name="home_layout_saved_by_newer_folio_detail">Your Home layout was saved by a newer version of Folio. Update Folio to use it. Until then Folio keeps it untouched and shows a basic Home, or you can restore a backup.</string>
+    <string name="home_layout_saved_by_newer_folio_short">Home layout saved by a newer Folio; update Folio to use it.</string>
     <string name="folio_closed_unexpectedly_twice_so_opt">Folio closed unexpectedly twice, so optional features are paused: Cabinet, Actions, the fold animation, Lock Cover, the island and dock over other apps, and tinting. Your settings haven’t changed.</string>
     <string name="apply_1">Apply “%1$s”?</string>
     <string name="this_changes_icons_badges_glass_text_on">This changes icons, badges, glass, text on Home and the status bar. Your apps, pages and widgets stay as they are. You can undo it in Settings › Themes.</string>
