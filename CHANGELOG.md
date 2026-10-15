@@ -47,6 +47,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Delete apps from Folio:** press and hold an app on Home, then Remove App, to delete it or only take it off Home; in the App Library the menu says Delete App. Android asks you to confirm every delete, as it does for any app. Apps that came with the phone can be hidden or turned off in App Info instead, and work apps are deleted from App Info. Folio now asks Android for permission to request deletes (`REQUEST_DELETE_PACKAGES`), granted with the app; see PERMISSIONS.md.
 
 ### Changed
+- **Swipe an incoming call away:** swipe a ringing call's card up on Home and it shrinks to the pill, like a message or notice already does. The call keeps ringing, and a tap on the pill opens the card again.
 - **Bottom of Home says where Search goes (#325):** the first choice is now called Search bar, and the note says that with Page dots or Nothing, Search moves to a round button in the bottom corner. The switch below it is now Search opens the Google app, since it covers both.
 - **Folio Dev has a Developer page:** in Folio Dev, Settings › General › Advanced has a Developer page locked with a passphrase you set (five free tries, then a growing wait). It can show the current build's welcome page again. Release builds of Folio never show it.
 - **The Market lists bigger apps:** an app in a source can now be up to 100 MB, up from 20 MB, so larger apps can be listed and installed from the Market. A package (a tweak, theme or effect) is still limited to 20 MB.

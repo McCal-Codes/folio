@@ -122,6 +122,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     val notice = eventVisible as? IslandEvent.Notice
     val content: IslandContent? = eventVisible?.let { IslandContent.Event(it) } ?: activity?.let { IslandContent.Live(it) }
     var expanded by remember(activity?.packageName) { mutableStateOf(false) }
+    // A ringing call card swiped away shrinks to the pill; the call keeps ringing and a tap opens the card again.
+    var ringPutAway by remember { mutableStateOf<String?>(null) }
     androidx.activity.compose.BackHandler(expanded) { expanded = false }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -159,7 +161,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val centerX = geometry.centerXPx
         val live = (content as? IslandContent.Live)?.activity
         // A new message opens straight into a small card (like an iPhone banner coming out of the island).
-        val ringing = (live as? IslandActivity.Call)?.takeIf { it.incoming }
+        val ringing = (live as? IslandActivity.Call)?.takeIf { it.incoming && it.key != ringPutAway }
         val open = (expanded && live != null) || message != null || notice != null || ringing != null
         // A notice fits its text and keeps clear of the screen edges and a bent hinge; other cards keep their width.
         val hinge = LocalHinge.current?.takeIf { it.active }
@@ -213,7 +215,12 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     onOpen = { replying = false; eventVisible = null; IslandListenerService.openKey(context, message.key, message.packageName) },
                     onDone = { replying = false; eventVisible = null },
                     onDismiss = { replying = false; eventVisible = null; IslandEvents.dismiss() })
-                else if (showCard && live != null) ExpandedCardContent(live, onOpen = { expanded = false; onOpen(live) })
+                else if (showCard && live != null) {
+                    val ringingNow = live is IslandActivity.Call && live.incoming
+                    Box(Modifier.swipeUpToHide(ringingNow) { expanded = false; ringPutAway = (live as IslandActivity.Call).key }) {
+                        ExpandedCardContent(live, onOpen = { expanded = false; onOpen(live) })
+                    }
+                }
                 else Box(Modifier.width(geometry.widthFor(content).dp).height(pillH)) { IslandPillContent(content, camW, pillH) }
             }
         }
