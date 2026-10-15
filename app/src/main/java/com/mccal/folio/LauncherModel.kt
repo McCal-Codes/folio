@@ -16,6 +16,9 @@ import android.os.UserHandle
 import android.os.UserManager
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -435,7 +438,19 @@ internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Bo
  */
 const val MORE_ROWS_SCHEMA = 9
 
-class LauncherModel(application: Application) : AndroidViewModel(application) {
+/**
+ * Home's state. A [readOnly] model (Discover's) shows the saved Home but never saves it, and never takes Home's place as
+ * [FolioSettingsBridge.liveModel], so a tile or Focus change made while it exists still reaches the model Home saves from.
+ */
+class LauncherModel(application: Application, private val readOnly: Boolean) : AndroidViewModel(application) {
+    constructor(application: Application) : this(application, readOnly = false)
+
+    companion object {
+        /** For windows beside Home, like Discover: see [readOnly]. */
+        val readOnlyFactory = viewModelFactory {
+            initializer { LauncherModel(this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!, readOnly = true) }
+        }
+    }
     private data class RefreshedApps(val entries: List<AppEntry>, val profiles: List<AppProfile>,
         val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>)
     private data class UndoImportSettings(val compact: LayoutPreset, val expanded: LayoutPreset, val labels: Boolean,
@@ -528,7 +543,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    init { launcherApps.registerCallback(callback); refresh(); FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this) }
+    init {
+        launcherApps.registerCallback(callback); refresh()
+        if (!readOnly) FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this)
+    }
 
     /** Settings › Refresh Icons: for a theme app that changes icons without telling launchers (#19). */
     fun reloadIcons() { iconsStale = true; IconPacks.clear(); refresh() }
@@ -1481,7 +1499,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
 
     private fun persist() {
         persistPending = false
-        if (needsMigration || statePayloadInvalid) return
+        if (readOnly || needsMigration || statePayloadInvalid) return
         traced("Folio.persist", ::writeState)
     }
 
