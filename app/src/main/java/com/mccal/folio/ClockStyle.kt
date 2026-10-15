@@ -168,12 +168,9 @@ internal const val SAME_COLOR_DELTA_E = 5.0
 
 internal fun looksSame(a: Int, b: Int) = deltaE2000(argbToLab(a), argbToLab(b)) < SAME_COLOR_DELTA_E
 
-/** [colors] in their order with any too close to an earlier one to tell apart left out, so the first of each stays. */
-internal fun distinctColors(colors: List<Int>): List<Int> {
-    val kept = ArrayList<Int>(colors.size)
-    for (c in colors) if (kept.none { looksSame(it, c) }) kept += c
-    return kept
-}
+/** Picture colors kept per sample (what saved indexes point into), and the most dots the edit bar shows. */
+private const val SUGGESTIONS_KEPT = 8
+private const val COLOR_DOTS_MAX = 5
 
 internal data class RegionStats(val mean: Float, val p15: Float, val p85: Float, val r: Float, val g: Float, val b: Float)
 internal data class ClockInkSample(val under: RegionStats, val whole: RegionStats, val suggestions: List<Int>,
@@ -189,7 +186,7 @@ internal fun sampleFromWallpaperColors(primary: Int, others: List<Int>): ClockIn
     val r = (primary shr 16 and 0xFF).toFloat(); val g = (primary shr 8 and 0xFF).toFloat(); val b = (primary and 0xFF).toFloat()
     val lum = luminance(r, g, b)
     val region = RegionStats(lum, lum, lum, r, g, b)
-    return ClockInkSample(region, region, distinctColors((listOf(primary) + others).map(::vividTint)), estimated = true)
+    return ClockInkSample(region, region, (listOf(primary) + others).map(::vividTint).distinct(), estimated = true)
 }
 
 /** The worst case for an ink: a light ink fights the brightest 15% behind it, a dark one the darkest 15%. */
@@ -262,9 +259,10 @@ internal fun sampleClockRegion(bitmap: Bitmap, box: Rect, windowAspect: Float = 
         val e = buckets.getOrPut(key) { IntArray(4) }
         e[0]++; e[1] += r; e[2] += g; e[3] += b
     }
-    // Near twins are dropped before the top five are taken, so five dots are five colors you can tell apart.
-    val suggestions = distinctColors(buckets.values.sortedByDescending { it[0] }
-        .map { vividTint(android.graphics.Color.rgb(it[1] / it[0], it[2] / it[0], it[3] / it[0])) }).take(5)
+    // A saved `customIndex` points into this list, so near twins stay in it and keep their places; [colorDots] leaves them
+    // out of the row. More than five are kept so the row can still show five colors you can tell apart.
+    val suggestions = buckets.values.sortedByDescending { it[0] }.take(SUGGESTIONS_KEPT)
+        .map { vividTint(android.graphics.Color.rgb(it[1] / it[0], it[2] / it[0], it[3] / it[0])) }
     return ClockInkSample(under, whole, suggestions)
 }
 
@@ -279,11 +277,26 @@ internal fun ClockInkSample.wallpaperTint(): Int? =
  * The color dots the edit bar shows after Wallpaper, each with its index in [readableSuggestions] (what `customIndex`
  * stores, so a saved choice keeps its color). One that looks the same as the Wallpaper dot is left out, since that dot
  * already offers it: with Android's wallpaper the first color always is the Wallpaper dot's own (#353's Fold8 check
- * showed the two side by side). When there is no Wallpaper dot every color is shown.
+ * showed the two side by side). A color too close to an earlier dot to tell apart is left out too, so the row shows at
+ * most five colors you can tell apart, each still at its saved index.
  */
 internal fun ClockInkSample.colorDots(): List<IndexedValue<Int>> {
     val tint = wallpaperTint()
-    return readableSuggestions().withIndex().filter { tint == null || !looksSame(it.value, tint) }
+    val shown = ArrayList<IndexedValue<Int>>()
+    for (c in readableSuggestions().withIndex()) {
+        if (shown.size == COLOR_DOTS_MAX) break
+        if ((tint == null || !looksSame(c.value, tint)) && shown.none { looksSame(it.value, c.value) }) shown += c
+    }
+    return shown
+}
+
+/** The index of the dot that shows the color [style] draws: its own, or the look-alike that stands in for it in the row. */
+internal fun ClockInkSample.selectedDotIndex(style: BigClockStyle): Int? {
+    if (style.mode != "CUSTOM") return null
+    val dots = colorDots()
+    dots.firstOrNull { it.index == style.customIndex }?.let { return it.index }
+    val drawn = readableSuggestions().getOrNull(style.customIndex) ?: return null
+    return dots.firstOrNull { looksSame(it.value, drawn) }?.index
 }
 
 /** Whether [style] draws what the Wallpaper dot shows: Wallpaper itself, or a picked color left out for looking the same. */
@@ -445,8 +458,9 @@ internal fun ClockEditBar(
             }
             if (tint != null) ColorDot(selected = sample?.wallpaperDotSelected(s) == true, label = stringResource(R.string.wallpaper), color = Color(tint),
                 onClick = { push(s.copy(mode = "WALLPAPER")) })
+            val picked = remember(sample, s) { sample?.selectedDotIndex(s) }
             dots.forEachIndexed { n, (i, argb) ->
-                ColorDot(selected = s.mode == "CUSTOM" && s.customIndex == i, label = stringResource(R.string.picture_color_n, n + 1), color = Color(argb),
+                ColorDot(selected = picked == i, label = stringResource(R.string.picture_color_n, n + 1), color = Color(argb),
                     onClick = { push(s.copy(mode = "CUSTOM", customIndex = i)) })
             }
             ColorDot(selected = s.mode == "WHITE", label = stringResource(R.string.white), color = Color.White, onClick = { push(s.copy(mode = "WHITE")) })

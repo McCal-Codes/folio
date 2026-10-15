@@ -37,40 +37,63 @@ class WallpaperColorsPolishTest {
     private val lavender = 0xFFC577D9.toInt()
     private val orange = 0xFFE07A1F.toInt()
 
-    @Test fun `near twins collapse into the first, in order, and different colors stay`() {
+    @Test fun `near twins are told apart only above the threshold`() {
         assertTrue(looksSame(periwinkle, periwinkleTwin))
         assertFalse(looksSame(periwinkle, lavender))
-        assertEquals(listOf(periwinkle, lavender, orange), distinctColors(listOf(periwinkle, periwinkleTwin, lavender, orange)))
-        assertEquals(listOf(periwinkleTwin, lavender), distinctColors(listOf(periwinkleTwin, lavender, periwinkle)))
-        assertEquals("one color of many twins is kept", listOf(periwinkle), distinctColors(listOf(periwinkle, periwinkleTwin, periwinkle)))
-        assertEquals(emptyList<Int>(), distinctColors(emptyList()))
+        assertFalse(looksSame(lavender, orange))
+    }
+
+    // Dark enough to hold AA on a pale picture, which leaves no Wallpaper dot.
+    private val navy = 0xFF1A237E.toInt()
+    private val navyTwin = 0xFF1A237F.toInt()
+    private val grape = 0xFF4A148C.toInt()
+    private val pine = 0xFF1B5E20.toInt()
+    private val pale = RegionStats(.9f, .9f, .9f, 240f, 240f, 240f)
+
+    @Test fun `the dots leave out a near twin but every saved index keeps its color`() {
+        val picture = ClockInkSample(pale, pale, listOf(navy, navyTwin, grape, pine))
+        assertEquals(listOf(navy, navyTwin, grape, pine), picture.readableSuggestions())
+        assertEquals(listOf(0, 2, 3), picture.colorDots().map { it.index })
+        // A clock saved on the twin still draws it, and the dot that stands for it shows as chosen.
+        assertEquals(Color(navyTwin), resolveClockInk(BigClockStyle(mode = "CUSTOM", customIndex = 1), picture, false).color)
+        assertEquals(0, picture.selectedDotIndex(BigClockStyle(mode = "CUSTOM", customIndex = 1)))
+        // Colors after the twin don't move: a clock saved on pine before the twin was hidden still draws pine.
+        assertEquals(Color(pine), resolveClockInk(BigClockStyle(mode = "CUSTOM", customIndex = 3), picture, false).color)
+        assertEquals(3, picture.selectedDotIndex(BigClockStyle(mode = "CUSTOM", customIndex = 3)))
+        assertNull(picture.selectedDotIndex(BigClockStyle(mode = "WHITE")))
+    }
+
+    @Test fun `the row shows at most five dots`() {
+        val many = listOf(navy, grape, pine, 0xFF8B0000.toInt(), 0xFF004D40.toInt(), 0xFF3E2723.toInt(), 0xFF263238.toInt())
+        val picture = ClockInkSample(pale, pale, many)
+        assertEquals(5, picture.colorDots().size)
     }
 
     // One UI's palette for a periwinkle wallpaper: accents 1 and 2 share a hue, so vividTint makes them near twins.
     private val palette = SystemPalette(0xFF6F78B0.toInt(), 0xFF747892.toInt(), 0xFF8E6F96.toInt())
     private val paletteSample = clockSampleFromTone(WallpaperTone(fromAndroid = true, palette = palette))!!
 
-    @Test fun `the clock's suggestions drop the near twin from the system palette`() {
-        assertEquals(listOf(vividTint(palette.accent1), vividTint(palette.accent3)), paletteSample.readableSuggestions())
+    @Test fun `the clock keeps the system palette's near twin so saved indexes don't move`() {
+        assertEquals(listOf(palette.accent1, palette.accent2, palette.accent3).map(::vividTint).distinct(), paletteSample.readableSuggestions())
     }
 
     @Test fun `the color dots leave out the one the Wallpaper dot already shows, keeping each saved index`() {
         val tint = paletteSample.wallpaperTint()!!
         assertEquals(vividTint(palette.accent1), tint)
-        assertEquals(listOf(IndexedValue(1, vividTint(palette.accent3))), paletteSample.colorDots())
+        assertEquals(listOf(IndexedValue(2, vividTint(palette.accent3))), paletteSample.colorDots())
         // A clock saved on the first color still draws it, and the Wallpaper dot shows as chosen for it.
         assertEquals(Color(tint), resolveClockInk(BigClockStyle(mode = "CUSTOM", customIndex = 0), paletteSample, false).color)
         assertTrue(paletteSample.wallpaperDotSelected(BigClockStyle(mode = "CUSTOM", customIndex = 0)))
         assertTrue(paletteSample.wallpaperDotSelected(BigClockStyle(mode = "WALLPAPER")))
-        assertFalse(paletteSample.wallpaperDotSelected(BigClockStyle(mode = "CUSTOM", customIndex = 1)))
+        assertTrue("the twin looks like the Wallpaper dot, so that dot shows as chosen", paletteSample.wallpaperDotSelected(BigClockStyle(mode = "CUSTOM", customIndex = 1)))
+        assertFalse(paletteSample.wallpaperDotSelected(BigClockStyle(mode = "CUSTOM", customIndex = 2)))
         assertFalse(paletteSample.wallpaperDotSelected(BigClockStyle()))
-        assertEquals(Color(vividTint(palette.accent3)), resolveClockInk(BigClockStyle(mode = "CUSTOM", customIndex = 1), paletteSample, false).color)
+        assertEquals(Color(vividTint(palette.accent3)), resolveClockInk(BigClockStyle(mode = "CUSTOM", customIndex = 2), paletteSample, false).color)
     }
 
     @Test fun `a picture with no Wallpaper dot shows every readable color`() {
         // Pale under the clock, so the tint of what is under it fails AA and there is no Wallpaper dot.
-        val pale = RegionStats(.9f, .9f, .9f, 240f, 240f, 240f)
-        val picture = ClockInkSample(pale, pale, listOf(0xFF1A237E.toInt(), 0xFF4A148C.toInt()))
+        val picture = ClockInkSample(pale, pale, listOf(navy, grape))
         assertNull(picture.wallpaperTint())
         assertEquals(picture.readableSuggestions(), picture.colorDots().map { it.value })
         assertEquals(listOf(0, 1), picture.colorDots().map { it.index })

@@ -121,8 +121,7 @@ class ClockWallpaperColorsTest {
         assertEquals(WallpaperColorSource.SYSTEM_PALETTE, tone.colorSource())
         val sample = clockSampleFromTone(tone)!!
         assertTrue("still estimated, so the soft shade goes behind the time", sample.estimated)
-        // Accents 1 and 2 share a hue, and after vividTint they are too close to tell apart, so one dot stands for both.
-        assertEquals(listOf(purple, rose).map(::vividTint), sample.readableSuggestions())
+        assertEquals(listOf(purple, mauve, rose).map(::vividTint).distinct(), sample.readableSuggestions())
         assertEquals(vividTint(purple), sample.wallpaperTint())
         assertTrue(resolveClockInk(BigClockStyle(mode = "WALLPAPER"), sample, fallbackDark = false).shade)
     }
