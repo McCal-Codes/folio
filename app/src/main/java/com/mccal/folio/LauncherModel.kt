@@ -320,6 +320,8 @@ data class LauncherState(
     /** App rows that last fit the cover-class and the inner-class Home (0 = not measured yet); see [homeAppRows]. */
     val homeFitCompact: Int = 0,
     val homeFitExpanded: Int = 0,
+    /** The same for the upright inner screen, kept apart so it and the sideways inner screen stop overwriting each other. */
+    val homeFitUpright: Int = 0,
     val loading: Boolean = true,
     /** Home's own apps are in. At a start they come ahead of the rest, while [loading] stays true (not saved). */
     val homeAppsLoaded: Boolean = false,
@@ -330,7 +332,7 @@ data class LauncherState(
     val layout: HomeLayout get() = HomeLayout(homeSlots, dock, widgetPlacements, folders, widgetRestores, leadingSlots, minPages)
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
-    val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded)
+    val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
@@ -381,6 +383,19 @@ internal fun LauncherState.withoutFullWidthEntry(screen: LayoutScreen): Launcher
 }
 
 /** [preset] saved for [screen]; the upright inner screen without a layout of its own edits the inner one. */
+/** The app rows last measured for [screen] (0 = not measured yet). */
+internal fun LauncherState.homeFitFor(screen: LayoutScreen): Int = when (screen) {
+    LayoutScreen.COVER -> homeFitCompact
+    LayoutScreen.INNER -> homeFitExpanded
+    LayoutScreen.INNER_UPRIGHT -> homeFitUpright
+}
+
+internal fun LauncherState.withHomeFit(screen: LayoutScreen, rows: Int): LauncherState = when (screen) {
+    LayoutScreen.COVER -> copy(homeFitCompact = rows)
+    LayoutScreen.INNER -> copy(homeFitExpanded = rows)
+    LayoutScreen.INNER_UPRIGHT -> copy(homeFitUpright = rows)
+}
+
 internal fun LauncherState.withPreset(screen: LayoutScreen, preset: LayoutPreset): LauncherState = when (screen) {
     LayoutScreen.COVER -> copy(compact = preset)
     LayoutScreen.INNER -> copy(expanded = preset)
@@ -410,8 +425,8 @@ internal fun LauncherState.withHomeApps(home: List<AppEntry>): LauncherState =
  * Automatic: the fewest rows any of this device's screens has room for (screens not measured yet don't count, and
  * nothing measured means four). A fixed setting is used as is.
  */
-fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int): Int =
-    (if (setting > 0) setting else listOf(fitCompact, fitExpanded).filter { it > 0 }.minOrNull() ?: BASE_APP_ROWS)
+fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int, fitUpright: Int = 0): Int =
+    (if (setting > 0) setting else listOf(fitCompact, fitExpanded, fitUpright).filter { it > 0 }.minOrNull() ?: BASE_APP_ROWS)
         .coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
 
 /**
@@ -1387,11 +1402,11 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandHideLandscape(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscape = value) }
     fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value == BASE_APP_ROWS) value else 0) }
     /** Remembers how many app rows fit this screen class's full-screen Home (see [effectiveHomeRows]). */
-    fun recordHomeFit(expanded: Boolean, rows: Int) {
+    fun recordHomeFit(screen: LayoutScreen, rows: Int) {
         val value = rows.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
         val old = mutable.value
-        if ((if (expanded) old.homeFitExpanded else old.homeFitCompact) == value) return
-        updateSettings(soon = false) { if (expanded) it.copy(homeFitExpanded = value) else it.copy(homeFitCompact = value) }
+        if (old.homeFitFor(screen) == value) return
+        updateSettings(soon = false) { it.withHomeFit(screen, value) }
     }
     fun setPanelBlur(value: Float) = updateSettings(soon = true) { it.copy(panelBlur = value) }
     fun setNotificationClock(value: Boolean) = updateSettings(soon = false) { it.copy(notificationClock = value) }
@@ -1638,7 +1653,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.BUTTON_BAR_LIGHT, s.buttonBarLight).put(SettingKeys.BUTTON_BAR_FADE, s.buttonBarFade)
             .put("compact", preset(s.compact)).put("expanded", preset(s.expanded))
             .also { o -> s.portrait?.let { o.put("portrait", preset(it)) } }
-            .put("homeRows", s.homeRows).put("homeFitCompact", s.homeFitCompact).put("homeFitExpanded", s.homeFitExpanded)
+            .put("homeRows", s.homeRows).put("homeFitCompact", s.homeFitCompact).put("homeFitExpanded", s.homeFitExpanded).put("homeFitUpright", s.homeFitUpright)
         val editor = prefs.edit()
         if (legacyRaw != null && sourceSchema == 2 && !prefs.contains("state_v2_backup"))
             editor.putString("state_v2_backup", legacyRaw)
@@ -1966,7 +1981,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         homeRows = j.optInt("homeRows", if (j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
             .takeIf { it == BASE_APP_ROWS } ?: 0,
         homeFitCompact = j.optInt("homeFitCompact", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
-        homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0)
+        homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
+        homeFitUpright = j.optInt("homeFitUpright", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0)
         .let { st ->
             val saved = j.optJSONArray("installedTweaks")
             when {
