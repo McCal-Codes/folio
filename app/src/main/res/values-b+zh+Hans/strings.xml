@@ -426,6 +426,7 @@
     <string name="focus_fold_tent">半开</string>
     <string name="focus_triggers_note">这些仅用于开启和关闭此专注模式。如果你手动关闭，它会保持关闭，直到下一次变化。</string>
     <string name="focus_on_because">已开启 · %1$s</string>
+    <string name="focus_home_only">%1$s（仅限主屏幕）</string>
     <string name="focus_island_on">%1$s 已开启 · %2$s</string>
     <string name="focus_island_off">%1$s 已关闭</string>
     <string name="from">从</string>

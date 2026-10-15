@@ -420,6 +420,7 @@
     <string name="focus_fold_tent">Half Open</string>
     <string name="focus_triggers_note">These only turn this Focus on and off. If you turn it off yourself, it stays off until the next change.</string>
     <string name="focus_on_because">On · %1$s</string>
+    <string name="focus_home_only">%1$s (Home only)</string>
     <string name="focus_island_on">%1$s on · %2$s</string>
     <string name="focus_island_off">%1$s off</string>
     <string name="from">From</string>
