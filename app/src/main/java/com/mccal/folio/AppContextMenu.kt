@@ -64,6 +64,8 @@ internal data class QuickAction(val label: String, val icon: Bitmap?, val info: 
 
 /** The app's own shortcuts (Folio can read them as the default Home app). Call off the main thread. */
 internal fun loadQuickActions(context: android.content.Context, app: AppEntry, limit: Int = 4): List<QuickAction> = runCatching {
+    // Screenshot Mode: a swapped app's own shortcuts would name the real app.
+    if (app.iconFrom != null) return@runCatching emptyList()
     val apps = context.getSystemService(LauncherApps::class.java)
     if (!apps.hasShortcutHostPermission()) return@runCatching emptyList()
     val query = LauncherApps.ShortcutQuery().setPackage(app.component.packageName).setActivity(app.component)
@@ -98,6 +100,10 @@ internal fun AppContextMenu(
     onEditIcon: (() -> Unit)? = null,
     /** Choose the apps tucked behind this icon (Icon Stacks); null where stacks don't apply. */
     onStack: (() -> Unit)? = null,
+    /** On Home: Remove App opens the choice to delete it or just take it off Home. Null keeps Remove from Home. */
+    onRemoveApp: (() -> Unit)? = null,
+    /** In the App Library: Delete App, straight to Android's confirmation. Null where the app can't be deleted here. */
+    onDeleteApp: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -122,7 +128,7 @@ internal fun AppContextMenu(
     }
     DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
 
-    val actions by produceState(emptyList<QuickAction>(), app.id) { if (!app.isShortcut) value = withContext(Dispatchers.IO) { loadQuickActions(context, app) } }
+    val actions by produceState(emptyList<QuickAction>(), app.id, app.iconFrom) { if (!app.isShortcut) value = withContext(Dispatchers.IO) { loadQuickActions(context, app) } }
 
     Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
@@ -215,10 +221,16 @@ internal fun AppContextMenu(
                     MenuDivider()
                 }
                 // A shortcut exists only as this icon, so removing it deletes it (like iOS's "Delete Bookmark").
-                MenuRow(when { app.isShortcut -> stringResource(R.string.delete_shortcut); onHome -> stringResource(R.string.remove_from_home); else -> stringResource(R.string.add_to_home) },
+                val removeApp = onRemoveApp.takeIf { onHome && !app.isShortcut }
+                MenuRow(when { app.isShortcut -> stringResource(R.string.delete_shortcut); removeApp != null -> stringResource(R.string.remove_app)
+                    onHome -> stringResource(R.string.remove_from_home); else -> stringResource(R.string.add_to_home) },
                     if (onHome || app.isShortcut) Icons.Rounded.RemoveCircleOutline else Icons.Rounded.AddCircleOutline,
-                    destructive = onHome || app.isShortcut) { onAddOrRemove() }
+                    destructive = onHome || app.isShortcut, tag = "menu-remove-or-add") { removeApp?.invoke() ?: onAddOrRemove() }
                 MenuDivider()
+                onDeleteApp?.takeIf { !onHome && !app.isShortcut }?.let {
+                    MenuRow(stringResource(R.string.delete_app), Icons.Rounded.DeleteOutline, destructive = true, tag = "menu-delete-app") { it() }
+                    MenuDivider()
+                }
                 }
                 // iOS keeps context menus short: the less common actions sit behind "More".
                 if (!more) MenuRow(stringResource(R.string.more), Icons.Rounded.MoreHoriz) { more = true }
@@ -226,9 +238,12 @@ internal fun AppContextMenu(
                     if (lockedBy == null) MenuRow(if (hasFolders) stringResource(R.string.add_to_folder) else stringResource(R.string.create_folder), Icons.Rounded.CreateNewFolder) { onCreateFolder() }
                     onWidgets?.let { MenuDivider(); MenuRow(stringResource(R.string.widgets), Icons.Rounded.Widgets) { it() } }
                     onStack?.let { MenuDivider(); MenuRow(stringResource(R.string.stack_apps), Icons.Rounded.Layers) { it() } }
-                    MenuDivider()
-                    MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
-                    onEditIcon?.let { MenuDivider(); MenuRow(stringResource(R.string.edit_icon), Icons.Rounded.Palette) { it() } }
+                    // Screenshot Mode: Rename and Edit Icon would change the real app under the stand-in's name.
+                    if (app.iconFrom == null) {
+                        MenuDivider()
+                        MenuRow(stringResource(R.string.rename), Icons.Rounded.DriveFileRenameOutline) { onRename() }
+                        onEditIcon?.let { MenuDivider(); MenuRow(stringResource(R.string.edit_icon), Icons.Rounded.Palette) { it() } }
+                    }
                     MenuDivider()
                     MenuRow(if (hidden) stringResource(R.string.show_in_app_library) else stringResource(R.string.hide_from_app_library), if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff) { onToggleHidden() }
                     MenuDivider()

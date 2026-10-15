@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.mccal.folio.baselineprofile"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // Baseline profiles are generated on a connected device running API 33 or newer; a rooted
@@ -30,7 +30,7 @@ baselineProfile {
 }
 
 dependencies {
-    implementation("androidx.test.ext:junit:1.2.1")
-    implementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    implementation("androidx.test.ext:junit:1.3.0")
+    implementation("androidx.test.uiautomator:uiautomator:2.4.0")
     implementation("androidx.benchmark:benchmark-macro-junit4:1.5.0")
 }

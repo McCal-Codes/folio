@@ -188,6 +188,8 @@
     <string name="place">放置</string>
     <string name="no_room_here">这里没有空间</string>
     <string name="dock_full_move_an_app_out_first">程序坞已满 • 请先移出一个 App</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">在文件夹中 · 请先移出</string>
     <string name="remove">移除</string>
     <string name="move_this_widget_into_the_six_row_grid_b">调整大小前，请先把这个小组件移到六行网格中。</string>
     <string name="layout_document">布局文件</string>
@@ -773,7 +775,6 @@
     <string name="color">颜色</string>
     <string name="white">白色</string>
     <string name="weight">粗细</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android 不允许应用读取系统壁纸，因此壁纸和自定义颜色需要 Folio 自己的图片作为 Home 背景。</string>
     <string name="text_1_s_unavailable">%1$s 不可用</string>
     <string name="headphones">耳机</string>
     <string name="fixes_and_improvements">修复与改进</string>
@@ -1328,6 +1329,8 @@
     <string name="text_1_s_version_2_s">%1$s · 版本 %2$s</string>
     <string name="installing_1_s">正在安装 %1$s</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">%1$s 已被其源撤下：%2$s</string>
+    <string name="pulled_by_its_source">已被其源撤下</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">%1$s 已被其源撤下，因此已关闭。它的设置会保留。</string>
     <string name="doesn_t_work_with_this_folio_1_s">无法在此版本的 Folio 上使用：%1$s</string>
     <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s 无法在 Folio %2$s 上使用：%3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s 使用了属于 Folio 自带软件包的名称来提供这个软件包</string>
@@ -1498,6 +1501,8 @@
     <string name="brightness">亮度</string>
     <string name="work_apps_are_paused">工作 App 已暂停</string>
     <string name="work_profile_is_unavailable">工作资料不可用</string>
+    <!-- Claude's draft, needs a native read. 分身 is the usual word for a cloned app in Chinese Android skins. -->
+    <string name="profile_dual">分身</string>
     <string name="loading_apps">正在载入 App…</string>
     <string name="remove_from_home_3">从主屏幕移除 %1$s</string>
     <string name="pin_to_home">将 %1$s 固定到主屏幕</string>
@@ -1733,6 +1738,10 @@
     <string name="compat_needs_folio_detail">这部手机的 Folio 是 %2$s。更新 Folio 后即可安装。</string>
     <string name="compat_kind_detail">这是此版本 Folio 暂时还无法使用的软件包类型。</string>
     <string name="compat_features_detail">它用到了此版本 Folio 还没有的功能。</string>
+    <string name="compat_no_scripts">Folio 不运行脚本</string>
+    <string name="compat_no_scripts_detail">这个软件包是脚本。Folio 不运行来自源的代码。</string>
+    <string name="text_1_s_is_a_script">%1$s 是脚本，Folio 不运行脚本</string>
+    <string name="that_package_is_a_script">那个软件包是脚本，Folio 不运行脚本</string>
     <string name="compat_replaces">取代 %1$s</string>
     <string name="compat_replaces_detail">两者不能同时启用。请先移除 %1$s。</string>
     <string name="compat_needs_package">需要 %1$s</string>
@@ -1959,4 +1968,46 @@
     <string name="action_a11y_shade">Android 通知栏</string>
     <string name="action_a11y_splitscreen">分屏</string>
     <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
+    <string name="screenshot_swap_apps">替换 App</string>
+    <string name="screenshot_swap_intro">截图模式开启时，你选择的 App 会显示为这部手机上的一个系统自带 App，使用它的图标和名称。点按后仍会打开真实的 App，只有屏幕显示会改变。手机自带的 App 不会被替换。</string>
+    <string name="screenshot_swap_all_third_party">替换所有第三方 App</string>
+    <string name="screenshot_swap_all_third_party_note">所有不是这部手机自带的 App，包括你以后安装的 App。</string>
+    <string name="screenshot_swap_choose">要替换的 App</string>
+    <string name="screenshot_swap_count">已选 %1$d 个</string>
+    <string name="screenshot_swap_system_app">手机自带，不会被替换</string>
+    <string name="screenshot_swap_none">没有匹配的 App</string>
+    <string name="screenshot_swap_footnote">截图模式开启时，被替换 App 的小组件会隐藏，其快捷方式也不会显示。文件夹名称是你自己起的，不会改变。Android 自身的界面、其他 App 上方的程序坞以及打开后的 App 本身仍会显示真实的 App。</string>
+    <string name="settings_keywords_screenshot_swap">截图 替换 隐藏 App 系统 图标 隐私</string>
+    <string name="remove_app">移除 App</string>
+    <string name="remove_app_title">要移除“%1$s”吗？</string>
+    <string name="remove_app_message">从主屏幕移除后，这个 App 仍会保留在 App 资源库中。</string>
+    <string name="remove_app_came_with_phone">%1$s 是手机自带的 App，只有 Android 才能删除它。你可以隐藏它，或在应用信息中停用它。</string>
+    <string name="remove_app_work">%1$s 是工作 App。请在应用信息中删除它。</string>
+    <string name="delete_app">删除 App</string>
+    <string name="app_deleted">已删除 %1$s</string>
+    <string name="app_not_deleted">无法删除 %1$s</string>
+    <string name="clock_font">字体</string>
+    <string name="clock_colors_android_wallpaper">使用 Android 壁纸时，颜色取自壁纸的主要颜色，时间后面的柔和阴影让它保持清晰。</string>
+    <string name="clock_colors_system_palette">Android 没有提供这张壁纸的颜色，所以这里使用手机的主题颜色（调色板）。调色板取自壁纸时，这些颜色会跟随壁纸。时间后面的柔和阴影让它保持清晰。</string>
+    <string name="clock_no_android_wallpaper_colors">Android 没有提供这张壁纸的颜色，所以只能选择自动和白色。有些动态壁纸从不提供颜色。</string>
+    <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
+    <string name="in_stack">在叠放中</string>
+    <string name="not_in_stack">不在叠放中</string>
+    <string name="install_waiting">等待中…</string>
+    <string name="island_call">通话</string>
+    <string name="island_navigating">正在导航</string>
+    <string name="unavailable_app">不可用的 App</string>
+    <string name="status_airplane">飞行</string>
+    <string name="discover_unavailable_right_now">Discover 暂时不可用。</string>
+    <string name="discover_feed_refused">Google 未接受信息流连接。请重新启动 Google，然后重试。</string>
+    <string name="discover_disconnected">Discover 已断开连接。轻点“重试”重新连接。</string>
+    <string name="discover_needs_google_app">要使用 Discover，请安装或启用 Google App。</string>
+    <string name="discover_google_couldnt_connect">Google App 无法连接到 Discover。</string>
+    <string name="discover_taking_a_while">Discover 加载较慢。你可以重试或打开 Google。</string>
+    <string name="discover_google_version">此版本的 Google App 无法打开 Discover。</string>
+    <string name="discover_couldnt_start">Discover 无法启动。轻点“重试”重新连接。</string>
+    <string name="discover_couldnt_fit">Discover 无法放在程序坞旁边。</string>
+    <string name="appearance_system_until_location">设置位置前将使用系统主题</string>
+    <string name="appearance_system_location_stale">设备位置已过时，正在使用系统主题</string>
+    <string name="appearance_system_location_unavailable">此位置不可用，正在使用系统主题</string>
 </resources>

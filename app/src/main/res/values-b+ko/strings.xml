@@ -187,6 +187,8 @@
     <string name="place">배치</string>
     <string name="no_room_here">공간이 부족합니다</string>
     <string name="dock_full_move_an_app_out_first">Dock이 가득 찼습니다 • 먼저 앱을 하나 옮기세요</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">폴더 안에 있음 · 먼저 꺼내세요</string>
     <string name="remove">제거</string>
     <string name="move_this_widget_into_the_six_row_grid_b">크기를 조절하기 전에 이 위젯을 6행 격자 안으로 옮기세요.</string>
     <string name="layout_document">레이아웃 문서</string>
@@ -772,7 +774,6 @@
     <string name="color">색상</string>
     <string name="white">흰색</string>
     <string name="weight">굵기</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android는 앱이 시스템 배경화면을 읽을 수 없게 하므로, 배경화면 및 사용자 지정 색상에는 Folio의 사진이 필요합니다.</string>
     <string name="text_1_s_unavailable">%1$s 사용 불가</string>
     <string name="headphones">헤드폰</string>
     <string name="fixes_and_improvements">수정 및 개선 사항</string>
@@ -1394,6 +1395,8 @@
     <string name="text_1_s_version_2_s">%1$s · 버전 %2$s</string>
     <string name="installing_1_s">%1$s 설치 중</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">소스에서 %1$s의 배포를 중단했습니다: %2$s</string>
+    <string name="pulled_by_its_source">소스에서 배포 중단됨</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">소스에서 %1$s의 배포를 중단해 꺼졌습니다. 설정은 유지됩니다.</string>
     <string name="doesn_t_work_with_this_folio_1_s">이 버전의 Folio에서는 작동하지 않습니다: %1$s</string>
     <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s은(는) Folio %2$s에서 작동하지 않습니다: %3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s에서 Folio 자체 패키지의 이름으로 이 항목을 제공합니다</string>
@@ -1519,6 +1522,8 @@
     <string name="brightness">밝기</string>
     <string name="work_apps_are_paused">업무용 앱이 일시 중지됨</string>
     <string name="work_profile_is_unavailable">업무용 프로필을 사용할 수 없음</string>
+    <!-- Claude's draft, needs a native read. Samsung's own Korean name for the feature is 듀얼 메신저. -->
+    <string name="profile_dual">듀얼</string>
     <string name="loading_apps">앱 불러오는 중…</string>
     <string name="remove_from_home_3">홈 화면에서 %1$s 제거</string>
     <string name="pin_to_home">홈 화면에 %1$s 고정</string>
@@ -1754,6 +1759,10 @@
     <string name="compat_needs_folio_detail">이 휴대전화의 Folio는 %2$s입니다. Folio를 업데이트하면 설치할 수 있습니다.</string>
     <string name="compat_kind_detail">이 버전의 Folio에서 아직 사용할 수 없는 종류의 패키지입니다.</string>
     <string name="compat_features_detail">이 버전의 Folio에 아직 없는 기능을 사용합니다.</string>
+    <string name="compat_no_scripts">Folio는 스크립트를 실행하지 않습니다</string>
+    <string name="compat_no_scripts_detail">이 패키지는 스크립트입니다. Folio는 소스의 코드를 실행하지 않습니다.</string>
+    <string name="text_1_s_is_a_script">%1$s은(는) 스크립트이며, Folio는 스크립트를 실행하지 않습니다</string>
+    <string name="that_package_is_a_script">이 패키지는 스크립트이며, Folio는 스크립트를 실행하지 않습니다</string>
     <string name="compat_replaces">%1$s 대체</string>
     <string name="compat_replaces_detail">둘을 동시에 사용할 수 없습니다. 먼저 %1$s을(를) 제거하세요.</string>
     <string name="compat_needs_package">%1$s 필요</string>
@@ -1980,4 +1989,46 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
+    <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
+    <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
+    <string name="screenshot_swap_choose">바꿀 앱</string>
+    <string name="screenshot_swap_count">%1$d개 선택됨</string>
+    <string name="screenshot_swap_system_app">기본 앱이므로 바뀌지 않음</string>
+    <string name="screenshot_swap_none">일치하는 앱이 없습니다</string>
+    <string name="screenshot_swap_footnote">스크린샷 모드가 켜져 있는 동안 바뀐 앱의 위젯은 숨겨지고 바로가기도 표시되지 않습니다. 폴더 이름은 직접 지은 것이므로 바뀌지 않습니다. Android 자체 화면, 다른 앱 위의 Dock, 그리고 열린 앱 자체에는 실제 앱이 표시됩니다.</string>
+    <string name="settings_keywords_screenshot_swap">스크린샷 바꾸기 교체 앱 숨기기 기본 아이콘 개인정보</string>
+    <string name="remove_app">앱 제거</string>
+    <string name="remove_app_title">“%1$s”을(를) 제거하시겠습니까?</string>
+    <string name="remove_app_message">홈 화면에서 제거해도 앱은 앱 보관함에 남아 있습니다.</string>
+    <string name="remove_app_came_with_phone">%1$s은(는) 휴대전화에 기본으로 들어 있던 앱이므로 Android만 삭제할 수 있습니다. 숨기거나 앱 정보에서 끌 수 있습니다.</string>
+    <string name="remove_app_work">%1$s은(는) 업무용 앱입니다. 앱 정보에서 삭제하세요.</string>
+    <string name="delete_app">앱 삭제</string>
+    <string name="app_deleted">%1$s 삭제됨</string>
+    <string name="app_not_deleted">%1$s을(를) 삭제하지 못했습니다</string>
+    <string name="clock_font">서체</string>
+    <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_colors_system_palette">Android가 이 배경화면의 색상을 알려 주지 않아, 휴대폰의 테마 색상(색상 팔레트)을 사용합니다. 팔레트를 배경화면에서 만들면 배경화면을 따라갑니다. 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_no_android_wallpaper_colors">Android가 이 배경화면의 색상을 알려 주지 않아 자동과 흰색만 쓸 수 있습니다. 일부 라이브 배경화면은 색상을 알려 주지 않습니다.</string>
+    <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
+    <string name="in_stack">스택에 있음</string>
+    <string name="not_in_stack">스택에 없음</string>
+    <string name="install_waiting">대기 중…</string>
+    <string name="island_call">통화</string>
+    <string name="island_navigating">길 안내 중</string>
+    <string name="unavailable_app">사용할 수 없는 앱</string>
+    <string name="status_airplane">비행기</string>
+    <string name="discover_unavailable_right_now">지금은 Discover를 사용할 수 없습니다.</string>
+    <string name="discover_feed_refused">Google이 피드 연결을 받아들이지 않았습니다. Google을 다시 시작한 뒤 다시 시도하세요.</string>
+    <string name="discover_disconnected">Discover 연결이 끊겼습니다. 다시 연결하려면 다시 시도를 탭하세요.</string>
+    <string name="discover_needs_google_app">Discover를 사용하려면 Google 앱을 설치하거나 사용 설정하세요.</string>
+    <string name="discover_google_couldnt_connect">Google 앱이 Discover에 연결하지 못했습니다.</string>
+    <string name="discover_taking_a_while">Discover가 오래 걸리고 있습니다. 다시 시도하거나 Google을 열 수 있습니다.</string>
+    <string name="discover_google_version">이 버전의 Google 앱으로는 Discover를 열 수 없었습니다.</string>
+    <string name="discover_couldnt_start">Discover를 시작하지 못했습니다. 다시 연결하려면 다시 시도를 탭하세요.</string>
+    <string name="discover_couldnt_fit">Discover를 Dock 옆에 맞출 수 없었습니다.</string>
+    <string name="appearance_system_until_location">위치를 설정할 때까지 시스템 테마를 사용합니다</string>
+    <string name="appearance_system_location_stale">기기 위치 정보가 오래되어 시스템 테마를 사용합니다</string>
+    <string name="appearance_system_location_unavailable">이 위치를 사용할 수 없어 시스템 테마를 사용합니다</string>
 </resources>

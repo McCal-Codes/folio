@@ -6,7 +6,8 @@
 
 <!-- Phone and screens you tried: folded, unfolded, half folded, a regular phone or tablet. -->
 
-- [ ] `./gradlew :app:testDebugUnitTest :app:lintDebug` passes
+- [ ] `./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug` passes
+- [ ] If it touches `tools/`: `node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs` and `python3 -m unittest discover -s tools -p 'test_*.py'` pass
 - [ ] Screenshots don't show personal info (notifications, accounts, contacts, work data)
 - [ ] New themes in `themes/` pass `CommunityThemesTest` and have `"iconPack": null`
 - [ ] No GPL code and nothing that needs root

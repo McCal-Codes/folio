@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: 17
       # Also validates the Gradle wrapper jar.
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       # Before anything slow: a key in the repository is the one mistake that can't be taken back by deleting it.
       - name: No private keys in the repository
         run: bash tools/check-secrets.sh
@@ -41,8 +41,33 @@ jobs:
       # run. The Kotlin parser and the published schemas are separate lists, and this is what keeps them agreeing.
       - name: Folio's own packages pass the SDK validator
         run: python3 tools/folio-pkg.py validate docs/sdk/source
+      # The scripts in tools/ have tests of their own, and nothing ran them: the announce guard that keeps private links
+      # out of public posts, the Ko-fi worker, Mr Folio, dev-builds and test-report. None needs a network or a secret;
+      # the servers, webhooks and databases are stood in for.
+      - name: Tool tests
+        run: |
+          node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs
+          python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
+      # A red unit test run is easier to read from the HTML report than from the log, so keep both modules' reports.
+      - name: Keep the unit test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unit-test-reports
+          path: |
+            app/build/reports/tests/**
+            app/build/test-results/**
+            market/build/reports/tests/**
+            market/build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 14
+      # The instrumented tests only run on a device, so nothing else compiles them; from 0.6.8 to #381 they didn't build
+      # at all and no check noticed. Compiling them is enough to catch that. The javac task runs the Kotlin compile
+      # first, so this covers both the Kotlin tests and the Java fixtures.
+      - name: Instrumented tests compile
+        run: ./gradlew :app:compileDebugAndroidTestJavaWithJavac
 
   # The parts of the releases standard a machine can see: a change to what ships carries its own changelog line,
   # and a version bump comes on its own (docs/standards/releases.md, REL-7 and REL-13). Pull requests only, since
@@ -71,7 +96,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Fuzz the parsers
         env:
           JAZZER_FUZZ: 1
@@ -81,7 +106,7 @@ jobs:
           done
       - name: Keep any input that failed
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuzz-findings
           path: |
