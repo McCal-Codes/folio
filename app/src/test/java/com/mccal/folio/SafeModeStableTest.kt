@@ -38,6 +38,21 @@ class SafeModeStableTest {
         assertFalse("Restart Normally is the way out", SafeMode.isOn(context))
     }
 
+    @Test fun `a crash after a long run in Safe Mode keeps Safe Mode on for the next launch`() {
+        SafeMode.onStart(context) { emptyList() }
+        SafeMode.onCrash(context)
+        SafeMode.onStart(context) { emptyList() }
+        SafeMode.onCrash(context)
+        SafeMode.onStart(context) { emptyList() }
+        assertTrue(SafeMode.active)
+
+        pastTheWindow()
+        SafeMode.onCrash(context)
+        assertTrue("still on for background work", SafeMode.isOn(context))
+        SafeMode.onStart(context) { emptyList() }
+        assertTrue("and for the next launch", SafeMode.active)
+    }
+
     @Test fun `outside Safe Mode a stable run still forgets an earlier quick crash`() {
         SafeMode.onStart(context) { emptyList() }
         SafeMode.onCrash(context)

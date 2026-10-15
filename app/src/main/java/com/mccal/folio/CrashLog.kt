@@ -142,7 +142,9 @@ internal object SafeMode {
     fun onCrash(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, 0)
         val quick = android.os.SystemClock.elapsedRealtime() - startedAt < WINDOW_MS
-        prefs.edit().putInt(QUICK_CRASHES, if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1).putBoolean(CRASHED_LAST_RUN, true).commit()
+        // In Safe Mode a crash, even after a long run, keeps the count at the threshold: only Restart Normally leaves it.
+        val count = if (active) maxOf(prefs.getInt(QUICK_CRASHES, 0), 2) else if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1
+        prefs.edit().putInt(QUICK_CRASHES, count).putBoolean(CRASHED_LAST_RUN, true).commit()
     }
 
     /**
