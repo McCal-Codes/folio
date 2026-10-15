@@ -119,6 +119,62 @@ private fun luminance(r: Float, g: Float, b: Float) = .2126f * linearize(r) + .7
 private fun luminance(argb: Int) = luminance((argb shr 16 and 0xFF).toFloat(), (argb shr 8 and 0xFF).toFloat(), (argb and 0xFF).toFloat())
 internal fun contrastRatio(a: Float, b: Float) = (max(a, b) + .05f) / (min(a, b) + .05f)
 
+// ---- telling two colors apart: CIEDE2000 (CIE 142-2001), as written up by Sharma, Wu and Dalal (2005) ----
+
+/** sRGB (D65) to CIELAB, the space CIEDE2000 measures in. */
+internal fun argbToLab(argb: Int): DoubleArray {
+    fun lin(c: Int) = (c / 255.0).let { if (it <= .04045) it / 12.92 else ((it + .055) / 1.055).pow(2.4) }
+    val r = lin(argb shr 16 and 0xFF); val g = lin(argb shr 8 and 0xFF); val b = lin(argb and 0xFF)
+    val x = (.4124 * r + .3576 * g + .1805 * b) / .95047
+    val y = .2126 * r + .7152 * g + .0722 * b
+    val z = (.0193 * r + .1192 * g + .9505 * b) / 1.08883
+    fun f(t: Double) = if (t > 216.0 / 24389) Math.cbrt(t) else (24389.0 / 27 * t + 16) / 116
+    return doubleArrayOf(116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z)))
+}
+
+/** The CIEDE2000 color difference between two CIELAB colors (kL = kC = kH = 1). */
+internal fun deltaE2000(lab1: DoubleArray, lab2: DoubleArray): Double {
+    val (l1, a1, b1) = lab1.toList(); val (l2, a2, b2) = lab2.toList()
+    val c7 = ((Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2).pow(7)
+    val g = .5 * (1 - Math.sqrt(c7 / (c7 + 25.0.pow(7))))
+    val a1p = (1 + g) * a1; val a2p = (1 + g) * a2
+    val c1p = Math.hypot(a1p, b1); val c2p = Math.hypot(a2p, b2)
+    fun hue(b: Double, ap: Double) = if (b == 0.0 && ap == 0.0) 0.0 else (Math.toDegrees(Math.atan2(b, ap)) + 360) % 360
+    val h1 = hue(b1, a1p); val h2 = hue(b2, a2p)
+    val chromaless = c1p * c2p == 0.0
+    val dh = when { chromaless -> 0.0; h2 - h1 > 180 -> h2 - h1 - 360; h2 - h1 < -180 -> h2 - h1 + 360; else -> h2 - h1 }
+    val dL = l2 - l1; val dC = c2p - c1p
+    val dH = 2 * Math.sqrt(c1p * c2p) * Math.sin(Math.toRadians(dh / 2))
+    val lMean = (l1 + l2) / 2; val cMean = (c1p + c2p) / 2
+    val hMean = when { chromaless -> h1 + h2; Math.abs(h1 - h2) <= 180 -> (h1 + h2) / 2; h1 + h2 < 360 -> (h1 + h2 + 360) / 2; else -> (h1 + h2 - 360) / 2 }
+    fun cos(deg: Double) = Math.cos(Math.toRadians(deg))
+    val t = 1 - .17 * cos(hMean - 30) + .24 * cos(2 * hMean) + .32 * cos(3 * hMean + 6) - .2 * cos(4 * hMean - 63)
+    val sL = 1 + .015 * (lMean - 50).pow(2) / Math.sqrt(20 + (lMean - 50).pow(2))
+    val sC = 1 + .045 * cMean
+    val sH = 1 + .015 * cMean * t
+    val cMean7 = cMean.pow(7)
+    val rT = -Math.sin(Math.toRadians(2 * 30 * Math.exp(-((hMean - 275) / 25).pow(2)))) * 2 * Math.sqrt(cMean7 / (cMean7 + 25.0.pow(7)))
+    return Math.sqrt((dL / sL).pow(2) + (dC / sC).pow(2) + (dH / sH).pow(2) + rT * (dC / sC) * (dH / sH))
+}
+
+/**
+ * Below this CIEDE2000 difference two color dots read as the same color. The usual reading of delta E (Mokrzycki and
+ * Tatol, 2011, given for the older CIE76 formula, which reads larger than CIEDE2000, so 5 here is the stricter side)
+ * puts "the observer notices two different colors" at 5 and above; under it the difference is one you have to look for,
+ * which is no help in a row of 30 dp dots. Two periwinkle accents of one hue come out about 0.3 apart after [vividTint];
+ * a periwinkle and a lavender about 19.
+ */
+internal const val SAME_COLOR_DELTA_E = 5.0
+
+internal fun looksSame(a: Int, b: Int) = deltaE2000(argbToLab(a), argbToLab(b)) < SAME_COLOR_DELTA_E
+
+/** [colors] in their order with any too close to an earlier one to tell apart left out, so the first of each stays. */
+internal fun distinctColors(colors: List<Int>): List<Int> {
+    val kept = ArrayList<Int>(colors.size)
+    for (c in colors) if (kept.none { looksSame(it, c) }) kept += c
+    return kept
+}
+
 internal data class RegionStats(val mean: Float, val p15: Float, val p85: Float, val r: Float, val g: Float, val b: Float)
 internal data class ClockInkSample(val under: RegionStats, val whole: RegionStats, val suggestions: List<Int>,
     /** Built from Android's wallpaper colors, not the pixels under the clock: contrast there can't be measured. */
@@ -133,7 +189,7 @@ internal fun sampleFromWallpaperColors(primary: Int, others: List<Int>): ClockIn
     val r = (primary shr 16 and 0xFF).toFloat(); val g = (primary shr 8 and 0xFF).toFloat(); val b = (primary and 0xFF).toFloat()
     val lum = luminance(r, g, b)
     val region = RegionStats(lum, lum, lum, r, g, b)
-    return ClockInkSample(region, region, (listOf(primary) + others).map(::vividTint).distinct(), estimated = true)
+    return ClockInkSample(region, region, distinctColors((listOf(primary) + others).map(::vividTint)), estimated = true)
 }
 
 /** The worst case for an ink: a light ink fights the brightest 15% behind it, a dark one the darkest 15%. */
@@ -206,8 +262,9 @@ internal fun sampleClockRegion(bitmap: Bitmap, box: Rect, windowAspect: Float = 
         val e = buckets.getOrPut(key) { IntArray(4) }
         e[0]++; e[1] += r; e[2] += g; e[3] += b
     }
-    val suggestions = buckets.values.sortedByDescending { it[0] }.take(5)
-        .map { vividTint(android.graphics.Color.rgb(it[1] / it[0], it[2] / it[0], it[3] / it[0])) }
+    // Near twins are dropped before the top five are taken, so five dots are five colors you can tell apart.
+    val suggestions = distinctColors(buckets.values.sortedByDescending { it[0] }
+        .map { vividTint(android.graphics.Color.rgb(it[1] / it[0], it[2] / it[0], it[3] / it[0])) }).take(5)
     return ClockInkSample(under, whole, suggestions)
 }
 
@@ -217,6 +274,27 @@ internal fun ClockInkSample.readableSuggestions(): List<Int> = if (estimated) su
 /** The vivid tint of the picture under the clock, when it holds AA there. */
 internal fun ClockInkSample.wallpaperTint(): Int? =
     vividTint(android.graphics.Color.rgb(under.r.toInt(), under.g.toInt(), under.b.toInt())).takeIf { estimated || worstCase(luminance(it), under) >= 4.5f }
+
+/**
+ * The color dots the edit bar shows after Wallpaper, each with its index in [readableSuggestions] (what `customIndex`
+ * stores, so a saved choice keeps its color). One that looks the same as the Wallpaper dot is left out, since that dot
+ * already offers it: with Android's wallpaper the first color always is the Wallpaper dot's own (#353's Fold8 check
+ * showed the two side by side). When there is no Wallpaper dot every color is shown.
+ */
+internal fun ClockInkSample.colorDots(): List<IndexedValue<Int>> {
+    val tint = wallpaperTint()
+    return readableSuggestions().withIndex().filter { tint == null || !looksSame(it.value, tint) }
+}
+
+/** Whether [style] draws what the Wallpaper dot shows: Wallpaper itself, or a picked color left out for looking the same. */
+internal fun ClockInkSample.wallpaperDotSelected(style: BigClockStyle): Boolean {
+    if (style.mode == "WALLPAPER") return true
+    if (style.mode != "CUSTOM") return false
+    val tint = wallpaperTint() ?: return false
+    val readable = readableSuggestions()
+    val drawn = readable.getOrNull(style.customIndex) ?: readable.firstOrNull() ?: return false
+    return looksSame(drawn, tint)
+}
 
 /** What `BigClockCard` draws: an ink and whether a soft dark halo goes behind the digits to keep it readable. */
 internal data class ClockInkResult(val color: Color, val shade: Boolean, val ratio: Float)
@@ -329,7 +407,7 @@ internal fun ClockEditBar(
     var fine by remember(slot) { mutableStateOf(false) }
     fun push(next: BigClockStyle) { s = next; onStyle(next) }
     val tint = sample?.wallpaperTint()
-    val readable = remember(sample) { sample?.readableSuggestions() ?: emptyList() }
+    val dots = remember(sample) { sample?.colorDots() ?: emptyList() }
     val maxHeight = with(density) { (window.height * .5f).toDp() }
     Column(modifier.padding(horizontal = FolioSpace.MEDIUM.dp).fillMaxWidth()
         .graphicsLayer { alpha = appear.value; translationY = (1f - appear.value) * 56.dp.toPx() * (if (enterFromTop) -1f else 1f) }
@@ -365,10 +443,10 @@ internal fun ClockEditBar(
                 onClick = { push(s.copy(mode = "AUTO")) }) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(16.dp))
             }
-            if (tint != null) ColorDot(selected = s.mode == "WALLPAPER", label = stringResource(R.string.wallpaper), color = Color(tint),
+            if (tint != null) ColorDot(selected = sample?.wallpaperDotSelected(s) == true, label = stringResource(R.string.wallpaper), color = Color(tint),
                 onClick = { push(s.copy(mode = "WALLPAPER")) })
-            readable.forEachIndexed { i, argb ->
-                ColorDot(selected = s.mode == "CUSTOM" && s.customIndex == i, label = stringResource(R.string.picture_color_n, i + 1), color = Color(argb),
+            dots.forEachIndexed { n, (i, argb) ->
+                ColorDot(selected = s.mode == "CUSTOM" && s.customIndex == i, label = stringResource(R.string.picture_color_n, n + 1), color = Color(argb),
                     onClick = { push(s.copy(mode = "CUSTOM", customIndex = i)) })
             }
             ColorDot(selected = s.mode == "WHITE", label = stringResource(R.string.white), color = Color.White, onClick = { push(s.copy(mode = "WHITE")) })
