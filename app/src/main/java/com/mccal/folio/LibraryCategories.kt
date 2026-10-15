@@ -72,7 +72,7 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
 
 /** What a screen reader says for an icon with no label beside it: a clone adds Dual, so it isn't read as its original. */
 @Composable
-private fun spokenName(app: AppEntry): String = if (app.kind == ProfileKind.CLONE) "${app.label}, ${profileName(app)}" else app.label
+private fun spokenName(app: AppEntry): String = if (app.kind == ProfileKind.CLONE && app.iconFrom == null) "${app.label}, ${profileName(app)}" else app.label
 
 /** iOS App Library tile: three big icons and a mini cluster that opens the whole category. */
 @Composable
@@ -156,7 +156,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                                 Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                                 // A clone sits beside its original with the same name, as in the A to Z list.
-                                if (app.kind == ProfileKind.CLONE) Text(profileName(app), color = Color.White.copy(alpha = .6f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = Color.White.copy(alpha = .6f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                                     maxLines = 1, modifier = Modifier.testTag("category-profile-${app.id}"))
                             }
                         }
