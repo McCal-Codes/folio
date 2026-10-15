@@ -16,6 +16,9 @@ import android.os.UserHandle
 import android.os.UserManager
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,10 +41,14 @@ data class AppEntry(
     val user: UserHandle = Process.myUserHandle(),
     val userSerial: Long = 0,
     val profileLabel: String = "Personal",
+    /** Not from the personal profile: a work profile or a clone. [kind] says which. */
     val isWork: Boolean = false,
     val available: Boolean = true,
     /** The name Android reports, kept so a custom name can be changed or cleared without reloading apps. */
     val systemLabel: String = label,
+    val kind: ProfileKind = if (isWork) ProfileKind.WORK else ProfileKind.PERSONAL,
+    /** The stock app this one is shown as while Screenshot Mode swaps it ([ScreenshotDisguise]), or null. */
+    val iconFrom: AppEntry? = null,
 ) {
     val packageName: String get() = component.packageName
     /** A pinned shortcut (a website or app action someone added to Home) rather than an app. */
@@ -431,7 +438,19 @@ internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Bo
  */
 const val MORE_ROWS_SCHEMA = 9
 
-class LauncherModel(application: Application) : AndroidViewModel(application) {
+/**
+ * Home's state. A [readOnly] model (Discover's) shows the saved Home but never saves it, and never takes Home's place as
+ * [FolioSettingsBridge.liveModel], so a tile or Focus change made while it exists still reaches the model Home saves from.
+ */
+class LauncherModel(application: Application, private val readOnly: Boolean) : AndroidViewModel(application) {
+    constructor(application: Application) : this(application, readOnly = false)
+
+    companion object {
+        /** For windows beside Home, like Discover: see [readOnly]. */
+        val readOnlyFactory = viewModelFactory {
+            initializer { LauncherModel(this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!, readOnly = true) }
+        }
+    }
     private data class RefreshedApps(val entries: List<AppEntry>, val profiles: List<AppProfile>,
         val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>)
     private data class UndoImportSettings(val compact: LayoutPreset, val expanded: LayoutPreset, val labels: Boolean,
@@ -448,6 +467,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
+    /**
+     * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
+     * layout that restore made. They count only while that restore is still the one Undo would take back.
+     */
+    private var setAsideStacks: Pair<HomeLayout, Map<Int, List<Int>>>? = null
+    private fun stacksForUndo(): Map<Int, List<Int>> = setAsideStacks?.takeIf { it.first == undoLayout?.second }?.second.orEmpty()
     private var refreshing = false
     private var refreshPending = false
     private val invalidatedPackages = mutableSetOf<Pair<Long, String>>()
@@ -491,6 +516,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     }
     internal var completedRefreshes = 0
         private set
+    /** Whether a refresh has listed this phone's apps. A damaged layout's stand-in starts with none, and with loading already false. */
+    val appsListed get() = completedRefreshes > 0
+    /** Whether apps are being listed right now (so not listed yet is still loading, not a failure). */
+    val listingApps get() = refreshing
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
             // A package Folio didn't know is a new download (not an update or a profile coming back).
@@ -524,7 +553,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    init { launcherApps.registerCallback(callback); refresh(); FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this) }
+    init {
+        launcherApps.registerCallback(callback); refresh()
+        if (!readOnly) FolioSettingsBridge.liveModel = java.lang.ref.WeakReference(this)
+    }
 
     /** Settings › Refresh Icons: for a theme app that changes icons without telling launchers (#19). */
     fun reloadIcons() { iconsStale = true; IconPacks.clear(); refresh() }
@@ -566,8 +598,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val application = getApplication<Application>()
                     val (personal, personalSerial, associatedSerials, handles, profiles) = appProfiles()
                     val cachedBeforeProfiles = loadCachedApps().filterNot { entry -> entry.userSerial to entry.packageName in removed }
-                    val removedProfileSerials = removedAssociatedProfileSerials(
-                        cachedBeforeProfiles.filter(AppEntry::isWork).mapTo(mutableSetOf(), AppEntry::userSerial), associatedSerials)
+                    val removedProfileSerials = removedProfileSerials(cachedBeforeProfiles, associatedSerials)
                     val cached = cachedBeforeProfiles.filterNot { it.isWork && it.userSerial in removedProfileSerials }
                     val authoritativeProfiles = mutableSetOf<Long>()
                     authoritativeProfiles += removedProfileSerials
@@ -576,7 +607,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                         val descriptor = profiles.first { it.userSerial == serial }
                         val activityList = if (descriptor.available) runCatching { launcherApps.getActivityList(null, profile) }.getOrNull() else null
                         if (activityList == null) emptyList() else activityList.also { authoritativeProfiles += serial }.mapNotNull { info ->
-                            activityId(info, serial, personalSerial)?.let { id -> activityEntry(info, id, profile, descriptor, invalidated) }
+                            activityId(info, serial, personalSerial)?.takeIf { listedInProfile(descriptor.kind, info.applicationInfo?.flags ?: 0) }
+                                ?.let { id -> activityEntry(info, id, profile, descriptor, invalidated) }
                         }
                     }
                     // Pinned shortcuts (e.g. Chrome's "Add to Home screen"). Only the default Home app may read them;
@@ -610,8 +642,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     // Spell Chinese names in pinyin here, off the main thread, so search and the A–Z list don't wait.
                     entries.forEach { Pinyin.syllables(it.label) }
                     iconCache.keys.retainAll(entries.map { it.id }.toSet())
-                    RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, true,
-                        quiet = true, unlocked = false, available = false) }).distinctBy(AppProfile::userSerial),
+                    RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, it.kind == ProfileKind.WORK,
+                        quiet = true, unlocked = false, available = false, kind = it.kind) }).distinctBy(AppProfile::userSerial),
                         authoritativeProfiles.toSet(), removedProfileSerials)
                 }
                 mutable.update { old ->
@@ -624,7 +656,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     val pins = if (sourceSchema < 6 && needsMigration) migrateSchema5Apps(legacyPins) else legacyPins
                     val availableIds = entries.mapTo(mutableSetOf(), AppEntry::id)
                     val authoritative = apps.authoritativeProfiles
-                    val removedIds = removedAppIds(old.trackedAppIds(), availableIds,
+                    // Screenshot Mode's swap list lives in its own file, so its apps are checked here too.
+                    val removedIds = removedAppIds(old.trackedAppIds() + ScreenshotSwap.chosen(getApplication()), availableIds,
                         authoritative, temporarilyUnavailable, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
                         apps.removedProfiles)
                     // iOS "Add to Home Screen": a newly downloaded app also goes to the first free spot on Home.
@@ -650,7 +683,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
                     old.copy(apps = entries, profiles = profiles, homeSlots = reconciled.slots, leadingSlots = reconciled.leadingSlots,
                         dock = trimmedDock(reconciled.dock), folders = reconciled.folders,
                         iconStacks = IconStacks.prune(old.iconStacks, old.iconStacks.keys + old.iconStacks.values.flatten() - removedIds),
-                        appNames = old.appNames - removedIds, iconActions = old.iconActions - removedIds, appIconStyles = old.appIconStyles - removedIds.also { gone -> AppIconPictures.deleteAll(getApplication(), gone.filter { old.appIconStyles[it]?.hasPicture == true }) },
+                        appNames = old.appNames - removedIds, iconActions = old.iconActions - removedIds, appIconStyles = old.appIconStyles - removedIds.also { gone -> AppIconPictures.deleteAll(getApplication(), gone.filter { old.appIconStyles[it]?.hasPicture == true }); ScreenshotSwap.forget(getApplication(), gone) },
                         canUndoEdit = old.canUndoEdit && old.layout == reconciled, loading = false, homeAppsLoaded = true,
                         error = if (statePayloadInvalid) old.error else null)
                 }
@@ -688,31 +721,36 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             val baseIcon = application.packageManager.defaultActivityIcon
             val icon = runCatching { application.packageManager.getUserBadgedIcon(baseIcon, user) }.getOrDefault(baseIcon)
             AppEntry(id, item.getString("label"), launcherIcon(icon), component, user, serial,
-                item.optString("profile", if (isWork) "Work" else "Personal"), isWork, available = false)
+                item.optString("profile", if (isWork) "Work" else "Personal"), isWork, available = false,
+                kind = storedProfileKind(item.optString("kind").takeIf(String::isNotEmpty), isWork))
         }
     }.getOrDefault(emptyList())
 
     private data class AppProfiles(val personal: UserHandle, val personalSerial: Long, val associatedSerials: Set<Long>,
         val handles: List<UserHandle>, val profiles: List<AppProfile>)
 
-    /** The profiles Folio lists apps from (personal, and a supported work profile), and whether each can list them now. */
+    /** The profiles Folio lists apps from (personal, a work profile, clones; see [ProfileKind]), and whether each can list them now. */
     private fun appProfiles(): AppProfiles {
         val personal = Process.myUserHandle()
         val personalSerial = userManager.getSerialNumberForUser(personal)
         val associatedSerials = userManager.userProfiles.mapTo(mutableSetOf(), userManager::getSerialNumberForUser)
-        val handles = launcherApps.profiles
-            .filter { profile ->
-                val serial = userManager.getSerialNumberForUser(profile)
-                serial in associatedSerials && (serial == personalSerial || isSupportedWorkProfile(launcherApps, profile))
-            }
+        val kinds = launcherApps.profiles
+            .filter { profile -> userManager.getSerialNumberForUser(profile) in associatedSerials }
             .distinctBy(userManager::getSerialNumberForUser)
+            .associateWith { profile ->
+                if (userManager.getSerialNumberForUser(profile) == personalSerial) ProfileKind.PERSONAL
+                else launcherProfileKind(launcherApps, profile)
+            }
+            .filterValues { it != ProfileKind.SKIP }
+        val handles = kinds.keys.toList()
         val profiles = handles.map { profile ->
             val serial = userManager.getSerialNumberForUser(profile)
-            val isPersonal = serial == personalSerial
+            val kind = kinds.getValue(profile)
+            val isPersonal = kind == ProfileKind.PERSONAL
             val quiet = !isPersonal && runCatching { userManager.isQuietModeEnabled(profile) }.getOrDefault(false)
             val unlocked = runCatching { userManager.isUserUnlocked(profile) }.getOrDefault(isPersonal)
-            AppProfile(serial, if (isPersonal) "Personal" else "Work", isPersonal, !isPersonal,
-                quiet, unlocked, !quiet && unlocked)
+            AppProfile(serial, when (kind) { ProfileKind.PERSONAL -> "Personal"; ProfileKind.CLONE -> "Clone"; else -> "Work" },
+                isPersonal, kind == ProfileKind.WORK, quiet, unlocked, !quiet && unlocked, kind)
         }
         return AppProfiles(personal, personalSerial, associatedSerials, handles, profiles)
     }
@@ -743,14 +781,14 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         if (canSave && iconCache[id] == null && (descriptor.userSerial to info.componentName.packageName) !in invalidated) {
             savedIcons.read(id, info.componentName, sourceDir)?.let { (label, icon) ->
                 return AppEntry(id, label, icon, info.componentName, profile, descriptor.userSerial, descriptor.label,
-                    descriptor.isWork, available = true).also { iconCache[id] = it }
+                    !descriptor.isPersonal, available = true, kind = descriptor.kind).also { iconCache[id] = it }
             }
         }
         val label = info.label.toString()
         return iconCache[id]?.takeIf { it.label == label && it.available && it.component == info.componentName } ?: run {
             val icon = runCatching { info.getBadgedIcon(0) }.getOrElse { getApplication<Application>().packageManager.defaultActivityIcon }
             AppEntry(id, label, launcherIcon(icon), info.componentName, profile, descriptor.userSerial, descriptor.label,
-                descriptor.isWork, available = true).also {
+                !descriptor.isPersonal, available = true, kind = descriptor.kind).also {
                 iconCache[id] = it
                 if (canSave) unsavedIcons += SavedIcons.Saved(id, label, it.icon, info.componentName, sourceDir)
             }
@@ -769,7 +807,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             val icon = runCatching { launcherApps.getShortcutBadgedIconDrawable(info, densityDpi) }.getOrNull()
                 ?: getApplication<Application>().packageManager.defaultActivityIcon
             AppEntry(id, label, launcherIcon(icon), ComponentName(info.`package`, SHORTCUT_CLASS_PREFIX + info.id), profile,
-                descriptor.userSerial, descriptor.label, descriptor.isWork, available = true).also { iconCache[id] = it }
+                descriptor.userSerial, descriptor.label, !descriptor.isPersonal, available = true, kind = descriptor.kind).also { iconCache[id] = it }
         }
     }
 
@@ -783,7 +821,8 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         return handles.zip(profiles).filter { (_, descriptor) -> descriptor.available }.flatMap { (profile, descriptor) ->
             val serial = descriptor.userSerial
             val apps = runCatching { launcherApps.getActivityList(null, profile) }.getOrNull().orEmpty().mapNotNull { info ->
-                activityId(info, serial, personalSerial)?.takeIf(ids::contains)?.let { activityEntry(info, it, profile, descriptor, invalidated) }
+                activityId(info, serial, personalSerial)?.takeIf { it in ids && listedInProfile(descriptor.kind, info.applicationInfo?.flags ?: 0) }
+                    ?.let { activityEntry(info, it, profile, descriptor, invalidated) }
             }
             val shortcuts = runCatching { launcherApps.getShortcuts(LauncherApps.ShortcutQuery()
                 .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED), profile) }.getOrNull().orEmpty()
@@ -796,7 +835,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     private fun saveCachedApps(apps: List<AppEntry>) {
         val array = JSONArray().also { result -> apps.forEach { app -> result.put(JSONObject()
             .put("id", app.id).put("label", app.label).put("serial", app.userSerial)
-            .put("profile", app.profileLabel).put("work", app.isWork)) } }
+            .put("profile", app.profileLabel).put("work", app.isWork).putOpt("kind", storedProfileKind(app.kind))) } }
         appCatalogPrefs.edit().putString("apps", array.toString()).apply()
     }
 
@@ -919,32 +958,45 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * has already taken this phone's packages off, and it is what Layout History and Undo should give back.
      */
     fun applyImportedLayout(preview: LayoutImportPreview, before: LauncherState? = null): Boolean {
-        if (statePayloadInvalid) return false
+        // Over a damaged layout this is the way back (the notice's Restore): the basic Home shown in its place is
+        // nothing to undo to or keep in Layout History.
+        val recovering = statePayloadInvalid
+        // Before this phone's apps are listed, a backup reads every app as missing; leaving the damaged state then would save an empty Home.
+        if (recovering && !appsListed) return false
         val old = mutable.value
         val kept = before ?: old
-        if (old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
+        if (!recovering && old.layout == preview.layout && old.compact == preview.compact && old.expanded == preview.expanded &&
             old.portrait == preview.portrait && old.labels == preview.labels && old.googleSearch == preview.googleSearch && old.verticalStatus == preview.verticalStatus &&
             old.appNames + preview.appNames == old.appNames && old.appIconStyles + preview.appIconStyles == old.appIconStyles &&
             old.iconActions + preview.iconActions == old.iconActions) return false
-        if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
-        undoLayout = kept.layout to preview.layout
-        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait)
+        if (recovering) leaveDamagedLayout(restoring = true)
+        else if (old.layoutHistory && !old.loading) LayoutHistory.add(getApplication(), "Before restoring a backup", kept.layout)
+        // The backup's widgets get slot numbers nothing here uses, so a stack or clock look kept for Undo stays on its own widget.
+        val (restored, newSlots) = renumberRestoredWidgets(preview.layout,
+            maxOf(nextWidgetSlot(), kept.widgetPlacements.maxOfOrNull { it.slot + 1 } ?: 0))
+        val restoredSlots = restored.widgetPlacements.mapTo(mutableSetOf()) { it.slot }
+        undoLayout = (kept.layout to restored).takeUnless { recovering }
+        // A stack on a number the restored layout still uses can't stay on Home, but Undo brings it back whole.
+        setAsideStacks = (restored to old.widgetStacks.filterKeys { it in restoredSlots }).takeUnless { recovering }
+        undoImportSettings = UndoImportSettings(kept.compact, kept.expanded, kept.labels, kept.googleSearch, kept.verticalStatus, kept.portrait).takeUnless { recovering }
         // A restored name replaces the one on this phone; names this backup says nothing about are left alone.
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
-            homeSlots = preview.layout.slots, leadingSlots = preview.layout.leadingSlots, dock = trimmedDock(preview.layout.dock),
-            widgetPlacements = preview.layout.widgetPlacements, folders = preview.layout.folders,
-            widgetRestores = preview.layout.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet()),
-            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot; a clock
-            // that lands in a slot that used to hold another widget does not inherit that slot's look.
+            homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            widgetPlacements = restored.widgetPlacements, folders = restored.folders,
+            widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
+            // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
+            widgetStacks = WidgetStacks.prune(old.widgetStacks, old.widgetPlacements.map { it.slot }.toSet() - restoredSlots),
+            // A backup carries no clock styles, so a style only stays where the same Big Clock is still in the same slot, and
+            // follows that clock to its new number; a clock that lands where another widget was does not inherit that look.
             bigClockStyles = old.bigClockStyles.filterKeys { slot ->
                 old.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } &&
-                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } },
+                    preview.layout.widgetPlacements.any { it.slot == slot && it.id == BIG_CLOCK_WIDGET } }
+                .let { same -> same + same.mapNotNull { (slot, style) -> newSlots[slot]?.let { it to style } } },
             labels = preview.labels, googleSearch = preview.googleSearch, verticalStatus = preview.verticalStatus,
             // The backup brings its own presets and Side Bar, so what Full-Width Home remembered no longer applies.
-            fullWidthRestore = emptyMap(),
-            editRevision = old.editRevision + 1, canUndoEdit = true)
+            fullWidthRestore = emptyMap(), error = old.error.takeUnless { recovering },
+            editRevision = old.editRevision + 1, canUndoEdit = !recovering)
         persist()
         return true
     }
@@ -984,14 +1036,23 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val old = mutable.value
         val placement = old.layout.placement(slot) ?: return false
         val (primary, extras) = change(placement.id, old.widgetStacks[slot].orEmpty()) ?: return false
-        // Changing which widget a placement shows isn't undoable (like replacing a widget); clearing undo keeps
-        // retained ids and the stack map consistent.
-        undoLayout = null
-        undoImportSettings = null
-        mutable.value = old.copy(
+        // Changing which widget a placement shows isn't itself undoable, but it must not take an earlier Undo with it:
+        // the removal before it still has bindings waiting on that Undo. So the new id goes into both sides of the Undo.
+        val pending = undoLayout.takeIf { old.canUndoEdit && it?.second == old.layout }
+        fun HomeLayout.withPrimary() = copy(widgetPlacements = widgetPlacements.map { if (it.slot == slot) it.copy(id = primary) else it })
+        val next = old.copy(
             widgetPlacements = old.widgetPlacements.map { if (it.slot == slot) it.copy(id = primary) else it },
             widgetStacks = if (extras.isEmpty()) old.widgetStacks - slot else old.widgetStacks + (slot to extras),
-            canUndoEdit = false, editRevision = old.editRevision + 1)
+            canUndoEdit = pending != null, editRevision = old.editRevision + 1)
+        if (pending != null) {
+            val swapped = pending.first.withPrimary() to next.layout
+            setAsideStacks = setAsideStacks?.takeIf { it.first == pending.second }?.let { next.layout to it.second }
+            undoLayout = swapped
+        } else {
+            undoLayout = null
+            undoImportSettings = null
+        }
+        mutable.value = next
         persist()
         return true
     }
@@ -1032,7 +1093,9 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
      * widgets Android no longer has are left out, and Undo is offered like any other layout change.
      */
     fun restoreLayoutSnapshot(snapshot: LayoutSnapshot): Boolean {
-        if (statePayloadInvalid || mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        if (mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        // Over a damaged layout this is the way back, like a restored backup (see applyImportedLayout).
+        val recovering = statePayloadInvalid
         saveLayoutSnapshot("Before restoring", force = true)
         val old = mutable.value
         val before = snapshot.layout
@@ -1045,15 +1108,16 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             old.profiles.filter { it.available }.mapTo(mutableSetOf(), AppProfile::userSerial), emptySet(), emptySet(),
             userManager.getSerialNumberForUser(Process.myUserHandle()))
         val next = reconcileFolders(before.copy(widgetPlacements = widgets), removed)
-        if (old.layout == next) return false
-        undoLayout = old.layout to next
+        if (!recovering && old.layout == next) return false
+        if (recovering) leaveDamagedLayout(restoring = true)
+        undoLayout = (old.layout to next).takeUnless { recovering }
         undoImportSettings = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = trimmedDock(next.dock),
             widgetPlacements = next.widgetPlacements, folders = next.folders, widgetRestores = next.widgetRestores, minPages = next.minPages,
             // Only stacks of the restored widgets: a snapshot widget landing in a reused slot mustn't inherit another stack.
             widgetStacks = WidgetStacks.prune(old.widgetStacks, next.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in next.widgetPlacements.map { it.slot }.toSet() },
-            editRevision = old.editRevision + 1, canUndoEdit = true)
+            error = old.error.takeUnless { recovering }, editRevision = old.editRevision + 1, canUndoEdit = !recovering)
         persist()
         return true
     }
@@ -1079,9 +1143,12 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     // What turned the Focus on survives the app being closed, so a Focus a trigger turned on is still turned off when the trigger ends.
     private var triggerState = FocusTriggerState(
         byTrigger = triggerPrefs().getString("trigger_by", null),
-        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) })
+        reason = FocusReason.entries.firstOrNull { it.key == triggerPrefs().getString("trigger_reason", null) },
+        // A Focus turned off by hand while its trigger held stays off after the app is closed too, until its signals change.
+        suppressed = FocusTriggers.decodeSuppressed(triggerPrefs().getString("trigger_suppressed", null)))
     private fun triggerPrefs() = getApplication<android.app.Application>().getSharedPreferences("focus_rules", 0)
-    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key).apply()
+    private fun rememberTriggerState() = triggerPrefs().edit().putString("trigger_by", triggerState.byTrigger).putString("trigger_reason", triggerState.reason?.key)
+        .putString("trigger_suppressed", FocusTriggers.encodeSuppressed(triggerState.suppressed)).apply()
     private val focusReasonState = kotlinx.coroutines.flow.MutableStateFlow<FocusReason?>(triggerState.reason)
     /** Why the Focus that is on turned on by itself (unfolded, charging, headphones), or null when it was turned on by hand. */
     val focusReason: kotlinx.coroutines.flow.StateFlow<FocusReason?> get() = focusReasonState
@@ -1234,7 +1301,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
-            widgetStacks = WidgetStacks.prune(old.widgetStacks, before.widgetPlacements.map { it.slot }.toSet()),
+            widgetStacks = WidgetStacks.prune(old.widgetStacks + stacksForUndo(), before.widgetPlacements.map { it.slot }.toSet()),
             bigClockStyles = old.bigClockStyles.filterKeys { slot -> slot in before.widgetPlacements.map { it.slot }.toSet() },
             widgetRestores = before.widgetRestores, compact = settings?.compact ?: old.compact,
             expanded = settings?.expanded ?: old.expanded, portrait = if (settings != null) settings.portrait else old.portrait, labels = settings?.labels ?: old.labels,
@@ -1243,6 +1310,7 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
             editRevision = old.editRevision + 1)
         undoLayout = null
         undoImportSettings = null
+        setAsideStacks = null
         persist()
         return true
     }
@@ -1393,8 +1461,10 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
         val state = mutable.value
         val undoPlacements = if (state.canUndoEdit) undoLayout?.first?.widgetPlacements.orEmpty() else emptyList()
         val placements = state.widgetPlacements + undoPlacements
+        val slots = placements.map { it.slot }.toSet()
+        val setAside = if (state.canUndoEdit) WidgetStacks.retained(stacksForUndo(), undoPlacements.map { it.slot }.toSet()) else emptySet()
         // Stacked widgets are retained exactly as long as their placement (or its undoable copy) exists.
-        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, placements.map { it.slot }.toSet()) +
+        return (placements.map { it.id }.filter { it >= 0 } + WidgetStacks.retained(state.widgetStacks, slots) + setAside +
             TodayWidgets.retained(state.todayWidgets)).toSet()
     }
     val canPruneWidgetIds get() = !statePayloadInvalid
@@ -1457,20 +1527,35 @@ class LauncherModel(application: Application) : AndroidViewModel(application) {
     /** Starts over with a default Home after a damaged save; the damaged copy stays as `state_damaged_backup`. */
     fun resetDamagedLayout() {
         if (!statePayloadInvalid) return
+        leaveDamagedLayout(restoring = false)
+        mutable.update { it.copy(error = null) }
+        persist()
+        refresh()
+    }
+
+    /**
+     * Keeps the damaged save as `state_damaged_backup` and lets Home save again. A restored layout replaces what was
+     * loaded, so there is nothing left to migrate either, and a refresh that follows must not migrate it.
+     */
+    private fun leaveDamagedLayout(restoring: Boolean) {
         // Once, like the schema backups beside it: a second damaged layout must not write over the first one,
         // which may be the only copy of a Home someone spent an evening arranging.
         if (!prefs.contains("state_damaged_backup")) {
             prefs.getString("state", null)?.let { prefs.edit().putString("state_damaged_backup", it).apply() }
         }
         statePayloadInvalid = false
-        mutable.update { it.copy(error = null) }
-        persist()
-        refresh()
+        if (restoring) needsMigration = false
     }
+
+    /**
+     * What a Layout Backup saves, or null while the layout is damaged: Home then shows a basic stand-in, and a backup
+     * of it would be an empty Home.
+     */
+    fun stateForBackup(): LauncherState? = mutable.value.takeUnless { statePayloadInvalid }
 
     private fun persist() {
         persistPending = false
-        if (needsMigration || statePayloadInvalid) return
+        if (readOnly || needsMigration || statePayloadInvalid) return
         traced("Folio.persist", ::writeState)
     }
 

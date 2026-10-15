@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -103,7 +103,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         // The pages you open once live under General, as iOS keeps them under General › About.
         SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
-        SYSTEM_BRIDGE -> ADVANCED
+        SYSTEM_BRIDGE, SCREENSHOT_SWAP -> ADVANCED
         WHAT_TO_TEST -> HELP
         DEVELOPER -> ADVANCED
         MARKET -> TWEAKS // where tweaks come from
@@ -136,6 +136,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         TWEAK, LIBRARY_TWEAK, FOLD_TWEAK -> R.string.tweak
         ADVANCED -> R.string.advanced
         SYSTEM_BRIDGE -> R.string.system_bridge
+        SCREENSHOT_SWAP -> R.string.screenshot_swap_apps
         DEVELOPER -> R.string.developer
         NOTIFICATIONS -> R.string.notifications_control_center
         SEARCH -> R.string.search_app_library
@@ -527,7 +528,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             // Wallpaper color (follows the wallpaper when it changes)
                             val tone = LocalWallpaperTone.current
                             Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(tone.primary?.let { androidx.compose.ui.graphics.Color(vividTint(it)) } ?: androidx.compose.ui.graphics.Color.Gray)
+                                .background(wallpaperIconTint(tone)?.let { androidx.compose.ui.graphics.Color(it) } ?: androidx.compose.ui.graphics.Color.Gray)
                                 .then(if (state.iconTintFromWallpaper) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
                                 .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(true) }
                                 .description(R.string.wallpaper_color).semantics { selected = state.iconTintFromWallpaper },
@@ -856,6 +857,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         val screenshot by ScreenshotMode.on.collectAsState()
                         SettingsSwitch(stringResource(R.string.screenshot_mode), screenshot, ScreenshotMode::set, "screenshot-mode-switch")
                         CardNote(stringResource(R.string.for_sharing_your_setup_folio_shows_9_41))
+                        IosNavRow(stringResource(R.string.screenshot_swap_apps), null, { onPage(CustomizationPage.SCREENSHOT_SWAP) }, "screenshot-swap-row")
                     }
                     if (FolioMotion.switchVisible(sheetContext)) SettingsCard(stringResource(R.string.motion_pass)) {
                         SettingsSwitch(stringResource(R.string.motion_pass), FolioMotion.v2, { FolioMotion.setEnabled(sheetContext, it) }, "motion-pass-switch")
@@ -985,6 +987,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
                 CustomizationPage.SUPPORTER -> SupporterPage()
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
+                // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
+                CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsState().value.apps)
                 CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ })
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
@@ -1364,6 +1368,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_safe_mode_crash_reports, R.string.settings_keywords_safe_mode_crash_reports, CustomizationPage.ADVANCED),
     Triple(R.string.screenshot_mode, R.string.settings_keywords_screenshot_mode, CustomizationPage.ADVANCED),
     Triple(R.string.system_bridge, R.string.settings_keywords_system_bridge, CustomizationPage.SYSTEM_BRIDGE),
+    Triple(R.string.screenshot_swap_apps, R.string.settings_keywords_screenshot_swap, CustomizationPage.SCREENSHOT_SWAP),
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
@@ -1503,6 +1508,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.share_diagnostics to CustomizationPage.ADVANCED,
     R.string.capability_open_settings to CustomizationPage.ADVANCED,
     R.string.allow_system_access to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.screenshot_swap_all_third_party to CustomizationPage.SCREENSHOT_SWAP,
     R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
@@ -1738,6 +1744,16 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     message?.let { CardNote(it, Modifier.padding(horizontal = FolioSpace.TINY.dp)) }
 }
 
+/**
+ * The line under a Focus in the list. Without Do Not Disturb access a Focus only changes Home (Android is not told to
+ * silence anything), so an "on" Focus says so instead of promising more than it does (A-17).
+ */
+internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, on: Boolean, reason: FocusReason?, access: Boolean): String? {
+    if (!on) return if (mode.schedule != null) context.getString(R.string.scheduled) else null
+    val line = reason?.let { context.getString(R.string.focus_on_because, context.getString(it.label(mode))) } ?: context.getString(R.string.on)
+    return if (access) line else context.getString(R.string.focus_home_only, line)
+}
+
 /** iOS Settings › Focus: the list of Focuses, with the one that's on. */
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1748,7 +1764,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     SheetGroup {
         state.focusModes.forEachIndexed { index, mode ->
             if (index > 0) MenuDivider()
-            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", if (state.activeFocus == mode.id) (reason?.let { stringResource(R.string.focus_on_because, stringResource(it.label(mode))) } ?: stringResource(R.string.on)) else if (mode.schedule != null) stringResource(R.string.scheduled) else null) { onOpen(mode.id) }
+            TweakRow(mode.icon(), mode.color, mode.name, "focus-${mode.id}", focusRowStatus(context, mode, state.activeFocus == mode.id, reason, access)) { onOpen(mode.id) }
         }
     }
     CardNote(stringResource(R.string.focus_lets_you_silence_notifications_cha), Modifier.padding(horizontal = FolioSpace.TINY.dp))
@@ -2596,8 +2612,11 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             .padding(horizontal = 5.dp, vertical = 1.dp))
 }
 
+/** Whether Layout History lists its saved layouts: when it's on, and always while the saved layout is damaged. */
+internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean) = layoutHistory || layoutDamaged
+
 /** Layout History: automatic snapshots of Home before big changes, each restorable. */
-@Composable private fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
+@Composable internal fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { LayoutHistory.load(context) }
     val snapshots by LayoutHistory.snapshots.collectAsState()
@@ -2607,10 +2626,13 @@ internal fun folioIconBitmap(context: android.content.Context, size: Int = 216):
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.save_home_before_big_changes), Modifier.weight(1f, fill = false)) }
             IosSwitch(state.layoutHistory, model::setLayoutHistory, Modifier.testTag("layout-history-switch"))
         }
-        if (state.layoutHistory) {
+        // While the layout is damaged the setting reads off (Home shows a stand-in), but the damaged-layout notice sends
+        // people here to put an earlier layout back, so the saved ones are listed anyway. There's nothing to save then.
+        val damaged = model.layoutDamaged
+        if (layoutSnapshotsShown(state.layoutHistory, damaged)) {
             // Read here rather than in the click: the name is what the snapshot is called in the list below it.
             val savedByYou = stringResource(R.string.saved_by_you)
-            CardAction(stringResource(R.string.save_current_layout), onClick = { model.saveLayoutSnapshot(savedByYou, force = true) }, modifier = Modifier.testTag("layout-history-save"))
+            if (!damaged) CardAction(stringResource(R.string.save_current_layout), onClick = { model.saveLayoutSnapshot(savedByYou, force = true) }, modifier = Modifier.testTag("layout-history-save"))
             snapshots.forEach { snapshot ->
                 // Merged, like the switch row above: without it every saved layout offers a button TalkBack reads as
                 // just "Restore", and there is no way to hear which layout it would put back. Merged, the row is one

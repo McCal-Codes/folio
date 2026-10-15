@@ -1,16 +1,16 @@
 package com.mccal.folio.market
 
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.networknt.schema.JsonSchema
-import com.networknt.schema.JsonSchemaFactory
-import com.networknt.schema.SpecVersion
+import com.networknt.schema.Schema
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import tools.jackson.core.StreamReadFeature
+import tools.jackson.databind.DeserializationFeature
+import tools.jackson.databind.json.JsonMapper
 import java.io.File
 import kotlin.random.Random
 
@@ -30,14 +30,17 @@ import kotlin.random.Random
 class SchemaConformanceTest {
     private val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "CHANGELOG.md").exists() }
     private val schemaDir = File(root, "docs/sdk/schema/v1")
-    private val mapper = ObjectMapper()
-        .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+    private val mapper = JsonMapper.builder()
+        .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
         .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-    // index.schema.json refers to manifest.schema.json by its published URL; map that prefix to this folder so the
-    // tests read the schemas from disk and never reach for the network.
-    private val factory = JsonSchemaFactory.builder(JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012))
-        .schemaMappers { it.mapPrefix("https://folio.mccal.dev/schema/v1/", schemaDir.toURI().toString()) }
         .build()
+    // index.schema.json refers to manifest.schema.json by its published URL; serve that prefix from this folder so the
+    // tests read the schemas from disk and never reach for the network. 3.x loads nothing else by default.
+    private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12) { builder ->
+        builder.schemas { iri: String ->
+            iri.takeIf { it.startsWith(SCHEMA_URL) }?.let { File(schemaDir, it.removePrefix(SCHEMA_URL)) }?.takeIf { it.isFile }?.readText()
+        }
+    }
     private val manifestSchema = schema("manifest")
     private val depictionSchema = schema("depiction")
     private val entrySchema = schema("entry")
@@ -46,16 +49,17 @@ class SchemaConformanceTest {
     private val tweaksSchema = schema("tweaks")
     private val sourceDir = File(root, "docs/sdk/source")
 
-    private fun schema(name: String): JsonSchema = factory.getSchema(File(schemaDir, "$name.schema.json").readText())
+    private fun schema(name: String): Schema = registry.getSchema(File(schemaDir, "$name.schema.json").readText())
     private fun resource(name: String) = javaClass.getResource("/conformance/$name")!!.readText()
 
-    private fun schemaErrors(schema: JsonSchema, text: String): List<String> = try {
-        schema.validate(mapper.readTree(text)).map { it.message }
+    private fun schemaErrors(schema: Schema, text: String): List<String> = try {
+        // toString() keeps the instance location in front of the message, as 1.x's message did.
+        schema.validate(mapper.readTree(text)).map { it.toString() }
     } catch (e: Exception) {
         listOf("unparseable: ${e.message}")
     }
 
-    private fun agree(schema: JsonSchema, text: String, parse: (String) -> ParseResult<*>): String? {
+    private fun agree(schema: Schema, text: String, parse: (String) -> ParseResult<*>): String? {
         val errors = schemaErrors(schema, text)
         val result = parse(text)
         val clean = result is ParseResult.Ok && result.ignored.isEmpty()
@@ -68,7 +72,7 @@ class SchemaConformanceTest {
     }
 
     @Test fun `every file Folio publishes is valid for both the schema and the parser`() {
-        val files = mutableListOf<Triple<JsonSchema, String, (String) -> ParseResult<*>>>()
+        val files = mutableListOf<Triple<Schema, String, (String) -> ParseResult<*>>>()
         for (dir in sourceDir.resolve("packages").listFiles()!!.sortedBy { it.name }) {
             files += Triple(manifestSchema, File(dir, "manifest.json").readText(), PackageManifest::parse)
             files += Triple(depictionSchema, File(dir, "depiction.json").readText(), Depiction::parse)
@@ -193,7 +197,7 @@ class SchemaConformanceTest {
      * Mutates [seeds] and fails on any disagreement. [minValid] is how many mutants must still be valid for the run to
      * prove anything; small files where every field is required survive mutation far less often than a manifest does.
      */
-    private fun differential(schema: JsonSchema, seeds: List<String>, seed: Int, rounds: Int = ROUNDS, minValid: Int = rounds / 20,
+    private fun differential(schema: Schema, seeds: List<String>, seed: Int, rounds: Int = ROUNDS, minValid: Int = rounds / 20,
                              parse: (String) -> ParseResult<*>) {
         val random = Random(seed)
         val disagreements = LinkedHashMap<String, String>()
@@ -249,6 +253,7 @@ class SchemaConformanceTest {
 
     private companion object {
         const val ROUNDS = 4000
+        const val SCHEMA_URL = "https://folio.mccal.dev/schema/v1/"
         val CROSS_FIELD = listOf("doesn't match the manifest's")
         val FIELD_NAMES = listOf(
             "format", "id", "name", "version", "author", "minFolio", "section", "kind", "permissions", "screens", "depends", "conflicts",

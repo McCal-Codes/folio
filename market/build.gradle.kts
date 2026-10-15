@@ -5,7 +5,7 @@ plugins {
 // The Folio Market: package format, sources, installer and (later) its screens. See docs/sdk/.
 android {
     namespace = "com.mccal.folio.market"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig { minSdk = 31 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -26,14 +26,14 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20260814")
     // JUnit 5, not 6: jazzer-junit 0.30.0 is built against the JUnit 5 platform.
-    testImplementation(platform("org.junit:junit-bom:5.14.4"))
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.code-intelligence:jazzer-junit:0.30.0")
-    // Checks the parsers against the published JSON Schemas (draft 2020-12). 1.5.x on purpose: 3.x changes both the API
-    // and its Jackson version, and this only ever runs in tests.
-    testImplementation("com.networknt:json-schema-validator:1.5.9")
+    // Checks the parsers against the published JSON Schemas (draft 2020-12). Tests only: 3.x brings Jackson 3
+    // (tools.jackson), which needs Java 17 and never reaches the app.
+    testImplementation("com.networknt:json-schema-validator:3.0.8")
 }
 
 kotlin {

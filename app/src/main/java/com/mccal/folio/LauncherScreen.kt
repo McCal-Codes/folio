@@ -148,6 +148,7 @@ fun LauncherScreen(
     onShowWhatsNew: () -> Unit = {},
 ) {
     val cancelLabel = stringResource(R.string.cancel)
+    val swappedApps = LocalSwappedApps.current
     var sheet by rememberSaveable { mutableStateOf("") }
     var dockSlot by rememberSaveable { mutableIntStateOf(0) }
     var widgetSession by remember { mutableStateOf<WidgetPickerSession?>(null) }
@@ -167,6 +168,7 @@ fun LauncherScreen(
     val gateContext = androidx.compose.ui.platform.LocalContext.current
     val homeView = androidx.compose.ui.platform.LocalView.current
     val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val newFolderTitle = stringResource(R.string.new_folder_name) // in the phone's language, not always English
     val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
@@ -175,9 +177,33 @@ fun LauncherScreen(
     }
     var savedPage by rememberSaveable { mutableIntStateOf(0) }
     var lastHomePage by rememberSaveable { mutableIntStateOf(0) }
+    var revealFolderPage by remember { mutableStateOf<Int?>(null) }
     var libraryQuery by rememberSaveable { mutableStateOf("") }
     var pinQuery by rememberSaveable { mutableStateOf("") }
     val launcherActivity = androidx.activity.compose.LocalActivity.current as MainActivity
+    // Delete App: Android's own confirmation, then a notice that says what happened. A delete can't be undone, so no Undo;
+    // Folio's Home and folders let go of the app when Android says the package is gone, as for any uninstall.
+    var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    val uninstall = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+        val label = deleting ?: return@rememberLauncherForActivityResult
+        val pkg = deletingPackage
+        deleting = null; deletingPackage = null
+        when (deleteOutcome(result.resultCode, installResultOf(result.data), pkg == null || isInstalled(launcherActivity, pkg))) {
+            DeleteOutcome.DELETED -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_deleted, label))
+            DeleteOutcome.CANCELED -> Unit
+            DeleteOutcome.FAILED -> IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, label))
+        }
+    }
+    val deleteApp: (AppEntry) -> Unit = { app ->
+        deleting = app.label
+        deletingPackage = app.packageName
+        runCatching { uninstall.launch(uninstallIntent(app.packageName)) }.onFailure {
+            deleting = null; deletingPackage = null
+            IslandEvents.notice(launcherActivity, launcherActivity.getString(R.string.app_not_deleted, app.label))
+        }
+    }
     // The setting says Android's wallpaper but the window was built without it: rebuild it once to match.
     LaunchedEffect(state.systemWallpaper) {
         if (state.systemWallpaper && !launcherActivity.showsWallpaper && !WallpaperWindowRepair.tried) {
@@ -189,13 +215,19 @@ fun LauncherScreen(
     val marketSession = remember(model) { MarketSession(launcherActivity, ModelLauncher(model, launcherActivity)) }
     // Package recovery, as Home starts. First, an install the last process died in the middle of is put back. Then
     // Package Safe Mode: a package that was applied just before Folio crashed twice is turned off, so a bad one cannot
-    // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold.
+    // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold. Last, a
+    // package whose source has pulled the version on the phone is turned off, its settings kept.
     val recoveryContext = LocalContext.current
     LaunchedEffect(marketSession) {
+        var pulled = emptyList<com.mccal.folio.market.InstalledPackage>()
         val interrupted = withContext(Dispatchers.IO) {
-            marketSession.recoverInterrupted().also { if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash() }
+            marketSession.recoverInterrupted().also {
+                if (SafeMode.takeCrashedLastRun()) marketSession.noteCrash()
+                pulled = marketSession.turnOffPulled()
+            }
         }
         interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
+        pulled.forEach { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
     }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"
@@ -584,7 +616,7 @@ fun LauncherScreen(
     fun finishDrag(cancelled: Boolean) {
         val source = drag.source ?: return
         val moved = drag.moved
-        val rawDestination = if (moved && !cancelled) drag.destination(drag.pointer, eligibleDragPages)?.target else null
+        val rawDestination = drag.dropTarget(cancelled, eligibleDragPages)
         val destination = if (rawDestination is DropTarget.Home && source.target is DropTarget.Widget) {
             model.placement(source.target.index)?.let {
                 DropTarget.Home(adjustedWidgetDropIndex(rawDestination.index, it, source.bounds, drag.origin))
@@ -609,7 +641,7 @@ fun LauncherScreen(
             // Drop an app on another app, like iOS and Android: the two become a new folder instead of swapping
             // places. Dropping on an existing folder already goes through DropTarget.Folder above.
             destination is DropTarget.Home && mergesAt(source.appId, destination.index) != null ->
-                model.createFolder(source.appId!!, mergesAt(source.appId, destination.index)!!, destination.index) != null
+                model.createFolder(source.appId!!, mergesAt(source.appId, destination.index)!!, destination.index, newFolderTitle) != null
             destination != null && source.appId != null -> model.applyDrop(source.appId, destination)
             else -> false
         }
@@ -1275,7 +1307,7 @@ fun LauncherScreen(
                             },
                             onClear = { model.removePlacement(DropTarget.Dock(dockSlot)) },
                             onLongClick = { overlays.menu = it.id; sheet = "" },
-                            canSelect = { canPlaceInDock(state.layout, it.id) },
+                            canSelect = { canPlaceInDock(state.layout, it.id) }, refusal = { dockRefusal(state.layout, it.id) },
                             blockedHint = if (state.dock.none { it == null }) stringResource(R.string.dock_full_move_an_app_out_first) else null)
                         "pins" -> Column(Modifier.fillMaxHeight(.9f).imePadding()) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.XL.dp), horizontalArrangement = Arrangement.End) {
@@ -1324,7 +1356,7 @@ fun LauncherScreen(
                                 topRowHeightDp = topPitch, appRowHeightDp = geometry.rowHeight)
                             val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) } ?: builtinWidgetConstraints(placement.id)
                             WidgetActions(placement, constraints, rows = pageRows(placement.page),
-                                stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets) },
+                                stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets, swappedApps) },
                                 stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
                                 onAddToStack = {
                                     picker.stackSlot = placement.slot; picker.slot = placement.slot
@@ -1703,7 +1735,7 @@ fun LauncherScreen(
                     Column(Modifier.padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Rounded.Widgets, null, tint = Ink)
                         Spacer(Modifier.height(8.dp))
-                        Text(remember(id, widgets) { widgetLabel(launcherActivity, id, widgets) }, color = Ink, maxLines = 2, textAlign = TextAlign.Center)
+                        Text(remember(id, widgets, swappedApps) { widgetLabel(launcherActivity, id, widgets, swappedApps) }, color = Ink, maxLines = 2, textAlign = TextAlign.Center)
                     }
                 }
             }
@@ -1739,7 +1771,7 @@ fun LauncherScreen(
                 val clockLow = (BigClockBounds.bySlot[slot]?.center?.y ?: 0f) > windowHeight / 2f
                 Box(Modifier.fillMaxSize(), contentAlignment = if (clockLow) Alignment.TopCenter else Alignment.BottomCenter) {
                     ClockEditBar(slot, state.bigClockStyles[slot], { model.setBigClockStyle(slot, it) },
-                        systemWallpaper = !launcherBackgroundEnabled(launcherActivity), onDone = { clockEditSlot = null }, enterFromTop = clockLow,
+                        onDone = { clockEditSlot = null }, enterFromTop = clockLow,
                         modifier = if (clockLow) Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
                             else Modifier.navigationBarsPadding().padding(bottom = FolioSpace.LARGE.dp))
                 }
@@ -1849,7 +1881,23 @@ fun LauncherScreen(
                 onInfo = { onAppInfo(app); overlays.menu = null },
                 onRename = { overlays.rename = app.id; overlays.menu = null },
                 onEditIcon = if (app.isShortcut) null else {{ overlays.iconEditor = app.id; overlays.menu = null }},
-                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null)
+                onStack = if (pinned) {{ overlays.stackEditor = app.id; overlays.menu = null }} else null,
+                onRemoveApp = { overlays.removeApp = app.id; overlays.menu = null },
+                onDeleteApp = if (!app.isShortcut && canDelete(cameWithPhone(launcherActivity, app), app.isWork)) {{
+                    overlays.menu = null; deleteApp(app) }} else null)
+        }
+        appsById[overlays.removeApp]?.let { app ->
+            val onHome = state.layout.indexOfShortcut(app.id) != null
+            val options = remember(app.id, app.iconFrom, onHome) { removeOptions(cameWithPhone(launcherActivity, app), app.isWork, onHome) }
+            RemoveAppAlert(app, options, onDismiss = { overlays.removeApp = null }, onChoice = { choice ->
+                overlays.removeApp = null
+                when (choice) {
+                    RemoveChoice.DELETE -> deleteApp(app)
+                    RemoveChoice.HIDE -> model.setHidden(app.id, true)
+                    RemoveChoice.REMOVE_FROM_HOME -> model.setPinned(app.id, false)
+                    RemoveChoice.APP_INFO -> onAppInfo(app)
+                }
+            })
         }
         appsById[overlays.iconEditor]?.let { app ->
             ModalBottomSheet(onDismissRequest = { overlays.iconEditor = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
@@ -1871,12 +1919,19 @@ fun LauncherScreen(
                     if (model.removeLastEmptyPage()) scope.launch { pager.animateScrollToPage(homePages - 2) }
                 }} else null)
         }
+        revealFolderPage?.let { page ->
+            LaunchedEffect(page, homePages) { if (page < homePages) { pager.animateScrollToPage(page); revealFolderPage = null } }
+        }
         overlays.newFolder?.let { firstId ->
             val first = appsById[firstId]
             // Existing folders first (the only other way in is dragging onto one), then a new folder with another app.
             val folders = state.folders.filter { firstId !in it.appIds }
             AlertDialog(onDismissRequest = { overlays.newFolder = null },
-                title = { Text(if (folders.isEmpty()) "Create folder with ${first?.label ?: "app"}" else "Add ${first?.label ?: "app"} to a folder") },
+                title = { Text(when {
+                    first == null -> stringResource(if (folders.isEmpty()) R.string.create_folder else R.string.add_to_folder)
+                    folders.isEmpty() -> stringResource(R.string.create_folder_with_1_s, first.label)
+                    else -> stringResource(R.string.add_1_s_to_a_folder, first.label)
+                }) },
                 text = { LazyColumn(Modifier.heightIn(max = 420.dp).testTag("folder-app-picker")) {
                     items(folders, key = { it.id }) { folder ->
                         TextButton(onClick = { model.addAppToFolder(folder.id, firstId); overlays.newFolder = null },
@@ -1886,18 +1941,19 @@ fun LauncherScreen(
                         }
                     }
                     if (folders.isNotEmpty()) item("new-folder-header") {
-                        Text(stringResource(R.string.new_folder_with), style = MaterialTheme.typography.labelLarge,
+                        Text(stringResource(R.string.new_folder_with), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f),
                             modifier = Modifier.padding(start = FolioSpace.MEDIUM.dp, top = FolioSpace.COMFY.dp, bottom = FolioSpace.TINY.dp))
                     }
-                    items(pickerApps(state).filter { it.id != firstId && it.available }, key = { it.id }) { second ->
+                    items(pickerApps(state).filter { it.id != firstId && it.available && canStartFolderWith(state.layout, it.id) }, key = { it.id }) { second ->
                         TextButton(onClick = {
                             val preferredPage = state.layout.indexOfShortcut(firstId)?.let(::homeCellPage)
                                 ?.takeIf { it >= 0 || expandedWorkspace } ?: lastHomePage.coerceIn(0, homePages - 1)
                             val blocked = state.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }
-                            val targetIndex = (0 until HOME_CELLS).map { homeCellIndex(preferredPage, it) }
-                                .firstOrNull { it !in blocked && homeCellShown(it, homeAppRows) && state.layout.slotAt(it) in listOf(null, firstId, second.id) }
-                                ?: state.layout.indexOfShortcut(firstId)
-                            if (targetIndex != null) model.createFolder(firstId, second.id, targetIndex)
+                            val pages = (if (expandedWorkspace) listOf(-1) else emptyList()) + (0 until homePages)
+                            val targetIndex = newFolderCell(state.layout, firstId, second.id, preferredPage, pages, blocked) { homeCellShown(it, homeAppRows) }
+                            // Another page, or a new one, would leave the folder out of sight, so Home turns to it.
+                            if (model.createFolder(firstId, second.id, targetIndex, newFolderTitle) != null && homeCellPage(targetIndex) != preferredPage)
+                                revealFolderPage = homeCellPage(targetIndex)
                             overlays.newFolder = null
                         }, modifier = Modifier.fillMaxWidth().testTag("folder-app-${second.id}")) {
                             Text(second.label, Modifier.fillMaxWidth())

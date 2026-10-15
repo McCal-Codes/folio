@@ -102,7 +102,8 @@ internal fun pickerApps(state: LauncherState): List<AppEntry> = state.apps.filte
 
 @Composable
 internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry) -> Unit, onClear: () -> Unit,
-    onLongClick: (AppEntry) -> Unit, canSelect: (AppEntry) -> Boolean = { true }, blockedHint: String? = null) {
+    onLongClick: (AppEntry) -> Unit, canSelect: (AppEntry) -> Boolean = { true }, blockedHint: String? = null,
+    refusal: (AppEntry) -> DockRefusal? = { null }) {
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) { apps.filter { appMatches(it, query.trim()) } }
     Column(Modifier.fillMaxWidth().fillMaxHeight(.88f).padding(horizontal = FolioSpace.XL.dp).imePadding()) {
@@ -121,7 +122,14 @@ internal fun AppPicker(apps: List<AppEntry>, dockSlot: Int?, onSelect: (AppEntry
                     .alpha(if (enabled) 1f else .45f)
                     .padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(app, null, Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
-                    Text(app.label, Modifier.padding(start = FolioSpace.LARGE.dp).weight(1f), maxLines = 2)
+                    // A greyed-out app says why when the reason is its own (in a folder); a full dock is said once, above.
+                    val inFolder = if (enabled) null else refusal(app) as? DockRefusal.InFolder
+                    Column(Modifier.padding(start = FolioSpace.LARGE.dp).weight(1f)) {
+                        Text(app.label, maxLines = 2)
+                        if (inFolder != null) Text(stringResource(R.string.dock_picker_in_folder),
+                            style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag("picker-reason-${app.id}"))
+                    }
                     if (dockSlot != null && enabled) Icon(Icons.Rounded.AddCircle, stringResource(R.string.choose_named, app.label), tint = LocalAccent.current.ink)
                 }
             }

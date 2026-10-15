@@ -171,6 +171,6 @@ internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: Lis
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onDone).padding(FolioSpace.SMALL.dp))
         }
         AppCheckList(shown, query, { query = it }, checked = { it.id in chosen }, enabled = { it.id in chosen || chosen.size < IconStacks.MAX },
-            checkedLabel = "In stack", uncheckedLabel = "Not in stack", onToggle = { onToggle(it.id) }, modifier = Modifier.weight(1f))
+            checkedLabel = stringResource(R.string.in_stack), uncheckedLabel = stringResource(R.string.not_in_stack), onToggle = { onToggle(it.id) }, modifier = Modifier.weight(1f))
     }
 }
