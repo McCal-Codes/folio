@@ -44,11 +44,40 @@ internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
     outline = Color(0xFF545458), outlineVariant = Color(0xFF38383A), error = FolioColors.Red,
 )
 
-/** Set while any launcher sheet is open, so Home blurs behind it like the other overlays. */
-internal val LauncherSheetsOpen = androidx.compose.runtime.mutableIntStateOf(0)
+/**
+ * The sheets, menus or pages one Home screen has open. Each one holds its own entry for as long as it is on screen, so
+ * Home can tell which are its own: a hand-counted number shared by every Home instance in the process let one instance's
+ * sheet (stopped behind another) keep the other one blurred with nothing in front, until Folio was force-stopped.
+ * Closing an entry twice does nothing, and [closeAllOf] clears whatever an instance leaves when it goes.
+ */
+internal class OpenWindows {
+    class Entry internal constructor(internal val owner: Any?)
+
+    private val entries = androidx.compose.runtime.mutableStateListOf<Entry>()
+
+    /** Something belonging to [owner] (the activity showing it) is now open; hand the result to [close] when it is not. */
+    fun open(owner: Any?): Entry = Entry(owner).also { entries.add(it) }
+    fun close(entry: Entry) { entries.remove(entry) }
+    fun closeAllOf(owner: Any?) { entries.removeAll { it.owner === owner } }
+    fun isOpen(owner: Any?): Boolean = entries.any { it.owner === owner }
+    fun anyOpen(): Boolean = entries.isNotEmpty()
+}
+
+/** Open while any launcher sheet is up, so Home blurs behind it like the other overlays. */
+internal val LauncherSheets = OpenWindows()
 
 /** Full-screen pages (Setup, Settings pages): nothing behind them is visible, so Home skips its blur while one is up. */
-internal val LauncherPagesOpen = androidx.compose.runtime.mutableIntStateOf(0)
+internal val LauncherPages = OpenWindows()
+
+/** Holds an entry in [windows] for the activity showing this composition while the caller is on screen. */
+@androidx.compose.runtime.Composable
+internal fun RegisterOpenWindow(windows: OpenWindows, active: Boolean = true) {
+    val owner = androidx.compose.ui.platform.LocalContext.current.asActivity()
+    androidx.compose.runtime.DisposableEffect(owner, active) {
+        val entry = if (active) windows.open(owner) else null
+        onDispose { entry?.let(windows::close) }
+    }
+}
 
 /** How far a back swipe has gone over the full-screen Settings page (0–1), for predictive back. */
 internal val SheetBackProgress = androidx.compose.runtime.mutableFloatStateOf(0f)
