@@ -775,7 +775,6 @@
     <string name="color">颜色</string>
     <string name="white">白色</string>
     <string name="weight">粗细</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android 不允许应用读取系统壁纸，因此壁纸和自定义颜色需要 Folio 自己的图片作为 Home 背景。</string>
     <string name="text_1_s_unavailable">%1$s 不可用</string>
     <string name="headphones">耳机</string>
     <string name="fixes_and_improvements">修复与改进</string>
@@ -1983,6 +1982,10 @@
     <string name="delete_app">删除 App</string>
     <string name="app_deleted">已删除 %1$s</string>
     <string name="app_not_deleted">无法删除 %1$s</string>
+    <string name="clock_font">字体</string>
+    <string name="clock_colors_android_wallpaper">使用 Android 壁纸时，颜色取自壁纸的主要颜色，时间后面的柔和阴影让它保持清晰。</string>
+    <string name="clock_colors_system_palette">Android 没有提供这张壁纸的颜色，所以这里使用手机的主题颜色（调色板）。调色板取自壁纸时，这些颜色会跟随壁纸。时间后面的柔和阴影让它保持清晰。</string>
+    <string name="clock_no_android_wallpaper_colors">Android 没有提供这张壁纸的颜色，所以只能选择自动和白色。有些动态壁纸从不提供颜色。</string>
     <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
     <string name="in_stack">在叠放中</string>
     <string name="not_in_stack">不在叠放中</string>
