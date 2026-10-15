@@ -179,6 +179,7 @@ internal fun SettingsPageBack(page: CustomizationPage, onBack: () -> Unit) =
 
 @Composable
 internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, model: LauncherModel,
+    initiallyUpright: Boolean = false,
     isDefaultHome: Boolean, page: CustomizationPage, onPage: (CustomizationPage) -> Unit,
     onMakeDefault: () -> Unit, onClose: () -> Unit, onEditPins: () -> Unit, onWidget: (Int) -> Unit,
     onAddWidget: (Int) -> Unit, onRemoveWidget: (Int) -> Unit, onWallpaperPreview: () -> Unit,
@@ -193,7 +194,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 ) {
     var wide by rememberSaveable { mutableStateOf(initiallyWide) }
     // Which inner layout the layout sliders edit, when the upright one is separate.
-    var upright by rememberSaveable { mutableStateOf(false) }
+    var upright by rememberSaveable { mutableStateOf(initiallyUpright) }
     var tweakId by rememberSaveable { mutableStateOf(SettingsMemory.tweakId) }
     var focusId by rememberSaveable { mutableStateOf(SettingsMemory.focusId) }
     SideEffect { SettingsMemory.tweakId = tweakId; SettingsMemory.focusId = focusId }
@@ -2928,7 +2929,8 @@ internal fun releaseNoteLines(markdown: String): List<String> = markdown.lines()
 /** Why Automatic landed on this many rows: which screens Folio has measured, and which one sets the limit. */
 internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
     val cover = state.homeFitCompact
-    val inner = state.homeFitExpanded
+    // The inner screen's number is the smaller of its sideways and upright fits (0 = not measured), the one that limits it.
+    val inner = listOf(state.homeFitExpanded, state.homeFitUpright).filter { it > 0 }.minOrNull() ?: 0
     return when {
         state.homeRows > 0 -> strings.plural(R.plurals.rows_note_fixed, state.homeRows, state.homeRows)
         cover == 0 && inner == 0 -> strings.get(R.string.rows_note_unmeasured)
