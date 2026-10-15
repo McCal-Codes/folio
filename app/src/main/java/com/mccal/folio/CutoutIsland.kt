@@ -151,6 +151,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     with(density) {
         val camera = cutout?.ltrb()
         val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density)
+        // Where the camera really is: the snap target for a drag, even when the pill is drawn at top center instead.
+        val realCamera = islandGeometry(camera, windowWidth, density.density)
         val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density)
         val camW = geometry.camW.dp
         val pillH = geometry.pillH.dp
@@ -190,8 +192,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         dragging = false
                         val newCenterX = (geometry.centerXPx + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
                         val newTopDp = (geometry.top + dragOffset.y / density.density).coerceAtLeast(4f)
-                        val nearCamera = kotlin.math.abs(newCenterX - cameraGeometry.centerXPx) < 56.dp.toPx() &&
-                            kotlin.math.abs(newTopDp - cameraGeometry.top) < 40f && cutout != null
+                        val nearCamera = cutout != null && islandSnapsToCamera(newCenterX, newTopDp, realCamera, density.density)
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
                             .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
                         IslandPosition.save(context, wide, landscape, custom)
@@ -358,6 +359,10 @@ internal fun cameraOnTopEdge(camera: IntArray, windowWidthPx: Int, windowHeightP
     if (windowWidthPx <= 0 || windowHeightPx <= 0) return true
     return camera[1] <= minOf(camera[0], windowWidthPx - camera[2], windowHeightPx - camera[3])
 }
+
+/** Whether a pill dropped at [centerXPx], [topDp] is close enough to the real camera ([camera]) to snap back to it. */
+internal fun islandSnapsToCamera(centerXPx: Float, topDp: Float, camera: IslandGeometry, density: Float): Boolean =
+    kotlin.math.abs(centerXPx - camera.centerXPx) < 56f * density && kotlin.math.abs(topDp - camera.top) < 40f
 
 /** Left of a pill [widthPx] wide centered on [centerXPx], kept the usual margin in from both screen edges. */
 internal fun islandLeftPx(centerXPx: Float, widthPx: Float, windowWidthPx: Int, density: Float): Float {

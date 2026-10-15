@@ -89,6 +89,17 @@ class IslandPlacementTest {
         assertEquals(1248 - 200 * 2.625f - 12 * 2.625f, left, .01f)
     }
 
+    @Test fun `with a side camera a drag snaps to the real camera, not to top center`() {
+        val camera = innerTurned90
+        val w = 1848; val h = 2448; val d = 2.625f
+        val real = islandGeometry(camera, w, d)
+        val fallback = islandCameraGeometry(camera, w, h, d)
+        // The pill is drawn at top center, but the snap target is still the physical camera on the left edge.
+        assertEquals(w / 2f, fallback.centerXPx, .5f)
+        assertTrue(islandSnapsToCamera(real.centerXPx, real.top, real, d))
+        assertTrue(!islandSnapsToCamera(fallback.centerXPx, fallback.top, real, d))
+    }
+
     @Test fun `Home and the overlay use the same saved spot key`() {
         // Cover landscape is 751 dp wide but short; it used to count as wide on Home and not over apps.
         assertTrue(islandWideWindow(1972, 2.625f, 1f))
