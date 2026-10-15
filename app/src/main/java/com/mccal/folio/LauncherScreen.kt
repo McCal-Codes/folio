@@ -80,6 +80,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -218,6 +219,7 @@ fun LauncherScreen(
     // keep Home from opening. It counts only when the last run really crashed, never for a fold or an unfold. Last, a
     // package whose source has pulled the version on the phone is turned off, its settings kept.
     val recoveryContext = LocalContext.current
+    val recoveryResources = LocalResources.current
     LaunchedEffect(marketSession) {
         var pulled = emptyList<com.mccal.folio.market.InstalledPackage>()
         val interrupted = withContext(Dispatchers.IO) {
@@ -226,8 +228,8 @@ fun LauncherScreen(
                 pulled = marketSession.turnOffPulled()
             }
         }
-        interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
-        pulled.forEach { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
+        interrupted?.let { IslandEvents.notice(recoveryContext, recoveryResources.getString(R.string.market_install_put_back, it.name)) }
+        pulled.forEach { IslandEvents.notice(recoveryContext, recoveryResources.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
     }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"

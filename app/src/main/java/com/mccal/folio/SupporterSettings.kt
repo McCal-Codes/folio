@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -52,6 +53,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun SupporterPage() {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var code by remember { mutableStateOf(Supporter.code(context)) }
     var stored by remember { mutableStateOf(Supporter.storedText(context)) }
     var beta by remember { mutableStateOf(Supporter.betaOn(context)) }
@@ -123,10 +125,10 @@ internal fun SupporterPage() {
             is BetaCodes.Result.Valid -> {
                 code = result.code; stored = Supporter.storedText(context); problem = null; redeeming = false
             }
-            is BetaCodes.Result.Expired -> problem = context.getString(R.string.that_code_has_run_out_ko_fi_codes_have_a)
-            BetaCodes.Result.Withdrawn -> problem = context.getString(R.string.that_code_has_been_withdrawn_if_you_thin)
-            BetaCodes.Result.NotOurs -> problem = context.getString(R.string.folio_doesn_t_recognize_that_code_check)
-            BetaCodes.Result.Unreadable -> problem = context.getString(R.string.that_doesn_t_look_like_a_folio_code_past)
+            is BetaCodes.Result.Expired -> problem = resources.getString(R.string.that_code_has_run_out_ko_fi_codes_have_a)
+            BetaCodes.Result.Withdrawn -> problem = resources.getString(R.string.that_code_has_been_withdrawn_if_you_thin)
+            BetaCodes.Result.NotOurs -> problem = resources.getString(R.string.folio_doesn_t_recognize_that_code_check)
+            BetaCodes.Result.Unreadable -> problem = resources.getString(R.string.that_doesn_t_look_like_a_folio_code_past)
         }
     })
 }
@@ -181,6 +183,7 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
  */
 @Composable private fun DeveloperCard(onFaceChange: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var unlocked by remember { mutableStateOf(Dev.unlocked(context)) }
     var face by remember { mutableStateOf(Dev.face(context)) }
     var channel by remember { mutableStateOf(Dev.channel(context)) }
@@ -228,10 +231,10 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
     if (unlocking) RedeemAlert(onCancel = { unlocking = false }, onRedeem = { typed ->
         when (Dev.unlock(context, typed)) {
             is BetaCodes.Result.Valid -> { unlocked = true; face = Dev.face(context); problem = null; unlocking = false }
-            BetaCodes.Result.NotOurs -> problem = context.getString(R.string.that_code_doesn_t_carry_the_developer_scope)
-            is BetaCodes.Result.Expired -> problem = context.getString(R.string.that_code_has_run_out_ko_fi_codes_have_a)
-            BetaCodes.Result.Withdrawn -> problem = context.getString(R.string.that_code_has_been_withdrawn_if_you_thin)
-            BetaCodes.Result.Unreadable -> problem = context.getString(R.string.that_doesn_t_look_like_a_folio_code_past)
+            BetaCodes.Result.NotOurs -> problem = resources.getString(R.string.that_code_doesn_t_carry_the_developer_scope)
+            is BetaCodes.Result.Expired -> problem = resources.getString(R.string.that_code_has_run_out_ko_fi_codes_have_a)
+            BetaCodes.Result.Withdrawn -> problem = resources.getString(R.string.that_code_has_been_withdrawn_if_you_thin)
+            BetaCodes.Result.Unreadable -> problem = resources.getString(R.string.that_doesn_t_look_like_a_folio_code_past)
         }
     })
 }

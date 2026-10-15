@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +62,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     systemWallpaper: Boolean, onWallpaper: (Boolean) -> Unit, onFinish: () -> Unit,
     state: LauncherState? = null, model: LauncherModel? = null, onOpenBridge: () -> Unit = {}) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val prefs = remember { context.getSharedPreferences("setup_experience", Context.MODE_PRIVATE) }
     var tick by remember { mutableIntStateOf(0) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -74,21 +76,21 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Home, a quiet step only when Shizuku or a root manager is already on the phone, and the last page.
     val androidStart = state?.startingPoint() == StartingPoint.ANDROID
     val optionalAccess = remember { OptionalAccess.found { pkg -> runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess } }
-    val all = remember(androidStart, optionalAccess) {
+    val all = remember(androidStart, optionalAccess, resources) {
         listOf(
-            OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, context.getString(R.string.welcome_to_folio),
-                context.getString(R.string.onboarding_welcome_detail),
-                action = context.getString(R.string.continue_button), optional = false, appIcon = true),
+            OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, resources.getString(R.string.welcome_to_folio),
+                resources.getString(R.string.onboarding_welcome_detail),
+                action = resources.getString(R.string.continue_button), optional = false, appIcon = true),
             // Where you are coming from: how Folio starts. Skipping keeps today's defaults, which are the iPhone starting point.
-            OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, context.getString(R.string.where_are_you_coming_from),
-                context.getString(R.string.starting_point_detail), optional = false),
-            OnboardingPage("nav", Icons.Rounded.Navigation, FolioColors.Value.Blue, context.getString(R.string.onboarding_nav_title), "", optional = false),
-            OnboardingPage("home", Icons.Rounded.Home, FolioColors.Value.Blue, context.getString(R.string.make_folio_your_home),
-                context.getString(R.string.onboarding_home_detail),
-                action = context.getString(R.string.choose_home_app), done = { isDefaultHome }, onAction = onMakeDefault),
-            OnboardingPage("adv", Icons.Rounded.Tune, FolioColors.Value.Indigo, context.getString(R.string.onboarding_adv_title), "", optional = false),
-            OnboardingPage("done", Icons.Rounded.CheckCircle, FolioColors.Value.Green, context.getString(R.string.youre_all_set),
-                context.getString(R.string.a_few_things_to_try), action = context.getString(R.string.get_started), optional = false),
+            OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, resources.getString(R.string.where_are_you_coming_from),
+                resources.getString(R.string.starting_point_detail), optional = false),
+            OnboardingPage("nav", Icons.Rounded.Navigation, FolioColors.Value.Blue, resources.getString(R.string.onboarding_nav_title), "", optional = false),
+            OnboardingPage("home", Icons.Rounded.Home, FolioColors.Value.Blue, resources.getString(R.string.make_folio_your_home),
+                resources.getString(R.string.onboarding_home_detail),
+                action = resources.getString(R.string.choose_home_app), done = { isDefaultHome }, onAction = onMakeDefault),
+            OnboardingPage("adv", Icons.Rounded.Tune, FolioColors.Value.Indigo, resources.getString(R.string.onboarding_adv_title), "", optional = false),
+            OnboardingPage("done", Icons.Rounded.CheckCircle, FolioColors.Value.Green, resources.getString(R.string.youre_all_set),
+                resources.getString(R.string.a_few_things_to_try), action = resources.getString(R.string.get_started), optional = false),
         ).filter { page ->
             when (page.key) {
                 "nav" -> androidStart
@@ -167,10 +169,10 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     }
                     if (p.key == "done") {
                         val tips = listOf(
-                            Icons.Rounded.TouchApp to context.getString(R.string.onboarding_tip_hold_app),
-                            Icons.Rounded.Search to context.getString(R.string.swipe_down_on_home_for_spotlight),
-                            Icons.Rounded.Settings to context.getString(R.string.onboarding_tip_settings),
-                            Icons.Rounded.SwipeUp to context.getString(
+                            Icons.Rounded.TouchApp to resources.getString(R.string.onboarding_tip_hold_app),
+                            Icons.Rounded.Search to resources.getString(R.string.swipe_down_on_home_for_spotlight),
+                            Icons.Rounded.Settings to resources.getString(R.string.onboarding_tip_settings),
+                            Icons.Rounded.SwipeUp to resources.getString(
                                 if (NavigationTip.of(remember(tick) { gestureNavigation(context) }) == NavigationTip.GESTURES) R.string.onboarding_tip_nav_gestures
                                 else R.string.onboarding_tip_nav_buttons),
                         )
@@ -200,11 +202,11 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             // Bottom: primary action (or Continue once done), Not Now, and progress dots.
             val primary = when {
                 // A phone that is set up some other way (the person's own mix) keeps it: nothing is applied until a choice is tapped.
-                page.key == "feel" && state != null -> state.startingPoint()?.let { context.getString(R.string.use_starting_point, context.getString(it.label)) }
-                    ?: context.getString(R.string.onboarding_keep_things_as_they_are)
-                page.onAction != null && !done -> page.action ?: context.getString(R.string.continue_button)
-                page.key == "done" -> page.action ?: context.getString(R.string.get_started)
-                else -> context.getString(R.string.continue_button)
+                page.key == "feel" && state != null -> state.startingPoint()?.let { resources.getString(R.string.use_starting_point, resources.getString(it.label)) }
+                    ?: resources.getString(R.string.onboarding_keep_things_as_they_are)
+                page.onAction != null && !done -> page.action ?: resources.getString(R.string.continue_button)
+                page.key == "done" -> page.action ?: resources.getString(R.string.get_started)
+                else -> resources.getString(R.string.continue_button)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                 .clickable {
@@ -218,7 +220,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 Text(primary, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                if (page.optional && !done) Text(if (page.key == "home") resources.getString(R.string.try_folio_first) else resources.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
                     modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index + 1) }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-not-now"))
             }
             Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.Center,

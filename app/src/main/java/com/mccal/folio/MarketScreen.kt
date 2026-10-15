@@ -172,6 +172,7 @@ internal fun MarketScreen(
     val busyId = MarketWork.busyId
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
 
     fun refresh() { revision++ }
 
@@ -196,7 +197,7 @@ internal fun MarketScreen(
         } else {
             // The listing is installed but its tweak was removed in Settings, so the listing only offers Remove: add
             // the tweak back here instead of sending the user to a dead end.
-            if (session.addTweak(tweakId)) say(context.getString(R.string.text_1_s_is_on, hostName)) else { message = null; offer = null }
+            if (session.addTweak(tweakId)) say(resources.getString(R.string.text_1_s_is_on, hostName)) else { message = null; offer = null }
             refresh()
         }
     }
@@ -204,15 +205,15 @@ internal fun MarketScreen(
     /** What the banner says about a finished install, and whether it can still be undone. */
     fun announce(name: String, result: InstallResult) {
         when (result) {
-            is InstallResult.Installed -> { message = context.getString(R.string.text_1_s_is_on, result.installed.name); undo = result; said++ }
-            is InstallResult.NeedsNewerFolio -> say(context.getString(R.string.text_1_s_needs_a_newer_folio, name))
+            is InstallResult.Installed -> { message = resources.getString(R.string.text_1_s_is_on, result.installed.name); undo = result; said++ }
+            is InstallResult.NeedsNewerFolio -> say(resources.getString(R.string.text_1_s_needs_a_newer_folio, name))
             is InstallResult.NeedsHost -> {
                 // An add-on whose tweak isn't here: say which, and offer the tweak's own page to get it from.
                 val tweak = TweakFeatures.firstOrNull { it.id == result.tweaks.first() }
                 val hostName = tweak?.name ?: result.tweaks.first()
-                say(context.getString(R.string.text_1_s_works_with_2_s_get_it_first, name, hostName))
+                say(resources.getString(R.string.text_1_s_works_with_2_s_get_it_first, name, hostName))
                 val tweakId = result.tweaks.first()
-                offer = context.getString(R.string.get_tweak, hostName) to { getHost(tweakId, hostName) }
+                offer = resources.getString(R.string.get_tweak, hostName) to { getHost(tweakId, hostName) }
             }
             is InstallResult.Failed -> say(result.message)
         }
@@ -226,7 +227,7 @@ internal fun MarketScreen(
         confirming = null
         // One at a time. Two installs at once would each write the list of what's installed from a copy read before
         // the other started, so one package would be applied to Home and forgotten, with no way left to remove it.
-        MarketWork.install(entry.id, entry.name, context.getString(R.string.folio_couldn_t_finish_that_install)) { session.get(entry) }
+        MarketWork.install(entry.id, entry.name, resources.getString(R.string.folio_couldn_t_finish_that_install)) { session.get(entry) }
     }
 
     val appContext = context.applicationContext
@@ -280,7 +281,7 @@ internal fun MarketScreen(
         MarketApkInstall.status.collect { status ->
             when (status) {
                 is MarketApkInstall.Status.Installed -> {
-                    say(context.getString(if (status.updated) R.string.text_1_s_is_updated else R.string.text_1_s_is_installed, status.name))
+                    say(resources.getString(if (status.updated) R.string.text_1_s_is_updated else R.string.text_1_s_is_installed, status.name))
                     // Ask Android again whether the app is there, so the row stops saying Get.
                     returns = MarketExternalApp.appsChanged()
                     MarketApkInstall.seen()
@@ -299,7 +300,7 @@ internal fun MarketScreen(
             statuses = withContext(session.io) { session.sources.cached() }
             say(refreshMessage(context, source, result))
             // A list read by hand can pull something already on the phone; that goes off now, not at the next start.
-            withContext(session.io) { session.turnOffPulled() }.forEach { say(context.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
+            withContext(session.io) { session.turnOffPulled() }.forEach { say(resources.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
             refresh()
         }
     }
@@ -311,7 +312,7 @@ internal fun MarketScreen(
             withContext(session.io) { session.sources.forget(source.url) }
             statuses = withContext(session.io) { session.sources.cached() }
             openSourceUrl = null
-            say(context.getString(R.string.text_1_s_removed, source.label))
+            say(resources.getString(R.string.text_1_s_removed, source.label))
             refresh()
         }
     }
@@ -327,7 +328,7 @@ internal fun MarketScreen(
                 return@launch
             }
             val back = withContext(session.io) { session.enable(id) }
-            say(context.getString(if (back) R.string.text_1_s_is_back_on else R.string.folio_couldn_t_put_1_s_back_on, name))
+            say(resources.getString(if (back) R.string.text_1_s_is_back_on else R.string.folio_couldn_t_put_1_s_back_on, name))
             refresh()
         }
     }
@@ -336,7 +337,7 @@ internal fun MarketScreen(
         if (MarketWork.busy) return
         scope.launch {
             val removed = withContext(session.io) { session.remove(id) }
-            if (removed) say(context.getString(R.string.text_1_s_removed, name))
+            if (removed) say(resources.getString(R.string.text_1_s_removed, name))
             refresh()
         }
     }
@@ -374,7 +375,7 @@ internal fun MarketScreen(
             is com.mccal.folio.market.PackageInstaller.ReadResult.Ok -> value = bytes to read.pkg
             is com.mccal.folio.market.PackageInstaller.ReadResult.NeedsNewerFolio -> {
                 MarketImport.pending = null
-                say(context.getString(R.string.that_package_needs_a_newer_folio))
+                say(resources.getString(R.string.that_package_needs_a_newer_folio))
             }
             is com.mccal.folio.market.PackageInstaller.ReadResult.Failed -> {
                 MarketImport.pending = null
@@ -673,7 +674,7 @@ internal fun MarketScreen(
                         ),
                         onGet = {
                             MarketImport.pending = null
-                            MarketWork.install(pkg.manifest.id, pkg.manifest.name.english, context.getString(R.string.folio_couldn_t_finish_that_install)) { session.installFile(bytes) }
+                            MarketWork.install(pkg.manifest.id, pkg.manifest.name.english, resources.getString(R.string.folio_couldn_t_finish_that_install)) { session.installFile(bytes) }
                         },
                         onCancel = { MarketImport.pending = null },
                         host = importHost,
@@ -701,7 +702,7 @@ internal fun MarketScreen(
                                     is RefreshResult.Failed -> say(result.message)
                                     else -> {
                                         statuses = withContext(session.io) { session.sources.cached() }
-                                        say(context.getString(R.string.that_source_is_already_set_up))
+                                        say(resources.getString(R.string.that_source_is_already_set_up))
                                     }
                                 }
                             }
@@ -758,8 +759,8 @@ internal fun MarketScreen(
                             onPick = { from ->
                                 choosing = null
                                 if (!MarketExternalApp.install(context, from)) {
-                                    say(context.getString(R.string.folio_couldn_t_open_1_s_on_this_phone,
-                                        context.getString(MarketExternalApp.label(from.store))))
+                                    say(resources.getString(R.string.folio_couldn_t_open_1_s_on_this_phone,
+                                        resources.getString(MarketExternalApp.label(from.store))))
                                 }
                             },
                             onCancel = { choosing = null },

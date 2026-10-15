@@ -577,7 +577,8 @@ internal fun homeMoveOffsets(page: Int): List<HomeMove> = buildList {
 private fun Modifier.moveActions(id: String, page: Int, onMove: (String, Int) -> Unit): Modifier {
     val view = androidx.compose.ui.platform.LocalView.current
     val context = androidx.compose.ui.platform.LocalContext.current
-    fun perform(move: HomeMove) { onMove(id, move.offset); view.announceForAccessibility(context.getString(move.moved)) }
+    val resources = androidx.compose.ui.platform.LocalResources.current
+    fun perform(move: HomeMove) { onMove(id, move.offset); view.announceForAccessibility(resources.getString(move.moved)) }
     val offsets = homeMoveOffsets(page)
     val labels = offsets.map { stringResource(it.label) }
     return semantics {

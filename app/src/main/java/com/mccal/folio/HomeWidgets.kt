@@ -183,6 +183,7 @@ internal fun ExpandedCard(onClick: () -> Unit) {
 @Composable
 internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifier: Modifier, onAdd: () -> Unit, fallback: @Composable () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var restoreMessage by remember(slot) { mutableStateOf<String?>(null) }
     BoxWithConstraints(modifier.clip(RoundedCornerShape(FolioRadius.PANEL.dp)).testTag("widget-slot-$slot")) {
         val displayedContentSize = WidgetContentSize(maxWidth.value, maxHeight.value)
@@ -200,7 +201,7 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
                     Row {
                         TextButton(onClick = {
                             if (!controller.rebindRestoredWidget(slot, contentSize = displayedContentSize))
-                                restoreMessage = context.getString(R.string.that_provider_or_profile_isn_t_available)
+                                restoreMessage = resources.getString(R.string.that_provider_or_profile_isn_t_available)
                         },
                             modifier = Modifier.testTag("widget-restore-reconnect-$slot")) { Text(stringResource(R.string.reconnect)) }
                         TextButton(onClick = onAdd, modifier = Modifier.testTag("widget-restore-replace-$slot")) { Text(stringResource(R.string.replace)) }
@@ -241,6 +242,7 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
 internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, drag: HomeDragState,
     target: DropTarget?, modifier: Modifier, page: Int, onAdd: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val cell = DropTarget.Widget(slot)
     val edit = LocalHomeEdit.current
     // Built-in cards wiggle; provider widgets (Android views) only get the remove button, since moving
@@ -251,7 +253,7 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
             .alpha(if (drag.source?.target == cell) .3f else 1f)
             .border(if (drag.active && target == cell) 2.dp else 0.dp,
                 if (drag.active && target == cell) Color.White else Color.Transparent, RoundedCornerShape(FolioRadius.PANEL.dp))
-            .semantics { onLongClick(context.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
+            .semantics { onLongClick(resources.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
         if (cards.size > 1) SmartStack(cards, slot, controller, chrome, onAdd)
         else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, opensApp = true, onAdd = onAdd) }
     if (edit.active && id != EMPTY_WIDGET && id != INFO_WIDGET) JiggleRemoveButton(stringResource(R.string.remove_widget)) { edit.onRemove(cell) }
