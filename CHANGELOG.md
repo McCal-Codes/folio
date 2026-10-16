@@ -62,6 +62,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **The Side Bar dock follows your finger when you move it (#326):** in edit mode the grabber moves with the dock, so dragging it moved the dock only now and then. The drag is now measured on the screen, so the dock stays under your finger.
 - **Smart Rotate turns a stack again:** its 15 minute wait started over every time you came back to Home, so it almost never moved. Time away from Home now counts toward the wait, and coming back after it has passed checks right away.
 - **Focus and widget stacks, three small fixes:** a Focus you turned off by hand while its trigger held now stays off after Folio is closed and reopened, a Focus without Do Not Disturb access says "(Home only)" in the list, and Show First on a widget stack right after removing a widget no longer throws away that removal's Undo or the removed widget.
 - **Settings opens on the layout you are looking at (#13):** held upright on the open screen, Settings started on the sideways inner layout, so the sliders changed a layout you could not see. It now starts on the upright one. Automatic rows also measure the upright and sideways open screens separately, so turning the phone no longer overwrites one with the other.
