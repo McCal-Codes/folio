@@ -28,6 +28,7 @@ internal class HomeOverlays(
     emptyCell: Int? = null,
     addToFolder: String? = null,
     iconEditor: String? = null,
+    removeApp: String? = null,
 ) {
     /** The icon whose context menu is showing. */
     var menu by mutableStateOf(menu)
@@ -52,15 +53,18 @@ internal class HomeOverlays(
     /** The app whose own icon look is being chosen. */
     var iconEditor by mutableStateOf(iconEditor)
 
+    /** The app whose Remove App choice (Delete App, Remove from Home, Cancel) is open. */
+    var removeApp by mutableStateOf(removeApp)
+
     /** The empty Home cell whose menu is open. */
     var emptyCell by mutableStateOf(emptyCell)
 
     companion object {
         val Saver = listSaver<HomeOverlays, Any?>(
-            save = { listOf(it.menu, it.rename, it.panel, it.stackFan, it.stackEditor, it.folder, it.newFolder, it.emptyCell, it.addToFolder, it.iconEditor) },
+            save = { listOf(it.menu, it.rename, it.panel, it.stackFan, it.stackEditor, it.folder, it.newFolder, it.emptyCell, it.addToFolder, it.iconEditor, it.removeApp) },
             restore = {
                 HomeOverlays(it[0] as String?, it[1] as String?, it[2] as String?, it[3] as String?,
-                    it[4] as String?, it[5] as String?, it[6] as String?, it[7] as Int?, it.getOrNull(8) as String?, it.getOrNull(9) as String?)
+                    it[4] as String?, it[5] as String?, it[6] as String?, it[7] as Int?, it.getOrNull(8) as String?, it.getOrNull(9) as String?, it.getOrNull(10) as String?)
             },
         )
     }

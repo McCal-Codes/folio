@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 internal fun AppCheckList(apps: List<AppEntry>, query: String, onQuery: (String) -> Unit, checked: (AppEntry) -> Boolean,
     enabled: (AppEntry) -> Boolean, checkedLabel: String, uncheckedLabel: String, onToggle: (AppEntry) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier) {
-        IosSearchField(query, onQuery, "Search apps", Modifier.padding(vertical = FolioSpace.MEDIUM.dp))
+        IosSearchField(query, onQuery, stringResource(R.string.search_apps), Modifier.padding(vertical = FolioSpace.MEDIUM.dp))
         val listState = androidx.compose.foundation.lazy.rememberLazyListState()
         LazyColumn(Modifier.weight(1f).edgeFade(listState), state = listState) {
             items(apps, key = { it.id }) { app ->

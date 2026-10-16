@@ -36,6 +36,22 @@ fun createFolder(
         folders = next.folders + folder.copy(appIds = listOf(firstAppId, secondAppId)))
 }
 
+/**
+ * Where Create Folder puts a new folder: the first free cell on [preferredPage], then on the other [pages] in order,
+ * then the first cell of a new page at the end (as iOS does when Home is full), so picking the second app never does
+ * nothing. A cell is free when no widget covers it ([blocked]), Home shows it ([shown]) and it holds nothing or one
+ * of the two apps.
+ */
+fun newFolderCell(layout: HomeLayout, firstAppId: String, secondAppId: String, preferredPage: Int, pages: List<Int>,
+                  blocked: Set<Int>, shown: (Int) -> Boolean): Int =
+    (listOf(preferredPage) + pages.filter { it != preferredPage }).firstNotNullOfOrNull { page ->
+        (0 until HOME_CELLS).map { homeCellIndex(page, it) }
+            .firstOrNull { it !in blocked && shown(it) && layout.slotAt(it) in listOf(null, firstAppId, secondAppId) }
+    } ?: homeCellIndex(layout.pageCount, 0)
+
+/** Whether [appId] can go into a new folder: an app already in a folder can't, so Create Folder doesn't offer it. */
+fun canStartFolderWith(layout: HomeLayout, appId: String) = layout.folders.none { appId in it.appIds }
+
 fun renameFolder(layout: HomeLayout, folderId: String, title: String): HomeLayout {
     if (title.isBlank() || layout.folder(folderId) == null) return layout
     return layout.copy(folders = layout.folders.map { if (it.id == folderId) it.copy(title = title.trim()) else it })

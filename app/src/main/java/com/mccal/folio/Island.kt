@@ -356,7 +356,7 @@ class IslandListenerService : NotificationListenerService() {
             val person = runCatching { androidx.core.os.BundleCompat.getParcelable(n.extras, Notification.EXTRA_CALL_PERSON, android.app.Person::class.java) }.getOrNull()
             val avatar = runCatching { person?.icon?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
                 ?: runCatching { n.getLargeIcon()?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
-            return IslandActivity.Call(sbn.packageName, person?.name?.toString() ?: title(sbn) ?: "Call", appIcon(sbn.packageName), since, sbn.key,
+            return IslandActivity.Call(sbn.packageName, person?.name?.toString() ?: title(sbn) ?: getString(R.string.island_call), appIcon(sbn.packageName), since, sbn.key,
                 incoming = incoming, avatar = avatar,
                 canAnswer = CallControls.intent(n, CallControls.Kind.ANSWER) != null,
                 canDecline = CallControls.intent(n, CallControls.Kind.DECLINE) != null,
@@ -366,7 +366,7 @@ class IslandListenerService : NotificationListenerService() {
         }
         ongoing.firstOrNull { it.notification.category == Notification.CATEGORY_NAVIGATION }?.let { sbn ->
             val extras = sbn.notification.extras
-            return IslandActivity.Navigation(sbn.packageName, title(sbn) ?: "Navigating",
+            return IslandActivity.Navigation(sbn.packageName, title(sbn) ?: getString(R.string.island_navigating),
                 extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(), appIcon(sbn.packageName), sbn.key)
         }
         ongoing.firstOrNull { it.notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) }?.let { sbn ->
@@ -514,7 +514,8 @@ class IslandListenerService : NotificationListenerService() {
                 ?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
         }
         private val mutable = MutableStateFlow<IslandActivity?>(null)
-        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(mutable.asStateFlow(), null)
+        /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
+        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
         val connected = MutableStateFlow(false)
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)

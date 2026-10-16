@@ -128,7 +128,7 @@ internal fun ModalBottomSheet(
     formWidth: androidx.compose.ui.unit.Dp = 560.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
+    RegisterOpenWindow(LauncherSheets)
     if (fullScreen) { FullScreenPage(onDismissRequest, content); return }
     // Regular size (inner screen, either orientation): an iPad-style form sheet centered over Home instead of a stretched bottom sheet.
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -185,10 +185,7 @@ private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable Co
         // A closing page uncovers Home the moment the close starts, and slides only after Home's first frames back are done
         // (PAGE_UNCOVER_FRAMES), so the heavy frames land while the page still hides everything and the slide stays smooth.
         val covering = OverlayExits.covering(slide.value, if (exit.leaving) 1f else 0f)
-        DisposableEffect(covering) {
-            if (covering) LauncherPagesOpen.intValue++
-            onDispose { if (covering) LauncherPagesOpen.intValue-- }
-        }
+        RegisterOpenWindow(LauncherPages, active = covering)
         // Dragging a Home layout slider: the page fades to a trace so the real Home behind shows the change, and only
         // the slider stays readable (a capsule drawn where it is).
         val peek = SettingsPeek.value

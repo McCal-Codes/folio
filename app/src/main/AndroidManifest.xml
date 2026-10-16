@@ -5,6 +5,8 @@
     <!-- Only for Software Update (checking and downloading Folio from GitHub Releases, when you ask). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Delete App: asks Android to uninstall an app; Android always shows its own confirmation. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- Unlock before listing hidden apps (Settings › Search & App Library). -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Lets a self-update skip the confirmation once Folio installed the current version itself (Android 12+). -->

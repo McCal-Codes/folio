@@ -13,12 +13,13 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Drag position, magnification, press | The composable doing it | None | Nothing; cancelled on any interruption |
 | Open folder, open Settings page, search query | Screen UI (`rememberSaveable`) | Saved instance state | Rotation, fold, process death |
 | Installed-app catalog | `LauncherModel` (from `PackageManager` / `LauncherApps`) | `app_catalog` prefs as a cache | Rebuilt from the system |
-| Home layout, dock, folders, widget placements | `LauncherModel` | `launcher/state` JSON, schema 10 when icon actions are set and 9 otherwise (`stateSchemaFor`), with migration backups | Everything; exported by Layout Backup |
+| Home layout, dock, folders, widget placements | `LauncherModel` | `launcher/state` JSON, schema 11 when Hide in Landscape is also set for the unfolded screen, 10 when icon actions are set and 9 otherwise (`stateSchemaFor`), with migration backups | Everything; exported by Layout Backup |
 | Widget bindings | Android (`AppWidgetHost`) + Folio's slot mapping | System + layout JSON | Reconnected on import, not copied |
 | Icon actions (a swipe up, swipe down or double tap per app) | `LauncherModel` | `launcher/state` JSON, key `iconActions`, only when some are set | Everything; exported by Layout Backup |
 | Appearance | `AppearanceStore` | `appearance` prefs | Everything; not in Layout Backup |
 | What is behind Home | `LauncherModel` (see Gap below: three owners today) | `launcher/state` JSON, mirrored to `launcher_background` prefs for the wallpaper service | Everything; the picked photo itself stays out of Layout Backup |
 | Focus modes and rules | `FocusController` | `focus_rules` prefs | Everything |
+| Screenshot Mode's swap list (apps shown as the phone's own apps) | `ScreenshotSwap` | `screenshot_swap` prefs, key `rules`, only when some are set; not in `launcher/state`, so no schema change | Everything; not in Layout Backup (the list is private) |
 | Market packages | Market repository | `filesDir/market` + records in layout JSON | Backup keeps records, reapplies changes |
 | Hinge posture, window size | WindowManager (`LocalHinge`) | None | Recomputed |
 | Battery, signal, ringer | `DeviceStatus` | None | Recomputed on start |
@@ -70,7 +71,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 
 Good:
 
-- A single `StateFlow<LauncherState>`, a JSON state with schema 10 (9 for a phone with no icon actions), one-time backups per migration step, a damaged
+- A single `StateFlow<LauncherState>`, a JSON state with schema 11 (10 or 9 for a phone that uses none of the newer keys), one-time backups per migration step, a damaged
   backup, and `LayoutLoadTest`.
 - Profile-aware identities; paused profiles keep placements.
 - Layout Backup at version 3 with legacy migrations, Market records reapplied on restore.

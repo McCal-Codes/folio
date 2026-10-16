@@ -1,7 +1,9 @@
 package com.mccal.folio
 
+import com.mccal.folio.market.PackageAccess
+
 /**
- * What Folio can reach on this phone, by the tiers in `docs/capability-matrix.md` (ADR 0008): A0 needs nothing, A1 is
+ * What Folio can reach on this phone, by the tiers in ADR 0008 (docs/adr/0008-platform-architecture.md): A0 needs nothing, A1 is
  * notification access, A2 is Folio's accessibility service. Higher tiers (Shizuku, root) are not used by Folio yet, so
  * they are not listed: a row here only ever says what is true now.
  */
@@ -48,4 +50,11 @@ internal object Inspector {
     fun isFailure(text: String) = " failed: " in text || text.startsWith("failed")
 
     fun filter(entries: List<InspectorEntry>, failedOnly: Boolean) = if (failedOnly) entries.filter { it.failed } else entries
+}
+
+/** The privilege tier a Market package's access stands for. Same names on purpose: they are the same Android grants. */
+internal val PackageAccess.privilege: PrivilegeTier get() = when (this) {
+    PackageAccess.STANDARD -> PrivilegeTier.STANDARD
+    PackageAccess.NOTIFICATIONS -> PrivilegeTier.NOTIFICATIONS
+    PackageAccess.ACCESSIBILITY -> PrivilegeTier.ACCESSIBILITY
 }

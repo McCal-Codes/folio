@@ -154,10 +154,11 @@ class MainActivity : ComponentActivity() {
             androidx.activity.compose.ReportDrawnWhen { savedState.homeReady }
             val safeMode = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(SafeMode.active) }
             val solidGlass = savedState.reduceTransparency || rememberSystemHighContrast()
-            val state = FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
-                .let { if (solidGlass) it.withSolidGlass() else it }
+            val state = rememberDisguised(FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
+                .let { if (solidGlass) it.withSolidGlass() else it })
             androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(31_000); SafeMode.markStable(this@MainActivity) }
-            val safeAcknowledged = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            // Saveable: a theme or language change recreates the activity, and the answer must not be asked again.
+            val safeAcknowledged = androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
             if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {}, dismissible = false,
                 title = { androidx.compose.material3.Text(getString(R.string.folio_started_in_safe_mode)) },
                 text = { androidx.compose.material3.Text(stringResource(R.string.folio_closed_unexpectedly_twice_so_opt)) },
@@ -197,13 +198,13 @@ class MainActivity : ComponentActivity() {
                     else show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
                 }
             }
-            val overlayOpen = topPanel.value != null || spotlightVisible.value || LauncherSheetsOpen.intValue > 0 ||
+            val overlayOpen = topPanel.value != null || spotlightVisible.value || LauncherSheets.isOpen(this@MainActivity) ||
                 // Only a Lock Cover that's actually drawn blurs Home (turning the setting off mid-way must not leave a blur).
                 (lockCoverVisible.value && state.lockCover)
             MotionSpeed.current = state.motionSpeed
             // The trail for bug reports: what was open, and a heartbeat while Home is showing.
             val overlayName = listOfNotNull(topPanel.value?.name, getString(R.string.spotlight).takeIf { spotlightVisible.value },
-                "sheet".takeIf { LauncherSheetsOpen.intValue > 0 }, getString(R.string.lock_cover).takeIf { lockCoverVisible.value && state.lockCover })
+                "sheet".takeIf { LauncherSheets.isOpen(this@MainActivity) }, getString(R.string.lock_cover).takeIf { lockCoverVisible.value && state.lockCover })
                 .joinToString(" + ").ifEmpty { null }
             androidx.compose.runtime.LaunchedEffect(overlayName) { Diagnostics.event(overlayName?.let { "Open: $it" } ?: getString(R.string.nothing_open_over_home)) }
             val regular = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
@@ -273,7 +274,7 @@ class MainActivity : ComponentActivity() {
             androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { reduceMotionState.value = reduceMotionEnabled(this@MainActivity); onPauseOrDispose { } }
             // Folio's own Reduce Motion, or Android's Remove animations: the same flag to every screen.
             val reduceMotion = reduceMotionState.value || state.reduceMotion
-            val iconTint = if (state.iconTintFromWallpaper) wallpaperTone.primary?.let(::vividTint)?.toLong()?.and(0xFFFFFFFFL) ?: state.iconTint else state.iconTint
+            val iconTint = if (state.iconTintFromWallpaper) wallpaperIconTint(wallpaperTone)?.toLong()?.and(0xFFFFFFFFL) ?: state.iconTint else state.iconTint
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalWallpaperTone provides wallpaperTone,
                 LocalGlassLook provides GlassLook(state.widgetGlass, state.glassOutline),
@@ -303,6 +304,7 @@ class MainActivity : ComponentActivity() {
                 LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
+                LocalSwappedApps provides androidx.compose.runtime.remember(state.apps) { swappedByPackage(state.apps) },
                 LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
                     screenFor(androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())), state.foldIntensity, state.stayAwakeOnFold,
                     // Reduce Motion: a plain shade, no frost, tilt, shrink or picture moving (DYN-11: motion becomes a fade).
@@ -316,7 +318,7 @@ class MainActivity : ComponentActivity() {
                     // Fixed radius while any overlay is showing: a constant blur is cached by the RenderThread,
                     // whereas animating the radius re-blurred the whole Home every frame (~14ms of GPU per
                     // frame). The overlay's scrim fades in over it, which hides the switch.
-                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && LauncherPagesOpen.intValue == 0 && SettingsPeek.value == null) backdropBlur else null
+                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && !LauncherPages.isOpen(this@MainActivity) && SettingsPeek.value == null) backdropBlur else null
                 }) {
                 LauncherScreen(state, model, widgets, homeRequests.intValue,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
@@ -417,6 +419,7 @@ class MainActivity : ComponentActivity() {
         widgets.host.stopListening(); model.flushPending(); super.onStop()
     }
     override fun onDestroy() {
+        LauncherSheets.closeAllOf(this); LauncherPages.closeAllOf(this) // an entry left by a window that never closed cannot outlive its screen
         runCatching { unregisterReceiver(unlockReceiver) }
         recreatingShadeSetup = isChangingConfigurations
         shadeSetupDialog?.dismiss()

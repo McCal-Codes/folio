@@ -210,7 +210,13 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
             return@BoxWithConstraints
         }
         val info = remember(id) { if (id >= 0) controller.manager.getAppWidgetInfo(id) else null }
+        // Screenshot Mode: a swapped app's widget would show its real content, so it is a plain card instead.
+        val standIn = info?.provider?.packageName?.let { LocalSwappedApps.current[it] }
         if (info == null) fallback()
+        else if (standIn != null) Surface(Modifier.fillMaxSize().testTag("widget-swapped-$slot"), color = Glass.copy(alpha = .88f),
+            shape = RoundedCornerShape(FolioRadius.PANEL.dp)) {
+            Box(contentAlignment = Alignment.Center) { Text(standIn.label, color = Ink, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center) }
+        }
         else {
             key(id) {
                 AndroidView(factory = { context -> controller.host.createView(context, id, info) },
@@ -220,7 +226,7 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
     }
 }
 
-internal fun widgetLabel(context: android.content.Context, id: Int, controller: WidgetController) = when (id) {
+internal fun widgetLabel(context: android.content.Context, id: Int, controller: WidgetController, swapped: Map<String, AppEntry> = emptyMap()) = when (id) {
     CLOCK_WIDGET -> context.getString(R.string.clock)
     DATE_WIDGET -> context.getString(R.string.date)
     UP_NEXT_WIDGET -> context.getString(R.string.up_next)
@@ -228,7 +234,7 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
     BIG_CLOCK_WIDGET -> context.getString(R.string.big_clock)
     INFO_WIDGET -> context.getString(R.string.widget_panel)
     EMPTY_WIDGET -> context.getString(R.string.add_widget)
-    else -> controller.label(id)
+    else -> controller.manager.getAppWidgetInfo(id)?.provider?.packageName?.let { swapped[it]?.label } ?: controller.label(id)
 }
 
 @Composable
@@ -302,6 +308,20 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
  * iOS Smart Stack: swipe up or down between the widgets in one spot. Dots on the side show while flipping;
  * with Smart Rotate on, the stack moves to the most relevant widget while Home is open.
  */
+/** When each stack last looked, by slot, for as long as the process lives (a stack's page can leave composition and come back). */
+internal object SmartRotateClock {
+    private val checks = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    /** The last check for [slot], or [now] when it has none yet (a new stack waits the full time once). */
+    fun lastCheck(slot: Int, now: Long): Long = checks.getOrPut(slot) { now }
+
+    fun record(slot: Int, now: Long) { checks[slot] = now }
+
+    fun forget(slot: Int) { checks.remove(slot) }
+
+    internal fun clearForTest() = checks.clear()
+}
+
 @Composable
 internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetController, modifier: Modifier, onAdd: () -> Unit) {
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { cards.size })
@@ -317,11 +337,16 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     val context = androidx.compose.ui.platform.LocalContext.current
     val homeApps = LocalHomeApps.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    // When the stack last looked, on a clock that keeps running while Home is away, so a resume picks up the wait
+    // where it was instead of starting 15 minutes over (W-3: before, opening any app reset it and it rarely fired).
+    // Kept per stack outside this composable: swiping several pages away drops the page from the pager, and a remembered
+    // value would go with it and start the wait over on return.
     LaunchedEffect(rotate, cards, lifecycleOwner) {
         // Only while Home is in front: a stack that rotates behind another app burns a read of usage stats and the
         // calendar for a screen nobody is looking at (DYN-15).
         if (rotate) lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) {
-            delay(15 * 60_000L)
+            delay(Suggestions.smartRotateWait(android.os.SystemClock.elapsedRealtime(), SmartRotateClock.lastCheck(slot, android.os.SystemClock.elapsedRealtime())))
+            SmartRotateClock.record(slot, android.os.SystemClock.elapsedRealtime())
             val relevance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val apps = Suggestions.packageRelevance(context, homeApps.apps)
                 val soon = UpNext.events(context, limit = 1).firstOrNull()?.let { !it.allDay && it.begin - System.currentTimeMillis() in 0..60 * 60_000L } == true

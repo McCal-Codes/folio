@@ -82,7 +82,7 @@ class IconActionsTest {
     @Test fun `a save with icon actions is written as schema 10 and one without stays schema 9`() {
         assertEquals(9, stateSchemaFor(LauncherState()))
         assertEquals(10, stateSchemaFor(LauncherState(iconActions = mapOf("a" to IconActions(up = ActionRef("TORCH"))))))
-        assertEquals("the newest schema this build reads", 10, STATE_SCHEMA)
+        assertEquals("the newest schema this build reads", 11, STATE_SCHEMA)
     }
 
     @Test fun `icon actions load from a save, and a schema newer than this build reads is still refused`() {
