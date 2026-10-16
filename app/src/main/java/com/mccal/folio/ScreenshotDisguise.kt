@@ -3,7 +3,7 @@ package com.mccal.folio
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -172,17 +172,54 @@ internal fun rememberDisguised(state: LauncherState): LauncherState {
     val on by ScreenshotMode.on.collectAsStateWithLifecycle()
     val rules by ScreenshotSwap.rules.collectAsStateWithLifecycle()
     val private by PrivateRecording.on.collectAsStateWithLifecycle()
-    val active = swapActive(on, private, rules)
+    val privateEnabled by PrivateRecording.enabled.collectAsStateWithLifecycle()
     val packages = remember(state.apps) { state.apps.mapTo(mutableSetOf()) { it.packageName } }
-    // Asked only while the swap is in use, and off the main thread: one package manager call per app.
-    val system by produceState<Set<String>?>(null, active, packages) {
-        value = if (active) withContext(Dispatchers.IO) { systemPackages(context, packages) } else null
+    // Which apps shipped with the phone is worked out ahead of time, off the main thread (one package manager call per
+    // app), whenever the swap could be needed: Private While Recording is on, so it is ready before a recording starts.
+    var scanned by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val wanted = (on || private || privateEnabled) && !rules.isEmpty
+    androidx.compose.runtime.LaunchedEffect(wanted, packages) {
+        if (wanted) { withContext(Dispatchers.IO) { SystemPackageCache.fill(context, packages) }; scanned++ }
     }
-    val shown = system
-    if (!active || shown == null) return state
+    if (!swapActive(on, private, rules)) return state
+    val system = remember(packages, scanned) { SystemPackageCache.systemFor(packages) }
     val onHome = remember(state.homeSlots, state.leadingSlots, state.dock, state.folders, state.iconStacks) { state.homeAppIds() }
-    val apps = remember(state.apps, rules, shown, onHome) { ScreenshotDisguise.apply(state.apps, rules, shown, onHome) }
-    return remember(state, apps) { if (apps === state.apps) state else state.copy(apps = apps) }
+    // In the private view, never fall back to the real apps while the scan is still out.
+    return remember(state, rules, system, onHome, private && !on) { disguisedState(state, rules, system, onHome, hideUntilKnown = private && !on) }
+}
+
+/**
+ * [state] with the swap applied. With [system] not yet known, the real apps stay for Screenshot Mode (the person just
+ * asked for it), but with [hideUntilKnown] (the private view, which can start without warning) no app is drawn at all
+ * rather than the real ones.
+ */
+internal fun disguisedState(state: LauncherState, rules: DisguiseRules, system: Set<String>?, onHome: Set<String>, hideUntilKnown: Boolean): LauncherState {
+    if (system == null) return if (hideUntilKnown) state.copy(apps = emptyList()) else state
+    val apps = ScreenshotDisguise.apply(state.apps, rules, system, onHome)
+    return if (apps === state.apps) state else state.copy(apps = apps)
+}
+
+/** Which packages shipped with the phone, remembered for the life of the process so a recording finds it ready. */
+internal object SystemPackageCache {
+    private val known = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    /** Asks the package manager about every package not yet known. Call off the main thread. */
+    fun fill(context: Context, packages: Set<String>) {
+        val missing = packages.filter { !known.containsKey(it) }
+        if (missing.isEmpty()) return
+        val pm = context.packageManager
+        missing.forEach { known[it] = shippedWithPhone(pm, it) == true }
+    }
+
+    internal fun put(packageName: String, system: Boolean) { known[packageName] = system }
+    internal fun clear() = known.clear()
+
+    /**
+     * The system packages among [packages], or null while nothing is known yet. A package that came after the scan counts
+     * as not shipped with the phone, so an app installed mid-recording is hidden rather than shown as it is.
+     */
+    fun systemFor(packages: Set<String>): Set<String>? =
+        if (packages.isNotEmpty() && packages.none { known.containsKey(it) }) null else packages.filterTo(mutableSetOf()) { known[it] == true }
 }
 
 /** The packages in [packages] that shipped with the phone, updated or not. */

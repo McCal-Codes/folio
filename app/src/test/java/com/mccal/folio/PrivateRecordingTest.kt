@@ -184,4 +184,72 @@ class PrivateRecordingTest {
         val shown = PrivateRecording.redact(source) { list, swapped -> list.map { redactNotification(it, swapped[it.packageName], "Notification") } }
         assertEquals("Alex", shown.value.single().title)
     }
+
+    // ---- two sources: the activity and the overlay service ----
+
+    @Test fun `any source seeing a recording keeps it on, and one stopping does not clear it`() = runTest {
+        val st = PrivateViewState(this, 1_000)
+        st.setEnabled(true)
+        st.report(true, PrivateViewState.OVERLAY)
+        st.report(true, PrivateViewState.ACTIVITY)
+        st.detach(PrivateViewState.ACTIVITY)
+        advanceTimeBy(5_000); runCurrent()
+        assertTrue("the overlay still reports a recording", st.on.value)
+        st.report(false, PrivateViewState.OVERLAY)
+        advanceTimeBy(999); runCurrent()
+        assertTrue(st.on.value)
+        advanceTimeBy(2); runCurrent()
+        assertFalse(st.on.value)
+    }
+
+    @Test fun `one source saying no does not end it while another says yes`() = runTest {
+        val st = PrivateViewState(this, 1_000)
+        st.setEnabled(true)
+        st.report(true, PrivateViewState.OVERLAY)
+        st.report(false, PrivateViewState.ACTIVITY)
+        advanceTimeBy(5_000); runCurrent()
+        assertTrue(st.on.value)
+    }
+
+    @Test fun `with no source left the state clears at once`() = runTest {
+        val st = PrivateViewState(this, 1_000)
+        st.setEnabled(true)
+        st.report(true, PrivateViewState.ACTIVITY)
+        st.detach(PrivateViewState.ACTIVITY)
+        assertFalse(st.on.value)
+        st.detach(PrivateViewState.ACTIVITY) // twice is fine
+        assertFalse(st.on.value)
+    }
+
+    // ---- the swap before the package scan is done ----
+
+    private val reddit = app("com.reddit.frontpage", "Reddit")
+    private val camera = app("com.android.camera", "Camera")
+    private val rules = DisguiseRules(chosen = setOf(reddit.id))
+    private val home = LauncherState(apps = listOf(camera, reddit))
+
+    @Test fun `the private view never shows the real apps while the system packages are unknown`() {
+        val out = disguisedState(home, rules, system = null, onHome = emptySet(), hideUntilKnown = true)
+        assertTrue(out.apps.isEmpty())
+    }
+
+    @Test fun `Screenshot Mode keeps the real apps until the scan is done, as before`() {
+        assertSame(home, disguisedState(home, rules, system = null, onHome = emptySet(), hideUntilKnown = false))
+    }
+
+    @Test fun `once classified the private view shows the disguised apps`() {
+        val out = disguisedState(home, rules, system = setOf(camera.packageName), onHome = emptySet(), hideUntilKnown = true)
+        assertEquals("Camera", out.apps.single { it.id == reddit.id }.label)
+    }
+
+    @Test fun `the package cache knows nothing at first, then what it was told, and treats a newcomer as third-party`() {
+        SystemPackageCache.clear()
+        val both = setOf(camera.packageName, reddit.packageName)
+        assertNull(SystemPackageCache.systemFor(both))
+        SystemPackageCache.put(camera.packageName, true)
+        SystemPackageCache.put(reddit.packageName, false)
+        assertEquals(setOf(camera.packageName), SystemPackageCache.systemFor(both))
+        assertEquals(setOf(camera.packageName), SystemPackageCache.systemFor(both + "com.new.app"))
+        SystemPackageCache.clear()
+    }
 }

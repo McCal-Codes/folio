@@ -122,9 +122,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     /** What the island would show right now; the window only exists while this is non-null. */
     private val islandContent = MutableStateFlow<IslandContent?>(null)
 
+    private val recordingWatch = RecordingWatch(PrivateViewState.OVERLAY)
+
     fun start() {
         owner.start()
         IslandEvents.acquire(service)
+        // The overlay can stay on screen over another app while that app is recorded, with Folio's own window stopped.
+        PrivateRecording.load(service)
+        recordingWatch.start(wm, service.mainExecutor)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync() } }
         scope.launch {
@@ -152,6 +157,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         fullScreenJob?.cancel(); fullScreenJob = null
         removeHandle(); removeDock(); removeIsland(); removeButtons()
         IslandEvents.release()
+        recordingWatch.stop(wm)
         owner.stop()
     }
 

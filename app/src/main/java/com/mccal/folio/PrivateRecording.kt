@@ -41,8 +41,26 @@ internal class PrivateViewState(private val scope: CoroutineScope, private val o
     /** One item each time the private view goes on (not when it goes off), for the island notice. */
     val started: SharedFlow<Unit> = startedMutable.asSharedFlow()
 
-    @Synchronized fun report(visible: Boolean) {
-        if (visible) {
+    /** What each listening source (the activity, the overlay service) last said; a source that is gone is not here. */
+    private val sources = mutableMapOf<String, Boolean>()
+
+    /**
+     * One source's answer. The private view is on if ANY source says Folio's windows are visible in a recording, so
+     * one source stopping or saying no never clears what another still reports. Reporting registers the source.
+     */
+    @Synchronized fun report(visible: Boolean, source: String = ACTIVITY) {
+        sources[source] = visible
+        settle()
+    }
+
+    /** A source stopped listening. With none left nothing can say Folio is recorded, so the state clears at once. */
+    @Synchronized fun detach(source: String) {
+        if (sources.remove(source) == null) return
+        if (sources.isEmpty()) { offJob?.cancel(); offJob = null; recordingMutable.value = false; refresh() } else settle()
+    }
+
+    private fun settle() {
+        if (sources.values.any { it }) {
             offJob?.cancel(); offJob = null
             recordingMutable.value = true
         } else if (recordingMutable.value && offJob == null) {
@@ -51,7 +69,7 @@ internal class PrivateViewState(private val scope: CoroutineScope, private val o
         refresh()
     }
 
-    @Synchronized private fun settleOff() { offJob = null; recordingMutable.value = false; refresh() }
+    @Synchronized private fun settleOff() { offJob = null; if (sources.values.none { it }) recordingMutable.value = false; refresh() }
 
     @Synchronized fun setEnabled(value: Boolean) { enabledMutable.value = value; refresh() }
 
@@ -62,7 +80,7 @@ internal class PrivateViewState(private val scope: CoroutineScope, private val o
         if (next) startedMutable.tryEmit(Unit)
     }
 
-    companion object { const val OFF_DELAY_MS = 1_000L }
+    companion object { const val OFF_DELAY_MS = 1_000L; const val ACTIVITY = "activity"; const val OVERLAY = "overlay" }
 }
 
 /**
@@ -107,7 +125,8 @@ internal object PrivateRecording {
     }
 
     /** From the window manager's callback: whether Folio's windows are in a recording now. */
-    fun report(visible: Boolean) = state.report(visible)
+    fun report(visible: Boolean, source: String = PrivateViewState.ACTIVITY) = state.report(visible, source)
+    fun detach(source: String) = state.detach(source)
 
     /** [source], or [transform]ed while the private view is on. */
     fun <T> redact(source: StateFlow<T>, transform: (T, Map<String, AppEntry>) -> T): StateFlow<T> =
@@ -116,6 +135,32 @@ internal object PrivateRecording {
 
     /** An island event as it is shown right now. */
     fun redact(event: IslandEvent): IslandEvent = if (on.value) redactEvent(event, standIns.value, notificationWord) else event
+}
+
+/**
+ * Listens for the Android 15 screen-recording callback on a window manager and feeds [PrivateRecording] as [source].
+ * Safe to start twice or stop twice. Below Android 15 it does nothing.
+ */
+internal class RecordingWatch(private val source: String) {
+    private var callback: java.util.function.Consumer<Int>? = null
+
+    @Synchronized fun start(windowManager: android.view.WindowManager, executor: java.util.concurrent.Executor) {
+        if (android.os.Build.VERSION.SDK_INT < 35 || callback != null) return
+        val visible = android.view.WindowManager.SCREEN_RECORDING_STATE_VISIBLE
+        val next = java.util.function.Consumer<Int> { PrivateRecording.report(it == visible, source) }
+        runCatching {
+            val current = windowManager.addScreenRecordingCallback(executor, next)
+            callback = next
+            PrivateRecording.report(current == visible, source)
+        }
+    }
+
+    @Synchronized fun stop(windowManager: android.view.WindowManager) {
+        val old = callback ?: return
+        callback = null
+        if (android.os.Build.VERSION.SDK_INT >= 35) runCatching { windowManager.removeScreenRecordingCallback(old) }
+        PrivateRecording.detach(source)
+    }
 }
 
 /** Swap Apps applies in Screenshot Mode and in the private view; with no rule set, neither swaps anything. */

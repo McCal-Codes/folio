@@ -423,31 +423,16 @@ class MainActivity : ComponentActivity() {
         listenForRecording()
     }
 
-    private var recordingCallback: java.util.function.Consumer<Int>? = null
+    private val recordingWatch = RecordingWatch(PrivateViewState.ACTIVITY)
 
     /**
-     * Android 15+: is Folio's window in a screen recording or share? The callback stays registered only while Folio is on
-     * screen. The state is not cleared in onStop: Folio's island over other apps may still be in a recording, and when
-     * Folio starts again the current state is read afresh.
+     * Android 15+: is Folio's window in a screen recording or share? Registered while Folio is on screen. The overlay
+     * service listens on its own for as long as it runs, so a recording of another app is still seen when this stops.
      */
-    private fun listenForRecording() {
-        if (android.os.Build.VERSION.SDK_INT < 35 || recordingCallback != null) return
-        val callback = java.util.function.Consumer<Int> { PrivateRecording.report(it == android.view.WindowManager.SCREEN_RECORDING_STATE_VISIBLE) }
-        runCatching {
-            val current = windowManager.addScreenRecordingCallback(mainExecutor, callback)
-            recordingCallback = callback
-            PrivateRecording.report(current == android.view.WindowManager.SCREEN_RECORDING_STATE_VISIBLE)
-        }
-    }
-
-    private fun stopListeningForRecording() {
-        val callback = recordingCallback ?: return
-        recordingCallback = null
-        if (android.os.Build.VERSION.SDK_INT >= 35) runCatching { windowManager.removeScreenRecordingCallback(callback) }
-    }
+    private fun listenForRecording() = recordingWatch.start(windowManager, mainExecutor)
 
     override fun onStop() {
-        stopListeningForRecording()
+        recordingWatch.stop(windowManager)
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
         widgets.host.stopListening(); model.flushPending(); super.onStop()
