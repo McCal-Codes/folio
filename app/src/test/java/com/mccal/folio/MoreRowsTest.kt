@@ -95,6 +95,17 @@ class MoreRowsTest {
         assertEquals(6, effectiveHomeRows(0, 6, 6, 0)) // not measured yet doesn't count
     }
 
+    @Test fun `the upright inner screen with its own layout uses the rows that fit it`() {
+        val s = LauncherState(homeFitCompact = 4, homeFitExpanded = 5, homeFitUpright = 7, portrait = LayoutPreset())
+        assertEquals(4, s.homeAppRows)
+        assertEquals(7, s.homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
+        assertEquals(4, s.homeAppRowsFor(LayoutScreen.INNER))
+        assertEquals(4, s.homeAppRowsFor(LayoutScreen.COVER))
+        // Without its own layout, or with rows chosen by hand, every screen shares one count.
+        assertEquals(4, s.copy(portrait = null).homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
+        assertEquals(4, s.copy(homeRows = 4).homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
+    }
+
     @Test fun `new apps skip rows Home doesn't show and continue on the next page`() {
         val full = List(visibleHomeRows(4) * GRID_COLUMNS) { "a$it" }
         val pinned = pinHomeApp(full, "new", true, appRows = 4)
