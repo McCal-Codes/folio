@@ -11,6 +11,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -127,6 +131,12 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     // A later call can reuse the same notification key, so the marker goes once that call is no longer ringing.
     LaunchedEffect(activity) { if ((activity as? IslandActivity.Call)?.incoming != true) ringPutAway = null }
     androidx.activity.compose.BackHandler(expanded) { expanded = false }
+    // A brief event or a ringing call takes the island over; the card must not come back by itself when it ends (IM-9).
+    val takeover = eventVisible != null
+    LaunchedEffect(takeover) { expanded = expandedAfterTakeover(expanded, takeover) }
+    val callRinging = (activity as? IslandActivity.Call)?.incoming == true
+    LaunchedEffect(callRinging) { expanded = expandedAfterTakeover(expanded, callRinging) }
+    val reduceMotion = LocalReduceMotion.current
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val wide = islandWideWindow(windowWidth, density.density, androidx.compose.ui.platform.LocalConfiguration.current.classScale)
@@ -175,7 +185,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val cardW = placement?.width?.dp ?: 340.dp.coerceAtMost(windowWidth.toDp() - 16.dp)
         // One shape morphs between pill and card: width, corner radius and height all spring together,
         // anchored to the camera like the real Dynamic Island.
-        val morph = FolioMotion.spring<Dp>(.74f to Spring.StiffnessMediumLow)
+        val morph = if (reduceMotion) snap() else FolioMotion.spring<Dp>(.74f to Spring.StiffnessMediumLow)
         val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
         val corner by animateDpAsState(if (open) 34.dp else pillH / 2, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
@@ -184,6 +194,14 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         // No floor here: the edge gap is the shared placement's call, so Home and the island over apps match (#394).
         val top = geometry.top.dp
 
+        val toggles = message == null && live != null
+        val toggleLabel = if (toggles) stringResource(if (expanded) R.string.island_collapse else R.string.island_expand) else null
+        val stateLabel = if (toggles) stringResource(if (expanded) R.string.island_state_expanded else R.string.island_state_collapsed) else null
+        val toggle = { if (toggles) expanded = !expanded }
+        // A tap anywhere else on Home puts the card away. The tap is consumed here, like a sheet's scrim, so it never
+        // also opens whatever was under it (IM-9/IM-10).
+        if (islandCardTapOutsideCloses(expanded, live != null, message != null, notice != null, ringing != null))
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { expanded = false } }.clearAndSetSemantics { }.testTag("island-scrim"))
         Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + dragOffset.y).roundToInt()) }.width(width)
             .then(if (placement != null && open) Modifier.heightIn(max = placement.maxHeight.dp) else Modifier)
             .graphicsLayer { val s = if (dragging) 1.06f else 1f; scaleX = s; scaleY = s }
@@ -204,14 +222,20 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     },
                 ) { change, amount -> change.consume(); dragOffset += amount }
             }
-            .animateContentSize(FolioMotion.spring(FolioMotion.Appear))
+            .then(if (reduceMotion) Modifier else Modifier.animateContentSize(FolioMotion.spring(FolioMotion.Appear)))
             .clip(RoundedCornerShape(corner)).background(Color.Black)
-            .clickable(remember { MutableInteractionSource() }, null) { if (message == null && live != null) expanded = !expanded }
+            .clickable(remember { MutableInteractionSource() }, null, onClickLabel = toggleLabel) { toggle() }
             // Polite, so a notice or a new activity is read when it appears rather than only when found (A11Y-7).
-            .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+            .semantics {
+                contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                stateLabel?.let { stateDescription = it }
+            }
             .testTag("cutout-island")) {
             androidx.compose.animation.AnimatedContent(open, label = "island-content",
-                transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90)) }) { showCard ->
+                transitionSpec = {
+                    if (reduceMotion) fadeIn(tween(FolioMotion.FADE_MS)) togetherWith fadeOut(tween(FolioMotion.FADE_MS))
+                    else fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90))
+                }) { showCard ->
                 if (showCard && notice != null) NoticeCardContent(notice, topInset = pillH) { eventVisible = null; IslandEvents.dismiss() }
                 else if (showCard && message != null) MessageCardContent(message, replying, onReply = { replying = true },
                     onOpen = { replying = false; eventVisible = null; IslandListenerService.openKey(context, message.key, message.packageName) },
@@ -226,8 +250,24 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                 else Box(Modifier.width(geometry.widthFor(content).dp).height(pillH)) { IslandPillContent(content, camW, pillH) }
             }
         }
+        // The pill is only 34 dp tall: its touch area reaches 14 dp lower without changing what is drawn (I-10).
+        if (toggles && !open) Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + pillH.toPx() + dragOffset.y).roundToInt()) }
+            .size(width, ISLAND_TOUCH_EXTRA.dp).clickable(remember { MutableInteractionSource() }, null) { toggle() }.clearAndSetSemantics { })
     }
 }
+
+/**
+ * Whether a card opened with a tap stays open when something takes the island over. A brief event or a ringing call
+ * shows its own card; when it ends the island goes back to the pill instead of reopening the old card (IM-9).
+ */
+internal fun expandedAfterTakeover(expanded: Boolean, takeover: Boolean): Boolean = expanded && !takeover
+
+/** Whether a tap outside the card puts it away: only a card the user opened, never a message, notice or ringing call (IM-10). */
+internal fun islandCardTapOutsideCloses(expanded: Boolean, hasLive: Boolean, message: Boolean, notice: Boolean, ringing: Boolean): Boolean =
+    expanded && hasLive && !message && !notice && !ringing
+
+/** How far below the 34 dp pill its touch area reaches. */
+internal const val ISLAND_TOUCH_EXTRA = 14
 
 /** Where the user dragged the island on one screen: horizontal center as a fraction of width, top in dp. */
 internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
@@ -702,8 +742,9 @@ internal fun Chronometer(base: Long, countDown: Boolean, color: Color, fontSize:
 
 @Composable
 internal fun Bars(playing: Boolean, color: Color = IslandGreen) {
-    // No infinite animation while paused: a paused session must not redraw forever.
-    val phase = if (playing) {
+    // No infinite animation while paused, or with Reduce Motion on: then the bars stand still (I-9).
+    val still = LocalReduceMotion.current
+    val phase = if (playing && !still) {
         val transition = rememberInfiniteTransition(label = "island-bars")
         transition.animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "phase").value
     } else 0f

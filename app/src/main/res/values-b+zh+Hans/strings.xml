@@ -2016,4 +2016,8 @@
     <string name="appearance_system_until_location">设置位置前将使用系统主题</string>
     <string name="appearance_system_location_stale">设备位置已过时，正在使用系统主题</string>
     <string name="appearance_system_location_unavailable">此位置不可用，正在使用系统主题</string>
+    <string name="island_expand">显示详细信息</string>
+    <string name="island_collapse">隐藏详细信息</string>
+    <string name="island_state_expanded">已展开</string>
+    <string name="island_state_collapsed">已收起</string>
 </resources>
