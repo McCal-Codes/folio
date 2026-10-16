@@ -2073,4 +2073,8 @@
     <string name="appearance_system_until_location">Using system theme until a location is set</string>
     <string name="appearance_system_location_stale">Using system theme because the device location is stale</string>
     <string name="appearance_system_location_unavailable">Using system theme because this location is unavailable</string>
+    <string name="island_expand">Show details</string>
+    <string name="island_collapse">Hide details</string>
+    <string name="island_state_expanded">Expanded</string>
+    <string name="island_state_collapsed">Collapsed</string>
 </resources>
