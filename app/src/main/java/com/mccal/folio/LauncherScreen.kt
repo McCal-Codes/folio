@@ -1096,17 +1096,22 @@ fun LauncherScreen(
                 DisposableEffect(Unit) { onDispose { grabberBounds = androidx.compose.ui.geometry.Rect.Zero } }
                 var dragStartCenter by remember { mutableFloatStateOf(0f) }
                 var dragged by remember { mutableFloatStateOf(0f) }
+                // The grabber follows the dock, so it moves under the finger while it is dragged. Drag deltas in its own
+                // coordinates then shrink towards zero and the dock only moved sometimes (#326). Measure the finger in
+                // window coordinates instead: the grabber's top in the window plus where the finger is inside it.
+                var grabberTop by remember { mutableFloatStateOf(0f) }
+                var dragStartY by remember { mutableFloatStateOf(0f) }
                 val moveLabel = stringResource(R.string.move_dock)
                 val upLabel = stringResource(R.string.move_dock_up)
                 val downLabel = stringResource(R.string.move_dock_down)
                 Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
                     // Under the dock, but never lower than a touch target above the bottom of the window.
                     .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
-                    .onGloballyPositioned { grabberBounds = it.boundsInRoot() }
+                    .onGloballyPositioned { grabberBounds = it.boundsInRoot(); grabberTop = it.positionInWindow().y }
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures(onDragStart = { dragStartCenter = centerDp; dragged = 0f }) { change, dy ->
+                        detectVerticalDragGestures(onDragStart = { offset -> dragStartCenter = centerDp; dragged = 0f; dragStartY = grabberTop + offset.y }) { change, _ ->
                             change.consume()
-                            dragged += dy / density.density
+                            dragged = (grabberTop + change.position.y - dragStartY) / density.density
                             model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionForCenter(dragStartCenter + dragged, windowHeight)))
                         }
                     }.semantics {
