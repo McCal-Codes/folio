@@ -165,21 +165,28 @@ internal object ActionRunner {
         } catch (e: Exception) {
             // Diagnostics.caught leaves the one trail line ("Action X failed: <class>"); nothing is added here.
             Diagnostics.caught("Action ${ref.id}", e)
-            if (opensTarget(ref.id)) unavailable(targetLabel(context, ref))
+            sayIfMissing(context, ref, unavailable)
             return false
         }
         if (!done) {
             trail("Action ${ref.id} (${source.trailName}) did not run")  // english-only
             if (spec.needs == ActionNeeds.ACCESSIBILITY) notice(R.string.needs_accessibility_service)
             // Opening an app or shortcut that is gone explains itself, the way Home does, instead of doing nothing.
-            if (opensTarget(ref.id)) unavailable(targetLabel(context, ref))
+            sayIfMissing(context, ref, unavailable)
             return false
         }
         trail("Action ${ref.id} (${source.trailName}) ran")  // english-only
         return true
     }
 
-    private fun opensTarget(id: String) = id == "app.open" || id == "shortcut.open"
+    private fun sayIfMissing(context: Context, ref: ActionRef, unavailable: (String) -> Unit) {
+        if (ref.id != "app.open" && ref.id != "shortcut.open") return
+        val pkg = ref.args["pkg"].orEmpty()
+        if (pkg.isBlank()) return
+        val installed = try { context.packageManager.getApplicationInfo(pkg, 0); true } catch (_: Exception) { false }
+        val gone = if (ref.id == "shortcut.open" && installed) ActionSpecs.shortcutGone(context, pkg, ref.args["id"], ref.args["user"]) else null
+        if (openTargetMissing(installed, ref.id == "shortcut.open", gone)) unavailable(targetLabel(context, ref))
+    }
 
     /** The app's name when it is still installed, else the package name the action holds. */
     private fun targetLabel(context: Context, ref: ActionRef): String {
@@ -197,3 +204,11 @@ internal object ActionRunner {
         ActionVerdict.Unknown -> "unknown action"
     }
 }
+
+/**
+ * Whether a failed Open App or Open Shortcut means the target is gone, so "is unavailable" is true. A failure that may
+ * only be about access (Folio not being the default Home, a query that could not run) says nothing. [shortcutGone] is
+ * null when that could not be told.
+ */
+internal fun openTargetMissing(packageInstalled: Boolean, isShortcut: Boolean, shortcutGone: Boolean?): Boolean =
+    !packageInstalled || (isShortcut && shortcutGone == true)
