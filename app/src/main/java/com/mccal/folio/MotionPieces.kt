@@ -115,3 +115,29 @@ internal fun InstallDonePop() {
         )
     }
 }
+
+/** A badge pops in only when a count first appears on an icon that had none, not on every redraw or when the number changes. */
+internal fun badgeAppeared(previous: Int, now: Int) = previous <= 0 && now > 0
+
+/**
+ * True for the composition in which [count] went from none to some on a tile that was already on screen. A tile that is
+ * only being drawn (a page swiped into view) starts with its count already there and never pops. Always false with the
+ * motion pass off or under Reduce Motion, so the badge simply appears.
+ */
+@Composable
+internal fun rememberBadgeAppeared(count: Int): Boolean {
+    val previous = remember { intArrayOf(count) }
+    val appeared = badgeAppeared(previous[0], count) && FolioMotion.v2 && !LocalReduceMotion.current
+    androidx.compose.runtime.SideEffect { previous[0] = count }
+    return appeared
+}
+
+/** The badge's scale on arrival: from [BADGE_POP_FROM] to 1 on [FolioMotion.Bounce], which overshoots under 5%. Stays at 1 when [pop] is false. */
+@Composable
+internal fun rememberBadgePop(pop: Boolean): State<Float> {
+    val scale = remember { Animatable(if (pop) BADGE_POP_FROM else 1f) }
+    LaunchedEffect(Unit) { if (scale.value < 1f) scale.animateTo(1f, FolioMotion.spring(FolioMotion.Bounce)) }
+    return scale.asState()
+}
+
+internal const val BADGE_POP_FROM = .6f
