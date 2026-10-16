@@ -347,6 +347,8 @@ internal fun FolderPanel(
                                             // own coroutine scope unwinds, which fires onDragCancel right after -
                                             // only clear state here if nothing newer has already claimed it.
                                             onDragCancel = { if (carrying) { if (!carryHandled[0]) { carryHandled[0] = true; latestCarryFinish(true) } } else if (draggingAppId == appId) {
+                                                // A cancelled drag saves nothing, so the grid goes back to the saved order.
+                                                order.clear(); order.addAll(latestFolder.appIds)
                                                 draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false } },
                                         ) { change, amount ->
                                             change.consume()
@@ -442,7 +444,7 @@ private fun FolderChild(
         androidx.compose.foundation.layout.BoxWithConstraints {
             val badgePlacement = FolderBadge.placement(maxWidth.value)
             Column(Modifier.fillMaxWidth().dropRegion(drag, DropTarget.Library(app.id), app.id, page,
-                folderId = folderId, scope = folderId).clickable(enabled = app.available) { onLaunch(app, null) }
+                folderId = folderId, scope = folderId).clickable { onLaunch(app, null) }
                 .padding(horizontal = FolioSpace.SNUG.dp, vertical = FolioSpace.COMPACT.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 // The badge goes where FolderBadge.CORNER says, kept clear of the "..." button below (#362).
                 AppIcon(app, null, Modifier.size(FolderBadge.ICON.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp),

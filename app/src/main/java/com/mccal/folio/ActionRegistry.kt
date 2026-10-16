@@ -147,6 +147,7 @@ internal object ActionRunner {
         env: ActionEnv = ActionEnv.live(context),
         notice: (Int) -> Unit = { IslandEvents.notice(context, context.getString(it)) },
         trail: (String) -> Unit = Diagnostics::event,
+        unavailable: (String) -> Unit = { IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, it)) },
     ): Boolean {
         val spec = registry.spec(ref.id)
         val verdict = registry.verdict(ref, env, source)
@@ -164,15 +165,27 @@ internal object ActionRunner {
         } catch (e: Exception) {
             // Diagnostics.caught leaves the one trail line ("Action X failed: <class>"); nothing is added here.
             Diagnostics.caught("Action ${ref.id}", e)
+            if (opensTarget(ref.id)) unavailable(targetLabel(context, ref))
             return false
         }
         if (!done) {
             trail("Action ${ref.id} (${source.trailName}) did not run")  // english-only
             if (spec.needs == ActionNeeds.ACCESSIBILITY) notice(R.string.needs_accessibility_service)
+            // Opening an app or shortcut that is gone explains itself, the way Home does, instead of doing nothing.
+            if (opensTarget(ref.id)) unavailable(targetLabel(context, ref))
             return false
         }
         trail("Action ${ref.id} (${source.trailName}) ran")  // english-only
         return true
+    }
+
+    private fun opensTarget(id: String) = id == "app.open" || id == "shortcut.open"
+
+    /** The app's name when it is still installed, else the package name the action holds. */
+    private fun targetLabel(context: Context, ref: ActionRef): String {
+        val pkg = ref.args["pkg"].orEmpty()
+        return try { context.packageManager.getApplicationInfo(pkg, 0).loadLabel(context.packageManager).toString() }
+        catch (_: Exception) { pkg }
     }
 
     private fun ActionVerdict.trailText() = when (this) {
