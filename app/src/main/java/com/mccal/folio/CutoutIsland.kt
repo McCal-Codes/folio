@@ -195,9 +195,11 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val top = geometry.top.dp
 
         val toggles = message == null && live != null
-        val toggleLabel = if (toggles) stringResource(if (expanded) R.string.island_collapse else R.string.island_expand) else null
-        val stateLabel = if (toggles) stringResource(if (expanded) R.string.island_state_expanded else R.string.island_state_collapsed) else null
-        val toggle = { if (toggles) expanded = !expanded }
+        // Said from what is really showing: a ringing call or a notice opens the card by itself and has nothing to toggle.
+        val a11y = islandToggleA11y(toggles, open, forced = ringing != null || notice != null)
+        val toggleLabel = a11y?.takeIf { it.hasAction }?.let { stringResource(if (it.expanded) R.string.island_collapse else R.string.island_expand) }
+        val stateLabel = a11y?.let { stringResource(if (it.expanded) R.string.island_state_expanded else R.string.island_state_collapsed) }
+        val toggle = { if (a11y?.hasAction == true) expanded = !expanded }
         // A tap anywhere else on Home puts the card away. The tap is consumed here, like a sheet's scrim, so it never
         // also opens whatever was under it (IM-9/IM-10).
         if (islandCardTapOutsideCloses(expanded, live != null, message != null, notice != null, ringing != null))
@@ -265,6 +267,19 @@ internal fun expandedAfterTakeover(expanded: Boolean, takeover: Boolean): Boolea
 /** Whether a tap outside the card puts it away: only a card the user opened, never a message, notice or ringing call (IM-10). */
 internal fun islandCardTapOutsideCloses(expanded: Boolean, hasLive: Boolean, message: Boolean, notice: Boolean, ringing: Boolean): Boolean =
     expanded && hasLive && !message && !notice && !ringing
+
+/** What TalkBack says about the island's tap target: the state, and whether activating it does anything. */
+internal data class IslandToggleA11y(val expanded: Boolean, val hasAction: Boolean)
+
+/**
+ * [open] is whether a card is showing. A [forced] card (a ringing call, a notice) opened by itself, so it reads as
+ * expanded with no toggle action. Null when the island has nothing to toggle.
+ */
+internal fun islandToggleA11y(toggles: Boolean, open: Boolean, forced: Boolean): IslandToggleA11y? = when {
+    !toggles -> null
+    forced -> IslandToggleA11y(expanded = true, hasAction = false)
+    else -> IslandToggleA11y(expanded = open, hasAction = true)
+}
 
 /** How far below the 34 dp pill its touch area reaches. */
 internal const val ISLAND_TOUCH_EXTRA = 14

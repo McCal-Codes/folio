@@ -402,7 +402,21 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 val islandStrings = androidx.compose.ui.platform.LocalContext.current.strings()
                 val content = islandContent.collectAsState().value
                 // Folio's own Reduce Motion (saved with the rest) or Android's Remove animations, as on Home (I-9).
-                val reduceMotion = settings.collectAsState().value.reduceMotion || remember { reduceMotionEnabled(service) }
+                @Composable fun androidRemovesAnimations(): Boolean {
+                    var removed by remember { mutableStateOf(reduceMotionEnabled(service)) }
+                    // Re-read while the overlay stays up: Remove animations can be switched on under a playing song.
+                    DisposableEffect(Unit) {
+                        val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                            override fun onChange(selfChange: Boolean) { removed = reduceMotionEnabled(service) }
+                        }
+                        listOf(android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE).forEach {
+                            service.contentResolver.registerContentObserver(android.provider.Settings.Global.getUriFor(it), false, observer)
+                        }
+                        onDispose { service.contentResolver.unregisterContentObserver(observer) }
+                    }
+                    return removed
+                }
+                val reduceMotion = settings.collectAsState().value.reduceMotion || androidRemovesAnimations()
                 val w by animateDpAsState(content?.let { g.widthFor(it).dp } ?: 0.dp,
                     if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Appear), label = "overlay-island")
                 androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {

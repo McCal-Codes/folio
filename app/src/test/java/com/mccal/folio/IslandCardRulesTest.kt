@@ -32,4 +32,17 @@ class IslandCardRulesTest {
     @Test fun `the touch extension is 14 dp`() {
         assertEquals(14, ISLAND_TOUCH_EXTRA)
     }
+
+    @Test fun `the pill and a card opened by tap say what is showing and offer the toggle`() {
+        assertEquals(IslandToggleA11y(expanded = false, hasAction = true), islandToggleA11y(toggles = true, open = false, forced = false))
+        assertEquals(IslandToggleA11y(expanded = true, hasAction = true), islandToggleA11y(toggles = true, open = true, forced = false))
+    }
+
+    @Test fun `a ringing call or notice card reads as expanded with no toggle`() {
+        assertEquals(IslandToggleA11y(expanded = true, hasAction = false), islandToggleA11y(toggles = true, open = true, forced = true))
+    }
+
+    @Test fun `nothing to toggle gives no state`() {
+        assertEquals(null, islandToggleA11y(toggles = false, open = true, forced = false))
+    }
 }
