@@ -6,6 +6,8 @@ internal object SettingKeys {
     const val STATE = "state"
     /** Whether Home's window shows Android's wallpaper, saved on its own and at once (see applyWallpaperWindow). */
     const val SYSTEM_WALLPAPER = "systemWallpaperWindow"
+    /** Private While Recording (Settings › General › Advanced), a plain boolean beside the state so no schema changes. */
+    const val PRIVATE_WHILE_RECORDING = "privateWhileRecording"
     const val DOCK = "dock"
     const val LEFT_HANDED = "leftHanded"
     const val DOCK_EVERYWHERE = "dockEverywhere"

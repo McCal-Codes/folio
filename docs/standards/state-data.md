@@ -20,6 +20,8 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | What is behind Home | `LauncherModel` (see Gap below: three owners today) | `launcher/state` JSON, mirrored to `launcher_background` prefs for the wallpaper service | Everything; the picked photo itself stays out of Layout Backup |
 | Focus modes and rules | `FocusController` | `focus_rules` prefs | Everything |
 | Screenshot Mode's swap list (apps shown as the phone's own apps) | `ScreenshotSwap` | `screenshot_swap` prefs, key `rules`, only when some are set; not in `launcher/state`, so no schema change | Everything; not in Layout Backup (the list is private) |
+| Private While Recording (switch) | `PrivateRecording` | `launcher` prefs, boolean `privateWhileRecording`, only the switch; beside `state`, not in it, so no schema change and an older Folio ignores it | Everything; not in Layout Backup |
+| Private view (on while Folio's windows are in a recording) | `PrivateRecording` (from the Android 15 recording callback) | None, in memory only, so a crash cannot leave it on | Nothing; read again when Folio starts |
 | Market packages | Market repository | `filesDir/market` + records in layout JSON | Backup keeps records, reapplies changes |
 | Hinge posture, window size | WindowManager (`LocalHinge`) | None | Recomputed |
 | Battery, signal, ringer | `DeviceStatus` | None | Recomputed on start |

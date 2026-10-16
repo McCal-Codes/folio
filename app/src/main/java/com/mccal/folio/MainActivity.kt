@@ -140,6 +140,11 @@ class MainActivity : ComponentActivity() {
         }
         status = DeviceStatusMonitor(this).also { lifecycle.addObserver(it) }
         lifecycle.addObserver(IslandEvents.Observer(this))
+        PrivateRecording.load(this)
+        // One notice when the private view goes on, none when it goes off (everything just returns).
+        lifecycleScope.launch {
+            PrivateRecording.started.collect { IslandEvents.notice(this@MainActivity, getString(R.string.recording_private_view_on), toastFallback = false) }
+        }
         updateDefaultHome()
         if (savedInstanceState == null && intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++
         if (savedInstanceState == null && opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
@@ -157,6 +162,9 @@ class MainActivity : ComponentActivity() {
             val state = rememberDisguised(FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
                 .let { if (solidGlass) it.withSolidGlass() else it })
             androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(31_000); SafeMode.markStable(this@MainActivity) }
+            // The island and Notification Center show a swapped app by its stand-in while the private view is on.
+            val privateView by PrivateRecording.on.collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(state.apps) { PrivateRecording.standIns.value = swappedByPackage(state.apps) }
             // Saveable: a theme or language change recreates the activity, and the answer must not be asked again.
             val safeAcknowledged = androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
             if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {},
@@ -299,7 +307,7 @@ class MainActivity : ComponentActivity() {
                         FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
                 },
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
-                LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, state.badgeStyle, state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
+                LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, privateBadgeStyle(state.badgeStyle, privateView), state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
                 LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
@@ -412,8 +420,34 @@ class MainActivity : ComponentActivity() {
             timeReceiverRegistered = true
         }
         appearance.refresh(systemDark())
+        listenForRecording()
     }
+
+    private var recordingCallback: java.util.function.Consumer<Int>? = null
+
+    /**
+     * Android 15+: is Folio's window in a screen recording or share? The callback stays registered only while Folio is on
+     * screen. The state is not cleared in onStop: Folio's island over other apps may still be in a recording, and when
+     * Folio starts again the current state is read afresh.
+     */
+    private fun listenForRecording() {
+        if (android.os.Build.VERSION.SDK_INT < 35 || recordingCallback != null) return
+        val callback = java.util.function.Consumer<Int> { PrivateRecording.report(it == android.view.WindowManager.SCREEN_RECORDING_STATE_VISIBLE) }
+        runCatching {
+            val current = windowManager.addScreenRecordingCallback(mainExecutor, callback)
+            recordingCallback = callback
+            PrivateRecording.report(current == android.view.WindowManager.SCREEN_RECORDING_STATE_VISIBLE)
+        }
+    }
+
+    private fun stopListeningForRecording() {
+        val callback = recordingCallback ?: return
+        recordingCallback = null
+        if (android.os.Build.VERSION.SDK_INT >= 35) runCatching { windowManager.removeScreenRecordingCallback(callback) }
+    }
+
     override fun onStop() {
+        stopListeningForRecording()
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
         widgets.host.stopListening(); model.flushPending(); super.onStop()

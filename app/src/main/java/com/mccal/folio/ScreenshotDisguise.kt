@@ -160,7 +160,7 @@ internal object ScreenshotSwap {
 }
 
 /**
- * [state] as Home should draw it: with Screenshot Mode's swap applied while the mode is on and a rule is set, and
+ * [state] as Home should draw it: with the swap applied while Screenshot Mode or the private view (Private While Recording) is on and a rule is set, and
  * [state] itself otherwise, so Home costs nothing extra when the swap is not in use. Applied where a screen collects
  * the launcher state, so every list under it (grid, dock, folders, App Library, Spotlight, Today) follows; the model
  * and Layout Backup keep the real apps.
@@ -171,7 +171,8 @@ internal fun rememberDisguised(state: LauncherState): LauncherState {
     remember { ScreenshotSwap.load(context) }
     val on by ScreenshotMode.on.collectAsStateWithLifecycle()
     val rules by ScreenshotSwap.rules.collectAsStateWithLifecycle()
-    val active = on && !rules.isEmpty
+    val private by PrivateRecording.on.collectAsStateWithLifecycle()
+    val active = swapActive(on, private, rules)
     val packages = remember(state.apps) { state.apps.mapTo(mutableSetOf()) { it.packageName } }
     // Asked only while the swap is in use, and off the main thread: one package manager call per app.
     val system by produceState<Set<String>?>(null, active, packages) {
