@@ -22,6 +22,20 @@ class SmallMotionTest {
         assertFalse(badgeAppeared(0, 0))
     }
 
+    @Test fun `only the digits that changed are marked, lined up from the ones place`() {
+        assertEquals(listOf(false, true), changedDigits("12", "13"))
+        assertEquals(listOf(true, true), changedDigits("19", "20"))
+        assertEquals(listOf(true, true), changedDigits("9", "10"))
+        assertEquals(listOf(false, false), changedDigits("12", "12"))
+        assertEquals(listOf(false, false, true), changedDigits("120", "121"))
+    }
+
+    @Test fun `a count with a plus sign rolls as a whole`() {
+        assertTrue(rollsPerDigit("42"))
+        assertFalse(rollsPerDigit("99+"))
+        assertFalse(rollsPerDigit(""))
+    }
+
     @Test fun `the pop starts near 60 percent and the bounce spring stays under 1_12`() {
         assertEquals(.6f, BADGE_POP_FROM, 0f)
         val (damping, _) = FolioMotion.Bounce
