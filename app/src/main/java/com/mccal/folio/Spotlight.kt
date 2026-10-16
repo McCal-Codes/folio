@@ -393,7 +393,7 @@ private fun TopHit(app: AppEntry, onClick: () -> Unit) {
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else "${app.profileLabel} app", color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            Text(if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else stringResource(R.string.profile_app, app.profileLabel), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
         }
         Text(stringResource(R.string.open), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))

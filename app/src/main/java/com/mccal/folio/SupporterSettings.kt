@@ -240,5 +240,5 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
 internal fun monthYearLabel(yearMonth: String): String = runCatching {
     val (year, month) = yearMonth.split('-')
     java.time.YearMonth.of(year.toInt(), month.toInt())
-        .format(DateTimeFormatter.ofPattern("LLLL yyyy").withLocale(java.util.Locale.getDefault()))
+        .format(DateTimeFormatter.ofPattern("LLLL yyyy").withLocale(java.util.Locale.getDefault())) // english-only
 }.getOrDefault(yearMonth)

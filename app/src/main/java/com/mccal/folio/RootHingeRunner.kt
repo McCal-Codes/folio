@@ -38,7 +38,7 @@ internal data class RootTestReport(
     fun text(device: String, androidVersion: String, folioVersion: String): String = buildString {
         appendLine("Folio root hinge test") // english-only
         appendLine("Result: $outcome ($state)")
-        appendLine("su: ${suPath ?: "none found"}   root manager: ${rootManager ?: "unknown"}")
+        appendLine("su: ${suPath ?: "none found"}   root manager: ${rootManager ?: "unknown"}") // english-only
         appendLine("Readings: $readings, different angles: $distinctAngles, range: $minDegrees to $maxDegrees")
         appendLine("Device: $device, Android $androidVersion, Folio $folioVersion")
         if (detail.isNotBlank()) appendLine("Detail: $detail")
@@ -95,7 +95,7 @@ internal object RootHingeRunner {
                         val code = process.exitCode()
                         val why = process.errorText().lineSequence().firstOrNull { it.isNotBlank() }?.take(120).orEmpty()
                         return report(if (code != null && code != 0 && refusedRoot(why)) RootTestReport.Outcome.DENIED else RootTestReport.Outcome.FAILED, previous, su, version(launcher, su),
-                            detail = "su ended (exit ${code ?: "?"})${if (why.isNotEmpty()) ": $why" else ""}")
+                            detail = "su ended (exit ${code ?: "?"})${if (why.isNotEmpty()) ": $why" else ""}") // english-only
                     }
                     is SuLine.Text -> when (val message = RootHingeProtocol.parse(line.line)) {
                         RootHingeProtocol.Message.Ready -> ready = true
