@@ -36,6 +36,10 @@ class SmallMotionTest {
         assertFalse(rollsPerDigit(""))
     }
 
+    @Test fun `the switch thumb widens by about 15 percent`() {
+        assertEquals(1.15f, SWITCH_SQUISH, 0f)
+    }
+
     @Test fun `the pop starts near 60 percent and the bounce spring stays under 1_12`() {
         assertEquals(.6f, BADGE_POP_FROM, 0f)
         val (damping, _) = FolioMotion.Bounce
