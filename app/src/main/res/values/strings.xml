@@ -2073,6 +2073,11 @@
     <string name="appearance_system_until_location">Using system theme until a location is set</string>
     <string name="appearance_system_location_stale">Using system theme because the device location is stale</string>
     <string name="appearance_system_location_unavailable">Using system theme because this location is unavailable</string>
+    <!-- Settings › Search & App Library › Suggestions. Wording is a placeholder for McCal. -->
+    <string name="clear_suggestions_history">Clear Suggestions History</string>
+    <string name="clear_suggestions_history_q">Clear Suggestions History?</string>
+    <string name="clear_suggestions_history_text">Folio forgets what it learned from your app use, including your recent apps. Android\'s own usage data is not changed.</string>
+    <string name="suggestions_start_again_from_now">Spotlight, the App Library, the Suggestions widget and Smart Stack start learning again from now.</string>
     <string name="island_expand">Show details</string>
     <string name="island_collapse">Hide details</string>
     <string name="island_state_expanded">Expanded</string>
