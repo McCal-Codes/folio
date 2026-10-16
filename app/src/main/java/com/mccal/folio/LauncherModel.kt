@@ -546,6 +546,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     val listingApps get() = refreshing
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
+            LibraryCategory.forget(packageName)
             // A package Folio didn't know is a new download (not an update or a profile coming back).
             if (mutable.value.apps.none { it.packageName == packageName }) {
                 NewApps.mark(getApplication(), packageName)
@@ -554,16 +555,18 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             refresh(packageName, user)
         }
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
+            LibraryCategory.forget(packageName)
             removedPackages += userManager.getSerialNumberForUser(user) to packageName
             refresh(packageName, user)
         }
-        override fun onPackageChanged(packageName: String, user: UserHandle) = refresh(packageName, user)
+        override fun onPackageChanged(packageName: String, user: UserHandle) { LibraryCategory.forget(packageName); refresh(packageName, user) }
         // Apps update their dynamic shortcuts often; only pinned ones matter to Home.
         override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<android.content.pm.ShortcutInfo>, user: UserHandle) {
             if (shortcuts.any { it.isPinned } || mutable.value.apps.any { it.isShortcut && it.packageName == packageName }) refresh(packageName, user)
         }
         override fun onPackagesAvailable(packages: Array<out String>, user: android.os.UserHandle, replacing: Boolean) {
             packages.forEach {
+                LibraryCategory.forget(it)
                 val key = userManager.getSerialNumberForUser(user) to it
                 invalidatedPackages += key; unavailablePackages -= key
             }; refresh()

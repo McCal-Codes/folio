@@ -35,7 +35,16 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
     SHOPPING(R.string.shopping_food), UTILITIES(R.string.utilities), OTHER(R.string.other);
 
     companion object {
-        fun of(pm: PackageManager, packageName: String): LibraryCategory {
+        // One answer per package for the life of the process: the same apps are sorted again on every change to the list.
+        private val known = java.util.concurrent.ConcurrentHashMap<String, LibraryCategory>()
+
+        fun of(pm: PackageManager, packageName: String): LibraryCategory =
+            known.getOrPut(packageName) { lookup(pm, packageName) }
+
+        /** An installed, updated or removed package may declare another category now; the next list asks again. */
+        fun forget(packageName: String) { known.remove(packageName) }
+
+        private fun lookup(pm: PackageManager, packageName: String): LibraryCategory {
             val p0 = packageName.lowercase()
             // Browsers and system tools often declare odd categories; our hints win for them.
             if (hint(p0, "chrome", "firefox", "browser", "opera", "brave", "edge", "duckduckgo", "settings", "myfiles", "files",
