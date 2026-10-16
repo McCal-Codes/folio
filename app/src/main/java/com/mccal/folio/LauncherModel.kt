@@ -335,6 +335,14 @@ data class LauncherState(
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
+    /**
+     * App rows for the screen Home is on now. The open screen held upright with its own layout (Layout › Inner) gets
+     * the rows that fit it, instead of the fewest rows any screen fits, so the separate layout can use its height (#13).
+     * Pages with apps in those extra rows draw taller on the other screens (see shownHomeRows), so nothing is lost.
+     */
+    fun homeAppRowsFor(screen: LayoutScreen): Int =
+        if (screen == LayoutScreen.INNER_UPRIGHT && portrait != null && homeRows <= 0 && homeFitUpright > 0)
+            homeFitUpright.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS) else homeAppRows
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
