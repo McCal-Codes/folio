@@ -91,6 +91,11 @@ internal object RecentApps {
         prefs.edit().putString(KEY, list.joinToString("\n")).putString(LAUNCHES, log.joinToString("\n")).apply()
     }
 
+    /** Empties the recents list and the launch log (Clear Suggestions History). */
+    fun clear(context: Context) {
+        context.getSharedPreferences("folio", 0).edit().remove(KEY).remove(LAUNCHES).apply()
+    }
+
     fun load(context: Context): List<String> =
         (context.getSharedPreferences("folio", 0).getString(KEY, "") ?: "").split('\n').filter { it.isNotBlank() }
 
@@ -228,7 +233,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
         if (contactsGranted && q.length >= 2) kotlinx.coroutines.delay(150) // debounce typing
         value = if (contactsGranted && q.length >= 2) withContext(Dispatchers.IO) { queryContacts(context, q) } else emptyList()
     }
-    val launch = { app: AppEntry -> RecentApps.record(context, app.id); onClose(); onLaunch(app) }
+    val launch = { app: AppEntry -> onClose(); onLaunch(app) }
     val start = { intent: Intent -> onClose(); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
 
     // imeAnimationTarget changes once per keyboard show/hide (not every animation frame), so results

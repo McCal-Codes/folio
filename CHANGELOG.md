@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.9] - Unreleased
 
 ### Added
+- **Clear Suggestions History:** Settings › Search & App Library › Suggestions has a Clear Suggestions History row. After you confirm, Folio forgets what it learned from your app use (Spotlight suggestions, the App Library tile, the Suggestions widget, Smart Stack relevance) and empties your recent apps. Android's own usage data is not changed; Folio just ignores anything from before you cleared.
 - **Reduce Motion:** Settings › Accessibility › Reduce Motion is a step between all motion and Android's Remove animations, like iOS. Pages, sheets, menus and alerts fade in where they land instead of sliding or growing, the install check fades in instead of popping, icons stop wiggling while you edit Home, and switches stop without bouncing. Remove animations turns it on too. Animation Speed still applies.
 - **Press and lift on icons:** with the new motion on (supporters first), apps, dock icons and folders all dip the same way under your finger, an icon lifts with a soft shadow while its menu is open, and after a tap it stays dipped until the app is up (half a second at most), so a slow app no longer looks like nothing happened. With Reduce Motion on the icon only dims.
 - **Performance log by what Folio was doing:** besides the whole run, the report gives the frame timing (p50, p95, p99 and janky frames) of the fold animation, Home swipes, folders opening, widget resizing, pages, sheets, menus and alerts opening, and moving an icon on Home, each on their own, so a slow one shows up by name.
@@ -47,6 +48,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Delete apps from Folio:** press and hold an app on Home, then Remove App, to delete it or only take it off Home; in the App Library the menu says Delete App. Android asks you to confirm every delete, as it does for any app. Apps that came with the phone can be hidden or turned off in App Info instead, and work apps are deleted from App Info. Folio now asks Android for permission to request deletes (`REQUEST_DELETE_PACKAGES`), granted with the app; see PERMISSIONS.md.
 
 ### Changed
+- **Home button on Home goes to the first page:** press Home while Folio is already in front and it returns to your first Home page (or a Focus's own Home page). Pressed from another app it still returns to the page you left, and with a sheet, menu, folder or Spotlight open it only closes that.
 - **App Library opens without a flash:** while the category tiles are worked out, the library no longer shows the whole A to Z list for a moment first, and it looks each app's category up once instead of on every change. Scrolling also does less work per icon.
 - **Swipe an incoming call away:** swipe a ringing call's card up on Home and it shrinks to the pill, like a message or notice already does. The call keeps ringing, and a tap on the pill opens the card again.
 - **Bottom of Home says where Search goes (#325):** the first choice is now called Search bar, and the note says that with Page dots or Nothing, Search moves to a round button in the bottom corner. The switch below it is now Search opens the Google app, since it covers both.
@@ -62,6 +64,10 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Icon actions that open a missing app say so:** an Open App or Open Shortcut action whose app or shortcut is gone now shows "App is unavailable" instead of doing nothing.
+- **Unavailable apps in a folder explain themselves:** tapping one now shows the same "is unavailable" notice as on Home, instead of doing nothing.
+- **Spotlight launches count once:** opening an app from Spotlight added it to Recents twice, which tilted the order of Suggestions and Recents. It counts once now.
+- **Cancelled folder reorder:** if a drag inside a folder is interrupted, the apps go back to their saved order instead of showing an order that was never saved.
 - **Island, calmer and easier to reach:** with Reduce Motion on, the island fades between its pill and its card instead of stretching, and the music and call bars stand still, on Home and over other apps. A tap anywhere else on Home puts an opened card away, the card no longer reopens by itself after a message or a call has used the island, TalkBack says whether the card is expanded or collapsed, and the pill's touch area reaches a little lower so it is easier to hit.
 - **Home no longer stays blurred after a sheet:** each Home screen now counts only its own open sheets, menus and pages, so one that was stopped behind another can no longer leave Home blurred with nothing in front until Folio was force-stopped.
 - **Home no longer stays blurred behind nothing:** a sheet or menu that was still open on a Home screen Android had stopped could keep the current Home blurred with nothing in front, and only force-stopping Folio cleared it. Each Home screen now counts only its own sheets and menus, and drops them when it closes.

@@ -182,4 +182,12 @@ class ActionRegistryTest {
         assertNull(ActionRef.fromJson(JSONObject("{}")))
         assertNull(ActionRef.fromJson(JSONObject("""{"id":"  "}""")))
     }
+
+    @Test fun `a failed open says unavailable only when the target is really gone`() {
+        assertTrue(openTargetMissing(packageInstalled = false, isShortcut = false, shortcutGone = null))
+        assertTrue(openTargetMissing(packageInstalled = true, isShortcut = true, shortcutGone = true))
+        assertTrue(!openTargetMissing(packageInstalled = true, isShortcut = true, shortcutGone = null))
+        assertTrue(!openTargetMissing(packageInstalled = true, isShortcut = true, shortcutGone = false))
+        assertTrue(!openTargetMissing(packageInstalled = true, isShortcut = false, shortcutGone = null))
+    }
 }
