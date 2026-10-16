@@ -22,6 +22,8 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Screenshot Mode's swap list (apps shown as the phone's own apps) | `ScreenshotSwap` | `screenshot_swap` prefs, key `rules`, only when some are set; not in `launcher/state`, so no schema change | Everything; not in Layout Backup (the list is private) |
 | Private While Recording (switch) | `PrivateRecording` | `launcher` prefs, boolean `privateWhileRecording`, only the switch; beside `state`, not in it, so no schema change and an older Folio ignores it | Everything; not in Layout Backup |
 | Private view (on while Folio's windows are in a recording) | `PrivateRecording` (from the Android 15 recording callback) | None, in memory only, so a crash cannot leave it on | Nothing; read again when Folio starts |
+| Suggestions cutoff (Clear Suggestions History) | `SuggestionsHistory` | `launcher` prefs, long `suggestionsClearedAt`, only after a clear; beside `state`, not in it, so no schema change and an older Folio ignores it | Everything; never moves back; not in Layout Backup |
+| Launch log and recent apps (feed Suggestions) | `RecentApps` | `folio` prefs, keys `launch_log` and `recent_apps`; emptied by Clear Suggestions History | Everything; not in Layout Backup |
 | Market packages | Market repository | `filesDir/market` + records in layout JSON | Backup keeps records, reapplies changes |
 | Hinge posture, window size | WindowManager (`LocalHinge`) | None | Recomputed |
 | Battery, signal, ringer | `DeviceStatus` | None | Recomputed on start |

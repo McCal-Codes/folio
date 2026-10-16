@@ -229,7 +229,8 @@ internal fun SuggestionsCard(onEdit: () -> Unit) {
     val tick by rememberMinuteTick()
     // Re-rank every quarter hour, not every minute: suggestions shouldn't shuffle under a finger.
     val quarter = tick / 15
-    val apps by produceState(emptyList<AppEntry>(), home.apps, quarter) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps, limit = 16) } }
+    val cleared by SuggestionsHistory.generation.collectAsStateWithLifecycle()
+    val apps by produceState(emptyList<AppEntry>(), home.apps, quarter, cleared) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps, limit = 16) } }
     GlassCard(onClick = onEdit) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val layout = suggestionsLayout(maxWidth.value, maxHeight.value, LocalHomeIconSize.current)
