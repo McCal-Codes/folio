@@ -19,6 +19,16 @@ class HomeOverlaysTest {
         return HomeOverlays.Saver.restore(requireNotNull(saved))!!
     }
 
+    @Test fun `each overlay counts as open and closeAll shuts them all`() {
+        assertEquals(false, HomeOverlays().anyOpen)
+        listOf(
+            HomeOverlays(menu = "a"), HomeOverlays(rename = "a"), HomeOverlays(panel = "a"), HomeOverlays(stackFan = "a"),
+            HomeOverlays(stackEditor = "a"), HomeOverlays(folder = "a"), HomeOverlays(newFolder = "a"), HomeOverlays(emptyCell = 1),
+            HomeOverlays(addToFolder = "a"), HomeOverlays(iconEditor = "a"), HomeOverlays(removeApp = "a"),
+        ).forEach { assertEquals(true, it.anyOpen); it.closeAll(); assertEquals(false, it.anyOpen) }
+        everything.closeAll(); assertEquals(false, everything.anyOpen)
+    }
+
     @Test fun `every overlay comes back as itself`() {
         val back = roundTrip(everything)
         assertEquals("menu-app", back.menu)
