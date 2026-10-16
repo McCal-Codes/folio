@@ -467,6 +467,18 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 state.messagesApp, model::setMessagesApp, tag = "messages-app")
                         }
                     }
+                    if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.suggestions)) {
+                        val historyContext = androidx.compose.ui.platform.LocalContext.current
+                        var askClearHistory by remember { mutableStateOf(false) }
+                        CardAction(stringResource(R.string.clear_suggestions_history), Modifier.fillMaxWidth().testTag("clear-suggestions-history"), destructive = true, onClick = { askClearHistory = true })
+                        CardNote(stringResource(R.string.suggestions_start_again_from_now))
+                        if (askClearHistory) AlertDialog(onDismissRequest = { askClearHistory = false },
+                            title = { Text(stringResource(R.string.clear_suggestions_history_q)) },
+                            text = { Text(stringResource(R.string.clear_suggestions_history_text)) },
+                            confirmButton = { TextButton(onClick = { askClearHistory = false; SuggestionsHistory.clear(historyContext) },
+                                modifier = Modifier.testTag("clear-suggestions-history-confirm")) { Text(stringResource(R.string.clear), color = androidx.compose.ui.graphics.Color(FolioColors.Value.Red)) } },
+                            dismissButton = { TextButton(onClick = { askClearHistory = false }) { Text(stringResource(R.string.cancel)) } })
+                    }
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.actions)) {
                         CardNote(stringResource(R.string.pick_what_gestures_and_events_do_activat))
                         FolioTrigger.entries.forEach { trigger ->
@@ -1449,6 +1461,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.home_screen_dock to CustomizationPage.HOME,
     R.string.icons_side_bar to CustomizationPage.STATUS,
     R.string.search_app_library to CustomizationPage.SEARCH,
+    R.string.clear_suggestions_history to CustomizationPage.SEARCH,
     R.string.support_folio to CustomizationPage.SUPPORT,
     R.string.animation_speed to CustomizationPage.GESTURES,
     R.string.haptic_feedback to CustomizationPage.GESTURES,

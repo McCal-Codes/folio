@@ -2037,4 +2037,9 @@
     <string name="appearance_system_until_location">위치를 설정할 때까지 시스템 테마를 사용합니다</string>
     <string name="appearance_system_location_stale">기기 위치 정보가 오래되어 시스템 테마를 사용합니다</string>
     <string name="appearance_system_location_unavailable">이 위치를 사용할 수 없어 시스템 테마를 사용합니다</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="clear_suggestions_history">추천 기록 지우기</string>
+    <string name="clear_suggestions_history_q">추천 기록을 지울까요?</string>
+    <string name="clear_suggestions_history_text">Folio가 앱 사용에서 배운 내용과 최근 앱을 잊습니다. Android의 사용 데이터는 바뀌지 않습니다.</string>
+    <string name="suggestions_start_again_from_now">Spotlight, 앱 보관함, 추천 위젯, 스마트 스택이 지금부터 다시 학습합니다.</string>
 </resources>

@@ -2016,4 +2016,9 @@
     <string name="appearance_system_until_location">设置位置前将使用系统主题</string>
     <string name="appearance_system_location_stale">设备位置已过时，正在使用系统主题</string>
     <string name="appearance_system_location_unavailable">此位置不可用，正在使用系统主题</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="clear_suggestions_history">清除建议记录</string>
+    <string name="clear_suggestions_history_q">清除建议记录？</string>
+    <string name="clear_suggestions_history_text">Folio 会忘记从你使用 App 中学到的内容，包括最近使用的 App。Android 自身的使用数据不会改变。</string>
+    <string name="suggestions_start_again_from_now">聚焦搜索、App 资源库、建议小组件和智能叠放将从现在起重新学习。</string>
 </resources>

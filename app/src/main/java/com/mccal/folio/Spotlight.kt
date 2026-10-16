@@ -91,6 +91,11 @@ internal object RecentApps {
         prefs.edit().putString(KEY, list.joinToString("\n")).putString(LAUNCHES, log.joinToString("\n")).apply()
     }
 
+    /** Empties the recents list and the launch log (Clear Suggestions History). */
+    fun clear(context: Context) {
+        context.getSharedPreferences("folio", 0).edit().remove(KEY).remove(LAUNCHES).apply()
+    }
+
     fun load(context: Context): List<String> =
         (context.getSharedPreferences("folio", 0).getString(KEY, "") ?: "").split('\n').filter { it.isNotBlank() }
 
