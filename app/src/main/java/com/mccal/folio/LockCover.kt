@@ -61,7 +61,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
     val alarm = remember(tick, screenshot) {
         if (screenshot) null else context.getSystemService(AlarmManager::class.java)?.nextAlarmClock?.let {
             LocalDateTime.ofInstant(Instant.ofEpochMilli(it.triggerTime), ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern(if (is24) "EEE HH:mm" else "EEE h:mm a"))
+                .format(DateTimeFormatter.ofPattern(if (is24) "EEE HH:mm" else "EEE h:mm a")) // english-only
         }
     }
     val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.take(4)

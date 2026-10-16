@@ -577,5 +577,3 @@ class IslandListenerService : NotificationListenerService() {
         }
     }
 }
-
-private val IslandAccent = Color(0xFF6EE39A)
