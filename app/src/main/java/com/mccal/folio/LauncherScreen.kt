@@ -380,6 +380,8 @@ fun LauncherScreen(
         previousEditRevision = state.editRevision
     }
     LaunchedEffect(pager.settledPage) { if (pager.settledPage != homePages) focus.clearFocus() }
+    // Paging away from the App Library, or the Home button taking you back, leaves its search behind like iOS does.
+    LaunchedEffect(pager.settledPage, visibleHomePages) { if (pager.settledPage != visibleHomePages && libraryQuery.isNotEmpty()) libraryQuery = "" }
     LaunchedEffect(pager.settledPage, visibleHomePages) { if (pager.settledPage !in 0 until visibleHomePages) homeEdit.stop() }
     LaunchedEffect(state.verticalStatus) { onStatusMode(state.verticalStatus) }
     LaunchedEffect(homeRequests) { if (homeRequests > 0) {
