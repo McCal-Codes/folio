@@ -47,6 +47,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
@@ -63,6 +64,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import org.json.JSONObject
 
@@ -98,7 +100,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private val dockOpen = MutableStateFlow(false)
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
-        val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false)
+        val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
+        val reduceMotion: Boolean = false)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -213,7 +216,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 j.optBoolean(SettingKeys.BUTTON_BAR_ANDROID_ORDER, false), j.optBoolean(SettingKeys.BUTTON_BAR_LIGHT, false),
                 j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true)),
             j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
-            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false))
+            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -405,11 +408,29 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             setContent {
                 val islandStrings = androidx.compose.ui.platform.LocalContext.current.strings()
                 val content = islandContent.collectAsState().value
+                // Folio's own Reduce Motion (saved with the rest) or Android's Remove animations, as on Home (I-9).
+                @Composable fun androidRemovesAnimations(): Boolean {
+                    var removed by remember { mutableStateOf(reduceMotionEnabled(service)) }
+                    // Re-read while the overlay stays up: Remove animations can be switched on under a playing song.
+                    DisposableEffect(Unit) {
+                        val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                            override fun onChange(selfChange: Boolean) { removed = reduceMotionEnabled(service) }
+                        }
+                        listOf(android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE).forEach {
+                            service.contentResolver.registerContentObserver(android.provider.Settings.Global.getUriFor(it), false, observer)
+                        }
+                        onDispose { service.contentResolver.unregisterContentObserver(observer) }
+                    }
+                    return removed
+                }
+                val reduceMotion = settings.collectAsState().value.reduceMotion || androidRemovesAnimations()
                 val w by animateDpAsState(content?.let { g.widthFor(it).dp } ?: 0.dp,
-                    FolioMotion.spring(FolioMotion.Appear), label = "overlay-island")
+                    if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Appear), label = "overlay-island")
+                androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     val popUp = (content as? IslandContent.Event)?.event is IslandEvent.Message
-                    if (content != null && w > 1.dp) Box(Modifier.size(w, g.pillH.dp).clip(RoundedCornerShape((g.pillH / 2).dp)).background(Color.Black)
+                    // With Reduce Motion the pill fades in where it lands instead of growing from nothing.
+                    if (content != null && w > 1.dp) { val fade = rememberReducedFade().value; Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape((g.pillH / 2).dp)).background(Color.Black)
                         // Swipe a message or notification up to put it away early, like an iPhone banner.
                         .pointerInput(popUp) {
                             if (!popUp) return@pointerInput
@@ -419,13 +440,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                                 onDragEnd = { if (pulled < -12.dp.toPx()) IslandEvents.dismiss() },
                             ) { change, dy -> change.consume(); pulled += dy }
                         }
-                        .clickable {
+                        .clickable(onClickLabel = service.getString(R.string.open)) {
                             (content as? IslandContent.Live)?.let { IslandListenerService.open(service, it.activity) }
                             ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
                         }
-                        .semantics { contentDescription = describe(content, islandStrings) }) {
+                        .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }) {
                         IslandPillContent(content, g.camW.dp, g.pillH.dp)
-                    }
+                    } }
+                }
                 }
             }
         }

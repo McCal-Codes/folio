@@ -2042,4 +2042,8 @@
     <string name="appearance_system_until_location">위치를 설정할 때까지 시스템 테마를 사용합니다</string>
     <string name="appearance_system_location_stale">기기 위치 정보가 오래되어 시스템 테마를 사용합니다</string>
     <string name="appearance_system_location_unavailable">이 위치를 사용할 수 없어 시스템 테마를 사용합니다</string>
+    <string name="island_expand">세부사항 보기</string>
+    <string name="island_collapse">세부사항 숨기기</string>
+    <string name="island_state_expanded">펼쳐짐</string>
+    <string name="island_state_collapsed">접힘</string>
 </resources>
