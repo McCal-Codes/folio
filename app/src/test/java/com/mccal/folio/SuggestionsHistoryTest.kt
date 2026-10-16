@@ -25,4 +25,9 @@ class SuggestionsHistoryTest {
         val kept = SuggestionsHistory.keepAfter(all, now - 2000L)
         assertEquals(setOf("a"), Suggestions.scores(kept, now, 0L).keys)
     }
+    @Test fun aClearBumpsTheGenerationSoShownSuggestionsRebuild() {
+        val before = SuggestionsHistory.generation.value
+        SuggestionsHistory.markCleared()
+        assertEquals(before + 1, SuggestionsHistory.generation.value)
+    }
 }

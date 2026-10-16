@@ -1,6 +1,9 @@
 package com.mccal.folio
 
 import android.content.Context
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Settings › Search & App Library › Clear Suggestions History.
@@ -18,6 +21,11 @@ internal object SuggestionsHistory {
     /** The cutoff after a clear at [now]. Never moves back, so a clock set backward cannot bring old history back. */
     fun nextCutoff(now: Long, current: Long): Long = maxOf(now, current)
 
+    private val generationMutable = MutableStateFlow(0L)
+    /** Goes up each time history is cleared, so a screen already showing suggestions can key on it and rebuild. */
+    val generation: StateFlow<Long> = generationMutable.asStateFlow()
+    internal fun markCleared() { generationMutable.value += 1 }
+
     fun cutoff(context: Context): Long =
         context.getSharedPreferences(SettingKeys.PREFS, 0).getLong(SettingKeys.SUGGESTIONS_CLEARED_AT, 0L)
 
@@ -25,5 +33,6 @@ internal object SuggestionsHistory {
         val prefs = context.getSharedPreferences(SettingKeys.PREFS, 0)
         prefs.edit().putLong(SettingKeys.SUGGESTIONS_CLEARED_AT, nextCutoff(now, prefs.getLong(SettingKeys.SUGGESTIONS_CLEARED_AT, 0L))).apply()
         RecentApps.clear(context)
+        markCleared()
     }
 }
