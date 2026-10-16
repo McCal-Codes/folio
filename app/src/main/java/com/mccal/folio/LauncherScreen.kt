@@ -130,6 +130,7 @@ fun DuoTheme(dark: Boolean = false, accent: AccentChoice = DuoAppearanceRuntime.
 @Composable
 fun LauncherScreen(
     state: LauncherState, model: LauncherModel, widgets: WidgetController, homeRequests: Int,
+    homeFromFront: Boolean = false,
     onLaunch: (AppEntry) -> Unit, onMakeDefault: () -> Unit, onAppInfo: (AppEntry) -> Unit,
     isDefaultHome: Boolean, deviceStatus: DeviceStatus, onStatusMode: (Boolean) -> Unit, onWallpaperPreview: () -> Unit,
     onDiscover: () -> Unit = {}, searchRequests: Int = 0, settingsRequests: Int = 0,
@@ -388,9 +389,11 @@ fun LauncherScreen(
         // An app can pause Home after the destination is visible but before its settle completes.
         // A Focus with its own Home page brings Home back there, like iOS Focus pages.
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
-        val page = (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))
-            ?: pager.currentPage.takeIf { it in 0 until homePages }
-            ?: lastHomePage.coerceIn(0, homePages - 1)
+        val focusPage = focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages)
+        // Something open on Home (a sheet, a menu, a folder, edit mode) is closed by this press and nothing more.
+        val somethingOpen = sheet.isNotEmpty() || homeEdit.active || widgetSession != null || overlays.menu != null || overlays.folder != null ||
+            overlays.newFolder != null || overlays.addToFolder != null || overlays.iconEditor != null || overlays.emptyCell != null
+        val page = homePressPage(homeFromFront, somethingOpen, focusPage, pager.currentPage, homePages, lastHomePage)
         drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
         picker.exactTarget = false; widgetPlacementMessage = null; overlays.menu = null
         overlays.folder = null; overlays.newFolder = null; overlays.addToFolder = null; overlays.iconEditor = null; overlays.emptyCell = null; homeEdit.stop()

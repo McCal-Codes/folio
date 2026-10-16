@@ -51,6 +51,10 @@ class MainActivity : ComponentActivity() {
     internal lateinit var backgrounds: LauncherBackgroundController
         private set
     private val homeRequests = mutableIntStateOf(0)
+    /** True when the Home press that made [homeRequests] count up found Folio already in front, with no overlay of its own open. */
+    private val homeFromFront = mutableStateOf(false)
+    /** Set when Folio stops (an app is in front) and cleared once it is back in front; a Home press while it is false is a press on Home. */
+    private var stoppedSinceHome = true
     private val searchRequests = mutableIntStateOf(0)
     /** Opened from Android Settings (Home app gear / "Additional settings in the app"). */
     private val settingsRequests = mutableIntStateOf(0)
@@ -320,7 +324,7 @@ class MainActivity : ComponentActivity() {
                     // frame). The overlay's scrim fades in over it, which hides the switch.
                     renderEffect = if (p > .02f && backdropBlurPx >= 2f && LauncherPagesOpen.intValue == 0 && SettingsPeek.value == null) backdropBlur else null
                 }) {
-                LauncherScreen(state, model, widgets, homeRequests.intValue,
+                LauncherScreen(state, model, widgets, homeRequests.intValue, homeFromFront = homeFromFront.value,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
                     isDefaultHome = defaultHome.value, deviceStatus = deviceStatus, onStatusMode = ::setStatusMode, onWallpaperPreview = ::previewWallpaper,
                     onDiscover = ::openDiscover, searchRequests = searchRequests.intValue, settingsRequests = settingsRequests.intValue,
@@ -414,6 +418,7 @@ class MainActivity : ComponentActivity() {
         appearance.refresh(systemDark())
     }
     override fun onStop() {
+        stoppedSinceHome = true
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
         widgets.host.stopListening(); model.flushPending(); super.onStop()
@@ -434,6 +439,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        stoppedSinceHome = false
         SoftwareUpdate.afterUpdate(this)
         SoftwareUpdate.startCheckIfDue(this)
         FolioForeground.visible.value = true
@@ -612,6 +618,9 @@ class MainActivity : ComponentActivity() {
         if (opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
         else if (takeMarketLink(intent)) settingsRequests.intValue++
         else if (intent.hasCategory(Intent.CATEGORY_HOME) || fromAppIcon(intent) || intent.getStringExtra("duo_destination") == "home") {
+            // Pressing the Home button on Home goes to the first page; from an app (stopped, so true here) it keeps the page you left.
+            val overlayOpen = spotlightVisible.value || topPanel.value != null || showFirstRun.value || lockCoverVisible.value
+            homeFromFront.value = intent.hasCategory(Intent.CATEGORY_HOME) && !stoppedSinceHome && !overlayOpen
             closeEverything(); homeRequests.intValue++
         }
         intent.removeExtra("duo_destination")
