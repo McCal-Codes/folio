@@ -2078,4 +2078,8 @@
     <string name="clear_suggestions_history_q">Clear Suggestions History?</string>
     <string name="clear_suggestions_history_text">Folio forgets what it learned from your app use, including your recent apps. Android\'s own usage data is not changed.</string>
     <string name="suggestions_start_again_from_now">Spotlight, the App Library, the Suggestions widget and Smart Stack start learning again from now.</string>
+    <string name="island_expand">Show details</string>
+    <string name="island_collapse">Hide details</string>
+    <string name="island_state_expanded">Expanded</string>
+    <string name="island_state_collapsed">Collapsed</string>
 </resources>

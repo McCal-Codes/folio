@@ -2021,4 +2021,8 @@
     <string name="clear_suggestions_history_q">清除建议记录？</string>
     <string name="clear_suggestions_history_text">Folio 会忘记从你使用 App 中学到的内容，包括最近使用的 App。Android 自身的使用数据不会改变。</string>
     <string name="suggestions_start_again_from_now">聚焦搜索、App 资源库、建议小组件和智能叠放将从现在起重新学习。</string>
+    <string name="island_expand">显示详细信息</string>
+    <string name="island_collapse">隐藏详细信息</string>
+    <string name="island_state_expanded">已展开</string>
+    <string name="island_state_collapsed">已收起</string>
 </resources>

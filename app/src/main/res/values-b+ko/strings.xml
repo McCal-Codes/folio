@@ -2042,4 +2042,8 @@
     <string name="clear_suggestions_history_q">추천 기록을 지울까요?</string>
     <string name="clear_suggestions_history_text">Folio가 앱 사용에서 배운 내용과 최근 앱을 잊습니다. Android의 사용 데이터는 바뀌지 않습니다.</string>
     <string name="suggestions_start_again_from_now">Spotlight, 앱 보관함, 추천 위젯, 스마트 스택이 지금부터 다시 학습합니다.</string>
+    <string name="island_expand">세부사항 보기</string>
+    <string name="island_collapse">세부사항 숨기기</string>
+    <string name="island_state_expanded">펼쳐짐</string>
+    <string name="island_state_collapsed">접힘</string>
 </resources>
