@@ -134,7 +134,15 @@ internal object PrivateRecording {
             .stateIn(scope, SharingStarted.Eagerly, source.value)
 
     /** An island event as it is shown right now. */
-    fun redact(event: IslandEvent): IslandEvent = if (on.value) redactEvent(event, standIns.value, notificationWord) else event
+    fun redact(event: IslandEvent): IslandEvent =
+        if (on.value) redactEvent(event, standIns.value, notificationWord, neutral((event as? IslandEvent.Message)?.packageName, standIns.value)) else event
+
+    /**
+     * Whether [packageName] is swapped by the saved Swap Apps rules but has no stand-in to show (Home never composed, as
+     * when only the overlay service runs). Its real name and icon must not appear, so callers show a neutral label.
+     */
+    fun neutral(packageName: String?, standIns: Map<String, AppEntry>): Boolean =
+        packageName != null && packageName !in standIns && isSwappedPackage(packageName, ScreenshotSwap.rules.value, SystemPackageCache::isSystem)
 }
 
 /**
@@ -166,6 +174,18 @@ internal class RecordingWatch(private val source: String) {
 /** Swap Apps applies in Screenshot Mode and in the private view; with no rule set, neither swaps anything. */
 internal fun swapActive(screenshot: Boolean, private: Boolean, rules: DisguiseRules) = (screenshot || private) && !rules.isEmpty
 
+/** The package an app id names (an id is a component, possibly with a profile in front). */
+internal fun packageOfAppId(id: String): String? =
+    android.content.ComponentName.unflattenFromString(parseProfileAppId(id)?.component ?: id)?.packageName
+
+/**
+ * Whether the saved Swap Apps [rules] swap [packageName]. Apps that shipped with the phone are never swapped; a package
+ * whose class is not known yet ([isSystem] null) counts as swappable, so a doubt hides rather than shows.
+ */
+internal fun isSwappedPackage(packageName: String, rules: DisguiseRules, isSystem: (String) -> Boolean?): Boolean =
+    !rules.isEmpty && isSystem(packageName) != true &&
+        (rules.allThirdParty || rules.chosen.any { packageOfAppId(it) == packageName })
+
 /** Notification badges while private: numbers become dots; Off stays Off. */
 internal fun privateBadgeStyle(style: BadgeStyle, private: Boolean) = if (private && style == BadgeStyle.COUNT) BadgeStyle.DOT else style
 
@@ -173,24 +193,24 @@ internal fun privateBadgeStyle(style: BadgeStyle, private: Boolean) = if (privat
  * A notification with its title and text replaced by the word [word], and, for a swapped app, the stand-in's name and
  * icon, so a recording never names the real app. It cannot be replied to or marked read from here.
  */
-internal fun redactNotification(item: NotificationItem, standIn: AppEntry?, word: String): NotificationItem = item.copy(
-    appLabel = standIn?.label ?: item.appLabel, icon = standIn?.icon ?: item.icon,
+internal fun redactNotification(item: NotificationItem, standIn: AppEntry?, word: String, neutral: Boolean = false): NotificationItem = item.copy(
+    appLabel = if (neutral) word else standIn?.label ?: item.appLabel, icon = if (neutral) null else standIn?.icon ?: item.icon,
     title = null, text = word, canReply = false, canMarkRead = false)
 
 /** Messages show the app and [word]; a device's name is dropped. Other events carry nothing personal. */
-internal fun redactEvent(event: IslandEvent, standIns: Map<String, AppEntry>, word: String): IslandEvent = when (event) {
+internal fun redactEvent(event: IslandEvent, standIns: Map<String, AppEntry>, word: String, neutral: Boolean = false): IslandEvent = when (event) {
     is IslandEvent.Message -> {
         val standIn = standIns[event.packageName]
-        val app = standIn?.label ?: event.appLabel
-        event.copy(appLabel = app, sender = app, text = word, avatar = null, appIcon = standIn?.icon ?: event.appIcon, canReply = false)
+        val app = if (neutral) word else standIn?.label ?: event.appLabel
+        event.copy(appLabel = app, sender = app, text = word, avatar = null, appIcon = if (neutral) null else standIn?.icon ?: event.appIcon, canReply = false)
     }
     is IslandEvent.Bluetooth -> event.copy(name = null)
     else -> event
 }
 
 /** Music, calls, timers, directions and progress show as the app's icon only: no title, subtitle, caller photo or art. */
-internal fun redactActivity(activity: IslandActivity, standIn: AppEntry?): IslandActivity {
-    val icon = standIn?.icon ?: activity.icon
+internal fun redactActivity(activity: IslandActivity, standIn: AppEntry?, neutral: Boolean = false): IslandActivity {
+    val icon = if (neutral) null else standIn?.icon ?: activity.icon
     return when (activity) {
         is IslandActivity.Media -> {
             val controller = runCatching { activity.controller }.getOrNull()

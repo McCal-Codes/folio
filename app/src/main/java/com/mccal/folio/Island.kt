@@ -486,7 +486,7 @@ class IslandListenerService : NotificationListenerService() {
         val messageChannels: StateFlow<Map<String, MessageChannel>> = messageChannelsMutable.asStateFlow()
         private val notificationsMutable = MutableStateFlow<List<NotificationItem>>(emptyList())
         val notifications: StateFlow<List<NotificationItem>> = PrivateRecording.redact(ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())) { list, swapped ->
-            list.map { redactNotification(it, swapped[it.packageName], PrivateRecording.notificationWord) }
+            list.map { redactNotification(it, swapped[it.packageName], PrivateRecording.notificationWord, PrivateRecording.neutral(it.packageName, swapped)) }
         }
 
         fun dismiss(key: String) { runCatching { instance?.cancelNotification(key) } }
@@ -518,7 +518,7 @@ class IslandListenerService : NotificationListenerService() {
         private val mutable = MutableStateFlow<IslandActivity?>(null)
         /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
         val activity: StateFlow<IslandActivity?> = PrivateRecording.redact(ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)) { current, swapped ->
-            current?.let { redactActivity(it, swapped[it.packageName]) }
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) }
         }
         val connected = MutableStateFlow(false)
         private const val PUBLISH_COALESCE_MS = 120L

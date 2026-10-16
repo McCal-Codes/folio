@@ -129,6 +129,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         IslandEvents.acquire(service)
         // The overlay can stay on screen over another app while that app is recorded, with Folio's own window stopped.
         PrivateRecording.load(service)
+        ScreenshotSwap.load(service) // the saved Swap Apps rules, so a swapped app is never named without Home
         recordingWatch.start(wm, service.mainExecutor)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync() } }

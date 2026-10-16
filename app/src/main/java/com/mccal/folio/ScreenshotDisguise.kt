@@ -211,6 +211,9 @@ internal object SystemPackageCache {
         missing.forEach { known[it] = shippedWithPhone(pm, it) == true }
     }
 
+    /** Whether [packageName] shipped with the phone, or null when not scanned yet. */
+    fun isSystem(packageName: String): Boolean? = known[packageName]
+
     internal fun put(packageName: String, system: Boolean) { known[packageName] = system }
     internal fun clear() = known.clear()
 

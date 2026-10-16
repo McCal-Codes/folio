@@ -252,4 +252,40 @@ class PrivateRecordingTest {
         assertEquals(setOf(camera.packageName), SystemPackageCache.systemFor(both + "com.new.app"))
         SystemPackageCache.clear()
     }
+
+    // ---- a swapped app with no stand-in (the overlay runs, Home never composed) ----
+
+    @Test fun `a swapped package is found from the saved rules, and a system app never is`() {
+        val unknown: (String) -> Boolean? = { null }
+        assertTrue(isSwappedPackage("com.reddit.frontpage", rules, unknown))
+        assertFalse(isSwappedPackage("com.other", rules, unknown))
+        assertFalse("shipped with the phone", isSwappedPackage("com.reddit.frontpage", rules) { true })
+        assertTrue(isSwappedPackage("com.other", DisguiseRules(allThirdParty = true), unknown))
+        assertFalse(isSwappedPackage("com.android.camera", DisguiseRules(allThirdParty = true)) { true })
+        assertFalse("no rules, nothing swapped", isSwappedPackage("com.reddit.frontpage", DisguiseRules(), unknown))
+    }
+
+    @Test fun `private on with a swapped package and no stand-in, the real label and icon never show`() {
+        val n = NotificationItem("k", "com.reddit.frontpage", "Reddit", bitmap(), "u/someone", "hi", 1L, true, null)
+        val out = redactNotification(n, null, "Notification", neutral = true)
+        assertEquals("Notification", out.appLabel)
+        assertNull(out.icon)
+        val msg = IslandEvent.Message("k", "com.reddit.frontpage", "Reddit", "u/someone", "hi", bitmap(), bitmap(), canReply = true)
+        val e = redactEvent(msg, emptyMap(), "Notification", neutral = true) as IslandEvent.Message
+        assertEquals("Notification", e.appLabel)
+        assertEquals("Notification", e.sender)
+        assertNull(e.appIcon)
+        val call = IslandActivity.Call("com.reddit.frontpage", "Mom", bitmap(), 1L, "k")
+        assertNull(redactActivity(call, null, neutral = true).icon)
+    }
+
+    @Test fun `PrivateRecording says neutral for a swapped package without a stand-in and not once it has one`() {
+        val context = org.robolectric.RuntimeEnvironment.getApplication()
+        ScreenshotSwap.set(context, rules)
+        SystemPackageCache.clear()
+        assertTrue(PrivateRecording.neutral(reddit.packageName, emptyMap()))
+        assertFalse(PrivateRecording.neutral(reddit.packageName, mapOf(reddit.packageName to camera)))
+        assertFalse(PrivateRecording.neutral("com.other", emptyMap()))
+        ScreenshotSwap.set(context, DisguiseRules())
+    }
 }
