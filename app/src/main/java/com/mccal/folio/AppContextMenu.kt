@@ -126,7 +126,7 @@ internal fun AppContextMenu(
             }
         }
     }
-    DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
+    RegisterOpenWindow(LauncherSheets)
 
     val actions by produceState(emptyList<QuickAction>(), app.id, app.iconFrom) { if (!app.isShortcut) value = withContext(Dispatchers.IO) { loadQuickActions(context, app) } }
 
