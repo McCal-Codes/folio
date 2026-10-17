@@ -68,6 +68,38 @@ class LayoutLoadTest {
         assertThrows(Exception::class.java) { decodeLauncherState(clash.toString(), legacyRaw = null) }
     }
 
+    /** The schema 8 fixture as this release saves it: 36-cell pages, so it decodes as a current save. */
+    private fun currentSave(schema: Int): JSONObject {
+        val first = decodeLauncherState(schema8().toString(), legacyRaw = null)
+        val slots = JSONArray().apply { first.homeSlots.forEach { put(it ?: JSONObject.NULL) } }
+        val leading = JSONArray().apply { first.leadingSlots.forEach { put(it ?: JSONObject.NULL) } }
+        val widgets = JSONArray().apply { first.widgetPlacements.forEach { w -> put(JSONObject().put("slot", w.slot).put("id", w.id)
+            .put("page", w.page).put("column", w.column).put("row", w.row).put("spanX", w.spanX).put("spanY", w.spanY)) } }
+        return schema8().put("schema", schema).put("homeSlots", slots).put("leadingSlots", leading).put("widgets", widgets)
+    }
+
+    @Test fun `a schema 9 save from before Icon Actions loads with none, unchanged, and is written back as schema 9`() {
+        val state = decodeLauncherState(currentSave(9).toString(), legacyRaw = null)
+        assertTrue(state.iconActions.isEmpty())
+        assertEquals("com.a/.A", state.homeSlots[homeCellIndex(0, 8)])
+        assertEquals("com.d/.D", state.dock[0])
+        // Nothing from schema 10 is in it, so an older Folio can still read what this one writes back.
+        assertEquals(9, stateSchemaFor(state))
+    }
+
+    @Test fun `a schema 10 save keeps its icon actions, even one this build doesn't know, and a damaged gesture alone is dropped`() {
+        val actions = JSONObject()
+            .put("com.a/.A", JSONObject().put("up", JSONObject().put("id", "TORCH")).put("down", JSONObject().put("id", "future.action").put("a", JSONObject().put("x", "1"))))
+            .put("com.d/.D", JSONObject().put("double", JSONObject().put("id", "")).put("up", JSONObject().put("id", "SPOTLIGHT")))
+            .put("com.c/.C", JSONObject().put("double", "not an object"))
+        val state = decodeLauncherState(currentSave(10).put("iconActions", actions).toString(), legacyRaw = null)
+        assertEquals(IconActions(up = ActionRef("TORCH"), down = ActionRef("future.action", mapOf("x" to "1"))), state.iconActions["com.a/.A"])
+        assertEquals(IconActions(up = ActionRef("SPOTLIGHT")), state.iconActions["com.d/.D"])
+        assertNull("an icon with no gesture left has no entry", state.iconActions["com.c/.C"])
+        assertEquals("the layout is untouched", "com.a/.A", state.homeSlots[homeCellIndex(0, 8)])
+        assertEquals(10, stateSchemaFor(state))
+    }
+
     @Test fun `an empty first launch gives a clean default Home`() {
         val state = decodeLauncherState("{}", legacyRaw = null)
         assertTrue(state.homeSlots.all { it == null })
