@@ -151,6 +151,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         Capability.TINT_NOTIFICATIONS,
         Capability.TINT_MEDIA,
         Capability.PAGE_EFFECTS,
+        Capability.PAGE_EFFECT_CHANNELS,
         Capability.FOLD_TRANSITION,
     )
 
@@ -193,7 +194,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         }
         is PackageChange.PageEffect -> {
             launcher.addPageEffect(PackagedPageEffect.of(change.id, change.name, change.maxRotation, change.pivot,
-                change.shrink, change.cameraWidths))
+                change.shrink, change.cameraWidths, change.channels?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }))
             ""
         }
         // Reading a package already refuses kinds this Folio can't apply; this is the belt to that's braces.

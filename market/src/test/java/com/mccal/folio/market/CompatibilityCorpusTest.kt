@@ -16,6 +16,8 @@ class CompatibilityCorpusTest {
 
     private class RecordingHost : PackageHost {
         override val capabilities = Capability.entries.toSet()
+        // Every tweak is here too, so an add-on (a page effect needs Flipbook) is held to the format, not to a phone.
+        override fun hasTweak(id: String) = true
         val applied = mutableListOf<PackageChange>()
         val restored = mutableListOf<PackageChange>()
         override fun apply(change: PackageChange): String = "before".also { applied += change }
@@ -39,7 +41,7 @@ class CompatibilityCorpusTest {
         }
     }
 
-    @Test fun `the corpus covers both kinds Folio can apply today`() {
+    @Test fun `the corpus covers the kinds Folio can apply today`() {
         val kinds = corpus.listFiles { f -> f.name.endsWith(".foliopkg") }!!.flatMap { file ->
             val host = RecordingHost()
             PackageInstaller(InstalledStore(MemoryStore()), host).install(file.readBytes())
@@ -47,5 +49,6 @@ class CompatibilityCorpusTest {
         }
         assertTrue("a tweak bundle is covered", "Tweaks" in kinds)
         assertTrue("a theme is covered", "Theme" in kinds)
+        assertTrue("a page effect is covered", "PageEffect" in kinds)
     }
 }

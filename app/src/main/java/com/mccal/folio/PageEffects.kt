@@ -2,8 +2,11 @@ package com.mccal.folio
 
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.abs
 
 /**
@@ -148,12 +151,35 @@ internal fun Modifier.pageEffect(effect: PageEffect, pager: PagerState, page: In
 internal fun Modifier.pageEffect(effect: PageEffectSpec?, pager: PagerState, page: Int): Modifier =
     if (effect == null) this else graphicsLayer {
         val position = pager.pagePosition(page)
-        transformOrigin = TransformOrigin(effect.pivotX(position), .5f)
-        rotationY = effect.rotationY(position)
-        scaleX = effect.scale(position)
-        scaleY = scaleX
-        cameraDistance = effect.cameraDistance(size.width)
+        // The pager's own page step, read only by an effect that shifts a page sideways, so every other effect reads
+        // exactly the state it read before channels existed.
+        val travel = if (effect.shiftsSideways) pager.layoutInfo.let { it.pageSize + it.pageSpacing }.toFloat() else 0f
+        applyPageEffect(effect, position, size.width, size.height, travel)
     }
+
+/**
+ * Sets one page's layer for [effect] at [position]: the whole of what Flipbook draws, as a pure function of its
+ * inputs so a test can hold it to the numbers ([DYN-20]). [widthPx] and [heightPx] are the layer's size, [travelPx]
+ * how far the pager moves a page for one position (only a sideways shift reads it).
+ *
+ * Transforms only, on the layer the page already has: no clip, no shadow, no blur, no offscreen buffer and nothing
+ * that fades. With no channels the four properties it sets are the four it always set, computed the same way, and the
+ * three channels adds (rotationZ, translationX, translationY) stay at the layer's own resting values.
+ */
+internal fun GraphicsLayerScope.applyPageEffect(
+    effect: PageEffectSpec, position: Float, widthPx: Float, heightPx: Float, travelPx: Float,
+) {
+    transformOrigin = TransformOrigin(effect.pivotX(position), effect.pivotY)
+    rotationY = effect.rotationY(position)
+    scaleX = effect.scale(position)
+    scaleY = scaleX
+    cameraDistance = effect.cameraDistance(widthPx)
+    if (effect.channels != null) {
+        rotationZ = effect.rotationZ(position)
+        translationX = effect.translateX(position) * travelPx
+        translationY = effect.translateY(position) * heightPx
+    }
+}
 
 /**
  * A page effect as data: the four numbers the engine turns into a layer transform (ADR 0008: the engine lives in
@@ -163,6 +189,10 @@ internal fun Modifier.pageEffect(effect: PageEffectSpec?, pager: PagerState, pag
  * Nothing a package says is trusted: [of] clamps every number to the range the engine is known to draw well. Turning
  * past a quarter turn would show a page's back, shrinking past a third makes Home read as a thumbnail, and a camera
  * nearer than 1.5 page widths tears the perspective ([PageEffect.cameraWidths]).
+ *
+ * [channels] (format 0.7.0) refine the four numbers with curves and more ways to move. Without them a spec draws
+ * exactly what it drew before they existed; with them, each channel replaces the one thing it names and every
+ * channel left out still comes from the four numbers.
  */
 data class PageEffectSpec(
     /** Degrees around the vertical axis at one full page out. */
@@ -173,15 +203,40 @@ data class PageEffectSpec(
     val shrink: Float,
     /** Camera distance in page widths. */
     val cameraWidths: Float,
+    /** Curves and extra movement, already clamped and baked; null for a v1 effect. */
+    val channels: PageEffectChannels? = null,
 ) {
     enum class Pivot { SEAM, CENTER }
 
-    fun rotationY(position: Float): Float = maxRotation * position.coerceIn(-1f, 1f)
-    fun scale(position: Float): Float = 1f - shrink * abs(position).coerceAtMost(1f)
-    fun pivotX(position: Float): Float = when (pivot) {
-        Pivot.CENTER -> .5f
-        Pivot.SEAM -> if (position > 0f) 0f else 1f
+    fun rotationY(position: Float): Float =
+        channels?.rotationY?.let { PageEffectChannels.odd(it, position) } ?: (maxRotation * position.coerceIn(-1f, 1f))
+
+    fun scale(position: Float): Float =
+        channels?.scale?.let { PageEffectChannels.even(it, position) } ?: (1f - shrink * abs(position).coerceAtMost(1f))
+
+    fun pivotX(position: Float): Float {
+        val share = channels?.pivotX ?: return when (pivot) {
+            Pivot.CENTER -> .5f
+            Pivot.SEAM -> if (position > 0f) 0f else 1f
+        }
+        // A share of the way from the seam to the outer edge: a page on the right has its seam on the left.
+        return if (position > 0f) share else 1f - share
     }
+
+    /** Where the turn's axis crosses the page vertically, in page heights from the top: the middle unless a channel says. */
+    val pivotY: Float get() = channels?.pivotY ?: .5f
+
+    /** Degrees in the page's own plane, positive clockwise for a page on the right. 0 without a channel. */
+    fun rotationZ(position: Float): Float = channels?.rotationZ?.let { PageEffectChannels.odd(it, position) } ?: 0f
+
+    /** A sideways shift as a share of the page's travel, outward for a page on the right when positive. */
+    fun translateX(position: Float): Float = channels?.translateX?.let { PageEffectChannels.odd(it, position) } ?: 0f
+
+    /** A drop in page heights, the same on both sides. */
+    fun translateY(position: Float): Float = channels?.translateY?.let { PageEffectChannels.even(it, position) } ?: 0f
+
+    /** True when drawing needs the pager's page step, so nothing else reads it. */
+    val shiftsSideways: Boolean get() = channels?.translateX != null
 
     /**
      * The layer's `cameraDistance` for a page [widthPx] pixels wide: [cameraWidths] page widths.
@@ -201,13 +256,198 @@ data class PageEffectSpec(
         const val MIN_CAMERA = 1.5f
         const val MAX_CAMERA = 4f
 
-        /** A spec from untrusted numbers (a package's manifest), each held to what the engine draws well. */
-        fun of(maxRotation: Float, pivot: Pivot, shrink: Float, cameraWidths: Float) = PageEffectSpec(
-            maxRotation.takeIf { it.isFinite() }?.coerceIn(-MAX_ROTATION, MAX_ROTATION) ?: 0f,
-            pivot,
-            shrink.takeIf { it.isFinite() }?.coerceIn(0f, MAX_SHRINK) ?: 0f,
-            cameraWidths.takeIf { it.isFinite() }?.coerceIn(MIN_CAMERA, MAX_CAMERA) ?: 3f,
-        )
+        /**
+         * A spec from untrusted numbers (a package's manifest), each held to what the engine draws well. [channels]
+         * come already clamped and baked ([PageEffectChannels.from]).
+         */
+        fun of(maxRotation: Float, pivot: Pivot, shrink: Float, cameraWidths: Float, channels: PageEffectChannels? = null) =
+            PageEffectSpec(
+                maxRotation.takeIf { it.isFinite() }?.coerceIn(-MAX_ROTATION, MAX_ROTATION) ?: 0f,
+                pivot,
+                shrink.takeIf { it.isFinite() }?.coerceIn(0f, MAX_SHRINK) ?: 0f,
+                cameraWidths.takeIf { it.isFinite() }?.coerceIn(MIN_CAMERA, MAX_CAMERA) ?: 3f,
+                channels,
+            )
+    }
+}
+
+/**
+ * Page effect channels (format 0.7.0): each one a curve over how far out a page is, so an effect can wait, ease, or
+ * do something a straight line from the four v1 numbers cannot (a drop, a spin in the page's own plane, a door's
+ * outer-edge hinge).
+ *
+ * A curve has up to [MAX_KEYS] keys, each a value at a distance 0 to 1 pages out, and one [Ease] between every pair.
+ * Past the last key a curve holds its last value, and past a full page out it holds the value at one page, as the v1
+ * numbers do. At 0 every curve is the channel's resting value whatever the keys say, so a settled page is untouched
+ * ([DYN-3]).
+ *
+ * The turns and the sideways shift are odd (a page on the left does the opposite of one on the right, so a cube's
+ * edges stay met); the drop and the scale are even (both sides step back the same way).
+ *
+ * Nothing here is trusted: [from] drops what it cannot read and clamps every value to [Channel]'s range, and each
+ * curve is baked once into [SAMPLES] floats. Drawing reads two of them and blends, with no allocation, no search and
+ * no easing maths in the layer block.
+ */
+data class PageEffectChannels(
+    val rotationYCurve: Curve? = null,
+    val rotationZCurve: Curve? = null,
+    val translateXCurve: Curve? = null,
+    val translateYCurve: Curve? = null,
+    val scaleCurve: Curve? = null,
+    /** A share of the way from the seam edge (0) to the outer edge (1); null leaves the v1 pivot. */
+    val pivotX: Float? = null,
+    /** Page heights from the top, 0 to [MAX_PIVOT_Y]; null is the middle. */
+    val pivotY: Float? = null,
+) {
+    /** The baked tables the engine reads. Not part of equality: they are a pure function of the curves. */
+    internal val rotationY: FloatArray? = rotationYCurve?.bake(Channel.ROTATION_Y)
+    internal val rotationZ: FloatArray? = rotationZCurve?.bake(Channel.ROTATION_Z)
+    internal val translateX: FloatArray? = translateXCurve?.bake(Channel.TRANSLATE_X)
+    internal val translateY: FloatArray? = translateYCurve?.bake(Channel.TRANSLATE_Y)
+    internal val scale: FloatArray? = scaleCurve?.bake(Channel.SCALE)
+
+    /**
+     * How the value moves between two keys: the quadratic eases, so the Mockup Lab can draw the same curve in a line of
+     * JavaScript. One ease per curve, applied to every span between its keys.
+     */
+    enum class Ease(val json: String) {
+        LINEAR("linear"), IN("in"), OUT("out"), IN_OUT("inOut");
+
+        fun apply(t: Float): Float = when (this) {
+            LINEAR -> t
+            IN -> t * t
+            OUT -> 1f - (1f - t) * (1f - t)
+            IN_OUT -> if (t < .5f) 2f * t * t else 1f - 2f * (1f - t) * (1f - t)
+        }
+
+        companion object {
+            fun of(name: String?): Ease? = entries.firstOrNull { it.json == name }
+        }
+    }
+
+    /** One channel's name in effect.json, its range, its resting value, and whether a page on the left mirrors it. */
+    enum class Channel(val json: String, val min: Float, val max: Float, val identity: Float, val odd: Boolean) {
+        ROTATION_Y("rotationY", -PageEffectSpec.MAX_ROTATION, PageEffectSpec.MAX_ROTATION, 0f, true),
+        ROTATION_Z("rotationZ", -45f, 45f, 0f, true),
+        TRANSLATE_X("translateX", -1f, 1f, 0f, true),
+        TRANSLATE_Y("translateY", 0f, .25f, 0f, false),
+        SCALE("scale", .6f, 1f, 1f, false),
+    }
+
+    /** A value at [at] pages out, 0 to 1. */
+    data class Key(val at: Float, val value: Float)
+
+    /** Keys sorted by [Key.at], each [at][Key.at] once, at most [MAX_KEYS], values already clamped. */
+    data class Curve(val keys: List<Key>, val ease: Ease = Ease.LINEAR) {
+        /** The value at [x] (0 to 1), with the resting value forced at 0. */
+        fun valueAt(channel: Channel, x: Float): Float {
+            var fromAt = 0f
+            var fromValue = channel.identity
+            for (key in keys) {
+                if (key.at <= 0f) continue // identity at 0, whatever the key says
+                if (x <= key.at) {
+                    val t = ease.apply((x - fromAt) / (key.at - fromAt))
+                    return fromValue + (key.value - fromValue) * t
+                }
+                fromAt = key.at
+                fromValue = key.value
+            }
+            return fromValue
+        }
+
+        fun bake(channel: Channel): FloatArray =
+            FloatArray(SAMPLES) { i -> if (i == 0) channel.identity else valueAt(channel, i / (SAMPLES - 1f)) }
+
+        fun toJson(): JSONObject = JSONObject().put("ease", ease.json)
+            .put("keys", JSONArray().apply { keys.forEach { put(JSONObject().put("at", it.at.toDouble()).put("value", it.value.toDouble())) } })
+
+        companion object {
+            /**
+             * A curve from untrusted JSON: `{"keys": [{"at": 0.1, "value": 0}, ...], "ease": "inOut"}`. A key
+             * without two finite numbers is dropped, [at][Key.at] is held to 0..1, a repeated [at][Key.at] keeps its
+             * first value, values are clamped to [channel]'s range, and only the first [MAX_KEYS] count. No usable
+             * key, no curve.
+             */
+            fun from(json: JSONObject?, channel: Channel): Curve? {
+                val array = json?.optJSONArray("keys") ?: return null
+                val keys = (0 until array.length()).mapNotNull { i ->
+                    val key = array.optJSONObject(i) ?: return@mapNotNull null
+                    val at = key.optDouble("at", Double.NaN).toFloat()
+                    val value = key.optDouble("value", Double.NaN).toFloat()
+                    if (!at.isFinite() || !value.isFinite()) null
+                    else Key(at.coerceIn(0f, 1f), value.coerceIn(channel.min, channel.max))
+                }.take(MAX_KEYS).sortedBy { it.at }.distinctBy { it.at }
+                if (keys.isEmpty()) return null
+                return Curve(keys, Ease.of(json.optString("ease")) ?: Ease.LINEAR)
+            }
+        }
+    }
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        rotationYCurve?.let { put(Channel.ROTATION_Y.json, it.toJson()) }
+        rotationZCurve?.let { put(Channel.ROTATION_Z.json, it.toJson()) }
+        translateXCurve?.let { put(Channel.TRANSLATE_X.json, it.toJson()) }
+        translateYCurve?.let { put(Channel.TRANSLATE_Y.json, it.toJson()) }
+        scaleCurve?.let { put(Channel.SCALE.json, it.toJson()) }
+        pivotX?.let { put("pivotX", it.toDouble()) }
+        pivotY?.let { put("pivotY", it.toDouble()) }
+    }
+
+    companion object {
+        /** Keys per curve. Enough for a pause, an ease out and a settle; few enough to read at a glance. */
+        const val MAX_KEYS = 8
+
+        /** Baked samples per curve, 0 to 1 pages out in steps of 1/32. */
+        const val SAMPLES = 33
+
+        /** A hub below the page, as Wheel needs, but no further than a page below it. */
+        const val MAX_PIVOT_Y = 2f
+
+        /**
+         * Channels from untrusted JSON (an effect.json's `channels`, or Folio's own saved copy). Anything unreadable
+         * is left out rather than refused: the market module has already refused a package whose channels break the
+         * format, so what reaches here is held to the engine's ranges, not judged. Null when nothing usable is left.
+         */
+        fun from(json: JSONObject?): PageEffectChannels? {
+            json ?: return null
+            fun curve(channel: Channel) = Curve.from(json.optJSONObject(channel.json), channel)
+            val channels = PageEffectChannels(
+                rotationYCurve = curve(Channel.ROTATION_Y),
+                rotationZCurve = curve(Channel.ROTATION_Z),
+                translateXCurve = curve(Channel.TRANSLATE_X),
+                translateYCurve = curve(Channel.TRANSLATE_Y),
+                scaleCurve = curve(Channel.SCALE),
+                pivotX = pivotShare(json.opt("pivotX")),
+                pivotY = json.optDouble("pivotY", Double.NaN).toFloat().takeIf { it.isFinite() }?.coerceIn(0f, MAX_PIVOT_Y),
+            )
+            return channels.takeIf { it != PageEffectChannels() }
+        }
+
+        /** `seam`, `center`, `outer`, or a share 0 to 1 from the seam edge to the outer edge. */
+        internal fun pivotShare(value: Any?): Float? = when (value) {
+            "seam" -> 0f
+            "center" -> .5f
+            "outer" -> 1f
+            is Number -> value.toFloat().takeIf { it.isFinite() }?.coerceIn(0f, 1f)
+            else -> null
+        }
+
+        /** The table's value at |[position]|, held at one page out, with the sign of [position]. */
+        internal fun odd(table: FloatArray, position: Float): Float {
+            val value = sample(table, abs(position))
+            return if (position < 0f) -value else value
+        }
+
+        /** The table's value at |[position]|, held at one page out, the same on both sides. */
+        internal fun even(table: FloatArray, position: Float): Float = sample(table, abs(position))
+
+        private fun sample(table: FloatArray, x: Float): Float {
+            val scaled = x.coerceIn(0f, 1f) * (SAMPLES - 1)
+            val index = scaled.toInt()
+            if (index >= SAMPLES - 1) return table[SAMPLES - 1]
+            val from = table[index]
+            return from + (table[index + 1] - from) * (scaled - index)
+        }
     }
 }
 
@@ -222,21 +462,25 @@ internal val PageEffect.spec: PageEffectSpec? get() = when (this) {
 
 /** A page effect a Market package installed: its package id, the name the picker shows, and its clamped spec. */
 data class PackagedPageEffect(val id: String, val name: String, val spec: PageEffectSpec) {
-    fun toJson(): org.json.JSONObject = org.json.JSONObject().put("id", id).put("name", name)
+    fun toJson(): JSONObject = JSONObject().put("id", id).put("name", name)
         .put("maxRotation", spec.maxRotation.toDouble()).put("pivot", spec.pivot.name)
         .put("shrink", spec.shrink.toDouble()).put("cameraWidths", spec.cameraWidths.toDouble())
+        .apply { spec.channels?.let { put("channels", it.toJson()) } }
 
     companion object {
-        /** From a package's untrusted numbers: [PageEffectSpec.of] clamps them. */
-        fun of(id: String, name: String, maxRotation: Float, pivot: String, shrink: Float, cameraWidths: Float) =
-            PackagedPageEffect(id, name, PageEffectSpec.of(maxRotation, if (pivot.equals("seam", true)) PageEffectSpec.Pivot.SEAM
-                else PageEffectSpec.Pivot.CENTER, shrink, cameraWidths))
+        /** From a package's untrusted numbers: [PageEffectSpec.of] and [PageEffectChannels.from] clamp them. */
+        fun of(
+            id: String, name: String, maxRotation: Float, pivot: String, shrink: Float, cameraWidths: Float,
+            channels: JSONObject? = null,
+        ) = PackagedPageEffect(id, name, PageEffectSpec.of(maxRotation, if (pivot.equals("seam", true)) PageEffectSpec.Pivot.SEAM
+            else PageEffectSpec.Pivot.CENTER, shrink, cameraWidths, PageEffectChannels.from(channels)))
 
-        fun from(json: org.json.JSONObject?): PackagedPageEffect? {
+        fun from(json: JSONObject?): PackagedPageEffect? {
             json ?: return null
             val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
             return of(id, json.optString("name", id), json.optDouble("maxRotation", 0.0).toFloat(), json.optString("pivot"),
-                json.optDouble("shrink", 0.0).toFloat(), json.optDouble("cameraWidths", 3.0).toFloat())
+                json.optDouble("shrink", 0.0).toFloat(), json.optDouble("cameraWidths", 3.0).toFloat(),
+                json.optJSONObject("channels"))
         }
     }
 }
