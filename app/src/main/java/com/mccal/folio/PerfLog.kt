@@ -204,7 +204,7 @@ internal object PerfLog {
             if (PerfContext.isFold(lastSmallestWidthDp, now)) clock.noteFold()
             if (now > 0) lastSmallestWidthDp = now
         }
-        @Deprecated("Deprecated in Java") override fun onLowMemory() {}
+        @Deprecated("Deprecated in Java") override fun onLowMemory() {} // english-only
     }
 
     @Synchronized private fun attach(activity: Activity) {

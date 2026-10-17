@@ -2025,4 +2025,9 @@
     <string name="island_collapse">隐藏详细信息</string>
     <string name="island_state_expanded">已展开</string>
     <string name="island_state_collapsed">已收起</string>
+    <string name="media_previous">上一首</string>
+    <string name="media_next">下一首</string>
+    <string name="discover_no_fit">Discover 无法放在程序坞旁边。请返回主屏幕后重试。</string>
+    <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
+    <string name="profile_app">%1$s应用</string>
 </resources>

@@ -405,9 +405,9 @@ internal object SoftwareUpdate {
     private fun get(url: String, code: String? = null): String {
         val c = URL(url).openConnection() as HttpURLConnection
         c.setRequestProperty("Accept", "application/vnd.github+json")
-        c.setRequestProperty("User-Agent", "Folio")
+        c.setRequestProperty("User-Agent", "Folio") // english-only
         // The supporter code is the only credential the broker wants, and it goes in a header rather than the address.
-        if (code != null) c.setRequestProperty("Authorization", "Bearer $code")
+        if (code != null) c.setRequestProperty("Authorization", "Bearer $code") // english-only
         c.connectTimeout = 10_000; c.readTimeout = 15_000
         return c.inputStream.bufferedReader().use { it.readText() }.also { c.disconnect() }
     }
