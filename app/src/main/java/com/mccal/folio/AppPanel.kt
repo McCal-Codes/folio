@@ -139,12 +139,12 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                             m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                         val t = runCatching { m.controller.transportControls }.getOrNull()
-                        TransportButton(Icons.Rounded.FastRewind, "Previous", 30.dp) { t?.skipToPrevious() }
+                        TransportButton(Icons.Rounded.FastRewind, stringResource(R.string.media_previous), 30.dp) { t?.skipToPrevious() }
                         TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             stringResource(if (m.playing) R.string.pause else R.string.play), 34.dp) {
                             if (m.playing) t?.pause() else t?.play()
                         }
-                        TransportButton(Icons.Rounded.FastForward, "Next", 30.dp) { t?.skipToNext() }
+                        TransportButton(Icons.Rounded.FastForward, stringResource(R.string.media_next), 30.dp) { t?.skipToNext() }
                     }
                 }
                 if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {

@@ -96,7 +96,7 @@ internal object Roadmap {
         val marker = File(context.filesDir, FAILED)
         val result = runCatching {
             val c = URL(URL).openConnection() as HttpURLConnection
-            c.setRequestProperty("User-Agent", "Folio")
+            c.setRequestProperty("User-Agent", "Folio") // english-only
             c.connectTimeout = 8_000; c.readTimeout = 10_000; c.useCaches = false
             try {
                 if (c.responseCode != 200) return@runCatching Refresh.Failed

@@ -2082,4 +2082,9 @@
     <string name="island_collapse">Hide details</string>
     <string name="island_state_expanded">Expanded</string>
     <string name="island_state_collapsed">Collapsed</string>
+    <string name="media_previous">Previous</string>
+    <string name="media_next">Next</string>
+    <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
+    <string name="discover_choose_dock_app">Choose dock app on home</string>
+    <string name="profile_app">%1$s app</string>
 </resources>

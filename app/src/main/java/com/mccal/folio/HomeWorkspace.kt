@@ -482,12 +482,12 @@ internal fun SharedHomeGrid(
                     with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) },
                     animationSpec = if (drag.active || edit.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
                         else androidx.compose.animation.core.snap(),
-                    label = "home insertion $id",
+                    label = "home insertion $id", // english-only
                 )
                 val visible = previewIndex != null && previewIndex in pageRange && renderIndex != hiddenIndex
                 val opacity by animateFloatAsState(
                     if (dimDragged && id == draggedId) .28f else 1f,
-                    label = "home insertion visibility $id",
+                    label = "home insertion visibility $id", // english-only
                 )
                 val plateOn = drag.mergePreview == id
                 val plateGrowth by animateFloatAsState(if (plateOn) 1f else 0f,
