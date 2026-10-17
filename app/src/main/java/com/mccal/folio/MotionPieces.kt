@@ -55,25 +55,53 @@ internal fun rememberGlide(index: Int): State<Float> {
 }
 
 /**
- * A count that rolls: a new number slides in from below when it goes up and from above when it goes down, while the old
- * one leaves the other way, on [FolioMotion.Menu]. The first number simply appears. With the motion pass off or Reduce
- * Motion on it is plain text.
+ * A count that rolls one digit at a time, like a counter: only the digits that changed move, each sliding up when the
+ * count goes up and down when it goes down, on [FolioMotion.Settle]. The first number simply appears. A text that is not
+ * all digits (99+) rolls as a whole. With the motion pass off or Reduce Motion on it is plain text.
  */
 @Composable
 internal fun RollingCount(count: Int, text: (Int) -> String, color: Color, fontSize: TextUnit, style: TextStyle, modifier: Modifier = Modifier) {
-    fun plain(value: Int) = @Composable { Text(text(value), color = color, fontWeight = FontWeight.SemiBold, fontSize = fontSize, maxLines = 1, softWrap = false, style = style, modifier = modifier) }
-    if (!FolioMotion.v2 || LocalReduceMotion.current) { plain(count)(); return }
+    val draw: @Composable (String) -> Unit = { value ->
+        Text(value, color = color, fontWeight = FontWeight.SemiBold, fontSize = fontSize, maxLines = 1, softWrap = false, style = style, modifier = modifier)
+    }
+    val shown = text(count)
+    if (!FolioMotion.v2 || LocalReduceMotion.current) { draw(shown); return }
+    val memory = remember { RollMemory(count) }
+    if (count != memory.count) { memory.up = count > memory.count; memory.count = count }
+    val up = memory.up
+    if (rollsPerDigit(shown)) {
+        androidx.compose.foundation.layout.Row {
+            // Keyed from the right, so the ones digit stays the ones digit when a tens digit appears.
+            shown.forEachIndexed { index, char ->
+                androidx.compose.runtime.key(shown.length - index) { RollingSlot(char.toString(), up, draw) }
+            }
+        }
+    } else {
+        RollingSlot(shown, up, draw)
+    }
+}
+
+private class RollMemory(var count: Int, var up: Boolean = true)
+
+/** Per-digit rolling needs a text of digits only; "99+" and the like roll as one piece. */
+internal fun rollsPerDigit(text: String) = text.isNotEmpty() && text.all { it.isDigit() }
+
+/** Which digits of [new] differ from [old], lined up from the right (the ones place first). Only these move. */
+internal fun changedDigits(old: String, new: String): List<Boolean> =
+    new.indices.map { i -> old.getOrNull(old.length - new.length + i) != new[i] }
+
+@Composable
+private fun RollingSlot(value: String, up: Boolean, content: @Composable (String) -> Unit) {
     AnimatedContent(
-        targetState = count,
+        targetState = value,
         transitionSpec = {
-            val up = targetState > initialState
-            val spring = FolioMotion.spring<androidx.compose.ui.unit.IntOffset>(FolioMotion.Menu)
+            val spring = FolioMotion.spring<androidx.compose.ui.unit.IntOffset>(FolioMotion.Settle)
             val fade = androidx.compose.animation.core.tween<Float>(120)
             (slideInVertically(spring) { h -> if (up) h else -h } + fadeIn(fade)) togetherWith
                 (slideOutVertically(spring) { h -> if (up) -h else h } + fadeOut(fade)) using SizeTransform(clip = true)
         },
-        label = "rolling count",
-    ) { value -> plain(value)() }
+        label = "rolling digit",
+    ) { v -> content(v) }
 }
 
 /**
@@ -115,3 +143,29 @@ internal fun InstallDonePop() {
         )
     }
 }
+
+/** A badge pops in only when a count first appears on an icon that had none, not on every redraw or when the number changes. */
+internal fun badgeAppeared(previous: Int, now: Int) = previous <= 0 && now > 0
+
+/**
+ * True for the composition in which [count] went from none to some on a tile that was already on screen. A tile that is
+ * only being drawn (a page swiped into view) starts with its count already there and never pops. Always false with the
+ * motion pass off or under Reduce Motion, so the badge simply appears.
+ */
+@Composable
+internal fun rememberBadgeAppeared(count: Int): Boolean {
+    val previous = remember { intArrayOf(count) }
+    val appeared = badgeAppeared(previous[0], count) && FolioMotion.v2 && !LocalReduceMotion.current
+    androidx.compose.runtime.SideEffect { previous[0] = count }
+    return appeared
+}
+
+/** The badge's scale on arrival: from [BADGE_POP_FROM] to 1 on [FolioMotion.Bounce], which overshoots under 5%. Stays at 1 when [pop] is false. */
+@Composable
+internal fun rememberBadgePop(pop: Boolean): State<Float> {
+    val scale = remember { Animatable(if (pop) BADGE_POP_FROM else 1f) }
+    LaunchedEffect(Unit) { if (scale.value < 1f) scale.animateTo(1f, FolioMotion.spring(FolioMotion.Bounce)) }
+    return scale.asState()
+}
+
+internal const val BADGE_POP_FROM = .6f

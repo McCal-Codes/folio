@@ -32,6 +32,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
@@ -49,17 +50,29 @@ private val IosTrackOff = Color(0xFF39393D)
 @Composable
 internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptic = LocalHapticFeedback.current
+    val reduce = LocalReduceMotion.current
     val track by animateColorAsState(if (checked) FolioColors.GreenLight else IosTrackOff, label = "switch track")
-    val offset by animateDpAsState(if (checked) 20.dp else 0.dp, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "switch thumb")
+    val target = if (checked) 20.dp else 0.dp
+    val offset by animateDpAsState(target, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "switch thumb")
+    // The thumb widens a little while a finger is on it and while it travels (motion pass), anchored to the side it came from.
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val squished = FolioMotion.v2 && enabled && (pressed || offset != target)
+    val thumb by animateDpAsState(if (squished) 27.dp * SWITCH_SQUISH else 27.dp, FolioMotion.spring(FolioMotion.calm(FolioMotion.Quick, reduce)), label = "switch squish")
     Box(modifier.minimumInteractiveComponentSize()
-        .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = {
+        .toggleable(checked, interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current,
+            enabled = enabled, role = Role.Switch, onValueChange = {
             haptic.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff); onCheckedChange(it)
         }), contentAlignment = Alignment.Center) {
         Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).padding(FolioSpace.HAIR.dp)) {
-            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.size(27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset((offset - (thumb - 27.dp) * (offset / 20.dp)).roundToPx(), 0) }
+                .size(thumb, 27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
         }
     }
 }
+
+/** How much wider the switch thumb gets while pressed or moving. */
+internal const val SWITCH_SQUISH = 1.15f
 
 /** iOS-style choice pill (a drop-in for the settings' FilterChips): white when selected, frosted when not. */
 @Composable
