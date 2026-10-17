@@ -64,7 +64,7 @@ Put the answers in the PR and in PERMISSIONS.md before it ships:
 
 Good:
 
-- 16 manifest permissions, each in PERMISSIONS.md with its file and fallback (`tools/check-permissions.py` checks the list in CI).
+- 17 manifest permissions, each in PERMISSIONS.md with its file and fallback (`tools/check-permissions.py` checks the list in CI).
 - Runtime requests use `ActivityResultContracts.RequestPermission` from the screen that needs them; special access
   opens the matching Settings page; Settings lists each permission's purpose (`CustomizationSheet.kt:1136`).
 - No analytics or crash SDKs; `CrashLog` is local (last 5 reports) and shared by hand.

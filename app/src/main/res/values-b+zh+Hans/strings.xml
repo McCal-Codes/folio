@@ -1975,6 +1975,10 @@
     <string name="action_a11y_splitscreen">分屏</string>
     <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
     <string name="screenshot_swap_apps">替换 App</string>
+    <string name="private_while_recording">录制时保持私密</string>
+    <string name="while_folio_s_screen_is_recorded_or_shared">Folio 的屏幕被录制或共享期间，你在“替换 App”中选的 App 会被替换，通知内容、标记数字和隐藏的 App 会被遮住。录制停止后一切都会恢复。需要 Android 15 或更高版本。</string>
+    <string name="recording_private_view_on">正在录制：私密视图已开启</string>
+    <string name="private_notification_word">通知</string>
     <string name="screenshot_swap_intro">截图模式开启时，你选择的 App 会显示为这部手机上的一个系统自带 App，使用它的图标和名称。点按后仍会打开真实的 App，只有屏幕显示会改变。手机自带的 App 不会被替换。</string>
     <string name="screenshot_swap_all_third_party">替换所有第三方 App</string>
     <string name="screenshot_swap_all_third_party_note">所有不是这部手机自带的 App，包括你以后安装的 App。</string>

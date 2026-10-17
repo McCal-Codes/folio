@@ -165,7 +165,8 @@ class IslandEvents private constructor(private val context: Context) {
         internal fun post(event: IslandEvent) {
             // Messages and device names are personal; Screenshot Mode keeps them off screen.
             if (ScreenshotMode.on.value && (event is IslandEvent.Message || event is IslandEvent.Bluetooth)) return
-            mutable.value = event to System.currentTimeMillis()
+            // While recording, a message shows only the app and the word Notification (see PrivateRecording).
+            mutable.value = PrivateRecording.redact(event) to System.currentTimeMillis()
         }
         @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context // english-only
         private var shared: IslandEvents? = null
