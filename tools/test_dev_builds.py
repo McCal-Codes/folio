@@ -1,4 +1,7 @@
+import argparse
+import datetime
 import importlib.util
+import os
 import pathlib
 import re
 import sys
@@ -76,6 +79,107 @@ class DevBuildsTest(unittest.TestCase):
             release.write_text('JAVA_VERSION="21.0.4"\n', encoding="utf-8")
             self.assertFalse(db.is_jdk17(folder))
         self.assertFalse(db.is_jdk17("/no/such/jdk"))
+
+
+
+class DriveTest(unittest.TestCase):
+    """The drive command, against a temporary store and a temporary Drive folder: never the real one."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(self.tmp.name)
+        self.saved = (db.STORE, os.environ.get("FOLIO_DRIVE_BUILDS"))
+        db.STORE = root / "store"
+        self.drive = root / "Dev Builds"
+        self.drive.mkdir()
+        os.environ["FOLIO_DRIVE_BUILDS"] = str(self.drive)
+
+    def tearDown(self):
+        db.STORE = self.saved[0]
+        if self.saved[1] is None:
+            os.environ.pop("FOLIO_DRIVE_BUILDS", None)
+        else:
+            os.environ["FOLIO_DRIVE_BUILDS"] = self.saved[1]
+        self.tmp.cleanup()
+
+    def keep_fake(self, dirty=False):
+        (db.STORE / "apks").mkdir(parents=True, exist_ok=True)
+        name = db.build_name("spike-open-beside", "e9f6515a", dirty)
+        apk = db.STORE / "apks" / f"{name}.apk"
+        apk.write_bytes(b"not really an apk")
+        entry = {"name": name, "branch": "spike-open-beside", "sha": "e9f6515a", "dirty": dirty, "builtAt": "2026-10-11T16:00:00",
+                 "subject": "Try opening two apps side by side", "version": "0.6.9-beta.2", "size": apk.stat().st_size,
+                 "sha256": db.sha256_of(apk)}
+        db.save_index({"builds": [entry], "installed": None})
+        return entry
+
+    def args(self, **kw):
+        base = dict(name=None, test=None, test_file=None, by=None, pr=None, allow_dirty=False, copy=False)
+        base.update(kw)
+        return argparse.Namespace(**base)
+
+    def drive_files(self):
+        return sorted(p.name for p in self.drive.rglob("*") if p.is_file())
+
+    def test_versions_map_to_codes_and_folders_like_gradle(self):
+        self.assertEqual(db.version_code("0.6.9-beta.2"), 6090)
+        self.assertEqual(db.version_code("0.6.7.1"), 6071)
+        self.assertEqual(db.version_code("0.7.0"), 7000)
+        self.assertEqual(db.version_line("0.6.9-beta.2"), "0.6.9")
+        self.assertEqual(db.version_line("0.6.9.1"), "0.6.9")
+
+    def test_names_follow_the_dev_builds_readme(self):
+        entry = self.keep_fake()
+        self.assertEqual(db.drive_stem(entry, "2026-10-11"), "2026-10-11_Folio-Dev_0.6.9-beta.2_spike-open-beside_e9f6515")
+        self.assertTrue(db.drive_stem(dict(entry, dirty=True), "2026-10-11").endswith("_e9f6515-dirty"))
+
+    def test_the_note_says_what_it_is_how_to_check_it_and_what_to_test(self):
+        entry = self.keep_fake()
+        note = db.drive_note(entry, "PC session 3", "1. Open Settings", pr="#365", today=datetime.date(2026, 10, 2))
+        self.assertTrue(note.startswith("Folio Dev 0.6.9-beta.2 (versionCode 6090), debug build, package com.mccal.folio.dev\n"))
+        self.assertIn(f"SHA-256: {entry['sha256']}", note)
+        self.assertIn("Branch: spike-open-beside (PR #365), commit e9f6515", note)
+        self.assertIn("Uploaded by: PC session 3, 2 Oct 2026", note)
+        self.assertTrue(note.rstrip().endswith("What to test\n1. Open Settings"))
+        self.assertIn("uncommitted changes", db.drive_note(dict(entry, dirty=True), "x", "y"))
+
+    def test_without_copy_nothing_is_written(self):
+        self.keep_fake()
+        self.assertEqual(db.cmd_drive(self.args(test="steps", by="PC session 3")), 0)
+        self.assertEqual(self.drive_files(), [])
+
+    def test_copy_needs_steps_and_an_uploader(self):
+        self.keep_fake()
+        with self.assertRaises(SystemExit):
+            db.cmd_drive(self.args(copy=True, by="PC session 3"))
+        with self.assertRaises(SystemExit):
+            db.cmd_drive(self.args(copy=True, test="steps"))
+        self.assertEqual(self.drive_files(), [])
+
+    def test_copy_puts_both_files_in_the_version_folder_and_the_hash_matches(self):
+        entry = self.keep_fake()
+        self.assertEqual(db.cmd_drive(self.args(copy=True, test="1. Open Settings", by="PC session 3")), 0)
+        stem = db.drive_stem(entry, datetime.date.today().isoformat())
+        self.assertEqual(self.drive_files(), [f"{stem}.apk", f"{stem}.txt"])
+        self.assertEqual(db.sha256_of(self.drive / "0.6.9" / f"{stem}.apk"), entry["sha256"])
+        self.assertIn("1. Open Settings", (self.drive / "0.6.9" / f"{stem}.txt").read_text(encoding="utf-8"))
+
+    def test_an_existing_file_is_never_overwritten(self):
+        entry = self.keep_fake()
+        stem = db.drive_stem(entry, datetime.date.today().isoformat())
+        (self.drive / "0.6.9").mkdir()
+        (self.drive / "0.6.9" / f"{stem}.txt").write_text("someone else's note", encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            db.cmd_drive(self.args(copy=True, test="steps", by="PC session 3"))
+        self.assertEqual((self.drive / "0.6.9" / f"{stem}.txt").read_text(encoding="utf-8"), "someone else's note")
+        self.assertFalse((self.drive / "0.6.9" / f"{stem}.apk").exists())
+
+    def test_a_dirty_build_needs_allow_dirty(self):
+        self.keep_fake(dirty=True)
+        with self.assertRaises(SystemExit):
+            db.cmd_drive(self.args(copy=True, test="steps", by="PC session 3"))
+        self.assertEqual(db.cmd_drive(self.args(copy=True, test="steps", by="PC session 3", allow_dirty=True)), 0)
+        self.assertEqual(len(self.drive_files()), 2)
 
 
 if __name__ == "__main__":
