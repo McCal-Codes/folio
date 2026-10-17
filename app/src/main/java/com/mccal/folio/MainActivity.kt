@@ -58,6 +58,8 @@ class MainActivity : ComponentActivity() {
     private val searchRequests = mutableIntStateOf(0)
     /** Opened from Android Settings (Home app gear / "Additional settings in the app"). */
     private val settingsRequests = mutableIntStateOf(0)
+    /** The requests Home has acted on, so one that already opened Settings doesn't open it again when Home draws anew. */
+    internal val settingsRequestsSeen = RequestLatch()
     private val defaultHome = mutableStateOf(false)
     private val showFirstRun = mutableStateOf(false)
     private val showWhatsNew = mutableStateOf(false)
@@ -350,10 +352,12 @@ class MainActivity : ComponentActivity() {
                 StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
                     halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it })
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
+                // Simple Mode: nothing appears by itself over Simple Home. Held, not marked seen, so each still shows after.
+                val simpleQuiet = state.simple != null
                 // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
-                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)
+                AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value || simpleQuiet)
                 // One prompt at a time: the card also waits while the gestures dialog is up, and comes back when it closes.
-                SetupReminderCard(defaultHome.value, blocked = overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value || shadeSetupUp.value, onMakeDefault = ::makeDefault,
+                SetupReminderCard(defaultHome.value, blocked = simpleQuiet || overlayOpen || standByShowing.value || showFirstRun.value || !defaultHome.value || shadeSetupUp.value, onMakeDefault = ::makeDefault,
                     onShadeSetup = ::showShadeSetup) { SettingsLink.page = CustomizationPage.PERMISSIONS; settingsRequests.intValue++ }
                 sharedTheme.value?.let { theme ->
                     AlertDialog(onDismissRequest = { sharedTheme.value = null },
@@ -370,11 +374,11 @@ class MainActivity : ComponentActivity() {
                     if (!startupSheet && shadeSetupWaiting) { shadeSetupWaiting = false; showShadeSetup() }
                 }
                 // After What's New, not on top of it: the build page waits until that sheet has been closed.
-                if ((showDevBuild.value || DevBuild.reopen.intValue > 0) && !showWhatsNew.value && !whatsNewRequested.value) DevBuild.load(this@MainActivity)?.let { dev ->
+                if (!simpleQuiet && (showDevBuild.value || DevBuild.reopen.intValue > 0) && !showWhatsNew.value && !whatsNewRequested.value) DevBuild.load(this@MainActivity)?.let { dev ->
                     val before = androidx.compose.runtime.remember { DevBuild.seen(this@MainActivity) }
                     DevBuildSheet(dev, before) { showDevBuild.value = false; DevBuild.reopen.intValue = 0; DevBuild.markSeen(this@MainActivity, dev) }
                 }
-                if (showWhatsNew.value || whatsNewRequested.value) WhatsNewSheet(
+                if (!simpleQuiet && (showWhatsNew.value || whatsNewRequested.value)) WhatsNewSheet(
                     // A beta build offers the testers' list from here; it closes this sheet and opens Settings on that page.
                     onWhatToTest = if (WhatToTest.available(SoftwareUpdate.installedVersion(this@MainActivity), packageName)) ({
                         showWhatsNew.value = false; whatsNewRequested.value = false; WhatsNew.markSeen(this@MainActivity)
@@ -486,7 +490,7 @@ class MainActivity : ComponentActivity() {
     /** Opens Spotlight, Notification Center or Control Center (Folio's own panels when enabled). */
     internal fun showPanel(panel: ShadePanel) { if (panel == ShadePanel.SEARCH) openSpotlight() else openSystemShade(panel) }
 
-    internal fun openSpotlight() { topPanel.value = null; spotlightVisible.value = true }
+    internal fun openSpotlight() { if (SimpleQuiet.active) return; topPanel.value = null; spotlightVisible.value = true } // no Spotlight in Simple Mode
     private fun closeOverlays() { topPanel.value = null; spotlightVisible.value = false }
 
     /**
@@ -833,4 +837,13 @@ class MainActivity : ComponentActivity() {
         const val SHADE_SETTINGS_PENDING = "duo.shade.settings_pending"
         const val PENDING_THEME = "folio.theme.pending"
     }
+}
+
+/**
+ * Turns a count of requests into events: [take] is true once for each new request. Home is drawn again after Simple
+ * Mode, and a plain "the count is above zero" opened Settings again for a request it had already handled.
+ */
+internal class RequestLatch {
+    private var handled = 0
+    fun take(request: Int): Boolean = (request > handled).also { if (it) handled = request }
 }
