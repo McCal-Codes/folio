@@ -6,8 +6,8 @@
       "title": "The island sits level",
       "where": "Settings > Dynamic Island",
       "steps": [
-        "Look at the island on Home and then over an app, on the cover screen and on the unfolded screen.",
-        "It should sit at the same height in both places and on both screens.",
+        "First turn on Dynamic Island under In Every App (Settings > Dynamic Island) and allow Folio's accessibility service if Android asks. Then look at the island on Home and over an app, on the cover screen and on the unfolded screen.",
+        "It should sit at the same height on Home and over an app, on both screens.",
         "On the unfolded screen, turn Hide in Landscape on: the island should stay unless you also turn on Also on the Unfolded Screen."
       ]
     },
@@ -17,7 +17,7 @@
       "where": "Dynamic Island",
       "steps": [
         "Open the island card on Home, then tap anywhere outside it: it should close and not open what is underneath.",
-        "Have someone call you (or use a timer): swipe a ringing call's card up. It should shrink to the pill and keep ringing; tap the pill to bring the card back.",
+        "Have someone call you and swipe the ringing call's card up. It should shrink to the pill and keep ringing; tap the pill to bring the card back.",
         "Turn Reduce Motion on: the pill and card should fade, and the music bars should stand still."
       ]
     },
@@ -82,8 +82,8 @@
       "title": "Safe Mode stays on until you leave it",
       "where": "Settings > General > Advanced",
       "steps": [
-        "Turn Safe Mode on and wait a minute: it should still be on.",
-        "If a newer Home layout came from a newer Folio, the notice should say so."
+        "You cannot turn Safe Mode on by hand: Folio starts in it only after it closes unexpectedly twice right after starting. If that ever happens to you, stay in Safe Mode for a minute: it should still be on.",
+        "If your Home layout came from a newer Folio, the notice should say so. Tell us if either happens."
       ]
     },
     {
@@ -110,7 +110,7 @@
       "title": "Focus and Smart Rotate",
       "where": "Focus",
       "steps": [
-        "Turn a Focus off by hand and restart Folio: it should stay off.",
+        "Set up a Focus that turns on by itself when you plug in the charger, then plug in so it turns on, turn it off by hand while still charging, and restart Folio: it should stay off.",
         "Smart Rotate should count time away from Home toward its wait."
       ]
     },
