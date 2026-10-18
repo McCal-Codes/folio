@@ -200,7 +200,8 @@ private fun SimpleClock(onHold: () -> Unit) {
         .pointerInput(Unit) {
             awaitEachGesture {
                 awaitFirstDown()
-                if (withTimeoutOrNull(HOLD_MS) { waitForUpOrCancellation() } == null) {
+                // Null only when the hold outlasted HOLD_MS: a lift or a cancelled touch (a scroll) inside it is not a hold.
+                if (withTimeoutOrNull(HOLD_MS) { waitForUpOrCancellation(); true } == null) {
                     haptic.perform(FolioHaptic.PickedUp); onHold()
                     waitForUpOrCancellation()
                 }
