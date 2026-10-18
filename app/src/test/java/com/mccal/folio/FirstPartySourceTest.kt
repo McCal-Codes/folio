@@ -10,6 +10,7 @@ import com.mccal.folio.market.IndexPackage
 import com.mccal.folio.market.RepoIndex
 import com.mccal.folio.market.RevocationList
 import com.mccal.folio.market.RevokedPackage
+import com.mccal.folio.market.RevokedSource
 import com.mccal.folio.market.Source
 import com.mccal.folio.market.SourceEntry
 import com.mccal.folio.market.SourceKey
@@ -69,9 +70,14 @@ class FirstPartySourceTest {
         )
     }
 
-    private fun snapshot(source: Source, vararg packages: IndexPackage, revocation: RevocationList? = null) = SourceSnapshot(
+    private fun snapshot(
+        source: Source,
+        vararg packages: IndexPackage,
+        revocation: RevocationList? = null,
+        signedWith: String = "7028F4F54A35A055",
+    ) = SourceSnapshot(
         url = source.url,
-        entry = SourceEntry("7028F4F54A35A055", now, 14 * 86_400L, FileRef("index.json", "b".repeat(64), 10)),
+        entry = SourceEntry(signedWith, now, 14 * 86_400L, FileRef("index.json", "b".repeat(64), 10)),
         index = RepoIndex(com.mccal.folio.market.LocalizedText.of("Folio Community Tweaks"), null, null, null, emptyList(), packages.toList()),
         revocation = revocation,
         fetchedAt = now,
@@ -79,7 +85,7 @@ class FirstPartySourceTest {
 
     /** What the store lists, with folio-tweaks counted as first-party exactly when [pinned] is the key Folio ships. */
     private fun merge(vararg from: Pair<Source, SourceSnapshot>, pinned: SourceKey? = firstPartyKey, folioList: RevocationList? = null) =
-        mergeEntries(builtIn, folio, folioList, from.toList(), folio = on069, isFirstParty = { isFirstParty(it.url, pinned) })
+        mergeEntries(builtIn, folio, folioList, from.toList(), folio = on069, isFirstParty = { source, snapshot -> isFirstParty(source.url, pinned, snapshot.entry.keyId) })
 
     private fun cabinets(entries: List<MarketEntry>) = entries.filter { it.id == cabinet.id }
 
@@ -90,15 +96,18 @@ class FirstPartySourceTest {
     }
 
     @Test fun `only that address with that key is first-party`() {
-        assertTrue(isFirstParty(FIRST_PARTY_SOURCE, firstPartyKey))
+        assertTrue(isFirstParty(FIRST_PARTY_SOURCE, firstPartyKey, firstPartyKey.keyId))
         // The same address however it was typed in: a GitHub repository address is its Pages site.
-        assertTrue(isFirstParty("github.com/McCal-Codes/folio-tweaks", firstPartyKey))
-        assertTrue(isFirstParty("https://mccal-codes.github.io/folio-tweaks", firstPartyKey))
+        assertTrue(isFirstParty("github.com/McCal-Codes/folio-tweaks", firstPartyKey, firstPartyKey.keyId))
+        assertTrue(isFirstParty("https://mccal-codes.github.io/folio-tweaks", firstPartyKey, firstPartyKey.keyId))
         // Another key at that address, no key pinned yet, or Folio's key somewhere else: not first-party.
-        assertFalse(isFirstParty(FIRST_PARTY_SOURCE, otherKey))
-        assertFalse(isFirstParty(FIRST_PARTY_SOURCE, null))
-        assertFalse(isFirstParty(someone.url, firstPartyKey))
-        assertFalse(isFirstParty(SUPPORTER_SOURCE, firstPartyKey))
+        assertFalse(isFirstParty(FIRST_PARTY_SOURCE, otherKey, otherKey.keyId))
+        assertFalse(isFirstParty(FIRST_PARTY_SOURCE, null, firstPartyKey.keyId))
+        assertFalse(isFirstParty(someone.url, firstPartyKey, firstPartyKey.keyId))
+        assertFalse(isFirstParty(SUPPORTER_SOURCE, firstPartyKey, firstPartyKey.keyId))
+        // Folio's key pinned now, but the copy Folio holds was signed with another key: not first-party.
+        assertFalse(isFirstParty(FIRST_PARTY_SOURCE, firstPartyKey, otherKey.keyId))
+        assertFalse(isFirstParty(FIRST_PARTY_SOURCE, firstPartyKey, null))
     }
 
     @Test fun `a newer copy from folio-tweaks is an update to the built-in package, listed once`() {
@@ -176,5 +185,32 @@ class FirstPartySourceTest {
         val rows = cabinets(mergeEntries(builtIn, folio, null, listOf(tweaks to snapshot(tweaks, listed("1.0.1"))), folio = on069))
         assertEquals(listOf(folio, tweaks), rows.map { it.source })
         assertEquals(MarketEntry.Impostor.BUILT_IN, rows.last().clash)
+    }
+
+    @Test fun `a copy signed under another key stays an impostor after re-pinning to Folio's key`() {
+        // PR #370 review: first-party status follows the key that signed the cached snapshot, not only the pin.
+        val newer = listed("1.0.1")
+        val row = merge(tweaks to snapshot(tweaks, newer, signedWith = otherKey.keyId), pinned = firstPartyKey)
+        val cabinetsListed = cabinets(row)
+        assertTrue(cabinetsListed.any { it.source == folio })
+        assertTrue(cabinetsListed.filter { it.source == tweaks }.all { it.clash == MarketEntry.Impostor.BUILT_IN })
+    }
+
+    @Test fun `a source Folio pulled as a whole is not first-party and nothing from it installs`() {
+        // PR #370 review: a source-level revocation must stop the first-party copy replacing the built-in one.
+        val newer = listed("1.0.1")
+        val pulledSource = RevocationList(now, emptyList(), listOf(RevokedSource(FIRST_PARTY_SOURCE, "Key leaked")))
+        val merged = merge(tweaks to snapshot(tweaks, newer), folioList = pulledSource)
+        val cabinetsListed = cabinets(merged)
+        assertTrue(cabinetsListed.any { it.source == folio })
+        assertTrue(cabinetsListed.filter { it.source == tweaks }.all { it.revokedReason == "Key leaked" })
+    }
+
+    @Test fun `every package from a pulled source carries its reason`() {
+        val other = cabinet.copy(id = "com.example.other")
+        val pulledSource = RevocationList(now, emptyList(), listOf(RevokedSource(someone.url, "Malware")))
+        val row = merge(someone to snapshot(someone, other, signedWith = otherKey.keyId), folioList = pulledSource)
+            .single { it.id == "com.example.other" }
+        assertEquals("Malware", row.revokedReason)
     }
 }
