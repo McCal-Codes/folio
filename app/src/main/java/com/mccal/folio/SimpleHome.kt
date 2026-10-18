@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -130,8 +132,9 @@ internal fun dialIntent(phone: String): Intent = Intent(Intent.ACTION_DIAL, Uri.
 internal fun SimpleHome(state: LauncherState, model: LauncherModel) {
     val context = LocalContext.current
     val palette = LocalDuoPalette.current
-    var asking by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf(false) }
+    // Saveable: a fold, unfold or rotation must not drop someone out of the editor or the dialog.
+    var asking by rememberSaveable { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf(false) }
     var hint by remember { mutableStateOf(runCatching { !simplePrefs(context).getBoolean(HINT_SEEN, false) }.getOrDefault(false)) }
     val addPeople = stringResource(R.string.simple_add_people)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->

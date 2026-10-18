@@ -428,8 +428,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.profile_simple)) {
                         val simpleContext = androidx.compose.ui.platform.LocalContext.current
-                        var askSimple by remember { mutableStateOf(false) }
-                        var setupSimple by remember { mutableStateOf(false) }
+                        var askSimple by rememberSaveable { mutableStateOf(false) }
+                        var setupSimple by rememberSaveable { mutableStateOf(false) }
                         SettingsSwitch(stringResource(R.string.profile_simple), state.simpleMode,
                             { on -> if (on) askSimple = true else if (!model.setSimpleMode(false)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved)) }, "simple-mode-switch")
                         if (askSimple) AlertDialog(onDismissRequest = { askSimple = false },

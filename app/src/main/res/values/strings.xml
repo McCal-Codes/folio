@@ -1777,10 +1777,10 @@
     <string name="simple_turn_on_confirm">Turn On</string>
     <string name="simple_setup_title">Who is this phone for?</string>
     <string name="simple_for_me">For me</string>
-    <string name="simple_for_me_detail">A calmer phone. Fewer gestures, no tips or badges, just what you use.</string>
+    <string name="simple_for_me_detail">A calmer phone. Fewer gestures and bigger buttons, just what you use.</string>
     <string name="simple_for_helping">For someone I\'m helping</string>
-    <string name="simple_for_helping_detail">Big buttons for the people they call. A PIN keeps the layout and contacts from changing by accident.</string>
-    <string name="simple_helping_note">The Help button calls or texts a person you choose. Folio doesn\'t include an emergency dispatch service or fall detection.</string>
+    <string name="simple_for_helping_detail">Big buttons for the people they call. Changes take a deliberate two-second hold on the clock.</string>
+    <string name="simple_helping_note">Folio doesn\'t include an emergency dispatch service or fall detection. For an emergency, call your local emergency number.</string>
     <string name="simple_continue">Continue</string>
     <string name="simple_edit_people">Edit people</string>
     <string name="simple_who_for">Who it\'s for</string>
