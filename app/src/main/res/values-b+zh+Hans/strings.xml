@@ -1040,6 +1040,7 @@
     <string name="that_listing_has_no_app_to_download">那个条目没有可下载的 App。</string>
     <string name="folio_couldn_t_download_that_app">Folio 无法下载那个 App。</string>
     <string name="that_app_didn_t_match_what_its_source">那个 App 与其源所承诺的不符，因此没有安装任何内容。</string>
+    <string name="that_app_isn_t_the_one_its_source_listed">那个 App 不是其源所列出的 App，或者没有其开发者的签名，因此没有安装任何内容。</string>
     <string name="folio_couldn_t_hand_that_app_to_android">Folio 无法把那个 App 交给 Android。</string>
     <string name="android_didn_t_install_it_1_s">Android 没有安装它：%1$s</string>
     <string name="android_didn_t_install_that_app">Android 没有安装那个 App。</string>
