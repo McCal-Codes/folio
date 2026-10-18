@@ -36,4 +36,26 @@ class ExperienceProfileTest {
         assertNotEquals(LauncherState(), there)
         assertEquals(LauncherState(), there.withProfile(ExperienceProfile.FOLIO))
     }
+
+    @Test fun `Simple Mode applies its bundle and reads back as Simple`() {
+        val simple = LauncherState().withProfile(ExperienceProfile.SIMPLE)
+        assertEquals(true, simple.simpleMode)
+        assertEquals(false, simple.island)
+        assertEquals(false, simple.folioPanels)
+        assertEquals("OFF", simple.swipeDownHome)
+        assertEquals(ExperienceProfile.SIMPLE, simple.profile())
+    }
+
+    @Test fun `a fresh state is not Simple, and Folio and Android style are still found`() {
+        assertEquals(false, LauncherState().simpleMode)
+        assertNotEquals(ExperienceProfile.SIMPLE, LauncherState().profile())
+        assertEquals(ExperienceProfile.ANDROID_STYLE, LauncherState().withProfile(ExperienceProfile.ANDROID_STYLE).profile())
+        assertEquals(ExperienceProfile.FOLIO, LauncherState().withProfile(ExperienceProfile.SIMPLE).withProfile(ExperienceProfile.FOLIO).profile())
+    }
+
+    @Test fun `Simple Mode on with a different mix is Custom, and choosing Simple keeps the people`() {
+        assertEquals(ExperienceProfile.CUSTOM, LauncherState(simpleMode = true).profile())
+        val people = listOf(SimpleFavorite("Mom", "555-0100"))
+        assertEquals(people, LauncherState(simpleFavorites = people).withProfile(ExperienceProfile.SIMPLE).simpleFavorites)
+    }
 }

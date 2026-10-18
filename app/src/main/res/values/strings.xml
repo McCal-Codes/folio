@@ -1757,6 +1757,16 @@
     <string name="profile_folio_detail">Dynamic Island, Folio\'s Notification Center and Control Center, and Spotlight when you swipe down on Home.</string>
     <string name="profile_android_style_detail">Android\'s own notification shade and Quick Settings, no Dynamic Island, and the notification shade when you swipe down on Home.</string>
     <string name="profile_custom_detail">You have set these yourself. Pick one above to start from it.</string>
+    <string name="profile_simple">Simple Mode</string>
+    <string name="profile_simple_detail">Home becomes a clock, up to four people to call, and large Messages, Camera and Photos buttons. Hold the clock to leave.</string>
+    <string name="simple_call">Call</string>
+    <string name="simple_add_people">Add people</string>
+    <string name="simple_add_people_detail">Choose who you call most</string>
+    <string name="simple_call_person">Call %1$s</string>
+    <string name="simple_messages">Messages</string>
+    <string name="simple_camera">Camera</string>
+    <string name="simple_photos">Photos</string>
+    <string name="simple_leave">Leave Simple Mode</string>
     <string name="add_apps">Add Apps</string>
     <string name="add_apps_to_1">Add Apps to “%1$s”</string>
     <string name="n_selected">%1$d selected</string>

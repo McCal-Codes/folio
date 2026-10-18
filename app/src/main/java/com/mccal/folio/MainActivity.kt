@@ -324,6 +324,8 @@ class MainActivity : ComponentActivity() {
                     // frame). The overlay's scrim fades in over it, which hides the switch.
                     renderEffect = if (p > .02f && backdropBlurPx >= 2f && !LauncherPages.isOpen(this@MainActivity) && SettingsPeek.value == null) backdropBlur else null
                 }) {
+                // Simple Mode swaps Home for SimpleHome; everything around it (overlays, StandBy) is unchanged.
+                if (state.simpleMode) SimpleHome(state, model) else
                 LauncherScreen(state, model, widgets, homeRequests.intValue, homeFromFront = homeFromFront.value,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
                     isDefaultHome = defaultHome.value, deviceStatus = deviceStatus, onStatusMode = ::setStatusMode, onWallpaperPreview = ::previewWallpaper,

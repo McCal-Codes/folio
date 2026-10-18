@@ -426,6 +426,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     RecentDotsCard(state, model)
                 }
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
+                    if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.profile_simple)) {
+                        SettingsSwitch(stringResource(R.string.profile_simple), state.simpleMode,
+                            { on -> model.setExperienceProfile(if (on) ExperienceProfile.SIMPLE else ExperienceProfile.FOLIO) }, "simple-mode-switch")
+                        CardNote(stringResource(R.string.profile_simple_detail))
+                    }
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
@@ -1466,6 +1471,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.animation_speed to CustomizationPage.GESTURES,
     R.string.haptic_feedback to CustomizationPage.GESTURES,
     R.string.swipe_down_on_home to CustomizationPage.GESTURES,
+    R.string.profile_simple to CustomizationPage.GESTURES,
     R.string.apps to CustomizationPage.HOME,
     R.string.columns to CustomizationPage.HOME,
     R.string.dock to CustomizationPage.HOME,
