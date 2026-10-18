@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** The profiles are named bundles of existing settings, and today's defaults are the Folio one. */
@@ -77,5 +78,14 @@ class ExperienceProfileTest {
         assertEquals("SPOTLIGHT", back.swipeDownHome)
         assertEquals(ExperienceProfile.CUSTOM, back.profile())
         assertEquals(mine, LauncherState().withoutSimpleMode().let { mine.withoutSimpleMode() })
+    }
+
+    @Test fun `Safe Mode draws the regular Home instead of Simple Mode, without forgetting it`() {
+        val simple = LauncherState().withProfile(ExperienceProfile.SIMPLE)
+        assertTrue("Safe Mode is off: Simple Mode stands", SafeMode.effective(simple).simpleMode)
+        // Safe Mode only turns on after two quick crashes, so its effect is read from the copy it makes (as PageEffectsTest does).
+        val crashLog = java.io.File(generateSequence(java.io.File("").absoluteFile) { it.parentFile }
+            .first { java.io.File(it, "CHANGELOG.md").exists() }, "app/src/main/java/com/mccal/folio/CrashLog.kt").readText()
+        assertTrue("Safe Mode should fall back from Simple Mode", "simpleMode = false" in crashLog)
     }
 }
