@@ -1767,6 +1767,15 @@
     <string name="simple_camera">Camera</string>
     <string name="simple_photos">Photos</string>
     <string name="simple_leave">Leave Simple Mode</string>
+    <string name="simple_leave_title">Leave Simple Mode?</string>
+    <string name="simple_leave_confirm">Leave</string>
+    <string name="simple_leave_stay">Stay</string>
+    <string name="simple_leave_hint">To leave Simple Mode, press and hold the clock for two seconds. Tap to hide this.</string>
+    <string name="simple_hint_dismiss">Hide this tip</string>
+    <string name="simple_turn_on_title">Turn on Simple Mode?</string>
+    <string name="simple_turn_on_text">Home will show only a clock, people to call, and Messages, Camera and Photos. Your own settings are kept for when you leave.</string>
+    <string name="simple_turn_on_confirm">Turn On</string>
+    <string name="simple_not_saved">Simple Mode could not be changed. Folio could not read its saved settings.</string>
     <string name="add_apps">Add Apps</string>
     <string name="add_apps_to_1">Add Apps to “%1$s”</string>
     <string name="n_selected">%1$d selected</string>

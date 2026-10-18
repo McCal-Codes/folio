@@ -136,6 +136,10 @@ data class LauncherState(
     val simpleMode: Boolean = false,
     /** Who Simple Mode is set up for: "ME" or "HELPING" (someone else). */
     val simpleFor: String = "ME",
+    /** Island, panels and swipe-down as they were before Simple Mode, so leaving it puts them back (see [withProfile]). */
+    val preSimpleIsland: Boolean = true,
+    val preSimplePanels: Boolean = true,
+    val preSimpleSwipe: String = "SPOTLIGHT",
     /** The people in Simple Mode's Call section, in order; [SimpleHome] shows the first [SIMPLE_MAX_FAVORITES]. */
     val simpleFavorites: List<SimpleFavorite> = emptyList(),
     val minPages: Int = 1,
@@ -1439,6 +1443,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setStayAwakeOnFold(value: Boolean) = updateSettings(soon = false) { it.copy(stayAwakeOnFold = value) }
     fun setStatusStyle(style: StatusStyle) = updateSettings(soon = true) { it.copy(statusStyle = style) }
     fun setFolioPanels(value: Boolean) = updateSettings(soon = false) { it.copy(folioPanels = value) }
+    /** Turns Simple Mode on or off, keeping the settings it replaces. False when the saved state is unreadable and nothing was changed. */
+    fun setSimpleMode(on: Boolean): Boolean {
+        if (statePayloadInvalid) return false
+        updateSettings(soon = false) { if (on) it.withProfile(ExperienceProfile.SIMPLE) else it.withoutSimpleMode() }
+        return true
+    }
     fun setSimpleFavorites(value: List<SimpleFavorite>) = updateSettings(soon = false) { it.copy(simpleFavorites = value.take(SIMPLE_MAX_FAVORITES)) }
     fun setIsland(value: Boolean) = updateSettings(soon = false) { it.copy(island = value) }
     fun setHidden(id: String, hidden: Boolean) = updateSettings(soon = false) { it.copy(hiddenApps = if (hidden) it.hiddenApps + id else it.hiddenApps - id) }
@@ -1628,7 +1638,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("hiddenApps", JSONArray(s.hiddenApps.toList()))
             .put("island", s.island)
             .put("folioPanels", s.folioPanels)
-            .put("simpleMode", s.simpleMode).put("simpleFor", s.simpleFor).put("simpleFavorites", simpleFavoritesToJson(s.simpleFavorites))
+            .put("simpleMode", s.simpleMode).put("simpleFor", s.simpleFor)
+            .put("preSimpleIsland", s.preSimpleIsland).put("preSimplePanels", s.preSimplePanels).put("preSimpleSwipe", s.preSimpleSwipe).put("simpleFavorites", simpleFavoritesToJson(s.simpleFavorites))
             .put("minPages", s.minPages)
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
@@ -1883,6 +1894,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         folioPanels = j.optBoolean("folioPanels", true),
         simpleMode = j.optBoolean("simpleMode", false),
         simpleFor = j.optString("simpleFor", "ME").takeIf { it in setOf("ME", "HELPING") } ?: "ME",
+        preSimpleIsland = j.optBoolean("preSimpleIsland", true), preSimplePanels = j.optBoolean("preSimplePanels", true),
+        preSimpleSwipe = j.optString("preSimpleSwipe", "SPOTLIGHT").ifBlank { "SPOTLIGHT" },
         simpleFavorites = simpleFavoritesFromJson(j.optJSONArray("simpleFavorites")),
         minPages = j.optInt("minPages", 1).coerceIn(1, 20),
         statusStyle = StatusStyle.fromJson(j.optJSONObject("statusStyle")),

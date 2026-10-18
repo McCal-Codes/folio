@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-
 package com.mccal.folio
 
 import android.content.Context
@@ -13,12 +11,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -52,12 +48,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -88,8 +103,8 @@ internal fun dialIntent(phone: String): Intent = Intent(Intent.ACTION_DIAL, Uri.
 
 /**
  * Simple Mode's Home: a big clock, up to four people to call, and Messages, Camera and Photos as large tiles. It replaces
- * the usual Home while [LauncherState.simpleMode] is on. Holding the clock leaves Simple Mode, since Settings is not
- * reachable from here.
+ * the usual Home while [LauncherState.simpleMode] is on. Holding the clock for two seconds asks to leave Simple Mode,
+ * since Settings is not reachable from here.
  *
  * TODO(simple-mode): Help button, PIN lock (and a PIN-protected way out instead of the held clock), the travel tile,
  * the setup screen (who it is for, removing or reordering people) and the mockup's fixed Back/Home bar. The bar is
@@ -99,11 +114,17 @@ internal fun dialIntent(phone: String): Intent = Intent(Intent.ACTION_DIAL, Uri.
 internal fun SimpleHome(state: LauncherState, model: LauncherModel) {
     val context = LocalContext.current
     val palette = LocalDuoPalette.current
+    var asking by remember { mutableStateOf(false) }
+    var hint by remember { mutableStateOf(runCatching { !simplePrefs(context).getBoolean(HINT_SEEN, false) }.getOrDefault(false)) }
+    val addPeople = stringResource(R.string.simple_add_people)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data ?: return@rememberLauncherForActivityResult
         readPickedContact(context, uri)?.let { model.setSimpleFavorites(state.simpleFavorites.withFavorite(it)) }
     }
-    val pickContact: () -> Unit = { runCatching { picker.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) } }
+    val pickContact: () -> Unit = {
+        runCatching { picker.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) }
+            .onFailure { IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, addPeople)) }
+    }
     val messages: () -> Unit = {
         val chosen = state.messagesApp?.let { context.packageManager.getLaunchIntentForPackage(it) }
         openOrNotice(context, chosen ?: Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING), R.string.simple_messages)
@@ -113,33 +134,60 @@ internal fun SimpleHome(state: LauncherState, model: LauncherModel) {
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.backgroundTop, palette.backgroundBottom)))
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.XL.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.XL.dp)) {
-        SimpleClock(onLeave = { model.setExperienceProfile(ExperienceProfile.FOLIO) })
+        if (hint) Text(stringResource(R.string.simple_leave_hint), color = Ink, fontSize = FolioSimpleType.HINT.sp,
+            modifier = Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Glass)
+                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.simple_hint_dismiss)) {
+                    hint = false; runCatching { simplePrefs(context).edit().putBoolean(HINT_SEEN, true).apply() }
+                }.padding(FolioSpace.MEDIUM.dp))
+        SimpleClock(onHold = { asking = true })
         SectionLabel(stringResource(R.string.simple_call))
         val people = state.simpleFavorites.take(SIMPLE_MAX_FAVORITES)
         // Each person, then an Add people tile while there is room; with nobody saved yet it is the only tile, full width.
-        val addPeople = stringResource(R.string.simple_add_people)
-        if (people.isEmpty()) SimpleTile(Icons.Rounded.Add, addPeople, Modifier.fillMaxWidth(), pickContact)
-        else buildList<SimpleFavorite?> { addAll(people); if (people.size < SIMPLE_MAX_FAVORITES) add(null) }.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
-                row.forEach { person ->
-                    if (person == null) SimpleTile(Icons.Rounded.Add, addPeople, Modifier.weight(1f), pickContact)
-                    else PersonTile(person, Modifier.weight(1f)) { openOrNotice(context, dialIntent(person.phone), R.string.simple_call, person.name) }
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
+        TileRows(people.size + if (people.size < SIMPLE_MAX_FAVORITES) 1 else 0) { index, modifier ->
+            val person = people.getOrNull(index)
+            if (person == null) SimpleTile(Icons.Rounded.Add, addPeople, modifier, pickContact)
+            else PersonTile(person, modifier) { openOrNotice(context, dialIntent(person.phone), R.string.simple_call, person.name) }
+        }
+        TileRows(3) { index, modifier ->
+            when (index) {
+                0 -> SimpleTile(Icons.Rounded.Message, stringResource(R.string.simple_messages), modifier, messages)
+                1 -> SimpleTile(Icons.Rounded.CameraAlt, stringResource(R.string.simple_camera), modifier, camera)
+                else -> SimpleTile(Icons.Rounded.PhotoLibrary, stringResource(R.string.simple_photos), modifier, photos)
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
-            SimpleTile(Icons.Rounded.Message, stringResource(R.string.simple_messages), Modifier.weight(1f), messages)
-            SimpleTile(Icons.Rounded.CameraAlt, stringResource(R.string.simple_camera), Modifier.weight(1f), camera)
-            SimpleTile(Icons.Rounded.PhotoLibrary, stringResource(R.string.simple_photos), Modifier.weight(1f), photos)
+    }
+    if (asking) AlertDialog(onDismissRequest = { asking = false },
+        title = { Text(stringResource(R.string.simple_leave_title)) },
+        confirmButton = { TextButton(onClick = {
+            asking = false
+            if (!model.setSimpleMode(false)) IslandEvents.notice(context, context.getString(R.string.simple_not_saved))
+        }) { Text(stringResource(R.string.simple_leave_confirm)) } },
+        dismissButton = { TextButton(onClick = { asking = false }) { Text(stringResource(R.string.simple_leave_stay)) } })
+}
+
+private const val HINT_SEEN = "hint_seen"
+private fun simplePrefs(context: Context) = context.getSharedPreferences("simple_mode", Context.MODE_PRIVATE)
+
+/** Tiles in rows of two, each row as tall as its tallest tile; a last tile on its own takes the whole row. */
+@Composable
+private fun TileRows(count: Int, tile: @Composable (Int, Modifier) -> Unit) {
+    (0 until count).chunked(2).forEach { row ->
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+            row.forEach { tile(it, Modifier.weight(1f).fillMaxHeight()) }
         }
     }
 }
 
-/** The time and date in the phone's own format and language, redrawn each minute. Holding it runs [onLeave]. */
+/**
+ * The time and date in the phone's own format and language, redrawn each minute. The time is sized to the width and
+ * ignores the font scale, so it never wraps; holding it for two seconds runs [onHold] (with a buzz), and TalkBack gets
+ * the same as a long press.
+ */
 @Composable
-private fun SimpleClock(onLeave: () -> Unit) {
+private fun SimpleClock(onHold: () -> Unit) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -147,28 +195,47 @@ private fun SimpleClock(onLeave: () -> Unit) {
             delay(60_000L - now % 60_000L + 50L)
         }
     }
-    Column(Modifier.fillMaxWidth().heightIn(min = 56.dp)
-        .combinedClickable(onLongClickLabel = stringResource(R.string.simple_leave), onLongClick = onLeave, onClick = {}),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(DateFormat.getTimeFormat(context).format(Date(now)), color = Ink, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-        Text(DateUtils.formatDateTime(context, now, DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE), color = Ink, fontSize = 26.sp, textAlign = TextAlign.Center)
+    val holdLabel = stringResource(R.string.simple_leave)
+    BoxWithConstraints(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown()
+                if (withTimeoutOrNull(HOLD_MS) { waitForUpOrCancellation() } == null) {
+                    haptic.perform(FolioHaptic.PickedUp); onHold()
+                    waitForUpOrCancellation()
+                }
+            }
+        }
+        .semantics { onLongClick(holdLabel) { onHold(); true } }) {
+        // About 4.6 ems is the widest a 12-hour time gets; the cap is the token size.
+        val clockSize = minOf(FolioSimpleType.CLOCK.toFloat(), maxWidth.value / 4.6f)
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 1f)) {
+                Text(DateFormat.getTimeFormat(context).format(Date(now)), color = Ink, fontSize = clockSize.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+            }
+            Text(DateUtils.formatDateTime(context, now, DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE), color = Ink,
+                fontSize = FolioSimpleType.DATE.sp, textAlign = TextAlign.Center)
+        }
     }
 }
 
+private const val HOLD_MS = 2000L
+
 @Composable
 private fun SectionLabel(text: String) =
-    Text(text, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = FolioSpace.TINY.dp))
+    Text(text, color = Ink, fontSize = FolioSimpleType.SECTION.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = FolioSpace.TINY.dp))
 
-/** A person to call: their initial in a circle and their name in large type. Calling is the tile's one action. */
+/** A person to call: their initial in a circle and their name in large type. TalkBack reads "Call <name>" once, for the tile. */
 @Composable
 private fun PersonTile(person: SimpleFavorite, modifier: Modifier, onCall: () -> Unit) {
     val label = person.name.ifBlank { person.phone }
     val description = stringResource(R.string.simple_call_person, label)
-    TileSurface(modifier, onCall, description) {
+    TileSurface(modifier.clearAndSetSemantics { contentDescription = description; role = Role.Button; onClick { onCall(); true } }, onCall) {
         Box(Modifier.size(56.dp).clip(CircleShape).background(LocalAccent.current.fill), contentAlignment = Alignment.Center) {
-            Text(label.first().uppercase(), color = androidx.compose.ui.graphics.Color.White, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+            Text(label.substring(0, label.offsetByCodePoints(0, 1)).uppercase(), color = androidx.compose.ui.graphics.Color.White,
+                fontSize = FolioSimpleType.INITIAL.sp, fontWeight = FontWeight.SemiBold)
         }
-        Text(label, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, color = Ink, fontSize = FolioSimpleType.LABEL.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -177,14 +244,14 @@ private fun PersonTile(person: SimpleFavorite, modifier: Modifier, onCall: () ->
 private fun SimpleTile(icon: ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) =
     TileSurface(modifier, onClick) {
         Icon(icon, null, tint = Ink, modifier = Modifier.size(40.dp))
-        Text(label, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, color = Ink, fontSize = FolioSimpleType.LABEL.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 
 /** The shared tile body: at least 120 dp tall, the whole of it a button. */
 @Composable
-private fun TileSurface(modifier: Modifier, onClick: () -> Unit, description: String? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) =
+private fun TileSurface(modifier: Modifier, onClick: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) =
     Column(modifier.heightIn(min = 120.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Glass)
-        .clickable(role = Role.Button, onClick = onClick).semantics { description?.let { contentDescription = it } }.padding(FolioSpace.MEDIUM.dp),
+        .clickable(role = Role.Button, onClick = onClick).padding(FolioSpace.MEDIUM.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.CenterVertically), content = content)
 
 private fun openOrNotice(context: Context, intent: Intent, label: Int, name: String? = null) {

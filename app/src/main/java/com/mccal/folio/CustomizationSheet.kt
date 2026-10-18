@@ -427,8 +427,18 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 }
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.profile_simple)) {
+                        val simpleContext = androidx.compose.ui.platform.LocalContext.current
+                        var askSimple by remember { mutableStateOf(false) }
                         SettingsSwitch(stringResource(R.string.profile_simple), state.simpleMode,
-                            { on -> model.setExperienceProfile(if (on) ExperienceProfile.SIMPLE else ExperienceProfile.FOLIO) }, "simple-mode-switch")
+                            { on -> if (on) askSimple = true else if (!model.setSimpleMode(false)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved)) }, "simple-mode-switch")
+                        if (askSimple) AlertDialog(onDismissRequest = { askSimple = false },
+                            title = { Text(stringResource(R.string.simple_turn_on_title)) },
+                            text = { Text(stringResource(R.string.simple_turn_on_text)) },
+                            confirmButton = { TextButton(onClick = {
+                                askSimple = false
+                                if (!model.setSimpleMode(true)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved))
+                            }) { Text(stringResource(R.string.simple_turn_on_confirm)) } },
+                            dismissButton = { TextButton(onClick = { askSimple = false }) { Text(stringResource(R.string.cancel)) } })
                         CardNote(stringResource(R.string.profile_simple_detail))
                     }
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {

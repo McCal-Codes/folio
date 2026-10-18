@@ -58,4 +58,24 @@ class ExperienceProfileTest {
         val people = listOf(SimpleFavorite("Mom", "555-0100"))
         assertEquals(people, LauncherState(simpleFavorites = people).withProfile(ExperienceProfile.SIMPLE).simpleFavorites)
     }
+
+    @Test fun `turning Simple Mode on and off returns an Android style user to exactly Android style`() {
+        val android = LauncherState().withProfile(ExperienceProfile.ANDROID_STYLE)
+        val on = android.withProfile(ExperienceProfile.SIMPLE)
+        assertEquals(ExperienceProfile.SIMPLE, on.profile())
+        val back = on.withoutSimpleMode()
+        assertEquals(android, back.copy(preSimpleIsland = android.preSimpleIsland, preSimplePanels = android.preSimplePanels, preSimpleSwipe = android.preSimpleSwipe))
+        assertEquals(ExperienceProfile.ANDROID_STYLE, back.profile())
+    }
+
+    @Test fun `a custom mix survives Simple Mode, and choosing Simple twice keeps the first copy`() {
+        val mine = LauncherState(island = false, swipeDownHome = "SPOTLIGHT")
+        val twice = mine.withProfile(ExperienceProfile.SIMPLE).withProfile(ExperienceProfile.SIMPLE)
+        val back = twice.withoutSimpleMode()
+        assertEquals(false, back.island)
+        assertEquals(true, back.folioPanels)
+        assertEquals("SPOTLIGHT", back.swipeDownHome)
+        assertEquals(ExperienceProfile.CUSTOM, back.profile())
+        assertEquals(mine, LauncherState().withoutSimpleMode().let { mine.withoutSimpleMode() })
+    }
 }

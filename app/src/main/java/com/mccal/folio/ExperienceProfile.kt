@@ -25,8 +25,15 @@ internal data class ProfileBundle(val island: Boolean, val folioPanels: Boolean,
 
 /** [profile]'s settings applied; [ExperienceProfile.CUSTOM] changes nothing. Everything outside the bundle is left alone. */
 internal fun LauncherState.withProfile(profile: ExperienceProfile): LauncherState = profile.bundle?.let {
-    copy(island = it.island, folioPanels = it.folioPanels, swipeDownHome = it.swipeDownHome, simpleMode = it.simpleMode)
+    // Entering Simple Mode keeps what it replaces; choosing it again while on keeps the first copy.
+    val base = if (profile == ExperienceProfile.SIMPLE && !simpleMode)
+        copy(preSimpleIsland = island, preSimplePanels = folioPanels, preSimpleSwipe = swipeDownHome) else this
+    base.copy(island = it.island, folioPanels = it.folioPanels, swipeDownHome = it.swipeDownHome, simpleMode = it.simpleMode)
 } ?: this
+
+/** Simple Mode off: island, panels and swipe-down go back to what they were before it; anything else is left alone. */
+internal fun LauncherState.withoutSimpleMode(): LauncherState = if (!simpleMode) this else
+    copy(simpleMode = false, island = preSimpleIsland, folioPanels = preSimplePanels, swipeDownHome = preSimpleSwipe)
 
 /** Which profile these settings are: the first whose bundle matches exactly, else [ExperienceProfile.CUSTOM]. */
 internal fun LauncherState.profile(): ExperienceProfile {
