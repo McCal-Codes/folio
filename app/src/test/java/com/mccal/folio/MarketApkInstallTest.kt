@@ -3,6 +3,8 @@ package com.mccal.folio
 import androidx.test.core.app.ApplicationProvider
 import com.mccal.folio.market.DebVersion
 import com.mccal.folio.market.IndexPackage
+import com.mccal.folio.market.PackageManifest
+import com.mccal.folio.market.ParseResult
 import com.mccal.folio.market.Source
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -28,10 +30,31 @@ class MarketApkInstallTest {
     private fun entry(
         url: String? = "packages/keyd.apk", sha: String? = "a".repeat(64), size: Int? = 1024,
         signers: Set<String> = setOf("b".repeat(64)),
+        appId: String? = "com.mccal.keyd",
     ) = IndexPackage(
         id = "com.mccal.keyd", version = requireNotNull(DebVersion.parse("0.1.0")),
-        url = url, sha256 = sha, size = size, provenance = null, manifest = null, signerSha256 = signers,
+        url = url, sha256 = sha, size = size, provenance = null, manifest = manifest(appId), signerSha256 = signers,
     )
+
+    /** Keyd's manifest, naming [appId] in `via` (or no package at all when null). */
+    private fun manifest(appId: String?): PackageManifest {
+        val id = appId?.let { ", \"id\": \"$it\"" } ?: ""
+        val json = """
+            {
+              "format": 1, "id": "com.mccal.keyd", "name": "Keyd", "version": "0.1.0",
+              "author": { "name": "McCal" }, "minFolio": "0.6.6", "section": "tweaks",
+              "kind": ["externalApp"], "permissions": [],
+              "via": [{ "store": "obtainium", "repoUrl": "https://github.com/McCal-Codes/folio-keyd"$id }]
+            }
+        """.trimIndent()
+        return (PackageManifest.parse(json) as ParseResult.Ok).value
+    }
+
+    @Test fun `a first install needs the listing to name the app's package`() {
+        assertFalse(MarketApkInstall.canInstall(added, entry(appId = null), on = true))
+        // An update is anchored to the app already on the phone, so it doesn't.
+        assertTrue(MarketApkInstall.canInstall(added, entry(appId = null), on = true, updating = true))
+    }
 
     private val added = Source("https://maya.example/folio/", kind = Source.Kind.ADDED)
 
@@ -77,7 +100,7 @@ class MarketApkInstallTest {
         assertFalse(ok)
         val status = MarketApkInstall.status.value as MarketApkInstall.Status.Failed
         assertEquals(context.getString(R.string.that_app_isn_t_the_one_its_source_listed), status.message)
-        assertFalse("the copy it read is gone", java.io.File(context.cacheDir, "market-update-check.apk").exists())
+        assertTrue("the copy it read is gone", context.cacheDir.listFiles().orEmpty().none { it.name.startsWith("market-check-") })
     }
 
     @Test fun `bytes that don't match the checksum never reach Android`() = runTest {

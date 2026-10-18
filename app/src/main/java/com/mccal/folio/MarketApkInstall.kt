@@ -73,13 +73,14 @@ internal object MarketApkInstall {
      * Whether Folio may install [entry] itself: the setting is on, and the listing has an APK with a checksum to
      * check it against. A listing with no checksum is never installed, whatever the setting says - there would
      * be nothing to compare the download with. A first install (not [updating]) also needs the listing to name its
-     * signer: without one there is nothing to say the APK is the developer's, so the sheet offers the stores instead.
+     * signer and its package (an app id in `via`): without them there is nothing to check the APK against, so the sheet
+     * offers the stores instead.
      */
     fun canInstall(source: Source, entry: IndexPackage, on: Boolean, revoked: Boolean = false, updating: Boolean = false): Boolean =
         // Not a local source: it's unsigned plain http, so any app on the phone listening on that port could name an
         // APK and its checksum. Not a pulled listing either, whatever the button showed.
         on && !revoked && entry.url != null && entry.sha256 != null &&
-            (updating || entry.signerSha256.isNotEmpty()) &&
+            (updating || (entry.signerSha256.isNotEmpty() && appIds(entry).isNotEmpty())) &&
             source.kind != Source.Kind.BUILT_IN && source.kind != Source.Kind.LOCAL_DEV
 
     /** The package names a listing says its APK is: the app ids in its `via`. */

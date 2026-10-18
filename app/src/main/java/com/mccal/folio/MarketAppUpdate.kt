@@ -105,7 +105,8 @@ internal object MarketAppUpdate {
      */
     @Suppress("DEPRECATION")
     fun archive(context: Context, apk: ByteArray): PackageInfo? {
-        val file = java.io.File(context.cacheDir, "market-update-check.apk")
+        // A file of its own per call: two checks at once must never read each other's bytes.
+        val file = java.io.File.createTempFile("market-check-", ".apk", context.cacheDir)
         return try {
             file.writeBytes(apk)
             context.packageManager.getPackageArchiveInfo(file.path, PackageManager.GET_SIGNING_CERTIFICATES)

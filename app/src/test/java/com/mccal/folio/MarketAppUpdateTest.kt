@@ -197,7 +197,7 @@ class MarketAppUpdateTest {
         assertFalse(ok)
         val status = MarketApkInstall.status.value as MarketApkInstall.Status.Failed
         assertTrue(status.message, status.message.contains("different app"))
-        assertFalse("the copy it read is gone", java.io.File(context.cacheDir, "market-update-check.apk").exists())
+        assertTrue("the copy it read is gone", context.cacheDir.listFiles().orEmpty().none { it.name.startsWith("market-check-") })
     }
 
     @Test fun `a download of the wrong size is refused`() = runTest {
