@@ -84,6 +84,10 @@ data class SimpleFavorite(val name: String, val phone: String)
 /** Simple Mode shows at most this many people, so each tile stays large. */
 const val SIMPLE_MAX_FAVORITES = 4
 
+/** [LauncherState.simpleFor]: the phone is for the person using it, or for someone they are helping. */
+const val SIMPLE_ME = "ME"
+const val SIMPLE_HELPING = "HELPING"
+
 /** Saved as a JSON array of {name, phone}; JSON does the escaping, so commas and quotes in a name are safe. */
 internal fun simpleFavoritesToJson(favorites: List<SimpleFavorite>): JSONArray =
     JSONArray().also { array -> favorites.forEach { array.put(JSONObject().put("name", it.name).put("phone", it.phone)) } }
@@ -97,6 +101,18 @@ internal fun simpleFavoritesFromJson(array: JSONArray?): List<SimpleFavorite> =
 /** [favorite] added to the end, or moved there if that number is already in the list; the list never passes [SIMPLE_MAX_FAVORITES]. */
 internal fun List<SimpleFavorite>.withFavorite(favorite: SimpleFavorite): List<SimpleFavorite> =
     (filterNot { it.phone == favorite.phone } + favorite).takeLast(SIMPLE_MAX_FAVORITES)
+
+/** The list with the person at [index] one place earlier; the first stays first, and a bad index changes nothing. */
+internal fun List<SimpleFavorite>.movedUp(index: Int): List<SimpleFavorite> =
+    if (index !in 1 until size) this else toMutableList().also { java.util.Collections.swap(it, index, index - 1) }
+
+/** The list with the person at [index] one place later; the last stays last, and a bad index changes nothing. */
+internal fun List<SimpleFavorite>.movedDown(index: Int): List<SimpleFavorite> =
+    if (index !in 0 until size - 1) this else toMutableList().also { java.util.Collections.swap(it, index, index + 1) }
+
+/** The list without the person at [index], the rest in order; a bad index changes nothing. */
+internal fun List<SimpleFavorite>.removedAt(index: Int): List<SimpleFavorite> =
+    if (index !in indices) this else filterIndexed { i, _ -> i != index }
 
 /** The dialer with [phone] filled in. ACTION_DIAL only opens the dialer, so Folio needs no call permission. */
 internal fun dialIntent(phone: String): Intent = Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null))
@@ -115,6 +131,7 @@ internal fun SimpleHome(state: LauncherState, model: LauncherModel) {
     val context = LocalContext.current
     val palette = LocalDuoPalette.current
     var asking by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
     var hint by remember { mutableStateOf(runCatching { !simplePrefs(context).getBoolean(HINT_SEEN, false) }.getOrDefault(false)) }
     val addPeople = stringResource(R.string.simple_add_people)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -131,6 +148,10 @@ internal fun SimpleHome(state: LauncherState, model: LauncherModel) {
     }
     val camera: () -> Unit = { openOrNotice(context, Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), R.string.simple_camera) }
     val photos: () -> Unit = { openOrNotice(context, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_GALLERY), R.string.simple_photos) }
+    if (editing) {
+        SimplePeopleEditor(state, model, onAdd = pickContact, onDone = { editing = false })
+        return
+    }
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.backgroundTop, palette.backgroundBottom)))
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.XL.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.XL.dp)) {
@@ -156,13 +177,22 @@ internal fun SimpleHome(state: LauncherState, model: LauncherModel) {
             }
         }
     }
+    // TODO(simple-mode): when state.simpleFor == SIMPLE_HELPING, ask for the PIN before this dialog opens.
     if (asking) AlertDialog(onDismissRequest = { asking = false },
         title = { Text(stringResource(R.string.simple_leave_title)) },
-        confirmButton = { TextButton(onClick = {
-            asking = false
-            if (!model.setSimpleMode(false)) IslandEvents.notice(context, context.getString(R.string.simple_not_saved))
-        }) { Text(stringResource(R.string.simple_leave_confirm)) } },
-        dismissButton = { TextButton(onClick = { asking = false }) { Text(stringResource(R.string.simple_leave_stay)) } })
+        text = {
+            Column {
+                TextButton(onClick = {
+                    asking = false
+                    if (!model.setSimpleMode(false)) IslandEvents.notice(context, context.getString(R.string.simple_not_saved))
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)) { Text(stringResource(R.string.simple_leave_confirm), fontSize = FolioSimpleType.HINT.sp) }
+                TextButton(onClick = { asking = false; editing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)) {
+                    Text(stringResource(R.string.simple_edit_people), fontSize = FolioSimpleType.HINT.sp)
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = { asking = false }, modifier = Modifier.heightIn(min = FolioTouch.MIN.dp)) { Text(stringResource(R.string.simple_leave_stay), fontSize = FolioSimpleType.HINT.sp) } })
 }
 
 private const val HINT_SEEN = "hint_seen"
@@ -170,7 +200,7 @@ private fun simplePrefs(context: Context) = context.getSharedPreferences("simple
 
 /** Tiles in rows of two, each row as tall as its tallest tile; a last tile on its own takes the whole row. */
 @Composable
-private fun TileRows(count: Int, tile: @Composable (Int, Modifier) -> Unit) {
+internal fun TileRows(count: Int, tile: @Composable (Int, Modifier) -> Unit) {
     (0 until count).chunked(2).forEach { row ->
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
             row.forEach { tile(it, Modifier.weight(1f).fillMaxHeight()) }
@@ -223,7 +253,7 @@ private fun SimpleClock(onHold: () -> Unit) {
 private const val HOLD_MS = 2000L
 
 @Composable
-private fun SectionLabel(text: String) =
+internal fun SectionLabel(text: String) =
     Text(text, color = Ink, fontSize = FolioSimpleType.SECTION.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = FolioSpace.TINY.dp))
 
 /** A person to call: their initial in a circle and their name in large type. TalkBack reads "Call <name>" once, for the tile. */
@@ -242,7 +272,7 @@ private fun PersonTile(person: SimpleFavorite, modifier: Modifier, onCall: () ->
 
 /** A large tile with an icon above its label; the label is the accessible name, so the icon has no description of its own. */
 @Composable
-private fun SimpleTile(icon: ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) =
+internal fun SimpleTile(icon: ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) =
     TileSurface(modifier, onClick) {
         Icon(icon, null, tint = Ink, modifier = Modifier.size(40.dp))
         Text(label, color = Ink, fontSize = FolioSimpleType.LABEL.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -250,7 +280,7 @@ private fun SimpleTile(icon: ImageVector, label: String, modifier: Modifier, onC
 
 /** The shared tile body: at least 120 dp tall, the whole of it a button. */
 @Composable
-private fun TileSurface(modifier: Modifier, onClick: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) =
+internal fun TileSurface(modifier: Modifier, onClick: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) =
     Column(modifier.heightIn(min = 120.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Glass)
         .clickable(role = Role.Button, onClick = onClick).padding(FolioSpace.MEDIUM.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.CenterVertically), content = content)
@@ -261,7 +291,7 @@ private fun openOrNotice(context: Context, intent: Intent, label: Int, name: Str
 }
 
 /** The name and number of the row the contact picker returned. ACTION_PICK grants read access to that one row, so READ_CONTACTS is not needed. */
-private fun readPickedContact(context: Context, uri: Uri): SimpleFavorite? = runCatching {
+internal fun readPickedContact(context: Context, uri: Uri): SimpleFavorite? = runCatching {
     context.contentResolver.query(uri, arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER), null, null, null)?.use { cursor ->
         if (!cursor.moveToFirst()) null
         else SimpleFavorite(cursor.getString(0).orEmpty(), cursor.getString(1).orEmpty()).takeIf { it.phone.isNotBlank() }

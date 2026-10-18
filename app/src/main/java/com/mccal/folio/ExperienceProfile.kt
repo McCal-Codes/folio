@@ -35,6 +35,10 @@ internal fun LauncherState.withProfile(profile: ExperienceProfile): LauncherStat
 internal fun LauncherState.withoutSimpleMode(): LauncherState = if (!simpleMode) this else
     copy(simpleMode = false, island = preSimpleIsland, folioPanels = preSimplePanels, swipeDownHome = preSimpleSwipe)
 
+/** [forWhom] ("ME" or "HELPING") chosen and Simple Mode on, with what it replaces kept. */
+internal fun LauncherState.withSimpleSetup(forWhom: String): LauncherState =
+    copy(simpleFor = if (forWhom == SIMPLE_HELPING) SIMPLE_HELPING else SIMPLE_ME).withProfile(ExperienceProfile.SIMPLE)
+
 /** Which profile these settings are: the first whose bundle matches exactly, else [ExperienceProfile.CUSTOM]. */
 internal fun LauncherState.profile(): ExperienceProfile {
     val now = ProfileBundle(island, folioPanels, swipeDownHome, simpleMode)

@@ -1449,6 +1449,13 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         updateSettings(soon = false) { if (on) it.withProfile(ExperienceProfile.SIMPLE) else it.withoutSimpleMode() }
         return true
     }
+    /** Setup's Continue: who Simple Mode is for, and Simple Mode on, in one save. False when the saved state is unreadable and nothing was changed. */
+    fun setSimpleSetup(forWhom: String): Boolean {
+        if (statePayloadInvalid) return false
+        updateSettings(soon = false) { it.withSimpleSetup(forWhom) }
+        return true
+    }
+    fun setSimpleFor(forWhom: String) = updateSettings(soon = false) { it.copy(simpleFor = if (forWhom == SIMPLE_HELPING) SIMPLE_HELPING else SIMPLE_ME) }
     fun setSimpleFavorites(value: List<SimpleFavorite>) = updateSettings(soon = false) { it.copy(simpleFavorites = value.take(SIMPLE_MAX_FAVORITES)) }
     fun setIsland(value: Boolean) = updateSettings(soon = false) { it.copy(island = value) }
     fun setHidden(id: String, hidden: Boolean) = updateSettings(soon = false) { it.copy(hiddenApps = if (hidden) it.hiddenApps + id else it.hiddenApps - id) }

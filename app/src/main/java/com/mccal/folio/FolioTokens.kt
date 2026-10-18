@@ -175,6 +175,7 @@ internal object FolioSimpleType {
     const val LABEL = 22
     const val INITIAL = 28
     const val HINT = 20
+    const val TITLE = 32
 }
 
 /**

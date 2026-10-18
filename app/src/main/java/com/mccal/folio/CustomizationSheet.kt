@@ -429,16 +429,19 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.profile_simple)) {
                         val simpleContext = androidx.compose.ui.platform.LocalContext.current
                         var askSimple by remember { mutableStateOf(false) }
+                        var setupSimple by remember { mutableStateOf(false) }
                         SettingsSwitch(stringResource(R.string.profile_simple), state.simpleMode,
                             { on -> if (on) askSimple = true else if (!model.setSimpleMode(false)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved)) }, "simple-mode-switch")
                         if (askSimple) AlertDialog(onDismissRequest = { askSimple = false },
                             title = { Text(stringResource(R.string.simple_turn_on_title)) },
                             text = { Text(stringResource(R.string.simple_turn_on_text)) },
-                            confirmButton = { TextButton(onClick = {
-                                askSimple = false
-                                if (!model.setSimpleMode(true)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved))
-                            }) { Text(stringResource(R.string.simple_turn_on_confirm)) } },
+                            confirmButton = { TextButton(onClick = { askSimple = false; setupSimple = true }) { Text(stringResource(R.string.simple_turn_on_confirm)) } },
                             dismissButton = { TextButton(onClick = { askSimple = false }) { Text(stringResource(R.string.cancel)) } })
+                        // Back or Cancel leaves Simple Mode off and everything else as it was; only Continue saves.
+                        if (setupSimple) SimpleSetupDialog(state.simpleFor, onCancel = { setupSimple = false }) { forWhom ->
+                            setupSimple = false
+                            if (!model.setSimpleSetup(forWhom)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved))
+                        }
                         CardNote(stringResource(R.string.profile_simple_detail))
                     }
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
