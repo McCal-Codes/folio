@@ -213,4 +213,16 @@ class FirstPartySourceTest {
             .single { it.id == "com.example.other" }
         assertEquals("Malware", row.revokedReason)
     }
+
+    @Test fun `a pulled source can't make an honest listing look contested`() {
+        val shared = cabinet.copy(id = "com.example.shared")
+        val honest = Source("https://honest.example/folio/", name = "Honest")
+        val pulledSource = RevocationList(now, emptyList(), listOf(RevokedSource(someone.url, "Malware")))
+        val merged = merge(
+            honest to snapshot(honest, shared, signedWith = otherKey.keyId),
+            someone to snapshot(someone, shared, signedWith = otherKey.keyId),
+            folioList = pulledSource,
+        )
+        assertNull(merged.single { it.id == shared.id && it.source == honest }.clash)
+    }
 }

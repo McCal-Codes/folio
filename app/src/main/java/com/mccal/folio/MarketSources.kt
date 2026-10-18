@@ -133,7 +133,9 @@ internal fun mergeEntries(
         }
     }
 
-    val seen = fromSources.flatMap { (_, snapshot) -> snapshot.index.packages.map { it.id } }
+    // A pulled source doesn't count toward a name clash: it can't make an honest listing look contested.
+    val seen = fromSources.filter { (source, _) -> pulledSource(source) == null }
+        .flatMap { (_, snapshot) -> snapshot.index.packages.map { it.id } }
         .groupingBy { it }.eachCount()
 
     for ((source, snapshot) in fromSources) {
