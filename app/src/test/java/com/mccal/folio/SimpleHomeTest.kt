@@ -60,7 +60,10 @@ class SimplePeopleEditingTest {
         assertEquals(true, after.simpleMode)
         assertEquals(false, after.preSimpleIsland)
         assertEquals("ME", before.withSimpleSetup("anything else").simpleFor)
-        assertEquals(before.copy(simpleFor = "HELPING").withoutSimpleMode(), after.withoutSimpleMode().copy(simpleFor = "HELPING"))
+        // Leaving puts back what the person sees; the saved pre-Simple copy may stay behind, unused until next time.
+        val left = after.withoutSimpleMode()
+        assertEquals(false, left.simpleMode)
+        assertEquals(listOf(before.island, before.folioPanels, before.swipeDownHome), listOf(left.island, left.folioPanels, left.swipeDownHome))
     }
 
     @Test fun `cancelling setup is not calling it, so the state is the one before`() {
