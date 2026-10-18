@@ -24,6 +24,9 @@ import kotlinx.coroutines.withContext
  *   listing is really that source's.
  * - The bytes must match the **checksum** the index promised, checked before the file is written anywhere
  *   Android can reach, so nothing can be swapped in on the way.
+ * - The APK is **the app that was listed**: Android's archive reader is asked what the checked bytes are, and
+ *   a first install is refused unless they are the listing's package, at least its versionCode, and signed by a key
+ *   its `signerSha256` names ([ApkIdentity.check]). A rotated key is accepted when its lineage is.
  * - **Android asks** before a first install, so the system's own install screen appears with the app's real name
  *   on it. An update to an app Folio itself installed, signed by the same key, is the one exception
  *   ([MarketAppUpdate]).
@@ -31,7 +34,7 @@ import kotlinx.coroutines.withContext
  *
  * What is not protected, and cannot be: Folio can't tell whether the app itself is any good. An update has an
  * anchor, the key the copy on the phone is signed with, and Folio insists on it the way Software Update does; a
- * first install has none. The source vouches for it, and that is the whole of it.
+ * first install's anchor is the signer the source listed. The source vouches for it, and that is the whole of it.
  */
 internal object MarketApkInstall {
 
@@ -69,13 +72,18 @@ internal object MarketApkInstall {
     /**
      * Whether Folio may install [entry] itself: the setting is on, and the listing has an APK with a checksum to
      * check it against. A listing with no checksum is never installed, whatever the setting says - there would
-     * be nothing to compare the download with.
+     * be nothing to compare the download with. A first install (not [updating]) also needs the listing to name its
+     * signer: without one there is nothing to say the APK is the developer's, so the sheet offers the stores instead.
      */
-    fun canInstall(source: Source, entry: IndexPackage, on: Boolean, revoked: Boolean = false): Boolean =
+    fun canInstall(source: Source, entry: IndexPackage, on: Boolean, revoked: Boolean = false, updating: Boolean = false): Boolean =
         // Not a local source: it's unsigned plain http, so any app on the phone listening on that port could name an
         // APK and its checksum. Not a pulled listing either, whatever the button showed.
         on && !revoked && entry.url != null && entry.sha256 != null &&
+            (updating || entry.signerSha256.isNotEmpty()) &&
             source.kind != Source.Kind.BUILT_IN && source.kind != Source.Kind.LOCAL_DEV
+
+    /** The package names a listing says its APK is: the app ids in its `via`. */
+    fun appIds(entry: IndexPackage): Set<String> = entry.manifest?.via.orEmpty().mapNotNull { it.appId }.toSet()
 
     /**
      * Downloads the APK, checks it against the checksum the index promised, and hands it to Android.
@@ -83,9 +91,12 @@ internal object MarketApkInstall {
      * The bytes are checked before the file is written anywhere Android can reach, so a source that serves
      * something other than what it listed never gets as far as the install screen.
      *
+     * Then Android's archive reader is asked what the bytes are. A first install must be the listed app, at the
+     * listed versionCode or later, signed by a listed key ([ApkIdentity.check]).
+     *
      * With [update], this replaces the copy already on the phone, and two more things must hold first: the APK is
-     * that app, and it is signed by the same key ([MarketAppUpdate.verdict]). When Folio is also that app's installer
-     * of record, Android is asked to update it without a screen.
+     * that app, and it is signed by the same key or one it rotated to ([MarketAppUpdate.verdict]). When Folio is also
+     * that app's installer of record, Android is asked to update it without a screen.
      */
     suspend fun install(
         context: Context,
@@ -105,16 +116,28 @@ internal object MarketApkInstall {
         if (!matches || (entry.size != null && bytes.size != entry.size)) {
             return fail(context, R.string.that_app_didn_t_match_what_its_source)
         }
-        val silent = update?.let { onPhone ->
-            val archive = withContext(Dispatchers.IO) { MarketAppUpdate.archive(context, bytes) }
-            when (MarketAppUpdate.verdict(context.packageName, onPhone, archive?.packageName, MarketAppUpdate.signers(archive))) {
+        // The same bytes that go to Android, read by Android's own archive reader: what package, which build, whose key.
+        val archive = withContext(Dispatchers.IO) { ApkIdentity.read(MarketAppUpdate.archive(context, bytes)) }
+        val silent = if (update == null) {
+            ApkIdentity.check(archive, appIds(entry), entry.versionCode, entry.signerSha256)?.let {
+                return fail(context, R.string.that_app_isn_t_the_one_its_source_listed)
+            }
+            false
+        } else {
+            val signing = archive?.signing ?: ApkIdentity.Signing(multiple = false, signers = emptySet())
+            val silent = when (MarketAppUpdate.verdict(context.packageName, update, archive?.appId, signing)) {
                 MarketAppUpdate.Verdict.SILENT -> true
                 MarketAppUpdate.Verdict.ASK -> false
                 MarketAppUpdate.Verdict.WRONG_APP -> return fail(context, R.string.that_update_is_a_different_app)
                 MarketAppUpdate.Verdict.WRONG_SIGNER ->
                     return fail(context, context.getString(R.string.that_update_isn_t_signed_by_the_same, name))
             }
-        } ?: false
+            val floor = entry.versionCode
+            if (floor != null && archive != null && archive.versionCode < floor) {
+                return fail(context, R.string.that_app_isn_t_the_one_its_source_listed)
+            }
+            silent
+        }
         MarketWork.applying()
         // Runs inside MarketWork, whose scope nothing cancels: every failure here is one to tell the user about.
         return caught("Market: writing an app for Android", rethrowCancellation = false) {

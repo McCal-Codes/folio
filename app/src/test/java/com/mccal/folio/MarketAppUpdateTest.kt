@@ -60,7 +60,11 @@ class MarketAppUpdateTest {
         )
     }
 
-    private val installed = MarketAppUpdate.OnPhone("com.mccal.keyd", "0.2.0", "com.mccal.folio", setOf("key-a"))
+    private fun key(vararg keys: String) = ApkIdentity.Signing(multiple = false, signers = setOf(keys.last()), history = keys.toList())
+    private fun keys(vararg keys: String) = ApkIdentity.Signing(multiple = true, signers = keys.toSet())
+    private val none = ApkIdentity.Signing(multiple = false, signers = emptySet())
+
+    private val installed = MarketAppUpdate.OnPhone("com.mccal.keyd", "0.2.0", "com.mccal.folio", key("key-a"))
 
     @Test fun `a newer release is an update`() {
         assertTrue(MarketAppUpdate.isNewer(v("0.3.0"), "0.2.0"))
@@ -91,46 +95,59 @@ class MarketAppUpdateTest {
     @Test fun `silent only when this Folio installed it and the signer matches`() {
         assertEquals(
             MarketAppUpdate.Verdict.SILENT,
-            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", setOf("key-a")),
+            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", key("key-a")),
         )
         // McCal's phone: Keyd was installed by Folio, and Folio Dev is the one updating it. Android asks.
         assertEquals(
             MarketAppUpdate.Verdict.ASK,
-            MarketAppUpdate.verdict("com.mccal.folio.dev", installed, "com.mccal.keyd", setOf("key-a")),
+            MarketAppUpdate.verdict("com.mccal.folio.dev", installed, "com.mccal.keyd", key("key-a")),
         )
         // Installed from anywhere else, or with no installer recorded, Android asks too.
         assertEquals(
             MarketAppUpdate.Verdict.ASK,
-            MarketAppUpdate.verdict("com.mccal.folio", installed.copy(installer = null), "com.mccal.keyd", setOf("key-a")),
+            MarketAppUpdate.verdict("com.mccal.folio", installed.copy(installer = null), "com.mccal.keyd", key("key-a")),
         )
     }
 
     @Test fun `a different signer is refused, even from the installer of record`() {
         assertEquals(
             MarketAppUpdate.Verdict.WRONG_SIGNER,
-            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", setOf("key-b")),
+            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", key("key-b")),
         )
         assertEquals(
             "an extra signer isn't the same set",
             MarketAppUpdate.Verdict.WRONG_SIGNER,
-            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", setOf("key-a", "key-b")),
+            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", keys("key-a", "key-b")),
         )
         assertEquals(
             "an unsigned APK matches nothing",
             MarketAppUpdate.Verdict.WRONG_SIGNER,
-            MarketAppUpdate.verdict("com.mccal.folio", installed.copy(signers = emptySet()), "com.mccal.keyd", emptySet()),
+            MarketAppUpdate.verdict("com.mccal.folio", installed.copy(signing = none), "com.mccal.keyd", none),
+        )
+    }
+
+    @Test fun `an update signed with a key rotated from the one on the phone goes in`() {
+        // apksigner rotate: Keyd's new key carries the old one as its past, and Android accepts it, so Folio does too.
+        assertEquals(
+            MarketAppUpdate.Verdict.SILENT,
+            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", key("key-a", "key-b")),
+        )
+        assertEquals(
+            "but a rotation from somebody else's key is still somebody else",
+            MarketAppUpdate.Verdict.WRONG_SIGNER,
+            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.mccal.keyd", key("key-c", "key-b")),
         )
     }
 
     @Test fun `an APK that is some other app is refused`() {
         assertEquals(
             MarketAppUpdate.Verdict.WRONG_APP,
-            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.example.other", setOf("key-a")),
+            MarketAppUpdate.verdict("com.mccal.folio", installed, "com.example.other", key("key-a")),
         )
         assertEquals(
             "and so is one Android can't read",
             MarketAppUpdate.Verdict.WRONG_APP,
-            MarketAppUpdate.verdict("com.mccal.folio", installed, null, setOf("key-a")),
+            MarketAppUpdate.verdict("com.mccal.folio", installed, null, key("key-a")),
         )
     }
 

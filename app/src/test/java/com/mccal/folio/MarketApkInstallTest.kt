@@ -25,11 +25,13 @@ import java.security.MessageDigest
 class MarketApkInstallTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
-    private fun entry(url: String? = "packages/keyd.apk", sha: String? = "a".repeat(64), size: Int? = 1024) =
-        IndexPackage(
-            id = "com.mccal.keyd", version = requireNotNull(DebVersion.parse("0.1.0")),
-            url = url, sha256 = sha, size = size, provenance = null, manifest = null,
-        )
+    private fun entry(
+        url: String? = "packages/keyd.apk", sha: String? = "a".repeat(64), size: Int? = 1024,
+        signers: Set<String> = setOf("b".repeat(64)),
+    ) = IndexPackage(
+        id = "com.mccal.keyd", version = requireNotNull(DebVersion.parse("0.1.0")),
+        url = url, sha256 = sha, size = size, provenance = null, manifest = null, signerSha256 = signers,
+    )
 
     private val added = Source("https://maya.example/folio/", kind = Source.Kind.ADDED)
 
@@ -57,6 +59,25 @@ class MarketApkInstallTest {
         assertFalse("nothing to check the download against",
             MarketApkInstall.canInstall(added, entry(sha = null), on = true))
         assertFalse(MarketApkInstall.canInstall(added, entry(url = null), on = true))
+    }
+
+    @Test fun `a first install needs the listing to name its signer, an update doesn't`() {
+        assertFalse("nothing to say the APK is the developer's",
+            MarketApkInstall.canInstall(added, entry(signers = emptySet()), on = true))
+        // An update is anchored to the key already on the phone instead.
+        assertTrue(MarketApkInstall.canInstall(added, entry(signers = emptySet()), on = true, updating = true))
+    }
+
+    @Test fun `bytes that match the checksum but aren't the listed app never reach Android`() = runTest {
+        // The checksum only says the source served what it listed. Android's archive reader is asked what the bytes
+        // are, and a first install refuses anything that isn't the listed package signed by the listed key.
+        val bytes = "a checksum-perfect stranger".toByteArray()
+        val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        val ok = MarketApkInstall.install(context, "Keyd", entry(sha = sha, size = bytes.size)) { _, _ -> bytes }
+        assertFalse(ok)
+        val status = MarketApkInstall.status.value as MarketApkInstall.Status.Failed
+        assertEquals(context.getString(R.string.that_app_isn_t_the_one_its_source_listed), status.message)
+        assertFalse("the copy it read is gone", java.io.File(context.cacheDir, "market-update-check.apk").exists())
     }
 
     @Test fun `bytes that don't match the checksum never reach Android`() = runTest {
@@ -108,8 +129,8 @@ class MarketApkInstallTest {
     @Test fun `the checksum it checks is the one the index promised`() = runTest {
         val bytes = "pretend this is an apk".toByteArray()
         val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-        // Robolectric has no package installer to hand it to, so this gets as far as trying and fails there -
-        // which is one step past the checksum, and the checksum is what this is about.
+        // Robolectric can't read these bytes as an APK, so this stops at the identity check - which is one step past
+        // the checksum, and the checksum is what this is about.
         MarketApkInstall.install(context, "Keyd", entry(sha = sha, size = bytes.size)) { _, _ -> bytes }
         val status = MarketApkInstall.status.value
         val message = (status as? MarketApkInstall.Status.Failed)?.message.orEmpty()
