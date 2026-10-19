@@ -68,7 +68,7 @@ internal fun FolioBetaSourceRow(selected: Boolean, onOpen: () -> Unit) {
     ) {
         Icon(Icons.Rounded.Science, contentDescription = null, tint = BetaOrange, modifier = Modifier.size(20.dp))
         Column(Modifier.padding(start = FolioSpace.COMPACT.dp).weight(1f)) {
-            Text(name, color = Color.White, fontSize = 16.sp)
+            Text(name, color = Color.White, fontSize = FolioType.CALLOUT.sp)
             Text(
                 stringResource(if (waiting) R.string.update_available else R.string.supporter),
                 color = if (waiting) FolioColors.BlueOnDark else Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
@@ -103,14 +103,14 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp).mirroredForRtl())
-                Text(backTitle, color = LocalAccent.current.ink, fontSize = 16.sp)
+                Text(backTitle, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp)
             }
         }
         Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Science, contentDescription = null, tint = BetaOrange, modifier = Modifier.size(34.dp))
             Column(Modifier.padding(start = FolioSpace.MEDIUM.dp)) {
                 Text(stringResource(R.string.folio_beta), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.folio_beta_for_supporters), color = Color.White.copy(alpha = .55f), fontSize = 14.sp)
+                Text(stringResource(R.string.folio_beta_for_supporters), color = Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp)
             }
         }
         SheetGroupLabel(stringResource(R.string.information))
@@ -162,7 +162,7 @@ internal fun MarketFolioBetaPage(showBack: Boolean, backTitle: String, onBack: (
 @Composable
 private fun BetaInfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Color.White, fontSize = 16.sp)
+        Text(label, color = Color.White, fontSize = FolioType.CALLOUT.sp)
         Text(value, color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp, textAlign = TextAlign.End,
             modifier = Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp))
     }

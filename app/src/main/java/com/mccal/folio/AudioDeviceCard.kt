@@ -99,7 +99,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally) {
         val closeLabel = stringResource(R.string.close)
         Box(Modifier.fillMaxWidth()) {
-            Text(title, Modifier.align(Alignment.Center).padding(horizontal = 44.dp), color = primary, fontSize = 20.sp,
+            Text(title, Modifier.align(Alignment.Center).padding(horizontal = 44.dp), color = primary, fontSize = FolioType.TITLE3.sp,
                 fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Box(Modifier.align(Alignment.CenterEnd).minimumInteractiveComponentSize()
                 .clickable(role = Role.Button, onClick = onDone).semantics { contentDescription = closeLabel },

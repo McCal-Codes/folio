@@ -321,8 +321,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     contentAlignment = if (s.leftHanded) Alignment.CenterStart else Alignment.CenterEnd) {
                     AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(FolioMotion.spring(FolioMotion.Appear)) { if (s.leftHanded) -it else it },
                         exit = fadeOut() + slideOutHorizontally { if (s.leftHanded) -it else it }) {
-                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(30.dp))
-                            .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(30.dp))
+                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
+                            .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(FolioRadius.RAIL.dp))
                             .padding(vertical = FolioSpace.MEDIUM.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                             apps.forEach { app ->
                                 val hostView = androidx.compose.ui.platform.LocalView.current

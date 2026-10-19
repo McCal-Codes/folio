@@ -119,7 +119,7 @@ internal object FolioColors {
     /** Supporting text on [LightBackground]-style cards in light appearance (iOS secondaryLabel). */
     val SecondaryLabelOnLight = Color(0xFF6C6C70)
     /** Supporting text on dark glass and sheets. */
-    val SecondaryLabel = Color.White.copy(alpha = .6f)
+    val SecondaryLabel = Color.White.copy(alpha = .62f)
 }
 
 /**
@@ -179,6 +179,14 @@ internal object FolioRadius {
     const val PANEL = 24
     /** The top corners of a bottom sheet. */
     const val SHEET_TOP = 28
+    /** List rows, search fields and small cards that sit on a sheet. */
+    const val ROW = 12
+    /** Floating menus and action sheets. */
+    const val FLOATING = 18
+    /** Notification cards and the stack behind them. */
+    const val NOTIFICATION = 22
+    /** The dock and the side rail: a capsule. */
+    const val RAIL = 30
     /** A segmented control's track. */
     const val SEGMENT = 9
     /** A segmented control's thumb: the track's radius minus its 2 dp inset, so the corners stay concentric (DES-8). */
@@ -194,8 +202,14 @@ internal object FolioType {
     const val BODY = 17
     const val SUBHEAD = 15
     const val FOOTNOTE = 13
-    /** A chip's label: SemiBold when selected. */
-    const val CHIP = 14
+    /** Dense rows, chip labels (SemiBold when selected) and secondary controls. */
+    const val COMPACT = 14
+    /** iOS Callout: list values and supporting lines a step above [SUBHEAD]. */
+    const val CALLOUT = 16
+    /** iOS Title 3: sheet and card headings. */
+    const val TITLE3 = 20
+    /** iOS Caption 2: timestamps and the smallest supporting text. Home app labels use [LabelSize] instead. */
+    const val CAPTION = 11
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
 }
