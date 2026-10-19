@@ -426,6 +426,24 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     RecentDotsCard(state, model)
                 }
                 CustomizationPage.GESTURES, CustomizationPage.NOTIFICATIONS, CustomizationPage.SEARCH, CustomizationPage.TODAY -> {
+                    if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.profile_simple)) {
+                        val simpleContext = androidx.compose.ui.platform.LocalContext.current
+                        var askSimple by rememberSaveable { mutableStateOf(false) }
+                        var setupSimple by rememberSaveable { mutableStateOf(false) }
+                        SettingsSwitch(stringResource(R.string.profile_simple), state.simpleMode,
+                            { on -> if (on) askSimple = true else if (!model.setSimpleMode(false)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved)) }, "simple-mode-switch")
+                        if (askSimple) AlertDialog(onDismissRequest = { askSimple = false },
+                            title = { Text(stringResource(R.string.simple_turn_on_title)) },
+                            text = { Text(stringResource(R.string.simple_turn_on_text)) },
+                            confirmButton = { TextButton(onClick = { askSimple = false; setupSimple = true }) { Text(stringResource(R.string.simple_turn_on_confirm)) } },
+                            dismissButton = { TextButton(onClick = { askSimple = false }) { Text(stringResource(R.string.cancel)) } })
+                        // Back or Cancel leaves Simple Mode off and everything else as it was; only Continue saves.
+                        if (setupSimple) SimpleSetupDialog(state.simpleFor, onCancel = { setupSimple = false }) { forWhom ->
+                            setupSimple = false
+                            if (!model.setSimpleSetup(forWhom)) IslandEvents.notice(simpleContext, simpleContext.getString(R.string.simple_not_saved))
+                        }
+                        CardNote(stringResource(R.string.profile_simple_detail))
+                    }
                     if (page == CustomizationPage.GESTURES) SettingsCard(stringResource(R.string.gestures)) {
                         IosMenuRow(stringResource(R.string.animation_speed), MotionSpeed.entries.map { it to stringResource(it.label) }, state.motionSpeed, model::setMotionSpeed, tag = "motion-speed")
                         IosMenuRow(stringResource(R.string.swipe_down_on_home), listOf("SPOTLIGHT" to stringResource(R.string.spotlight), "NOTIFICATIONS" to stringResource(R.string.notification_center), "OFF" to stringResource(R.string.nothing)),
@@ -1466,6 +1484,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.animation_speed to CustomizationPage.GESTURES,
     R.string.haptic_feedback to CustomizationPage.GESTURES,
     R.string.swipe_down_on_home to CustomizationPage.GESTURES,
+    R.string.profile_simple to CustomizationPage.GESTURES,
     R.string.apps to CustomizationPage.HOME,
     R.string.columns to CustomizationPage.HOME,
     R.string.dock to CustomizationPage.HOME,

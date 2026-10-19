@@ -166,5 +166,8 @@ internal object SafeMode {
     fun effective(state: LauncherState): LauncherState = if (!active) state else state.copy(
         appPanels = false, dockMagnify = false, tintNotifications = false, tintMedia = false, triggerActions = emptyMap(),
         foldEffect = false, lockCover = false, islandEverywhere = false, dockEverywhere = false, widgetStacks = state.widgetStacks,
-        stackRotate = false, notificationAppRow = false, pageEffect = PageEffect.NONE)
+        stackRotate = false, notificationAppRow = false, pageEffect = PageEffect.NONE,
+        // If Simple Mode's own screen is what keeps crashing, drawing it again is the crash loop. Fall back to the
+        // regular Home for this run only; the saved choice is untouched and returns when Safe Mode is left.
+        simpleMode = false)
 }

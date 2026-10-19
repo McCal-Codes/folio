@@ -132,6 +132,16 @@ data class LauncherState(
     val island: Boolean = true,
     /** Top pulls open Folio's iOS-style panels instead of the Android system shade. */
     val folioPanels: Boolean = true,
+    /** Simple Mode: Home is [SimpleHome], a few large tiles, instead of the usual Home. Set by [ExperienceProfile.SIMPLE]. */
+    val simpleMode: Boolean = false,
+    /** Who Simple Mode is set up for: "ME" or "HELPING" (someone else). */
+    val simpleFor: String = "ME",
+    /** Island, panels and swipe-down as they were before Simple Mode, so leaving it puts them back (see [withProfile]). */
+    val preSimpleIsland: Boolean = true,
+    val preSimplePanels: Boolean = true,
+    val preSimpleSwipe: String = "SPOTLIGHT",
+    /** The people in Simple Mode's Call section, in order; [SimpleHome] shows the first [SIMPLE_MAX_FAVORITES]. */
+    val simpleFavorites: List<SimpleFavorite> = emptyList(),
     val minPages: Int = 1,
     val statusStyle: StatusStyle = StatusStyle(),
     val foldEffect: Boolean = true,
@@ -1433,6 +1443,20 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setStayAwakeOnFold(value: Boolean) = updateSettings(soon = false) { it.copy(stayAwakeOnFold = value) }
     fun setStatusStyle(style: StatusStyle) = updateSettings(soon = true) { it.copy(statusStyle = style) }
     fun setFolioPanels(value: Boolean) = updateSettings(soon = false) { it.copy(folioPanels = value) }
+    /** Turns Simple Mode on or off, keeping the settings it replaces. False when the saved state is unreadable and nothing was changed. */
+    fun setSimpleMode(on: Boolean): Boolean {
+        if (statePayloadInvalid) return false
+        updateSettings(soon = false) { if (on) it.withProfile(ExperienceProfile.SIMPLE) else it.withoutSimpleMode() }
+        return true
+    }
+    /** Setup's Continue: who Simple Mode is for, and Simple Mode on, in one save. False when the saved state is unreadable and nothing was changed. */
+    fun setSimpleSetup(forWhom: String): Boolean {
+        if (statePayloadInvalid) return false
+        updateSettings(soon = false) { it.withSimpleSetup(forWhom) }
+        return true
+    }
+    fun setSimpleFor(forWhom: String) = updateSettings(soon = false) { it.copy(simpleFor = if (forWhom == SIMPLE_HELPING) SIMPLE_HELPING else SIMPLE_ME) }
+    fun setSimpleFavorites(value: List<SimpleFavorite>) = updateSettings(soon = false) { it.copy(simpleFavorites = value.take(SIMPLE_MAX_FAVORITES)) }
     fun setIsland(value: Boolean) = updateSettings(soon = false) { it.copy(island = value) }
     fun setHidden(id: String, hidden: Boolean) = updateSettings(soon = false) { it.copy(hiddenApps = if (hidden) it.hiddenApps + id else it.hiddenApps - id) }
     /** Renames one app everywhere it appears; a blank name puts the name Android reports back. */
@@ -1621,6 +1645,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("hiddenApps", JSONArray(s.hiddenApps.toList()))
             .put("island", s.island)
             .put("folioPanels", s.folioPanels)
+            .put("simpleMode", s.simpleMode).put("simpleFor", s.simpleFor)
+            .put("preSimpleIsland", s.preSimpleIsland).put("preSimplePanels", s.preSimplePanels).put("preSimpleSwipe", s.preSimpleSwipe).put("simpleFavorites", simpleFavoritesToJson(s.simpleFavorites))
             .put("minPages", s.minPages)
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
@@ -1873,6 +1899,11 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         hiddenApps = j.optJSONArray("hiddenApps")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         island = j.optBoolean("island", true),
         folioPanels = j.optBoolean("folioPanels", true),
+        simpleMode = j.optBoolean("simpleMode", false),
+        simpleFor = j.optString("simpleFor", "ME").takeIf { it in setOf("ME", "HELPING") } ?: "ME",
+        preSimpleIsland = j.optBoolean("preSimpleIsland", true), preSimplePanels = j.optBoolean("preSimplePanels", true),
+        preSimpleSwipe = j.optString("preSimpleSwipe", "SPOTLIGHT").ifBlank { "SPOTLIGHT" },
+        simpleFavorites = simpleFavoritesFromJson(j.optJSONArray("simpleFavorites")),
         minPages = j.optInt("minPages", 1).coerceIn(1, 20),
         statusStyle = StatusStyle.fromJson(j.optJSONObject("statusStyle")),
         foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f), // A save from before Duet had today's fold, which is the Duo style; only a new save carries a choice.

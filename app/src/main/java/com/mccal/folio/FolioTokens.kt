@@ -167,6 +167,17 @@ internal object FolioType {
     const val GROUP_LABEL = 12
 }
 
+/** Simple Mode's type, in sp: large on purpose, and never below 20 for a label. */
+internal object FolioSimpleType {
+    const val CLOCK = 72
+    const val DATE = 26
+    const val SECTION = 22
+    const val LABEL = 22
+    const val INITIAL = 28
+    const val HINT = 20
+    const val TITLE = 32
+}
+
 /**
  * The smallest a finger's target may be, in dp (A11Y-1). What a control *draws* can be smaller: put the drawn thing
  * inside a box this size rather than growing the thing itself, so a 32 dp circle still takes a 48 dp tap.
