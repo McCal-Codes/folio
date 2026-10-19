@@ -1598,14 +1598,14 @@ fun LauncherScreen(
                                 val page = targetPage - 1
                                 widgetSession = session.copy(targetIndex = homeCellIndex(page, local))
                                 scope.launch { pager.animateScrollToPage(page.coerceAtLeast(0)) }
-                            }) { Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.previous_home_page)) }
+                            }) { Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.previous_home_page), modifier = Modifier.mirroredForRtl()) }
                             Text("${session.span.width} × ${session.span.height}", color = Ink)
                             if (!session.dragging && session.candidate == null) IconButton(enabled = targetPage < homePages, onClick = {
                                 val local = homeCellLocal(session.targetIndex ?: 0)
                                 val page = (targetPage + 1).coerceAtMost(homePages)
                                 widgetSession = session.copy(targetIndex = homeCellIndex(page, local))
                                 scope.launch { pager.animateScrollToPage(page.coerceAtLeast(0)) }
-                            }) { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.next_home_page)) }
+                            }) { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.next_home_page), modifier = Modifier.mirroredForRtl()) }
                             if (!session.dragging) TextButton(enabled = widgetDraft != null, onClick = {
                                 widgetDraft?.let { draft ->
                                     val contentSize = specialAnchor?.let { bounds -> with(placementDensity) {

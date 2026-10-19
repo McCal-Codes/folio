@@ -1146,7 +1146,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
             if (backLabel != null) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                 .clickable(onClick = onBack).padding(vertical = FolioSpace.SMALL.dp, horizontal = FolioSpace.HAIR.dp).testTag("customization-back"),
                 verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(28.dp))
+                Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(28.dp))
                 Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
             }
         }
@@ -1272,7 +1272,7 @@ private fun HelpTip(icon: ImageVector, color: Long, title: String, detail: Strin
             Text(it, color = valueColor, fontSize = FolioType.BODY.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = FolioSpace.SMALL.dp))
         }
-        if (chevron) Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
+        if (chevron) Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f), modifier = Modifier.mirroredForRtl())
     }
 }
 
@@ -1611,7 +1611,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         verticalAlignment = Alignment.CenterVertically) {
         Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
         where?.let { Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp) }
-        Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
+        Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f), modifier = Modifier.mirroredForRtl())
     }
 }
 
@@ -1652,7 +1652,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
                 }
                 Text(stringResource(if (perm.allowed) R.string.allowed else R.string.state_off), color = if (perm.allowed) FolioColors.Green
                     else androidx.compose.ui.graphics.Color.White.copy(alpha = .5f), fontSize = FolioType.SUBHEAD.sp)
-                Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f))
+                Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f), modifier = Modifier.mirroredForRtl())
             }
         }
         // Some banking apps refuse to run while any accessibility service is on, Folio's included (reported on
@@ -2039,7 +2039,7 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
             if (leading != null) leading() else Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleMedium); CardNote(detail) }
-            Icon(Icons.Rounded.ChevronRight, null)
+            Icon(Icons.Rounded.ChevronRight, null, modifier = Modifier.mirroredForRtl())
         }
     }
 }
