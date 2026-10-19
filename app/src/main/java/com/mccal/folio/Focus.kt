@@ -349,8 +349,9 @@ internal fun FocusLockNotice(trigger: Int, mode: FocusMode?, modifier: androidx.
     var visible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(trigger) { if (trigger > 0 && mode != null) { visible = true; kotlinx.coroutines.delay(2_600); visible = false } }
     androidx.compose.animation.AnimatedVisibility(visible && mode != null, modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.folioSafeTop).padding(top = FolioSpace.MEDIUM.dp),
-        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
-        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }) {
+        // Reduce Motion: the pill fades where it lands instead of sliding down from the top edge (A11Y-14).
+        enter = if (LocalReduceMotion.current) androidx.compose.animation.fadeIn() else androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+        exit = if (LocalReduceMotion.current) androidx.compose.animation.fadeOut() else androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }) {
         val m = mode ?: return@AnimatedVisibility
         androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.CircleShape)
             .background(FolioColors.SecondaryBackground.copy(alpha = .95f))
