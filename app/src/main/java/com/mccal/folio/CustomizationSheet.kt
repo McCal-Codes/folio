@@ -548,7 +548,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.Wallpaper, null, tint = androidx.compose.ui.graphics.Color.Black.copy(alpha = .6f), modifier = Modifier.size(18.dp))
                             }
-                            listOf(0xFFFFB340, FolioColors.Value.RedSoft, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
+                            listOf(FolioColors.Value.Warning, FolioColors.Value.RedSoft, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
                                 Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color(c))
                                     .then(if (!state.iconTintFromWallpaper && state.iconTint == c) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
                                     .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(false); model.setIconStyle(IconStyle.TINTED, c) }
@@ -2091,7 +2091,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     val corner = 26.dp * (previewHeight.value / 260f)
     val bezel = previewHeight * .022f
     Column(if (framed) Modifier.fillMaxWidth() else Modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(if (!framed) Modifier else Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
+        Box(if (!framed) Modifier else Modifier.clip(RoundedCornerShape(corner + bezel)).background(FolioColors.PreviewBezel)
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)) {
         Box(Modifier.height(previewHeight).width(previewHeight * (refW / refH))
             .clip(RoundedCornerShape(if (framed) corner else 0.dp))
@@ -2180,7 +2180,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     val corner = 16.dp
     val bezel = 5.dp
     Box(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
+        Box(Modifier.clip(RoundedCornerShape(corner + bezel)).background(FolioColors.PreviewBezel)
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)
             .clearedDescription(R.string.fold_effect_preview)) {
             Row(Modifier.clip(RoundedCornerShape(corner)).foldPreviewEffect(state.duet.resolved()) { fold * state.foldIntensity }
@@ -2578,7 +2578,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     val corner = 18.dp
     val bezel = 5.dp
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Row(Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
+        Row(Modifier.clip(RoundedCornerShape(corner + bezel)).background(FolioColors.PreviewBezel)
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)
             .clip(RoundedCornerShape(corner)).clearedDescription(R.string.preview_of_home_on_the_inner_screen)) {
             MiniHomePreview(bitmap, state, height, framed = false, sideBar = state.leftHanded, preset = preset)

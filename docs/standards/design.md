@@ -114,7 +114,7 @@ Not yet:
   expanding the tokens again and diffing against what was there.
 - What stays a literal on purpose: icon and thumbnail radii, which follow their size (DES-8a); pill shapes; and the
   sizes of things (an icon, a sheet's width), which are dimensions rather than spacing.
-- Outside the token files there are 50 `Color(0x…)`, 23 colors written as numbers, 129 `RoundedCornerShape(N.dp)`
+- Outside the token files there are 30 `Color(0x…)`, 11 colors written as numbers, 129 `RoundedCornerShape(N.dp)`
   and 142 `fontSize = N.sp`. `DesignTokensTest` holds all four counts so they can only go down. Counting numbers as
   well as `Color(0x…)` is what found 78 retyped palette values hiding in tweak tints, Focus modes and saved layouts.
 - Material still used directly: `AssistChip` in `AppLibrary.kt`, and Material's progress indicators. The buttons,

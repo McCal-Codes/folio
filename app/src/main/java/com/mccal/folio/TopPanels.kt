@@ -418,7 +418,7 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(minOf(280.dp, with(density) { bounds.width().toDp() })).onSizeChanged { menuH = it.height }
                         .graphicsLayer { val s = .8f + .2f * appear.value; scaleX = s; scaleY = s
                             transformOrigin = TransformOrigin(0f, if (below) 0f else 1f) }
-                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
+                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.PopoverSurface.copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
                         .clickable(remember { MutableInteractionSource() }, null) {}) {
                         MenuRow(stringResource(R.string.open), Icons.Rounded.OpenInNew) { act { IslandListenerService.openNotification(context, item) } }
                         if (item.clearable) {

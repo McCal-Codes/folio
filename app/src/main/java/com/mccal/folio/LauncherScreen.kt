@@ -1637,7 +1637,7 @@ fun LauncherScreen(
                                 .semantics { stateDescription = if (widgetDraft != null) launcherActivity.getString(R.string.ready_to_place) else launcherActivity.getString(R.string.no_room_here) },
                                 color = if (widgetDraft != null) Glass.copy(alpha = .82f) else Color(0xFFE7B6B6).copy(alpha = .9f),
                                 shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(3.dp,
-                                    if (widgetDraft != null) Color.White else Color(0xFFFF6B6B))) {
+                                    if (widgetDraft != null) Color.White else FolioColors.InvalidDrop)) {
                                 Box(Modifier.fillMaxSize()) {
                                     if (sessionEntry != null) WidgetProviderPreview(sessionEntry, session.span,
                                         Modifier.fillMaxSize().padding(5.dp).clip(RoundedCornerShape(18.dp)))
@@ -1799,10 +1799,10 @@ fun LauncherScreen(
                     with(density) { 18.dp.toPx() }).coerceAtLeast(resize.pitchY)
                 Box(Modifier.offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
                     .size(with(density) { widthPx.toDp() }, with(density) { heightPx.toDp() })
-                    .border(3.dp, if (valid) Color.White else Color(0xFFFF6B6B), RoundedCornerShape(FolioRadius.PANEL.dp))
+                    .border(3.dp, if (valid) Color.White else FolioColors.InvalidDrop, RoundedCornerShape(FolioRadius.PANEL.dp))
                     .testTag("widget-resize-preview-$slot")) {
                     Box(Modifier.align(Alignment.BottomEnd).offset(12.dp, 12.dp).size(44.dp)
-                        .background(if (valid) Color.White else Color(0xFFFF6B6B), CircleShape)
+                        .background(if (valid) Color.White else FolioColors.InvalidDrop, CircleShape)
                         .testTag("widget-resize-handle-$slot")
                         .pointerInput(slot, resize.constraints) {
                             var dx = 0f; var dy = 0f; var startWidth = resize.width; var startHeight = resize.height

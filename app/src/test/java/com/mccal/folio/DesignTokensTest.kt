@@ -33,7 +33,7 @@ class DesignTokensTest {
     )
 
     /** What each kind is allowed to have left. Lower these as code moves onto the tokens; never raise them. */
-    private val limits = mapOf("hex color" to 50, "ARGB number" to 23, "corner radius" to 129, "text size" to 142)
+    private val limits = mapOf("hex color" to 30, "ARGB number" to 11, "corner radius" to 129, "text size" to 142)
 
     private fun hits(kind: String): List<String> {
         val pattern = patterns.getValue(kind)

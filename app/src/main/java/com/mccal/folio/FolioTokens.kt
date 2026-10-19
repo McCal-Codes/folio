@@ -108,6 +108,16 @@ internal object FolioColors {
     val TrackOff = Color(0xFF39393D)
     /** The sliding thumb of a segmented control; white text on it is 5.9:1. */
     val SegmentThumb = Color(0xFF636366)
+    /** What floating menus and action sheets are drawn on, at 80 to 97% depending on the blur behind. */
+    val PopoverSurface = Color(0xFF2A2A2E)
+    /** The outline and handle of a widget that can't be dropped where it is: softer than [Red], which is for destructive actions. */
+    val InvalidDrop = Color(0xFFFF6B6B)
+    /** The bezel drawn around a phone in the Customization previews. */
+    val PreviewBezel = Color(0xFF0B0B0C)
+    /** Supporting text on [SecondaryBackground]-style cards in dark appearance (iOS secondaryLabel). */
+    val SecondaryLabelOnDark = Color(0xFF98989F)
+    /** Supporting text on [LightBackground]-style cards in light appearance (iOS secondaryLabel). */
+    val SecondaryLabelOnLight = Color(0xFF6C6C70)
     /** Supporting text on dark glass and sheets. */
     val SecondaryLabel = Color.White.copy(alpha = .6f)
 }

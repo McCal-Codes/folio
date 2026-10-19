@@ -95,7 +95,7 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
     val dark = LocalDuoPalette.current.dark
     val background = if (dark) FolioColors.SecondaryBackground else FolioColors.LightBackground
     val primary = if (dark) Color.White else Color.Black
-    val secondary = if (dark) Color(0xFF98989F) else Color(0xFF6C6C70)
+    val secondary = if (dark) FolioColors.SecondaryLabelOnDark else FolioColors.SecondaryLabelOnLight
     val reduceMotion = LocalReduceMotion.current
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(visible,

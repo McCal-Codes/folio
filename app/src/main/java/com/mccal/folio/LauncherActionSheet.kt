@@ -104,7 +104,7 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
                 val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .7f + .3f * g; scaleY = scaleX
                 transformOrigin = androidx.compose.ui.graphics.TransformOrigin(if (alignEnd) 1f else 0f, 0f)
             }
-            .shadow(18.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f))
+            .shadow(18.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(FolioColors.PopoverSurface.copy(alpha = .97f))
             .border(FolioGlass.edge, RoundedCornerShape(18.dp)).testTag("home-edit-menu")) {
             fun act(action: () -> Unit) = { onDismiss(); action() }
             Box(Modifier.testTag("empty-space-widgets")) { MenuRow(stringResource(R.string.add_widget_2), Icons.Rounded.Widgets, onClick = act(onWidgets)) }
