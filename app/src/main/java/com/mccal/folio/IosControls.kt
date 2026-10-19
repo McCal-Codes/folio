@@ -42,14 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** iOS-style controls for Folio's settings (the sheet is always dark glass). */
-private val IosTrackOff = Color(0xFF39393D)
-
 /** iOS switch: 51×31 green track with a white thumb that springs across. */
 @Composable
 internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptic = LocalHapticFeedback.current
-    val track by animateColorAsState(if (checked) FolioColors.GreenLight else IosTrackOff, label = "switch track")
+    val track by animateColorAsState(if (checked) FolioColors.GreenLight else FolioColors.TrackOff, label = "switch track")
     val offset by animateDpAsState(if (checked) 20.dp else 0.dp, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "switch thumb")
     Box(modifier.minimumInteractiveComponentSize()
         .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = {
@@ -68,7 +65,7 @@ internal fun IosChip(selected: Boolean, onClick: () -> Unit, label: @Composable 
     Box(modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(background)
         .selectable(selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
         contentAlignment = Alignment.Center) {
-        androidx.compose.material3.ProvideTextStyle(TextStyle(color = if (selected) Color.Black else Color.White, fontSize = 14.sp,
+        androidx.compose.material3.ProvideTextStyle(TextStyle(color = if (selected) Color.Black else Color.White, fontSize = FolioType.CHIP.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)) { label() }
     }
 }
@@ -331,15 +328,15 @@ internal fun FolioButton(
 internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier, tag: String? = null) {
     val haptic = LocalHapticFeedback.current
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(9.dp))
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(FolioRadius.SEGMENT.dp))
         .background(Color.White.copy(alpha = .12f)).padding(FolioSpace.HAIR.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier)) {
         val segment = maxWidth / options.size
         val x by animateDpAsState(segment * index, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "segment")
         Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).fillMaxHeight()
-            .shadow(2.dp, RoundedCornerShape(7.dp)).clip(RoundedCornerShape(7.dp)).background(Color(0xFF636366)))
+            .shadow(2.dp, RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)).clip(RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)).background(FolioColors.SegmentThumb))
         Row(Modifier.fillMaxSize()) {
             options.forEach { (value, label) ->
-                Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(7.dp))
+                Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp))
                     .selectable(value == selected, role = Role.RadioButton) {
                         if (value != selected) { haptic.perform(FolioHaptic.Step); onSelect(value) }
                     }, contentAlignment = Alignment.Center) {

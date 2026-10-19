@@ -91,6 +91,23 @@ internal object FolioColors {
     val MenuSurface = Color(Value.MenuSurface)
     /** iOS's grouped background in light appearance, for the few Folio surfaces that follow the system theme. */
     val LightBackground = Color(Value.LightBackground)
+    /** The darkest container in the sheet scheme, under [SecondaryBackground]. */
+    val SurfaceLowest = Color(0xFF141416)
+    /** The container glass cards are built on ([FolioGlass.card]), and the sheet scheme's `surfaceContainer`. */
+    val SurfaceCard = Color(0xFF242428)
+    /** Caption and helper text in the sheet scheme (Material's `onSurfaceVariant`). */
+    val LabelVariant = Color(0xFFA1A1A6)
+    /** The sheet scheme's strong outline. */
+    val Outline = Color(0xFF545458)
+    /** Hairline dividers in the sheet scheme. */
+    val OutlineVariant = Color(0xFF38383A)
+    /**
+     * A switch's track when off. It is close to the sheet it sits on (1.3:1), so the thumb's position, not the track,
+     * carries the state.
+     */
+    val TrackOff = Color(0xFF39393D)
+    /** The sliding thumb of a segmented control; white text on it is 5.9:1. */
+    val SegmentThumb = Color(0xFF636366)
     /** Supporting text on dark glass and sheets. */
     val SecondaryLabel = Color.White.copy(alpha = .6f)
 }
@@ -152,6 +169,10 @@ internal object FolioRadius {
     const val PANEL = 24
     /** The top corners of a bottom sheet. */
     const val SHEET_TOP = 28
+    /** A segmented control's track. */
+    const val SEGMENT = 9
+    /** A segmented control's thumb: the track's radius minus its 2 dp inset, so the corners stay concentric (DES-8). */
+    const val SEGMENT_THUMB = 7
 }
 
 /**
@@ -163,6 +184,8 @@ internal object FolioType {
     const val BODY = 17
     const val SUBHEAD = 15
     const val FOOTNOTE = 13
+    /** A chip's label: SemiBold when selected. */
+    const val CHIP = 14
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
 }
