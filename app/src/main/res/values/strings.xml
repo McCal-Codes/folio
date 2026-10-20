@@ -1364,6 +1364,7 @@
         <item quantity="other">Both screens fit %1$d rows, the most Folio shows.</item>
     </plurals>
     <string name="rows_note_different" tools:ignore="PluralsCandidate">The cover screen fits %1$d and the inner screen fits %2$d, so Folio shows %3$d on both. Smaller icons or labels make room for another row.</string>
+    <string name="rows_note_fixed_more" tools:ignore="PluralsCandidate">Fixed at %1$d rows on both screens. A screen that needs the room shows smaller icons, down to 48 dp, and then scrolls.</string>
     <plurals name="count_installed">
         <item quantity="one">%1$d installed</item>
         <item quantity="other">%1$d installed</item>
