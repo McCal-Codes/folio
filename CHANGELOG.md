@@ -73,6 +73,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **The clock's shade fits the picture:** when a picture behind the Big Clock is too pale or too mixed for either white or dark text alone, such as an overcast sky with branches in front, the soft shade behind the clock was always the same 40% and could still leave the text hard to read. It now gets only as dark as that picture needs, up to about 54%, so the text reaches the same readable contrast on any picture.
 - **Icon actions that open a missing app say so:** an Open App or Open Shortcut action whose app or shortcut is gone now shows "App is unavailable" instead of doing nothing.
 - **Unavailable apps in a folder explain themselves:** tapping one now shows the same "is unavailable" notice as on Home, instead of doing nothing.
 - **Spotlight launches count once:** opening an app from Spotlight added it to Recents twice, which tilted the order of Suggestions and Recents. It counts once now.

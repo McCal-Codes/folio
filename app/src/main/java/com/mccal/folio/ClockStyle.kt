@@ -310,7 +310,26 @@ internal fun ClockInkSample.wallpaperDotSelected(style: BigClockStyle): Boolean 
 }
 
 /** What `BigClockCard` draws: an ink and whether a soft dark halo goes behind the digits to keep it readable. */
-internal data class ClockInkResult(val color: Color, val shade: Boolean, val ratio: Float)
+internal data class ClockInkResult(val color: Color, val shade: Boolean, val ratio: Float, val shadeAlpha: Float = if (shade) CLOCK_SHADE_MIN else 0f)
+
+/** The softest and strongest the black halo behind the clock gets. */
+internal const val CLOCK_SHADE_MIN = .4f
+internal const val CLOCK_SHADE_MAX = .65f
+
+/** How dark the halo is ([alpha]) and the contrast white ink then holds ([ratio]) over the brightest 15% behind it. */
+internal data class ClockShade(val alpha: Float, val ratio: Float)
+
+/**
+ * A halo only as strong as the picture needs: dim the brightest 15% behind the clock until white ink reaches 4.5:1, but
+ * never softer than [CLOCK_SHADE_MIN] or stronger than [CLOCK_SHADE_MAX] (past that it is a filter, not a halo). A fixed 40%
+ * left a pale, mixed picture, such as an overcast sky with branches in front of it, at only 3:1.
+ */
+internal fun clockShade(p85: Float): ClockShade {
+    val brightestForWhite = 1.05f / 4.5f - .05f
+    val factor = (brightestForWhite / p85.coerceAtLeast(.0001f)).coerceIn(0f, 1f)
+    val alpha = (1f - factor.toDouble().pow(1.0 / 2.2).toFloat()).coerceIn(CLOCK_SHADE_MIN, CLOCK_SHADE_MAX)
+    return ClockShade(alpha, contrastRatio(1f, p85 * (1f - alpha).toDouble().pow(2.2).toFloat()))
+}
 
 private val DarkInk = FolioColors.SecondaryBackground
 
@@ -328,16 +347,16 @@ internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fall
         }
     }
     if (sample.estimated) return ClockInkResult(if (fallbackDark) DarkInk else Color.White, false, 21f)
-    val shadedWhite = contrastRatio(1f, sample.under.p85 * .6f.toDouble().pow(2.2).toFloat())
+    val shade = clockShade(sample.under.p85)
     if (style.mode == "WHITE") {
         val ratio = contrastRatio(1f, sample.under.p85)
-        return if (ratio >= 4.5f) ClockInkResult(Color.White, false, ratio) else ClockInkResult(Color.White, true, shadedWhite)
+        return if (ratio >= 4.5f) ClockInkResult(Color.White, false, ratio) else ClockInkResult(Color.White, true, shade.ratio, shade.alpha)
     }
     // Automatic (and Wallpaper/Custom falling back to it): whichever ink holds more contrast under the clock.
     val (dark, ratio) = pickInk(sample.under)
     if (ratio >= 4.5f) return ClockInkResult(if (dark) DarkInk else Color.White, false, ratio)
     // Neither ink reaches 4.5:1 over a busy picture: a soft shade goes behind the digits, white ink over it.
-    return ClockInkResult(Color.White, true, shadedWhite)
+    return ClockInkResult(Color.White, true, shade.ratio, shade.alpha)
 }
 
 /**

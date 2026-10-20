@@ -159,7 +159,7 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
     val secondaryColor = if (resolved != null) textColor.copy(alpha = .75f) else ink.secondary
     val animatedWeight by animateFloatAsState(style.weight.toFloat(), clockMotion(), label = "clock weight")
     val animatedSize by animateFloatAsState(style.size, clockMotion(), label = "clock size")
-    val shadeAlpha by animateFloatAsState(if (resolved?.shade == true) .4f else 0f, clockMotion(), label = "clock shade")
+    val shadeAlpha by animateFloatAsState(if (resolved?.shade == true) resolved.shadeAlpha else 0f, clockMotion(), label = "clock shade")
     val lightInk = if (resolved != null) resolved.color == Color.White else !ink.dark
     val shadow: androidx.compose.ui.graphics.Shadow? = when (style.shadow) {
         "OFF" -> null
