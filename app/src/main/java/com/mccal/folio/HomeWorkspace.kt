@@ -427,10 +427,12 @@ internal fun SharedHomeGrid(
     // instead of jumping. Both screens use the same row count, so folding never starts this.
     var layoutSettling by remember { mutableStateOf(false) }
     var seenSlots by remember { mutableStateOf(savedSlots) }
+    var seenPreview by remember { mutableStateOf(previewSlots) }
     var seenRows by remember { mutableIntStateOf(geometry.appRows) }
-    LaunchedEffect(savedSlots, geometry.appRows) {
-        if (savedSlots != seenSlots || geometry.appRows != seenRows) {
-            seenSlots = savedSlots; seenRows = geometry.appRows
+    // The preview counts too: apps that slide along while a widget is resized slide back if it is cancelled, instead of snapping.
+    LaunchedEffect(savedSlots, previewSlots, geometry.appRows) {
+        if (savedSlots != seenSlots || previewSlots != seenPreview || geometry.appRows != seenRows) {
+            seenSlots = savedSlots; seenPreview = previewSlots; seenRows = geometry.appRows
             layoutSettling = true; kotlinx.coroutines.delay(700); layoutSettling = false
         }
     }

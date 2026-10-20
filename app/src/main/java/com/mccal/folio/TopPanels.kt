@@ -284,17 +284,30 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     }
 }
 
-/** An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump. */
-private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier =
-    Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle), placementSpec = FolioMotion.spring(FolioMotion.Settle))
+/**
+ * An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump.
+ * With Reduce Motion it only fades: it takes its new place at once (DYN-11).
+ */
+@Composable
+private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier {
+    val reduce = LocalReduceMotion.current
+    return Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
+        placementSpec = if (reduce) androidx.compose.animation.core.snap<androidx.compose.ui.unit.IntOffset>() else FolioMotion.spring<androidx.compose.ui.unit.IntOffset>(FolioMotion.Settle))
+}
 
 /** Clears one app's clearable notifications; like Clear all, the first tap asks and a second one within three seconds does it. */
 @Composable
 private fun ClearAppPill(clearable: List<NotificationItem>) {
     var confirm by remember(clearable.size) { mutableStateOf(false) }
     LaunchedEffect(confirm) { if (confirm) { kotlinx.coroutines.delay(3_000); confirm = false } }
-    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump.
-    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app") { asking ->
+    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump; with Reduce Motion it only fades.
+    val reduce = LocalReduceMotion.current
+    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app", transitionSpec = {
+        androidx.compose.animation.ContentTransform(
+            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduce) FolioMotion.FADE_MS else 220, delayMillis = if (reduce) 0 else 90)) +
+                (if (reduce) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.scaleIn(FolioMotion.spring(FolioMotion.Quick), initialScale = .92f)),
+            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
+    }) { asking ->
         if (asking) PanelPill(stringResource(R.string.clear_n_notifications, clearable.size)) { confirm = false; clearable.forEach { IslandListenerService.dismiss(it.key) } }
         else PanelPill(stringResource(R.string.clear)) { confirm = true }
     }
