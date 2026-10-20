@@ -49,6 +49,23 @@
     <string name="panels">面板</string>
     <string name="big_clock_in_notification_center">通知中心里的大时钟</string>
     <string name="stack_notifications_by_app">按 App 堆叠通知</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
+    <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
+    <string name="shade_over_apps">在其他应用上方显示 Folio 面板</string>
+    <string name="shade_over_apps_note">当快捷方式、例行任务或 One UI 的单手操作打开通知栏或快捷设置时，Folio 会在当前打开的应用上方显示自己的通知中心或控制中心，而不是手机自带的面板。需要开启 Folio 手势。从应用顶部下滑仍会打开手机自带的通知栏。在其他应用上方时，点按“回复”会打开输入框，“选项”仅在主屏幕上可用。不会在锁屏上方打开。</string>
+    <string name="nc_layout_title">展开时的布局</string>
+    <string name="nc_layout_full">全屏</string>
+    <string name="nc_layout_card">卡片</string>
+    <string name="nc_layout_both">并排</string>
+    <string name="nc_layout_note">全屏会把时钟放在列表旁边。卡片是在下拉的那个角落下方显示的较小面板：通知中心在左上角，控制中心在右上角。并排会同时显示两者，需要较宽的屏幕。手机上始终一次只打开一个面板。</string>
+    <string name="notification_sections">通知分区</string>
+    <string name="notification_sections_note">通知中心会先显示正在进行的内容和对话，再显示其余通知，安静的通知收在“安静”之下。来电、闹钟、计时器和对话不会被放进“安静”。</string>
+    <string name="nc_section_now">现在</string>
+    <string name="nc_section_conversations">对话</string>
+    <string name="nc_section_quiet">安静 · %1$d</string>
+    <string name="nc_section_quiet_open">安静</string>
+    <string name="clear_n_notifications">清除 %1$d 条</string>
+    <string name="show_quiet_notifications">显示安静通知</string>
     <string name="unfolded_clock_beside_notifications">展开时：时钟在通知旁边</string>
     <string name="control_center_size">控制中心大小</string>
     <string name="unfolded_control_center_in_the_middle">展开时：控制中心居中</string>
@@ -1295,6 +1312,7 @@
     <string name="rows_note_cover_only">目前已测量：外屏可容纳 %1$d 行。在另一块屏幕上打开主屏幕后，Folio 会使用两者中较小的值。</string>
     <string name="rows_note_inner_only">目前已测量：内屏可容纳 %1$d 行。在另一块屏幕上打开主屏幕后，Folio 会使用两者中较小的值。</string>
     <string name="rows_note_different">外屏可容纳 %1$d 行，内屏可容纳 %2$d 行，所以 Folio 在两块屏幕上都显示 %3$d 行。图标或标签调小一些，就能再多放一行。</string>
+    <string name="rows_note_fixed_more">两块屏幕都固定为 %1$d 行。需要空间的屏幕会把图标缩小，最小到 48 dp，仍放不下时页面会滚动。</string>
     <string name="count_of_total">%1$d / %2$d</string>
     <string name="home_page_1_d_of_2_d">主屏幕第 %1$d 页，共 %2$d 页</string>
     <string name="dp_value">%1$d dp</string>

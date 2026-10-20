@@ -42,6 +42,23 @@
     <string name="panels">Panels</string>
     <string name="big_clock_in_notification_center">Big clock in Notification Center</string>
     <string name="stack_notifications_by_app">Stack notifications by app</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. -->
+    <!-- Settings > Notifications > Panels: what a phone's own shade action (one-hand operation, a Routine) opens while another app is in front. -->
+    <string name="shade_over_apps">Folio\'s panels over other apps</string>
+    <string name="shade_over_apps_note">When a shortcut, a Routine or One UI\'s one-hand operation opens the notification shade or Quick Settings, Folio draws its own Notification Center or Control Center over the open app instead of the phone\'s. Needs Folio\'s gestures turned on. Swiping down from the top of an app still opens your phone\'s own shade. Over another app, Reply opens a small box to type in, and Options are on Home only. It never opens over the lock screen.</string>
+    <string name="nc_layout_title">Unfolded layout</string>
+    <string name="nc_layout_full">Full screen</string>
+    <string name="nc_layout_card">Card</string>
+    <string name="nc_layout_both">Side by side</string>
+    <string name="nc_layout_note">Full screen puts the clock beside the list. Card is a smaller panel under the corner you pulled from: Notification Center from the top left, Control Center from the top right. Side by side shows both together, and needs a wide screen. A phone always opens one panel at a time.</string>
+    <string name="notification_sections">Notification sections</string>
+    <string name="notification_sections_note">Notification Center shows what is happening now and conversations first, then the rest, with quiet notifications folded away under Quiet. Calls, alarms, timers and conversations are never put in Quiet.</string>
+    <string name="nc_section_now">Now</string>
+    <string name="nc_section_conversations">Conversations</string>
+    <string name="nc_section_quiet" tools:ignore="PluralsCandidate">Quiet · %1$d</string>
+    <string name="nc_section_quiet_open">Quiet</string>
+    <string name="clear_n_notifications" tools:ignore="PluralsCandidate">Clear %1$d</string>
+    <string name="show_quiet_notifications">Show quiet notifications</string>
     <string name="unfolded_clock_beside_notifications">Unfolded: clock beside notifications</string>
     <string name="control_center_size">Control Center size</string>
     <string name="unfolded_control_center_in_the_middle">Unfolded: Control Center in the middle</string>
@@ -1364,6 +1381,7 @@
         <item quantity="other">Both screens fit %1$d rows, the most Folio shows.</item>
     </plurals>
     <string name="rows_note_different" tools:ignore="PluralsCandidate">The cover screen fits %1$d and the inner screen fits %2$d, so Folio shows %3$d on both. Smaller icons or labels make room for another row.</string>
+    <string name="rows_note_fixed_more" tools:ignore="PluralsCandidate">Fixed at %1$d rows on both screens. A screen that needs the room shows smaller icons, down to 48 dp, and then scrolls.</string>
     <plurals name="count_installed">
         <item quantity="one">%1$d installed</item>
         <item quantity="other">%1$d installed</item>

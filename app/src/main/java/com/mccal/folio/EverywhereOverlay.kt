@@ -5,7 +5,11 @@ package com.mccal.folio
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import android.accessibilityservice.AccessibilityService
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
@@ -98,6 +102,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private var buttonSettings: ButtonBarSettings? = null
     private var buttonParams: WindowManager.LayoutParams? = null
     private val dockOpen = MutableStateFlow(false)
+    private companion object { const val SHADE_WAIT_MS = 45_000L; const val SHADE_CLOSE_MS = 450L }
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
@@ -135,7 +140,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         ScreenshotSwap.load(service) // the saved Swap Apps rules, so a swapped app is never named without Home
         recordingWatch.start(wm, service.mainExecutor)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
-        foregroundJob = scope.launch { FolioForeground.visible.collect { sync() } }
+        // Going Home takes the user away from whatever the panels were drawn over, so they go too.
+        foregroundJob = scope.launch { FolioForeground.visible.collect { sync(); if (it) removeShade() } }
         scope.launch {
             kotlinx.coroutines.flow.combine(IslandListenerService.activity, IslandEvents.latest) { a, e ->
                 a?.takeUnless { it is IslandActivity.Call && "CALL" in settings.value.eventsOff } to e }
@@ -159,13 +165,13 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         scopeJob.cancel()
         fullScreenJob?.cancel(); fullScreenJob = null
-        removeHandle(); removeDock(); removeIsland(); removeButtons()
+        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade()
         IslandEvents.release()
         recordingWatch.stop(wm)
         owner.stop()
     }
 
-    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); sync() }
+    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); sync() }
 
     /**
      * The system bars tell us when an app has gone full screen: video players, games and readers hide them, and
@@ -230,6 +236,114 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
         val stepAside = overlayStepsAside(s.islandHideFullScreen, s.islandHideLandscape, fullScreen, landscapeNow(), onUnfoldedScreen(), s.islandHideLandscapeInner)
         if (islandWanted && !stepAside) { addIsland(); resizeIsland(content!!) } else removeIsland()
+    }
+
+    // ---- Folio's panels over other apps ------------------------------------------------------
+
+    private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
+        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false)
+
+    private fun readShadeConfig(): ShadeConfig = runCatching {
+        val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
+        ShadeConfig(j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
+            j.optBoolean("notificationClock", true), j.optBoolean("groupNotifications", true),
+            j.optJSONArray("ccControls")?.let { a -> (0 until a.length()).map(a::getString).filter { name -> CcControl.entries.any { it.name == name } } }
+                ?: CcControl.DEFAULTS,
+            runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
+            ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
+            j.optBoolean("notificationSections", false))
+    }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
+
+    private var shade: ComposeView? = null
+    private val shadePanel = MutableStateFlow<ShadePanel?>(null)
+    private var shadeMonitor: DeviceStatusMonitor? = null
+    private var shadeTimer: kotlinx.coroutines.Job? = null
+    private var shadeReceiverOn = false
+    private val shadeRemoval = Runnable { removeShade() }
+    private val shadeScreenOff = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) { removeShade() } }
+
+    /**
+     * Draws Folio's Notification Center or Control Center over the open app, for the actions that ask for the shade (a phone's
+     * one-hand operation, a Routine, a shortcut). Returns false, and draws nothing, when the phone's own shade should open instead:
+     * the switch is off, Safe Mode is on, or the phone is locked. The window is not focusable, so Back goes to the app underneath and
+     * the panels close by a tap outside, a swipe up, going Home, the screen turning off, or after a short wait.
+     */
+    fun openShade(panel: ShadePanel): Boolean {
+        val config = readShadeConfig()
+        val locked = service.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked ?: true
+        if (!shadeOverAppsWanted(config.overApps, config.panels, SafeMode.active, locked, panel)) return false
+        shadePanel.value = panel
+        shadeTimer?.cancel(); shadeTimer = scope.launch { kotlinx.coroutines.delay(SHADE_WAIT_MS); closeShade() }
+        shade?.removeCallbacks(shadeRemoval) // opened again while it was closing: keep it
+        setShadeTouchable(true)
+        if (shade != null) return true // already up: the panel changes in place
+        val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
+        val view = ComposeView(service).apply {
+            setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
+            setContent {
+                val current by shadePanel.collectAsState()
+                val status by monitor.state.collectAsState()
+                val reduceMotion = settings.collectAsState().value.reduceMotion
+                // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
+                // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
+                var shown by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { shown = true }
+                val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
+                    MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+                CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
+                    LocalReduceMotion provides reduceMotion) {
+                    TopPanels(current, { progress }, status, onClose = { closeShade() },
+                        // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
+                        onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
+                        showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
+                        ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout)
+                }
+            }
+        }
+        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
+        if (runCatching { wm.addView(view, params) }.isFailure) { monitor.onStop(owner); shadePanel.value = null; shadeTimer?.cancel(); return false }
+        shade = view; shadeMonitor = monitor
+        if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
+        return true
+    }
+
+    /** Reply over another app: close the panels and start the small box to type in; if Android does not let it start, open the conversation instead. */
+    private fun replyFromShade(item: NotificationItem) {
+        closeShade()
+        val before = ShadeReplyActivity.created.get()
+        val started = runCatching { ShadeReplyActivity.start(service, item) }.isSuccess
+        // A start the system quietly refuses leaves no error, only an activity that never appears.
+        scope.launch {
+            kotlinx.coroutines.delay(900)
+            if (!started || ShadeReplyActivity.created.get() == before) IslandListenerService.openNotification(service, item)
+        }
+    }
+
+    private fun closeShade() {
+        shadePanel.value = null
+        shadeTimer?.cancel()
+        // The panels take about 0.4 s to settle shut; taps go through to the app underneath meanwhile, and the window goes after.
+        setShadeTouchable(false)
+        shade?.postDelayed(shadeRemoval, SHADE_CLOSE_MS)
+    }
+
+    /** While it closes, the shade only draws: the app underneath gets the touches. */
+    private fun setShadeTouchable(touchable: Boolean) {
+        val view = shade ?: return
+        val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+        val flags = if (touchable) params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv() else params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        if (flags != params.flags) { params.flags = flags; runCatching { wm.updateViewLayout(view, params) } }
+    }
+
+    private fun removeShade() {
+        shadeTimer?.cancel(); shadeTimer = null
+        shade?.let { it.removeCallbacks(shadeRemoval); runCatching { wm.removeView(it) } }; shade = null
+        shadePanel.value = null
+        shadeMonitor?.onStop(owner); shadeMonitor = null
+        if (shadeReceiverOn) { runCatching { service.unregisterReceiver(shadeScreenOff) }; shadeReceiverOn = false }
     }
 
     // ---- Dock handle -------------------------------------------------------------------------

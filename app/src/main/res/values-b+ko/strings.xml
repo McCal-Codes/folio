@@ -47,6 +47,23 @@
     <string name="panels">패널</string>
     <string name="big_clock_in_notification_center">알림 센터에 큰 시계 표시</string>
     <string name="stack_notifications_by_app">앱별로 알림 쌓기</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
+    <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
+    <string name="shade_over_apps">다른 앱 위에 Folio 패널 표시</string>
+    <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 입력 상자가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
+    <string name="nc_layout_title">펼쳤을 때 레이아웃</string>
+    <string name="nc_layout_full">전체 화면</string>
+    <string name="nc_layout_card">카드</string>
+    <string name="nc_layout_both">나란히</string>
+    <string name="nc_layout_note">전체 화면은 시계를 목록 옆에 표시합니다. 카드는 당겨 내린 모서리 아래에 작은 패널로 표시합니다. 알림 센터는 왼쪽 위, 제어 센터는 오른쪽 위입니다. 나란히는 둘을 함께 표시하며 넓은 화면이 필요합니다. 휴대전화에서는 항상 패널을 하나씩 엽니다.</string>
+    <string name="notification_sections">알림 구역</string>
+    <string name="notification_sections_note">알림 센터에 지금 진행 중인 항목과 대화를 먼저 보여 주고 나머지가 뒤따르며, 조용한 알림은 \'조용함\' 아래에 접어 둡니다. 전화, 알람, 타이머, 대화는 \'조용함\'에 들어가지 않습니다.</string>
+    <string name="nc_section_now">지금</string>
+    <string name="nc_section_conversations">대화</string>
+    <string name="nc_section_quiet" tools:ignore="PluralsCandidate">조용함 · %1$d</string>
+    <string name="nc_section_quiet_open">조용함</string>
+    <string name="clear_n_notifications" tools:ignore="PluralsCandidate">%1$d개 지우기</string>
+    <string name="show_quiet_notifications">조용한 알림 보기</string>
     <string name="unfolded_clock_beside_notifications">펼쳤을 때 알림 옆에 시계 표시</string>
     <string name="control_center_size">제어 센터 크기</string>
     <string name="unfolded_control_center_in_the_middle">펼쳤을 때 제어 센터를 가운데 표시</string>
@@ -1339,6 +1356,7 @@
         <item quantity="other">두 화면 모두 Folio에서 표시할 수 있는 최대치인 %1$d행이 들어갑니다.</item>
     </plurals>
     <string name="rows_note_different" tools:ignore="PluralsCandidate">커버 화면에는 %1$d행, 내부 화면에는 %2$d행이 들어가므로 두 화면 모두 %3$d행을 표시합니다. 아이콘이나 이름 크기를 줄이면 한 행을 더 표시할 수 있습니다.</string>
+    <string name="rows_note_fixed_more" tools:ignore="PluralsCandidate">두 화면 모두 %1$d행으로 고정됩니다. 공간이 필요한 화면에서는 아이콘이 48dp까지 작아지고, 그래도 부족하면 스크롤됩니다.</string>
     <plurals name="count_installed">
         <item quantity="other">%1$d개 설치됨</item>
     </plurals>
