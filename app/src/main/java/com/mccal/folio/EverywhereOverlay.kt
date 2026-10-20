@@ -274,10 +274,11 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             setContent {
                 val current by shadePanel.collectAsState()
                 val status by monitor.state.collectAsState()
+                val reduceMotion = settings.collectAsState().value.reduceMotion
                 val progress by androidx.compose.animation.core.animateFloatAsState(if (current != null) 1f else 0f,
                     FolioMotion.spring(FolioMotion.Appear), label = "shade over apps")
                 CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
-                    LocalReduceMotion provides settings.value.reduceMotion) {
+                    LocalReduceMotion provides reduceMotion) {
                     TopPanels(current, { progress }, status, onClose = { closeShade() },
                         // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                         onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
