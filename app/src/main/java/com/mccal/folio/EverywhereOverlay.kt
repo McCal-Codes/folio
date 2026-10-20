@@ -102,7 +102,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private var buttonSettings: ButtonBarSettings? = null
     private var buttonParams: WindowManager.LayoutParams? = null
     private val dockOpen = MutableStateFlow(false)
-    private companion object { const val SHADE_WAIT_MS = 45_000L }
+    private companion object { const val SHADE_WAIT_MS = 45_000L; const val SHADE_CLOSE_MS = 450L }
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
@@ -267,6 +267,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shadePanel.value = panel
         shadeTimer?.cancel(); shadeTimer = scope.launch { kotlinx.coroutines.delay(SHADE_WAIT_MS); closeShade() }
         shade?.removeCallbacks(shadeRemoval) // opened again while it was closing: keep it
+        setShadeTouchable(true)
         if (shade != null) return true // already up: the panel changes in place
         val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
         val view = ComposeView(service).apply {
@@ -275,8 +276,12 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 val current by shadePanel.collectAsState()
                 val status by monitor.state.collectAsState()
                 val reduceMotion = settings.collectAsState().value.reduceMotion
-                val progress by androidx.compose.animation.core.animateFloatAsState(if (current != null) 1f else 0f,
-                    FolioMotion.spring(FolioMotion.Appear), label = "shade over apps")
+                // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
+                // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
+                var shown by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { shown = true }
+                val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
+                    MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
                 CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
                     LocalReduceMotion provides reduceMotion) {
                     TopPanels(current, { progress }, status, onClose = { closeShade() },
@@ -312,7 +317,17 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun closeShade() {
         shadePanel.value = null
         shadeTimer?.cancel()
-        shade?.postDelayed(shadeRemoval, 260)
+        // The panels take about 0.4 s to settle shut; taps go through to the app underneath meanwhile, and the window goes after.
+        setShadeTouchable(false)
+        shade?.postDelayed(shadeRemoval, SHADE_CLOSE_MS)
+    }
+
+    /** While it closes, the shade only draws: the app underneath gets the touches. */
+    private fun setShadeTouchable(touchable: Boolean) {
+        val view = shade ?: return
+        val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+        val flags = if (touchable) params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv() else params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        if (flags != params.flags) { params.flags = flags; runCatching { wm.updateViewLayout(view, params) } }
     }
 
     private fun removeShade() {
