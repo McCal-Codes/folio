@@ -321,7 +321,7 @@ data class WidgetPush(val layout: HomeLayout, val moved: Int, val pagesAdded: In
  * Places [placement] and pushes the apps in its way along, in order, to the next free cells after it, so nobody has to clear
  * a spot by hand. Apps move only as far as they must: an empty cell further on takes up the slack, and past the page's last
  * cell they continue on the next page (made if it doesn't exist). Apps never go into rows [appRows] doesn't show, under a
- * widget, or onto the unfolded-only page (an app already in such a row keeps its place in the order). Widgets never move. Null when the placement is invalid, overlaps another widget, or
+ * widget, or onto the unfolded-only page (an app already in such a row joins the line, in its place in the order). Widgets never move. Null when the placement is invalid, overlaps another widget, or
  * is on the unfolded-only page (where nothing can flow), so the caller can say the size doesn't fit.
  */
 fun placeWidgetPushingApps(layout: HomeLayout, placement: WidgetPlacement, appRows: Int = MAX_APP_ROWS): WidgetPush? {
@@ -341,10 +341,16 @@ fun placeWidgetPushingApps(layout: HomeLayout, placement: WidgetPlacement, appRo
             val app = slots.getOrNull(index)
             if (index in covered) {
                 if (app != null) { pending.addLast(app); slots[index] = null }
-            } else if (pending.isNotEmpty() && (app != null || homeCellShown(index, appRows))) {
-                while (slots.size <= index) slots.add(null)
-                if (app != null) pending.addLast(app)
-                slots[index] = pending.removeFirst()
+            } else if (pending.isNotEmpty()) {
+                if (homeCellShown(index, appRows)) {
+                    while (slots.size <= index) slots.add(null)
+                    if (app != null) pending.addLast(app)
+                    slots[index] = pending.removeFirst()
+                } else if (app != null) {
+                    // A row the page doesn't show is never a landing place: an app sitting there joins the line and carries on to the next
+                    // page behind the apps ahead of it, so the order holds and nothing ends up out of sight.
+                    pending.addLast(app); slots[index] = null
+                }
             }
         }
         index++
