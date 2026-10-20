@@ -1119,6 +1119,10 @@
     <string name="delete_shortcut">Delete Shortcut</string>
     <string name="remove_from_home">Remove from Home</string>
     <string name="add_to_home">Add to Home</string>
+    <!-- Spotlight's Top Hit: the app is already on Home / is inside a folder (%1$s is the folder's name) / was just added (%1$s is the app's name). -->
+    <string name="on_home">On Home</string>
+    <string name="in_folder_name">In %1$s</string>
+    <string name="added_to_home">%1$s added to Home</string>
     <string name="add_to_folder">Add to Folder</string>
     <string name="create_folder">Create Folder</string>
     <!-- Title of the Create Folder dialog; %1$s is the app's name. -->

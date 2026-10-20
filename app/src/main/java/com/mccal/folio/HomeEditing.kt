@@ -311,6 +311,76 @@ fun placeWidget(layout: HomeLayout, placement: WidgetPlacement): HomeLayout {
             else layout.widgetRestores.filterNot { it.slot == placement.slot })
 }
 
+/**
+ * What making room for a widget did: the new [layout], how many apps changed place ([moved]) and how many pages that added
+ * ([pagesAdded]: a full page pushes its last apps onto the next one, and a new page is made when there isn't one).
+ */
+data class WidgetPush(val layout: HomeLayout, val moved: Int, val pagesAdded: Int)
+
+/**
+ * Places [placement] and pushes the apps in its way along, in order, to the next free cells after it, so nobody has to clear
+ * a spot by hand. Apps move only as far as they must: an empty cell further on takes up the slack, and past the page's last
+ * cell they continue on the next page (made if it doesn't exist). Apps never go into rows [appRows] doesn't show, under a
+ * widget, or onto the unfolded-only page (an app already in such a row keeps its place in the order). Widgets never move. Null when the placement is invalid, overlaps another widget, or
+ * is on the unfolded-only page (where nothing can flow), so the caller can say the size doesn't fit.
+ */
+fun placeWidgetPushingApps(layout: HomeLayout, placement: WidgetPlacement, appRows: Int = MAX_APP_ROWS): WidgetPush? {
+    if (!placement.valid() || placement.page < 0) return null
+    if (placement.id == NEEDS_BINDING_WIDGET && layout.widgetRestore(placement.slot) == null) return null
+    val others = layout.widgetPlacements.filterNot { it.slot == placement.slot }
+    if (others.any { overlaps(it, placement) }) return null
+    val covered = placement.coveredIndices()
+    val blocked = others.flatMapTo(mutableSetOf()) { it.coveredIndices() }
+    val slots = layout.slots.toMutableList()
+    val pending = ArrayDeque<String>()
+    // A page holds HOME_CELLS cells; the bound stops a layout that has no free cell at all from looping.
+    val bound = HOME_CELLS * (layout.pageCount + 2 + slots.count { it != null } / HOME_CELLS + 1)
+    var index = covered.min()
+    while (index < bound && (pending.isNotEmpty() || index < maxOf(slots.size, covered.max() + 1))) {
+        if (index !in blocked) {
+            val app = slots.getOrNull(index)
+            if (index in covered) {
+                if (app != null) { pending.addLast(app); slots[index] = null }
+            } else if (pending.isNotEmpty() && (app != null || homeCellShown(index, appRows))) {
+                while (slots.size <= index) slots.add(null)
+                if (app != null) pending.addLast(app)
+                slots[index] = pending.removeFirst()
+            }
+        }
+        index++
+    }
+    if (pending.isNotEmpty()) return null
+    val pushed = slots.dropLastWhile { it == null }
+    val placed = placeWidget(layout.copy(slots = pushed), placement)
+    if (placed.placement(placement.slot) != placement) return null
+    val moved = pushed.withIndex().count { (at, id) -> id != null && layout.slots.getOrNull(at) != id }
+    return WidgetPush(placed, moved, (placed.contentPageCount - layout.contentPageCount).coerceAtLeast(0))
+}
+
+/** [moveWidget] that pushes apps out of the way instead of refusing the spot. */
+fun moveWidgetPushingApps(layout: HomeLayout, slot: Int, index: Int, appRows: Int = MAX_APP_ROWS): WidgetPush? {
+    val old = layout.placement(slot) ?: return null
+    val page = homeCellPage(index)
+    if (page !in 0..layout.pageCount) return null
+    val local = homeCellLocal(index)
+    return placeWidgetPushingApps(layout, old.copy(page = page, column = local % GRID_COLUMNS, row = local / GRID_COLUMNS,
+        spanY = old.spanY.coerceAtMost(GRID_ROWS), offsetX = 0f, offsetY = 0f), appRows)
+}
+
+/** [resizeWidget] that pushes apps out of the way instead of refusing the size. */
+fun resizeWidgetPushingApps(layout: HomeLayout, slot: Int, spanX: Int, spanY: Int, appRows: Int = MAX_APP_ROWS): WidgetPush? {
+    val old = layout.placement(slot) ?: return null
+    return placeWidgetPushingApps(layout, old.copy(spanX = spanX, spanY = spanY, offsetX = 0f, offsetY = 0f), appRows)
+}
+
+/** The layout after dragging [slot] to [index]: apps make room where they can, and anywhere else it is [moveWidget] as before. */
+fun moveWidgetMakingRoom(layout: HomeLayout, slot: Int, index: Int, appRows: Int = MAX_APP_ROWS): HomeLayout =
+    moveWidgetPushingApps(layout, slot, index, appRows)?.layout ?: moveWidget(layout, slot, index)
+
+/** The layout after resizing [slot]: apps make room where they can, and anywhere else it is [resizeWidget] as before. */
+fun resizeWidgetMakingRoom(layout: HomeLayout, slot: Int, spanX: Int, spanY: Int, appRows: Int = MAX_APP_ROWS): HomeLayout =
+    resizeWidgetPushingApps(layout, slot, spanX, spanY, appRows)?.layout ?: resizeWidget(layout, slot, spanX, spanY)
+
 /** Rebinds retained legacy overflow without making that footprint newly placeable. */
 fun replaceWidgetAtSameFootprint(layout: HomeLayout, placement: WidgetPlacement): HomeLayout {
     val existing = layout.placement(placement.slot) ?: return layout
@@ -360,6 +430,19 @@ fun freePlacement(old: WidgetPlacement, column: Float, row: Float): WidgetPlacem
 fun resizeWidget(layout: HomeLayout, slot: Int, spanX: Int, spanY: Int): HomeLayout {
     val old = layout.placement(slot) ?: return layout
     return placeWidget(layout, old.copy(spanX = spanX, spanY = spanY, offsetX = 0f, offsetY = 0f))
+}
+
+/** What Spotlight offers for an app: put it on Home, say it already is there, or name the folder that holds it. */
+sealed interface HomeOffer {
+    data object Add : HomeOffer
+    data object OnHome : HomeOffer
+    data class InFolder(val title: String) : HomeOffer
+}
+
+/** An app inside a folder is not pinned from here (the model leaves it alone), so it is named instead of offered. */
+fun homeOffer(layout: HomeLayout, id: String): HomeOffer {
+    layout.folders.firstOrNull { id in it.appIds }?.let { return HomeOffer.InFolder(it.title) }
+    return if (layout.indexOfShortcut(id) != null) HomeOffer.OnHome else HomeOffer.Add
 }
 
 /** Remove only the shortcut/placement, never the installed app or widget binding. */

@@ -591,7 +591,7 @@ fun LauncherScreen(
             id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
-                moveWidget(state.layout, (drag.source!!.target as DropTarget.Widget).index, insertionTarget.index)
+                moveWidgetMakingRoom(state.layout, (drag.source!!.target as DropTarget.Widget).index, insertionTarget.index, homeAppRows)
             else -> state.layout
         }
     }
@@ -1362,7 +1362,7 @@ fun LauncherScreen(
                                 onShowFirstInStack = { model.showFirstInStack(placement.slot, it) },
                                 canConfigure = widgets.canReconfigure(placement.id),
                                 onConfigure = { widgets.reconfigure(placement.id); sheet = "" },
-                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidget(state.layout, picker.slot, x, y) != state.layout },
+                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidgetMakingRoom(state.layout, picker.slot, x, y, homeAppRows) != state.layout },
                                 onResize = { x, y -> model.resizeWidget(picker.slot, x, y) },
                                 onStartResize = { x, y ->
                                     resize.start(picker.slot, x, y, constraints)
@@ -1790,7 +1790,7 @@ fun LauncherScreen(
                 val maxH = minOf(pageRows(placement.page) - placement.row, resize.constraints?.maximum?.height ?: GRID_ROWS)
                 val feasible = placement.page >= -1 && placement.row in 0 until GRID_ROWS &&
                     !(placement.id >= 0 && resize.constraints == null) && minW <= maxW && minH <= maxH
-                val candidate = resizeWidget(state.layout, slot, resize.width, resize.height)
+                val candidate = resizeWidgetMakingRoom(state.layout, slot, resize.width, resize.height, homeAppRows)
                 val valid = feasible && ((resize.width == placement.spanX && resize.height == placement.spanY) || candidate != state.layout)
                 val widthPx = (bounds.width + (resize.width - placement.spanX) * resize.pitchX).coerceAtLeast(resize.pitchX)
                 val density = LocalDensity.current
