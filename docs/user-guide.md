@@ -17,8 +17,11 @@ To switch back to another launcher, open **Folio Settings › Change home app**,
 - **Swipe left or right** to change pages. It works over widgets, the dock and the Side Bar.
 - **Swipe right from your first page** for the Today View (or Google Discover, if you picked that in Settings).
 - **Swipe past your last page** for the App Library. Every app you have is there, even ones not on Home.
-- **Pull down from the top left** for Notification Center, **top right** for Control Center.
-- **Swipe down anywhere lower on Home**, or tap **Search**, for Spotlight.
+- **Pull down from the top left** for Notification Center, **top right** for Control Center. Unfolded, Settings › Notifications chooses
+  whether they fill the screen, sit as a card under their corner, or sit side by side. With **Folio's panels over other apps** on, a one-hand
+  operation shortcut or a Routine opens them over the app you are in. **Notification sections** sorts the list into Now, Conversations, the
+  rest, and a folded Quiet.
+- **Swipe down anywhere lower on Home**, or tap **Search**, for Spotlight. Its top result has a **+** that puts the app on Home.
 - **Unfold the phone** and you get two pages side by side. Portrait unfolded shows one page with the dock along the bottom.
 
 ## Editing Home
@@ -27,6 +30,8 @@ To switch back to another launcher, open **Folio Settings › Change home app**,
 - While they wiggle, drag apps around, or to the screen edge to change pages. To make a folder, long press an app and
   choose **Create Folder** (from 0.6.9 you can also drop an app onto another).
   Tap **+** to add widgets and **Done** when you're finished. **Edit** has Add Widget, Wallpaper & Appearance, Add Page and Folio Settings.
+- **Move or resize a widget** over apps and they make room, on to a new page if they have to. **Undo Last Layout Change** puts everything back.
+- **Rows** in Settings › Home is Automatic, or 4 to 7. A count that does not fit at the usual size makes icons smaller, down to 48 dp.
 - **Long press an empty spot** for **Add Widget**, **Wallpaper & Appearance**, **Add Page** and **Folio Settings**.
 - **Rename an app** with **More › Rename…** in that menu. The new name shows on Home, in the dock, in folders, in the
   App Library and in search; searching the app's own name still finds it, and clearing the field puts that name back.

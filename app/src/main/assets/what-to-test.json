@@ -1,127 +1,80 @@
 {
-  "release": "0.6.9-beta.4",
+  "release": "0.6.9-beta.5",
   "items": [
     {
-      "id": "island-level",
-      "title": "The island sits level",
-      "where": "Settings > Dynamic Island",
+      "id": "panels-over-apps",
+      "title": "Folio's panels over other apps",
+      "where": "Settings > Notifications > Panels",
       "steps": [
-        "First turn on Dynamic Island under In Every App (Settings > Dynamic Island) and allow Folio's accessibility service if Android asks. Then look at the island on Home and over an app, on the cover screen and on the unfolded screen.",
-        "It should sit at the same height on Home and over an app, on both screens.",
-        "On the unfolded screen, turn Hide in Landscape on: the island should stay unless you also turn on Also on the Unfolded Screen."
+        "Turn on Folio's panels over other apps. Open any app, then use One UI's one-hand operation or a Routine that opens the Notification shade.",
+        "Folio's Notification Center should slide down over the app, and close when you tap outside, swipe up, or press Home. Try Quick settings the same way.",
+        "On a message, tap Reply: a small box to type in should open over the app, and sending should return you to it. Options and the ... button are on Home only."
       ]
     },
     {
-      "id": "island-card",
-      "title": "Island card and calls",
-      "where": "Dynamic Island",
+      "id": "rows-by-hand",
+      "title": "Pick 5, 6 or 7 rows",
+      "where": "Settings > Home > Rows",
       "steps": [
-        "Open the island card on Home, then tap anywhere outside it: it should close and not open what is underneath.",
-        "Have someone call you and swipe the ringing call's card up. It should shrink to the pill and keep ringing; tap the pill to bring the card back.",
-        "Turn Reduce Motion on: the pill and card should fade, and the music bars should stand still."
+        "Open Settings > Home and choose Rows 6, then 7. Look at both screens, folded and open.",
+        "Icons get smaller to fit the rows; the cover screen shows the smallest icons. Say if any screen looks too small or scrolls.",
+        "Choose Automatic again: it should look exactly as it did before."
       ]
     },
     {
-      "id": "home-press",
-      "title": "Home button on Home",
+      "id": "notification-sections",
+      "title": "Notification sections",
+      "where": "Settings > Notifications > Panels",
+      "steps": [
+        "Turn on Notification sections, then pull down Notification Center.",
+        "Music or a timer should be under Now, chats under Conversations, and silent apps folded under Quiet with a count. Tap Quiet to open it.",
+        "Check nothing urgent (a call, an alarm) is hidden in Quiet, and say what you found there that you would not call quiet."
+      ]
+    },
+    {
+      "id": "notification-actions",
+      "title": "The ... button and Clear per app",
+      "where": "Notification Center",
+      "steps": [
+        "With Notification sections on, tap the ... on a notification: Open, Snooze, Notification settings and Clear.",
+        "Open an app with several notifications and tap Clear next to Show Less: the first tap asks, the second clears only that app."
+      ]
+    },
+    {
+      "id": "shade-layouts",
+      "title": "Shades on the unfolded screen",
+      "where": "Settings > Notifications > Panels",
+      "steps": [
+        "On the unfolded screen choose Full screen, Card and Side by side for the unfolded layout, and pull each shade down.",
+        "A card should sit under the corner you pulled it from and leave Home visible. Side by side shows both panels on one page."
+      ]
+    },
+    {
+      "id": "widgets-make-room",
+      "title": "Widgets make room for apps",
       "where": "Home Screen",
       "steps": [
-        "On the second Home page, press the Home button: Home should go to the first page.",
-        "Open an app from page 2, then press Home: you should return to page 2.",
-        "With a sheet, menu or Edit mode open, Home only closes it."
+        "Drag a widget onto a spot with apps, then resize one taller over a row of apps. The apps should move along instead of the spot turning red.",
+        "With a full page, the last apps should carry on to a new page. Then use Undo Last Layout Change: everything should return.",
+        "Watch that the apps slide into place smoothly, also with Reduce Motion on."
       ]
     },
     {
-      "id": "cancelled-drag",
-      "title": "A cancelled drag puts the app back",
-      "where": "Home Screen",
-      "steps": [
-        "Start dragging an app, then let Android cancel it (for example pull down the shade mid-drag).",
-        "The app should be back where it was."
-      ]
-    },
-    {
-      "id": "spotlight-open",
-      "title": "Spotlight opens apps and keeps them open",
+      "id": "spotlight-add",
+      "title": "Add to Home from Spotlight",
       "where": "Spotlight",
       "steps": [
-        "If you use Discover as the left page, open apps from Spotlight and from App Library search.",
-        "They should open and stay in front."
+        "Search for an app that is not on Home and tap the + on the Top Hit: it should appear on Home, and the row should say On Home.",
+        "Try an app that is already on Home, and one inside a folder."
       ]
     },
     {
-      "id": "app-library",
-      "title": "App Library search",
-      "where": "App Library",
+      "id": "smooth-motion",
+      "title": "Smooth animations",
+      "where": "Everywhere above",
       "steps": [
-        "Type in the search: results should start at the top, with the web search row visible.",
-        "Open an app from a result and come back: the search should be empty.",
-        "Opening the library should not flash the whole A to Z list before the category tiles."
-      ]
-    },
-    {
-      "id": "clear-history",
-      "title": "Clear Suggestions History",
-      "where": "Settings > Search & App Library",
-      "steps": [
-        "Tap Clear Suggestions History and confirm.",
-        "Spotlight, the App Library Suggestions tile and the Suggestions widget should start empty and learn again as you open apps."
-      ]
-    },
-    {
-      "id": "home-blur",
-      "title": "Home never stays blurred",
-      "where": "Anywhere",
-      "steps": [
-        "Open and close sheets, menus, folders and pages, and switch between apps.",
-        "Home should never stay blurred with nothing in front."
-      ]
-    },
-    {
-      "id": "safe-mode",
-      "title": "Safe Mode stays on until you leave it",
-      "where": "Settings > General > Advanced",
-      "steps": [
-        "You cannot turn Safe Mode on by hand: Folio starts in it only after it closes unexpectedly twice right after starting. If that ever happens to you, stay in Safe Mode for a minute: it should still be on.",
-        "If your Home layout came from a newer Folio, the notice should say so. Tell us if either happens."
-      ]
-    },
-    {
-      "id": "settings-layout",
-      "title": "Settings opens on your layout",
-      "where": "Settings > Home Screen & Dock",
-      "steps": [
-        "Hold the phone upright on the unfolded screen and open Settings: it should open on the layout you are using.",
-        "The sliders should change what you see."
-      ]
-    },
-    {
-      "id": "backups",
-      "title": "Restoring a Layout Backup",
-      "where": "Settings > General",
-      "steps": [
-        "Restore a backup that has Smart Stacks: each stack should keep its own widgets.",
-        "Export a backup: it should list only apps the layout uses.",
-        "A damaged-layout notice: Restore should restore."
-      ]
-    },
-    {
-      "id": "focus-smart-rotate",
-      "title": "Focus and Smart Rotate",
-      "where": "Focus",
-      "steps": [
-        "Set up a Focus that turns on by itself when you plug in the charger, then plug in so it turns on, turn it off by hand while still charging, and restart Folio: it should stay off.",
-        "Smart Rotate should count time away from Home toward its wait."
-      ]
-    },
-    {
-      "id": "small-fixes",
-      "title": "Small fixes",
-      "where": "Home Screen",
-      "steps": [
-        "An Icon Action that opens an app you removed should say it is unavailable.",
-        "Tap an unavailable app in a folder: you should get the same notice as on Home.",
-        "Start reordering a folder and cancel: the saved order should come back."
+        "Look at each thing above at normal speed, and once with Animation Speed slower. Nothing should pop or jump.",
+        "Turn Reduce Motion on: panels and sections should fade, with no sliding or growing."
       ]
     },
     {
