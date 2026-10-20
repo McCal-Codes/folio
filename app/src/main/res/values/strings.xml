@@ -42,6 +42,12 @@
     <string name="panels">Panels</string>
     <string name="big_clock_in_notification_center">Big clock in Notification Center</string>
     <string name="stack_notifications_by_app">Stack notifications by app</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. -->
+    <string name="nc_layout_title">Unfolded layout</string>
+    <string name="nc_layout_full">Full screen</string>
+    <string name="nc_layout_card">Card</string>
+    <string name="nc_layout_both">Side by side</string>
+    <string name="nc_layout_note">Full screen puts the clock beside the list. Card is a smaller panel under the corner you pulled from: Notification Center from the top left, Control Center from the top right. Side by side shows both together, and needs a wide screen. A phone always opens one panel at a time.</string>
     <string name="notification_sections">Notification sections</string>
     <string name="notification_sections_note">Notification Center shows what is happening now and conversations first, then the rest, with quiet notifications folded away under Quiet. Calls, alarms, timers and conversations are never put in Quiet.</string>
     <string name="nc_section_now">Now</string>

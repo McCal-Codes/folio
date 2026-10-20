@@ -49,6 +49,12 @@
     <string name="panels">面板</string>
     <string name="big_clock_in_notification_center">通知中心里的大时钟</string>
     <string name="stack_notifications_by_app">按 App 堆叠通知</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
+    <string name="nc_layout_title">展开时的布局</string>
+    <string name="nc_layout_full">全屏</string>
+    <string name="nc_layout_card">卡片</string>
+    <string name="nc_layout_both">并排</string>
+    <string name="nc_layout_note">全屏会把时钟放在列表旁边。卡片是在下拉的那个角落下方显示的较小面板：通知中心在左上角，控制中心在右上角。并排会同时显示两者，需要较宽的屏幕。手机上始终一次只打开一个面板。</string>
     <string name="notification_sections">通知分区</string>
     <string name="notification_sections_note">通知中心会先显示正在进行的内容和对话，再显示其余通知，安静的通知收在“安静”之下。来电、闹钟、计时器和对话不会被放进“安静”。</string>
     <string name="nc_section_now">现在</string>
