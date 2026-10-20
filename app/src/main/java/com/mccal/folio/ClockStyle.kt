@@ -34,6 +34,8 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -173,6 +175,40 @@ private const val SUGGESTIONS_KEPT = 8
 private const val COLOR_DOTS_MAX = 5
 
 internal data class RegionStats(val mean: Float, val p15: Float, val p85: Float, val r: Float, val g: Float, val b: Float)
+/**
+ * What Home draws over the picture before the clock does: the "dark appearance dims wallpaper" black over everything and
+ * the legibility scrim at the top and bottom edges. The clock measures its picture as it really looks, not as the file is.
+ */
+@Immutable
+internal data class HomeDarkening(val dim: Float = 0f, val scrim: HomeScrim = HomeScrim.None)
+
+internal val LocalHomeDarkening = compositionLocalOf { HomeDarkening() }
+
+/** How dark Home's own layers make the picture under [box] (fractions of the window, 0..1): the average over the box, 0 to 1. */
+internal fun HomeDarkening.alphaOver(box: Rect): Float {
+    if (box.isEmpty) return dim.coerceIn(0f, 1f)
+    val steps = 5
+    var total = 0f
+    for (n in 0 until steps) {
+        val y = box.top + (box.bottom - box.top) * (n + .5f) / steps
+        val top = if (scrim.top > 0f && y < HomeScrim.BAND) HomeScrim.alphaAt(scrim.top, y / HomeScrim.BAND) else 0f
+        val bottom = if (scrim.bottom > 0f && y > 1f - HomeScrim.BAND) HomeScrim.alphaAt(scrim.bottom, (1f - y) / HomeScrim.BAND) else 0f
+        // Two blacks at a and b compose to a + b - ab.
+        val s = top + bottom - top * bottom
+        total += dim + s - dim * s
+    }
+    return (total / steps).coerceIn(0f, 1f)
+}
+
+/** The same sample with [alpha] black over it: luminance falls with the square-ish law of light, color with the black itself. */
+internal fun ClockInkSample.darkenedBy(alpha: Float): ClockInkSample {
+    if (alpha <= 0f) return this
+    val keep = (1f - alpha.coerceIn(0f, 1f))
+    val light = keep.toDouble().pow(2.2).toFloat()
+    fun RegionStats.dim() = RegionStats(mean * light, p15 * light, p85 * light, r * keep, g * keep, b * keep)
+    return copy(under = under.dim(), whole = whole.dim())
+}
+
 internal data class ClockInkSample(val under: RegionStats, val whole: RegionStats, val suggestions: List<Int>,
     /** Built from Android's wallpaper colors, not the pixels under the clock: contrast there can't be measured. */
     val estimated: Boolean = false)
@@ -391,7 +427,9 @@ internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: F
             runCatching { sampleClockRegion(bitmap, box, windowAspect) }.getOrNull()
         }
     }
-    return sample
+    // Home's dim and scrim are drawn over the picture, so the clock is judged against the picture as it looks on screen.
+    val darkening = LocalHomeDarkening.current.alphaOver(box)
+    return remember(sample, darkening) { sample?.darkenedBy(darkening) }
 }
 
 /** A one-tap look: a color mode, a weight, a typeface and a shadow, nothing else. */
