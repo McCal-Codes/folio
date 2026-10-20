@@ -168,7 +168,7 @@ class IslandEvents private constructor(private val context: Context) {
             // While recording, a message shows only the app and the word Notification (see PrivateRecording).
             mutable.value = PrivateRecording.redact(event) to System.currentTimeMillis()
         }
-        @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context
+        @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context // english-only
         private var shared: IslandEvents? = null
         private var users = 0
 

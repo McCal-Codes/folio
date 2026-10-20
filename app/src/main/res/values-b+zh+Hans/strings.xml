@@ -1069,6 +1069,10 @@
     <string name="delete_shortcut">删除快捷方式</string>
     <string name="remove_from_home">从主屏幕移除</string>
     <string name="add_to_home">添加到主屏幕</string>
+    <!-- Spotlight's Top Hit: already on Home / inside a folder (%1$s is its name) / just added (%1$s is the app's name). Draft, needs a native read. -->
+    <string name="on_home">在主屏幕上</string>
+    <string name="in_folder_name">在“%1$s”文件夹中</string>
+    <string name="added_to_home">已将“%1$s”添加到主屏幕</string>
     <string name="add_to_folder">添加到文件夹</string>
     <string name="create_folder">创建文件夹</string>
     <string name="create_folder_with_1_s">用%1$s创建文件夹</string>
@@ -2029,4 +2033,9 @@
     <string name="island_collapse">隐藏详细信息</string>
     <string name="island_state_expanded">已展开</string>
     <string name="island_state_collapsed">已收起</string>
+    <string name="media_previous">上一首</string>
+    <string name="media_next">下一首</string>
+    <string name="discover_no_fit">Discover 无法放在程序坞旁边。请返回主屏幕后重试。</string>
+    <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
+    <string name="profile_app">%1$s应用</string>
 </resources>
