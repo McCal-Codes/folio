@@ -223,7 +223,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 sectioned.forEach { (bucket, bucketGroups) ->
                   if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
                     SectionLabel(stringResource(R.string.nc_section_quiet, bucketGroups.sumOf { it.size }),
-                        Modifier.clickable(onClickLabel = stringResource(R.string.show_quiet_notifications)) { quietOpen = true })
+                        settle().clickable(onClickLabel = stringResource(R.string.show_quiet_notifications)) { quietOpen = true })
                   } else {
                   // The main pile has no heading: it is what Notification Center always was.
                   if (bucket != null && bucket != NotificationBucket.MAIN) item("section-$bucket") {
@@ -231,14 +231,14 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                         NotificationBucket.NOW -> R.string.nc_section_now
                         NotificationBucket.CONVERSATIONS -> R.string.nc_section_conversations
                         else -> R.string.nc_section_quiet_open
-                    })) { if (bucket == NotificationBucket.QUIET) PanelPill(stringResource(R.string.show_less)) { quietOpen = false } }
+                    }), settle()) { if (bucket == NotificationBucket.QUIET) PanelPill(stringResource(R.string.show_less)) { quietOpen = false } }
                   }
                 bucketGroups.forEach { group ->
                     val pkg = group.first().packageName
                     val expanded = !grouped || expandedGroup == pkg || group.size == 1
                     if (expanded) {
                         if (group.size > 1) item("$bucket-$pkg-header") {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(settle().fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(group.first().appLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 if (sections && group.any { it.clearable }) { ClearAppPill(group.filter { it.clearable }); Spacer(Modifier.width(8.dp)) }
                                 PanelPill(stringResource(R.string.show_less)) { expandedGroup = null }
@@ -262,13 +262,20 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     }
 }
 
+/** An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump. */
+private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier =
+    Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle), placementSpec = FolioMotion.spring(FolioMotion.Settle))
+
 /** Clears one app's clearable notifications; like Clear all, the first tap asks and a second one within three seconds does it. */
 @Composable
 private fun ClearAppPill(clearable: List<NotificationItem>) {
     var confirm by remember(clearable.size) { mutableStateOf(false) }
     LaunchedEffect(confirm) { if (confirm) { kotlinx.coroutines.delay(3_000); confirm = false } }
-    if (confirm) PanelPill(stringResource(R.string.clear_n_notifications, clearable.size)) { confirm = false; clearable.forEach { IslandListenerService.dismiss(it.key) } }
-    else PanelPill(stringResource(R.string.clear)) { confirm = true }
+    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump.
+    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app") { asking ->
+        if (asking) PanelPill(stringResource(R.string.clear_n_notifications, clearable.size)) { confirm = false; clearable.forEach { IslandListenerService.dismiss(it.key) } }
+        else PanelPill(stringResource(R.string.clear)) { confirm = true }
+    }
 }
 
 /** A section's name above its cards; with [trailing] a control at the end (Quiet's Show Less). A heading for TalkBack. */
