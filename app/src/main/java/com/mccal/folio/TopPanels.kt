@@ -399,7 +399,8 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                 }
             }
             // The same menu as a long press or a swipe, always on screen (Settings › Notification sections).
-            if (showMore) Box(Modifier.size(48.dp).clickable(onClickLabel = stringResource(R.string.notification_options),
+            // Not over other apps: the menu is a dialog, which needs an activity's window (Options are on Home only there).
+            if (showMore && !overApps) Box(Modifier.size(48.dp).clickable(onClickLabel = stringResource(R.string.notification_options),
                 role = androidx.compose.ui.semantics.Role.Button) { options = true }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.MoreHoriz, stringResource(R.string.notification_options), tint = FolioGlass.secondary)
             }
