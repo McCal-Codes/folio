@@ -392,7 +392,12 @@ class MainActivity : ComponentActivity() {
                     ccSize = state.ccSize, ccCentered = state.ccCentered, ncSplit = state.ncSplit,
                     focusModes = state.focusModes, activeFocus = state.activeFocus, onFocus = model::setFocus)
                 SpotlightOverlay(spotlightVisible.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, state, onClose = { spotlightVisible.value = false },
-                    onLaunch = { launchApp(it) })
+                    onLaunch = { launchApp(it) },
+                    onAddToHome = { app ->
+                        // Stays open, so more can be added; the row turns into "On Home" by itself.
+                        model.setPinned(app.id, true)
+                        IslandEvents.notice(this@MainActivity, getString(R.string.added_to_home, app.label), app.icon)
+                    })
                 // Last, so the corners sit above everything in Home's window.
                 if (state.roundedCorners) RoundedScreenCorners(state.cornerRadius.dp)
             } } }
