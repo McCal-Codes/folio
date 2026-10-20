@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -81,7 +82,7 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
-    onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true,
+    onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncSplit: Boolean = true,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
@@ -144,7 +145,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 val p = progress(); alpha = OverlayBack.unpreviewed(p); translationY = -clockLift * (1f - p)
             })
         }
-        if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier, showClock && !split, grouped, tall = split, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+        if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier, showClock && !split, grouped, sections, tall = split, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
         else ControlCenter(panelModifier, status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
@@ -154,7 +155,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, tall: Boolean = false, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, tall: Boolean = false, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -166,7 +167,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     var filterApp by remember { mutableStateOf<String?>(null) }
     val allGroups = remember(items) { items.groupBy { it.packageName }.values.sortedByDescending { g -> g.maxOf { it.postTime } } }
     LaunchedEffect(allGroups) { if (filterApp != null && allGroups.none { it.first().packageName == filterApp }) filterApp = null }
-    val groups = remember(allGroups, filterApp) { if (filterApp == null) allGroups else allGroups.filter { it.first().packageName == filterApp } }
+    var quietOpen by remember { mutableStateOf(false) }
+    val sectioned = remember(items, filterApp, sections) { sectionNotifications(items.filter { filterApp == null || it.packageName == filterApp }, sections) }
 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
@@ -218,12 +220,25 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
             LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = 620.dp)).edgeFade(listState), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
-                groups.forEach { group ->
+                sectioned.forEach { (bucket, bucketGroups) ->
+                  if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
+                    SectionLabel(stringResource(R.string.nc_section_quiet, bucketGroups.sumOf { it.size }),
+                        settle().clickable(onClickLabel = stringResource(R.string.show_quiet_notifications)) { quietOpen = true })
+                  } else {
+                  // The main pile has no heading: it is what Notification Center always was.
+                  if (bucket != null && bucket != NotificationBucket.MAIN) item("section-$bucket") {
+                    SectionLabel(stringResource(when (bucket) {
+                        NotificationBucket.NOW -> R.string.nc_section_now
+                        NotificationBucket.CONVERSATIONS -> R.string.nc_section_conversations
+                        else -> R.string.nc_section_quiet_open
+                    }), settle()) { if (bucket == NotificationBucket.QUIET) PanelPill(stringResource(R.string.show_less)) { quietOpen = false } }
+                  }
+                bucketGroups.forEach { group ->
                     val pkg = group.first().packageName
                     val expanded = !grouped || expandedGroup == pkg || group.size == 1
                     if (expanded) {
-                        if (group.size > 1) item("$pkg-header") {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (group.size > 1) item("$bucket-$pkg-header") {
+                            Row(settle().fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(group.first().appLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 PanelPill(stringResource(R.string.show_less)) { expandedGroup = null }
                             }
@@ -238,9 +253,25 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                             placementSpec = FolioMotion.spring(FolioMotion.Settle))) { expandedGroup = pkg }
                     }
                 }
+                  }
+                }
             }
             }
         }
+    }
+}
+
+/** An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump. */
+private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier =
+    Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle), placementSpec = FolioMotion.spring(FolioMotion.Settle))
+
+/** A section's name above its cards; with [trailing] a control at the end (Quiet's Show Less). A heading for TalkBack. */
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+    Row(modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = Color.White.copy(alpha = .75f), fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f).semantics { heading() })
+        trailing?.invoke()
     }
 }
 

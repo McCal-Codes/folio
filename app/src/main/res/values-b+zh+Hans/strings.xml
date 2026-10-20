@@ -49,6 +49,13 @@
     <string name="panels">面板</string>
     <string name="big_clock_in_notification_center">通知中心里的大时钟</string>
     <string name="stack_notifications_by_app">按 App 堆叠通知</string>
+    <string name="notification_sections">通知分区</string>
+    <string name="notification_sections_note">通知中心会先显示正在进行的内容和对话，再显示其余通知，安静的通知收在“安静”之下。来电、闹钟、计时器和对话不会被放进“安静”。</string>
+    <string name="nc_section_now">现在</string>
+    <string name="nc_section_conversations">对话</string>
+    <string name="nc_section_quiet">安静 · %1$d</string>
+    <string name="nc_section_quiet_open">安静</string>
+    <string name="show_quiet_notifications">显示安静通知</string>
     <string name="unfolded_clock_beside_notifications">展开时：时钟在通知旁边</string>
     <string name="control_center_size">控制中心大小</string>
     <string name="unfolded_control_center_in_the_middle">展开时：控制中心居中</string>
