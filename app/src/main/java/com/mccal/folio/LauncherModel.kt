@@ -201,7 +201,7 @@ data class LauncherState(
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
     /** Unfolded: iPad-style Notification Center (clock left, notifications right). */
-    val ncSplit: Boolean = true,
+    val ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     /** Smart Stacks: widget placement slot → extra widget ids stacked behind that placement's widget. */
     val widgetStacks: Map<Int, List<Int>> = emptyMap(),
     /** Smart Rotate: stacks move to the widget that matters now. */
@@ -1391,7 +1391,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setCcControls(controls: List<String>) = updateSettings(soon = false) { it.copy(ccControls = controls.distinct()) }
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
-    fun setNcSplit(value: Boolean) = updateSettings(soon = false) { it.copy(ncSplit = value) }
+    fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
     fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
@@ -1630,7 +1630,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncSplit", s.ncSplit)
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncLayout", s.ncLayout.name)
+            // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
+            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
             .put("stackRotate", s.stackRotate).put("railActivitiesUnderStatus", s.railActivities).put("addNewAppsToHome", s.addNewAppsToHome)
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
@@ -1909,7 +1911,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ccControls = j.optJSONArray("ccControls")?.let { a -> (0 until a.length()).map(a::getString).filter { name -> CcControl.entries.any { it.name == name } } }
             ?: CcControl.DEFAULTS,
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
-        ccCentered = j.optBoolean("ccCentered", false), ncSplit = j.optBoolean("ncSplit", true),
+        ccCentered = j.optBoolean("ccCentered", false),
+        ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
         widgetStacks = j.optJSONObject("widgetStacks")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val ids = o.optJSONArray(key) ?: return@mapNotNull null
             key.toIntOrNull()?.let { slot -> slot to (0 until ids.length()).map(ids::getInt) }

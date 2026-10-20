@@ -83,7 +83,7 @@ import java.time.format.DateTimeFormatter
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
-    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncSplit: Boolean = true,
+    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
@@ -92,9 +92,17 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val current = shown ?: return
     if (!open && progress() <= 0.001f) { shown = null; return }
     val lift = with(LocalDensity.current) { 28.dp.toPx() }
+    val config = LocalConfiguration.current
+    val wide = config.fitsRegularHomeLayout()
+    val shape = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp,
+        LocalHinge.current?.active == true, current)
+    // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
+    val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
+    // At most two thirds of the height: a card is as tall as its list, not the screen.
+    val listMax = minOf(620.dp, (config.screenHeightDp * .62f).dp)
 
     // Scrim: tap or swipe up anywhere to close.
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() }.background(FolioGlass.scrim)
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }.background(FolioGlass.scrim)
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
@@ -102,30 +110,38 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             } else Modifier)
         .testTag("top-panel-scrim"))
 
-    val wide = LocalConfiguration.current.fitsRegularHomeLayout()
-    // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right.
-    // A split arrangement: clock and list side by side only when the screen is wider than tall; otherwise the clock sits above the list.
-    val split = wide && ncSplit && current == ShadePanel.NOTIFICATIONS && LocalConfiguration.current.let { it.screenWidthDp > it.screenHeightDp }
+    // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right (Full screen), a card under the
+    // corner it was pulled from (Card), or beside Control Center (Side by side); see shadeShape.
+    val split = shape == ShadeShape.SPLIT_CLOCK
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
     CompositionLocalProvider(LocalHinge provides hinge) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
+            shape == ShadeShape.BOTH -> Alignment.TopCenter
+            // Notification Center is pulled from the top left and Control Center from the top right: each card sits under its own corner.
+            shape == ShadeShape.CARD -> if (current == ShadePanel.NOTIFICATIONS) Alignment.TopStart else Alignment.TopEnd
             split -> Alignment.TopEnd
             current == ShadePanel.NOTIFICATIONS -> if (wide) Alignment.TopCenter else Alignment.TopStart
             wide && ccCentered -> Alignment.TopCenter
             else -> Alignment.TopEnd
         }) {
         // Notification Center uses the width; Control Center is a compact fixed grid (like iPad) so it isn't oversized.
-        val panelModifier = Modifier.widthIn(max = if (split) 540.dp else if (wide) 460.dp else 560.dp)
-            .then(if (current == ShadePanel.NOTIFICATIONS) Modifier.fillMaxWidth() else Modifier)
+        fun panelModifier(which: ShadePanel) = Modifier.widthIn(max = when {
+                split -> 540.dp
+                shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
+                shape == ShadeShape.BOTH -> 440.dp
+                wide -> 460.dp
+                else -> 560.dp
+            })
+            .then(if (which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) Modifier.fillMaxWidth() else Modifier)
             .then(if (split) Modifier.fillMaxHeight() else Modifier)
             // Taps on gaps inside the panel must not fall through to the scrim and close it.
             .pointerInput(Unit) { detectTapGestures() }
             .graphicsLayer {
                 val p = progress()
-                if (current == ShadePanel.NOTIFICATIONS) {
+                if (which == ShadePanel.NOTIFICATIONS) {
                     // iOS: Notification Center slides down from the top edge and doesn't zoom; it's fully opaque
                     // early so the list reads as one sheet moving, not a fade.
                     alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f)
@@ -144,8 +160,14 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 val p = progress(); alpha = OverlayBack.unpreviewed(p); translationY = -clockLift * (1f - p)
             })
         }
-        if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier, showClock && !split, grouped, tall = split, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier, status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
+            // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, listMax = listMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        }
+        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, tall = split,
+            listMax = if (shape == ShadeShape.CARD) listMax else 620.dp, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
 }
@@ -154,7 +176,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, tall: Boolean = false, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, tall: Boolean = false, listMax: Dp = 620.dp, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -216,7 +238,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 }
             }
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = 620.dp)).edgeFade(listState), state = listState,
+            LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = listMax)).edgeFade(listState), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
                 groups.forEach { group ->
                     val pkg = group.first().packageName
@@ -340,6 +362,11 @@ private fun SwipeAction(label: String, onClick: () -> Unit) {
         .border(FolioGlass.edge, RoundedCornerShape(22.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
+}
+
+/** How Notification Center sits on a wide screen: filling it with the clock beside the list, a card under the corner pulled from, or beside Control Center. */
+enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
+    FULL_SCREEN(R.string.nc_layout_full), CARD(R.string.nc_layout_card), SIDE_BY_SIDE(R.string.nc_layout_both)
 }
 
 /** Control Center size choice (the largest a small control can be). */
