@@ -48,7 +48,7 @@
     <string name="big_clock_in_notification_center">알림 센터에 큰 시계 표시</string>
     <string name="stack_notifications_by_app">앱별로 알림 쌓기</string>
     <string name="notification_sections">알림 구역</string>
-    <string name="notification_sections_note">알림 센터에 지금 진행 중인 항목과 대화를 먼저 보여 주고 나머지가 뒤따르며, 조용한 알림은 '조용함' 아래에 접어 둡니다. 전화, 알람, 타이머, 대화는 '조용함'에 들어가지 않습니다.</string>
+    <string name="notification_sections_note">알림 센터에 지금 진행 중인 항목과 대화를 먼저 보여 주고 나머지가 뒤따르며, 조용한 알림은 \'조용함\' 아래에 접어 둡니다. 전화, 알람, 타이머, 대화는 \'조용함\'에 들어가지 않습니다.</string>
     <string name="nc_section_now">지금</string>
     <string name="nc_section_conversations">대화</string>
     <string name="nc_section_quiet" tools:ignore="PluralsCandidate">조용함 · %1$d</string>
