@@ -42,6 +42,13 @@
     <string name="panels">Panels</string>
     <string name="big_clock_in_notification_center">Big clock in Notification Center</string>
     <string name="stack_notifications_by_app">Stack notifications by app</string>
+    <string name="notification_sections">Notification sections</string>
+    <string name="notification_sections_note">Notification Center shows what is happening now and conversations first, then the rest, with quiet notifications folded away under Quiet. Calls, alarms, timers and conversations are never put in Quiet.</string>
+    <string name="nc_section_now">Now</string>
+    <string name="nc_section_conversations">Conversations</string>
+    <string name="nc_section_quiet" tools:ignore="PluralsCandidate">Quiet · %1$d</string>
+    <string name="nc_section_quiet_open">Quiet</string>
+    <string name="show_quiet_notifications">Show quiet notifications</string>
     <string name="unfolded_clock_beside_notifications">Unfolded: clock beside notifications</string>
     <string name="control_center_size">Control Center size</string>
     <string name="unfolded_control_center_in_the_middle">Unfolded: Control Center in the middle</string>

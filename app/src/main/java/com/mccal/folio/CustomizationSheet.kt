@@ -443,6 +443,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CustomizationSlider(stringResource(R.string.background_blur), "${(state.panelBlur * 100).toInt()}%", state.panelBlur, 0f..1f) { model.setPanelBlur(it) }
                         SettingsSwitch(stringResource(R.string.big_clock_in_notification_center), state.notificationClock, model::setNotificationClock, "notification-clock-switch")
                         SettingsSwitch(stringResource(R.string.stack_notifications_by_app), state.groupNotifications, model::setGroupNotifications, "notification-group-switch")
+                        SettingsSwitch(stringResource(R.string.notification_sections), state.notificationSections, model::setNotificationSections, "notification-sections-switch")
+                        if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
                         SettingsSwitch(stringResource(R.string.unfolded_clock_beside_notifications), state.ncSplit, model::setNcSplit, "notification-split-switch")
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
                         SettingsSwitch(stringResource(R.string.unfolded_control_center_in_the_middle), state.ccCentered, model::setCcCentered, "cc-centered-switch")
@@ -1413,6 +1415,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.big_clock_in_notification_center to CustomizationPage.NOTIFICATIONS,
     R.string.iphone_style_control_center_and_notifica to CustomizationPage.NOTIFICATIONS,
     R.string.stack_notifications_by_app to CustomizationPage.NOTIFICATIONS,
+    R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_clock_beside_notifications to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
     R.string.badge_size to CustomizationPage.STATUS,
