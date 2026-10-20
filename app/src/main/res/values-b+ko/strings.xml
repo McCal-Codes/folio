@@ -1103,6 +1103,10 @@
     <string name="delete_shortcut">바로가기 삭제</string>
     <string name="remove_from_home">홈 화면에서 제거</string>
     <string name="add_to_home">홈 화면에 추가</string>
+    <!-- Spotlight's Top Hit: already on Home / inside a folder (%1$s is its name) / just added (%1$s is the app's name). Draft, needs a native read. -->
+    <string name="on_home">홈 화면에 있음</string>
+    <string name="in_folder_name">%1$s 폴더에 있음</string>
+    <string name="added_to_home">홈 화면에 추가됨: %1$s</string>
     <string name="add_to_folder">폴더에 추가</string>
     <string name="create_folder">폴더 생성</string>
     <string name="create_folder_with_1_s">%1$s와(과) 함께 폴더 만들기</string>

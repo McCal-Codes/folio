@@ -432,6 +432,19 @@ fun resizeWidget(layout: HomeLayout, slot: Int, spanX: Int, spanY: Int): HomeLay
     return placeWidget(layout, old.copy(spanX = spanX, spanY = spanY, offsetX = 0f, offsetY = 0f))
 }
 
+/** What Spotlight offers for an app: put it on Home, say it already is there, or name the folder that holds it. */
+sealed interface HomeOffer {
+    data object Add : HomeOffer
+    data object OnHome : HomeOffer
+    data class InFolder(val title: String) : HomeOffer
+}
+
+/** An app inside a folder is not pinned from here (the model leaves it alone), so it is named instead of offered. */
+fun homeOffer(layout: HomeLayout, id: String): HomeOffer {
+    layout.folders.firstOrNull { id in it.appIds }?.let { return HomeOffer.InFolder(it.title) }
+    return if (layout.indexOfShortcut(id) != null) HomeOffer.OnHome else HomeOffer.Add
+}
+
 /** Remove only the shortcut/placement, never the installed app or widget binding. */
 fun removePlacement(layout: HomeLayout, source: DropTarget): HomeLayout = when (source) {
     is DropTarget.Home -> if (layout.slotAt(source.index)?.let(::isFolderId) == true) layout
