@@ -202,6 +202,8 @@ data class LauncherState(
     val ccCentered: Boolean = false,
     /** Unfolded: iPad-style Notification Center (clock left, notifications right). */
     val ncLayout: NcLayout = NcLayout.FULL_SCREEN,
+    /** Shortcuts that open the shade (a phone's one-hand operation, a Routine) draw Folio's panels over the open app instead of the phone's. */
+    val shadeOverApps: Boolean = false,
     /** Smart Stacks: widget placement slot → extra widget ids stacked behind that placement's widget. */
     val widgetStacks: Map<Int, List<Int>> = emptyMap(),
     /** Smart Rotate: stacks move to the widget that matters now. */
@@ -1392,6 +1394,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
+    fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
     fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
@@ -1632,7 +1635,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
-            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN)
+            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
             .put("stackRotate", s.stackRotate).put("railActivitiesUnderStatus", s.railActivities).put("addNewAppsToHome", s.addNewAppsToHome)
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
@@ -1913,6 +1916,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
+        shadeOverApps = j.optBoolean("shadeOverApps", false),
         widgetStacks = j.optJSONObject("widgetStacks")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val ids = o.optJSONArray(key) ?: return@mapNotNull null
             key.toIntOrNull()?.let { slot -> slot to (0 until ids.length()).map(ids::getInt) }

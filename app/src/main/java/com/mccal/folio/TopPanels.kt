@@ -95,7 +95,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val config = LocalConfiguration.current
     val wide = config.fitsRegularHomeLayout()
     val shape = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp,
-        LocalHinge.current?.active == true, current)
+        LocalHinge.current?.active == true || LocalShadeOverApps.current, current)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
     // At most two thirds of the height: a card is as tall as its list, not the screen.
@@ -283,7 +283,9 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
     val scope = rememberCoroutineScope()
     val swipe = remember(item.key) { androidx.compose.animation.core.Animatable(0f) }
     val density = LocalDensity.current
-    val reveal = with(density) { (if (item.clearable) 176.dp else 92.dp).toPx() }
+    // Over another app there is no Options menu (it is a dialog, which needs an activity), so only Clear is revealed.
+    val overApps = LocalShadeOverApps.current
+    val reveal = with(density) { (if (item.clearable && !overApps) 176.dp else 92.dp).toPx() }
     var options by remember(item.key) { mutableStateOf(false) }
     fun settle(to: Float) = scope.launch { swipe.animateTo(to, MotionSpeed.spring(.85f, Spring.StiffnessMediumLow)) }
     BoxWithConstraints(modifier.clip(RoundedCornerShape(22.dp))) {
@@ -294,7 +296,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                 alpha = t; scaleX = .7f + .3f * t; scaleY = scaleX; transformOrigin = TransformOrigin(1f, .5f)
             }, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically) {
-            SwipeAction(stringResource(R.string.options)) { settle(0f); options = true }
+            if (!overApps) SwipeAction(stringResource(R.string.options)) { settle(0f); options = true }
             if (item.clearable) SwipeAction(stringResource(R.string.clear)) { scope.launch { swipe.animateTo(-widthPx); IslandListenerService.dismiss(item.key) } }
         }
         Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(swipe.value.roundToInt(), 0) }
@@ -324,7 +326,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
             .clip(RoundedCornerShape(22.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
             .border(FolioGlass.edge, RoundedCornerShape(22.dp))
             .combinedClickable(interactionSource = press, indication = null, onClick = { if (swipe.value < -1f) settle(0f) else onOpen() }, onLongClick = {
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true
+                if (!overApps) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true }
             }, onLongClickLabel = stringResource(R.string.notification_options))
             .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
             item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))) }
@@ -345,7 +347,8 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                     if (replying) QuickReplyField(item.title, Modifier.padding(top = FolioSpace.SMALL.dp),
                         onSend = { IslandListenerService.reply(context, item.key, it) }, onDone = { replying = false })
                     else Row(Modifier.padding(top = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                        if (item.canReply) MessageActionPill(stringResource(R.string.reply)) { replying = true }
+                        // Typing needs a focusable window, so over another app Reply opens the conversation instead.
+                        if (item.canReply) MessageActionPill(stringResource(R.string.reply)) { if (overApps) onOpen() else replying = true }
                         if (item.canMarkRead) MessageActionPill(stringResource(R.string.mark_as_read)) { IslandListenerService.markRead(item.key) }
                     }
                 }
@@ -363,6 +366,9 @@ private fun SwipeAction(label: String, onClick: () -> Unit) {
         Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
+
+/** True while the panels are drawn over another app from the gestures service rather than on Home: no dialogs, no typing, no fold information. */
+internal val LocalShadeOverApps = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /** How Notification Center sits on a wide screen: filling it with the clock beside the list, a card under the corner pulled from, or beside Control Center. */
 enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
