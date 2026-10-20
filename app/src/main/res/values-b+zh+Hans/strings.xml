@@ -55,6 +55,7 @@
     <string name="nc_section_conversations">对话</string>
     <string name="nc_section_quiet">安静 · %1$d</string>
     <string name="nc_section_quiet_open">安静</string>
+    <string name="clear_n_notifications">清除 %1$d 条</string>
     <string name="show_quiet_notifications">显示安静通知</string>
     <string name="unfolded_clock_beside_notifications">展开时：时钟在通知旁边</string>
     <string name="control_center_size">控制中心大小</string>

@@ -53,6 +53,7 @@
     <string name="nc_section_conversations">대화</string>
     <string name="nc_section_quiet" tools:ignore="PluralsCandidate">조용함 · %1$d</string>
     <string name="nc_section_quiet_open">조용함</string>
+    <string name="clear_n_notifications" tools:ignore="PluralsCandidate">%1$d개 지우기</string>
     <string name="show_quiet_notifications">조용한 알림 보기</string>
     <string name="unfolded_clock_beside_notifications">펼쳤을 때 알림 옆에 시계 표시</string>
     <string name="control_center_size">제어 센터 크기</string>
