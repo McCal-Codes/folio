@@ -1413,7 +1413,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandHideFullScreen(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideFullScreen = value) }
     fun setIslandHideLandscape(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscape = value) }
     fun setIslandHideLandscapeInner(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscapeInner = value) }
-    fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value == BASE_APP_ROWS) value else 0) }
+    fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value in BASE_APP_ROWS..MAX_APP_ROWS) value else 0) }
     /** Remembers how many app rows fit this screen class's full-screen Home (see [effectiveHomeRows]). */
     fun recordHomeFit(screen: LayoutScreen, rows: Int) {
         val value = rows.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
