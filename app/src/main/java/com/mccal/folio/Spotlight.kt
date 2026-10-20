@@ -405,9 +405,23 @@ private fun TopHit(app: AppEntry, offer: HomeOffer, onAdd: () -> Unit, onClick: 
                 HomeOffer.OnHome -> stringResource(R.string.on_home)
                 is HomeOffer.InFolder -> stringResource(R.string.in_folder_name, offer.title)
             }
-            Text(if (where == null) kind else "$kind · $where", color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            // The words fade into each other when the app lands on Home, and the + leaves with a fade and a shrink (a fade alone with
+            // Reduce Motion), so the row settles instead of jumping when Open takes its place.
+            androidx.compose.animation.AnimatedContent(if (where == null) kind else "$kind · $where", label = "top hit where",
+                transitionSpec = { androidx.compose.animation.ContentTransform(
+                    androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)),
+                    androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS))) }) { text ->
+                Text(text, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            }
         }
-        if (offer == HomeOffer.Add) SpotlightRoundAction(Icons.Rounded.Add, stringResource(R.string.add_to_home), onAdd)
+        val reduce = LocalReduceMotion.current
+        androidx.compose.animation.AnimatedVisibility(offer == HomeOffer.Add,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) +
+                (if (reduce) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.expandHorizontally(FolioMotion.spring(FolioMotion.Quick))),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) +
+                (if (reduce) androidx.compose.animation.ExitTransition.None else androidx.compose.animation.shrinkHorizontally(FolioMotion.spring(FolioMotion.Quick)))) {
+            SpotlightRoundAction(Icons.Rounded.Add, stringResource(R.string.add_to_home), onAdd)
+        }
         Text(stringResource(R.string.open), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
     }
