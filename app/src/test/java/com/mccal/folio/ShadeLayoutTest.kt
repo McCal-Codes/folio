@@ -33,6 +33,16 @@ class ShadeLayoutTest {
         assertEquals(ShadeShape.CARD, shape(NcLayout.SIDE_BY_SIDE, hinged = true))
     }
 
+    @Test fun `Folio's panel over another app needs everything to agree`() {
+        assertEquals(true, shadeOverAppsWanted(true, true, false, false, nc))
+        assertEquals(true, shadeOverAppsWanted(true, true, false, false, cc))
+        assertEquals(false, shadeOverAppsWanted(false, true, false, false, nc))   // the switch is off: the phone's shade
+        assertEquals(false, shadeOverAppsWanted(true, false, false, false, nc))   // Folio's panels are off altogether
+        assertEquals(false, shadeOverAppsWanted(true, true, true, false, nc))     // Safe Mode
+        assertEquals(false, shadeOverAppsWanted(true, true, false, true, nc))     // locked: never over the lock screen
+        assertEquals(false, shadeOverAppsWanted(true, true, false, false, ShadePanel.SEARCH))
+    }
+
     @Test fun `a saved layout wins over the old switch`() {
         assertEquals(NcLayout.SIDE_BY_SIDE, ncLayoutFrom("SIDE_BY_SIDE", true))
         assertEquals(NcLayout.CARD, ncLayoutFrom("CARD", true))

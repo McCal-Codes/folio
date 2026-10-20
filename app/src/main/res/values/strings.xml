@@ -43,6 +43,9 @@
     <string name="big_clock_in_notification_center">Big clock in Notification Center</string>
     <string name="stack_notifications_by_app">Stack notifications by app</string>
     <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. -->
+    <!-- Settings > Notifications > Panels: what a phone's own shade action (one-hand operation, a Routine) opens while another app is in front. -->
+    <string name="shade_over_apps">Folio\'s panels over other apps</string>
+    <string name="shade_over_apps_note">When a shortcut, a Routine or One UI\'s one-hand operation opens the notification shade or Quick Settings, Folio draws its own Notification Center or Control Center over the open app instead of the phone\'s. Needs Folio\'s gestures turned on. Swiping down from the top of an app still opens your phone\'s own shade. Over another app, Reply opens a small box to type in, and Options are on Home only. It never opens over the lock screen.</string>
     <string name="nc_layout_title">Unfolded layout</string>
     <string name="nc_layout_full">Full screen</string>
     <string name="nc_layout_card">Card</string>

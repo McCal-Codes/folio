@@ -23,6 +23,13 @@ internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, wid
 }
 
 /**
+ * Whether an action that opens a shade should draw Folio's own panel over the open app instead of the phone's: only when the switch and
+ * Folio's panels are both on, Safe Mode is off, the phone is unlocked (the lock screen keeps Android's) and it is a panel Folio has.
+ */
+internal fun shadeOverAppsWanted(switchOn: Boolean, panelsOn: Boolean, safeMode: Boolean, locked: Boolean, panel: ShadePanel): Boolean =
+    switchOn && panelsOn && !safeMode && !locked && panel != ShadePanel.SEARCH
+
+/**
  * The saved layout. Settings from before the choice existed only had "clock beside notifications": on is Full screen (how it was),
  * off is Card (the narrower panel it gave). Anything unreadable, or nothing at all, is Full screen.
  */
