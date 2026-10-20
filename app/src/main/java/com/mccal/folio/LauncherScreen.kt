@@ -575,7 +575,9 @@ fun LauncherScreen(
     SideEffect { drag.mergePreview = if (folderOrRoom && drag.active) armedMerge?.let { folderMergeTarget(drag.source?.appId, it) } else null }
     /** The app a drop on [index] makes a folder with: with FolderOrRoom only once its middle was held long enough. */
     fun mergesAt(sourceAppId: String?, index: Int): String? = folderMergeTarget(sourceAppId, index)?.takeIf { !folderOrRoom || armedMerge == index }
-    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows, folderOrRoom, armedMerge, roomTarget) {
+    val resizeSlot = resize.slot.takeIf { resize.active }
+    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows, folderOrRoom, armedMerge, roomTarget,
+        resizeSlot, resize.width, resize.height) {
         val id = drag.source?.appId
         when {
             folderOrRoom && id != null && drag.moved -> when {
@@ -592,6 +594,8 @@ fun LauncherScreen(
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
                 moveWidgetMakingRoom(state.layout, (drag.source!!.target as DropTarget.Widget).index, insertionTarget.index, homeAppRows)
+            // Resizing a widget: the apps in the way slide along as the handle moves, like they do while one is dragged.
+            resizeSlot != null -> resizeWidgetMakingRoom(state.layout, resizeSlot, resize.width, resize.height, homeAppRows)
             else -> state.layout
         }
     }
