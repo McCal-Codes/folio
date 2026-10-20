@@ -52,7 +52,7 @@
     <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
     <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
     <string name="shade_over_apps">在其他应用上方显示 Folio 面板</string>
-    <string name="shade_over_apps_note">当快捷方式、例行任务或 One UI 的单手操作打开通知栏或快捷设置时，Folio 会在当前打开的应用上方显示自己的通知中心或控制中心，而不是手机自带的面板。需要开启 Folio 手势。从应用顶部下滑仍会打开手机自带的通知栏。在其他应用上方时，点按“回复”会打开对话，“选项”仅在主屏幕上可用。不会在锁屏上方打开。</string>
+    <string name="shade_over_apps_note">当快捷方式、例行任务或 One UI 的单手操作打开通知栏或快捷设置时，Folio 会在当前打开的应用上方显示自己的通知中心或控制中心，而不是手机自带的面板。需要开启 Folio 手势。从应用顶部下滑仍会打开手机自带的通知栏。在其他应用上方时，点按“回复”会打开输入框，“选项”仅在主屏幕上可用。不会在锁屏上方打开。</string>
     <string name="nc_layout_title">展开时的布局</string>
     <string name="nc_layout_full">全屏</string>
     <string name="nc_layout_card">卡片</string>

@@ -347,8 +347,9 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                     if (replying) QuickReplyField(item.title, Modifier.padding(top = FolioSpace.SMALL.dp),
                         onSend = { IslandListenerService.reply(context, item.key, it) }, onDone = { replying = false })
                     else Row(Modifier.padding(top = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                        // Typing needs a focusable window, so over another app Reply opens the conversation instead.
-                        if (item.canReply) MessageActionPill(stringResource(R.string.reply)) { if (overApps) onOpen() else replying = true }
+                        // Typing needs a focusable window, so over another app Reply starts a small box to type in; without one, the conversation opens.
+                        val replyOverApp = LocalShadeReply.current
+                        if (item.canReply) MessageActionPill(stringResource(R.string.reply)) { if (overApps) (replyOverApp?.invoke(item) ?: onOpen()) else replying = true }
                         if (item.canMarkRead) MessageActionPill(stringResource(R.string.mark_as_read)) { IslandListenerService.markRead(item.key) }
                     }
                 }
@@ -369,6 +370,9 @@ private fun SwipeAction(label: String, onClick: () -> Unit) {
 
 /** True while the panels are drawn over another app from the gestures service rather than on Home: no dialogs, no typing, no fold information. */
 internal val LocalShadeOverApps = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Over another app, what Reply does: starts a box to type in (the overlay cannot take the keyboard). Null on Home, where the card has its own field. */
+internal val LocalShadeReply = androidx.compose.runtime.staticCompositionLocalOf<((NotificationItem) -> Unit)?> { null }
 
 /** How Notification Center sits on a wide screen: filling it with the clock beside the list, a card under the corner pulled from, or beside Control Center. */
 enum class NcLayout(@androidx.annotation.StringRes val label: Int) {

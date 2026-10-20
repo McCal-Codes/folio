@@ -50,7 +50,7 @@
     <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
     <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
     <string name="shade_over_apps">다른 앱 위에 Folio 패널 표시</string>
-    <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 대화가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
+    <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 입력 상자가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
     <string name="nc_layout_title">펼쳤을 때 레이아웃</string>
     <string name="nc_layout_full">전체 화면</string>
     <string name="nc_layout_card">카드</string>

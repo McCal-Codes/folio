@@ -97,6 +97,10 @@
             </intent-filter>
         </activity>
         <!-- The shade as an app a phone's own button or gesture action can open: see ShadeShortcutActivity. -->
+        <activity android:name=".ShadeReplyActivity" android:exported="false"
+            android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
+            android:taskAffinity="com.mccal.folio.reply" android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize|stateVisible" />
         <activity android:name=".ShadeShortcutActivity" android:exported="false"
             android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
             android:taskAffinity="com.mccal.folio.shade" android:launchMode="singleInstance" />

@@ -276,7 +276,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 val status by monitor.state.collectAsState()
                 val progress by androidx.compose.animation.core.animateFloatAsState(if (current != null) 1f else 0f,
                     FolioMotion.spring(FolioMotion.Appear), label = "shade over apps")
-                CompositionLocalProvider(LocalShadeOverApps provides true, LocalDeviceStatus provides status,
+                CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
                     LocalReduceMotion provides settings.value.reduceMotion) {
                     TopPanels(current, { progress }, status, onClose = { closeShade() },
                         // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
@@ -294,6 +294,18 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shade = view; shadeMonitor = monitor
         if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
         return true
+    }
+
+    /** Reply over another app: close the panels and start the small box to type in; if Android does not let it start, open the conversation instead. */
+    private fun replyFromShade(item: NotificationItem) {
+        closeShade()
+        val before = ShadeReplyActivity.created.get()
+        val started = runCatching { ShadeReplyActivity.start(service, item) }.isSuccess
+        // A start the system quietly refuses leaves no error, only an activity that never appears.
+        scope.launch {
+            kotlinx.coroutines.delay(900)
+            if (!started || ShadeReplyActivity.created.get() == before) IslandListenerService.openNotification(service, item)
+        }
     }
 
     private fun closeShade() {
