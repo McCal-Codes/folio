@@ -656,6 +656,10 @@
     <string name="all_controls_added">All controls added</string>
     <string name="add_a_control">Add a Control</string>
     <string name="not_playing">Not Playing</string>
+    <string name="music">Music</string>
+    <string name="now_playing">Now Playing</string>
+    <string name="playing">Playing</string>
+    <string name="paused">Paused</string>
     <string name="contacts">Contacts</string>
     <string name="search_the_web_ask_ai">Search the Web &amp; Ask AI</string>
     <string name="top_hit">Top Hit</string>

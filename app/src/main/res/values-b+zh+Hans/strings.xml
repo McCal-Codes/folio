@@ -662,6 +662,10 @@
     <string name="all_controls_added">已添加所有控制</string>
     <string name="add_a_control">添加控制</string>
     <string name="not_playing">未在播放</string>
+    <string name="music">音乐</string>
+    <string name="now_playing">正在播放</string>
+    <string name="playing">正在播放</string>
+    <string name="paused">已暂停</string>
     <string name="contacts">联系人</string>
     <string name="search_the_web_ask_ai">搜索网页并询问 AI</string>
     <string name="top_hit">最佳搜索结果</string>

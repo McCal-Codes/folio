@@ -118,11 +118,15 @@ private fun spanForSize(sizeDp: Float, cellDp: Float, gapDp: Float): Int =
 
 /**
  * Size limits for Folio's own widgets, which have no provider to ask. Suggestions resizes freely, from one cell to the
- * whole 4 x 4 grid; the others keep the defaults (null).
+ * whole 4 x 4 grid. Music is short enough for the Strip at its minimum and square at its maximum for the Poster; the
+ * others keep the defaults (null).
  */
 fun builtinWidgetConstraints(id: Int): WidgetSpanConstraints? = when (id) {
     SUGGESTIONS_WIDGET -> WidgetSpanConstraints(
         preferred = WidgetSpan(2, 2), minimum = WidgetSpan(1, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
+        canResizeHorizontally = true, canResizeVertically = true)
+    MUSIC_WIDGET -> WidgetSpanConstraints(
+        preferred = WidgetSpan(4, 2), minimum = WidgetSpan(2, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
         canResizeHorizontally = true, canResizeVertically = true)
     else -> null
 }
