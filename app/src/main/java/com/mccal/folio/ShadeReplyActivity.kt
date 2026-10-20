@@ -58,7 +58,7 @@ class ShadeReplyActivity : ComponentActivity() {
                 .clickable(remember { MutableInteractionSource() }, null) { finish() }, contentAlignment = Alignment.BottomCenter) {
                 AnimatedVisibility(shown, enter = fadeIn() + slideInVertically(FolioMotion.spring(FolioMotion.Appear)) { it / 3 }) {
                     Column(Modifier.navigationBarsPadding().windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(FolioSpace.LARGE.dp)
-                        .widthIn(max = 520.dp).fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .widthIn(max = 520.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.SHEET_TOP.dp))
                         .background(FolioColors.SecondaryBackground.copy(alpha = .94f))
                         // A tap inside the card must not fall through to the scrim and close it.
                         .clickable(remember { MutableInteractionSource() }, null) {}.padding(18.dp)) {
