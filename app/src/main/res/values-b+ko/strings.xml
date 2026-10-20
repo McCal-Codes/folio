@@ -1111,6 +1111,10 @@
     <string name="delete_shortcut">바로가기 삭제</string>
     <string name="remove_from_home">홈 화면에서 제거</string>
     <string name="add_to_home">홈 화면에 추가</string>
+    <!-- Spotlight's Top Hit: already on Home / inside a folder (%1$s is its name) / just added (%1$s is the app's name). Draft, needs a native read. -->
+    <string name="on_home">홈 화면에 있음</string>
+    <string name="in_folder_name">%1$s 폴더에 있음</string>
+    <string name="added_to_home">홈 화면에 추가됨: %1$s</string>
     <string name="add_to_folder">폴더에 추가</string>
     <string name="create_folder">폴더 생성</string>
     <string name="create_folder_with_1_s">%1$s와(과) 함께 폴더 만들기</string>
@@ -1343,6 +1347,7 @@
         <item quantity="other">두 화면 모두 Folio에서 표시할 수 있는 최대치인 %1$d행이 들어갑니다.</item>
     </plurals>
     <string name="rows_note_different" tools:ignore="PluralsCandidate">커버 화면에는 %1$d행, 내부 화면에는 %2$d행이 들어가므로 두 화면 모두 %3$d행을 표시합니다. 아이콘이나 이름 크기를 줄이면 한 행을 더 표시할 수 있습니다.</string>
+    <string name="rows_note_fixed_more" tools:ignore="PluralsCandidate">두 화면 모두 %1$d행으로 고정됩니다. 공간이 필요한 화면에서는 아이콘이 48dp까지 작아지고, 그래도 부족하면 스크롤됩니다.</string>
     <plurals name="count_installed">
         <item quantity="other">%1$d개 설치됨</item>
     </plurals>
