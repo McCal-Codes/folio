@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -81,7 +82,7 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
-    onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true,
+    onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
@@ -162,10 +163,10 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
-            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, listMax = listMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = listMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
-        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, tall = split,
+        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections, tall = split,
             listMax = if (shape == ShadeShape.CARD) listMax else 620.dp, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
         else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
@@ -176,7 +177,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, tall: Boolean = false, listMax: Dp = 620.dp, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, tall: Boolean = false, listMax: Dp = 620.dp, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -188,7 +189,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     var filterApp by remember { mutableStateOf<String?>(null) }
     val allGroups = remember(items) { items.groupBy { it.packageName }.values.sortedByDescending { g -> g.maxOf { it.postTime } } }
     LaunchedEffect(allGroups) { if (filterApp != null && allGroups.none { it.first().packageName == filterApp }) filterApp = null }
-    val groups = remember(allGroups, filterApp) { if (filterApp == null) allGroups else allGroups.filter { it.first().packageName == filterApp } }
+    var quietOpen by remember { mutableStateOf(false) }
+    val sectioned = remember(items, filterApp, sections) { sectionNotifications(items.filter { filterApp == null || it.packageName == filterApp }, sections) }
 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
@@ -240,25 +242,41 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
             LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = listMax)).edgeFade(listState), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
-                groups.forEach { group ->
+                sectioned.forEach { (bucket, bucketGroups) ->
+                  if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
+                    SectionLabel(stringResource(R.string.nc_section_quiet, bucketGroups.sumOf { it.size }),
+                        settle().clickable(onClickLabel = stringResource(R.string.show_quiet_notifications)) { quietOpen = true })
+                  } else {
+                  // The main pile has no heading: it is what Notification Center always was.
+                  if (bucket != null && bucket != NotificationBucket.MAIN) item("section-$bucket") {
+                    SectionLabel(stringResource(when (bucket) {
+                        NotificationBucket.NOW -> R.string.nc_section_now
+                        NotificationBucket.CONVERSATIONS -> R.string.nc_section_conversations
+                        else -> R.string.nc_section_quiet_open
+                    }), settle()) { if (bucket == NotificationBucket.QUIET) PanelPill(stringResource(R.string.show_less)) { quietOpen = false } }
+                  }
+                bucketGroups.forEach { group ->
                     val pkg = group.first().packageName
                     val expanded = !grouped || expandedGroup == pkg || group.size == 1
                     if (expanded) {
-                        if (group.size > 1) item("$pkg-header") {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (group.size > 1) item("$bucket-$pkg-header") {
+                            Row(settle().fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(group.first().appLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                if (sections && group.any { it.clearable }) { ClearAppPill(group.filter { it.clearable }); Spacer(Modifier.width(8.dp)) }
                                 PanelPill(stringResource(R.string.show_less)) { expandedGroup = null }
                             }
                         }
                         items(group, key = { it.key }) { item -> NotificationCard(item, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
-                            placementSpec = FolioMotion.spring(FolioMotion.Settle))) {
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections) {
                             onClose(); IslandListenerService.openNotification(context, item)
                         } }
                     } else item(group.first().key) {
                         // Same key as the first card when expanded, so the stack slides apart instead of swapping.
                         StackedNotification(group, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
-                            placementSpec = FolioMotion.spring(FolioMotion.Settle))) { expandedGroup = pkg }
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections) { expandedGroup = pkg }
                     }
+                }
+                  }
                 }
             }
             }
@@ -266,19 +284,45 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     }
 }
 
+/** An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump. */
+private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier =
+    Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle), placementSpec = FolioMotion.spring(FolioMotion.Settle))
+
+/** Clears one app's clearable notifications; like Clear all, the first tap asks and a second one within three seconds does it. */
 @Composable
-private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, onExpand: () -> Unit) {
+private fun ClearAppPill(clearable: List<NotificationItem>) {
+    var confirm by remember(clearable.size) { mutableStateOf(false) }
+    LaunchedEffect(confirm) { if (confirm) { kotlinx.coroutines.delay(3_000); confirm = false } }
+    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump.
+    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app") { asking ->
+        if (asking) PanelPill(stringResource(R.string.clear_n_notifications, clearable.size)) { confirm = false; clearable.forEach { IslandListenerService.dismiss(it.key) } }
+        else PanelPill(stringResource(R.string.clear)) { confirm = true }
+    }
+}
+
+/** A section's name above its cards; with [trailing] a control at the end (Quiet's Show Less). A heading for TalkBack. */
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+    Row(modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = Color.White.copy(alpha = .75f), fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f).semantics { heading() })
+        trailing?.invoke()
+    }
+}
+
+@Composable
+private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, onExpand: () -> Unit) {
     Box(modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp)) {
         // Two receding cards behind, like an iPhone notification stack.
         Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .45f)))
         Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .66f)))
-        key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, onOpen = onExpand) }
+        key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, onOpen = onExpand) }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCount: Int = 0, onOpen: () -> Unit) {
+private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCount: Int = 0, showMore: Boolean = false, onOpen: () -> Unit) {
     // iOS: swipe left to reveal Options and Clear; a long swipe clears; tapping the card closes the buttons.
     val scope = rememberCoroutineScope()
     val swipe = remember(item.key) { androidx.compose.animation.core.Animatable(0f) }
@@ -353,6 +397,11 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                         if (item.canMarkRead) MessageActionPill(stringResource(R.string.mark_as_read)) { IslandListenerService.markRead(item.key) }
                     }
                 }
+            }
+            // The same menu as a long press or a swipe, always on screen (Settings › Notification sections).
+            if (showMore) Box(Modifier.size(48.dp).clickable(onClickLabel = stringResource(R.string.notification_options),
+                role = androidx.compose.ui.semantics.Role.Button) { options = true }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MoreHoriz, stringResource(R.string.notification_options), tint = FolioGlass.secondary)
             }
         }
         }
