@@ -383,7 +383,6 @@ internal fun SharedHomeGrid(
     onEmptyDoubleTap: (() -> Unit)? = null,
 ) {
     val rowHeight = geometry.rowHeight
-    val iconSize = geometry.iconSize
     val edit = LocalHomeEdit.current
     val pageStart = homeCellIndex(page, 0)
     val pageRange = pageStart until pageStart + HOME_CELLS
@@ -424,11 +423,19 @@ internal fun SharedHomeGrid(
     // A widget move or resize that pushes apps along is committed as the gesture ends, when no drag or editing is on any more, and Undo
     // puts them back the same way: apps slide for a moment after the slots change. Folding changes the geometry, not the slots, so it
     // still places icons at once.
+    // A new Rows setting does the same: with Settings open beside Home (the unfolded screens), the rows and icons settle to the new size
+    // instead of jumping. Both screens use the same row count, so folding never starts this.
     var layoutSettling by remember { mutableStateOf(false) }
     var seenSlots by remember { mutableStateOf(savedSlots) }
-    LaunchedEffect(savedSlots) {
-        if (savedSlots != seenSlots) { seenSlots = savedSlots; layoutSettling = true; kotlinx.coroutines.delay(700); layoutSettling = false }
+    var seenRows by remember { mutableIntStateOf(geometry.appRows) }
+    LaunchedEffect(savedSlots, geometry.appRows) {
+        if (savedSlots != seenSlots || geometry.appRows != seenRows) {
+            seenSlots = savedSlots; seenRows = geometry.appRows
+            layoutSettling = true; kotlinx.coroutines.delay(700); layoutSettling = false
+        }
     }
+    val iconSize by animateFloatAsState(geometry.iconSize,
+        if (layoutSettling) FolioMotion.spring<Float>(FolioMotion.Snap) else androidx.compose.animation.core.snap<Float>(), label = "home icon size")
     var gridTopDp by remember { mutableFloatStateOf(0f) }
     val fold = hinge?.let { h -> with(density) {
         foldDisplacement(cells, renderedRows, gridTopDp, h.startPx.toDp().value, h.endPx.toDp().value, widgetRows)
