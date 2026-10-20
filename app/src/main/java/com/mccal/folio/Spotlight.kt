@@ -118,7 +118,7 @@ internal object RecentApps {
 /** iOS-style Spotlight over Home: suggestions, apps, contacts, settings, calculator, web and AI. */
 @Composable
 internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: LauncherState, onClose: () -> Unit,
-    onLaunch: (AppEntry) -> Unit) {
+    onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit) {
     OverlayBackHandler(visible, onClose)
     // Composed while visible or still animating out; every layer follows the one shared spring,
     // so scrim, content and the blurred Home behind always move together.
@@ -138,11 +138,11 @@ internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: La
         // Moves with the back swipe's preview, fades only as it closes (OverlayBack).
         alpha = OverlayBack.unpreviewed(p); translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f)
-    }) { SpotlightContent(state, active = visible, onClose, onLaunch) }
+    }) { SpotlightContent(state, active = visible, onClose, onLaunch, onAddToHome) }
 }
 
 @Composable
-private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () -> Unit, onLaunch: (AppEntry) -> Unit) {
+private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () -> Unit, onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
@@ -298,7 +298,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         }
                     } }
                     appHits.firstOrNull()?.let { top -> item("top") {
-                        Section(stringResource(R.string.top_hit)) { TopHit(top) { launch(top) } }
+                        Section(stringResource(R.string.top_hit)) { TopHit(top, homeOffer(state.layout, top.id), onAdd = { onAddToHome(top) }) { launch(top) } }
                     } }
                     if (appHits.size > 1) item("apps") { Section(stringResource(R.string.apps)) { AppGrid(appHits.drop(1).take(8), launch) } }
                     if (shows(SpotlightSection.CONTACTS) && contacts.isNotEmpty()) item("contacts") {
@@ -391,14 +391,36 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
 }
 
 @Composable
-private fun TopHit(app: AppEntry, onClick: () -> Unit) {
+private fun TopHit(app: AppEntry, offer: HomeOffer, onAdd: () -> Unit, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onClick).padding(FolioSpace.SMALL.dp),
         verticalAlignment = Alignment.CenterVertically) {
         AppIcon(app, null, Modifier.size(56.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else stringResource(R.string.profile_app, app.profileLabel), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            val kind = if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else stringResource(R.string.profile_app, app.profileLabel)
+            // Where the app already is, in words, instead of a button that could do nothing.
+            val where = when (offer) {
+                HomeOffer.Add -> null
+                HomeOffer.OnHome -> stringResource(R.string.on_home)
+                is HomeOffer.InFolder -> stringResource(R.string.in_folder_name, offer.title)
+            }
+            // The words fade into each other when the app lands on Home, and the + leaves with a fade and a shrink (a fade alone with
+            // Reduce Motion), so the row settles instead of jumping when Open takes its place.
+            androidx.compose.animation.AnimatedContent(if (where == null) kind else "$kind · $where", label = "top hit where",
+                transitionSpec = { androidx.compose.animation.ContentTransform(
+                    androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)),
+                    androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS))) }) { text ->
+                Text(text, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+        }
+        val reduce = LocalReduceMotion.current
+        androidx.compose.animation.AnimatedVisibility(offer == HomeOffer.Add,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) +
+                (if (reduce) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.expandHorizontally(FolioMotion.spring(FolioMotion.Quick))),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) +
+                (if (reduce) androidx.compose.animation.ExitTransition.None else androidx.compose.animation.shrinkHorizontally(FolioMotion.spring(FolioMotion.Quick)))) {
+            SpotlightRoundAction(Icons.Rounded.Add, stringResource(R.string.add_to_home), onAdd)
         }
         Text(stringResource(R.string.open), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
