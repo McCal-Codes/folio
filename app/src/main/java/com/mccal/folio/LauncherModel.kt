@@ -1034,9 +1034,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val target = mutable.value.layout.placement(to) ?: return false
         return moveWidgetTo(from, target.page * HOME_CELLS + target.row * GRID_COLUMNS + target.column)
     }
-    fun moveWidgetTo(slot: Int, index: Int) = commitLayout(moveWidget(mutable.value.layout, slot, index))
+    fun moveWidgetTo(slot: Int, index: Int) = mutable.value.let { commitLayout(moveWidgetMakingRoom(it.layout, slot, index, it.homeAppRows)) }
     fun placeWidgetFreely(slot: Int, column: Float, row: Float) = commitLayout(placeWidgetFreely(mutable.value.layout, slot, column, row))
-    fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = commitLayout(resizeWidget(mutable.value.layout, slot, spanX, spanY))
+    fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = mutable.value.let { commitLayout(resizeWidgetMakingRoom(it.layout, slot, spanX, spanY, it.homeAppRows)) }
     fun placeWidget(placement: WidgetPlacement) = commitLayout(placeWidget(mutable.value.layout, placement))
     fun placement(slot: Int) = mutable.value.layout.placement(slot)
     // Never reuse a slot number that a (possibly undoable) stack still refers to.
@@ -1415,7 +1415,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandHideFullScreen(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideFullScreen = value) }
     fun setIslandHideLandscape(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscape = value) }
     fun setIslandHideLandscapeInner(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscapeInner = value) }
-    fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value == BASE_APP_ROWS) value else 0) }
+    fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value in BASE_APP_ROWS..MAX_APP_ROWS) value else 0) }
     /** Remembers how many app rows fit this screen class's full-screen Home (see [effectiveHomeRows]). */
     fun recordHomeFit(screen: LayoutScreen, rows: Int) {
         val value = rows.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)

@@ -1076,6 +1076,10 @@
     <string name="delete_shortcut">删除快捷方式</string>
     <string name="remove_from_home">从主屏幕移除</string>
     <string name="add_to_home">添加到主屏幕</string>
+    <!-- Spotlight's Top Hit: already on Home / inside a folder (%1$s is its name) / just added (%1$s is the app's name). Draft, needs a native read. -->
+    <string name="on_home">在主屏幕上</string>
+    <string name="in_folder_name">在“%1$s”文件夹中</string>
+    <string name="added_to_home">已将“%1$s”添加到主屏幕</string>
     <string name="add_to_folder">添加到文件夹</string>
     <string name="create_folder">创建文件夹</string>
     <string name="create_folder_with_1_s">用%1$s创建文件夹</string>
@@ -1298,6 +1302,7 @@
     <string name="rows_note_cover_only">目前已测量：外屏可容纳 %1$d 行。在另一块屏幕上打开主屏幕后，Folio 会使用两者中较小的值。</string>
     <string name="rows_note_inner_only">目前已测量：内屏可容纳 %1$d 行。在另一块屏幕上打开主屏幕后，Folio 会使用两者中较小的值。</string>
     <string name="rows_note_different">外屏可容纳 %1$d 行，内屏可容纳 %2$d 行，所以 Folio 在两块屏幕上都显示 %3$d 行。图标或标签调小一些，就能再多放一行。</string>
+    <string name="rows_note_fixed_more">两块屏幕都固定为 %1$d 行。需要空间的屏幕会把图标缩小，最小到 48 dp，仍放不下时页面会滚动。</string>
     <string name="count_of_total">%1$d / %2$d</string>
     <string name="home_page_1_d_of_2_d">主屏幕第 %1$d 页，共 %2$d 页</string>
     <string name="dp_value">%1$d dp</string>
