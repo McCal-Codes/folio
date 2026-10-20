@@ -662,6 +662,17 @@
     <string name="all_controls_added">已添加所有控制</string>
     <string name="add_a_control">添加控制</string>
     <string name="not_playing">未在播放</string>
+    <string name="smart_clock_ink">智能时钟文字颜色</string>
+    <string name="smart_clock_ink_off_note">已关闭。时钟文字颜色由 Android 壁纸颜色决定。</string>
+    <string name="smart_clock_ink_on_note">已开启。时钟会查看主屏幕的画面来选择浅色或深色文字。可在辅助功能设置中关闭。</string>
+    <string name="smart_ink_lead">即使使用 Android 自带壁纸，Folio 也能根据时钟背后的真实画面为大时钟选择浅色或深色文字。</string>
+    <string name="smart_ink_fact_looks">Folio 会拍摄主屏幕的画面，只用于为时钟选择浅色或深色文字。</string>
+    <string name="smart_ink_fact_kept">它只测量时钟下方的部分，并立即丢弃画面，只保留几个亮度数值，不会保存或发送。</string>
+    <string name="smart_ink_fact_home">仅在 Folio 主屏幕位于前台时进行，绝不会在其他应用上或锁屏时进行。</string>
+    <string name="smart_ink_fact_separate">这是单独的辅助功能服务，因此 Folio 手势服务仍然无法读取你的屏幕。可随时在辅助功能设置中关闭。</string>
+    <string name="open_accessibility_settings">打开辅助功能设置</string>
+    <string name="smart_ink_service_label">Folio 智能时钟颜色</string>
+    <string name="smart_ink_service_description">允许 Folio 拍摄主屏幕画面，为大时钟选择浅色或深色文字。它只测量时钟下方的部分并立即丢弃画面，不做其他任何事。</string>
     <string name="contacts">联系人</string>
     <string name="search_the_web_ask_ai">搜索网页并询问 AI</string>
     <string name="top_hit">最佳搜索结果</string>
@@ -1250,6 +1261,7 @@
     <string name="settings_keywords_tint_glass_with_wallpaper_color">玻璃 着色 磨砂 模糊 glass tint frost blur</string>
     <string name="settings_keywords_dark_appearance_dims_wallpaper">调暗 深色 夜间 dim dark mode night</string>
     <string name="settings_keywords_darken_behind_text">加深 暗影 渐变 可读性 对比 浅色 墙纸 scrim gradient shade legibility contrast light wallpaper</string>
+    <string name="settings_keywords_smart_clock_ink">时钟 文字颜色 壁纸 截图 辅助功能 浅色 深色 对比 可读性 clock ink screenshot accessibility</string>
     <string name="settings_appearance_light_dark_sunset">外观（浅色、深色、日落）</string>
     <string name="settings_keywords_appearance_light_dark_sunset">主题 深色 浅色 日出 日落 theme dark light sunrise sunset</string>
     <string name="settings_grid_icon_size_dock">网格、图标大小与程序坞</string>

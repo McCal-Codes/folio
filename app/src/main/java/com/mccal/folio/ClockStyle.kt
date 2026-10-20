@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -362,7 +363,23 @@ internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? = when (t
 internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: Float = 0f): ClockInkSample? {
     val context = LocalContext.current
     val tone = LocalWallpaperTone.current
-    if (tone.fromAndroid) return remember(tone, enabled) { if (enabled) clockSampleFromTone(tone) else null }
+    if (tone.fromAndroid) {
+        val estimate = remember(tone, enabled) { if (enabled) clockSampleFromTone(tone) else null }
+        // Smart clock ink: with its service on, a short-lived picture of Home replaces the estimate built from Android's
+        // wallpaper colors (SmartClockInk). Off, or while Folio is not in front, the estimate stands, as it always did.
+        val smart by SmartInkService.connected.collectAsStateWithLifecycle()
+        val inFront by FolioForeground.visible.collectAsStateWithLifecycle()
+        val tick by rememberMinuteTick()
+        val displayId = context.display?.displayId ?: 0
+        var measured by remember { mutableStateOf<ClockInkSample?>(null) }
+        LaunchedEffect(enabled && smart) { if (!(enabled && smart)) measured = null }
+        LaunchedEffect(box, tone, tick, inFront, enabled, smart) {
+            if (!enabled || !smart || !inFront || box.isEmpty) return@LaunchedEffect
+            val fresh = SmartClockInk.sample(box, displayId) ?: return@LaunchedEffect
+            measured = keepOrSwap(measured, fresh)
+        }
+        return if (enabled && smart) measured ?: estimate else estimate
+    }
     val revision = LauncherBackgroundCache.revision.intValue
     var sample by remember { mutableStateOf<ClockInkSample?>(null) }
     LaunchedEffect(box, revision, enabled, windowAspect) {

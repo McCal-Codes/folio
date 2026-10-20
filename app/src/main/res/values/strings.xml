@@ -656,6 +656,17 @@
     <string name="all_controls_added">All controls added</string>
     <string name="add_a_control">Add a Control</string>
     <string name="not_playing">Not Playing</string>
+    <string name="smart_clock_ink">Smart clock ink</string>
+    <string name="smart_clock_ink_off_note">Off. Android\'s wallpaper colors choose the clock\'s text color.</string>
+    <string name="smart_clock_ink_on_note">On. The clock reads a picture of Home to choose light or dark text. Turn it off in Accessibility settings.</string>
+    <string name="smart_ink_lead">Folio can choose light or dark text for the Big Clock by what is really behind it, even over Android\'s own wallpaper.</string>
+    <string name="smart_ink_fact_looks">Folio takes a picture of your Home screen, only to choose light or dark text for the clock.</string>
+    <string name="smart_ink_fact_kept">It measures the part under the clock and throws the picture away straight away. Only a few brightness numbers are kept. Nothing is saved or sent.</string>
+    <string name="smart_ink_fact_home">It only happens while Folio\'s Home is in front, never over another app and never on the lock screen.</string>
+    <string name="smart_ink_fact_separate">This is its own accessibility service, so Folio\'s gestures service still cannot read your screen. Turn it off any time in Accessibility settings.</string>
+    <string name="open_accessibility_settings">Open Accessibility Settings</string>
+    <string name="smart_ink_service_label">Folio Smart clock ink</string>
+    <string name="smart_ink_service_description">Lets Folio take a picture of your Home screen to choose light or dark text for the Big Clock. It measures the part under the clock and throws the picture away straight away. It does nothing else.</string>
     <string name="contacts">Contacts</string>
     <string name="search_the_web_ask_ai">Search the Web &amp; Ask AI</string>
     <string name="top_hit">Top Hit</string>
@@ -1307,6 +1318,7 @@
     <string name="settings_keywords_tint_glass_with_wallpaper_color">glass tint frost blur</string>
     <string name="settings_keywords_dark_appearance_dims_wallpaper">dim dark mode night</string>
     <string name="settings_keywords_darken_behind_text">scrim gradient shade legibility readable contrast pale light wallpaper</string>
+    <string name="settings_keywords_smart_clock_ink">clock ink text color wallpaper screenshot accessibility light dark contrast readable</string>
     <string name="settings_appearance_light_dark_sunset">Appearance (light, dark, sunset)</string>
     <string name="settings_keywords_appearance_light_dark_sunset">theme dark light sunrise</string>
     <string name="settings_grid_icon_size_dock">Grid, icon size &amp; dock</string>
