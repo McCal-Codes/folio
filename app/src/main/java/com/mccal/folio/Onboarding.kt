@@ -74,7 +74,11 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Home, a quiet step only when Shizuku or a root manager is already on the phone, and the last page.
     val androidStart = state?.startingPoint() == StartingPoint.ANDROID
     val optionalAccess = remember { OptionalAccess.found { pkg -> runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess } }
-    val all = remember(androidStart, optionalAccess) {
+    // First setup's Home apps page: this phone's own apps, ticked by what is on Home already or by the starter apps (StarterApps.kt).
+    val homeApps = remember(state?.apps, state?.hiddenApps) { state?.let(::onboardingApps) ?: emptyList() }
+    var pickedIds by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    val picked = remember(pickedIds, homeApps) { (pickedIds ?: state?.let { initialHomePicks(it, homeApps).toList() } ?: emptyList()).toSet() }
+    val all = remember(androidStart, optionalAccess, homeApps.isNotEmpty()) {
         listOf(
             OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, context.getString(R.string.welcome_to_folio),
                 context.getString(R.string.onboarding_welcome_detail),
@@ -82,6 +86,8 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             // Where you are coming from: how Folio starts. Skipping keeps today's defaults, which are the iPhone starting point.
             OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, context.getString(R.string.where_are_you_coming_from),
                 context.getString(R.string.starting_point_detail), optional = false),
+            OnboardingPage("apps", Icons.Rounded.Apps, FolioColors.Value.Blue, context.getString(R.string.home_apps_title),
+                context.getString(R.string.home_apps_detail)),
             OnboardingPage("nav", Icons.Rounded.Navigation, FolioColors.Value.Blue, context.getString(R.string.onboarding_nav_title), "", optional = false),
             OnboardingPage("home", Icons.Rounded.Home, FolioColors.Value.Blue, context.getString(R.string.make_folio_your_home),
                 context.getString(R.string.onboarding_home_detail),
@@ -92,6 +98,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
         ).filter { page ->
             when (page.key) {
                 "nav" -> androidStart
+                "apps" -> homeApps.isNotEmpty()
                 "adv" -> optionalAccess.isNotEmpty()
                 else -> page.key in setOf("welcome", "feel", "done") || !page.done()
             }
@@ -112,6 +119,12 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             NavChoice.BIG -> { model?.setButtonBar(true); if (!SystemShadeAccessibilityService.isConnected()) onShadeSetup() }
             NavChoice.SYSTEM -> open(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
         }
+    }
+    // Use Folio now: the starting point stays at its default, Home gets the starter apps if it is empty, and setup goes straight to
+    // the one step that cannot wait. Everything skipped waits in Finish setting up.
+    fun useFolioNow() {
+        if (state != null && model != null && homeApps.isNotEmpty() && state.homeSlots.none { it != null }) applyHomePicks(model, state, homeApps, initialHomePicks(state, homeApps))
+        go(all.indexOfFirst { it.key == "home" }.takeIf { it >= 0 } ?: all.lastIndex)
     }
     val page = all[index]
     val reduceMotion = LocalReduceMotion.current
@@ -187,6 +200,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     }
                     if (p.key == "feel" && state != null && model != null) StartingPointPage(state, model, tick, onShadeSetup,
                         replay = SetupReplay.active, onKeep = { finish() })
+                    if (p.key == "apps") HomeAppsPage(homeApps, picked) { id -> pickedIds = (if (id in picked) picked - id else picked + id).toList() }
                     if (p.key == "nav") NavigationPage(navChoice, { navChoice = it }, tick)
                     if (p.key == "adv") AdvancedStep(optionalAccess, onOpenBridge = { finish(); onOpenBridge() })
                     if (p.key == "done") FinishSettingUp(tick, systemWallpaper, onWallpaper, onShadeSetup, ::open)
@@ -211,6 +225,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     when {
                         page.key == "done" -> finish()
                         page.key == "nav" -> { applyNavigation(); go(index + 1) }
+                        page.key == "apps" -> { if (state != null && model != null) applyHomePicks(model, state, homeApps, picked); go(index + 1) }
                         page.onAction != null && !done -> page.onAction.invoke()
                         else -> go(index + 1)
                     }
@@ -220,6 +235,8 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
                 if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
                     modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index + 1) }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-not-now"))
+                else if (page.key == "welcome") Text(stringResource(R.string.use_folio_now), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { useFolioNow() }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-use-now"))
             }
             Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {
