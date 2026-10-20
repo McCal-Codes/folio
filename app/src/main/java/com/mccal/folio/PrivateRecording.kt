@@ -107,7 +107,8 @@ internal object PrivateRecording {
     val standIns = MutableStateFlow<Map<String, AppEntry>>(emptyMap())
 
     /** The word for a notification's text, in the person's language. Set from a context when Folio starts. */
-    @Volatile var notificationWord: String = "Notification"
+    // Only a fallback until load() replaces it with the translated string at startup.
+    @Volatile var notificationWord: String = "Notification" // english-only
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(SettingKeys.PREFS, Context.MODE_PRIVATE)
 
