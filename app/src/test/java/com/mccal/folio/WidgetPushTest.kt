@@ -66,6 +66,19 @@ class WidgetPushTest {
         assertTrue(push.layout.slots.indices.all { push.layout.slotAt(it) == null || homeCellShown(it, BASE_APP_ROWS) })
     }
 
+    @Test fun `an app already in a hidden row joins the line, and nothing is pushed into a hidden row`() {
+        // A full page of shown cells, then one app left below them (the page used to show more rows).
+        val shown = 6 * GRID_COLUMNS
+        val hidden = homeCellIndex(0, shown + 1)
+        val before = layout(apps(0, 0 until shown) + (hidden to "hidden"))
+        val push = placeWidgetPushingApps(before, widget, BASE_APP_ROWS)!!
+        assertEquals(before.order(), push.layout.order())
+        assertEquals(before.order().size, push.layout.order().size)
+        assertTrue(push.layout.slots.indices.all { push.layout.slotAt(it) == null || homeCellShown(it, BASE_APP_ROWS) })
+        assertEquals(2, push.layout.contentPageCount)
+        assertTrue(!push.layout.appUnderAWidget())
+    }
+
     @Test fun `apps skip rows a page doesn't show and cells other widgets hold`() {
         val other = WidgetPlacement(1, DATE_WIDGET, 0, 0, 3, 2, 1)
         val before = layout(apps(0, 0..7), other)
