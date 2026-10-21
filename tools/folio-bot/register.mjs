@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { COMMANDS } from './commands.mjs'
+import { TRACK_COMMAND } from './track.mjs'
 
 const appId = process.env.FOLIO_APP_ID
 const guildId = process.env.FOLIO_GUILD_ID
@@ -21,7 +22,8 @@ const where = guildId ? `/applications/${appId}/guilds/${guildId}/commands` : `/
 const response = await fetch(`https://discord.com/api/v10${where}`, {
   method: 'PUT',
   headers: { authorization: `Bot ${token}`, 'content-type': 'application/json' },
-  body: JSON.stringify(COMMANDS),
+  // /track is for McCal inside one server, so it is registered only when a guild id is given.
+  body: JSON.stringify(guildId ? [...COMMANDS, TRACK_COMMAND] : COMMANDS),
 })
 if (!response.ok) throw new Error(`Discord said ${response.status}: ${(await response.text()).slice(0, 300)}`)
 const registered = await response.json()

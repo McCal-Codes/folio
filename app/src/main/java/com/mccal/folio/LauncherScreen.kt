@@ -575,7 +575,9 @@ fun LauncherScreen(
     SideEffect { drag.mergePreview = if (folderOrRoom && drag.active) armedMerge?.let { folderMergeTarget(drag.source?.appId, it) } else null }
     /** The app a drop on [index] makes a folder with: with FolderOrRoom only once its middle was held long enough. */
     fun mergesAt(sourceAppId: String?, index: Int): String? = folderMergeTarget(sourceAppId, index)?.takeIf { !folderOrRoom || armedMerge == index }
-    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows, folderOrRoom, armedMerge, roomTarget) {
+    val resizeSlot = resize.slot.takeIf { resize.active }
+    val previewLayout = remember(state.layout, drag.source, insertionTarget, drag.moved, homeAppRows, folderOrRoom, armedMerge, roomTarget,
+        resizeSlot, resize.width, resize.height) {
         val id = drag.source?.appId
         when {
             folderOrRoom && id != null && drag.moved -> when {
@@ -591,7 +593,9 @@ fun LauncherScreen(
             id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
-                moveWidget(state.layout, (drag.source!!.target as DropTarget.Widget).index, insertionTarget.index)
+                moveWidgetMakingRoom(state.layout, (drag.source!!.target as DropTarget.Widget).index, insertionTarget.index, homeAppRows)
+            // Resizing a widget: the apps in the way slide along as the handle moves, like they do while one is dragged.
+            resizeSlot != null -> resizeWidgetMakingRoom(state.layout, resizeSlot, resize.width, resize.height, homeAppRows)
             else -> state.layout
         }
     }
@@ -808,7 +812,7 @@ fun LauncherScreen(
                 railControls = (if (pager.currentPage == -1) 1 else 0) + (if (!state.searchPill || pager.currentPage !in 0 until homePages) 1 else 0),
                 homeRailControls = if (state.searchPill) 0 else 1, classScale = classScale, appRows = homeAppRows,
                 widgetsFillRows = fillRows,
-                foldAtCenter = hinge?.vertical == true, fillSpace = state.homeRows == 0)
+                foldAtCenter = hinge?.vertical == true, fillSpace = state.homeRows == 0, shrinkIconsForRows = state.homeRows > BASE_APP_ROWS)
             // Half folded like a laptop: the status (information) stays above the hinge and the dock (controls) goes
             // below it, like Folio's other fold-aware panels; the dock scrolls if the lower half is short.
             val tableHinge = hinge?.takeIf { it.active && !it.vertical }
@@ -1362,7 +1366,7 @@ fun LauncherScreen(
                                 onShowFirstInStack = { model.showFirstInStack(placement.slot, it) },
                                 canConfigure = widgets.canReconfigure(placement.id),
                                 onConfigure = { widgets.reconfigure(placement.id); sheet = "" },
-                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidget(state.layout, picker.slot, x, y) != state.layout },
+                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidgetMakingRoom(state.layout, picker.slot, x, y, homeAppRows) != state.layout },
                                 onResize = { x, y -> model.resizeWidget(picker.slot, x, y) },
                                 onStartResize = { x, y ->
                                     resize.start(picker.slot, x, y, constraints)
@@ -1790,7 +1794,7 @@ fun LauncherScreen(
                 val maxH = minOf(pageRows(placement.page) - placement.row, resize.constraints?.maximum?.height ?: GRID_ROWS)
                 val feasible = placement.page >= -1 && placement.row in 0 until GRID_ROWS &&
                     !(placement.id >= 0 && resize.constraints == null) && minW <= maxW && minH <= maxH
-                val candidate = resizeWidget(state.layout, slot, resize.width, resize.height)
+                val candidate = resizeWidgetMakingRoom(state.layout, slot, resize.width, resize.height, homeAppRows)
                 val valid = feasible && ((resize.width == placement.spanX && resize.height == placement.spanY) || candidate != state.layout)
                 val widthPx = (bounds.width + (resize.width - placement.spanX) * resize.pitchX).coerceAtLeast(resize.pitchX)
                 val density = LocalDensity.current
