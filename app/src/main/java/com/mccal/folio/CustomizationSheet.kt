@@ -1478,6 +1478,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.apps to CustomizationPage.HOME,
     R.string.columns to CustomizationPage.HOME,
     R.string.dock to CustomizationPage.HOME,
+    R.string.folder_background to CustomizationPage.HOME,
     R.string.labels to CustomizationPage.HOME,
     R.string.status to CustomizationPage.HOME,
     R.string.side_rail to CustomizationPage.HOME,
@@ -1563,6 +1564,12 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
 
+/**
+ * A search result scrolls to its row when it is a row: an entry with no keywords, or one with keywords whose title is also
+ * a row (Folder background is found by "glass" or "blur" and is still one control further down its page).
+ */
+internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null || SettingsRows.any { it.first == title }
+
 internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex + SettingsRows.map { (title, page) -> Triple(title, null, page) }
 
 private class Found(val title: String, val keywords: String, val page: CustomizationPage, val row: Boolean)
@@ -1593,7 +1600,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
-            .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
+            .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
     val results = index.filter { settingsMatches(query, it.title, it.keywords) }
