@@ -349,15 +349,16 @@ internal fun FocusLockNotice(trigger: Int, mode: FocusMode?, modifier: androidx.
     var visible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(trigger) { if (trigger > 0 && mode != null) { visible = true; kotlinx.coroutines.delay(2_600); visible = false } }
     androidx.compose.animation.AnimatedVisibility(visible && mode != null, modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.folioSafeTop).padding(top = FolioSpace.MEDIUM.dp),
-        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
-        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }) {
+        // Reduce Motion: the pill fades where it lands instead of sliding down from the top edge (A11Y-14).
+        enter = if (LocalReduceMotion.current) androidx.compose.animation.fadeIn() else androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+        exit = if (LocalReduceMotion.current) androidx.compose.animation.fadeOut() else androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }) {
         val m = mode ?: return@AnimatedVisibility
         androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.CircleShape)
             .background(FolioColors.SecondaryBackground.copy(alpha = .95f))
             .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp).testTag("focus-lock-notice"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             androidx.compose.material3.Icon(m.icon(), null, tint = androidx.compose.ui.graphics.Color(m.color), modifier = androidx.compose.ui.Modifier.size(18.dp))
             androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.width(8.dp))
-            androidx.compose.material3.Text(stringResource(R.string.turn_off_1_to_edit_home_screen, m.name), color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp,
+            androidx.compose.material3.Text(stringResource(R.string.turn_off_1_to_edit_home_screen, m.name), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.COMPACT.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
     }
