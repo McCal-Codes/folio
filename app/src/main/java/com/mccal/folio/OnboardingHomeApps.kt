@@ -38,11 +38,18 @@ internal fun idsWithSharedLabel(apps: List<Pair<String, String>>): Set<String> {
     return byName.values.filter { it.size > 1 }.flatMap { group -> group.map { it.first } }.toSet()
 }
 
-/** What is ticked when the page first opens: what is already on Home, or the starter apps when Home is empty. */
-internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>): Set<String> {
-    val onHome = state.homeSlots.filterNotNull().filter { id -> apps.any { it.id == id } }
-    return (if (onHome.isNotEmpty()) onHome else starterAppIds(apps.map { it.id to it.component.packageName })).toSet()
-}
+/**
+ * What is ticked when the page first opens. On the first run Home has only been filled by Folio's own first-refresh
+ * suggestions (up to 16 apps), which nobody chose, so the starter set is offered instead. On a replay from Settings Home is
+ * the person's own, so what is on it is what is ticked, or the starter set when it is empty.
+ */
+internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>, firstRun: Boolean = false): Set<String> =
+    homePicksFor(firstRun, state.homeSlots.filterNotNull().filter { id -> apps.any { it.id == id } }) {
+        starterAppIds(apps.map { it.id to it.component.packageName })
+    }.toSet()
+
+internal fun homePicksFor(firstRun: Boolean, onHome: List<String>, starters: () -> List<String>): List<String> =
+    if (!firstRun && onHome.isNotEmpty()) onHome else starters()
 
 /** Puts exactly the ticked apps on Home. Apps that were already on Home and are unticked come off; nothing else is touched. */
 internal fun applyHomePicks(model: LauncherModel, state: LauncherState, apps: List<AppEntry>, picked: Set<String>) {

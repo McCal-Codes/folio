@@ -77,7 +77,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // First setup's Home apps page: this phone's own apps, ticked by what is on Home already or by the starter apps (StarterApps.kt).
     val homeApps = remember(state?.apps, state?.hiddenApps) { state?.let(::onboardingApps) ?: emptyList() }
     var pickedIds by rememberSaveable { mutableStateOf<List<String>?>(null) }
-    val picked = remember(pickedIds, homeApps) { (pickedIds ?: state?.let { initialHomePicks(it, homeApps).toList() } ?: emptyList()).toSet() }
+    val picked = remember(pickedIds, homeApps) { (pickedIds ?: state?.let { initialHomePicks(it, homeApps, firstRun = !SetupReplay.active).toList() } ?: emptyList()).toSet() }
     val all = remember(androidStart, optionalAccess, homeApps.isNotEmpty()) {
         listOf(
             OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, context.getString(R.string.welcome_to_folio),
@@ -123,7 +123,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Use Folio now: the starting point stays at its default, Home gets the starter apps if it is empty, and setup goes straight to
     // the one step that cannot wait. Everything skipped waits in Finish setting up.
     fun useFolioNow() {
-        if (state != null && model != null && homeApps.isNotEmpty() && state.homeSlots.none { it != null }) applyHomePicks(model, state, homeApps, initialHomePicks(state, homeApps))
+        if (state != null && model != null && homeApps.isNotEmpty() && (!SetupReplay.active || state.homeSlots.none { it != null })) applyHomePicks(model, state, homeApps, initialHomePicks(state, homeApps, firstRun = !SetupReplay.active))
         go(all.indexOfFirst { it.key == "home" }.takeIf { it >= 0 } ?: all.lastIndex)
     }
     val page = all[index]
