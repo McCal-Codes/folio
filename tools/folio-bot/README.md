@@ -27,6 +27,24 @@ There is no `/redeem`. It turned a supporter code into a Discord role and was re
 Discord bot manages the supporter roles, and two systems handing out the same roles could take a role from someone who
 still has it. A code is redeemed in Folio, under Settings › Supporter.
 
+## Keeping the forums in step with GitHub
+
+A forum post whose title starts with an issue number, like `[#433] Dock handle`, is tracked: every two minutes the bot
+compares its tags with that issue's labels and state (`issuesync.mjs`). `/track 433` (McCal only, inside a post) adds the
+number; `/track` alone opens the issue from the post first (needs `GITHUB_TOKEN`, an Issues read/write token for the one repo).
+
+| Issue | Post |
+|---|---|
+| `needs-info` | Needs info tag, one note pinging the poster |
+| `planned` / `fixed-in-main` | Planned / Fixed in main tag (Ideas: In main), no note |
+| closed with a release milestone | Fixed tag, one note naming the release or beta, then archived and locked |
+| closed not planned / duplicate | that tag, one note, archived and locked |
+| reopened | status tag removed, unarchived and unlocked |
+
+`ISSUE_SYNC` in `wrangler.toml`: `off`, `dry` (log only), `tags` (plain tag changes on open issues) or `on` (everything).
+The release milestone comes from `.github/workflows/ship-issues.yml`, which closes every `fixed-in-main` issue when a
+release publishes (switched on with the repository variable `STAMP_ISSUES=on`). Plan: `docs/plan-discord-bot-issue-sync.md`.
+
 ## How it runs
 
 A Cloudflare Worker on Discord's HTTP interactions, not a process on a gateway socket: Discord posts each command

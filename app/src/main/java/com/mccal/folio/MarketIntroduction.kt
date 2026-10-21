@@ -61,7 +61,7 @@ internal fun MarketIntroduction(style: FeaturedStyle, onStyle: (FeaturedStyle) -
     Box(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
         Text(
             stringResource(R.string.skip),
-            color = LocalAccent.current.ink, fontSize = 16.sp,
+            color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp,
             modifier = Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                 .clickable(onClickLabel = stringResource(R.string.skip_the_introduction), onClick = onDone)
                 .heightIn(min = FolioTouch.MIN.dp).padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.MEDIUM.dp),
@@ -125,7 +125,7 @@ private fun Title(text: String) {
 
 @Composable
 private fun Body(text: String) {
-    Text(text, color = Color.White.copy(alpha = .75f), fontSize = 16.sp)
+    Text(text, color = Color.White.copy(alpha = .75f), fontSize = FolioType.CALLOUT.sp)
 }
 
 @Composable
@@ -138,6 +138,6 @@ private fun StyleCard(option: FeaturedStyle, chosen: Boolean, onChoose: () -> Un
             .padding(FolioSpace.COMFY.dp),
     ) {
         Text(name, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.Medium)
-        Text(stringResource(option.description), color = Color.White.copy(alpha = .7f), fontSize = 14.sp)
+        Text(stringResource(option.description), color = Color.White.copy(alpha = .7f), fontSize = FolioType.COMPACT.sp)
     }
 }
