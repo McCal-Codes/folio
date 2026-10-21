@@ -19,8 +19,29 @@ internal object SmartClockInk {
         if (now - lastAtMs < MIN_INTERVAL_MS) return null
         lastAtMs = now
         val shot = SmartInkService.capture(displayId) ?: return null
-        return try { runCatching { sampleClockRegion(shot, box) }.getOrNull() } finally { shot.recycle() }
+        return try {
+            runCatching {
+                // The picture has the clock on it, so the clock's own digits are never measured: the wallpaper just above and just
+                // below it is, and the stricter of the two decides (docs/audits/2026-10-08-smart-ink-capture-research.md, section 3).
+                val (above, below) = wallpaperBesideClock(box)
+                listOfNotNull(above, below).map { sampleClockRegion(shot, it) }.reduceOrNull(::strictest)
+            }.getOrNull()
+        } finally { shot.recycle() }
     }
+}
+
+/** Strips of the same width right above and right below [box] (fractions of the window), half its height each; null when there is no room. */
+internal fun wallpaperBesideClock(box: Rect): Pair<Rect?, Rect?> {
+    val h = box.bottom - box.top
+    val above = Rect(box.left, (box.top - h * .5f).coerceAtLeast(0f), box.right, box.top).takeIf { it.bottom - it.top > .01f }
+    val below = Rect(box.left, box.bottom, box.right, (box.bottom + h * .5f).coerceAtMost(1f)).takeIf { it.bottom - it.top > .01f }
+    return above to below
+}
+
+/** The harder case of two samples: the brightest bright end, the darkest dark end, the average of the rest. */
+internal fun strictest(first: ClockInkSample, second: ClockInkSample): ClockInkSample {
+    fun RegionStats.with(o: RegionStats) = RegionStats((mean + o.mean) / 2f, minOf(p15, o.p15), maxOf(p85, o.p85), (this.r + o.r) / 2f, (this.g + o.g) / 2f, (this.b + o.b) / 2f)
+    return first.copy(under = first.under.with(second.under))
 }
 
 /**

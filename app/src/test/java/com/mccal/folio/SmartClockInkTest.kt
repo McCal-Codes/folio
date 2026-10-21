@@ -43,3 +43,29 @@ class SmartClockInkTest {
         assertSame(dark, keepOrSwap(old, dark))
     }
 }
+
+class WallpaperBesideClockTest {
+    private fun stats(mean: Float, p15: Float, p85: Float) = RegionStats(mean, p15, p85, 100f, 100f, 100f)
+    private fun sample(mean: Float, p15: Float, p85: Float) = ClockInkSample(stats(mean, p15, p85), stats(mean, p15, p85), emptyList(), estimated = false)
+
+    @Test fun stripsSitAboveAndBelowTheClockNotOnIt() {
+        val box = androidx.compose.ui.geometry.Rect(.1f, .2f, .9f, .4f)
+        val (above, below) = wallpaperBesideClock(box)
+        org.junit.Assert.assertEquals(.1f, above!!.top, 1e-4f); org.junit.Assert.assertEquals(.2f, above.bottom, 1e-4f)
+        org.junit.Assert.assertEquals(.4f, below!!.top, 1e-4f); org.junit.Assert.assertEquals(.5f, below.bottom, 1e-4f)
+        org.junit.Assert.assertEquals(box.left, above.left, 1e-6f)
+    }
+
+    @Test fun aClockAtTheTopEdgeHasNoStripAboveIt() {
+        val (above, below) = wallpaperBesideClock(androidx.compose.ui.geometry.Rect(.1f, 0f, .9f, .2f))
+        org.junit.Assert.assertNull(above)
+        org.junit.Assert.assertNotNull(below)
+    }
+
+    @Test fun theStricterOfTwoStripsKeepsTheWorstEnds() {
+        val merged = strictest(sample(.3f, .1f, .5f), sample(.5f, .2f, .8f))
+        org.junit.Assert.assertEquals(.1f, merged.under.p15, 1e-6f)
+        org.junit.Assert.assertEquals(.8f, merged.under.p85, 1e-6f)
+        org.junit.Assert.assertEquals(.4f, merged.under.mean, 1e-6f)
+    }
+}
