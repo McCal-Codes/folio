@@ -73,6 +73,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Button Bar labels are translated:** the Recent apps, Home and Back buttons of the on-screen Button Bar were always read out in English. They now follow your language, for TalkBack and for the button's long-press label.
 - **Icon actions that open a missing app say so:** an Open App or Open Shortcut action whose app or shortcut is gone now shows "App is unavailable" instead of doing nothing.
 - **Unavailable apps in a folder explain themselves:** tapping one now shows the same "is unavailable" notice as on Home, instead of doing nothing.
 - **Spotlight launches count once:** opening an app from Spotlight added it to Recents twice, which tilted the order of Suggestions and Recents. It counts once now.

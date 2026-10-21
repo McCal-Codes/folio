@@ -637,9 +637,9 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
         if (faded) .35f else 1f, androidx.compose.animation.core.tween(350), label = "button bar")
     val ink = if (s.light) FolioColors.SecondaryBackground else androidx.compose.ui.graphics.Color.White
     val actions = listOf(
-        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "Recent apps", Icons.Rounded.Menu),
-        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "Home", Icons.Rounded.Circle),
-        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "Back", Icons.Rounded.ChevronLeft),
+        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, stringResource(R.string.action_a11y_recents), Icons.Rounded.Menu),
+        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, stringResource(R.string.action_a11y_home), Icons.Rounded.Circle),
+        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, stringResource(R.string.action_a11y_back), Icons.Rounded.ChevronLeft),
     ).let { if (s.androidOrder) it.reversed() else it }
     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
         .padding(bottom = FolioSpace.COMPACT.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
