@@ -194,7 +194,7 @@ internal fun AppContextMenu(
                     // With the pass the menu fades as it grows and shrinks, so closing reads as going back into the icon.
                     if (pass) alpha = (appear.value * 1.4f).coerceIn(0f, 1f)
                 }
-                .clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2A2E).copy(alpha = .96f))
+                .clip(RoundedCornerShape(18.dp)).background(FolioColors.PopoverSurface.copy(alpha = .96f))
                 .border(FolioGlass.edge, RoundedCornerShape(18.dp))
                 .clickable(remember { MutableInteractionSource() }, null) {}
                 .fadingVerticalScroll()) {

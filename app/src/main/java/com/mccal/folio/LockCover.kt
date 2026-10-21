@@ -117,7 +117,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(24.dp))
             notifications.take(room).forEach { item ->
-                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(Color(0xFF2A2A2E).copy(alpha = .8f))
+                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(FolioColors.PopoverSurface.copy(alpha = .8f))
                     .clickable { onDismiss(); IslandListenerService.openNotification(context, item) }.padding(FolioSpace.MEDIUM.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(34.dp).clip(RoundedCornerShape(8.dp))) }
