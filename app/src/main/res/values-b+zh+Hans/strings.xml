@@ -2052,4 +2052,23 @@
     <string name="discover_no_fit">Discover 无法放在程序坞旁边。请返回主屏幕后重试。</string>
     <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
     <string name="profile_app">%1$s应用</string>
+    <string name="island_status_ready_title">正在其他应用上方显示</string>
+    <string name="island_status_ready_body">音乐、通话和计时器会显示在灵动岛中。消息弹窗遵循“勿扰模式”。</string>
+    <string name="island_status_dnd_title">消息弹窗已静音</string>
+    <string name="island_status_dnd_body">“勿扰模式”已开启。音乐、通话和计时器仍会显示在其他应用上方。</string>
+    <string name="island_status_dnd_action">打开“勿扰模式”</string>
+    <string name="island_status_popup_title">Android 正在自行显示这些弹窗</string>
+    <string name="island_status_popup_body">“不与 Android 弹窗重复”已开启，因此灵动岛不会干预重要通知，例如大多数消息。</string>
+    <string name="island_status_popup_note">“不与 Android 弹窗重复”已开启，因此重要通知由 Android 自己的弹窗处理。</string>
+    <string name="island_status_popup_action">也在灵动岛中显示</string>
+    <string name="island_status_service_title">未在其他应用上方显示</string>
+    <string name="island_status_service_body">Folio 的手势服务已关闭。Android 只允许应用通过它在其他应用上方绘制。</string>
+    <string name="island_status_service_action">开启手势服务</string>
+    <string name="island_status_access_title">暂无可显示的内容</string>
+    <string name="island_status_access_body">通知访问权限已关闭，Folio 无法看到音乐、通话或消息。</string>
+    <string name="island_status_access_action">打开通知访问权限</string>
+    <string name="island_status_off_title">灵动岛在其他应用中已关闭</string>
+    <string name="island_status_off_body">在“所有应用中”下开启灵动岛，即可在其他应用上方看到它。</string>
+    <string name="island_status_safe_title">已被安全模式暂停</string>
+    <string name="island_status_safe_body">安全模式下，灵动岛和程序坞只在主屏幕显示。关闭安全模式后即可在其他应用上方使用。</string>
 </resources>

@@ -2109,4 +2109,23 @@
     <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
     <string name="discover_choose_dock_app">Choose dock app on home</string>
     <string name="profile_app">%1$s app</string>
+    <string name="island_status_ready_title">Showing over other apps</string>
+    <string name="island_status_ready_body">Music, calls and timers appear in the island. Message pop-ups follow Do Not Disturb.</string>
+    <string name="island_status_dnd_title">Message pop-ups are quiet</string>
+    <string name="island_status_dnd_body">Do Not Disturb is on. Music, calls and timers still show over other apps.</string>
+    <string name="island_status_dnd_action">Open Do Not Disturb</string>
+    <string name="island_status_popup_title">Android is showing these pop-ups itself</string>
+    <string name="island_status_popup_body">Don\'t double up with Android pop-ups is on, so the island stays out of the way of important notifications such as most messages.</string>
+    <string name="island_status_popup_note">Don\'t double up with Android pop-ups is on, so important notifications stay with Android\'s own pop-up.</string>
+    <string name="island_status_popup_action">Show them in the island too</string>
+    <string name="island_status_service_title">Not showing over other apps</string>
+    <string name="island_status_service_body">Folio\'s gestures service is off. Android only lets an app draw over other apps through it.</string>
+    <string name="island_status_service_action">Turn on the gestures service</string>
+    <string name="island_status_access_title">Nothing to show yet</string>
+    <string name="island_status_access_body">Notification access is off, so Folio can\'t see music, calls or messages.</string>
+    <string name="island_status_access_action">Open Notification access</string>
+    <string name="island_status_off_title">The island is off in other apps</string>
+    <string name="island_status_off_body">Turn on Dynamic Island under In every app to see it over other apps.</string>
+    <string name="island_status_safe_title">Paused by Safe Mode</string>
+    <string name="island_status_safe_body">Safe Mode keeps the island and dock on Home only. Turn Safe Mode off to use them over other apps.</string>
 </resources>
