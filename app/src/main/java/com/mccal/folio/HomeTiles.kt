@@ -211,11 +211,11 @@ internal fun DockAppColumn(
                 val animatedOffset by animateIntOffsetAsState(
                     if (horizontal) IntOffset((renderIndex * rowHeightPx).roundToInt(), 0) else IntOffset(0, (renderIndex * rowHeightPx).roundToInt()),
                     animationSpec = if (drag.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
-                        else androidx.compose.animation.core.snap(), label = "dock insertion $id")
+                        else androidx.compose.animation.core.snap(), label = "dock insertion $id") // english-only
                 val visible = previewIndex >= 0 && renderIndex != hiddenIndex
                 val opacity by animateFloatAsState(
                     if (!visible) 0f else if (dimDragged && id == draggedId) .28f else 1f,
-                    label = "dock insertion visibility $id",
+                    label = "dock insertion visibility $id", // english-only
                 )
                 Box(Modifier.offset { animatedOffset }.then(if (horizontal) Modifier.fillMaxHeight().width(rowHeight.dp) else Modifier.fillMaxWidth().height(rowHeight.dp)).graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }
                     .testTag("dock-app-$id"), contentAlignment = Alignment.Center) {
@@ -225,7 +225,7 @@ internal fun DockAppColumn(
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
-                        } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id")
+                        } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id") // english-only
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
                             val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value
                             // Grow toward the screen, away from the edge the dock sits on.

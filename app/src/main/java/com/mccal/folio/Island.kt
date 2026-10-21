@@ -64,7 +64,9 @@ data class NotificationItem(val key: String, val packageName: String, val appLab
     val title: String?, val text: String?, val postTime: Long, val clearable: Boolean,
     val contentIntent: android.app.PendingIntent?,
     /** Messaging notifications: whether quick reply / mark-as-read are offered by the app. */
-    val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null)
+    val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null,
+    /** From Android's ranking, for sections: how loud the channel is ([IMPORTANCE_UNKNOWN] when not ranked), and the flags below. */
+    val importance: Int = IMPORTANCE_UNKNOWN, val conversation: Boolean = false, val ongoing: Boolean = false, val urgent: Boolean = false)
 
 /** A messaging app's notification channel and whether Android pops it up itself (importance HIGH or above). */
 data class MessageChannel(val packageName: String, val appLabel: String, val channelId: String, val channelName: String?, val importance: Int,
@@ -326,13 +328,22 @@ class IslandListenerService : NotificationListenerService() {
         .sortedByDescending { it.postTime }
         .map { sbn ->
             val extras = sbn.notification.extras
+            val ranking = Ranking()
+            val ranked = currentRanking?.getRanking(sbn.key, ranking) == true
             NotificationItem(sbn.key, sbn.packageName, appLabel(sbn.packageName), appIcon(sbn.packageName),
                 extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
                 (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString(),
                 sbn.postTime, sbn.isClearable, sbn.notification.contentIntent,
                 canReply = Messaging.replyAction(sbn.notification) != null, canMarkRead = Messaging.markReadAction(sbn.notification) != null,
-                channelId = sbn.notification.channelId)
+                channelId = sbn.notification.channelId, importance = if (ranked) ranking.importance else IMPORTANCE_UNKNOWN,
+                conversation = ranked && ranking.isConversation,
+                ongoing = sbn.notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
+                urgent = sbn.notification.category in URGENT_CATEGORIES || (ranked && ranking.channel?.canBypassDnd() == true))
         }
+
+    /** Calls, alarms, timers and the like: never put in Quiet, whatever the channel's importance says. */
+    private val URGENT_CATEGORIES = setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_ALARM, Notification.CATEGORY_REMINDER,
+        Notification.CATEGORY_EVENT, Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_ERROR)
 
     /** Samsung's System UI posts a "1 more notification" stand-in for its own overflow; it isn't a real notification. */
     private fun isOverflowPlaceholder(sbn: StatusBarNotification): Boolean {
@@ -577,5 +588,3 @@ class IslandListenerService : NotificationListenerService() {
         }
     }
 }
-
-private val IslandAccent = Color(0xFF6EE39A)

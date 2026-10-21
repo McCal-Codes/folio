@@ -441,11 +441,17 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.iphone_style_control_center_and_notifica), state.folioPanels, model::setFolioPanels, "folio-panels-switch")
                         if (state.folioPanels) {
                         CustomizationSlider(stringResource(R.string.background_blur), "${(state.panelBlur * 100).toInt()}%", state.panelBlur, 0f..1f) { model.setPanelBlur(it) }
+                        SettingsSwitch(stringResource(R.string.shade_over_apps), state.shadeOverApps, model::setShadeOverApps, "shade-over-apps-switch")
+                        CardNote(stringResource(R.string.shade_over_apps_note))
                         SettingsSwitch(stringResource(R.string.big_clock_in_notification_center), state.notificationClock, model::setNotificationClock, "notification-clock-switch")
                         SettingsSwitch(stringResource(R.string.stack_notifications_by_app), state.groupNotifications, model::setGroupNotifications, "notification-group-switch")
-                        SettingsSwitch(stringResource(R.string.unfolded_clock_beside_notifications), state.ncSplit, model::setNcSplit, "notification-split-switch")
+                        IosMenuRow(stringResource(R.string.nc_layout_title), NcLayout.entries.map { it to stringResource(it.label) }, state.ncLayout, model::setNcLayout, tag = "nc-layout")
+                        CardNote(stringResource(R.string.nc_layout_note))
+                        SettingsSwitch(stringResource(R.string.notification_sections), state.notificationSections, model::setNotificationSections, "notification-sections-switch")
+                        if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
-                        SettingsSwitch(stringResource(R.string.unfolded_control_center_in_the_middle), state.ccCentered, model::setCcCentered, "cc-centered-switch")
+                        // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
+                        if (state.ncLayout == NcLayout.FULL_SCREEN) SettingsSwitch(stringResource(R.string.unfolded_control_center_in_the_middle), state.ccCentered, model::setCcCentered, "cc-centered-switch")
                         CardNote(stringResource(R.string.tip_tap_at_the_top_of_control_center_to))
                         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
                         }
@@ -548,7 +554,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.Wallpaper, null, tint = androidx.compose.ui.graphics.Color.Black.copy(alpha = .6f), modifier = Modifier.size(18.dp))
                             }
-                            listOf(0xFFFFB340, FolioColors.Value.RedSoft, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
+                            listOf(FolioColors.Value.Warning, FolioColors.Value.RedSoft, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
                                 Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color(c))
                                     .then(if (!state.iconTintFromWallpaper && state.iconTint == c) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
                                     .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(false); model.setIconStyle(IconStyle.TINTED, c) }
@@ -1413,7 +1419,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.big_clock_in_notification_center to CustomizationPage.NOTIFICATIONS,
     R.string.iphone_style_control_center_and_notifica to CustomizationPage.NOTIFICATIONS,
     R.string.stack_notifications_by_app to CustomizationPage.NOTIFICATIONS,
-    R.string.unfolded_clock_beside_notifications to CustomizationPage.NOTIFICATIONS,
+    R.string.nc_layout_title to CustomizationPage.NOTIFICATIONS,
+    R.string.shade_over_apps to CustomizationPage.NOTIFICATIONS,
+    R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
     R.string.badge_size to CustomizationPage.STATUS,
     R.string.battery_percentage to CustomizationPage.STATUS,
@@ -2078,7 +2086,8 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     val geometry = homeGeometry(refW, refH, preset, state.labels, statusHeight = if (state.verticalStatus) 180f else 0f, labelHeight = 20f,
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
         railControls = if (state.searchPill) 0 else 1, // the Home pages' rail, as Home lays it out
-        widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
+        widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current),
+        shrinkIconsForRows = state.homeRows > BASE_APP_ROWS)
     val placements = state.widgetPlacements.filter { it.page == page }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
@@ -2091,7 +2100,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     val corner = 26.dp * (previewHeight.value / 260f)
     val bezel = previewHeight * .022f
     Column(if (framed) Modifier.fillMaxWidth() else Modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(if (!framed) Modifier else Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
+        Box(if (!framed) Modifier else Modifier.clip(RoundedCornerShape(corner + bezel)).background(FolioColors.PreviewBezel)
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)) {
         Box(Modifier.height(previewHeight).width(previewHeight * (refW / refH))
             .clip(RoundedCornerShape(if (framed) corner else 0.dp))
@@ -2180,7 +2189,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     val corner = 16.dp
     val bezel = 5.dp
     Box(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
+        Box(Modifier.clip(RoundedCornerShape(corner + bezel)).background(FolioColors.PreviewBezel)
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)
             .clearedDescription(R.string.fold_effect_preview)) {
             Row(Modifier.clip(RoundedCornerShape(corner)).foldPreviewEffect(state.duet.resolved()) { fold * state.foldIntensity }
@@ -2381,7 +2390,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         if (!FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
             CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
         // Automatic says which number it landed on, so the count is never a mystery.
-        IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.homeAppRows), 4 to "4"), state.homeRows, model::setHomeRows, tag = "home-rows")
+        IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.homeAppRows), 4 to "4", 5 to "5", 6 to "6", 7 to "7"), state.homeRows, model::setHomeRows, tag = "home-rows")
         CardNote(stringResource(R.string.automatic_adds_up_to_3_more_rows_of_apps))
         val rowsContext = androidx.compose.ui.platform.LocalContext.current
         CardNote(automaticRowsNote(state, rowsContext.strings()))
@@ -2578,7 +2587,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     val corner = 18.dp
     val bezel = 5.dp
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Row(Modifier.clip(RoundedCornerShape(corner + bezel)).background(androidx.compose.ui.graphics.Color(0xFF0B0B0C))
+        Row(Modifier.clip(RoundedCornerShape(corner + bezel)).background(FolioColors.PreviewBezel)
             .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = .2f), RoundedCornerShape(corner + bezel)).padding(bezel)
             .clip(RoundedCornerShape(corner)).clearedDescription(R.string.preview_of_home_on_the_inner_screen)) {
             MiniHomePreview(bitmap, state, height, framed = false, sideBar = state.leftHanded, preset = preset)
@@ -2950,6 +2959,7 @@ internal fun automaticRowsNote(state: LauncherState, strings: Strings): String {
     // The inner screen's number is the smaller of its sideways and upright fits (0 = not measured), the one that limits it.
     val inner = listOf(state.homeFitExpanded, state.homeFitUpright).filter { it > 0 }.minOrNull() ?: 0
     return when {
+        state.homeRows > BASE_APP_ROWS -> strings.get(R.string.rows_note_fixed_more, state.homeRows)
         state.homeRows > 0 -> strings.plural(R.plurals.rows_note_fixed, state.homeRows, state.homeRows)
         cover == 0 && inner == 0 -> strings.get(R.string.rows_note_unmeasured)
         inner == 0 -> strings.get(R.string.rows_note_cover_only, cover)

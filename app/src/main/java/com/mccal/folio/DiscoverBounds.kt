@@ -28,7 +28,7 @@ internal object DiscoverBounds {
     fun matchesViewport(width: Int, height: Int): Boolean = !available || measuredViewport?.let {
         kotlin.math.abs(it.width() - width) <= 2 && kotlin.math.abs(it.height() - height) <= 2
     } == true
-    @android.annotation.SuppressLint("RequiresWindowSdk") // Available only after the extension 8 check.
+    @android.annotation.SuppressLint("RequiresWindowSdk") // Available only after the extension 8 check. // english-only
     fun updateViewport(context: Context, rect: Rect) {
         if (!available || rect == measuredViewport || rect.width() <= 0 || rect.height() <= 0) return
         measuredViewport = Rect(rect)

@@ -61,7 +61,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
     val alarm = remember(tick, screenshot) {
         if (screenshot) null else context.getSystemService(AlarmManager::class.java)?.nextAlarmClock?.let {
             LocalDateTime.ofInstant(Instant.ofEpochMilli(it.triggerTime), ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern(if (is24) "EEE HH:mm" else "EEE h:mm a"))
+                .format(DateTimeFormatter.ofPattern(if (is24) "EEE HH:mm" else "EEE h:mm a")) // english-only
         }
     }
     val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.take(4)
@@ -117,7 +117,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(24.dp))
             notifications.take(room).forEach { item ->
-                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(Color(0xFF2A2A2E).copy(alpha = .8f))
+                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(FolioColors.PopoverSurface.copy(alpha = .8f))
                     .clickable { onDismiss(); IslandListenerService.openNotification(context, item) }.padding(FolioSpace.MEDIUM.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(34.dp).clip(RoundedCornerShape(8.dp))) }

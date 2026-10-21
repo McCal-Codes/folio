@@ -167,7 +167,7 @@ class IslandEvents private constructor(private val context: Context) {
             if (ScreenshotMode.on.value && (event is IslandEvent.Message || event is IslandEvent.Bluetooth)) return
             mutable.value = event to System.currentTimeMillis()
         }
-        @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context
+        @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context // english-only
         private var shared: IslandEvents? = null
         private var users = 0
 

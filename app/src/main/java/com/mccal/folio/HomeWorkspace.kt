@@ -383,7 +383,6 @@ internal fun SharedHomeGrid(
     onEmptyDoubleTap: (() -> Unit)? = null,
 ) {
     val rowHeight = geometry.rowHeight
-    val iconSize = geometry.iconSize
     val edit = LocalHomeEdit.current
     val pageStart = homeCellIndex(page, 0)
     val pageRange = pageStart until pageStart + HOME_CELLS
@@ -421,6 +420,24 @@ internal fun SharedHomeGrid(
     // Half folded like a laptop (phone upright): rows that would sit in the fold spring down past it, like iPhone Duo.
     val hinge = LocalHinge.current?.takeIf { it.active && !it.vertical }
     val density = LocalDensity.current
+    // A widget move or resize that pushes apps along is committed as the gesture ends, when no drag or editing is on any more, and Undo
+    // puts them back the same way: apps slide for a moment after the slots change. Folding changes the geometry, not the slots, so it
+    // still places icons at once.
+    // A new Rows setting does the same: with Settings open beside Home (the unfolded screens), the rows and icons settle to the new size
+    // instead of jumping. Both screens use the same row count, so folding never starts this.
+    var layoutSettling by remember { mutableStateOf(false) }
+    var seenSlots by remember { mutableStateOf(savedSlots) }
+    var seenPreview by remember { mutableStateOf(previewSlots) }
+    var seenRows by remember { mutableIntStateOf(geometry.appRows) }
+    // The preview counts too: apps that slide along while a widget is resized slide back if it is cancelled, instead of snapping.
+    LaunchedEffect(savedSlots, previewSlots, geometry.appRows) {
+        if (savedSlots != seenSlots || previewSlots != seenPreview || geometry.appRows != seenRows) {
+            seenSlots = savedSlots; seenPreview = previewSlots; seenRows = geometry.appRows
+            layoutSettling = true; kotlinx.coroutines.delay(700); layoutSettling = false
+        }
+    }
+    val iconSize by animateFloatAsState(geometry.iconSize,
+        if (layoutSettling) FolioMotion.spring<Float>(FolioMotion.Snap) else androidx.compose.animation.core.snap<Float>(), label = "home icon size")
     var gridTopDp by remember { mutableFloatStateOf(0f) }
     val fold = hinge?.let { h -> with(density) {
         foldDisplacement(cells, renderedRows, gridTopDp, h.startPx.toDp().value, h.endPx.toDp().value, widgetRows)
@@ -480,14 +497,14 @@ internal fun SharedHomeGrid(
                 // Slide only while rearranging; a new screen size (folding) must place icons immediately.
                 val animatedOffset by animateIntOffsetAsState(
                     with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) },
-                    animationSpec = if (drag.active || edit.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
+                    animationSpec = if (drag.active || edit.active || layoutSettling) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
                         else androidx.compose.animation.core.snap(),
-                    label = "home insertion $id",
+                    label = "home insertion $id", // english-only
                 )
                 val visible = previewIndex != null && previewIndex in pageRange && renderIndex != hiddenIndex
                 val opacity by animateFloatAsState(
                     if (dimDragged && id == draggedId) .28f else 1f,
-                    label = "home insertion visibility $id",
+                    label = "home insertion visibility $id", // english-only
                 )
                 val plateOn = drag.mergePreview == id
                 val plateGrowth by animateFloatAsState(if (plateOn) 1f else 0f,
@@ -511,7 +528,7 @@ internal fun SharedHomeGrid(
                 val place = with(density) { IntOffset(cellX(localIndex % GRID_COLUMNS, row).toPx().roundToInt(), rowTop(row).dp.toPx().roundToInt()) }
                 // With the motion pass, a folder pushed along by a drag slides with the apps around it, on the same stiff spring;
                 // without it, it jumps as it always did. Only while rearranging: a new screen size (folding) places it at once.
-                val slides = FolioMotion.v2 && (drag.active || edit.active)
+                val slides = FolioMotion.v2 && (drag.active || edit.active || layoutSettling)
                 val placed by animateIntOffsetAsState(place,
                     animationSpec = if (slides) FolioMotion.spring<IntOffset>(FolioMotion.Snap) else androidx.compose.animation.core.snap(),
                     label = "folderSlide ${folder.id}")

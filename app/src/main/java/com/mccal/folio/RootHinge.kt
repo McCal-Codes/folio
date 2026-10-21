@@ -111,8 +111,8 @@ internal object SecureSettingsGrant {
     /** Only a plain package name is put in a command the owner will run; anything else gets no command. */
     private val PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
 
-    fun grantCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm grant $it $PERMISSION" }
-    fun revokeCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm revoke $it $PERMISSION" }
+    fun grantCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm grant $it $PERMISSION" } // english-only
+    fun revokeCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm revoke $it $PERMISSION" } // english-only
 
     fun isGranted(context: android.content.Context): Boolean =
         context.checkSelfPermission(PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED

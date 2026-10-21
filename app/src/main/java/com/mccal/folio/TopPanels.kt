@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -81,9 +82,9 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
-    onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true,
+    onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
-    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncSplit: Boolean = true,
+    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
@@ -92,9 +93,17 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val current = shown ?: return
     if (!open && progress() <= 0.001f) { shown = null; return }
     val lift = with(LocalDensity.current) { 28.dp.toPx() }
+    val config = LocalConfiguration.current
+    val wide = config.fitsRegularHomeLayout()
+    val shape = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp,
+        LocalHinge.current?.active == true || LocalShadeOverApps.current, current)
+    // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
+    val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
+    // At most two thirds of the height: a card is as tall as its list, not the screen.
+    val listMax = minOf(620.dp, (config.screenHeightDp * .62f).dp)
 
     // Scrim: tap or swipe up anywhere to close.
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() }.background(FolioGlass.scrim)
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }.background(FolioGlass.scrim)
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
@@ -102,30 +111,38 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             } else Modifier)
         .testTag("top-panel-scrim"))
 
-    val wide = LocalConfiguration.current.fitsRegularHomeLayout()
-    // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right.
-    // A split arrangement: clock and list side by side only when the screen is wider than tall; otherwise the clock sits above the list.
-    val split = wide && ncSplit && current == ShadePanel.NOTIFICATIONS && LocalConfiguration.current.let { it.screenWidthDp > it.screenHeightDp }
+    // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right (Full screen), a card under the
+    // corner it was pulled from (Card), or beside Control Center (Side by side); see shadeShape.
+    val split = shape == ShadeShape.SPLIT_CLOCK
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
     CompositionLocalProvider(LocalHinge provides hinge) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
+            shape == ShadeShape.BOTH -> Alignment.TopCenter
+            // Notification Center is pulled from the top left and Control Center from the top right: each card sits under its own corner.
+            shape == ShadeShape.CARD -> if (current == ShadePanel.NOTIFICATIONS) Alignment.TopStart else Alignment.TopEnd
             split -> Alignment.TopEnd
             current == ShadePanel.NOTIFICATIONS -> if (wide) Alignment.TopCenter else Alignment.TopStart
             wide && ccCentered -> Alignment.TopCenter
             else -> Alignment.TopEnd
         }) {
         // Notification Center uses the width; Control Center is a compact fixed grid (like iPad) so it isn't oversized.
-        val panelModifier = Modifier.widthIn(max = if (split) 540.dp else if (wide) 460.dp else 560.dp)
-            .then(if (current == ShadePanel.NOTIFICATIONS) Modifier.fillMaxWidth() else Modifier)
+        fun panelModifier(which: ShadePanel) = Modifier.widthIn(max = when {
+                split -> 540.dp
+                shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
+                shape == ShadeShape.BOTH -> 440.dp
+                wide -> 460.dp
+                else -> 560.dp
+            })
+            .then(if (which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) Modifier.fillMaxWidth() else Modifier)
             .then(if (split) Modifier.fillMaxHeight() else Modifier)
             // Taps on gaps inside the panel must not fall through to the scrim and close it.
             .pointerInput(Unit) { detectTapGestures() }
             .graphicsLayer {
                 val p = progress()
-                if (current == ShadePanel.NOTIFICATIONS) {
+                if (which == ShadePanel.NOTIFICATIONS) {
                     // iOS: Notification Center slides down from the top edge and doesn't zoom; it's fully opaque
                     // early so the list reads as one sheet moving, not a fade.
                     alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f)
@@ -144,8 +161,14 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 val p = progress(); alpha = OverlayBack.unpreviewed(p); translationY = -clockLift * (1f - p)
             })
         }
-        if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier, showClock && !split, grouped, tall = split, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier, status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
+            // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = listMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        }
+        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections, tall = split,
+            listMax = if (shape == ShadeShape.CARD) listMax else 620.dp, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
 }
@@ -154,7 +177,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, tall: Boolean = false, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, tall: Boolean = false, listMax: Dp = 620.dp, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -166,7 +189,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     var filterApp by remember { mutableStateOf<String?>(null) }
     val allGroups = remember(items) { items.groupBy { it.packageName }.values.sortedByDescending { g -> g.maxOf { it.postTime } } }
     LaunchedEffect(allGroups) { if (filterApp != null && allGroups.none { it.first().packageName == filterApp }) filterApp = null }
-    val groups = remember(allGroups, filterApp) { if (filterApp == null) allGroups else allGroups.filter { it.first().packageName == filterApp } }
+    var quietOpen by remember { mutableStateOf(false) }
+    val sectioned = remember(items, filterApp, sections) { sectionNotifications(items.filter { filterApp == null || it.packageName == filterApp }, sections) }
 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
@@ -216,27 +240,43 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 }
             }
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = 620.dp)).edgeFade(listState), state = listState,
+            LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = listMax)).edgeFade(listState), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
-                groups.forEach { group ->
+                sectioned.forEach { (bucket, bucketGroups) ->
+                  if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
+                    SectionLabel(stringResource(R.string.nc_section_quiet, bucketGroups.sumOf { it.size }),
+                        settle().clickable(onClickLabel = stringResource(R.string.show_quiet_notifications)) { quietOpen = true })
+                  } else {
+                  // The main pile has no heading: it is what Notification Center always was.
+                  if (bucket != null && bucket != NotificationBucket.MAIN) item("section-$bucket") {
+                    SectionLabel(stringResource(when (bucket) {
+                        NotificationBucket.NOW -> R.string.nc_section_now
+                        NotificationBucket.CONVERSATIONS -> R.string.nc_section_conversations
+                        else -> R.string.nc_section_quiet_open
+                    }), settle()) { if (bucket == NotificationBucket.QUIET) PanelPill(stringResource(R.string.show_less)) { quietOpen = false } }
+                  }
+                bucketGroups.forEach { group ->
                     val pkg = group.first().packageName
                     val expanded = !grouped || expandedGroup == pkg || group.size == 1
                     if (expanded) {
-                        if (group.size > 1) item("$pkg-header") {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (group.size > 1) item("$bucket-$pkg-header") {
+                            Row(settle().fillMaxWidth().padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(group.first().appLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                if (sections && group.any { it.clearable }) { ClearAppPill(group.filter { it.clearable }); Spacer(Modifier.width(8.dp)) }
                                 PanelPill(stringResource(R.string.show_less)) { expandedGroup = null }
                             }
                         }
                         items(group, key = { it.key }) { item -> NotificationCard(item, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
-                            placementSpec = FolioMotion.spring(FolioMotion.Settle))) {
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections) {
                             onClose(); IslandListenerService.openNotification(context, item)
                         } }
                     } else item(group.first().key) {
                         // Same key as the first card when expanded, so the stack slides apart instead of swapping.
                         StackedNotification(group, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
-                            placementSpec = FolioMotion.spring(FolioMotion.Settle))) { expandedGroup = pkg }
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections) { expandedGroup = pkg }
                     }
+                }
+                  }
                 }
             }
             }
@@ -244,24 +284,65 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     }
 }
 
+/**
+ * An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump.
+ * With Reduce Motion it only fades: it takes its new place at once (DYN-11).
+ */
 @Composable
-private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, onExpand: () -> Unit) {
+private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier {
+    val reduce = LocalReduceMotion.current
+    return Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
+        placementSpec = if (reduce) androidx.compose.animation.core.snap<androidx.compose.ui.unit.IntOffset>() else FolioMotion.spring<androidx.compose.ui.unit.IntOffset>(FolioMotion.Settle))
+}
+
+/** Clears one app's clearable notifications; like Clear all, the first tap asks and a second one within three seconds does it. */
+@Composable
+private fun ClearAppPill(clearable: List<NotificationItem>) {
+    var confirm by remember(clearable.size) { mutableStateOf(false) }
+    LaunchedEffect(confirm) { if (confirm) { kotlinx.coroutines.delay(3_000); confirm = false } }
+    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump; with Reduce Motion it only fades.
+    val reduce = LocalReduceMotion.current
+    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app", transitionSpec = {
+        androidx.compose.animation.ContentTransform(
+            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduce) FolioMotion.FADE_MS else 220, delayMillis = if (reduce) 0 else 90)) +
+                (if (reduce) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.scaleIn(FolioMotion.spring(FolioMotion.Quick), initialScale = .92f)),
+            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
+    }) { asking ->
+        if (asking) PanelPill(stringResource(R.string.clear_n_notifications, clearable.size)) { confirm = false; clearable.forEach { IslandListenerService.dismiss(it.key) } }
+        else PanelPill(stringResource(R.string.clear)) { confirm = true }
+    }
+}
+
+/** A section's name above its cards; with [trailing] a control at the end (Quiet's Show Less). A heading for TalkBack. */
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+    Row(modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = Color.White.copy(alpha = .75f), fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f).semantics { heading() })
+        trailing?.invoke()
+    }
+}
+
+@Composable
+private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, onExpand: () -> Unit) {
     Box(modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp)) {
         // Two receding cards behind, like an iPhone notification stack.
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .45f)))
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .66f)))
-        key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, onOpen = onExpand) }
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(FolioColors.SurfaceCard.copy(alpha = .45f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(FolioColors.SurfaceCard.copy(alpha = .66f)))
+        key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, onOpen = onExpand) }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCount: Int = 0, onOpen: () -> Unit) {
+private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCount: Int = 0, showMore: Boolean = false, onOpen: () -> Unit) {
     // iOS: swipe left to reveal Options and Clear; a long swipe clears; tapping the card closes the buttons.
     val scope = rememberCoroutineScope()
     val swipe = remember(item.key) { androidx.compose.animation.core.Animatable(0f) }
     val density = LocalDensity.current
-    val reveal = with(density) { (if (item.clearable) 176.dp else 92.dp).toPx() }
+    // Over another app there is no Options menu (it is a dialog, which needs an activity), so only Clear is revealed.
+    val overApps = LocalShadeOverApps.current
+    val reveal = with(density) { (if (item.clearable && !overApps) 176.dp else 92.dp).toPx() }
     var options by remember(item.key) { mutableStateOf(false) }
     fun settle(to: Float) = scope.launch { swipe.animateTo(to, MotionSpeed.spring(.85f, Spring.StiffnessMediumLow)) }
     BoxWithConstraints(modifier.clip(RoundedCornerShape(22.dp))) {
@@ -272,7 +353,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                 alpha = t; scaleX = .7f + .3f * t; scaleY = scaleX; transformOrigin = TransformOrigin(1f, .5f)
             }, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically) {
-            SwipeAction(stringResource(R.string.options)) { settle(0f); options = true }
+            if (!overApps) SwipeAction(stringResource(R.string.options)) { settle(0f); options = true }
             if (item.clearable) SwipeAction(stringResource(R.string.clear)) { scope.launch { swipe.animateTo(-widthPx); IslandListenerService.dismiss(item.key) } }
         }
         Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(swipe.value.roundToInt(), 0) }
@@ -302,7 +383,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
             .clip(RoundedCornerShape(22.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
             .border(FolioGlass.edge, RoundedCornerShape(22.dp))
             .combinedClickable(interactionSource = press, indication = null, onClick = { if (swipe.value < -1f) settle(0f) else onOpen() }, onLongClick = {
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true
+                if (!overApps) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true }
             }, onLongClickLabel = stringResource(R.string.notification_options))
             .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
             item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))) }
@@ -323,10 +404,18 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                     if (replying) QuickReplyField(item.title, Modifier.padding(top = FolioSpace.SMALL.dp),
                         onSend = { IslandListenerService.reply(context, item.key, it) }, onDone = { replying = false })
                     else Row(Modifier.padding(top = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                        if (item.canReply) MessageActionPill(stringResource(R.string.reply)) { replying = true }
+                        // Typing needs a focusable window, so over another app Reply starts a small box to type in; without one, the conversation opens.
+                        val replyOverApp = LocalShadeReply.current
+                        if (item.canReply) MessageActionPill(stringResource(R.string.reply)) { if (overApps) (replyOverApp?.invoke(item) ?: onOpen()) else replying = true }
                         if (item.canMarkRead) MessageActionPill(stringResource(R.string.mark_as_read)) { IslandListenerService.markRead(item.key) }
                     }
                 }
+            }
+            // The same menu as a long press or a swipe, always on screen (Settings › Notification sections).
+            // Not over other apps: the menu is a dialog, which needs an activity's window (Options are on Home only there).
+            if (showMore && !overApps) Box(Modifier.size(48.dp).clickable(onClickLabel = stringResource(R.string.notification_options),
+                role = androidx.compose.ui.semantics.Role.Button) { options = true }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MoreHoriz, stringResource(R.string.notification_options), tint = FolioGlass.secondary)
             }
         }
         }
@@ -340,6 +429,17 @@ private fun SwipeAction(label: String, onClick: () -> Unit) {
         .border(FolioGlass.edge, RoundedCornerShape(22.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
+}
+
+/** True while the panels are drawn over another app from the gestures service rather than on Home: no dialogs, no typing, no fold information. */
+internal val LocalShadeOverApps = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Over another app, what Reply does: starts a box to type in (the overlay cannot take the keyboard). Null on Home, where the card has its own field. */
+internal val LocalShadeReply = androidx.compose.runtime.staticCompositionLocalOf<((NotificationItem) -> Unit)?> { null }
+
+/** How Notification Center sits on a wide screen: filling it with the clock beside the list, a card under the corner pulled from, or beside Control Center. */
+enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
+    FULL_SCREEN(R.string.nc_layout_full), CARD(R.string.nc_layout_card), SIDE_BY_SIDE(R.string.nc_layout_both)
 }
 
 /** Control Center size choice (the largest a small control can be). */
@@ -418,7 +518,7 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(minOf(280.dp, with(density) { bounds.width().toDp() })).onSizeChanged { menuH = it.height }
                         .graphicsLayer { val s = .8f + .2f * appear.value; scaleX = s; scaleY = s
                             transformOrigin = TransformOrigin(0f, if (below) 0f else 1f) }
-                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
+                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.PopoverSurface.copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
                         .clickable(remember { MutableInteractionSource() }, null) {}) {
                         MenuRow(stringResource(R.string.open), Icons.Rounded.OpenInNew) { act { IslandListenerService.openNotification(context, item) } }
                         if (item.clearable) {
