@@ -1570,7 +1570,11 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
  */
 internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null || SettingsRows.any { it.first == title }
 
-internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex + SettingsRows.map { (title, page) -> Triple(title, null, page) }
+/**
+ * Rows already in [SettingsIndex] (with keywords) are listed once, from there; [SettingsRows] still marks them as rows for [isRowEntry].
+ */
+internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex +
+    SettingsRows.filter { (title, _) -> SettingsIndex.none { it.first == title } }.map { (title, page) -> Triple(title, null, page) }
 
 private class Found(val title: String, val keywords: String, val page: CustomizationPage, val row: Boolean)
 
