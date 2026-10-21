@@ -57,6 +57,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Add to Home from Spotlight:** search for an app and its Top Hit has a + button that puts it on Home, the same way Add to Home in an app's menu does, and tells you with a notice. Spotlight stays open, so you can add more, and the row then says On Home. An app that is already on Home says so, and an app inside a folder says which folder holds it, instead of showing a button that would do nothing.
 
 ### Changed
+- **Two Backgrounds now say what they are:** the Background row under Folders is now Folder background, and the Background switch for the status bar is now Status bar background, so Settings search and the pages stop showing two rows with the same name.
 - **Home button on Home goes to the first page:** press Home while Folio is already in front and it returns to your first Home page (or a Focus's own Home page). Pressed from another app it still returns to the page you left, and with a sheet, menu, folder or Spotlight open it only closes that.
 - **App Library opens without a flash:** while the category tiles are worked out, the library no longer shows the whole A to Z list for a moment first, and it looks each app's category up once instead of on every change. Scrolling also does less work per icon.
 - **Swipe an incoming call away:** swipe a ringing call's card up on Home and it shrinks to the pill, like a message or notice already does. The call keeps ringing, and a tap on the pill opens the card again.

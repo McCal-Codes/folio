@@ -421,7 +421,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     HomeLayoutSettings(state, wide, { wide = it }, upright, { upright = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
                     SettingsCard(stringResource(R.string.folders)) {
                         IosMenuRow(stringResource(R.string.columns), listOf(0 to stringResource(R.string.automatic), 3 to "3", 4 to "4"), state.folderColumns, model::setFolderColumns, tag = "folder-columns")
-                        IosMenuRow(stringResource(R.string.background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
+                        IosMenuRow(stringResource(R.string.folder_background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
                     }
                     RecentDotsCard(state, model)
                 }
@@ -607,7 +607,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             CustomizationSlider(stringResource(R.string.status_spacing), when (st.spacing.roundToInt()) {
                                 StatusStyle.COMPACT_SPACING.roundToInt() -> stringResource(R.string.compact); StatusStyle.STANDARD_SPACING.roundToInt() -> stringResource(R.string.standard)
                                 else -> stringResource(R.string.dp_value, st.spacing.roundToInt()) }, st.spacing, 0f..16f, StatusStyle.STANDARD_SPACING, peek = true) { model.setStatusStyle(st.copy(spacing = it)) }
-                            SettingsSwitch(stringResource(R.string.background), st.background, { model.setStatusStyle(st.copy(background = it)) }, "status-background")
+                            SettingsSwitch(stringResource(R.string.status_bar_background), st.background, { model.setStatusStyle(st.copy(background = it)) }, "status-background")
                             SettingsSwitch(stringResource(R.string.silent_mode_icon), st.showSilent, { model.setStatusStyle(st.copy(showSilent = it)) }, "status-silent")
                             SettingsSwitch(stringResource(R.string.color_battery_when_charging_or_low), st.colorfulBattery, { model.setStatusStyle(st.copy(colorfulBattery = it)) }, "status-color")
                             CardNote(stringResource(R.string.status_colors_green_while_charging_orang))
@@ -1480,7 +1480,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.labels to CustomizationPage.HOME,
     R.string.status to CustomizationPage.HOME,
     R.string.side_rail to CustomizationPage.HOME,
-    R.string.background to CustomizationPage.STATUS,
+    R.string.status_bar_background to CustomizationPage.STATUS,
     R.string.badge_color to CustomizationPage.STATUS,
     R.string.badge_look to CustomizationPage.STATUS,
     R.string.date to CustomizationPage.STATUS,
