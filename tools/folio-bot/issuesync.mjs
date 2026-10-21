@@ -6,8 +6,10 @@
  * its issue's labels and state, and plans only the changes that differ. The tag is the record of what was already done,
  * so nothing is stored and a missed pass is repaired by the next.
  *
- * planChanges() is pure: it decides, and sends nothing. runIssueSync() reads GitHub and Discord and, while
- * ISSUE_SYNC is "dry", only logs the plan. Nothing here writes to Discord yet.
+ * planChanges() is pure: it decides, and sends nothing. runIssueSync() reads GitHub and Discord and acts on the plan
+ * according to ISSUE_SYNC: "off" does nothing, "dry" only logs it, "tags" applies only the plain tag changes on open
+ * issues, and "on" does everything (notes, archive and lock, reopen). "tags" skips closed issues and needs-info on
+ * purpose: the tag is the record of what was done, so putting it on without the note would lose the note for good.
  */
 
 export const REPO = 'McCal-Codes/folio'
@@ -155,19 +157,58 @@ export function describe(change) {
   return `#${change.issue.number} "${change.thread.name}": ${change.why} (${patches} edit${patches === 1 ? '' : 's'}${said ? `, ${said} note` : ''})`
 }
 
+/** Tags that can be applied on their own, without a note or an archive following. */
+const TAG_ONLY = new Set([null, 'planned', 'inMain'])
+
+/** The changes a mode is allowed to carry out. "dry" and "off" carry out none. */
+export function forMode(mode, changes) {
+  if (mode === 'on') return changes
+  if (mode !== 'tags') return []
+  return changes.filter(
+    (change) => change.issue.state === 'open' && TAG_ONLY.has(change.status) && change.steps.every((step) => step.patch && !('archived' in step.patch)),
+  )
+}
+
+const SUPPRESS_EMBEDS = 4
+
+/** Carries out one change in order and stops at the first step Discord refuses. Returns whether all of it went through. */
+export async function applyChange(change, discordCall) {
+  for (const step of change.steps) {
+    const response = step.patch
+      ? await discordCall('PATCH', `/channels/${change.thread.id}`, step.patch)
+      : await discordCall('POST', `/channels/${change.thread.id}/messages`, {
+          content: step.say,
+          flags: SUPPRESS_EMBEDS,
+          allowed_mentions: step.ping && change.thread.owner_id ? { users: [change.thread.owner_id] } : { parse: [] },
+        })
+    if (!response.ok) {
+      console.error(`issue sync: #${change.issue.number} stopped, Discord said ${response.status}`)
+      return false
+    }
+  }
+  return true
+}
+
 const asJson = (response) => (response.ok ? response.json() : Promise.reject(new Error(`${response.url ?? 'request'} said ${response.status}`)))
 
 /**
- * One pass. ISSUE_SYNC "dry" reads everything and logs what it would change; anything else does nothing at all. Returns
- * the plan so the tests, and the log, can see it. Every failure is caught and logged, never thrown.
+ * One pass. "dry" reads everything and logs what it would change, "tags" and "on" also carry it out (see the top of the
+ * file), anything else does nothing at all. Returns the plan so the tests, and the log, can see it. Every failure is caught and logged, never thrown.
  */
 export async function runIssueSync(env, send = fetch) {
-  if (env.ISSUE_SYNC !== 'dry' || !env.DISCORD_BOT_TOKEN) return null
+  const mode = env.ISSUE_SYNC
+  if (!['dry', 'tags', 'on'].includes(mode) || !env.DISCORD_BOT_TOKEN) return null
   const github = (path) =>
     send(`https://api.github.com/repos/${REPO}${path}`, {
       headers: { accept: 'application/vnd.github+json', 'user-agent': 'folio-bot', ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) },
     }).then(asJson)
   const discord = (path) => send(`https://discord.com/api/v10${path}`, { headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } }).then(asJson)
+  const discordCall = (method, path, body) =>
+    send(`https://discord.com/api/v10${path}`, {
+      method,
+      headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, 'content-type': 'application/json', 'x-audit-log-reason': 'Folio issue sync' },
+      body: JSON.stringify(body),
+    })
   try {
     const kinds = { [env.BUG_FORUM]: 'bug', [env.IDEAS_FORUM]: 'idea' }
     delete kinds[undefined]
@@ -188,9 +229,10 @@ export async function runIssueSync(env, send = fetch) {
     let plan = planChanges({ threads: tracked, issues, forums })
     for (const number of plan.missing.slice(0, MAX_CHANGES)) keep([await github(`/issues/${number}`).catch(() => ({ pull_request: true }))])
     if (plan.missing.length) plan = planChanges({ threads: tracked, issues, forums })
-    for (const change of plan.changes) console.log(`issue sync (dry): ${describe(change)}`)
+    for (const change of plan.changes) console.log(`issue sync (${mode}): ${describe(change)}`)
     for (const problem of plan.problems) console.error(`issue sync: ${problem}`)
-    if (plan.skipped) console.log(`issue sync (dry): ${plan.skipped} more change(s) wait for the next pass`)
+    if (plan.skipped) console.log(`issue sync (${mode}): ${plan.skipped} more change(s) wait for the next pass`)
+    for (const change of forMode(mode, plan.changes)) await applyChange(change, discordCall)
     return plan
   } catch (error) {
     console.error(`Issue sync pass failed: ${error.message}`)

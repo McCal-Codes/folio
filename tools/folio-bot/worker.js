@@ -14,6 +14,7 @@ import { runAutoReply } from './autoreply.mjs'
 import { runIssueSync } from './issuesync.mjs'
 import { PINGS_BUTTON, togglePings } from './pings.mjs'
 import { sources as liveSources } from './sources.mjs'
+import { track } from './track.mjs'
 
 const PING = 1
 const APPLICATION_COMMAND = 2
@@ -113,6 +114,23 @@ export function createWorker({
       if (interaction.type !== APPLICATION_COMMAND) return json({ type: PONG })
 
       const name = interaction.data?.name
+      if (name === 'track') {
+        // Staff only, and it talks to GitHub and Discord, so it answers privately once it is done rather than racing the clock.
+        const edit = track(env, interaction, send)
+          .catch((error) => {
+            console.error(`track failed: ${error.message}`)
+            return 'That did not work. Nothing was changed that I know of; check the post title.'
+          })
+          .then((content) =>
+            send(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
+              method: 'PATCH',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+            }),
+          )
+        ctx?.waitUntil?.(edit)
+        return json({ type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } })
+      }
       const answer = run(name, optionsOf(interaction), sources)
       const timer = new Promise((resolve) => setTimeout(() => resolve(null), wait))
       const quick = await Promise.race([answer, timer])

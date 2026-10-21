@@ -157,3 +157,48 @@ test('a failure in the pass is caught, not thrown', async () => {
   const result = await runIssueSync(env, async () => ({ ok: false, status: 500 }))
   assert.equal(result, null)
 })
+
+import { applyChange, forMode } from './issuesync.mjs'
+
+test('"tags" mode carries out plain tag changes on open issues and nothing else', () => {
+  const planned = plan([thread('[#20] a')], [issue(20, { labels: label('planned') })]).changes
+  const needsInfo = plan([thread('[#21] b')], [issue(21, { labels: label('needs-info') })]).changes
+  const closed = plan([thread('[#22] c')], [issue(22, { state: 'closed', state_reason: 'completed' })]).changes
+  const reopened = plan([thread('[#23] d', { applied_tags: [id('Fixed')], thread_metadata: { archived: true, locked: true } })], [issue(23)]).changes
+  const all = [...planned, ...needsInfo, ...closed, ...reopened]
+  assert.deepEqual(forMode('tags', all).map((c) => c.issue.number), [20])
+  assert.equal(forMode('on', all).length, 4)
+  assert.deepEqual(forMode('dry', all), [])
+  assert.deepEqual(forMode('off', all), [])
+})
+
+test('a change is carried out in order and stops at the first refusal', async () => {
+  const closed = issue(30, { state: 'closed', state_reason: 'completed', milestone: { title: '0.6.9' } })
+  const [change] = plan([thread('[#30] x')], [closed]).changes
+  const sent = []
+  const ok = await applyChange(change, async (method, path, body) => (sent.push({ method, path, body }), { ok: true, status: 200 }))
+  assert.equal(ok, true)
+  assert.deepEqual(sent.map((s) => `${s.method} ${s.path.split('/').pop()}`), ['PATCH th-[#30] x', 'POST messages', 'PATCH th-[#30] x'])
+  assert.deepEqual(sent[1].body.allowed_mentions, { users: ['poster'] })
+  assert.equal(sent[2].body.locked, true)
+  const stopped = []
+  const failed = await applyChange(change, async (method, path) => (stopped.push(method), { ok: false, status: 403 }))
+  assert.equal(failed, false)
+  assert.equal(stopped.length, 1)
+})
+
+test('"tags" mode writes the tag to Discord and "dry" writes nothing', async () => {
+  const calls = []
+  const write = async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method ?? 'GET' })
+    const u = String(url)
+    if (init.method === 'PATCH') return { ok: true, status: 200 }
+    return fakeFetch([])(url, init)
+  }
+  await runIssueSync({ ...env, ISSUE_SYNC: 'dry' }, write)
+  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0)
+  await runIssueSync({ ...env, ISSUE_SYNC: 'tags' }, write)
+  const writes = calls.filter((c) => c.method !== 'GET')
+  assert.equal(writes.length, 1)
+  assert.match(writes[0].url, /channels\/th-\[#2\] Badge$/)
+})
