@@ -91,7 +91,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
     val dark = LocalDuoPalette.current.dark
     val background = if (dark) FolioColors.SecondaryBackground else FolioColors.LightBackground
     val primary = if (dark) Color.White else Color.Black
-    val secondary = if (dark) Color(0xFF98989F) else Color(0xFF6C6C70)
+    val secondary = if (dark) FolioColors.SecondaryLabelOnDark else FolioColors.SecondaryLabelOnLight
     val title = device.name ?: stringResource(if (device.speaker) R.string.speaker else R.string.headphones)
     Column(Modifier.navigationBarsPadding().padding(FolioSpace.MEDIUM.dp).widthIn(max = 400.dp).fillMaxWidth()
         .clip(RoundedCornerShape(36.dp)).background(background).padding(horizontal = 22.dp, vertical = 18.dp)

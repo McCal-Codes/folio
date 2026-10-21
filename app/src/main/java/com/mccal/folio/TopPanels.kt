@@ -327,8 +327,8 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: 
 private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, onExpand: () -> Unit) {
     Box(modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp)) {
         // Two receding cards behind, like an iPhone notification stack.
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .45f)))
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .66f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(FolioColors.SurfaceCard.copy(alpha = .45f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(FolioColors.SurfaceCard.copy(alpha = .66f)))
         key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, onOpen = onExpand) }
     }
 }
@@ -518,7 +518,7 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(minOf(280.dp, with(density) { bounds.width().toDp() })).onSizeChanged { menuH = it.height }
                         .graphicsLayer { val s = .8f + .2f * appear.value; scaleX = s; scaleY = s
                             transformOrigin = TransformOrigin(0f, if (below) 0f else 1f) }
-                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
+                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.PopoverSurface.copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
                         .clickable(remember { MutableInteractionSource() }, null) {}) {
                         MenuRow(stringResource(R.string.open), Icons.Rounded.OpenInNew) { act { IslandListenerService.openNotification(context, item) } }
                         if (item.clearable) {
