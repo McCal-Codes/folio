@@ -1066,6 +1066,7 @@
     <string name="that_listing_has_no_app_to_download">That listing has no app to download.</string>
     <string name="folio_couldn_t_download_that_app">Folio couldn\'t download that app.</string>
     <string name="that_app_didn_t_match_what_its_source">That app didn\'t match what its source promised, so nothing was installed.</string>
+    <string name="that_app_isn_t_the_one_its_source_listed">That app isn\'t the one its source listed, or isn\'t signed by its developer, so nothing was installed.</string>
     <string name="folio_couldn_t_hand_that_app_to_android">Folio couldn\'t hand that app to Android.</string>
     <string name="android_didn_t_install_it_1_s">Android didn\'t install it: %1$s</string>
     <string name="android_didn_t_install_that_app">Android didn\'t install that app.</string>

@@ -467,9 +467,8 @@ internal object SoftwareUpdate {
         val archive = pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES) ?: return false
         if (archive.packageName != context.packageName) return false
         val installed = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        val a = archive.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
-        val b = installed.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
-        return a.isNotEmpty() && a == b
+        // Android's rule, so a release signed with a rotated key (apksigner rotate) isn't refused as a stranger.
+        return ApkIdentity.descendsFrom(ApkIdentity.signing(archive), ApkIdentity.signing(installed))
     }
 
     private fun install(context: Context, apk: File) {

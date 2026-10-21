@@ -429,6 +429,12 @@ signature. Folio never calls a repository API, which is what keeps it clear of G
 - **`url`, `sha256` and `size` come together**, or not at all. A package built into Folio has none of them, because
   there's nothing to download; a hosted package needs all three, which `folio-pkg index` checks when it builds the list.
 - **Consistency:** the manifest copy must match the manifest inside the downloaded file, or the install fails.
+- **An app's identity:** an `externalApp` listing that Folio may install itself names `signerSha256`, the SHA-256
+  digests of the certificates its APK is signed with (lowercase hex, as `apksigner verify --print-certs` prints them),
+  and may name `versionCode`, the lowest the APK may have. Before Android's install screen, Folio reads the downloaded
+  APK and refuses it unless it is a package named in `via`, at least that versionCode, and signed by a listed key. An
+  APK signed with a rotated key (APK Signature Scheme v3) is accepted when its current key is listed. Without
+  `signerSha256` Folio doesn't install the app itself on first install, and offers the stores in `via` instead.
 
 ### `revoked.json`
 

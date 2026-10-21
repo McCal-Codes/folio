@@ -157,6 +157,23 @@
             "minimum": 1,
             "maximum": 104857600
           },
+          "signerSha256": {
+            "type": "array",
+            "description": "For an app: SHA-256 digests of the certificates its APK is signed with, lowercase hex, as apksigner verify --print-certs prints them. A first install is refused unless the APK is signed by these.",
+            "minItems": 1,
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "versionCode": {
+            "type": "integer",
+            "description": "For an app: the lowest versionCode its APK may have.",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
           "manifest": {
             "$ref": "manifest.schema.json"
           },
@@ -218,6 +235,12 @@
           "size": [
             "url",
             "sha256"
+          ],
+          "signerSha256": [
+            "url"
+          ],
+          "versionCode": [
+            "url"
           ]
         }
       }

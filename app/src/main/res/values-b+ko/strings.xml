@@ -1060,6 +1060,7 @@
     <string name="that_listing_has_no_app_to_download">이 항목에는 다운로드할 앱이 없습니다.</string>
     <string name="folio_couldn_t_download_that_app">앱을 다운로드하지 못했습니다.</string>
     <string name="that_app_didn_t_match_what_its_source">앱이 소스에서 명시한 정보와 일치하지 않아 설치하지 않았습니다.</string>
+    <string name="that_app_isn_t_the_one_its_source_listed">앱이 소스에서 나열한 앱이 아니거나 개발자의 서명이 아니어서 설치하지 않았습니다.</string>
     <string name="folio_couldn_t_hand_that_app_to_android">앱을 Android에 전달하지 못했습니다.</string>
     <string name="android_didn_t_install_it_1_s">Android에서 설치하지 못했습니다: %1$s</string>
     <string name="android_didn_t_install_that_app">Android에서 앱을 설치하지 못했습니다.</string>
