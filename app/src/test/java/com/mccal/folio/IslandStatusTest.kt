@@ -48,4 +48,11 @@ class IslandStatusTest {
         assertEquals(IslandLevel.PROBLEM, IslandReason.GESTURES_SERVICE_OFF.level())
         assertEquals(IslandLevel.INFO, IslandReason.ANDROID_POPUP.level())
     }
+
+    @Test fun androidTakingOverIsOnlyReportedWhenSomethingWouldHaveShown() {
+        // Messages off and other alerts off (the defaults): Don't double up has nothing to take over.
+        assertEquals(IslandStatus(IslandReason.READY), islandStatus(ok.copy(avoidDouble = true, popUpsOn = false)))
+        assertEquals(IslandStatus(IslandReason.DO_NOT_DISTURB), islandStatus(ok.copy(doNotDisturb = true, avoidDouble = true, popUpsOn = false)))
+        assertEquals(IslandStatus(IslandReason.ANDROID_POPUP), islandStatus(ok.copy(avoidDouble = true, popUpsOn = true)))
+    }
 }

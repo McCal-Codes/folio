@@ -42,6 +42,8 @@ internal enum class IslandLevel { GOOD, WARNING, PROBLEM, INFO, OFF }
 internal data class IslandStatusInputs(
     val safeMode: Boolean, val everywhere: Boolean, val gesturesService: Boolean, val notificationAccess: Boolean,
     val doNotDisturb: Boolean, val avoidDouble: Boolean,
+    /** Message pop-ups or other-notification alerts are on, so there is something for Android's own pop-up to take over. */
+    val popUpsOn: Boolean = true,
 )
 
 /** The headline reason and, when there is more than one, the others to mention under it. */
@@ -58,8 +60,8 @@ internal fun islandStatus(i: IslandStatusInputs): IslandStatus = when {
     !i.everywhere -> IslandStatus(IslandReason.IN_EVERY_APP_OFF)
     !i.gesturesService -> IslandStatus(IslandReason.GESTURES_SERVICE_OFF)
     !i.notificationAccess -> IslandStatus(IslandReason.NOTIFICATION_ACCESS_OFF)
-    i.doNotDisturb -> IslandStatus(IslandReason.DO_NOT_DISTURB, if (i.avoidDouble) listOf(IslandReason.ANDROID_POPUP) else emptyList())
-    i.avoidDouble -> IslandStatus(IslandReason.ANDROID_POPUP)
+    i.doNotDisturb -> IslandStatus(IslandReason.DO_NOT_DISTURB, if (i.avoidDouble && i.popUpsOn) listOf(IslandReason.ANDROID_POPUP) else emptyList())
+    i.avoidDouble && i.popUpsOn -> IslandStatus(IslandReason.ANDROID_POPUP)
     else -> IslandStatus(IslandReason.READY)
 }
 
@@ -84,6 +86,7 @@ internal fun readIslandStatusInputs(context: Context, state: LauncherState): Isl
         notificationAccess = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName),
         doNotDisturb = filter != NotificationManager.INTERRUPTION_FILTER_ALL && filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN,
         avoidDouble = state.messagesAvoidDouble,
+        popUpsOn = "MESSAGE" !in state.islandEventsOff || state.islandAlerts,
     )
 }
 
@@ -91,6 +94,14 @@ internal fun readIslandStatusInputs(context: Context, state: LauncherState): Isl
 private fun rememberResumeTick(): Int {
     var tick by remember { mutableIntStateOf(0) }
     androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
+    // Do Not Disturb can change from Quick Settings without this page pausing, so its change refreshes the card too.
+    val context = LocalContext.current
+    androidx.compose.runtime.DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() { override fun onReceive(c: Context?, i: android.content.Intent?) { tick++ } }
+        androidx.core.content.ContextCompat.registerReceiver(context, receiver,
+            android.content.IntentFilter(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
     return tick
 }
 
