@@ -745,6 +745,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         val removed = reduceMotionEnabled(androidx.compose.ui.platform.LocalContext.current)
                         SettingsSwitch(stringResource(R.string.reduce_motion), state.reduceMotion || removed, model::setReduceMotion, "reduce-motion-switch", enabled = !removed)
                         CardNote(stringResource(if (removed) R.string.reduce_motion_note_removed else R.string.reduce_motion_note))
+                        // The other half of "make Folio calmer": glass turns nearly solid. Android's high contrast does it too.
+                        SettingsSwitch(stringResource(R.string.reduce_transparency), state.reduceTransparency, model::setReduceTransparency, "reduce-transparency-switch")
+                        CardNote(stringResource(R.string.reduce_transparency_note))
                     }
                     SettingsCard(null) {
                         // For people who find the system's buttons too small, especially on the inner screen.
@@ -1456,7 +1459,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.stay_awake_on_the_cover_screen to CustomizationPage.FOLD,
     R.string.text_color to CustomizationPage.WALLPAPER,
     R.string.wallpaper_moves_with_pages to CustomizationPage.WALLPAPER,
-    R.string.reduce_transparency to CustomizationPage.WALLPAPER,
+    R.string.reduce_transparency to CustomizationPage.ACCESSIBILITY,
+    R.string.position to CustomizationPage.HOME,
+    R.string.placement to CustomizationPage.HOME,
     R.string.when_unfolded to CustomizationPage.TODAY,
     R.string.turn_on_automatically to CustomizationPage.FOCUS,
     R.string.focus_trigger_folding to CustomizationPage.FOCUS,
@@ -1479,7 +1484,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.dock to CustomizationPage.HOME,
     R.string.labels to CustomizationPage.HOME,
     R.string.status to CustomizationPage.HOME,
-    R.string.side_rail to CustomizationPage.HOME,
+    R.string.side_rail to CustomizationPage.STATUS,
     R.string.background to CustomizationPage.STATUS,
     R.string.badge_color to CustomizationPage.STATUS,
     R.string.badge_look to CustomizationPage.STATUS,
@@ -2396,19 +2401,12 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         CardNote(automaticRowsNote(state, rowsContext.strings()))
     }
     SettingsCard(stringResource(R.string.position)) {
-        IosMenuRow(stringResource(R.string.dock), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
-            p.dockPlacement, { model.setPreset(screen, p.copy(dockPlacement = it)) }, tag = "dock-placement")
         IosMenuRow(stringResource(R.string.apps), listOf(false to stringResource(R.string.centered), true to stringResource(R.string.top)), p.pageTop,
             { model.setPreset(screen, p.copy(pageTop = it)) }, tag = "page-position")
         IosMenuRow(stringResource(R.string.status), listOf(true to stringResource(R.string.level_with_apps), false to stringResource(R.string.custom)), p.statusAlignToGrid,
             { model.setPreset(screen, p.copy(statusAlignToGrid = it)) }, tag = "status-position")
         if (!p.statusAlignToGrid) CustomizationSlider(stringResource(R.string.status_height), if (p.statusPosition < .01f) "Top" else "${(p.statusPosition * 100).toInt()}%",
             p.statusPosition, 0f..1f, peek = true) { model.setPreset(screen, p.copy(statusPosition = it)) }
-        CardNote(when (p.dockPlacement) {
-            DockPlacement.AUTOMATIC -> if (wide) stringResource(R.string.the_dock_stays_on_the_side_bar_and_moves) else stringResource(R.string.the_dock_stays_on_the_side_bar)
-            DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
-            DockPlacement.BOTTOM -> if (wide) stringResource(R.string.the_dock_sits_along_the_bottom_under_you) else stringResource(R.string.the_dock_sits_along_the_bottom_in_landsc)
-        } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
     }
     SettingsCard(stringResource(R.string.full_width_home)) {
         // Two settings that already exist, in one tap: a dock along the bottom, and no status Side Bar beside the page.
@@ -2416,12 +2414,19 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         SettingsSwitch(stringResource(R.string.full_width_home), fullWidth, { on -> model.setFullWidthHome(screen, on) }, "full-width-home-switch")
         CardNote(stringResource(R.string.full_width_home_note))
     }
-    SettingsCard(stringResource(R.string.side_rail)) {
+    SettingsCard(stringResource(R.string.dock)) {
+        IosMenuRow(stringResource(R.string.placement), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
+            p.dockPlacement, { model.setPreset(screen, p.copy(dockPlacement = it)) }, tag = "dock-placement")
         CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
         CustomizationSlider(stringResource(R.string.space_between_dock_apps), stringResource(R.string.dp_value, p.dockSpacing.toInt()), p.dockSpacing, 0f..24f, 0f, peek = true) { model.setPreset(screen, p.copy(dockSpacing = it)) }
         if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.align_dock_with_app_rows), p.dockAlignToGrid, { model.setPreset(screen, p.copy(dockAlignToGrid = it)) })
         if (!p.dockAlignToGrid && p.dockPlacement != DockPlacement.BOTTOM) CustomizationSlider(stringResource(R.string.dock_height), "${(p.dockPosition * 100).toInt()}%", p.dockPosition, 0f..1f,
             LayoutPreset().dockPosition, peek = true) { model.setPreset(screen, p.copy(dockPosition = it)) }
+        CardNote(when (p.dockPlacement) {
+            DockPlacement.AUTOMATIC -> if (wide) stringResource(R.string.the_dock_stays_on_the_side_bar_and_moves) else stringResource(R.string.the_dock_stays_on_the_side_bar)
+            DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
+            DockPlacement.BOTTOM -> if (wide) stringResource(R.string.the_dock_sits_along_the_bottom_under_you) else stringResource(R.string.the_dock_sits_along_the_bottom_in_landsc)
+        } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
     }
     SheetGroup { IosActionRow(stringResource(R.string.reset_this_layout), destructive = true, onClick = { model.setPreset(screen, LayoutPreset()) }) }
     // Per-page looks (after Atria): each page can have its own icon size and labels.
@@ -2723,9 +2728,8 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
         val tint = if (state.tintedGlass) state.glassTint else 0f
         CustomizationSlider(stringResource(R.string.wallpaper_tint), when { tint < .01f -> stringResource(R.string.clear); tint > .99f -> stringResource(R.string.tinted); else -> "${(tint * 100).toInt()}%" },
             tint, 0f..1f, default = .5f, peek = true, onChange = model::setGlassTint)
-        SettingsSwitch(stringResource(R.string.reduce_transparency), state.reduceTransparency, model::setReduceTransparency, "reduce-transparency-switch")
         CardNote(if (solid && !state.reduceTransparency) stringResource(R.string.glass_is_nearly_solid_because_android_s)
-            else if (solid) stringResource(R.string.widgets_the_side_bar_and_the_dock_are_ne)
+            else if (solid) stringResource(R.string.glass_is_nearly_solid_turn_off_reduce_transparency)
             else stringResource(R.string.frost_is_how_see_through_widgets_and_the))
     }
 }
