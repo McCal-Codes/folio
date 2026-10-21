@@ -2073,7 +2073,7 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
-    <string name="package_import_market_off">Folio 마켓이 꺼져 있어서 이 파일을 열 수 없습니다. 설정에서 켜 주세요.</string>
+    <string name="package_import_market_off">이 패키지에는 Folio 마켓이 필요하며, 마켓은 서포터 코드로 열립니다.</string>
     <string name="package_import_too_large">파일이 너무 커서 Folio 패키지가 아닙니다.</string>
     <string name="package_import_too_slow">파일을 읽는 데 너무 오래 걸렸습니다. 먼저 휴대전화에 저장해 보세요.</string>
 </resources>
