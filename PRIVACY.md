@@ -53,7 +53,7 @@ Uninstalling or clearing storage removes Folio's local settings, photos, and wid
 
 ## Banking apps and the gestures service
 
-If you turn on Smart clock ink (a second accessibility service, off until you do), Folio takes a picture of your Home screen while it is in front, measures the part under the Big Clock to choose light or dark text, and throws the picture away at once. Only a few brightness numbers stay in memory. Nothing is saved or sent, and it never happens over another app or on the lock screen.
+If you turn on Smart clock ink (a second accessibility service, off until you do), Folio takes a picture of your Home screen while it is in front, measures the part under the Big Clock to choose light or dark text, and throws the picture away at once. Only a few brightness numbers stay in memory. Nothing is saved or sent, and it only happens while Folio's Home is in front. Anything drawn on top of Home at that moment, such as a floating window, can be in the picture.
 
 Some banking apps refuse to run while any accessibility service is enabled, Folio's included. That is their own
 check against screen-reading malware, and nothing Folio can change from its side: Android doesn't let an app say

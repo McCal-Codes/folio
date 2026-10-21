@@ -69,3 +69,59 @@ class WallpaperBesideClockTest {
         org.junit.Assert.assertEquals(.4f, merged.under.mean, 1e-6f)
     }
 }
+
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [34])
+class MeasuredInkOnlyDecidesLightOrDarkTest {
+    private fun region(lum: Float) = RegionStats(lum, lum, lum, 128f, 128f, 128f)
+    private val androidColors = sampleFromWallpaperColors(0xFF3366CC.toInt(), listOf(0xFFCC6633.toInt(), 0xFF33CC66.toInt()))
+    private fun measured(lum: Float) = ClockInkSample(region(lum), region(lum), listOf(0xFFFF0000.toInt()), estimated = false)
+    private fun style(mode: String, customIndex: Int = 0) = BigClockStyle(mode = mode, customIndex = customIndex)
+
+    @Test fun theMeasurementIsAddedToTheEstimateWithoutReplacingIt() {
+        val merged = withMeasuredUnder(androidColors, measured(.9f))
+        org.junit.Assert.assertTrue(merged.estimated)
+        org.junit.Assert.assertEquals(androidColors.suggestions, merged.suggestions)
+        org.junit.Assert.assertEquals(androidColors.under, merged.under)
+        org.junit.Assert.assertEquals(region(.9f), merged.measuredUnder)
+    }
+
+    @Test fun withoutAnEstimateTheMeasurementStandsAlone() {
+        val m = measured(.5f)
+        assertSame(m, withMeasuredUnder(null, m))
+    }
+
+    @Test fun wallpaperAndCustomColorsIgnoreTheMeasurement() {
+        val merged = withMeasuredUnder(androidColors, measured(.9f))
+        for (mode in listOf("WALLPAPER", "CUSTOM")) for (index in 0..2) {
+            val s = style(mode, index)
+            org.junit.Assert.assertEquals("$mode $index", resolveClockInk(s, androidColors, false), resolveClockInk(s, merged, false))
+        }
+    }
+
+    @Test fun dotsTintAndReadableColorsStayAndroids() {
+        val merged = withMeasuredUnder(androidColors, measured(.9f))
+        org.junit.Assert.assertEquals(androidColors.wallpaperTint(), merged.wallpaperTint())
+        org.junit.Assert.assertEquals(androidColors.readableSuggestions(), merged.readableSuggestions())
+        org.junit.Assert.assertEquals(androidColors.colorDots(), merged.colorDots())
+        org.junit.Assert.assertEquals(androidColors.selectedDotIndex(style("CUSTOM", 1)), merged.selectedDotIndex(style("CUSTOM", 1)))
+    }
+
+    @Test fun automaticFollowsTheMeasurementForLightOrDark() {
+        val onPale = resolveClockInk(style("AUTO"), withMeasuredUnder(androidColors, measured(.9f)), fallbackDark = false)
+        org.junit.Assert.assertEquals(FolioColors.SecondaryBackground, onPale.color)
+        val onDark = resolveClockInk(style("AUTO"), withMeasuredUnder(androidColors, measured(.02f)), fallbackDark = true)
+        org.junit.Assert.assertEquals(androidx.compose.ui.graphics.Color.White, onDark.color)
+    }
+
+    @Test fun whiteOverAPaleMeasurementGetsTheShade() {
+        val r = resolveClockInk(style("WHITE"), withMeasuredUnder(androidColors, measured(.9f)), fallbackDark = false)
+        org.junit.Assert.assertTrue(r.shade)
+    }
+
+    @Test fun anEstimateWithoutAMeasurementKeepsTheOldFallback() {
+        val r = resolveClockInk(style("AUTO"), androidColors, fallbackDark = true)
+        org.junit.Assert.assertEquals(FolioColors.SecondaryBackground, r.color)
+        org.junit.Assert.assertFalse(r.shade)
+    }
+}

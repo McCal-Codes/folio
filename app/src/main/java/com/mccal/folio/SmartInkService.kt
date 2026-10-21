@@ -55,9 +55,11 @@ class SmartInkService : AccessibilityService() {
                 service.takeScreenshot(displayId, { it.run() }, object : TakeScreenshotCallback {
                     override fun onSuccess(result: ScreenshotResult) {
                         val buffer = result.hardwareBuffer
+                        var wrapper: Bitmap? = null
                         val bitmap = try {
-                            Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
-                        } catch (_: Throwable) { null } finally { buffer.close() }
+                            wrapper = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
+                            wrapper?.copy(Bitmap.Config.ARGB_8888, false)
+                        } catch (_: Throwable) { null } finally { wrapper?.recycle(); buffer.close() }
                         if (continuation.isActive) continuation.resume(bitmap) else bitmap?.recycle()
                     }
                     override fun onFailure(errorCode: Int) { if (continuation.isActive) continuation.resume(null) }
