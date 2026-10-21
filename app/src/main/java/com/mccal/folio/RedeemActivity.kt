@@ -43,11 +43,13 @@ class RedeemActivity : ComponentActivity() {
     }
 }
 
-/** The code in a folio://redeem?c=… link, or null for anything else. Plain string work, so it can be tested. */
+/**
+ * The code in a folio://redeem?c=… (or the older folio://early?c=…) link, or null for anything else. Plain string work,
+ * so it can be tested.
+ */
 internal fun redeemCode(link: String?): String? {
     val text = link?.trim() ?: return null
-    val prefix = "folio://redeem"
-    if (!text.startsWith(prefix, ignoreCase = true)) return null
+    val prefix = REDEEM_HOSTS.firstOrNull { text.startsWith("folio://$it", ignoreCase = true) }?.let { "folio://$it" } ?: return null
     val rest = text.substring(prefix.length)
     val query = rest.substringAfter('?', "")
     val code = query.split('&').firstOrNull { it.startsWith("c=", ignoreCase = true) }?.substringAfter('=')
@@ -56,3 +58,5 @@ internal fun redeemCode(link: String?): String? {
     // Long enough to be a code, and only characters a code can hold: anything else isn't worth passing on.
     return decoded.trim().takeIf { it.length in 20..200 && it.all { c -> c.isLetterOrDigit() || c == '-' } }
 }
+
+private val REDEEM_HOSTS = listOf("redeem", "early")
