@@ -36,7 +36,7 @@ internal object FolioSettingsBridge {
 
 /** Opens an activity from a tile and closes the pull-down (Android 14+ requires a PendingIntent). */
 @Suppress("DEPRECATION")
-@android.annotation.SuppressLint("StartActivityAndCollapseDeprecated") // the Intent form only runs below Android 14
+@android.annotation.SuppressLint("StartActivityAndCollapseDeprecated") // the Intent form only runs below Android 14 // english-only
 private fun TileService.openAndCollapse(intent: Intent) {
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     if (Build.VERSION.SDK_INT >= 34) {

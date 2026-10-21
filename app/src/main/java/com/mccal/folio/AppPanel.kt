@@ -81,7 +81,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
     val density = LocalDensity.current
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
-    DisposableEffect(Unit) { LauncherSheetsOpen.intValue++; onDispose { LauncherSheetsOpen.intValue-- } }
+    RegisterOpenWindow(LauncherSheets)
     val actions by produceState(emptyList<QuickAction>(), app.id, app.iconFrom) { value = withContext(Dispatchers.IO) { loadQuickActions(context, app, 4) } }
     val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.filter { it.packageName == app.component.packageName }.take(3)
     val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)?.takeIf { it.packageName == app.component.packageName }
@@ -126,7 +126,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     Spacer(Modifier.width(10.dp))
                     Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Text(stringResource(R.string.open), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    Text(stringResource(R.string.open), color = Color.Black, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.clip(CircleShape).background(Color.White).clickable(onClick = onOpen).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
                 }
                 media?.let { m ->
@@ -135,16 +135,16 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         (m.art ?: m.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))) }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(m.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(m.title, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                         val t = runCatching { m.controller.transportControls }.getOrNull()
-                        TransportButton(Icons.Rounded.FastRewind, "Previous", 30.dp) { t?.skipToPrevious() }
+                        TransportButton(Icons.Rounded.FastRewind, stringResource(R.string.media_previous), 30.dp) { t?.skipToPrevious() }
                         TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             stringResource(if (m.playing) R.string.pause else R.string.play), 34.dp) {
                             if (m.playing) t?.pause() else t?.play()
                         }
-                        TransportButton(Icons.Rounded.FastForward, "Next", 30.dp) { t?.skipToNext() }
+                        TransportButton(Icons.Rounded.FastForward, stringResource(R.string.media_next), 30.dp) { t?.skipToNext() }
                     }
                 }
                 if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
@@ -152,7 +152,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         if (index > 0) MenuDivider()
                         Column(Modifier.fillMaxWidth().clickable { onDismiss(); IslandListenerService.openNotification(context, item) }
                             .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 9.dp)) {
-                            Text(item.title ?: item.appLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(item.title ?: item.appLabel, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             item.text?.let { Text(it, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                         }
                     }

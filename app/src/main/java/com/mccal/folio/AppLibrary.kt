@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
@@ -99,7 +100,8 @@ internal fun AppLibrary(
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
     var openCategory by remember { mutableStateOf<LibraryCategory?>(null) }
     val browsing = state.libraryCategories && !editing && query.isBlank()
-    val categorized by produceState(emptyMap<LibraryCategory, List<AppEntry>>(), visibleApps, browsing) {
+    val cleared by SuggestionsHistory.generation.collectAsStateWithLifecycle()
+    val categorized by produceState(emptyMap<LibraryCategory, List<AppEntry>>(), visibleApps, browsing, cleared) {
         if (!browsing) return@produceState
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val pm = context.packageManager
@@ -210,7 +212,7 @@ internal fun AppLibrary(
                                 // A clone sits right beside its original with the same name; the line under it tells them apart.
                                 // Not while Screenshot Mode swaps it: the profile's name would give the swap away.
                                 Column {
-                                    Text(app.label, maxLines = 2, fontSize = 14.sp)
+                                    Text(app.label, maxLines = 2, fontSize = FolioType.COMPACT.sp)
                                     if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = ink.copy(alpha = .6f),
                                         fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, modifier = Modifier.testTag("library-profile-${app.id}"))
                                 }

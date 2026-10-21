@@ -82,7 +82,7 @@ internal fun UpNextCard(onClick: () -> Unit) {
     }
     GlassCard(onClick = onClick) {
         Column {
-            Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = .6.sp)
+            Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.Bold, letterSpacing = .6.sp)
             Text(today.dayOfMonth.toString(), color = ink.primary, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 32.sp)
         }
         when {
@@ -214,7 +214,7 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
             if (next != null && style.showNext) Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (event != null) Icons.Rounded.CalendarToday else Icons.Rounded.Alarm, null, tint = secondaryColor, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(next, color = secondaryColor, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = dateFamily,
+                Text(next, color = secondaryColor, fontSize = FolioType.COMPACT.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = dateFamily,
                     style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             }
         }
@@ -229,7 +229,8 @@ internal fun SuggestionsCard(onEdit: () -> Unit) {
     val tick by rememberMinuteTick()
     // Re-rank every quarter hour, not every minute: suggestions shouldn't shuffle under a finger.
     val quarter = tick / 15
-    val apps by produceState(emptyList<AppEntry>(), home.apps, quarter) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps, limit = 16) } }
+    val cleared by SuggestionsHistory.generation.collectAsStateWithLifecycle()
+    val apps by produceState(emptyList<AppEntry>(), home.apps, quarter, cleared) { value = withContext(Dispatchers.IO) { Suggestions.forNow(context, home.apps, limit = 16) } }
     GlassCard(onClick = onEdit) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val layout = suggestionsLayout(maxWidth.value, maxHeight.value, LocalHomeIconSize.current)
