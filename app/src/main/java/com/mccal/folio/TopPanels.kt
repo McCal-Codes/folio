@@ -201,7 +201,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 lineHeight = 80.sp)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.notification_center), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             GlassIconButton(Icons.Rounded.Tune, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
             if (items.any { it.clearable }) {
                 Spacer(Modifier.width(8.dp))
@@ -327,8 +327,8 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: 
 private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, onExpand: () -> Unit) {
     Box(modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp)) {
         // Two receding cards behind, like an iPhone notification stack.
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(FolioColors.SurfaceCard.copy(alpha = .45f)))
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(FolioColors.SurfaceCard.copy(alpha = .66f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SurfaceCard.copy(alpha = .45f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SurfaceCard.copy(alpha = .66f)))
         key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, onOpen = onExpand) }
     }
 }
@@ -345,7 +345,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
     val reveal = with(density) { (if (item.clearable && !overApps) 176.dp else 92.dp).toPx() }
     var options by remember(item.key) { mutableStateOf(false) }
     fun settle(to: Float) = scope.launch { swipe.animateTo(to, MotionSpeed.spring(.85f, Spring.StiffnessMediumLow)) }
-    BoxWithConstraints(modifier.clip(RoundedCornerShape(22.dp))) {
+    BoxWithConstraints(modifier.clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp))) {
         val widthPx = constraints.maxWidth.toFloat()
         if (swipe.value < -1f) Row(Modifier.matchParentSize().padding(start = FolioSpace.MEDIUM.dp).graphicsLayer {
                 // Buttons grow in as the card slides, like iOS, instead of popping in at full size.
@@ -380,7 +380,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
         val pressScale by androidx.compose.animation.core.animateFloatAsState(if (pressed) .97f else 1f,
             FolioMotion.spring(FolioMotion.Control), label = "notification press")
         Row(Modifier.fillMaxWidth().graphicsLayer { scaleX = pressScale; scaleY = pressScale }
-            .clip(RoundedCornerShape(22.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
+            .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
             .border(FolioGlass.edge, RoundedCornerShape(22.dp))
             .combinedClickable(interactionSource = press, indication = null, onClick = { if (swipe.value < -1f) settle(0f) else onOpen() }, onLongClick = {
                 if (!overApps) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true }
@@ -396,7 +396,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                     Text(relativeTime(item.postTime), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
                 }
                 item.text?.let { Text(it.lines().filter(String::isNotBlank).joinToString(" "), color = Color.White.copy(alpha = .88f),
-                    fontSize = 14.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
+                    fontSize = FolioType.COMPACT.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
                 if (extraCount > 0) Text(pluralStringResource(R.plurals.more_from_app, extraCount, extraCount, item.appLabel),
                     color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
                 if (extraCount == 0 && (item.canReply || item.canMarkRead)) {
@@ -425,9 +425,9 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
 
 @Composable
 private fun SwipeAction(label: String, onClick: () -> Unit) {
-    Box(Modifier.fillMaxHeight().width(80.dp).clip(RoundedCornerShape(22.dp)).background(NotifGlass)
+    Box(Modifier.fillMaxHeight().width(80.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(NotifGlass)
         .border(FolioGlass.edge, RoundedCornerShape(22.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -502,13 +502,13 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(with(density) { bounds.width().toDp() }).heightIn(min = with(density) { bounds.height().toDp() })
                         .onSizeChanged { cardH = it.height }
                         .graphicsLayer { val s = 1f + .03f * appear.value; scaleX = s; scaleY = s }
-                        .clip(RoundedCornerShape(22.dp)).background(Color(0xFF2C2C30)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
+                        .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(Color(0xFF2C2C30)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(item.title ?: item.appLabel, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = FolioType.SUBHEAD.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            item.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
+                            item.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
                         }
                     }
                 }
@@ -931,9 +931,9 @@ private fun PanelPill(label: String, onClick: () -> Unit) {
 
 @Composable
 private fun EmptyNote(text: String, action: String?, onAction: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(NotifGlass).padding(FolioSpace.XL.dp),
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(NotifGlass).padding(FolioSpace.XL.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-        Text(text, color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
+        Text(text, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp)
         if (action != null) PanelPill(action, onAction)
     }
 }

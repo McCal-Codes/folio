@@ -29,7 +29,7 @@ internal object FolioGlass {
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */
-    val secondary = Color.White.copy(alpha = .62f)
+    val secondary = FolioColors.SecondaryLabel
 }
 
 /** Dark, iOS-like colors for Folio's sheets (settings, app options, setup). */

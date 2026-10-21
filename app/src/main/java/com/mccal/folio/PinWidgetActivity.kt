@@ -62,7 +62,7 @@ class PinWidgetActivity : ComponentActivity() {
             var error by remember { mutableStateOf<String?>(null) }
             PinCard(onCancel = ::finish, error = error, addLabel = stringResource(R.string.add_to_home_screen), tag = "pin-widget", onAdd = { error = add(request, provider) ?: run { finish(); null } }) {
                 preview?.let { Image(it.asImageBitmap(), null, Modifier.heightIn(max = 180.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp))) }
-                Text(label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(label, color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                 Text(if (label != app) app else stringResource(R.string.widget), color = Color.White.copy(alpha = .6f), fontSize = FolioType.SUBHEAD.sp)
             }
         }
@@ -88,7 +88,7 @@ class PinWidgetActivity : ComponentActivity() {
                 }
             }) {
                 icon?.let { Image(it.asImageBitmap(), null, Modifier.size(72.dp).clip(RoundedCornerShape(18.dp))) }
-                Text(label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(label, color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                 if (app.isNotEmpty()) Text(app, color = Color.White.copy(alpha = .6f), fontSize = FolioType.SUBHEAD.sp)
             }
         }
@@ -152,7 +152,7 @@ private fun PinCard(onCancel: () -> Unit, error: String?, addLabel: String, tag:
             .pointerInput(Unit) { detectTapGestures() }.padding(FolioSpace.XL.dp).testTag("$tag-card"),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
             content()
-            error?.let { Text(it, color = FolioColors.Red, fontSize = 14.sp, textAlign = TextAlign.Center) }
+            error?.let { Text(it, color = FolioColors.Red, fontSize = FolioType.COMPACT.sp, textAlign = TextAlign.Center) }
             Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                 .clickable(onClick = onAdd).testTag("$tag-add"), contentAlignment = Alignment.Center) {
                 Text(addLabel, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)

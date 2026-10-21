@@ -142,7 +142,7 @@ private fun SourceRow(
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
         Column(Modifier.padding(start = FolioSpace.COMPACT.dp).weight(1f)) {
-            Text(name, color = Color.White, fontSize = 16.sp)
+            Text(name, color = Color.White, fontSize = FolioType.CALLOUT.sp)
             Text(
                 detail,
                 color = if (failed) FolioColors.RedSoft else Color.White.copy(alpha = .55f),
@@ -192,7 +192,7 @@ internal fun MarketSourcePage(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp).mirroredForRtl())
-                Text(backTitle ?: back, color = LocalAccent.current.ink, fontSize = 16.sp)
+                Text(backTitle ?: back, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp)
             }
         }
         Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -215,7 +215,7 @@ internal fun MarketSourcePage(
                 // The address, not a tidied version of it: this is the thing to compare with what a publisher says.
                 Text(
                     if (builtIn) stringResource(R.string.inside_the_app) else source.url,
-                    color = Color.White.copy(alpha = .55f), fontSize = 14.sp,
+                    color = Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp,
                 )
             }
         }
@@ -233,7 +233,7 @@ internal fun MarketSourcePage(
         SheetGroupLabel(stringResource(R.string.information))
         SheetGroup(Modifier.padding(bottom = FolioSpace.MEDIUM.dp)) {
             Column(Modifier.padding(FolioSpace.COMFY.dp)) {
-                Text(pluralStringResource(R.plurals.n_packages, packageCount, packageCount), color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
+                Text(pluralStringResource(R.plurals.n_packages, packageCount, packageCount), color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp)
                 Text(
                     when {
                         builtIn -> stringResource(R.string.it_updates_with_folio_and_uses_no)
@@ -266,7 +266,7 @@ internal fun MarketSourcePage(
         if (packageCount == 0) {
             Text(
                 stringResource(R.string.nothing_from_this_source_yet),
-                color = Color.White.copy(alpha = .55f), fontSize = 14.sp,
+                color = Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp,
                 modifier = Modifier.padding(vertical = FolioSpace.LARGE.dp),
             )
         } else {
@@ -285,7 +285,7 @@ private fun Pill(label: String, onClick: () -> Unit, destructive: Boolean = fals
         label,
         color = if (destructive) FolioColors.RedSoft else LocalAccent.current.ink,
         fontSize = FolioType.SUBHEAD.sp,
-        modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .08f))
+        modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .08f))
             .clickable(onClick = onClick).heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
     )
 }
@@ -305,9 +305,9 @@ internal fun MarketTrustSheet(
     Column(Modifier.fillMaxWidth().padding(FolioSpace.XL.dp).testTag("market-trust-sheet")) {
         Text(
             stringResource(if (previous == null) R.string.add_this_source else R.string.this_source_changed_its_key),
-            color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+            color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold,
         )
-        Text(url, color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
+        Text(url, color = Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
         if (previous != null) {
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color(0xFF3A2A16)).padding(FolioSpace.COMFY.dp)) {
                 Icon(Icons.Rounded.Warning, contentDescription = null, tint = FolioColors.Warning, modifier = Modifier.size(20.dp))
@@ -328,13 +328,13 @@ internal fun MarketTrustSheet(
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = 16.sp,
+                stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
             Text(
                 stringResource(if (previous == null) R.string.trust_and_add else R.string.trust_the_new_key),
-                color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                     .clickable(onClick = onTrust).heightIn(min = 44.dp).padding(horizontal = FolioSpace.XL.dp, vertical = FolioSpace.MEDIUM.dp)
                     .testTag("market-trust-confirm"),
@@ -348,7 +348,7 @@ private fun Fingerprint(key: SourceKey) {
     Text(
         key.fingerprintGroups,
         color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(FolioColors.SheetSurface).padding(FolioSpace.MEDIUM.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(FolioColors.SheetSurface).padding(FolioSpace.MEDIUM.dp),
     )
 }
 
@@ -364,7 +364,7 @@ internal fun refreshMessage(context: android.content.Context, source: Source, re
 @Composable
 internal fun MarketAddSourceSheet(url: String, onUrl: (String) -> Unit, onNext: () -> Unit, onCancel: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(FolioSpace.XL.dp).testTag("market-add-source")) {
-        Text(stringResource(R.string.add_a_source), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.add_a_source), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold)
         Text(
             stringResource(R.string.paste_the_address_the_publisher_gave_you),
             color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp),
@@ -379,12 +379,12 @@ internal fun MarketAddSourceSheet(url: String, onUrl: (String) -> Unit, onNext: 
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = 16.sp,
+                stringResource(R.string.cancel), color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
             Text(
-                stringResource(R.string.next), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                stringResource(R.string.next), color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
                     .background(if (url.isBlank()) LocalAccent.current.fill.copy(alpha = .4f) else LocalAccent.current.fill)
                     .clickable(enabled = url.isNotBlank(), onClick = onNext)

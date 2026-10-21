@@ -110,7 +110,7 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.finish_setting_up_folio), color = primary, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
-                        Text(required.filterNot { it.done }.joinToString(", ") { it.title }, color = secondary, fontSize = 14.sp,
+                        Text(required.filterNot { it.done }.joinToString(", ") { it.title }, color = secondary, fontSize = FolioType.COMPACT.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -131,6 +131,6 @@ internal fun SetupReminderCard(isDefaultHome: Boolean, blocked: Boolean, onMakeD
 private fun ReminderButton(text: String, background: Color, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Box(modifier.heightIn(min = 46.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(background).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center) {
-        Text(text, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = color, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
     }
 }
