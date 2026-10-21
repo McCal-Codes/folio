@@ -54,7 +54,10 @@ internal object SoftwareUpdate {
     private const val BETA = "beta"
     private const val NOTIFIED_VERSION = "notifiedVersion"
     private const val MODE = "mode"
+    /** The version before an install Folio started: afterUpdate clears the downloaded files once the new one is running. */
     private const val AUTO_UPDATED_FROM = "autoUpdatedFrom"
+    /** Set only when the idle job installed it: the "Folio was updated" note is for updates you did not start yourself. */
+    private const val NOTIFY_UPDATED = "notifyUpdated"
     private const val CHANNEL = "software_update"
     private const val DAY_MS = 24L * 60 * 60 * 1000
 
@@ -193,10 +196,12 @@ internal object SoftwareUpdate {
         val from = prefs.getString(AUTO_UPDATED_FROM, null) ?: return
         val now = installedVersion(context)
         if (!isNewer(now, from)) return
-        prefs.edit().remove(AUTO_UPDATED_FROM).apply()
+        val notify = prefs.getBoolean(NOTIFY_UPDATED, false)
+        prefs.edit().remove(AUTO_UPDATED_FROM).remove(NOTIFY_UPDATED).apply()
         updatesDir(context).deleteRecursively()
         File(context.cacheDir, "updates").deleteRecursively()  // where 0.6.0 and earlier downloaded
-        if (!canPostNotifications(context)) return
+        // The downloaded files are gone either way; only an update Folio installed on its own is announced.
+        if (!notify || !canPostNotifications(context)) return
         val manager = context.getSystemService(android.app.NotificationManager::class.java)
         createChannel(context, manager)
         val open = PendingIntent.getActivity(context, 2, Intent(context, MainActivity::class.java)
@@ -394,14 +399,14 @@ internal object SoftwareUpdate {
     @Volatile private var handedOver: Release? = null
 
     /**
-     * Installs a verified download. Only an [automatic] install (the idle job) leaves the "updated automatically" note
-     * for after the restart: one you tapped yourself is not worth a notification about what you just did.
+     * Installs a verified download. Every install leaves the cleanup signal for after the restart, but only an [automatic]
+     * one (the idle job) leaves the "updated automatically" note: one you tapped yourself is not worth a notification.
      */
     private suspend fun installReady(context: Context, release: Release, apk: File, automatic: Boolean = false) {
         val result = withContext(Dispatchers.IO) {
             runCatching {
                 require(sameSigner(context, apk)) { context.getString(R.string.the_update_isn_t_signed_with_folio_s_key) }
-                if (automatic) context.getSharedPreferences(PREFS, 0).edit().putString(AUTO_UPDATED_FROM, installedVersion(context)).apply()
+                context.getSharedPreferences(PREFS, 0).edit().putString(AUTO_UPDATED_FROM, installedVersion(context)).putBoolean(NOTIFY_UPDATED, automatic).apply()
                 handedOver = release
                 install(context, apk)
             }
@@ -412,8 +417,9 @@ internal object SoftwareUpdate {
 
     /** The person tapped Cancel on Android's install prompt: back to a ready update, if one is still on the phone. */
     internal fun cancelled(context: Context) {
-        context.getSharedPreferences(PREFS, 0).edit().remove(AUTO_UPDATED_FROM).apply()
-        val release = handedOver
+        context.getSharedPreferences(PREFS, 0).edit().remove(AUTO_UPDATED_FROM).remove(NOTIFY_UPDATED).apply()
+        // After process death the handed-over release is gone from memory, but the verified download is still on disk.
+        val release = handedOver ?: readyApk(context)?.first
         status.value = if (release != null && readyApk(context) != null) Status.Ready(release, tonight = false) else Status.Idle
     }
 
