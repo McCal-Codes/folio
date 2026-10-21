@@ -73,6 +73,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **The clock's shade fits the picture:** when a picture behind the Big Clock is too pale or too mixed for either white or dark text alone, such as an overcast sky with branches in front, the soft shade behind the clock was always the same 40% and could still leave the text hard to read. It now gets only as dark as that picture needs, up to about 54%, so the text reaches the same readable contrast on any picture.
 - **Button Bar labels are translated:** the Recent apps, Home and Back buttons of the on-screen Button Bar were always read out in English. They now follow your language, for TalkBack and for the button's long-press label.
 - **The Focus pill fades with Reduce Motion:** the pill that shows the active Focus at the top of Home slid in and out even with Reduce Motion on. It now fades where it lands, like the other sheets and alerts.
 - **Arrows face the right way in right-to-left languages:** the back and disclosure chevrons in Settings rows and the Market back arrow now flip in Arabic, Hebrew and other right-to-left languages, instead of pointing the wrong way. Home's page arrows keep their direction, because Home's pages stay in a fixed order.
