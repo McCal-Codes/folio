@@ -287,7 +287,11 @@ class IslandListenerService : NotificationListenerService() {
     private fun publishNow() {
         val controllers = runCatching { sessions?.getActiveSessions(component(this)) }.getOrNull().orEmpty()
         watch(controllers) // every pass, so ended sessions are unregistered even during a call
-        mutable.value = runCatching { currentOngoing() ?: currentMedia(controllers) ?: currentProgress() }.getOrNull()
+        // The island shows one thing at a time (a call or timer comes before the music), but the Music widget shows the track
+        // whatever else is going on, so the media is read on its own as well.
+        val media = runCatching { currentMedia(controllers) }.getOrNull()
+        mediaMutable.value = media
+        mutable.value = runCatching { currentOngoing() ?: media ?: currentProgress() }.getOrNull()
         notificationsMutable.value = runCatching { currentNotifications() }.getOrDefault(emptyList())
         runCatching { rememberMessageChannels() }
     }
@@ -527,6 +531,9 @@ class IslandListenerService : NotificationListenerService() {
         private val mutable = MutableStateFlow<IslandActivity?>(null)
         /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
         val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
+        private val mediaMutable = MutableStateFlow<IslandActivity.Media?>(null)
+        /** The playing track whatever else the island is showing: for the Music widget, which is not the island. */
+        val media: StateFlow<IslandActivity.Media?> = ScreenshotMode.hide(mediaMutable.asStateFlow(), null)
         val connected = MutableStateFlow(false)
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)

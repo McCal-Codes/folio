@@ -64,6 +64,10 @@ data class WidgetSpanConstraints(
     val minimumFitsGrid: Boolean = true,
 )
 
+/** True when [span] is within these limits, so an existing footprint can be kept when a different widget replaces the one in it. */
+fun WidgetSpanConstraints.accepts(span: WidgetSpan): Boolean =
+    span.width in minimum.width..maximum.width && span.height in minimum.height..maximum.height
+
 /** Derives bounded spans; minimumFitsGrid reports when provider minima exceed the grid. */
 fun widgetSpanConstraints(provider: WidgetProviderSizing, grid: WidgetGridSizing): WidgetSpanConstraints? {
     require(grid.columns > 0 && grid.rows > 0)

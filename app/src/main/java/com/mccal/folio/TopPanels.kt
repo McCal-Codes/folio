@@ -844,11 +844,13 @@ private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: 
         remember(pkg) { runCatching { context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull() }
     }
     val nowPlayingLabel = stringResource(R.string.now_playing)
+    val playingLabel = stringResource(R.string.playing)
+    val pausedLabel = stringResource(R.string.paused)
     val playLabel = stringResource(R.string.play)
     val pauseLabel = stringResource(R.string.pause)
     val notPlayingLabel = stringResource(R.string.not_playing)
     val description = if (media != null) "$nowPlayingLabel, ${media.title}" +
-        (media.subtitle?.let { ", $it" } ?: "") + (appLabel?.let { ", $it" } ?: "") + ", " + (if (media.playing) playLabel else pauseLabel)
+        (media.subtitle?.let { ", $it" } ?: "") + (appLabel?.let { ", $it" } ?: "") + ", " + (if (media.playing) playingLabel else pausedLabel)
     else notPlayingLabel
     Module(modifier.clickable(enabled = media != null, onClick = onOpen)
         .semantics(mergeDescendants = true) {
@@ -1085,7 +1087,7 @@ internal fun musicShape(widthDp: Float, heightDp: Float): MusicShape = when {
  */
 @Composable
 internal fun MusicWidgetCard(onEdit: () -> Unit) {
-    val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)
+    val media = IslandListenerService.media.collectAsStateWithLifecycle().value
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
     // Lifted the same way MediaModule's scrubber is: raw album-art colors are often too dark to read as a thin
     // line or a bar of wave bars against the Poster's blurred backdrop.
@@ -1124,7 +1126,7 @@ private fun MusicCard(media: IslandActivity.Media, accent: Color) {
         // Same fixed-budget approach as the Poster: the art gets whatever height is left over after everything
         // else, never a weight negotiation that starved it to zero the first time this was tried.
         val fixedBudget = 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + FolioTouch.MIN.dp
-        val art = (maxHeight - fixedBudget).coerceIn(32.dp, minOf(maxWidth * .3f, 64.dp))
+        val art = (maxHeight - fixedBudget).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
@@ -1205,7 +1207,7 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
         val fixedBudget = 8.dp + 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + 52.dp + 28.dp
         val art = (maxHeight - fixedBudget).coerceAtLeast(32.dp)
         val showWave = art - 26.dp >= 56.dp
-        val artSize = (if (showWave) art - 26.dp else art).coerceIn(32.dp, minOf(maxWidth * .6f, 120.dp))
+        val artSize = (if (showWave) art - 26.dp else art).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .6f, 120.dp)))
         Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Box(Modifier.size(artSize).clip(RoundedCornerShape(artSize * .12f)).background(FolioGlass.raised).shadow(8.dp, RoundedCornerShape(artSize * .12f)), contentAlignment = Alignment.Center) {
                 if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
@@ -1259,7 +1261,7 @@ private fun EmptyMusicStrip(label: String) {
 @Composable
 private fun EmptyMusicCard(label: String) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
-        val art = (maxHeight * .5f).coerceIn(32.dp, minOf(maxWidth * .3f, 64.dp))
+        val art = (maxHeight * .5f).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
         Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(art * .4f))
