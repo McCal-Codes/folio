@@ -2053,9 +2053,10 @@
     <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
     <string name="profile_app">%1$s应用</string>
     <string name="island_status_ready_title">正在其他应用上方显示</string>
-    <string name="island_status_ready_body">音乐、通话和计时器会显示在灵动岛中。消息弹窗遵循“勿扰模式”。</string>
-    <string name="island_status_dnd_title">消息弹窗已静音</string>
-    <string name="island_status_dnd_body">“勿扰模式”已开启。音乐、通话和计时器仍会显示在其他应用上方。</string>
+    <string name="island_status_ready_body">音乐、通话和计时器会显示在灵动岛中。“勿扰模式”会限制消息弹窗。</string>
+    <string name="island_status_ready_live_body">音乐、通话和计时器会显示在灵动岛中。</string>
+    <string name="island_status_dnd_title">“勿扰模式”正在限制消息弹窗</string>
+    <string name="island_status_dnd_body">“勿扰模式”已开启，由它决定哪些消息弹窗会显示。音乐、通话和计时器仍会显示在其他应用上方。</string>
     <string name="island_status_dnd_action">打开“勿扰模式”</string>
     <string name="island_status_popup_title">Android 正在自行显示这些弹窗</string>
     <string name="island_status_popup_body">“不与 Android 弹窗重复”已开启，因此灵动岛不会干预重要通知，例如大多数消息。</string>
@@ -2069,6 +2070,8 @@
     <string name="island_status_access_action">打开通知访问权限</string>
     <string name="island_status_off_title">灵动岛在其他应用中已关闭</string>
     <string name="island_status_off_body">在“所有应用中”下开启灵动岛，即可在其他应用上方看到它。</string>
+    <string name="island_status_live_off_title">音乐和实时进度已关闭</string>
+    <string name="island_status_live_off_body">开启“音乐和实时进度”后，音乐、通话和计时器会显示在灵动岛中。</string>
     <string name="island_status_safe_title">已被安全模式暂停</string>
     <string name="island_status_safe_body">安全模式下，灵动岛和程序坞只在主屏幕显示。关闭安全模式后即可在其他应用上方使用。</string>
 </resources>

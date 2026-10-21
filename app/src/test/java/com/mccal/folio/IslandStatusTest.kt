@@ -51,8 +51,25 @@ class IslandStatusTest {
 
     @Test fun androidTakingOverIsOnlyReportedWhenSomethingWouldHaveShown() {
         // Messages off and other alerts off (the defaults): Don't double up has nothing to take over.
-        assertEquals(IslandStatus(IslandReason.READY), islandStatus(ok.copy(avoidDouble = true, popUpsOn = false)))
-        assertEquals(IslandStatus(IslandReason.DO_NOT_DISTURB), islandStatus(ok.copy(doNotDisturb = true, avoidDouble = true, popUpsOn = false)))
+        assertEquals(IslandStatus(IslandReason.READY_LIVE_ONLY), islandStatus(ok.copy(avoidDouble = true, popUpsOn = false)))
+        // Do Not Disturb has no message pop-ups to limit when they are off, so the card must not mention it.
+        assertEquals(IslandStatus(IslandReason.READY_LIVE_ONLY), islandStatus(ok.copy(doNotDisturb = true, avoidDouble = true, popUpsOn = false)))
         assertEquals(IslandStatus(IslandReason.ANDROID_POPUP), islandStatus(ok.copy(avoidDouble = true, popUpsOn = true)))
+    }
+
+    @Test fun readyOnlyMentionsMessagePopUpsWhenTheyAreOn() {
+        assertEquals(IslandStatus(IslandReason.READY), islandStatus(ok.copy(popUpsOn = true)))
+        assertEquals(IslandStatus(IslandReason.READY_LIVE_ONLY), islandStatus(ok.copy(popUpsOn = false)))
+        assertEquals(IslandLevel.GOOD, IslandReason.READY_LIVE_ONLY.level())
+        assertFalse(IslandReason.READY_LIVE_ONLY.hasAction())
+    }
+
+    @Test fun musicAndLiveProgressOffSaysNothingWillShow() {
+        assertEquals(IslandStatus(IslandReason.ISLAND_OFF), islandStatus(ok.copy(islandOn = false)))
+        assertEquals(IslandStatus(IslandReason.ISLAND_OFF), islandStatus(ok.copy(islandOn = false, doNotDisturb = true, avoidDouble = true)))
+        // The switch for showing over other apps still comes first.
+        assertEquals(IslandReason.IN_EVERY_APP_OFF, islandStatus(ok.copy(islandOn = false, everywhere = false)).headline)
+        assertEquals(IslandLevel.OFF, IslandReason.ISLAND_OFF.level())
+        assertFalse(IslandReason.ISLAND_OFF.hasAction())
     }
 }

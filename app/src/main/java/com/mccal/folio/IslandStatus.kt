@@ -35,13 +35,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** Why the Dynamic Island is or is not showing over other apps, most important first. */
-internal enum class IslandReason { SAFE_MODE, IN_EVERY_APP_OFF, GESTURES_SERVICE_OFF, NOTIFICATION_ACCESS_OFF, DO_NOT_DISTURB, ANDROID_POPUP, READY }
+internal enum class IslandReason { SAFE_MODE, IN_EVERY_APP_OFF, ISLAND_OFF, GESTURES_SERVICE_OFF, NOTIFICATION_ACCESS_OFF, DO_NOT_DISTURB, ANDROID_POPUP, READY, READY_LIVE_ONLY }
 
 internal enum class IslandLevel { GOOD, WARNING, PROBLEM, INFO, OFF }
 
 internal data class IslandStatusInputs(
     val safeMode: Boolean, val everywhere: Boolean, val gesturesService: Boolean, val notificationAccess: Boolean,
     val doNotDisturb: Boolean, val avoidDouble: Boolean,
+    /** The "Music and live progress" switch. Off, the island has nothing to show at all. */
+    val islandOn: Boolean = true,
     /** Message pop-ups or other-notification alerts are on, so there is something for Android's own pop-up to take over. */
     val popUpsOn: Boolean = true,
 )
@@ -58,23 +60,26 @@ internal data class IslandStatus(val headline: IslandReason, val notes: List<Isl
 internal fun islandStatus(i: IslandStatusInputs): IslandStatus = when {
     i.safeMode -> IslandStatus(IslandReason.SAFE_MODE)
     !i.everywhere -> IslandStatus(IslandReason.IN_EVERY_APP_OFF)
+    !i.islandOn -> IslandStatus(IslandReason.ISLAND_OFF)
     !i.gesturesService -> IslandStatus(IslandReason.GESTURES_SERVICE_OFF)
     !i.notificationAccess -> IslandStatus(IslandReason.NOTIFICATION_ACCESS_OFF)
-    i.doNotDisturb -> IslandStatus(IslandReason.DO_NOT_DISTURB, if (i.avoidDouble && i.popUpsOn) listOf(IslandReason.ANDROID_POPUP) else emptyList())
-    i.avoidDouble && i.popUpsOn -> IslandStatus(IslandReason.ANDROID_POPUP)
+    !i.popUpsOn -> IslandStatus(IslandReason.READY_LIVE_ONLY)
+    i.doNotDisturb -> IslandStatus(IslandReason.DO_NOT_DISTURB, if (i.avoidDouble) listOf(IslandReason.ANDROID_POPUP) else emptyList())
+    i.avoidDouble -> IslandStatus(IslandReason.ANDROID_POPUP)
     else -> IslandStatus(IslandReason.READY)
 }
 
 internal fun IslandReason.level() = when (this) {
-    IslandReason.READY -> IslandLevel.GOOD
+    IslandReason.READY, IslandReason.READY_LIVE_ONLY -> IslandLevel.GOOD
     IslandReason.DO_NOT_DISTURB -> IslandLevel.WARNING
     IslandReason.ANDROID_POPUP -> IslandLevel.INFO
     IslandReason.GESTURES_SERVICE_OFF, IslandReason.NOTIFICATION_ACCESS_OFF -> IslandLevel.PROBLEM
-    IslandReason.IN_EVERY_APP_OFF, IslandReason.SAFE_MODE -> IslandLevel.OFF
+    IslandReason.IN_EVERY_APP_OFF, IslandReason.ISLAND_OFF, IslandReason.SAFE_MODE -> IslandLevel.OFF
 }
 
 /** True when the reason has something the person can do from the card. */
-internal fun IslandReason.hasAction() = this != IslandReason.READY && this != IslandReason.IN_EVERY_APP_OFF && this != IslandReason.SAFE_MODE
+internal fun IslandReason.hasAction() = this != IslandReason.READY && this != IslandReason.READY_LIVE_ONLY && this != IslandReason.IN_EVERY_APP_OFF &&
+    this != IslandReason.ISLAND_OFF && this != IslandReason.SAFE_MODE
 
 /** Reads the phone's state for [islandStatus]; call it again when the person comes back from Android's settings. */
 internal fun readIslandStatusInputs(context: Context, state: LauncherState): IslandStatusInputs {
@@ -85,7 +90,7 @@ internal fun readIslandStatusInputs(context: Context, state: LauncherState): Isl
         gesturesService = SystemShadeAccessibilityService.isConnected(),
         notificationAccess = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName),
         doNotDisturb = filter != NotificationManager.INTERRUPTION_FILTER_ALL && filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN,
-        avoidDouble = state.messagesAvoidDouble,
+        avoidDouble = state.messagesAvoidDouble, islandOn = state.island,
         popUpsOn = "MESSAGE" !in state.islandEventsOff || state.islandAlerts,
     )
 }
@@ -106,22 +111,25 @@ private fun rememberResumeTick(): Int {
 }
 
 private fun IslandReason.title(): Int = when (this) {
-    IslandReason.READY -> R.string.island_status_ready_title
+    IslandReason.READY, IslandReason.READY_LIVE_ONLY -> R.string.island_status_ready_title
     IslandReason.DO_NOT_DISTURB -> R.string.island_status_dnd_title
     IslandReason.ANDROID_POPUP -> R.string.island_status_popup_title
     IslandReason.GESTURES_SERVICE_OFF -> R.string.island_status_service_title
     IslandReason.NOTIFICATION_ACCESS_OFF -> R.string.island_status_access_title
     IslandReason.IN_EVERY_APP_OFF -> R.string.island_status_off_title
+    IslandReason.ISLAND_OFF -> R.string.island_status_live_off_title
     IslandReason.SAFE_MODE -> R.string.island_status_safe_title
 }
 
 private fun IslandReason.body(): Int = when (this) {
     IslandReason.READY -> R.string.island_status_ready_body
+    IslandReason.READY_LIVE_ONLY -> R.string.island_status_ready_live_body
     IslandReason.DO_NOT_DISTURB -> R.string.island_status_dnd_body
     IslandReason.ANDROID_POPUP -> R.string.island_status_popup_body
     IslandReason.GESTURES_SERVICE_OFF -> R.string.island_status_service_body
     IslandReason.NOTIFICATION_ACCESS_OFF -> R.string.island_status_access_body
     IslandReason.IN_EVERY_APP_OFF -> R.string.island_status_off_body
+    IslandReason.ISLAND_OFF -> R.string.island_status_live_off_body
     IslandReason.SAFE_MODE -> R.string.island_status_safe_body
 }
 
@@ -138,7 +146,7 @@ private fun IslandReason.action(): Int? = when (this) {
 internal fun IslandStatusCard(state: LauncherState, onAction: (IslandReason) -> Unit) {
     val context = LocalContext.current
     val tick = rememberResumeTick()
-    val status = remember(tick, state.islandEverywhere, state.messagesAvoidDouble) { islandStatus(readIslandStatusInputs(context, state)) }
+    val status = remember(tick, state.islandEverywhere, state.island, state.messagesAvoidDouble, state.islandAlerts, state.islandEventsOff) { islandStatus(readIslandStatusInputs(context, state)) }
     val headline = status.headline
     val dot = when (headline.level()) {
         IslandLevel.GOOD -> FolioColors.Green
