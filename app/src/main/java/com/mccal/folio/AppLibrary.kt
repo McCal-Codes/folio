@@ -212,7 +212,7 @@ internal fun AppLibrary(
                                 // A clone sits right beside its original with the same name; the line under it tells them apart.
                                 // Not while Screenshot Mode swaps it: the profile's name would give the swap away.
                                 Column {
-                                    Text(app.label, maxLines = 2, fontSize = 14.sp)
+                                    Text(app.label, maxLines = 2, fontSize = FolioType.COMPACT.sp)
                                     if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = ink.copy(alpha = .6f),
                                         fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, modifier = Modifier.testTag("library-profile-${app.id}"))
                                 }
