@@ -75,4 +75,24 @@ class PackageReadTest {
     @Test fun aMissingStreamIsNotAPackage() {
         assertEquals(PackageRead.NotAPackage, runBlocking { readPackageWithin(300) { null } })
     }
+
+    @Test fun aReadThatIgnoresInterruptsIsReleasedByClosingTheStreamAtTheDeadline() {
+        val release = java.util.concurrent.CountDownLatch(1)
+        val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val stubborn = object : InputStream() {
+            override fun read(): Int = -1
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                // Swallows interrupts, the way a provider's native read can; only close() lets it go.
+                while (!closed.get()) { try { release.await(50, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { } }
+                return -1
+            }
+            override fun close() { closed.set(true); release.countDown() }
+        }
+        val started = System.nanoTime()
+        val read = runBlocking { readPackageWithin(300) { stubborn } }
+        val tookMs = (System.nanoTime() - started) / 1_000_000
+        assertEquals(PackageRead.TimedOut, read)
+        assertTrue("took ${tookMs}ms", tookMs < 3_000)
+        assertTrue("the stream was closed", closed.get())
+    }
 }

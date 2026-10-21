@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import com.mccal.folio.market.MarketFeature
 import com.mccal.folio.market.PackageArchive
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
@@ -99,19 +100,27 @@ internal fun readPackageBytes(input: java.io.InputStream, max: Int, deadlineNano
 }
 
 /**
- * Opens and reads a package off the main thread, giving up after [timeoutMs]. The read runs interruptibly and the
- * stream is closed when the deadline passes, so a blocked provider read is cut off rather than left running.
+ * Opens and reads a package off the main thread, giving up after [timeoutMs].
+ *
+ * The read runs on its own job and the caller waits on that job, not inside it: at the deadline the caller returns at
+ * once, closes the stream and interrupts the read. Waiting inside the read would hold the caller until a provider whose
+ * `read()` ignores interrupts returned, which is exactly the hang the deadline is for. If opening the stream itself
+ * blocks, the caller is still released; only that worker thread stays behind until the provider answers.
  */
 internal suspend fun readPackageWithin(timeoutMs: Long, open: () -> java.io.InputStream?): PackageRead {
     val opened = java.util.concurrent.atomic.AtomicReference<java.io.InputStream?>(null)
-    val result = withTimeoutOrNull(timeoutMs) {
-        runInterruptible(Dispatchers.IO) {
+    val job = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).async {
+        runInterruptible {
             val stream = open() ?: return@runInterruptible PackageRead.NotAPackage
             opened.set(stream)
             stream.use { readPackageBytes(it, PackageArchive.MAX_COMPRESSED, System.nanoTime() + timeoutMs * 1_000_000L) }
         }
     }
-    if (result == null) runCatching { opened.get()?.close() }
+    val result = withTimeoutOrNull(timeoutMs) { job.await() }
+    if (result == null) {
+        runCatching { opened.get()?.close() }
+        job.cancel()
+    }
     return result ?: PackageRead.TimedOut
 }
 
