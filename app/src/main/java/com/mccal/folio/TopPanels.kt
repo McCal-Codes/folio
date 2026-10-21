@@ -615,7 +615,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
     val chosen = remember(controlNames) { controlNames.mapNotNull { n -> CcControl.entries.firstOrNull { it.name == n } } }.filter(::available)
     val edit = remember { HomeEditMode() }
-    BackHandler(edit.active) { edit.stop() }
+    SafeBackHandler(edit.active) { edit.stop() }
 
     fun isOn(control: CcControl) = when (control) {
         CcControl.ROTATION -> controls.rotationLocked
