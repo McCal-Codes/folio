@@ -49,6 +49,12 @@ class SystemShadeAccessibilityService : AccessibilityService() {
         /** Screenshot, lock screen, power menu… through the gestures service; false when it isn't running. */
         internal fun global(action: Int): Boolean = instance.get()?.performGlobalAction(action) == true
 
+        /**
+         * Folio's own panel over the open app, when the switch for it is on and the phone is unlocked. False means nothing was drawn and
+         * the caller should open the phone's shade ([open]); Home's own "Android notifications" button always uses [open].
+         */
+        internal fun openFolio(panel: ShadePanel): Boolean = instance.get()?.overlay?.openShade(panel) == true
+
         internal fun open(context: Context, panel: ShadePanel): ShadeOpenResult {
             val service = instance.get()
             if (service != null) {

@@ -52,6 +52,8 @@ internal object OverlayBack {
  */
 @Composable
 internal fun OverlayBackHandler(open: Boolean, onClose: () -> Unit) {
+    // Panels drawn over other apps live in a service window with no activity behind them, so there is no Back to hear there.
+    if (androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current == null) return
     val pass = FolioMotion.v2 && !LocalReduceMotion.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     if (pass) PredictiveBack(enabled = open,
