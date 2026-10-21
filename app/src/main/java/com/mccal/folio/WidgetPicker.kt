@@ -277,7 +277,7 @@ internal fun VisualWidgetPicker(
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .12f))
+            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .12f))
                 .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
@@ -296,7 +296,7 @@ internal fun VisualWidgetPicker(
                 horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 profiles.forEach { profile ->
                     val selected = profile.userSerial == selectedProfile.userSerial
-                    Text(profile.label, color = if (selected) Color.Black else ink, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    Text(profile.label, color = if (selected) Color.Black else ink, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .14f))
                             .clickable { onSelectProfile(profile) }.padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp))
                 }
@@ -323,7 +323,7 @@ internal fun VisualWidgetPicker(
                 }
                 fun header(key: String, title: String, count: Int? = null) = item(key, span = { GridItemSpan(maxLineSpan) }) {
                     Row(Modifier.padding(top = FolioSpace.MEDIUM.dp, start = FolioSpace.HAIR.dp), verticalAlignment = Alignment.Bottom) {
-                        Text(title, color = ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        Text(title, color = ink, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold)
                         count?.let { Text("  $it", color = secondary, fontSize = FolioType.FOOTNOTE.sp) }
                     }
                 }
