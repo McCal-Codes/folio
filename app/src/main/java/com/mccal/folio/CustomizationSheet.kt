@@ -1354,6 +1354,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.darken_behind_text, R.string.settings_keywords_darken_behind_text, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_appearance_light_dark_sunset, R.string.settings_keywords_appearance_light_dark_sunset, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_grid_icon_size_dock, R.string.settings_keywords_grid_icon_size_dock, CustomizationPage.HOME),
+    Triple(R.string.folder_background, R.string.settings_keywords_folder_background, CustomizationPage.HOME),
     Triple(R.string.rows, R.string.settings_keywords_rows, CustomizationPage.HOME),
     Triple(R.string.space_between_columns, R.string.settings_keywords_space_between_columns, CustomizationPage.HOME),
     Triple(R.string.widget_size, R.string.settings_keywords_widget_size, CustomizationPage.HOME),

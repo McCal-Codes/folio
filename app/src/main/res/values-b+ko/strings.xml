@@ -29,6 +29,7 @@
     <string name="background">배경</string>
     <string name="folder_background">폴더 배경</string>
     <string name="status_bar_background">상태 표시줄 배경</string>
+    <string name="settings_keywords_folder_background">폴더 배경 유리 블러 모양</string>
     <string name="android_wallpaper">Android 배경화면</string>
     <string name="folio_background">Folio 배경</string>
     <string name="change_android_wallpaper">Android 배경화면 변경</string>
