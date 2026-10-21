@@ -1,0 +1,52 @@
+# When a release or beta is published, closes the issues it carries and records which release fixed them.
+#
+# Every open issue labelled fixed-in-main gets the release as its milestone, a "Shipped in" comment, and is closed as
+# completed. Mr Folio reads the milestone to tell the person who reported it, in the Discord post, which release fixed it.
+#
+# Off until the repository variable STAMP_ISSUES is set to "on", so the first release after this lands changes nothing.
+# A manual run is a dry run unless "dry_run" is switched off, and prints what it would do.
+name: Ship issues
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to stamp, for example v0.6.9-beta.2
+        required: true
+      dry_run:
+        description: Only print what would change
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ship-issues-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  stamp:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.STAMP_ISSUES == 'on' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Gather the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > release.json
+          echo "RELEASE_FILE=$PWD/release.json" >> "$GITHUB_ENV"
+
+      - name: Stamp the issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then node tools/stamp-issues.mjs --dry-run; else node tools/stamp-issues.mjs; fi
