@@ -2052,4 +2052,5 @@
     <string name="discover_no_fit">Discover 无法放在程序坞旁边。请返回主屏幕后重试。</string>
     <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
     <string name="profile_app">%1$s应用</string>
+    <string name="folio_was_updated_to_1_s">Folio 已更新到 %1$s</string>
 </resources>

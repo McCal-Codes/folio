@@ -2073,4 +2073,5 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <string name="folio_was_updated_to_1_s">Folio가 %1$s 버전으로 업데이트되었습니다</string>
 </resources>

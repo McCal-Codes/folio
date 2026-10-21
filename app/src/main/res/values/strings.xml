@@ -2109,4 +2109,5 @@
     <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
     <string name="discover_choose_dock_app">Choose dock app on home</string>
     <string name="profile_app">%1$s app</string>
+    <string name="folio_was_updated_to_1_s">Folio was updated to %1$s</string>
 </resources>
