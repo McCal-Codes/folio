@@ -2073,4 +2073,10 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="other">앱이 없어 위젯 %d개를 제외했습니다.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">레이아웃 백업이 2MB보다 커서 Folio가 읽을 수 없습니다.</string>
+    <string name="layout_backup_is_from_a_newer_folio">더 최신 버전의 Folio에서 만든 레이아웃 백업입니다. 복원하려면 Folio를 업데이트하세요.</string>
+    <string name="document_picker_unavailable">지금은 파일 선택기를 사용할 수 없습니다.</string>
 </resources>
