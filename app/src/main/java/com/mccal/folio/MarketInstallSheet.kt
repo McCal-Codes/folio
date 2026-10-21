@@ -123,10 +123,10 @@ internal fun MarketInstallSheet(
     val name = manifest.name.english
     val hostMissing = host != null && !host.onPhone
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XL.dp).testTag("market-install-sheet")) {
-        Text(stringResource(R.string.get_1_s, name), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+        Text(stringResource(R.string.get_1_s, name), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
         Text(
             stringResource(R.string.text_1_s_version_2_s, manifest.author.name.english, manifest.version.toString()),
-            color = Color.White.copy(alpha = .55f), fontSize = 14.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp),
+            color = Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(bottom = FolioSpace.MEDIUM.dp),
         )
         host?.let { WorksWithChip(it, Modifier.padding(bottom = FolioSpace.SMALL.dp)) }
         if (hostMissing) NeedsHostNote(host!!, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
@@ -135,7 +135,7 @@ internal fun MarketInstallSheet(
             Row(Modifier.padding(bottom = FolioSpace.MEDIUM.dp).testTag("install-ai-assisted"), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = Color.White.copy(alpha = .55f), modifier = Modifier.size(16.dp).padding(top = FolioSpace.HAIR.dp))
                 Column(Modifier.padding(start = FolioSpace.SMALL.dp)) {
-                    Text(stringResource(R.string.made_with_help_from_ai_1_s, ai.tools.joinToString()), color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
+                    Text(stringResource(R.string.made_with_help_from_ai_1_s, ai.tools.joinToString()), color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp)
                     ai.note?.let { Text(it.english, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }
                 }
             }
@@ -168,9 +168,9 @@ internal fun MarketInstallSheet(
         SheetGroup {
             Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                 origin.warning?.let {
-                    Text(it, color = FolioColors.Warning, fontSize = 14.sp)
+                    Text(it, color = FolioColors.Warning, fontSize = FolioType.COMPACT.sp)
                 }
-                Text(origin.line, color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
+                Text(origin.line, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp)
                 origin.provenance?.let { Text(it, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp) }
                 origin.checksum?.let {
                     Text(stringResource(R.string.checksum_1_s, it.take(16)), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
@@ -183,14 +183,14 @@ internal fun MarketInstallSheet(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.cancel),
-                color = LocalAccent.current.ink, fontSize = 16.sp,
+                color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
                     .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )
             // Off while the tweak it adds to is missing: the note above says why, and offers the tweak.
             Text(
                 stringResource(R.string.get),
-                color = Color.White.copy(alpha = if (hostMissing) .4f else 1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = if (hostMissing) .4f else 1f), fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
                     .background(if (hostMissing) Color.White.copy(alpha = .12f) else LocalAccent.current.fill)
                     .clickable(enabled = !hostMissing, onClickLabel = getName, onClick = onGet)
@@ -206,6 +206,6 @@ internal fun MarketInstallSheet(
 private fun Line(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, text: String) {
     Row(verticalAlignment = Alignment.Top) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp).padding(top = FolioSpace.HAIR.dp))
-        Text(text, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(start = FolioSpace.SMALL.dp))
+        Text(text, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(start = FolioSpace.SMALL.dp))
     }
 }

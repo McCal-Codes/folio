@@ -157,3 +157,27 @@ test('a press of the release-pings button toggles the role and the answer is pri
   const other = JSON.stringify({ type: 3, guild_id: 'folio', member: { user: { id: 'u1' }, roles: [] }, data: { custom_id: 'something-else' } })
   assert.deepEqual(await (await bot.fetch(await signed(other), env, {})).json(), { type: 1 })
 })
+
+test('/track is answered privately at once, and the real answer is edited in afterwards', async () => {
+  const sent = []
+  const send = async (url, init = {}) => {
+    sent.push({ url: String(url), method: init.method ?? 'GET', body: init.body })
+    return { ok: true, status: 200, json: async () => ({}) }
+  }
+  const tracking = []
+  const w = createWorker({ send })
+  const body = JSON.stringify({
+    type: 2,
+    application_id: 'app',
+    token: 'tok',
+    member: { user: { id: 'stranger' } },
+    channel: { id: 't', parent_id: 'bugs', name: 'x' },
+    data: { name: 'track', options: [] },
+  })
+  const response = await w.fetch(await signed(body), { ...env, STAFF_IDS: 'mccal', BUG_FORUM: 'bugs' }, { waitUntil: (p) => tracking.push(p) })
+  assert.deepEqual(await response.json(), { type: 5, data: { flags: 64 } })
+  await Promise.all(tracking)
+  const edit = sent.find((call) => call.url.includes('/messages/@original'))
+  assert.equal(edit.method, 'PATCH')
+  assert.match(JSON.parse(edit.body).content, /Only McCal/)
+})
