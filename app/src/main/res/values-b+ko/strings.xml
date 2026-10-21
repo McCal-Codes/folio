@@ -563,7 +563,6 @@
     <string name="tinted">색조 적용</string>
     <string name="reduce_transparency">투명도 줄이기</string>
     <string name="glass_is_nearly_solid_because_android_s">Android의 고대비 설정이 켜져 있어 글래스가 거의 불투명하게 표시됩니다.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해집니다. 끄면 원래 글래스 설정으로 돌아갑니다.</string>
     <string name="frost_is_how_see_through_widgets_and_the">반투명 정도는 위젯과 사이드바의 투명도를, 윤곽선은 가장자리의 얇고 밝은 테두리를 조절합니다.</string>
     <string name="save_backup_2">백업 저장</string>
     <string name="save">저장</string>
@@ -2073,4 +2072,6 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
 </resources>

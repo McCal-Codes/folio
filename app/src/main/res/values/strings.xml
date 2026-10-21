@@ -558,7 +558,6 @@
     <string name="tinted">Tinted</string>
     <string name="reduce_transparency">Reduce Transparency</string>
     <string name="glass_is_nearly_solid_because_android_s">Glass is nearly solid because Android\'s high contrast is on.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">Widgets, the Side Bar and the dock are nearly solid, with a clearer edge. Glass settings return when this is off.</string>
     <string name="frost_is_how_see_through_widgets_and_the">Frost is how see-through widgets and the Side Bar are; the outline is the thin light edge around them.</string>
     <string name="save_backup_2">Save Backup</string>
     <string name="save">Save</string>
@@ -2109,4 +2108,6 @@
     <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
     <string name="discover_choose_dock_app">Choose dock app on home</string>
     <string name="profile_app">%1$s app</string>
+    <string name="reduce_transparency_note">Widgets, the Side Bar and the dock turn nearly solid with a clearer edge, and the Glass settings are hidden until this is off. Android\'s high contrast does the same.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">Glass is nearly solid because Reduce Transparency is on. Turn it off in Accessibility to bring these settings back.</string>
 </resources>
