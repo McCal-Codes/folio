@@ -11,6 +11,7 @@
 import { optionsOf, run } from './commands.mjs'
 import { discordFor } from './discord.mjs'
 import { runAutoReply } from './autoreply.mjs'
+import { runIssueSync } from './issuesync.mjs'
 import { PINGS_BUTTON, togglePings } from './pings.mjs'
 import { sources as liveSources } from './sources.mjs'
 
@@ -78,9 +79,9 @@ export function createWorker({
   discord = (env) => discordFor(env),
 } = {}) {
   return {
-    /** The timer. Wakes up every couple of minutes to give new posts in #help and the forums their first reply. */
+    /** The timer. Wakes up every couple of minutes to give new posts in #help and the forums their first reply, and to plan the issue sync. */
     async scheduled(_event, env, ctx) {
-      ctx?.waitUntil?.(runAutoReply(env, send))
+      ctx?.waitUntil?.(Promise.all([runAutoReply(env, send), runIssueSync(env, send)]))
     },
 
     async fetch(request, env, ctx) {
