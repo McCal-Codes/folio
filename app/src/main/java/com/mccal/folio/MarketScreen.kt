@@ -1380,7 +1380,7 @@ private fun MarketPackagePage(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(18.dp))
                 // Where Back goes, as on iPhone ("‹ Packages"); TalkBack still hears "Back" as the action.
                 Text(backTitle ?: backLabel, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp)
             }
