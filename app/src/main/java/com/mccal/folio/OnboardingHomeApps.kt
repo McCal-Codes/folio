@@ -32,6 +32,12 @@ import androidx.compose.ui.unit.sp
 internal fun onboardingApps(state: LauncherState): List<AppEntry> =
     state.apps.filter { it.available && !it.isWork && it.id !in state.hiddenApps && !it.isShortcut }.sortedBy { it.label.lowercase() }
 
+/** The ids of apps whose name another app in [apps] also uses (ignoring case and spaces at the ends), so a row can say which is which. */
+internal fun idsWithSharedLabel(apps: List<Pair<String, String>>): Set<String> {
+    val byName = apps.groupBy { it.second.trim().lowercase() }
+    return byName.values.filter { it.size > 1 }.flatMap { group -> group.map { it.first } }.toSet()
+}
+
 /** What is ticked when the page first opens: what is already on Home, or the starter apps when Home is empty. */
 internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>): Set<String> {
     val onHome = state.homeSlots.filterNotNull().filter { id -> apps.any { it.id == id } }
@@ -60,6 +66,7 @@ internal fun HomeAppsPage(apps: List<AppEntry>, picked: Set<String>, onToggle: (
         if (showAll) apps else apps.filter { it.id in suggested || it.id in picked }
     }
     val chosen = remember(apps, picked) { apps.filter { it.id in picked } }
+    val sameName = remember(apps) { idsWithSharedLabel(apps.map { it.id to it.label }) }
     val rows = homeRowsFor(chosen.size)
     Column(Modifier.fillMaxWidth().padding(top = FolioSpace.XL.dp)) {
         // The live preview: Home's grid as it will be, icons as they are.
@@ -85,8 +92,12 @@ internal fun HomeAppsPage(apps: List<AppEntry>, picked: Set<String>, onToggle: (
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(on, role = Role.Checkbox, onValueChange = { onToggle(app.id) })
                     .padding(horizontal = FolioSpace.LARGE.dp).testTag("home-app-${app.component.packageName}"), verticalAlignment = Alignment.CenterVertically) {
                     Image(app.icon.asImageBitmap(), null, Modifier.size(32.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
-                    Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(horizontal = FolioSpace.MEDIUM.dp))
+                    Column(Modifier.weight(1f).padding(horizontal = FolioSpace.MEDIUM.dp)) {
+                        Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        // Two apps with one name (Samsung's and Google's Calendar) can't be told apart by the name alone.
+                        if (app.id in sameName) Text(app.component.packageName, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp,
+                            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
                     Icon(if (on) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null,
                         tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .4f))
                 }
