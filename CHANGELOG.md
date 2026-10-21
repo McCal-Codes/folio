@@ -73,6 +73,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **The Dynamic Island no longer risks a crash when a notification is swiped away at the wrong moment:** its two short-term memories of what already popped up were used from two threads at once, and a chat app clearing a burst of notifications could corrupt them and take the island down. They now take a lock.
 - **Icon actions that open a missing app say so:** an Open App or Open Shortcut action whose app or shortcut is gone now shows "App is unavailable" instead of doing nothing.
 - **Unavailable apps in a folder explain themselves:** tapping one now shows the same "is unavailable" notice as on Home, instead of doing nothing.
 - **Spotlight launches count once:** opening an app from Spotlight added it to Recents twice, which tilted the order of Suggestions and Recents. It counts once now.
