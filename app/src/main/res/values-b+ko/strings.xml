@@ -507,6 +507,7 @@
     <string name="widget_size">위젯 크기</string>
     <string name="rows">행 수</string>
     <string name="position">위치</string>
+    <string name="placement">배치</string>
     <string name="dock">Dock</string>
     <string name="your_apps">내 앱</string>
     <string name="dock_position_1_d">Dock 위치 %1$d</string>

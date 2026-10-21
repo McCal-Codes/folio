@@ -1461,6 +1461,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.wallpaper_moves_with_pages to CustomizationPage.WALLPAPER,
     R.string.reduce_transparency to CustomizationPage.ACCESSIBILITY,
     R.string.position to CustomizationPage.HOME,
+    R.string.placement to CustomizationPage.HOME,
     R.string.when_unfolded to CustomizationPage.TODAY,
     R.string.turn_on_automatically to CustomizationPage.FOCUS,
     R.string.focus_trigger_folding to CustomizationPage.FOCUS,
@@ -1483,7 +1484,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.dock to CustomizationPage.HOME,
     R.string.labels to CustomizationPage.HOME,
     R.string.status to CustomizationPage.HOME,
-    R.string.side_rail to CustomizationPage.HOME,
+    R.string.side_rail to CustomizationPage.STATUS,
     R.string.background to CustomizationPage.STATUS,
     R.string.badge_color to CustomizationPage.STATUS,
     R.string.badge_look to CustomizationPage.STATUS,
@@ -2414,7 +2415,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         CardNote(stringResource(R.string.full_width_home_note))
     }
     SettingsCard(stringResource(R.string.dock)) {
-        IosMenuRow(stringResource(R.string.position), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
+        IosMenuRow(stringResource(R.string.placement), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
             p.dockPlacement, { model.setPreset(screen, p.copy(dockPlacement = it)) }, tag = "dock-placement")
         CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
         CustomizationSlider(stringResource(R.string.space_between_dock_apps), stringResource(R.string.dp_value, p.dockSpacing.toInt()), p.dockSpacing, 0f..24f, 0f, peek = true) { model.setPreset(screen, p.copy(dockSpacing = it)) }

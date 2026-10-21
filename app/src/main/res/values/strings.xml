@@ -502,6 +502,7 @@
     <string name="widget_size">Widget size</string>
     <string name="rows">Rows</string>
     <string name="position">Position</string>
+    <string name="placement">Placement</string>
     <string name="dock">Dock</string>
     <string name="your_apps">Your Apps</string>
     <string name="dock_position_1_d">Dock Position %1$d</string>

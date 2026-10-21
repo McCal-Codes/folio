@@ -508,6 +508,7 @@
     <string name="widget_size">小组件大小</string>
     <string name="rows">行数</string>
     <string name="position">位置</string>
+    <string name="placement">摆放方式</string>
     <string name="dock">程序坞</string>
     <string name="your_apps">你的 App</string>
     <string name="dock_position_1_d">程序坞位置 %1$d</string>

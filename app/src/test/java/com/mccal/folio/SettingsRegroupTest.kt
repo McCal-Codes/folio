@@ -44,4 +44,17 @@ class SettingsRegroupTest {
         assertFalse(card.contains("dock-placement"))
         assertTrue(card.contains("page-position") && card.contains("status-position"))
     }
+
+    @Test fun theDockRowIsNamedPlacementSoItDoesNotRepeatThePositionCard() {
+        val card = between("SettingsCard(stringResource(R.string.dock)) {", "R.string.reset_this_layout")
+        assertTrue(card.contains("IosMenuRow(stringResource(R.string.placement)"))
+        assertFalse(card.contains("IosMenuRow(stringResource(R.string.position)"))
+        assertTrue(sheet.contains("R.string.placement to CustomizationPage.HOME"))
+    }
+
+    @Test fun searchForSideBarLandsOnTheStatusPageWhereItsCardIs() {
+        assertTrue(sheet.contains("if (page == CustomizationPage.STATUS) SettingsCard(stringResource(R.string.side_rail)) {"))
+        assertTrue(sheet.contains("R.string.side_rail to CustomizationPage.STATUS"))
+        assertFalse(sheet.contains("R.string.side_rail to CustomizationPage.HOME"))
+    }
 }
