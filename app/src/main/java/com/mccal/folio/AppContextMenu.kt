@@ -194,7 +194,7 @@ internal fun AppContextMenu(
                     // With the pass the menu fades as it grows and shrinks, so closing reads as going back into the icon.
                     if (pass) alpha = (appear.value * 1.4f).coerceIn(0f, 1f)
                 }
-                .clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2A2E).copy(alpha = .96f))
+                .clip(RoundedCornerShape(FolioRadius.FLOATING.dp)).background(FolioColors.PopoverSurface.copy(alpha = .96f))
                 .border(FolioGlass.edge, RoundedCornerShape(18.dp))
                 .clickable(remember { MutableInteractionSource() }, null) {}
                 .fadingVerticalScroll()) {
@@ -261,7 +261,7 @@ internal fun MenuRow(label: String, icon: ImageVector? = null, bitmap: Bitmap? =
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
         .then(if (tag != null) Modifier.testTag(tag) else Modifier).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = tint, fontSize = 16.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        Text(label, color = tint, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f))
         Spacer(Modifier.width(10.dp))
         when {

@@ -162,7 +162,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                                 .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
-                                Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                                 // A clone sits beside its original with the same name, as in the A to Z list.
                                 if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = Color.White.copy(alpha = .6f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
