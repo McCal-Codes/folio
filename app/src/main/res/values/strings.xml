@@ -2114,4 +2114,11 @@
     <string name="profile_app">%1$s app</string>
     <string name="reduce_transparency_note">Widgets, the Side Bar and the dock turn nearly solid with a clearer edge, and the Glass settings are hidden until this is off. Android\'s high contrast does the same.</string>
     <string name="glass_is_nearly_solid_turn_off_reduce_transparency">Glass is nearly solid because Reduce Transparency is on. Turn it off in Accessibility to bring these settings back.</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="one">%d widget was left out because its app is missing.</item>
+        <item quantity="other">%d widgets were left out because their apps are missing.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">That layout backup is larger than 2 MB, so Folio can\'t read it.</string>
+    <string name="layout_backup_is_from_a_newer_folio">That layout backup is from a newer version of Folio. Update Folio to restore it.</string>
+    <string name="document_picker_unavailable">The file picker isn\'t available right now.</string>
 </resources>

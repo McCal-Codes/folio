@@ -2078,4 +2078,10 @@
     <string name="profile_app">%1$s 앱</string>
     <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
     <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="other">앱이 없어 위젯 %d개를 제외했습니다.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">레이아웃 백업이 2MB보다 커서 Folio가 읽을 수 없습니다.</string>
+    <string name="layout_backup_is_from_a_newer_folio">더 최신 버전의 Folio에서 만든 레이아웃 백업입니다. 복원하려면 Folio를 업데이트하세요.</string>
+    <string name="document_picker_unavailable">지금은 파일 선택기를 사용할 수 없습니다.</string>
 </resources>
