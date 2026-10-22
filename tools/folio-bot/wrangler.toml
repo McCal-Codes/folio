@@ -30,6 +30,10 @@ FAQ_CHANNEL = "1555694592639246477"
 BUG_FORUM = "1555691880564527206"
 IDEAS_FORUM = "1555693466288394421"
 
+# Keeps tracked forum posts in step with their GitHub issues (issuesync.mjs). "dry" only logs what it would change; "off" does nothing.
+# Optional secret GITHUB_TOKEN (read-only, no scopes) lifts GitHub's anonymous rate limit.
+ISSUE_SYNC = "dry"
+
 # Every two minutes. Each pass reads the latest messages and replies once to anything new.
 [triggers]
 crons = ["*/2 * * * *"]
