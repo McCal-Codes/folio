@@ -421,7 +421,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     HomeLayoutSettings(state, wide, { wide = it }, upright, { upright = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
                     SettingsCard(stringResource(R.string.folders)) {
                         IosMenuRow(stringResource(R.string.columns), listOf(0 to stringResource(R.string.automatic), 3 to "3", 4 to "4"), state.folderColumns, model::setFolderColumns, tag = "folder-columns")
-                        IosMenuRow(stringResource(R.string.background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
+                        IosMenuRow(stringResource(R.string.folder_background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
                     }
                     RecentDotsCard(state, model)
                 }
@@ -607,7 +607,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             CustomizationSlider(stringResource(R.string.status_spacing), when (st.spacing.roundToInt()) {
                                 StatusStyle.COMPACT_SPACING.roundToInt() -> stringResource(R.string.compact); StatusStyle.STANDARD_SPACING.roundToInt() -> stringResource(R.string.standard)
                                 else -> stringResource(R.string.dp_value, st.spacing.roundToInt()) }, st.spacing, 0f..16f, StatusStyle.STANDARD_SPACING, peek = true) { model.setStatusStyle(st.copy(spacing = it)) }
-                            SettingsSwitch(stringResource(R.string.background), st.background, { model.setStatusStyle(st.copy(background = it)) }, "status-background")
+                            SettingsSwitch(stringResource(R.string.status_bar_background), st.background, { model.setStatusStyle(st.copy(background = it)) }, "status-background")
                             SettingsSwitch(stringResource(R.string.silent_mode_icon), st.showSilent, { model.setStatusStyle(st.copy(showSilent = it)) }, "status-silent")
                             SettingsSwitch(stringResource(R.string.color_battery_when_charging_or_low), st.colorfulBattery, { model.setStatusStyle(st.copy(colorfulBattery = it)) }, "status-color")
                             CardNote(stringResource(R.string.status_colors_green_while_charging_orang))
@@ -1357,6 +1357,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.darken_behind_text, R.string.settings_keywords_darken_behind_text, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_appearance_light_dark_sunset, R.string.settings_keywords_appearance_light_dark_sunset, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_grid_icon_size_dock, R.string.settings_keywords_grid_icon_size_dock, CustomizationPage.HOME),
+    Triple(R.string.folder_background, R.string.settings_keywords_folder_background, CustomizationPage.HOME),
     Triple(R.string.rows, R.string.settings_keywords_rows, CustomizationPage.HOME),
     Triple(R.string.space_between_columns, R.string.settings_keywords_space_between_columns, CustomizationPage.HOME),
     Triple(R.string.widget_size, R.string.settings_keywords_widget_size, CustomizationPage.HOME),
@@ -1482,10 +1483,11 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.apps to CustomizationPage.HOME,
     R.string.columns to CustomizationPage.HOME,
     R.string.dock to CustomizationPage.HOME,
+    R.string.folder_background to CustomizationPage.HOME,
     R.string.labels to CustomizationPage.HOME,
     R.string.status to CustomizationPage.HOME,
     R.string.side_rail to CustomizationPage.STATUS,
-    R.string.background to CustomizationPage.STATUS,
+    R.string.status_bar_background to CustomizationPage.STATUS,
     R.string.badge_color to CustomizationPage.STATUS,
     R.string.badge_look to CustomizationPage.STATUS,
     R.string.date to CustomizationPage.STATUS,
@@ -1567,7 +1569,17 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
 )
 
-internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex + SettingsRows.map { (title, page) -> Triple(title, null, page) }
+/**
+ * A search result scrolls to its row when it is a row: an entry with no keywords, or one with keywords whose title is also
+ * a row (Folder background is found by "glass" or "blur" and is still one control further down its page).
+ */
+internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null || SettingsRows.any { it.first == title }
+
+/**
+ * Rows already in [SettingsIndex] (with keywords) are listed once, from there; [SettingsRows] still marks them as rows for [isRowEntry].
+ */
+internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex +
+    SettingsRows.filter { (title, _) -> SettingsIndex.none { it.first == title } }.map { (title, page) -> Triple(title, null, page) }
 
 private class Found(val title: String, val keywords: String, val page: CustomizationPage, val row: Boolean)
 
@@ -1597,7 +1609,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
-            .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = keywords == null) }
+            .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }
     val results = index.filter { settingsMatches(query, it.title, it.keywords) }

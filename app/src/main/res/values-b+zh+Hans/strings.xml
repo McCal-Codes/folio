@@ -29,6 +29,9 @@
     <string name="set_as_home_app">设为主屏幕应用</string>
     <string name="undo_last_layout_change">撤销上一次布局更改</string>
     <string name="background">背景</string>
+    <string name="folder_background">文件夹背景</string>
+    <string name="status_bar_background">状态栏背景</string>
+    <string name="settings_keywords_folder_background">文件夹 背景 玻璃 模糊 外观 folder background</string>
     <string name="android_wallpaper">Android 墙纸</string>
     <string name="folio_background">Folio 背景</string>
     <string name="change_android_wallpaper">更改 Android 墙纸</string>

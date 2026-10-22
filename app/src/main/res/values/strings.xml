@@ -22,6 +22,9 @@
     <string name="set_as_home_app">Set as home app</string>
     <string name="undo_last_layout_change">Undo last layout change</string>
     <string name="background">Background</string>
+    <string name="folder_background">Folder background</string>
+    <string name="status_bar_background">Status bar background</string>
+    <string name="settings_keywords_folder_background">folder background glass blur look dim</string>
     <string name="android_wallpaper">Android wallpaper</string>
     <string name="folio_background">Folio background</string>
     <string name="change_android_wallpaper">Change Android wallpaper</string>
