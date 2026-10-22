@@ -2113,7 +2113,7 @@
     <string name="discover_choose_dock_app">Choose dock app on home</string>
     <string name="profile_app">%1$s app</string>
     <string name="home_apps_title">Your Home apps</string>
-    <string name="home_apps_detail">Tick what you want on Home. Folio ticked one everyday app for each job it found on this phone. You can change this any time.</string>
+    <string name="home_apps_detail">Tick what you want on Home. Folio ticked up to eight everyday apps, one for each job it found on this phone. You can change this any time.</string>
     <string name="home_apps_none">Nothing on Home yet</string>
     <string name="home_apps_show_all">Show all apps</string>
     <string name="use_folio_now">Use Folio now</string>

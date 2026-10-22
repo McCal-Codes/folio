@@ -2077,7 +2077,7 @@
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
     <string name="home_apps_title">홈 화면 앱</string>
-    <string name="home_apps_detail">홈 화면에 둘 앱을 선택하세요. Folio가 이 휴대전화에서 찾은 기본 앱을 용도별로 하나씩 선택해 두었습니다. 언제든 바꿀 수 있습니다.</string>
+    <string name="home_apps_detail">홈 화면에 둘 앱을 선택하세요. Folio가 이 휴대전화에서 찾은 기본 앱을 용도별로 하나씩, 최대 8개까지 선택해 두었습니다. 언제든 바꿀 수 있습니다.</string>
     <string name="home_apps_none">아직 홈 화면에 앱이 없습니다</string>
     <string name="home_apps_show_all">모든 앱 보기</string>
     <string name="use_folio_now">지금 Folio 사용하기</string>

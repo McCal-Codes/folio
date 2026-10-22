@@ -236,7 +236,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
                     modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index + 1) }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-not-now"))
                 else if (page.key == "welcome") Text(stringResource(R.string.use_folio_now), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { useFolioNow() }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-use-now"))
+                    modifier = Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(role = Role.Button) { useFolioNow() }.padding(FolioSpace.COMPACT.dp).wrapContentHeight(Alignment.CenterVertically).testTag("onboarding-use-now"))
             }
             Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {
