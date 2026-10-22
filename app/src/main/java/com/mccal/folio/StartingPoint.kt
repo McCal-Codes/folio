@@ -54,7 +54,7 @@ internal enum class NavigationTip { GESTURES, BUTTONS;
  */
 @Composable
 internal fun StartingPointPreview(point: StartingPoint, modifier: Modifier = Modifier) {
-    val colors = listOf(0xFFFF3B30, 0xFF8E8E93, 0xFFFF9F0A, 0xFF5E5CE6, 0xFF0A84FF, 0xFF30D158, 0xFFFFD60A, 0xFF64D2FF).map(::Color)
+    val colors = with(FolioColors.Value) { listOf(RedLight, Gray, Orange, Indigo, Blue, Green, Yellow, Cyan) }.map(::Color)
     val shape = if (point.shape == IconShape.CIRCLE) CircleShape else RoundedCornerShape(24)
     Column(modifier.aspectRatio(9f / 16f).clip(RoundedCornerShape(FolioRadius.CARD.dp))
         .background(Brush.linearGradient(listOf(Color(0xFF2B4A52), Color(0xFF6B4F3D)))).padding(8.dp).clearAndSetSemantics {},
