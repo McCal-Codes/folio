@@ -613,6 +613,20 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             CardNote(stringResource(R.string.status_colors_green_while_charging_orang))
                         }
                     }
+                    if (page == CustomizationPage.ISLAND) {
+                        // Why the island is or is not showing over other apps, with the fix when there is one.
+                        val statusContext = androidx.compose.ui.platform.LocalContext.current
+                        IslandStatusCard(state) { reason ->
+                            fun open(action: String) { runCatching { statusContext.startActivity(android.content.Intent(action).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+                            when (reason) {
+                                IslandReason.DO_NOT_DISTURB -> open(android.provider.Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS)
+                                IslandReason.ANDROID_POPUP -> model.setMessagesAvoidDouble(false)
+                                IslandReason.GESTURES_SERVICE_OFF -> onShadeSetup()
+                                IslandReason.NOTIFICATION_ACCESS_OFF -> open(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                else -> Unit
+                            }
+                        }
+                    }
                     if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.island)) {
                         val islandContext = androidx.compose.ui.platform.LocalContext.current
                         SettingsSwitch(stringResource(R.string.music_and_live_progress), state.island, { on ->

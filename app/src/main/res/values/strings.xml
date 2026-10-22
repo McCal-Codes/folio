@@ -2122,4 +2122,26 @@
     <string name="layout_backup_is_from_a_newer_folio">That layout backup is from a newer version of Folio. Update Folio to restore it.</string>
     <string name="document_picker_unavailable">The file picker isn\'t available right now.</string>
     <string name="folio_was_updated_to_1_s">Folio was updated to %1$s</string>
+    <string name="island_status_ready_title">Showing over other apps</string>
+    <string name="island_status_ready_body">Music, calls and timers appear in the island. Do Not Disturb limits message pop-ups.</string>
+    <string name="island_status_ready_live_body">Music, calls and timers appear in the island.</string>
+    <string name="island_status_dnd_title">Do Not Disturb is limiting message pop-ups</string>
+    <string name="island_status_dnd_body">Do Not Disturb is on, so it decides which message pop-ups appear. Music, calls and timers still show over other apps.</string>
+    <string name="island_status_dnd_action">Open Do Not Disturb</string>
+    <string name="island_status_popup_title">Android is showing these pop-ups itself</string>
+    <string name="island_status_popup_body">Don\'t double up with Android pop-ups is on, so the island stays out of the way of important notifications such as most messages.</string>
+    <string name="island_status_popup_note">Don\'t double up with Android pop-ups is on, so important notifications stay with Android\'s own pop-up.</string>
+    <string name="island_status_popup_action">Show them in the island too</string>
+    <string name="island_status_service_title">Not showing over other apps</string>
+    <string name="island_status_service_body">Folio\'s gestures service is off. Android only lets an app draw over other apps through it.</string>
+    <string name="island_status_service_action">Turn on the gestures service</string>
+    <string name="island_status_access_title">Nothing to show yet</string>
+    <string name="island_status_access_body">Notification access is off, so Folio can\'t see music, calls or messages.</string>
+    <string name="island_status_access_action">Open Notification access</string>
+    <string name="island_status_off_title">The island is off in other apps</string>
+    <string name="island_status_off_body">Turn on Dynamic Island under In every app to see it over other apps.</string>
+    <string name="island_status_live_off_title">Music and live progress is off</string>
+    <string name="island_status_live_off_body">Turn on Music and live progress to see music, calls and timers in the island.</string>
+    <string name="island_status_safe_title">Paused by Safe Mode</string>
+    <string name="island_status_safe_body">Safe Mode keeps the island and dock on Home only. Turn Safe Mode off to use them over other apps.</string>
 </resources>
