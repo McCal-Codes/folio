@@ -2057,5 +2057,11 @@
     <string name="profile_app">%1$s应用</string>
     <string name="reduce_transparency_note">小组件、侧边栏和程序坞几乎不透明，边缘也更清晰，关闭此项前会隐藏玻璃设置。Android 的高对比度也有同样效果。</string>
     <string name="glass_is_nearly_solid_turn_off_reduce_transparency">“降低透明度”已开启，因此玻璃几乎不透明。在“辅助功能”中关闭它即可恢复这些设置。</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="other">有 %d 个小组件因其应用缺失而未包含。</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">该布局备份超过 2 MB，Folio 无法读取。</string>
+    <string name="layout_backup_is_from_a_newer_folio">该布局备份来自更新版本的 Folio。请先更新 Folio 再恢复。</string>
+    <string name="document_picker_unavailable">文件选择器目前不可用。</string>
     <string name="folio_was_updated_to_1_s">Folio 已更新到 %1$s</string>
 </resources>
