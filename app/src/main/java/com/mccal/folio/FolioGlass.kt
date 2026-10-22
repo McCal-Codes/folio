@@ -23,13 +23,13 @@ internal object FolioGlass {
     /** Large tiles (Control Center modules). */
     val module = FolioColors.SecondaryBackground.copy(alpha = .76f)
     /** Cards and rows (notifications, Spotlight sections, search field). */
-    val card = Color(0xFF242428).copy(alpha = .82f)
+    val card = FolioColors.SurfaceCard.copy(alpha = .82f)
     /** Controls sitting on a card (inactive toggles, pills, chips). */
     val raised = Color.White.copy(alpha = .14f)
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */
-    val secondary = Color.White.copy(alpha = .62f)
+    val secondary = FolioColors.SecondaryLabel
 }
 
 /** Dark, iOS-like colors for Folio's sheets (settings, app options, setup). */
@@ -38,10 +38,10 @@ internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
     primaryContainer = FolioColors.BlueOnDark, onPrimaryContainer = Color.White,
     secondary = FolioColors.Cyan, onSecondary = Color.Black,
     secondaryContainer = FolioColors.MenuSurface, onSecondaryContainer = Color.White,
-    surface = FolioColors.SecondaryBackground, onSurface = Color.White, onSurfaceVariant = Color(0xFFA1A1A6),
-    surfaceContainerLowest = Color(0xFF141416), surfaceContainerLow = FolioColors.SecondaryBackground,
-    surfaceContainer = Color(0xFF242428), surfaceContainerHigh = FolioColors.SheetSurface, surfaceContainerHighest = FolioColors.MenuSurface,
-    outline = Color(0xFF545458), outlineVariant = Color(0xFF38383A), error = FolioColors.Red,
+    surface = FolioColors.SecondaryBackground, onSurface = Color.White, onSurfaceVariant = FolioColors.LabelVariant,
+    surfaceContainerLowest = FolioColors.SurfaceLowest, surfaceContainerLow = FolioColors.SecondaryBackground,
+    surfaceContainer = FolioColors.SurfaceCard, surfaceContainerHigh = FolioColors.SheetSurface, surfaceContainerHighest = FolioColors.MenuSurface,
+    outline = FolioColors.Outline, outlineVariant = FolioColors.OutlineVariant, error = FolioColors.Red,
 )
 
 /**
