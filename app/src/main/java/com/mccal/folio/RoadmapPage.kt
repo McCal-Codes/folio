@@ -196,8 +196,8 @@ private enum class RoadmapPhase { Idle, Checking, Offline }
             }
             Spacer(Modifier.width(FolioSpace.MEDIUM.dp))
             Column(Modifier.weight(1f)) {
-                Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                if (item.detail.isNotEmpty()) Text(item.detail, color = Color.White.copy(alpha = .62f), fontSize = 14.sp, lineHeight = 19.sp)
+                Text(item.title, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
+                if (item.detail.isNotEmpty()) Text(item.detail, color = Color.White.copy(alpha = .62f), fontSize = FolioType.COMPACT.sp, lineHeight = 19.sp)
                 if (status != null && narrow) RoadmapStatusLabel(status, done, Modifier.padding(top = FolioSpace.TINY.dp))
             }
             if (status != null && !narrow) RoadmapStatusLabel(status, done, Modifier.padding(start = FolioSpace.MEDIUM.dp).align(Alignment.CenterVertically))

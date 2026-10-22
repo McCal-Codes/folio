@@ -22,6 +22,9 @@
     <string name="set_as_home_app">Set as home app</string>
     <string name="undo_last_layout_change">Undo last layout change</string>
     <string name="background">Background</string>
+    <string name="folder_background">Folder background</string>
+    <string name="status_bar_background">Status bar background</string>
+    <string name="settings_keywords_folder_background">folder background glass blur look dim</string>
     <string name="android_wallpaper">Android wallpaper</string>
     <string name="folio_background">Folio background</string>
     <string name="change_android_wallpaper">Change Android wallpaper</string>
@@ -502,6 +505,7 @@
     <string name="widget_size">Widget size</string>
     <string name="rows">Rows</string>
     <string name="position">Position</string>
+    <string name="placement">Placement</string>
     <string name="dock">Dock</string>
     <string name="your_apps">Your Apps</string>
     <string name="dock_position_1_d">Dock Position %1$d</string>
@@ -558,7 +562,6 @@
     <string name="tinted">Tinted</string>
     <string name="reduce_transparency">Reduce Transparency</string>
     <string name="glass_is_nearly_solid_because_android_s">Glass is nearly solid because Android\'s high contrast is on.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">Widgets, the Side Bar and the dock are nearly solid, with a clearer edge. Glass settings return when this is off.</string>
     <string name="frost_is_how_see_through_widgets_and_the">Frost is how see-through widgets and the Side Bar are; the outline is the thin light edge around them.</string>
     <string name="save_backup_2">Save Backup</string>
     <string name="save">Save</string>
@@ -2109,4 +2112,39 @@
     <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
     <string name="discover_choose_dock_app">Choose dock app on home</string>
     <string name="profile_app">%1$s app</string>
+    <string name="reduce_transparency_note">Widgets, the Side Bar and the dock turn nearly solid with a clearer edge, and the Glass settings are hidden until this is off. Android\'s high contrast does the same.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">Glass is nearly solid because Reduce Transparency is on. Turn it off in Accessibility to bring these settings back.</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="one">%d widget was left out because its app is missing.</item>
+        <item quantity="other">%d widgets were left out because their apps are missing.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">That layout backup is larger than 2 MB, so Folio can\'t read it.</string>
+    <string name="layout_backup_is_from_a_newer_folio">That layout backup is from a newer version of Folio. Update Folio to restore it.</string>
+    <string name="document_picker_unavailable">The file picker isn\'t available right now.</string>
+    <string name="folio_was_updated_to_1_s">Folio was updated to %1$s</string>
+    <string name="island_status_ready_title">Showing over other apps</string>
+    <string name="island_status_ready_body">Music, calls and timers appear in the island. Do Not Disturb limits message pop-ups.</string>
+    <string name="island_status_ready_live_body">Music, calls and timers appear in the island.</string>
+    <string name="island_status_dnd_title">Do Not Disturb is limiting message pop-ups</string>
+    <string name="island_status_dnd_body">Do Not Disturb is on, so it decides which message pop-ups appear. Music, calls and timers still show over other apps.</string>
+    <string name="island_status_dnd_action">Open Do Not Disturb</string>
+    <string name="island_status_popup_title">Android is showing these pop-ups itself</string>
+    <string name="island_status_popup_body">Don\'t double up with Android pop-ups is on, so the island stays out of the way of important notifications such as most messages.</string>
+    <string name="island_status_popup_note">Don\'t double up with Android pop-ups is on, so important notifications stay with Android\'s own pop-up.</string>
+    <string name="island_status_popup_action">Show them in the island too</string>
+    <string name="island_status_service_title">Not showing over other apps</string>
+    <string name="island_status_service_body">Folio\'s gestures service is off. Android only lets an app draw over other apps through it.</string>
+    <string name="island_status_service_action">Turn on the gestures service</string>
+    <string name="island_status_access_title">Nothing to show yet</string>
+    <string name="island_status_access_body">Notification access is off, so Folio can\'t see music, calls or messages.</string>
+    <string name="island_status_access_action">Open Notification access</string>
+    <string name="island_status_off_title">The island is off in other apps</string>
+    <string name="island_status_off_body">Turn on Dynamic Island under In every app to see it over other apps.</string>
+    <string name="island_status_live_off_title">Music and live progress is off</string>
+    <string name="island_status_live_off_body">Turn on Music and live progress to see music, calls and timers in the island.</string>
+    <string name="island_status_safe_title">Paused by Safe Mode</string>
+    <string name="island_status_safe_body">Safe Mode keeps the island and dock on Home only. Turn Safe Mode off to use them over other apps.</string>
+    <string name="package_import_market_off">This package needs Folio\'s Market, which opens with a supporter code.</string>
+    <string name="package_import_too_large">That file is too large to be a Folio package.</string>
+    <string name="package_import_too_slow">Reading that file took too long. Try saving it to your phone first.</string>
 </resources>

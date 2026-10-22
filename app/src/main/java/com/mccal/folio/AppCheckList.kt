@@ -44,7 +44,7 @@ internal fun AppCheckList(apps: List<AppEntry>, query: String, onQuery: (String)
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(enabled = usable) { onToggle(app) }
                     .graphicsLayer { alpha = if (usable) 1f else .4f }.padding(vertical = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(app, null, Modifier.size(40.dp), shape = RoundedCornerShape(FolioRadius.CONTROL.dp), badge = false)
-                    Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp))
+                    Text(app.label, color = Color.White, fontSize = FolioType.CALLOUT.sp, modifier = Modifier.weight(1f).padding(start = FolioSpace.MEDIUM.dp))
                     Icon(if (on) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, if (on) checkedLabel else uncheckedLabel,
                         tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .35f), modifier = Modifier.size(24.dp))
                 }

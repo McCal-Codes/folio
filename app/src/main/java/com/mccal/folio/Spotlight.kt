@@ -41,6 +41,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -271,7 +272,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                             }
                         }))
                 }
-                if (query.isNotEmpty()) Box(Modifier.size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
+                if (query.isNotEmpty()) Box(Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Cancel, stringResource(R.string.clear_text), tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 }
             }
@@ -331,7 +332,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                                         Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
                                             tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
-                                        Text(target.label, color = Color.White, fontSize = 14.sp)
+                                        Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
                                     }
                                 }
                             }
@@ -379,7 +380,7 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
                             }).padding(vertical = FolioSpace.SNUG.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             AppIcon(app, app.label, Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)))
-                            Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                         }
                     }
@@ -429,7 +430,7 @@ private fun TopHit(app: AppEntry, offer: HomeOffer, onAdd: () -> Unit, onClick: 
 
 @Composable
 private fun ResultRow(icon: ImageVector, title: String, subtitle: String?, trailing: (@Composable RowScope.() -> Unit)? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))

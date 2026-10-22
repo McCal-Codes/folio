@@ -107,7 +107,7 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
             val next by produceState<UpNextEvent?>(null, tick) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { UpNext.events(context, limit = 1).firstOrNull() } }
             next?.let { e ->
                 val begin = LocalDateTime.ofInstant(Instant.ofEpochMilli(e.begin), ZoneId.systemDefault())
-                Row(Modifier.padding(top = FolioSpace.SNUG.dp).clip(RoundedCornerShape(12.dp)).clickable { onDismiss(); UpNext.openEvent(context, e) }
+                Row(Modifier.padding(top = FolioSpace.SNUG.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable { onDismiss(); UpNext.openEvent(context, e) }
                     .padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(width = 3.dp, height = 16.dp).clip(RoundedCornerShape(2.dp)).background(e.color?.let { Color(it) } ?: LocalAccent.current.fill))
                     Spacer(Modifier.width(6.dp))
@@ -117,14 +117,14 @@ internal fun LockCover(visible: Boolean, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(24.dp))
             notifications.take(room).forEach { item ->
-                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(Color(0xFF2A2A2E).copy(alpha = .8f))
+                Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp).clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(FolioColors.PopoverSurface.copy(alpha = .8f))
                     .clickable { onDismiss(); IslandListenerService.openNotification(context, item) }.padding(FolioSpace.MEDIUM.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(34.dp).clip(RoundedCornerShape(8.dp))) }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(item.title ?: item.appLabel, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        item.text?.let { Text(it, color = Color.White.copy(alpha = .8f), fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                        item.text?.let { Text(it, color = Color.White.copy(alpha = .8f), fontSize = FolioType.COMPACT.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                     }
                 }
             }
