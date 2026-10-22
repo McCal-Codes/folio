@@ -2144,4 +2144,7 @@
     <string name="island_status_live_off_body">Turn on Music and live progress to see music, calls and timers in the island.</string>
     <string name="island_status_safe_title">Paused by Safe Mode</string>
     <string name="island_status_safe_body">Safe Mode keeps the island and dock on Home only. Turn Safe Mode off to use them over other apps.</string>
+    <string name="package_import_market_off">This package needs Folio\'s Market, which opens with a supporter code.</string>
+    <string name="package_import_too_large">That file is too large to be a Folio package.</string>
+    <string name="package_import_too_slow">Reading that file took too long. Try saving it to your phone first.</string>
 </resources>

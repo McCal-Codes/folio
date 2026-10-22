@@ -2086,4 +2086,7 @@
     <string name="island_status_live_off_body">开启“音乐和实时进度”后，音乐、通话和计时器会显示在灵动岛中。</string>
     <string name="island_status_safe_title">已被安全模式暂停</string>
     <string name="island_status_safe_body">安全模式下，灵动岛和程序坞只在主屏幕显示。关闭安全模式后即可在其他应用上方使用。</string>
+    <string name="package_import_market_off">此包需要 Folio 市场，市场需使用支持者代码开启。</string>
+    <string name="package_import_too_large">该文件太大，不是 Folio 软件包。</string>
+    <string name="package_import_too_slow">读取该文件用时过长。请先将其保存到手机上。</string>
 </resources>
