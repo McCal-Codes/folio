@@ -185,14 +185,10 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     /** Last alerting post time per notification key, so updates that don't alert don't pop up again. */
-    private val announced = object : LinkedHashMap<String, Long>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?) = size > 64
-    }
+    private val announced = RecentMap<String, Long>(64)
 
     /** What each notification last popped up with, so an app re-posting the same warning doesn't pop up again. */
-    private val shownContent = object : LinkedHashMap<String, Pair<Int, Long>>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Long>>?) = size > 64
-    }
+    private val shownContent = RecentMap<String, Pair<Int, Long>>(64)
     private fun isRepeat(key: String, title: String?, text: String?, posted: Long): Boolean {
         // The time the app itself posted goes into the signature: an app re-posting one warning keeps its own
         // `when`, while a person sending "ok" twice in a conversation makes a new notification with a new one —
