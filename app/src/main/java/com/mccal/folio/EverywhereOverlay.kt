@@ -435,8 +435,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     contentAlignment = if (s.leftHanded) Alignment.CenterStart else Alignment.CenterEnd) {
                     AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(FolioMotion.spring(FolioMotion.Appear)) { if (s.leftHanded) -it else it },
                         exit = fadeOut() + slideOutHorizontally { if (s.leftHanded) -it else it }) {
-                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(30.dp))
-                            .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(30.dp))
+                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
+                            .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(FolioRadius.RAIL.dp))
                             .padding(vertical = FolioSpace.MEDIUM.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                             apps.forEach { app ->
                                 val hostView = androidx.compose.ui.platform.LocalView.current
@@ -637,9 +637,9 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
         if (faded) .35f else 1f, androidx.compose.animation.core.tween(350), label = "button bar")
     val ink = if (s.light) FolioColors.SecondaryBackground else androidx.compose.ui.graphics.Color.White
     val actions = listOf(
-        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "Recent apps", Icons.Rounded.Menu),
-        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "Home", Icons.Rounded.Circle),
-        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "Back", Icons.Rounded.ChevronLeft),
+        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, stringResource(R.string.action_a11y_recents), Icons.Rounded.Menu),
+        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, stringResource(R.string.action_a11y_home), Icons.Rounded.Circle),
+        Triple(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, stringResource(R.string.action_a11y_back), Icons.Rounded.ChevronLeft),
     ).let { if (s.androidOrder) it.reversed() else it }
     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
         .padding(bottom = FolioSpace.COMPACT.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {

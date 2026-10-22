@@ -218,7 +218,7 @@ fun StatusRail(
         (status.battery ?: 100) <= 20 -> low
         else -> ink
     }
-    val capsule = RoundedCornerShape(30.dp)
+    val capsule = RoundedCornerShape(FolioRadius.RAIL.dp)
     BoxWithConstraints(modifier.testTag("status-rail").semantics(mergeDescendants = true) { contentDescription = description }) {
         val availableWidth = (maxWidth - 16.dp).coerceAtLeast(28.dp)
         val visualSize = minOf(iconSize * .9f, availableWidth, if (compact) 34.dp else 44.dp)

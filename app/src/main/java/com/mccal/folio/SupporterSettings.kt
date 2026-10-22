@@ -69,7 +69,7 @@ internal fun SupporterPage() {
                 }
                 Column(Modifier.padding(start = FolioSpace.COMFY.dp)) {
                     Text(stringResource(R.string.folio_supporter), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.since_1_s, monthYearLabel(since)), color = FolioColors.SecondaryLabel, fontSize = 14.sp)
+                    Text(stringResource(R.string.since_1_s, monthYearLabel(since)), color = FolioColors.SecondaryLabel, fontSize = FolioType.COMPACT.sp)
                 }
             }
         }
