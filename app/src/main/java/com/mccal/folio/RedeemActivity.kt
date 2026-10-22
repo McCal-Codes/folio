@@ -13,11 +13,11 @@ class RedeemActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val code = redeemCode(intent?.data?.toString())
-        // A link is something anyone can put in front of you, so it may add a code but never replace one: a page
-        // offering a smaller code could otherwise quietly take the place of the one you paid for. Swapping codes
-        // is done in Settings › Supporter, where you can see what you already have.
+        // A link may add a code but never replace one that still works: swapping codes is done in Settings › Supporter,
+        // where you can see what you already have (see canRedeemFromLink).
         val held = Supporter.storedText(this)
-        val replacing = code != null && held != null && BetaCodes.group(held) != BetaCodes.group(code)
+        val replacing = code != null && held != null &&
+            !canRedeemFromLink(BetaCodes.group(held), Supporter.code(this) != null, BetaCodes.group(code))
         // The same wording Settings › Supporter uses, so a link and a typed code answer alike, in any language.
         val said = when {
             code == null -> R.string.that_link_doesn_t_carry_a_folio_code
