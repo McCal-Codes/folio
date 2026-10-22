@@ -165,7 +165,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="folio" android:host="package" />
                 <data android:scheme="folio" android:host="source" />
-                <data android:scheme="folio" android:host="early" />
             </intent-filter>
             <!-- Settings › Apps › Default apps › Home app (gear) and App info › Additional settings open Folio's settings. -->
             <intent-filter>
@@ -244,7 +243,7 @@
         </activity>
         <service android:name=".MarketRefreshJob" android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
-        <!-- folio://redeem?c=… from a supporter email: the code is checked on the phone, so a bad link is simply refused. -->
+        <!-- folio://redeem?c=… (and the older folio://early?c=…) from a supporter email: the code is checked on the phone, so a bad link is simply refused. -->
         <activity android:name=".RedeemActivity" android:exported="true" android:excludeFromRecents="true"
             android:theme="@style/Theme.Folio.FoldBridge" android:taskAffinity="com.mccal.folio.redeem" android:noHistory="true"
             android:label="@string/label_redeem">
@@ -253,6 +252,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="folio" android:host="redeem" />
+                <data android:scheme="folio" android:host="early" />
             </intent-filter>
         </activity>
         <!-- "Add to Home Screen" for widgets an app asks to pin (only delivered to the default Home app). -->
