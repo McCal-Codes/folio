@@ -22,6 +22,9 @@
     <string name="set_as_home_app">Set as home app</string>
     <string name="undo_last_layout_change">Undo last layout change</string>
     <string name="background">Background</string>
+    <string name="folder_background">Folder background</string>
+    <string name="status_bar_background">Status bar background</string>
+    <string name="settings_keywords_folder_background">folder background glass blur look dim</string>
     <string name="android_wallpaper">Android wallpaper</string>
     <string name="folio_background">Folio background</string>
     <string name="change_android_wallpaper">Change Android wallpaper</string>
@@ -502,6 +505,7 @@
     <string name="widget_size">Widget size</string>
     <string name="rows">Rows</string>
     <string name="position">Position</string>
+    <string name="placement">Placement</string>
     <string name="dock">Dock</string>
     <string name="your_apps">Your Apps</string>
     <string name="dock_position_1_d">Dock Position %1$d</string>
@@ -558,7 +562,6 @@
     <string name="tinted">Tinted</string>
     <string name="reduce_transparency">Reduce Transparency</string>
     <string name="glass_is_nearly_solid_because_android_s">Glass is nearly solid because Android\'s high contrast is on.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">Widgets, the Side Bar and the dock are nearly solid, with a clearer edge. Glass settings return when this is off.</string>
     <string name="frost_is_how_see_through_widgets_and_the">Frost is how see-through widgets and the Side Bar are; the outline is the thin light edge around them.</string>
     <string name="save_backup_2">Save Backup</string>
     <string name="save">Save</string>
@@ -2109,6 +2112,8 @@
     <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
     <string name="discover_choose_dock_app">Choose dock app on home</string>
     <string name="profile_app">%1$s app</string>
+    <string name="reduce_transparency_note">Widgets, the Side Bar and the dock turn nearly solid with a clearer edge, and the Glass settings are hidden until this is off. Android\'s high contrast does the same.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">Glass is nearly solid because Reduce Transparency is on. Turn it off in Accessibility to bring these settings back.</string>
     <plurals name="backup_widgets_left_out">
         <item quantity="one">%d widget was left out because its app is missing.</item>
         <item quantity="other">%d widgets were left out because their apps are missing.</item>

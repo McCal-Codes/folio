@@ -727,7 +727,13 @@ fun LauncherScreen(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
         val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
-        CompositionLocalProvider(LocalOpenMenuId provides overlays.menu, LocalWidgetStacks provides state.widgetStacks, LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
+        // iOS "dark appearance dims wallpaper" and its legibility gradient over the background. They are worked out here, above
+        // everything that draws on the wallpaper, so the Big Clock can measure its picture as it really looks (LocalHomeDarkening).
+        val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
+        // It gives way to the dim rather than darkening the same pixels twice, and stands down where Home's text is dark ink
+        // and a dark scrim would take contrast away. See HomeScrim.
+        val scrim = HomeScrim.of(state.homeScrim, homeInk.dark, dim)
+        CompositionLocalProvider(LocalOpenMenuId provides overlays.menu, LocalWidgetStacks provides state.widgetStacks, LocalHomeDarkening provides HomeDarkening(dim, scrim), LocalStackRotate provides state.stackRotate, LocalHomeApps provides homeApps,
             LocalBigClockStyles provides bigClockStyles,
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
@@ -753,13 +759,7 @@ fun LauncherScreen(
         // smear. Only Android's wallpaper drifts now, and the system is what moves it (DYN-11: Reduce Motion leaves
         // it still); a picture of Folio's has no spare width to slide, so it stays where it is.
         val backgroundMoves = state.wallpaperMotion && !LocalReduceMotion.current
-        // iOS "dark appearance dims wallpaper".
-        val dim by androidx.compose.animation.core.animateFloatAsState(if (state.dimWallpaperDark && appearance.dark) .3f else 0f, label = "wallpaper dim")
-        // iOS's legibility gradient over the background and under everything Folio draws, so white text reads on a
-        // pale wallpaper (A11Y-9, DES-16). It gives way to the dim above rather than darkening the same pixels twice,
-        // and stands down where Home's text is dark ink and a dark scrim would take contrast away. See HomeScrim.
-        val scrim = HomeScrim.of(state.homeScrim, homeInk.dark, dim)
-        // The scrim rides inside the layer the background is already cached in, so it costs nothing per frame.
+        // The scrim (iOS's legibility gradient, A11Y-9 and DES-16) rides inside the layer the background is already cached in, so it costs nothing per frame.
         if (!state.systemWallpaper || !launcherActivity.showsWallpaper) DuneWallpaper(Modifier.foldMotionWallpaper(), scrim = scrim)
         else {
             if (backgroundMoves) SystemWallpaperParallax(nativePager)

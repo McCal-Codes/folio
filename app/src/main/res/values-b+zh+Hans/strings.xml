@@ -29,6 +29,9 @@
     <string name="set_as_home_app">设为主屏幕应用</string>
     <string name="undo_last_layout_change">撤销上一次布局更改</string>
     <string name="background">背景</string>
+    <string name="folder_background">文件夹背景</string>
+    <string name="status_bar_background">状态栏背景</string>
+    <string name="settings_keywords_folder_background">文件夹 背景 玻璃 模糊 外观 folder background</string>
     <string name="android_wallpaper">Android 墙纸</string>
     <string name="folio_background">Folio 背景</string>
     <string name="change_android_wallpaper">更改 Android 墙纸</string>
@@ -508,6 +511,7 @@
     <string name="widget_size">小组件大小</string>
     <string name="rows">行数</string>
     <string name="position">位置</string>
+    <string name="placement">摆放方式</string>
     <string name="dock">程序坞</string>
     <string name="your_apps">你的 App</string>
     <string name="dock_position_1_d">程序坞位置 %1$d</string>
@@ -564,7 +568,6 @@
     <string name="tinted">着色</string>
     <string name="reduce_transparency">降低透明度</string>
     <string name="glass_is_nearly_solid_because_android_s">由于 Android 的高对比度已开启，玻璃几乎不透明。</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">小组件、侧边栏和程序坞几乎不透明，边缘也更清晰。关闭此项后，玻璃设置会恢复。</string>
     <string name="frost_is_how_see_through_widgets_and_the">磨砂决定小组件和侧边栏的透明程度；描边是它们周围细细的浅色边缘。</string>
     <string name="save_backup_2">保存备份</string>
     <string name="save">存储</string>
@@ -2052,6 +2055,8 @@
     <string name="discover_no_fit">Discover 无法放在程序坞旁边。请返回主屏幕后重试。</string>
     <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
     <string name="profile_app">%1$s应用</string>
+    <string name="reduce_transparency_note">小组件、侧边栏和程序坞几乎不透明，边缘也更清晰，关闭此项前会隐藏玻璃设置。Android 的高对比度也有同样效果。</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">“降低透明度”已开启，因此玻璃几乎不透明。在“辅助功能”中关闭它即可恢复这些设置。</string>
     <plurals name="backup_widgets_left_out">
         <item quantity="other">有 %d 个小组件因其应用缺失而未包含。</item>
     </plurals>
