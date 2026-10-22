@@ -27,6 +27,9 @@
     <string name="set_as_home_app">홈 앱으로 설정</string>
     <string name="undo_last_layout_change">마지막 레이아웃 변경 실행 취소</string>
     <string name="background">배경</string>
+    <string name="folder_background">폴더 배경</string>
+    <string name="status_bar_background">상태 표시줄 배경</string>
+    <string name="settings_keywords_folder_background">폴더 배경 유리 블러 모양</string>
     <string name="android_wallpaper">Android 배경화면</string>
     <string name="folio_background">Folio 배경</string>
     <string name="change_android_wallpaper">Android 배경화면 변경</string>
@@ -507,6 +510,7 @@
     <string name="widget_size">위젯 크기</string>
     <string name="rows">행 수</string>
     <string name="position">위치</string>
+    <string name="placement">배치</string>
     <string name="dock">Dock</string>
     <string name="your_apps">내 앱</string>
     <string name="dock_position_1_d">Dock 위치 %1$d</string>
@@ -563,7 +567,6 @@
     <string name="tinted">색조 적용</string>
     <string name="reduce_transparency">투명도 줄이기</string>
     <string name="glass_is_nearly_solid_because_android_s">Android의 고대비 설정이 켜져 있어 글래스가 거의 불투명하게 표시됩니다.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해집니다. 끄면 원래 글래스 설정으로 돌아갑니다.</string>
     <string name="frost_is_how_see_through_widgets_and_the">반투명 정도는 위젯과 사이드바의 투명도를, 윤곽선은 가장자리의 얇고 밝은 테두리를 조절합니다.</string>
     <string name="save_backup_2">백업 저장</string>
     <string name="save">저장</string>
@@ -2077,4 +2080,38 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="other">앱이 없어 위젯 %d개를 제외했습니다.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">레이아웃 백업이 2MB보다 커서 Folio가 읽을 수 없습니다.</string>
+    <string name="layout_backup_is_from_a_newer_folio">더 최신 버전의 Folio에서 만든 레이아웃 백업입니다. 복원하려면 Folio를 업데이트하세요.</string>
+    <string name="document_picker_unavailable">지금은 파일 선택기를 사용할 수 없습니다.</string>
+    <string name="folio_was_updated_to_1_s">Folio가 %1$s 버전으로 업데이트되었습니다</string>
+    <string name="island_status_ready_title">다른 앱 위에 표시 중</string>
+    <string name="island_status_ready_body">음악, 통화, 타이머가 아일랜드에 표시됩니다. 방해 금지 모드는 메시지 팝업을 제한합니다.</string>
+    <string name="island_status_ready_live_body">음악, 통화, 타이머가 아일랜드에 표시됩니다.</string>
+    <string name="island_status_dnd_title">방해 금지 모드가 메시지 팝업을 제한하고 있습니다</string>
+    <string name="island_status_dnd_body">방해 금지 모드가 켜져 있어서 표시되는 메시지 팝업이 제한됩니다. 음악, 통화, 타이머는 다른 앱 위에 계속 표시됩니다.</string>
+    <string name="island_status_dnd_action">방해 금지 모드 열기</string>
+    <string name="island_status_popup_title">Android가 이 팝업을 직접 표시하고 있습니다</string>
+    <string name="island_status_popup_body">Android 팝업과 중복 표시 안 함이 켜져 있어서, 대부분의 메시지 같은 중요한 알림에는 아일랜드가 나서지 않습니다.</string>
+    <string name="island_status_popup_note">Android 팝업과 중복 표시 안 함이 켜져 있어서, 중요한 알림은 Android의 팝업이 처리합니다.</string>
+    <string name="island_status_popup_action">아일랜드에도 표시</string>
+    <string name="island_status_service_title">다른 앱 위에 표시되지 않음</string>
+    <string name="island_status_service_body">Folio의 제스처 서비스가 꺼져 있습니다. Android는 이 서비스를 통해서만 앱이 다른 앱 위에 그리도록 허용합니다.</string>
+    <string name="island_status_service_action">제스처 서비스 켜기</string>
+    <string name="island_status_access_title">아직 표시할 내용이 없습니다</string>
+    <string name="island_status_access_body">알림 접근이 꺼져 있어서 Folio가 음악, 통화, 메시지를 볼 수 없습니다.</string>
+    <string name="island_status_access_action">알림 접근 열기</string>
+    <string name="island_status_off_title">다른 앱에서 아일랜드가 꺼져 있습니다</string>
+    <string name="island_status_off_body">모든 앱에서 항목의 Dynamic Island를 켜면 다른 앱 위에 표시됩니다.</string>
+    <string name="island_status_live_off_title">음악 및 실시간 진행 상태가 꺼져 있습니다</string>
+    <string name="island_status_live_off_body">음악 및 실시간 진행 상태를 켜면 음악, 통화, 타이머가 아일랜드에 표시됩니다.</string>
+    <string name="island_status_safe_title">안전 모드로 일시 중지됨</string>
+    <string name="island_status_safe_body">안전 모드에서는 아일랜드와 독이 홈에만 표시됩니다. 다른 앱 위에서 사용하려면 안전 모드를 끄세요.</string>
+    <string name="package_import_market_off">이 패키지에는 Folio 마켓이 필요하며, 마켓은 서포터 코드로 열립니다.</string>
+    <string name="package_import_too_large">파일이 너무 커서 Folio 패키지가 아닙니다.</string>
+    <string name="package_import_too_slow">파일을 읽는 데 너무 오래 걸렸습니다. 먼저 휴대전화에 저장해 보세요.</string>
 </resources>

@@ -141,7 +141,7 @@ internal fun ClockCard(onClick: () -> Unit) {
     val time = currentTime()
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     GlassCard(onClick = onClick) {
-        Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
+        Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
             modifier = Modifier.semantics { contentDescription = clockWidgetTapToOpenLabel })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
@@ -153,7 +153,7 @@ internal fun ClockCard(onClick: () -> Unit) {
 internal fun DateCard(onClick: () -> Unit) {
     val date = currentTime()
     GlassCard(onClick = onClick) {
-        Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = 11.sp,
+        Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = FolioType.CAPTION.sp,
             fontWeight = FontWeight.Bold, letterSpacing = .6.sp, maxLines = 1)
         Text(date.dayOfMonth.toString(), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 44.sp, lineHeight = 46.sp)
         Text(date.format(DateTimeFormatter.ofPattern("MMMM")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
@@ -166,14 +166,14 @@ internal fun ExpandedCard(onClick: () -> Unit) {
     GlassCard(onClick = onClick) {
         Column {
             Text(date.format(DateTimeFormatter.ofPattern("EEEE")), color = LocalHomeInk.current.primary, fontSize = 22.sp)
-            Text(date.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.secondary, fontSize = 16.sp)
+            Text(date.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.secondary, fontSize = FolioType.CALLOUT.sp)
         }
         Column {
             Icon(Icons.Rounded.Widgets, null, tint = LocalHomeInk.current.primary, modifier = Modifier.size(32.dp))
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.a_little_more_room), color = LocalHomeInk.current.primary, fontSize = FolioType.TITLE.sp, lineHeight = 32.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = 14.sp)
+            Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = FolioType.COMPACT.sp)
             Spacer(Modifier.height(20.dp))
             FolioButton(stringResource(R.string.add_widget), onClick, style = FolioButtonStyle.TONAL, icon = Icons.Rounded.Add)
         }

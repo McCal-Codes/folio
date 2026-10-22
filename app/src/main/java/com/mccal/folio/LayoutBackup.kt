@@ -67,8 +67,8 @@ fun encodeLayoutBackup(
     val named = (state.homeSlots + state.leadingSlots + state.dock).filterNotNullTo(mutableSetOf()) +
         state.folders.flatMap { it.appIds } + state.appNames.keys + iconStyles.keys + state.iconActions.keys
     val apps = JSONArray().also { array -> state.apps.filter { it.id in named }.forEach { app -> array.put(JSONObject()
-        .put("id", app.id).put("label", app.label).put("component", app.component.flattenToString())
-        .put("userSerial", app.userSerial).put("profileLabel", app.profileLabel).put("work", app.isWork)
+        .put("id", app.id).put("label", backupLabel(app.label, app.component.packageName.ifBlank { app.id })).put("component", app.component.flattenToString())
+        .put("userSerial", app.userSerial).put("profileLabel", backupProfileLabel(app.profileLabel, app.isWork)).put("work", app.isWork)
         // A clone also says so (since 0.6.9); `work` still means "not personal", so older Folio reads it as before.
         .putOpt("kind", storedProfileKind(app.kind))) } }
     val folders = JSONArray().also { array -> state.folders.forEach { folder -> array.put(JSONObject()
@@ -83,10 +83,10 @@ fun encodeLayoutBackup(
         when {
             placement.id in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET) -> item.put("builtinId", placement.id)
             saved != null -> item.put("provider", saved.providerComponent).put("userSerial", saved.userSerial)
-                .put("title", saved.title).put("profileLabel", saved.profileLabel).put("work", saved.isWork)
+                .put("title", backupLabel(saved.title, widgetFallbackTitle(saved.providerComponent))).put("profileLabel", backupProfileLabel(saved.profileLabel, saved.isWork)).put("work", saved.isWork)
                 .put("sourceScope", exportedWidgetScope(saved, sourceScope))
             descriptor?.providerComponent != null && descriptor.userSerial != null -> item.put("provider", descriptor.providerComponent)
-                .put("userSerial", descriptor.userSerial).put("title", descriptor.title).put("profileLabel", descriptor.profileLabel)
+                .put("userSerial", descriptor.userSerial).put("title", backupLabel(descriptor.title, widgetFallbackTitle(descriptor.providerComponent))).put("profileLabel", backupProfileLabel(descriptor.profileLabel, descriptor.isWork))
                 .put("work", descriptor.isWork).put("sourceScope", sourceScope)
             else -> error("Widget ${placement.slot} has no portable provider descriptor")
         }
@@ -114,17 +114,50 @@ fun encodeLayoutBackup(
     val text = root.toString(2)
     // A backup over the limit can never be imported, here or anywhere else, so say so while there is still someone
     // to tell rather than writing a file that only fails later.
-    require(text.toByteArray(Charsets.UTF_8).size <= MAX_LAYOUT_BACKUP_BYTES) { "Layout backup is larger than 2 MB" }
+    require(text.toByteArray(Charsets.UTF_8).size <= MAX_LAYOUT_BACKUP_BYTES) { BACKUP_TOO_LARGE }
     return text
+}
+
+/**
+ * Import refuses a whole file when any app, shortcut or widget has a blank name, so export never writes one: a blank label
+ * falls back to the package (or the id), a blank profile label to personal or work. Names that are not blank are written as they are.
+ */
+internal fun backupLabel(label: String, fallback: String) = label.takeIf { it.isNotBlank() } ?: fallback
+internal fun backupProfileLabel(label: String, work: Boolean) = backupLabel(label, if (work) "work" else "personal")
+internal fun widgetFallbackTitle(providerComponent: String?) =
+    providerComponent?.let { ComponentName.unflattenFromString(it)?.packageName?.takeIf(String::isNotBlank) ?: it }?.takeIf(String::isNotBlank) ?: "widget"
+
+/**
+ * A widget whose app was uninstalled or disabled, or that Android unbound, has nothing a backup can carry: no provider to
+ * describe and no saved restore entry. It used to stop the whole export with "Widget N is unavailable". Now it is left out and counted, so
+ * the layout (and every other widget) is still backed up and the message can say one was not included.
+ */
+internal fun withoutUnportableWidgets(state: LauncherState, descriptors: List<BackupWidgetDescriptor>): Pair<LauncherState, Int> {
+    val described = descriptors.filter { it.providerComponent != null && it.userSerial != null }.mapTo(mutableSetOf()) { it.slot }
+    val restorable = state.widgetRestores.mapTo(mutableSetOf()) { it.slot }
+    val builtins = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET)
+    val kept = state.widgetPlacements.filter { it.id in builtins || it.slot in restorable || it.slot in described }
+    return state.copy(widgetPlacements = kept) to (state.widgetPlacements.size - kept.size)
+}
+
+internal const val BACKUP_TOO_LARGE = "Layout backup is larger than 2 MB"
+internal const val BACKUP_NEWER_VERSION = "Unsupported layout backup version"
+
+/** The few backup failures a person can act on; everything else gets the plain "could not be read" sentence. */
+internal enum class BackupFailure { TOO_LARGE, NEWER_VERSION, OTHER }
+internal fun backupFailureOf(error: Throwable): BackupFailure = when (error.message) {
+    BACKUP_TOO_LARGE -> BackupFailure.TOO_LARGE
+    BACKUP_NEWER_VERSION -> BackupFailure.NEWER_VERSION
+    else -> BackupFailure.OTHER
 }
 
 internal fun exportedWidgetScope(restore: WidgetRestore, currentScope: String) = restore.sourceScope ?: currentScope
 
 fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles: List<AppProfile>, currentScope: String): LayoutImportPreview {
-    require(raw.toByteArray(Charsets.UTF_8).size <= MAX_LAYOUT_BACKUP_BYTES) { "Layout backup is larger than 2 MB" }
+    require(raw.toByteArray(Charsets.UTF_8).size <= MAX_LAYOUT_BACKUP_BYTES) { BACKUP_TOO_LARGE }
     val root = JSONObject(raw)
     val version = root.strictInt("version")
-    require(version in 1..LAYOUT_BACKUP_VERSION) { "Unsupported layout backup version" }
+    require(version in 1..LAYOUT_BACKUP_VERSION) { BACKUP_NEWER_VERSION }
     val sourceScope = root.getString("sourceScope").also { require(it.isNotBlank()) }
     val sameScope = sourceScope == currentScope
     val appMetadata = root.getJSONArray("apps").let { array -> List(array.length()) { index ->

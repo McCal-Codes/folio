@@ -141,7 +141,7 @@ internal fun MessageActionPill(label: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center) {
         Box(Modifier.heightIn(min = 32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).padding(horizontal = FolioSpace.COMFY.dp),
             contentAlignment = Alignment.Center) {
-            Text(label, color = Color.White, fontSize = 14.sp)
+            Text(label, color = Color.White, fontSize = FolioType.COMPACT.sp)
         }
     }
 }
