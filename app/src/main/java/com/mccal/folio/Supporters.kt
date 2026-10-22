@@ -137,10 +137,10 @@ private fun SupporterNameRow(person: Supporters.Person) {
         androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
-        androidx.compose.material3.Text(person.name, color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
+        androidx.compose.material3.Text(person.name, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.CALLOUT.sp,
             modifier = androidx.compose.ui.Modifier.weight(1f))
         person.since?.let { since ->
-            androidx.compose.material3.Text(monthLabel(since), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 14.sp)
+            androidx.compose.material3.Text(monthLabel(since), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp)
         }
     }
 }

@@ -1148,8 +1148,8 @@ fun LauncherScreen(
                     // Composite the stationary dock independently of the shared pager layer (not while magnifying: it would clip).
                     compositingStrategy = if (state.dockMagnify) androidx.compose.ui.graphics.CompositingStrategy.Auto
                         else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(30.dp))
-                .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(30.dp)).testTag("dock")) {
+                }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(FolioRadius.RAIL.dp))
+                .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).testTag("dock")) {
                 Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
                     DockAppColumn(shownDock, previewLayout.dock, appsById, dockPitchShown,
                         dockIconSize(geometry.iconSize), drag, insertionTarget,
@@ -1641,7 +1641,7 @@ fun LauncherScreen(
                                 .semantics { stateDescription = if (widgetDraft != null) launcherActivity.getString(R.string.ready_to_place) else launcherActivity.getString(R.string.no_room_here) },
                                 color = if (widgetDraft != null) Glass.copy(alpha = .82f) else Color(0xFFE7B6B6).copy(alpha = .9f),
                                 shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(3.dp,
-                                    if (widgetDraft != null) Color.White else Color(0xFFFF6B6B))) {
+                                    if (widgetDraft != null) Color.White else FolioColors.InvalidDrop)) {
                                 Box(Modifier.fillMaxSize()) {
                                     if (sessionEntry != null) WidgetProviderPreview(sessionEntry, session.span,
                                         Modifier.fillMaxSize().padding(5.dp).clip(RoundedCornerShape(18.dp)))
@@ -1683,7 +1683,7 @@ fun LauncherScreen(
                 }
                 widgetPlacementMessage?.let { message ->
                     Surface(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(FolioSpace.XL.dp),
-                        color = Glass, shape = RoundedCornerShape(18.dp)) { Text(message, Modifier.padding(FolioSpace.LARGE.dp), color = Ink) }
+                        color = Glass, shape = RoundedCornerShape(FolioRadius.FLOATING.dp)) { Text(message, Modifier.padding(FolioSpace.LARGE.dp), color = Ink) }
                 }
             }
         }
@@ -1742,7 +1742,7 @@ fun LauncherScreen(
             if (blockedDock) Surface(
                 Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.folioSafeTop)
                     .padding(top = FolioSpace.COMPACT.dp, start = FolioSpace.XL.dp, end = 100.dp),
-                color = Glass.copy(alpha = .96f), shape = RoundedCornerShape(18.dp)
+                color = Glass.copy(alpha = .96f), shape = RoundedCornerShape(FolioRadius.FLOATING.dp)
             ) {
                 Text(stringResource(R.string.dock_full_move_an_app_out_first),
                     Modifier.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp), color = Ink, fontSize = FolioType.FOOTNOTE.sp)
@@ -1758,7 +1758,7 @@ fun LauncherScreen(
                 Column(Modifier.fillMaxSize().padding(vertical = FolioSpace.SNUG.dp), verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Rounded.DeleteOutline, null)
-                    Text(stringResource(R.string.remove), fontSize = 11.sp, maxLines = 1)
+                    Text(stringResource(R.string.remove), fontSize = FolioType.CAPTION.sp, maxLines = 1)
                 }
             }
         }
@@ -1803,10 +1803,10 @@ fun LauncherScreen(
                     with(density) { 18.dp.toPx() }).coerceAtLeast(resize.pitchY)
                 Box(Modifier.offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
                     .size(with(density) { widthPx.toDp() }, with(density) { heightPx.toDp() })
-                    .border(3.dp, if (valid) Color.White else Color(0xFFFF6B6B), RoundedCornerShape(FolioRadius.PANEL.dp))
+                    .border(3.dp, if (valid) Color.White else FolioColors.InvalidDrop, RoundedCornerShape(FolioRadius.PANEL.dp))
                     .testTag("widget-resize-preview-$slot")) {
                     Box(Modifier.align(Alignment.BottomEnd).offset(12.dp, 12.dp).size(44.dp)
-                        .background(if (valid) Color.White else Color(0xFFFF6B6B), CircleShape)
+                        .background(if (valid) Color.White else FolioColors.InvalidDrop, CircleShape)
                         .testTag("widget-resize-handle-$slot")
                         .pointerInput(slot, resize.constraints) {
                             var dx = 0f; var dy = 0f; var startWidth = resize.width; var startHeight = resize.height
@@ -2070,7 +2070,7 @@ private fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
         Text(stringResource(R.string.preview), color = ink.secondary, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.semantics { heading() })
         Spacer(Modifier.width(12.dp))
         Text(stringResource(R.string.use_as_home), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onUseAsHome)
+            modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onUseAsHome)
                 .heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = FolioSpace.SMALL.dp).testTag("preview-use-as-home"))
         IconButton(onClick = onExit, Modifier.size(48.dp).testTag("preview-exit")) {
             Icon(Icons.Rounded.Close, stringResource(R.string.exit_preview), tint = ink.secondary, modifier = Modifier.size(18.dp))
