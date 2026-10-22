@@ -2063,4 +2063,5 @@
     <string name="layout_backup_is_too_large">该布局备份超过 2 MB，Folio 无法读取。</string>
     <string name="layout_backup_is_from_a_newer_folio">该布局备份来自更新版本的 Folio。请先更新 Folio 再恢复。</string>
     <string name="document_picker_unavailable">文件选择器目前不可用。</string>
+    <string name="folio_was_updated_to_1_s">Folio 已更新到 %1$s</string>
 </resources>

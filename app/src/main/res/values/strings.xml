@@ -2121,4 +2121,5 @@
     <string name="layout_backup_is_too_large">That layout backup is larger than 2 MB, so Folio can\'t read it.</string>
     <string name="layout_backup_is_from_a_newer_folio">That layout backup is from a newer version of Folio. Update Folio to restore it.</string>
     <string name="document_picker_unavailable">The file picker isn\'t available right now.</string>
+    <string name="folio_was_updated_to_1_s">Folio was updated to %1$s</string>
 </resources>

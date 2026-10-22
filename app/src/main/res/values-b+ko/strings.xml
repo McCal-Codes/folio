@@ -2084,4 +2084,5 @@
     <string name="layout_backup_is_too_large">레이아웃 백업이 2MB보다 커서 Folio가 읽을 수 없습니다.</string>
     <string name="layout_backup_is_from_a_newer_folio">더 최신 버전의 Folio에서 만든 레이아웃 백업입니다. 복원하려면 Folio를 업데이트하세요.</string>
     <string name="document_picker_unavailable">지금은 파일 선택기를 사용할 수 없습니다.</string>
+    <string name="folio_was_updated_to_1_s">Folio가 %1$s 버전으로 업데이트되었습니다</string>
 </resources>
