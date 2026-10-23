@@ -665,7 +665,7 @@
     <string name="smart_ink_lead">Folio can choose light or dark text for the Big Clock by what is really behind it, even over Android\'s own wallpaper.</string>
     <string name="smart_ink_fact_looks">Folio takes a picture of your Home screen, only to choose light or dark text for the clock.</string>
     <string name="smart_ink_fact_kept">It measures the part under the clock and throws the picture away straight away. Only a few brightness numbers are kept. Nothing is saved or sent.</string>
-    <string name="smart_ink_fact_home">It only happens while Folio\'s Home is in front, never over another app and never on the lock screen.</string>
+    <string name="smart_ink_fact_home">It only happens while Folio\'s Home is in front. Anything drawn on top of Home at that moment, such as a floating window, can be in the picture.</string>
     <string name="smart_ink_fact_separate">This is its own accessibility service, so Folio\'s gestures service still cannot read your screen. Turn it off any time in Accessibility settings.</string>
     <string name="open_accessibility_settings">Open Accessibility Settings</string>
     <string name="smart_ink_service_label">Folio Smart clock ink</string>

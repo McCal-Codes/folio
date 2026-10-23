@@ -2,6 +2,8 @@ package com.mccal.folio
 
 import androidx.compose.ui.geometry.Rect
 import kotlin.math.max
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Reads what is behind the Big Clock when Android's own wallpaper is behind Home, whose pixels no app can read any other
@@ -26,14 +28,17 @@ internal object SmartClockInk {
         if (!shared.claim()) return shared.cached(box)
         val shot = SmartInkService.capture(displayId) ?: return shared.cached(box)
         try {
-            shared.store(shared.keys().associateWith { clock ->
-                runCatching {
-                    // The picture has the clock on it, so the clock's own digits are never measured: the wallpaper just above and just
-                    // below it is, and the stricter of the two decides (docs/audits/2026-10-08-smart-ink-capture-research.md, section 3).
-                    val (above, below) = wallpaperBesideClock(clock)
-                    listOfNotNull(above, below).map { sampleClockRegion(shot, it) }.reduceOrNull(::strictest)
-                }.getOrNull()
-            }.mapNotNull { (k, v) -> v?.let { k to it } }.toMap())
+            // Off the main thread: each strip scales the full-screen picture and walks its pixels.
+            shared.store(withContext(Dispatchers.Default) {
+                shared.keys().associateWith { clock ->
+                    runCatching {
+                        // The picture has the clock on it, so the clock's own digits are never measured: the wallpaper just above and just
+                        // below it is, and the stricter of the two decides (docs/audits/2026-10-08-smart-ink-capture-research.md, section 3).
+                        val (above, below) = wallpaperBesideClock(clock)
+                        listOfNotNull(above, below).map { sampleClockRegion(shot, it) }.reduceOrNull(::strictest)
+                    }.getOrNull()
+                }.mapNotNull { (k, v) -> v?.let { k to it } }.toMap()
+            })
         } finally { shot.recycle() }
         return shared.cached(box)
     }

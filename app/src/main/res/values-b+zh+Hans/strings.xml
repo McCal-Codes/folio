@@ -671,7 +671,7 @@
     <string name="smart_ink_lead">即使使用 Android 自带壁纸，Folio 也能根据时钟背后的真实画面为大时钟选择浅色或深色文字。</string>
     <string name="smart_ink_fact_looks">Folio 会拍摄主屏幕的画面，只用于为时钟选择浅色或深色文字。</string>
     <string name="smart_ink_fact_kept">它只测量时钟下方的部分，并立即丢弃画面，只保留几个亮度数值，不会保存或发送。</string>
-    <string name="smart_ink_fact_home">仅在 Folio 主屏幕位于前台时进行，绝不会在其他应用上或锁屏时进行。</string>
+    <string name="smart_ink_fact_home">仅在 Folio 主屏幕位于前台时进行。此刻绘制在主屏幕上方的内容（例如悬浮窗）可能会出现在图片中。</string>
     <string name="smart_ink_fact_separate">这是单独的辅助功能服务，因此 Folio 手势服务仍然无法读取你的屏幕。可随时在辅助功能设置中关闭。</string>
     <string name="open_accessibility_settings">打开辅助功能设置</string>
     <string name="smart_ink_service_label">Folio 智能时钟颜色</string>
