@@ -55,6 +55,7 @@ internal object MarketAutoUpdate {
         for ((installed, entry) in candidates(session, rememberedMarketPrefs(context).skippedUpdates)) {
             // A package turned off on its own page is never staged; the notice for it still comes from candidates().
             if (!session.prefs.autoUpdateFor(installed.id)) continue
+            if (session.skipInBackground(entry.source.url)) continue
             val file = stagedFile(context, entry.id, entry.entry.version)
             if (file.exists()) continue
             val bytes = session.fetchBytes(entry) ?: continue

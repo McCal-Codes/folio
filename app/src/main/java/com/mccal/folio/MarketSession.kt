@@ -95,7 +95,11 @@ internal class MarketSession(
         http = DevSource.httpClient(appContext, allowLocalhost = localDevAllowed),
         io = io,
         knownRevocations = { source.revocations() },
+        skipInBackground = DevSource.backgroundSkip(appContext),
     )
+
+    /** Sources a background job must not ask or download from: none in a release build. */
+    val skipInBackground: (String) -> Boolean = DevSource.backgroundSkip(appContext)
 
     /** The package list, or null when the bundled files are unreadable, which only a broken build can cause. */
     fun index(): RepoIndex? = source.index()

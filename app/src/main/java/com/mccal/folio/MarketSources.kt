@@ -207,6 +207,11 @@ internal class MarketSources(
      * the only way to disown a source that has been taken over between releases.
      */
     private val knownRevocations: () -> RevocationList? = { null },
+    /**
+     * Sources a background run leaves alone. Empty in a release build; Folio Dev lists its own debug source here so the
+     * dev code is never sent by a job nobody opened (PRIVACY.md: only when the page is opened, Check, or a refresh).
+     */
+    private val skipInBackground: (String) -> Boolean = { false },
 ) {
     fun sources(): List<Source> = list.added()
 
@@ -258,8 +263,8 @@ internal class MarketSources(
     }
 
     /** Asks every source, one at a time so a slow one doesn't hold the others up in parallel connections. */
-    suspend fun refreshAll(force: Boolean): Map<String, RefreshResult> = withContext(io) {
-        sources().associate { it.url to refresh(it.url, force) }
+    suspend fun refreshAll(force: Boolean, background: Boolean = false): Map<String, RefreshResult> = withContext(io) {
+        sources().filterNot { background && skipInBackground(it.url) }.associate { it.url to refresh(it.url, force) }
     }
 
     fun forget(url: String) {

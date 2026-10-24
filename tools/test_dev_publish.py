@@ -107,6 +107,51 @@ class DevPublishTest(unittest.TestCase):
         finally:
             dp.COMMUNITY_KEY_ID = original
 
+    def test_a_fresh_folder_keeps_the_history_the_repository_already_has(self):
+        seed = []
+        for n in range(3):
+            folder = self.tmp / f"seed{n}"
+            folder.mkdir()
+            seed.append(dp.make_row(make_apk(folder, sha=f"{n:08x}aa", built=f"2026-09-0{n + 1}T10:00:00Z"), "0.6.9"))
+        out = self.tmp / "fresh"
+        dp.write_folder(out, self.apk, dp.make_row(self.apk, "0.6.9"), self.key, 1_800_000_000, 30, seed)
+        tags = {r["tag"] for r in json.loads((out / "builds.json").read_text())["builds"]}
+        self.assertTrue({r["tag"] for r in seed} <= tags)
+        self.assertEqual(len(tags), 4)
+
+    def test_only_releases_the_signed_list_dropped_are_deleted(self):
+        listed = {"dev-1", "dev-2"}
+        self.assertEqual(dp.stale_tags(["dev-1", "dev-2", "dev-0", "v1.0", "notes"], listed), ["dev-0"])
+        self.assertEqual(dp.stale_tags(["dev-1"], listed), [])
+
+    def test_upload_asks_before_deleting_and_yes_skips_the_question(self):
+        calls = []
+
+        def fake_gh(*args, check=True):
+            calls.append(args)
+            out = ""
+            if args[0] == "repo":
+                out = json.dumps({"visibility": "PRIVATE"})
+            elif args[:2] == ("release", "list"):
+                out = json.dumps([{"tagName": "dev-old"}, {"tagName": "dev-keep"}])
+            elif args[0] == "api":
+                return subprocess.CompletedProcess(args, 1, "", "404")
+            return subprocess.CompletedProcess(args, 0, out, "")
+
+        folder = self.tmp / "o"
+        row = dp.make_row(self.apk, "0.6.9")
+        row["tag"] = "dev-keep"
+        dp.write_folder(folder, self.apk, row, self.key, 1_800_000_000, 30)
+        original = dp.gh
+        dp.gh = fake_gh
+        try:
+            dp.upload(folder, row, yes=False)
+            self.assertFalse([c for c in calls if c[:2] == ("release", "delete")], "not a terminal, so it left them")
+            dp.upload(folder, row, yes=True)
+            self.assertEqual([c[2] for c in calls if c[:2] == ("release", "delete")], ["dev-old"])
+        finally:
+            dp.gh = original
+
     def test_nothing_is_uploaded_without_the_flag(self):
         called = []
         original = dp.upload

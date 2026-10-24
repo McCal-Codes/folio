@@ -222,6 +222,15 @@ internal object DevSource {
         return { url -> enabled(app) && loopback(app) && DevRouting.isLoopbackSource(url) }
     }
 
+    /**
+     * The dev source's addresses, on the real worker and on the stub, for background runs to leave alone. A background
+     * refresh or auto-update would otherwise send the dev code from a job nobody opened.
+     */
+    fun backgroundSkip(@Suppress("UNUSED_PARAMETER") context: Context): (String) -> Boolean = { url -> isDevAddress(url) }
+
+    internal fun isDevAddress(url: String) =
+        DevRouting.isDevRoute(url, SoftwareUpdate.BETA_BROKER.trimEnd('/')) || DevRouting.isDevRoute(url, LOOPBACK_BASE)
+
     fun tweaksUrl(context: Context) = base(context) + "/dev/file/tweaks/"
 
     // ---- the list ---------------------------------------------------------------------------------------------

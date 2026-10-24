@@ -14,6 +14,9 @@ internal object DevSource {
 
     fun enabled(@Suppress("UNUSED_PARAMETER") context: Context): Boolean = false
 
+    /** Nothing is skipped in the background: there is no dev source to skip. */
+    fun backgroundSkip(@Suppress("UNUSED_PARAMETER") context: Context): (String) -> Boolean = { false }
+
     /** No plain-http source is ever acceptable in a release build. */
     fun insecureSourceOk(@Suppress("UNUSED_PARAMETER") context: Context): (String) -> Boolean = { false }
 

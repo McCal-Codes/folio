@@ -126,9 +126,16 @@ def previous_rows(folder: pathlib.Path) -> list[dict]:
         return []
 
 
-def write_folder(folder: pathlib.Path, apk: pathlib.Path, row: dict, key: pathlib.Path, now: int, max_age_days: int) -> list[str]:
-    """Writes the layout and returns the paths written, relative to the folder."""
-    rows = [r for r in previous_rows(folder) if r["tag"] != row["tag"]] + [row]
+def write_folder(folder: pathlib.Path, apk: pathlib.Path, row: dict, key: pathlib.Path, now: int, max_age_days: int,
+                 seed: list[dict] | None = None) -> list[str]:
+    """Writes the layout and returns the paths written, relative to the folder.
+
+    [seed] is the list the repository already holds (see remote_rows): history is the folder's own list plus that one, so
+    a fresh temporary folder never starts from nothing and wipes what is already published.
+    """
+    known = {r["tag"]: r for r in (seed or [])}
+    known.update({r["tag"]: r for r in previous_rows(folder)})
+    rows = [r for r in known.values() if r["tag"] != row["tag"]] + [row]
     rows = sorted(rows, key=lambda r: r["builtAt"])[-KEEP:]
     keep_tags = {r["tag"] for r in rows}
     data = list_json(rows, now, max_age_days)
@@ -151,7 +158,26 @@ def gh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(["gh", *args], text=True, capture_output=True, check=check)
 
 
-def upload(folder: pathlib.Path, row: dict) -> None:
+def remote_rows() -> list[dict]:
+    """The builds the repository's signed list names now. No list yet is an empty history; any other failure stops the run."""
+    answer = gh("api", "-H", "Accept: application/vnd.github.raw+json", f"repos/{REPO_SLUG}/contents/builds.json?ref=source", check=False)
+    if answer.returncode != 0:
+        if "404" in (answer.stderr + answer.stdout):
+            return []
+        sys.exit("Could not read the repository's current builds.json, so nothing was uploaded (history would be at risk): "
+                 + (answer.stderr or answer.stdout).strip()[:200])
+    try:
+        return list(json.loads(answer.stdout).get("builds", []))
+    except ValueError:
+        sys.exit("The repository's builds.json is not readable, so nothing was uploaded.")
+
+
+def stale_tags(release_tags: list[str], listed: set[str]) -> list[str]:
+    """Dev release tags the signed list no longer names. Anything else in the repository is left alone."""
+    return sorted(t for t in release_tags if t.startswith("dev-") and t not in listed)
+
+
+def upload(folder: pathlib.Path, row: dict, yes: bool = False) -> None:
     """Creates the release, then updates builds.json and its signature on the `source` branch, then prunes old releases.
 
     Written here, run only by a person who passes --upload. It checks the repository is private first, as the worker does.
@@ -172,9 +198,15 @@ def upload(folder: pathlib.Path, row: dict) -> None:
         gh(*args)
     keep = {r["tag"] for r in previous_rows(folder)}
     listing = json.loads(gh("release", "list", "--repo", REPO_SLUG, "--limit", "100", "--json", "tagName").stdout)
-    for entry in listing:
-        if entry["tagName"].startswith("dev-") and entry["tagName"] not in keep:
-            gh("release", "delete", entry["tagName"], "--repo", REPO_SLUG, "--yes", "--cleanup-tag")
+    old = stale_tags([entry["tagName"] for entry in listing], keep)
+    if old and not yes:
+        print("Releases the signed list no longer names: " + ", ".join(old))
+        answer = input("Delete them? [y/N] ").strip().lower() if sys.stdin.isatty() else ""
+        if answer != "y":
+            print("Left them in place (pass --yes to delete without asking).")
+            return
+    for tag in old:
+        gh("release", "delete", tag, "--repo", REPO_SLUG, "--yes", "--cleanup-tag")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -184,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--key", default=os.environ.get("FOLIO_DEV_PUBLISHER_KEY", DEFAULT_KEY), help="the dev publisher key (PEM)")
     parser.add_argument("--max-age-days", type=int, default=30, help="how long the signed list is believed (default 30)")
     parser.add_argument("--dry-run", action="store_true", help="say what would be written and write nothing")
+    parser.add_argument("--yes", action="store_true", help="with --upload: delete releases the list no longer names without asking")
     parser.add_argument("--upload", action="store_true", help="also upload to the private repository with gh (never the default)")
     args = parser.parse_args(argv)
     if not 1 <= args.max_age_days <= MAX_AGE_DAYS_LIMIT:
@@ -209,10 +242,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"(dry run) would write builds.json, builds.json.sig and releases/{row['tag']}/ into {folder}")
         print(json.dumps(row, indent=2))
         return 0
-    written = write_folder(folder, apk, row, key, int(time.time()), args.max_age_days)
+    seed = remote_rows() if args.upload else []
+    written = write_folder(folder, apk, row, key, int(time.time()), args.max_age_days, seed)
     print("Wrote into " + str(folder) + ": " + ", ".join(written))
     if args.upload:
-        upload(folder, row)
+        upload(folder, row, args.yes)
         print(f"Uploaded {row['tag']} to {REPO_SLUG}.")
     return 0
 
