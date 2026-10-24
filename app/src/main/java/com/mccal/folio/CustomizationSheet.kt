@@ -2421,7 +2421,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         if (!FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current))
             CustomizationSlider(stringResource(R.string.widget_size), "${(p.widgetScale * 100).roundToInt()}%", p.widgetScale, .8f..1.25f, d.widgetScale, peek = true) { model.setPreset(screen, p.copy(widgetScale = it)) }
         // Automatic says which number it landed on, so the count is never a mystery.
-        IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.homeAppRows), 4 to "4", 5 to "5", 6 to "6", 7 to "7"), state.homeRows, model::setHomeRows, tag = "home-rows")
+        IosMenuRow(stringResource(R.string.rows), listOf(0 to stringResource(R.string.automatic_rows_count, state.automaticHomeRows), 4 to "4", 5 to "5", 6 to "6", 7 to "7"), state.homeRows, model::setHomeRows, tag = "home-rows")
         CardNote(stringResource(R.string.automatic_adds_up_to_3_more_rows_of_apps))
         val rowsContext = androidx.compose.ui.platform.LocalContext.current
         CardNote(automaticRowsNote(state, rowsContext.strings()))

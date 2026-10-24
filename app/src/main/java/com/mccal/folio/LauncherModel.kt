@@ -339,6 +339,8 @@ data class LauncherState(
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
+    /** What Automatic would give, whatever fixed Rows value is chosen, so the menu can name it honestly. */
+    val automaticHomeRows: Int get() = effectiveHomeRows(0, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
