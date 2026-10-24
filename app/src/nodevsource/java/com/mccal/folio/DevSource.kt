@@ -6,7 +6,7 @@ import com.mccal.folio.market.UrlHttpClient
 
 /**
  * The release build's twin of src/devsource: the same names, and nothing behind them. The Folio Dev builds source
- * (T24 in docs/sdk/threat-model.md) is not part of a release, so there is no dev code to store, no address to
+ * (T34 in docs/sdk/threat-model.md) is not part of a release, so there is no dev code to store, no address to
  * send one to and no page to show. R8 removes these calls; tools/check-no-dev-source.sh proves the real code is absent.
  */
 internal object DevSource {

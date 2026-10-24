@@ -79,4 +79,16 @@ class DevSourceRoutingTest {
         val open = DevRouting.opener({ base }, { "CODE" }) { url -> Fake(url, 302, location = "http://evil.example/x") }
         assertTrue(UrlHttpClient(open = open).get("$base/dev/file/a", 1000, null as String?) is HttpResult.Failed)
     }
+    @Test fun `a stored code with a line break cannot crash the request`() {
+        val strict = object : HttpURLConnection(URL("$base/dev/file/x")) {
+            override fun connect() = Unit
+            override fun disconnect() = Unit
+            override fun usingProxy() = false
+            override fun setRequestProperty(key: String?, value: String?) { require(value?.contains('
+') != true) }
+        }
+        val open = DevRouting.opener({ base }, { "AB
+CD" }) { strict }
+        open(URL("$base/dev/file/x"))
+    }
 }

@@ -51,7 +51,7 @@ jobs:
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
       # The Folio Dev debug source must not reach a release: build the release APK (unsigned, no secrets needed) and
-      # look inside it (docs/sdk/threat-model.md, T24).
+      # look inside it (docs/sdk/threat-model.md, T34).
       - name: Release APK has no Folio Dev debug source
         run: |
           ./gradlew :app:assembleRelease

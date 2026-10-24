@@ -162,6 +162,7 @@ internal fun DevSourcePage(showBack: Boolean, backTitle: String, onBack: () -> U
 private fun BuildsList(state: DevSource.ListState.Loaded, running: DevBuildInfo?, work: DevSource.Work, context: android.content.Context) {
     if (state.builds.isEmpty()) { CardNote(stringResource(R.string.dev_source_none)); return }
     val busy = work is DevSource.Work.Downloading || work is DevSource.Work.Installing
+    val installedCode = remember { DevSource.installedCode(context) }
     SheetGroup {
         state.builds.forEachIndexed { index, build ->
             if (index > 0) MenuDivider()
@@ -178,6 +179,10 @@ private fun BuildsList(state: DevSource.ListState.Loaded, running: DevBuildInfo?
                     Text(stringResource(R.string.dev_source_built_with, build.builtAt.take(16).replace('T', ' '),
                         android.text.format.Formatter.formatShortFileSize(context, build.size)),
                         color = Color.White.copy(alpha = .45f), fontSize = FolioType.FOOTNOTE.sp)
+                    // Only for a build older than the one installed: the running build and anything newer have nothing to warn about.
+                    if (!here && DevBuilds.olderThanInstalled(build, installedCode)) {
+                        Text(stringResource(R.string.dev_source_older_build), color = FolioColors.Warning, fontSize = FolioType.FOOTNOTE.sp)
+                    }
                 }
                 if (here) Text(stringResource(R.string.dev_source_running), color = FolioColors.Green, fontSize = FolioType.FOOTNOTE.sp)
                 else Text(stringResource(R.string.dev_source_install),
@@ -187,8 +192,6 @@ private fun BuildsList(state: DevSource.ListState.Loaded, running: DevBuildInfo?
             }
         }
     }
-    // Said once for the list rather than per row: the data risk the design names (the design's section 4).
-    CardNote(stringResource(R.string.dev_source_older_build), Modifier.padding(top = FolioSpace.SMALL.dp))
 }
 
 @Composable
@@ -211,6 +214,9 @@ private fun WorkNote(work: DevSource.Work) {
 private fun failureText(failure: DevSource.Failure) = when (failure) {
     DevSource.Failure.NO_CODE -> R.string.dev_source_fail_no_code
     DevSource.Failure.NETWORK -> R.string.dev_source_fail_network
+    DevSource.Failure.SERVER_ERROR -> R.string.dev_source_fail_server
+    DevSource.Failure.NOT_A_LIST -> R.string.dev_source_fail_not_a_list
+    DevSource.Failure.FUTURE -> R.string.dev_source_fail_future
     DevSource.Failure.WORKER_REFUSED -> R.string.dev_source_fail_refused
     DevSource.Failure.BAD_SIGNATURE -> R.string.dev_source_fail_signature
     DevSource.Failure.UNREADABLE -> R.string.dev_source_fail_unreadable

@@ -18,7 +18,7 @@ import java.time.OffsetDateTime
 import java.util.concurrent.atomic.AtomicBoolean
 
 /*
- * The Folio Dev debug source (docs/sdk/threat-model.md, T24): development builds and work-in-progress tweaks out of a
+ * The Folio Dev debug source (docs/sdk/threat-model.md, T34): development builds and work-in-progress tweaks out of a
  * private repository, behind a signed dev code, for Folio Dev only. This file is the real thing; a release build
  * compiles src/nodevsource instead, which has the same names and does nothing.
  *
@@ -48,7 +48,10 @@ internal object DevBuilds {
     private val NAME = Regex("[A-Za-z0-9._-]{1,120}")
     private val HEX = Regex("[0-9a-f]{64}")
 
-    enum class Problem { UNREADABLE, BAD_SIGNATURE, STALE, ROLLBACK }
+    enum class Problem { UNREADABLE, BAD_SIGNATURE, STALE, ROLLBACK, FUTURE }
+
+    /** A day of slack for a phone whose clock is a little behind the publisher's. */
+    private const val FUTURE_SLACK_SECONDS = 24L * 60 * 60
 
     sealed interface Verdict {
         data class Good(val builds: List<DevBuildRow>, val timestamp: Long) : Verdict
@@ -71,9 +74,17 @@ internal object DevBuilds {
         if (rows.length() > MAX_BUILDS) return Verdict.Bad(Problem.UNREADABLE)
         val builds = (0 until rows.length()).map { parseRow(rows.optJSONObject(it)) ?: return Verdict.Bad(Problem.UNREADABLE) }
         if (timestamp < floorSeconds) return Verdict.Bad(Problem.ROLLBACK)
+        if (timestamp > nowSeconds + FUTURE_SLACK_SECONDS) return Verdict.Bad(Problem.FUTURE)
         if (nowSeconds > timestamp + maxAge) return Verdict.Bad(Problem.STALE)
         return Verdict.Good(builds.sortedByDescending { it.builtAtEpoch }, timestamp)
     }
+
+    /** Whether what came back has the shape of a list and a signature at all, as opposed to an error page or other text. */
+    fun looksLikeList(bytes: ByteArray, signature: String): Boolean =
+        bytes.decodeToString().trimStart().startsWith("{") && Regex("[A-Za-z0-9+/=\\s]{16,1024}").matches(signature)
+
+    /** The note under a build is for one that Android would not install over this one without a downgrade. Never the running build. */
+    fun olderThanInstalled(build: DevBuildRow, installedVersionCode: Long): Boolean = build.versionCode < installedVersionCode
 
     private fun parseRow(o: JSONObject?): DevBuildRow? {
         o ?: return null
@@ -155,7 +166,8 @@ internal object DevRouting {
     fun opener(base: () -> String, code: () -> String?, delegate: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }):
         (URL) -> HttpURLConnection = { url ->
         val connection = delegate(url)
-        if (isDevRoute(url.toString(), base())) code()?.let { connection.setRequestProperty("Authorization", "Bearer $it") } 
+        // A stored code with a stray line break would make this throw; a request without the header is just refused.
+        if (isDevRoute(url.toString(), base())) code()?.let { runCatching { connection.setRequestProperty("Authorization", "Bearer $it") } } 
         connection
     }
 }
@@ -187,7 +199,7 @@ internal object DevSource {
     /** The stored dev code, only when it still verifies against the dev code key and carries the dev scope. */
     fun code(context: Context): String? {
         if (!enabled(context)) return null
-        val text = prefs(context).getString(CODE, null) ?: return null
+        val text = prefs(context).getString(CODE, null)?.filterNot { it.isWhitespace() } ?: return null
         return text.takeIf { valid(it) }
     }
 
@@ -198,7 +210,7 @@ internal object DevSource {
     /** Keeps [text] when it is a good dev code. Anything else, including a supporter code, is not stored. */
     fun redeem(context: Context, text: String): Boolean {
         if (!enabled(context) || !valid(text)) return false
-        prefs(context).edit().putString(CODE, text.trim()).apply()
+        prefs(context).edit().putString(CODE, text.filterNot { it.isWhitespace() }).apply()
         list.value = ListState.Idle
         return true
     }
@@ -235,7 +247,7 @@ internal object DevSource {
 
     // ---- the list ---------------------------------------------------------------------------------------------
 
-    enum class Failure { NO_CODE, NETWORK, WORKER_REFUSED, BAD_SIGNATURE, UNREADABLE, STALE, ROLLBACK }
+    enum class Failure { NO_CODE, NETWORK, SERVER_ERROR, WORKER_REFUSED, NOT_A_LIST, BAD_SIGNATURE, UNREADABLE, STALE, ROLLBACK, FUTURE }
 
     sealed interface ListState {
         data object Idle : ListState
@@ -277,10 +289,15 @@ internal object DevSource {
         val body = client.get(root + "builds.json", LIST_MAX_BYTES, null)
         val sig = client.get(root + "builds.json.sig", 1024, null)
         for (result in listOf(body, sig)) if (result is com.mccal.folio.market.HttpResult.Failed) {
-            return ListState.Failed(if (result.status == 400 || result.status == 403) Failure.WORKER_REFUSED else Failure.NETWORK)
+            return ListState.Failed(when (result.status) {
+                null -> Failure.NETWORK
+                400, 403 -> Failure.WORKER_REFUSED
+                else -> Failure.SERVER_ERROR
+            })
         }
         val bytes = (body as? com.mccal.folio.market.HttpResult.Body)?.bytes ?: return ListState.Failed(Failure.NETWORK)
         val signature = (sig as? com.mccal.folio.market.HttpResult.Body)?.bytes?.decodeToString() ?: return ListState.Failed(Failure.NETWORK)
+        if (!DevBuilds.looksLikeList(bytes, signature)) return ListState.Failed(Failure.NOT_A_LIST)
         val floor = prefs(context).getLong(FLOOR, 0L)
         return when (val verdict = DevBuilds.verify(bytes, signature, DevSourceKeys.publisherKeys, nowSeconds, floor)) {
             is DevBuilds.Verdict.Good -> {
@@ -292,6 +309,7 @@ internal object DevSource {
                 DevBuilds.Problem.UNREADABLE -> Failure.UNREADABLE
                 DevBuilds.Problem.STALE -> Failure.STALE
                 DevBuilds.Problem.ROLLBACK -> Failure.ROLLBACK
+                DevBuilds.Problem.FUTURE -> Failure.FUTURE
             })
         }
     }
@@ -301,7 +319,7 @@ internal object DevSource {
     /** The build this Folio Dev was made from, to mark it in the list. */
     fun running(context: Context): DevBuildInfo? = DevBuild.load(context)
 
-    private fun installedCode(context: Context): Long =
+    fun installedCode(context: Context): Long =
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode }.getOrDefault(0L)
 
     fun install(context: Context, build: DevBuildRow) = launchExclusive {

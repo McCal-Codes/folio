@@ -30,9 +30,12 @@
     <string name="dev_source_checked" translatable="false">Checked %1$s</string>
 
     <string name="dev_source_fail_no_code" translatable="false">Add a dev code first.</string>
-    <string name="dev_source_fail_network" translatable="false">Could not reach the server.</string>
+    <string name="dev_source_fail_network" translatable="false">Could not reach the server. Check the connection.</string>
+    <string name="dev_source_fail_server" translatable="false">The server answered with an error instead of the list.</string>
+    <string name="dev_source_fail_not_a_list" translatable="false">The server answered, but what came back is not a list of builds.</string>
+    <string name="dev_source_fail_future" translatable="false">The list is dated in the future. Check this phone\'s clock.</string>
     <string name="dev_source_fail_refused" translatable="false">The server refused the dev code. It may have run out or been withdrawn.</string>
-    <string name="dev_source_fail_signature" translatable="false">The list is not signed by the dev publisher key, so it was ignored.</string>
+    <string name="dev_source_fail_signature" translatable="false">The list was altered or signed with a different key, so it was ignored.</string>
     <string name="dev_source_fail_unreadable" translatable="false">The list could not be read.</string>
     <string name="dev_source_fail_stale" translatable="false">The list is out of date. Publish a build to refresh it.</string>
     <string name="dev_source_fail_rollback" translatable="false">The list is older than one already seen, so it was ignored.</string>

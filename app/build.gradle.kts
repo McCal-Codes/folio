@@ -204,7 +204,7 @@ android {
     }
     // "fast" uses release's no-op tracing/diagnostic sources.
     sourceSets {
-        // The Folio Dev debug source (docs/sdk/threat-model.md, T24): the real code is in src/devsource and only the two
+        // The Folio Dev debug source (docs/sdk/threat-model.md, T34): the real code is in src/devsource and only the two
         // Folio Dev build types get it. Release gets a same-named no-op from src/nodevsource, so main compiles either way.
         // Not src/release/java: fast already includes that one, and a real class there would collide with its twin.
         getByName("fast") { kotlin.directories.add("src/release/java"); kotlin.directories.add("src/devsource/java"); res.directories.add("src/dev/res") }

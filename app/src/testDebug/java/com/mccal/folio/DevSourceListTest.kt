@@ -91,4 +91,29 @@ class DevSourceListTest {
         assertTrue(com.mccal.folio.market.SourceKey.parse(DevSourceKeys.PUBLISHER) != null)
         assertTrue(DevSourceKeys.CODE != DevSourceKeys.PUBLISHER && DevSourceKeys.CODE != BetaKeys.TEST && DevSourceKeys.CODE != BetaKeys.SUPPORTER)
     }
+    @Test fun `a list dated more than a day ahead is refused, a little skew is not`() {
+        val key = keyPair()
+        val ahead = list(timestamp = now + 2 * 86_400, rows = arrayOf(row("one")))
+        assertEquals(DevBuilds.Verdict.Bad(DevBuilds.Problem.FUTURE), verify(ahead, sign(key, ahead), key))
+        val skew = list(timestamp = now + 3_600, rows = arrayOf(row("one")))
+        assertTrue(verify(skew, sign(key, skew), key) is DevBuilds.Verdict.Good)
+    }
+
+    @Test fun `text that is not a list or a signature is told apart from a bad signature`() {
+        val key = keyPair()
+        val bytes = list(rows = arrayOf(row("one")))
+        assertTrue(DevBuilds.looksLikeList(bytes, sign(key, bytes)))
+        assertEquals(false, DevBuilds.looksLikeList("<!doctype html><html>".toByteArray(), sign(key, bytes)))
+        assertEquals(false, DevBuilds.looksLikeList(bytes, "<html>not a signature</html>"))
+        assertEquals(false, DevBuilds.looksLikeList(bytes, ""))
+    }
+
+    @Test fun `the older-build note is only for builds below the installed versionCode`() {
+        val key = keyPair()
+        val bytes = list(rows = arrayOf(row("one")))
+        val build = (verify(bytes, sign(key, bytes), key) as DevBuilds.Verdict.Good).builds.single()  // versionCode 6090
+        assertEquals(false, DevBuilds.olderThanInstalled(build, 6090))  // the running build, or an equal one
+        assertEquals(false, DevBuilds.olderThanInstalled(build, 6080))  // a newer build than the installed one
+        assertEquals(true, DevBuilds.olderThanInstalled(build, 6100))
+    }
 }

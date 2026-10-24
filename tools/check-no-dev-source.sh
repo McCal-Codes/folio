@@ -3,7 +3,7 @@
 #
 #   ./gradlew :app:assembleRelease && bash tools/check-no-dev-source.sh [path/to/app-release.apk]
 #
-# The debug source (src/devsource, T24 in docs/sdk/threat-model.md) belongs to the Folio Dev build types only. A release
+# The debug source (src/devsource, T34 in docs/sdk/threat-model.md) belongs to the Folio Dev build types only. A release
 # gets a same-named no-op from src/nodevsource, and R8 removes what is left. This looks inside the built file, which is the
 # only proof that counts: a source-set mistake would not show in any unit test.
 #
