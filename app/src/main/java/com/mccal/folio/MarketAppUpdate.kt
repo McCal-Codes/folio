@@ -27,8 +27,8 @@ import com.mccal.folio.market.DebVersion
  */
 internal object MarketAppUpdate {
 
-    /** An installed app, as much of it as an update needs. [signers] are the signing certificates, as strings. */
-    data class OnPhone(val appId: String, val versionName: String?, val installer: String?, val signers: Set<String>)
+    /** An installed app, as much of it as an update needs. [signing] is the keys it is signed with ([ApkIdentity]). */
+    data class OnPhone(val appId: String, val versionName: String?, val installer: String?, val signing: ApkIdentity.Signing)
 
     /** How an update may go in, or why it may not. */
     enum class Verdict {
@@ -38,7 +38,7 @@ internal object MarketAppUpdate {
         ASK,
         /** The APK is some other app, or couldn't be read as one. */
         WRONG_APP,
-        /** The APK isn't signed by the key the installed app is signed by. */
+        /** The APK isn't signed by the key the installed app is signed by, or by one that key rotated to. */
         WRONG_SIGNER,
     }
 
@@ -81,31 +81,32 @@ internal object MarketAppUpdate {
             appId = appId,
             versionName = info.versionName,
             installer = runCatching { pm.getInstallSourceInfo(appId).installingPackageName }.getOrNull(),
-            signers = signers(info),
+            signing = ApkIdentity.signing(info),
         )
     }.getOrNull()
-
-    fun signers(info: PackageInfo?): Set<String> =
-        info?.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
 
     /**
      * What to do with an APK whose checksum already matched. [self] is Folio's own package name, which is Folio or
      * Folio Dev: each is the installer of record only for what it installed itself.
+     *
+     * The signer check is Android's own ([ApkIdentity.descendsFrom]): the same key, or a rotated one whose lineage
+     * names the key on the phone. Comparing only the current keys would refuse every rotation as a stranger.
      */
-    fun verdict(self: String, onPhone: OnPhone, archiveId: String?, archiveSigners: Set<String>): Verdict = when {
+    fun verdict(self: String, onPhone: OnPhone, archiveId: String?, archiveSigning: ApkIdentity.Signing): Verdict = when {
         archiveId == null || archiveId != onPhone.appId -> Verdict.WRONG_APP
-        archiveSigners.isEmpty() || archiveSigners != onPhone.signers -> Verdict.WRONG_SIGNER
+        !ApkIdentity.descendsFrom(archiveSigning, onPhone.signing) -> Verdict.WRONG_SIGNER
         onPhone.installer == self -> Verdict.SILENT
         else -> Verdict.ASK
     }
 
     /**
-     * Reads the downloaded APK's package name and signers, from a copy in Folio's private cache that is deleted as
+     * Reads the downloaded APK's package name, versionCode and signers, from a copy in Folio's private cache that is deleted as
      * soon as it has been read. Android's archive reader wants a path, and nothing outside Folio can reach this one.
      */
     @Suppress("DEPRECATION")
     fun archive(context: Context, apk: ByteArray): PackageInfo? {
-        val file = java.io.File(context.cacheDir, "market-update-check.apk")
+        // A file of its own per call: two checks at once must never read each other's bytes.
+        val file = java.io.File.createTempFile("market-check-", ".apk", context.cacheDir)
         return try {
             file.writeBytes(apk)
             context.packageManager.getPackageArchiveInfo(file.path, PackageManager.GET_SIGNING_CERTIFICATES)
