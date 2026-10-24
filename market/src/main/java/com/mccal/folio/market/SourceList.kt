@@ -44,7 +44,7 @@ data class Source(
 }
 
 /** The sources Folio has, in the order they were added. The built-in one is always first and can't be removed. */
-class SourceList(private val store: KeyValueStore) {
+class SourceList(private val store: KeyValueStore, private val allowInsecure: (String) -> Boolean = { false }) {
     fun added(): List<Source> {
         val text = store.get(KEY) ?: return emptyList()
         val array = runCatching { JSONArray(text) }.getOrNull() ?: return emptyList()
@@ -63,7 +63,7 @@ class SourceList(private val store: KeyValueStore) {
     /** Adds a source, or updates the name of one that's already there. Refuses anything that isn't https. */
     fun add(source: Source): Boolean {
         val url = normalizeSourceUrl(source.url)
-        if (!url.startsWith("https://") && source.kind != Source.Kind.LOCAL_DEV) return false
+        if (!url.startsWith("https://") && source.kind != Source.Kind.LOCAL_DEV && !allowInsecure(url)) return false
         val existing = added().filterNot { it.url == url }
         write(existing + source.copy(url = url))
         return true

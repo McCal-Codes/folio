@@ -126,6 +126,26 @@ internal object DevRouting {
             port(u) == port(b) && u.path.startsWith("/dev/")
     }.getOrDefault(false)
 
+    /**
+     * The one plain-http source address the Market may use: the dev tweaks source on the loopback stub. Exactly host
+     * 127.0.0.1 (not localhost, not 127.0.0.2, not a private address), exactly port 8787, no user info, and only the
+     * tweaks folder. Signatures are still required and checked with the pinned key.
+     */
+    fun isLoopbackSource(url: String): Boolean = runCatching {
+        val u = URI(url).normalize()
+        u.scheme == "http" && u.host == "127.0.0.1" && u.port == 8787 && u.userInfo == null && u.path.startsWith("/dev/file/tweaks/")
+    }.getOrDefault(false)
+
+    /**
+     * Opens connections, but refuses a plain-http address on the stub's host and port while the stub is switched off, so
+     * an https source cannot redirect Folio down to the loopback address behind its back.
+     */
+    fun stubGuard(stubOn: () -> Boolean, delegate: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }):
+        (URL) -> HttpURLConnection = { url ->
+        if (url.protocol.equals("http", true) && url.host == "127.0.0.1" && url.port == 8787 && !stubOn()) throw java.io.IOException()
+        delegate(url)
+    }
+
     private fun port(u: URI) = if (u.port >= 0) u.port else if (u.scheme.equals("https", true)) 443 else 80
 
     /**
@@ -193,7 +213,13 @@ internal object DevSource {
         val app = context.applicationContext
         if (!enabled(app)) return UrlHttpClient(allowLocalhost = allowLocalhost)
         return UrlHttpClient(allowLocalhost = allowLocalhost,
-            open = DevRouting.opener({ base(app) }, { code(app) }))
+            open = DevRouting.opener({ base(app) }, { code(app) }, DevRouting.stubGuard({ loopback(app) })))
+    }
+
+    /** Handed to the Market's source list and client: plain http only for the stub's tweaks address, in a `.dev` build with the stub switched on. */
+    fun insecureSourceOk(context: Context): (String) -> Boolean {
+        val app = context.applicationContext
+        return { url -> enabled(app) && loopback(app) && DevRouting.isLoopbackSource(url) }
     }
 
     fun tweaksUrl(context: Context) = base(context) + "/dev/file/tweaks/"

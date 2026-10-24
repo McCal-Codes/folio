@@ -52,6 +52,12 @@ class RepoClient(
      * the phone; the release build passes false, and then there is no code path that reads an unsigned index.
      */
     private val allowLocalDev: Boolean = false,
+    /**
+     * Whether a plain-http source address is acceptable. Always false unless the caller says otherwise, and only Folio
+     * Dev's debug source does: it admits one loopback address for the stub, nothing else. Signatures are checked
+     * exactly as for https; this only changes which addresses may be asked.
+     */
+    private val allowInsecure: (String) -> Boolean = { false },
     private val clock: () -> Long = { System.currentTimeMillis() / 1000 },
 ) {
     /**
@@ -60,7 +66,7 @@ class RepoClient(
      */
     fun readKey(url: String): RefreshResult {
         val base = normalizeSourceUrl(url)
-        if (!base.startsWith("https://")) return RefreshResult.Failed(RefreshResult.Reason.INSECURE, "sources must use https")
+        if (!base.startsWith("https://") && !allowInsecure(base)) return RefreshResult.Failed(RefreshResult.Reason.INSECURE, "sources must use https")
         val key = when (val result = http.get(base + KEY_FILE, SourceKey.MAX_KEY_CHARS)) {
             is HttpResult.Body -> SourceKey.parse(result.bytes.decodeToString())
                 ?: return RefreshResult.Failed(RefreshResult.Reason.PARSE, "that source's key file isn't a P-256 key")
@@ -96,7 +102,7 @@ class RepoClient(
      */
     fun refresh(url: String, force: Boolean = false, knownRevocations: RevocationList? = null): RefreshResult {
         val base = normalizeSourceUrl(url)
-        if (!base.startsWith("https://")) return RefreshResult.Failed(RefreshResult.Reason.INSECURE, "sources must use https")
+        if (!base.startsWith("https://") && !allowInsecure(base)) return RefreshResult.Failed(RefreshResult.Reason.INSECURE, "sources must use https")
         knownRevocations?.reasonForSource(base)?.let {
             return RefreshResult.Failed(RefreshResult.Reason.REVOKED, it)
         }

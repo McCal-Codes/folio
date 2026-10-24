@@ -14,6 +14,9 @@ internal object DevSource {
 
     fun enabled(@Suppress("UNUSED_PARAMETER") context: Context): Boolean = false
 
+    /** No plain-http source is ever acceptable in a release build. */
+    fun insecureSourceOk(@Suppress("UNUSED_PARAMETER") context: Context): (String) -> Boolean = { false }
+
     /** The stock client, exactly as the Market built it before the dev source existed. */
     fun httpClient(@Suppress("UNUSED_PARAMETER") context: Context, allowLocalhost: Boolean): UrlHttpClient =
         UrlHttpClient(allowLocalhost = allowLocalhost)
