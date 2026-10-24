@@ -53,4 +53,29 @@
     <string name="dev_source_tweaks_add" translatable="false">Add the dev tweaks source</string>
     <string name="dev_source_tweaks_note" translatable="false">Work-in-progress tweaks, signed by the dev publisher key. Their names start with WIP. Needs the real server: sources must use https.</string>
     <string name="dev_source_tweaks_added" translatable="false">Added. Open the Market\'s Sources tab to see it.</string>
+
+    <!-- Folio Beta test (src/devsource/DevBeta.kt): the supporter beta, tried from Folio Dev. English only, like the rest. -->
+    <string name="dev_beta_title" translatable="false">Folio Beta</string>
+    <string name="dev_beta_note" translatable="false">Tries the supporter beta with your own supporter code, the same channel the daily Folio uses. This is separate from the dev builds above: a different server and a different code. Nothing runs by itself; installing always asks first.</string>
+    <string name="dev_beta_installed" translatable="false">Folio is installed</string>
+    <string name="dev_beta_not_installed" translatable="false">Folio is not installed on this phone</string>
+    <string name="dev_beta_version" translatable="false">Version %1$s</string>
+    <string name="dev_beta_check" translatable="false">Check for the newest beta</string>
+    <string name="dev_beta_no_code" translatable="false">Redeem your supporter code in Settings to check the beta.</string>
+    <string name="dev_beta_checking" translatable="false">Checking\u2026</string>
+    <string name="dev_beta_found" translatable="false">Newest: %1$s</string>
+    <string name="dev_beta_same" translatable="false">Newest: %1$s. The installed Folio is already this version or newer.</string>
+    <string name="dev_beta_failed" translatable="false">Could not get the beta. Check the connection and your supporter code.</string>
+    <string name="dev_beta_install" translatable="false">Install over Folio</string>
+    <string name="dev_beta_confirm_title" translatable="false">Install over your daily Folio?</string>
+    <string name="dev_beta_confirm_body" translatable="false">This installs Folio %1$s over the Folio you use every day, keeping its data. Android will ask once more. Folio Dev stays as it is.</string>
+    <string name="dev_beta_confirm_yes" translatable="false">Install</string>
+    <string name="dev_beta_confirm_no" translatable="false">Cancel</string>
+    <string name="dev_beta_downloading" translatable="false">Downloading the beta</string>
+    <string name="dev_beta_installing" translatable="false">Android is installing it. If it asks to allow installs from Folio Dev, allow it once.</string>
+    <string name="dev_beta_refuse_hash" translatable="false">The beta did not match its checksum (or had none), so it was thrown away.</string>
+    <string name="dev_beta_refuse_package" translatable="false">That file is not for Folio (com.mccal.folio), so it was thrown away.</string>
+    <string name="dev_beta_refuse_signer" translatable="false">That file is not signed with the installed Folio\'s key, so it was thrown away.</string>
+    <string name="dev_beta_refuse_older" translatable="false">That beta is older than the installed Folio. Android will not downgrade.</string>
+    <string name="dev_beta_open_folio" translatable="false">Open Folio</string>
 </resources>

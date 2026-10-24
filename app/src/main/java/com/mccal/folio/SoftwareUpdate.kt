@@ -255,7 +255,7 @@ internal object SoftwareUpdate {
     }
 
     /** The code to show the broker: the stored supporter code, when it carries beta access. */
-    private fun brokerCode(context: Context): String? =
+    internal fun brokerCode(context: Context): String? =
         Supporter.storedText(context)?.takeIf { Supporter.has(context, BetaCodes.SCOPE_BETA) }
 
     /** Whether this phone can get betas from the broker at all: there is one, and a code it will accept. */
@@ -317,28 +317,41 @@ internal object SoftwareUpdate {
         if (download(app, release)) { SoftwareUpdateJob.scheduleInstall(app, tonight = true); status.value = Status.Ready(release, tonight = true) }
     }
 
+    /**
+     * The newest release to offer. On the beta channel, betas and the public releases together: a supporter shouldn't be
+     * stranded on an old beta when a newer stable release goes out, and shouldn't miss a beta either. Betas come through
+     * the broker, since the beta repository is private; until it's deployed there are none to read, and the public
+     * releases carry on alone. Blocking: call it off the main thread. Folio Dev's beta test asks it too, with the
+     * person's own supporter code and nothing else.
+     */
+    internal fun newestRelease(context: Context, beta: Boolean): Release {
+        val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
+        val candidates = if (beta) {
+            val brokered = betaSource(BETA_BROKER, brokerCode(context))
+            val betas = brokered?.let { runCatching { list(get(it.first, it.second)) }.getOrNull() }
+            val public = runCatching { list(get(RECENT)) }.getOrNull()
+            // Either may fail on its own; both failing is a failed check.
+            if (betas == null && public == null) error(context.getString(R.string.no_release_has_an_apk))
+            betas.orEmpty() + public.orEmpty()
+        } else {
+            listOf(JSONObject(get(LATEST)))
+        }
+        return candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
+            .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a } ?: error(context.getString(R.string.no_release_has_an_apk))
+    }
+
+    /** The package an install replaces: the running app unless a caller (Folio Dev's beta test) names another. */
+    internal fun targetPackage(running: String, target: String? = null): String = target ?: running
+
+    /** Only the running app may be updated without asking; any other package always shows Android's own confirmation. */
+    internal fun userActionNotRequired(running: String, target: String): Boolean = target == running
+
     private suspend fun check(context: Context) {
         if (!supported(context)) return
         status.value = Status.Checking
         status.value = withContext(Dispatchers.IO) {
             runCatching {
-                val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
-                // On the beta channel, betas and the public releases together: a supporter shouldn't be stranded on
-                // an old beta when a newer stable release goes out, and shouldn't miss a beta either. Betas come
-                // through the broker, since the beta repository is private; until it's deployed there are none to
-                // read, and the public releases carry on alone.
-                val candidates = if (betaChannel(context)) {
-                    val brokered = betaSource(BETA_BROKER, brokerCode(context))
-                    val betas = brokered?.let { runCatching { list(get(it.first, it.second)) }.getOrNull() }
-                    val public = runCatching { list(get(RECENT)) }.getOrNull()
-                    // Either may fail on its own; both failing is a failed check.
-                    if (betas == null && public == null) error(context.getString(R.string.no_release_has_an_apk))
-                    betas.orEmpty() + public.orEmpty()
-                } else {
-                    listOf(JSONObject(get(LATEST)))
-                }
-                val newest = candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
-                    .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a } ?: error(context.getString(R.string.no_release_has_an_apk))
+                val newest = newestRelease(context, betaChannel(context))
                 if (!isNewer(newest.version, installedVersion(context))) Status.UpToDate
                 else readyApk(context)?.takeIf { it.first.version == newest.version }?.let { Status.Ready(newest, tonight = false) }
                     ?: Status.Available(newest)
@@ -454,7 +467,7 @@ internal object SoftwareUpdate {
     }
 
     /** A small file, such as the checksums, read whole. */
-    private fun fetch(url: String, code: String?): String {
+    internal fun fetch(url: String, code: String?): String {
         val c = open(url, code, 15_000)
         try { return c.inputStream.bufferedReader().use { it.readText() } } finally { c.disconnect() }
     }
@@ -495,12 +508,14 @@ internal object SoftwareUpdate {
         return a.isNotEmpty() && a == b
     }
 
-    internal fun install(context: Context, apk: File) {
+    internal fun install(context: Context, apk: File, target: String? = null) {
         val installer = context.packageManager.packageInstaller
+        val packageToInstall = targetPackage(context.packageName, target)
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(context.packageName)
-            // Once Folio installed itself, Android 12+ can update it without asking again.
-            setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+            setAppPackageName(packageToInstall)
+            // Once Folio installed itself, Android 12+ can update it without asking again. Another package never is.
+            setRequireUserAction(if (userActionNotRequired(context.packageName, packageToInstall)) PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+                else PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
         }
         val sessionId = installer.createSession(params)
         try {

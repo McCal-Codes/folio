@@ -32,7 +32,7 @@ fi
 
 # Split so this file does not contain the exact strings it searches for.
 markers=(
-  "DevSource""Ui" "DevSource""Keys" "DevSource""Page" "DevRout""ing" "DevInstall""Check"
+  "DevSource""Ui" "DevSource""Keys" "DevSource""Page" "DevRout""ing" "DevInstall""Check" "DevBet""a"
   "/dev/""apk/" "/dev/""file/" "/dev/""sums/"
   "folio-dev-""publisher" "updates-""dev"
   "ESqpQhSJ""Cbk" "EUczgMGn""LEEX"

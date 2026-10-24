@@ -143,6 +143,8 @@ internal fun DevSourcePage(showBack: Boolean, backTitle: String, onBack: () -> U
                 Modifier.padding(top = FolioSpace.SMALL.dp))
         }
 
+        BetaSection()
+
         SheetGroup(Modifier.padding(top = FolioSpace.MEDIUM.dp)) {
             IosCheckRow(stringResource(R.string.dev_source_local_stub), stub, { DevSource.setLoopback(context, true); stub = true }, "dev-source-stub-on")
             if (stub) {
@@ -208,6 +210,59 @@ private fun WorkNote(work: DevSource.Work) {
         is DevSource.Work.Refused -> CardNote(stringResource(refusalText(work.reason)))
         DevSource.Work.Failed -> CardNote(stringResource(R.string.dev_source_work_failed))
         DevSource.Work.Idle -> Unit
+    }
+}
+
+/** The supporter beta, tried from Folio Dev: separate from the dev builds above, with its own code, server and confirmation. */
+@Composable
+private fun BetaSection() {
+    val context = LocalContext.current
+    val state by DevBeta.state.collectAsStateWithLifecycle()
+    val installed = remember { DevBeta.installedFolio(context) }
+    val open = remember { DevBeta.openIntent(context, FOLIO_CLASSES) }
+    SheetGroupLabel(stringResource(R.string.dev_beta_title))
+    SheetGroup {
+        Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp)) {
+            Text(stringResource(if (installed != null) R.string.dev_beta_installed else R.string.dev_beta_not_installed), color = Color.White, fontSize = FolioType.CALLOUT.sp)
+            installed?.versionName?.let {
+                Text(stringResource(R.string.dev_beta_version, it), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+        }
+        MenuDivider()
+        IosActionRow(stringResource(R.string.dev_beta_check), "dev-beta-check",
+            enabled = state !is DevBeta.State.Checking && state !is DevBeta.State.Downloading && state !is DevBeta.State.Installing) { DevBeta.check(context) }
+        val found = state as? DevBeta.State.Found ?: (state as? DevBeta.State.Asking)?.let { DevBeta.State.Found(it.release, true) }
+        if (found != null && found.newer && installed != null) {
+            MenuDivider()
+            IosActionRow(stringResource(R.string.dev_beta_install), "dev-beta-install") { DevBeta.ask(found.release) }
+        }
+        if (open != null) {
+            MenuDivider()
+            IosActionRow(stringResource(R.string.dev_beta_open_folio), "dev-beta-open") { runCatching { context.startActivity(open) } }
+        }
+    }
+    CardNote(when (val s = state) {
+        DevBeta.State.NoCode -> stringResource(R.string.dev_beta_no_code)
+        DevBeta.State.Checking -> stringResource(R.string.dev_beta_checking)
+        is DevBeta.State.Found -> stringResource(if (s.newer) R.string.dev_beta_found else R.string.dev_beta_same, s.release.version)
+        is DevBeta.State.Asking -> stringResource(R.string.dev_beta_found, s.release.version)
+        is DevBeta.State.Downloading -> stringResource(R.string.dev_beta_downloading) + (s.fraction?.let { " " + (it * 100).toInt() + "%" } ?: "")
+        DevBeta.State.Installing -> stringResource(R.string.dev_beta_installing)
+        is DevBeta.State.Refused -> stringResource(when (s.reason) {
+            DevRefusal.WRONG_PACKAGE -> R.string.dev_beta_refuse_package
+            DevRefusal.WRONG_SIGNER -> R.string.dev_beta_refuse_signer
+            DevRefusal.OLDER_VERSION -> R.string.dev_beta_refuse_older
+            else -> R.string.dev_beta_refuse_hash
+        })
+        DevBeta.State.Failed -> stringResource(R.string.dev_beta_failed)
+        DevBeta.State.Idle -> stringResource(R.string.dev_beta_note)
+    }, Modifier.padding(top = FolioSpace.SMALL.dp))
+    (state as? DevBeta.State.Asking)?.let { asking ->
+        AlertDialog(onDismissRequest = { DevBeta.cancel() },
+            title = { Text(stringResource(R.string.dev_beta_confirm_title)) },
+            text = { Text(stringResource(R.string.dev_beta_confirm_body, asking.release.version), fontSize = FolioType.SUBHEAD.sp) },
+            confirmButton = { androidx.compose.material3.TextButton({ DevBeta.confirm(context) }, Modifier.testTag("dev-beta-confirm")) { Text(stringResource(R.string.dev_beta_confirm_yes)) } },
+            dismissButton = { androidx.compose.material3.TextButton({ DevBeta.cancel() }) { Text(stringResource(R.string.dev_beta_confirm_no)) } })
     }
 }
 
