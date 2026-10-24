@@ -941,6 +941,9 @@ fun LauncherScreen(
                     else launcherActivity.openSystemShade(panel)
                 },
                 onLeadingOverscroll = if (firstHome == 0 && discoverMode) onDiscover else null,
+                // Discover opens with a pull from the first page (and is a live window when it is a page), so that
+                // edge keeps today's stop.
+                leadingStretch = !discoverMode,
             )) {
             val pagerModifier = Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart)
                 .fillMaxHeight().width(pagerWidth)
@@ -968,6 +971,10 @@ fun LauncherScreen(
                 .semantics { stateDescription = if (pager.currentPage == -1) launcherActivity.getString(R.string.discover) else if (pager.currentPage == visibleHomePages) launcherActivity.getString(R.string.all_apps) else launcherActivity.getString(R.string.home_page_1_d_of_2_d, pager.currentPage + 1, visibleHomePages)
                     // Polite: TalkBack says the new page when a swipe lands, without cutting off what it was reading (A11Y-7).
                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+                // New motion's rubber band at the first and last page: the pages slide as a drawn layer, read only
+                // while drawing, so a stretch never relayouts Home. It comes after the bounds Discover's frame is measured from, so
+                // a stretch does not move that frame.
+                .then(if (FolioMotion.v2) Modifier.graphicsLayer { translationX = -pageGestures.stretch } else Modifier)
             if (geometry.expanded) {
                 Box(pagerModifier) {
                     // PagerState remains the source of truth for native Discover progress,
