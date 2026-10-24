@@ -99,6 +99,9 @@ internal object ApkIdentity {
         return Archive(appId, info.longVersionCode, signing(info))
     }
 
-    fun digest(cert: Signature): String =
-        MessageDigest.getInstance("SHA-256").digest(cert.toByteArray()).joinToString("") { "%02x".format(it) }
+    fun digest(cert: Signature): String = sha256Hex(cert.toByteArray())
+
+    /** SHA-256 of [bytes], lowercase hex: the form a listing's `signerSha256` is written in. */
+    fun sha256Hex(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 }

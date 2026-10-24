@@ -87,4 +87,9 @@ class ApkIdentityTest {
         assertFalse(ApkIdentity.descendsFrom(several(old, new), single(old)))
         assertFalse(ApkIdentity.descendsFrom(single(old), several(old, new)))
     }
+
+    @Test fun `a certificate digest is lowercase SHA-256 hex, the form a listing writes`() {
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", ApkIdentity.sha256Hex("abc".toByteArray()))
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", ApkIdentity.sha256Hex(ByteArray(0)))
+    }
 }
