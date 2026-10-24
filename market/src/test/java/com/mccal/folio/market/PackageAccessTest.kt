@@ -1,9 +1,11 @@
 package com.mccal.folio.market
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class PackageAccessTest {
     @Test fun aPackageNeedsTheMostAnyOfItsFeaturesNeeds() {
@@ -41,5 +43,17 @@ class PackageAccessTest {
         // Accessibility is only used by Folio's own features (the island and dock over other apps, the button bar, the
         // shade), none of which a package configures. A capability that needs it is a decision: change this test with it.
         assertEquals(emptyList<Capability>(), Capability.entries.filter { it.needs == PackageAccess.ACCESSIBILITY })
+    }
+
+    @Test fun thePublishedTableIsThisOne() {
+        // docs/sdk/schema/v1/capability-access.json is what folio-pkg checks authors against; it must say what Folio does.
+        val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "CHANGELOG.md").exists() }
+        val table = JSONObject(File(root, "docs/sdk/schema/v1/capability-access.json").readText()).getJSONObject("capabilities")
+        assertEquals(Capability.entries.map { it.id }.sorted(), table.keys().asSequence().toList().sorted())
+        for (capability in Capability.entries) {
+            val row = table.getJSONObject(capability.id)
+            assertEquals(capability.id, capability.needs.name.lowercase(), row.getString("needs"))
+            assertEquals(capability.id, capability.betterWith?.name?.lowercase(), row.optString("betterWith").ifEmpty { null })
+        }
     }
 }
