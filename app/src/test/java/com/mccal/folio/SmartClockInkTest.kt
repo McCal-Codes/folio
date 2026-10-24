@@ -10,6 +10,13 @@ class SmartClockInkTest {
         return ClockInkSample(region, region, emptyList(), estimated = false)
     }
 
+    @Test fun inkIsSampledOnlyWhileFolioIsInFrontWithNothingOverHome() {
+        org.junit.Assert.assertTrue(shouldSampleClockInk(foregroundVisible = true, covered = false))
+        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = true, covered = true))
+        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = false, covered = false))
+        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = false, covered = true))
+    }
+
     @Test fun theFirstMeasurementIsAlwaysTaken() {
         val first = patch(.4f)
         assertSame(first, keepOrSwap(null, first))

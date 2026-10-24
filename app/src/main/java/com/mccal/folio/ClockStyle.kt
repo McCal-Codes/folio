@@ -417,6 +417,12 @@ internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? = when (t
     WallpaperColorSource.NONE -> null
 }
 
+/** True while one of Folio's own sheets, pages, panels or Spotlight is over Home (or still fading off it). Set by MainActivity. */
+internal val LocalHomeCovered = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Smart clock ink looks at Home only while Folio is in front and nothing of Folio's own is drawn over it. */
+internal fun shouldSampleClockInk(foregroundVisible: Boolean, covered: Boolean): Boolean = foregroundVisible && !covered
+
 /**
  * Samples the picture under [box] (fractions of the whole background, 0..1) whenever the background or the box
  * changes. With Android's own wallpaper behind Home ([WallpaperTone.fromAndroid]), whose pixels no app can read, it is
@@ -435,7 +441,8 @@ internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: F
         // wallpaper colors for the light or dark pick and the shade only (SmartClockInk); every color stays Android's.
         // Off, or while Folio is not in front, the estimate stands, as it always did.
         val smart by SmartInkService.connected.collectAsStateWithLifecycle()
-        val inFront by FolioForeground.visible.collectAsStateWithLifecycle()
+        val foreground by FolioForeground.visible.collectAsStateWithLifecycle()
+        val inFront = shouldSampleClockInk(foreground, LocalHomeCovered.current)
         val tick by rememberMinuteTick()
         val displayId = context.display?.displayId ?: 0
         var measured by remember { mutableStateOf<ClockInkSample?>(null) }
