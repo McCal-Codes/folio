@@ -13,6 +13,7 @@
  */
 import { admin } from './admin.js'
 import { betaAsset, betaReleases, sameSecret } from './beta.js'
+import { devRoutes } from './dev.js'
 import { supporterEmail } from './email.js'
 
 // Ko-fi's "Send test" buttons post a made-up payment with this transaction id. It proves the webhook reaches the
@@ -29,6 +30,8 @@ export default {
     const url = new URL(request.url)
     if (request.method === 'GET' && url.pathname === '/beta/releases') return betaReleases(request, env, url)
     if (request.method === 'GET' && url.pathname.startsWith('/beta/asset/')) return betaAsset(request, env, url)
+    // Folio Dev's own builds and work-in-progress tweaks, for debug builds holding a dev code (see dev.js).
+    if (url.pathname.startsWith('/dev/')) return devRoutes(request, env, url)
     if (url.pathname.startsWith('/admin/')) return admin(request, env, url, { poolFor, claimCode, email })
     if (request.method !== 'POST') return new Response('Folio supporter codes', { status: 200 })
 

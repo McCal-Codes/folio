@@ -59,3 +59,14 @@ SUPPORTER_KEYS = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM4vVq0D/ZzqkVWlyQYMTFN3TTb
 #   GITHUB_TOKEN   a fine-grained token with Contents: read on the beta repository, and nothing else
 #   TICKET_SECRET  any long random string; it signs each download link to the code that asked for it
 #   WITHDRAWN      optional, serials of codes that no longer work, separated by commas
+
+# Folio Dev's debug source (dev.js): development builds and work-in-progress tweaks out of a private repository, for
+# debug builds of Folio holding a code with the dev scope. Leave DEV_REPO or DEV_KEYS empty to turn it off. The
+# worker also answers 503 unless GitHub says the repository is private.
+# Placeholders only: McCal fills these in when the repository and the dev code key are ready.
+DEV_REPO = ""   # e.g. "McCal-Codes/folio-dev-builds"
+DEV_KEYS = ""   # public key(s), SPKI base64, comma separated: BetaKeys.TEST. Never a supporter key.
+
+# Secrets, set with `wrangler secret put` (never in this file):
+#   DEV_GITHUB_TOKEN  a fine-grained token with Contents: read on the dev repository, and nothing else. Not GITHUB_TOKEN.
+#   DEV_WITHDRAWN     optional, serials of dev codes that no longer work, separated by commas
