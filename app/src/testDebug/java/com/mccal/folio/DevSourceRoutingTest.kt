@@ -14,7 +14,7 @@ import java.net.URL
 
 /** The dev code goes to the worker's /dev/ addresses and nowhere else, redirects included. */
 class DevSourceRoutingTest {
-    private val base = "https://folio-supporter-codes.mccal.workers.dev"
+    private val base = "https://folio-dev-source.mccal.workers.dev"
 
     @Test fun `only the exact host and the dev prefix are dev routes`() {
         assertTrue(DevRouting.isDevRoute("$base/dev/file/builds.json", base))
@@ -23,9 +23,9 @@ class DevSourceRoutingTest {
         assertFalse(DevRouting.isDevRoute("$base/dev", base))
         assertFalse(DevRouting.isDevRoute("$base/dev/../beta/releases", base))
         assertFalse(DevRouting.isDevRoute("https://evil.example/dev/file/x", base))
-        assertFalse(DevRouting.isDevRoute("https://folio-supporter-codes.mccal.workers.dev.evil.example/dev/x", base))
-        assertFalse(DevRouting.isDevRoute("https://folio-supporter-codes.mccal.workers.dev@evil.example/dev/x", base))
-        assertFalse(DevRouting.isDevRoute("http://folio-supporter-codes.mccal.workers.dev/dev/x", base))
+        assertFalse(DevRouting.isDevRoute("https://folio-dev-source.mccal.workers.dev.evil.example/dev/x", base))
+        assertFalse(DevRouting.isDevRoute("https://folio-dev-source.mccal.workers.dev@evil.example/dev/x", base))
+        assertFalse(DevRouting.isDevRoute("http://folio-dev-source.mccal.workers.dev/dev/x", base))
         assertFalse(DevRouting.isDevRoute("$base:8443/dev/x", base))
     }
 

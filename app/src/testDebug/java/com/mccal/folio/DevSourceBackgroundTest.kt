@@ -16,7 +16,7 @@ import org.junit.Test
 
 /** A background run never asks the dev source, so the dev code cannot leave from a job nobody opened. */
 class DevSourceBackgroundTest {
-    private val dev = "https://folio-supporter-codes.mccal.workers.dev/dev/file/tweaks/"
+    private val dev = "https://folio-dev-source.mccal.workers.dev/dev/file/tweaks/"
     private val other = "https://other.example/source/"
 
     private class Host : HttpClient {
@@ -53,7 +53,7 @@ class DevSourceBackgroundTest {
         assertTrue(DevSource.isDevAddress(dev))
         assertTrue(DevSource.isDevAddress("http://127.0.0.1:8787/dev/file/tweaks/"))
         assertFalse(DevSource.isDevAddress(other))
-        assertFalse(DevSource.isDevAddress("https://folio-supporter-codes.mccal.workers.dev/beta/releases"))
+        assertFalse(DevSource.isDevAddress("https://folio-dev-source.mccal.workers.dev/beta/releases"))
         assertEquals(false, DevSource.isDevAddress("https://evil.example/dev/file/tweaks/"))
     }
 }

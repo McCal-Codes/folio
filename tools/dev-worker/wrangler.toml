@@ -1,0 +1,21 @@
+name = "folio-dev-source"
+main = "worker.js"
+account_id = "2ac16bbf295c2dacf6e2d7c135c8ebdb"   # the McCal account (an id, not a secret)
+compatibility_date = "2026-09-01"
+
+# Folio Dev's debug source: development builds and work-in-progress tweaks out of a private repository, for debug
+# builds of Folio holding a code with the dev scope. This is its own small worker (decision D1): it has no database,
+# no KV, no cron, no Ko-fi or mail settings, so it can never take a payment or send an email. It serves /dev/* and
+# answers 404 to everything else. The routes live in ../kofi-worker/dev.js, shared with the tests there.
+workers_dev = true
+
+[vars]
+# Leave either empty to turn the source off. The worker also answers 503 unless GitHub says the repository is private.
+# Placeholders only: McCal fills these in when the repository and the dev code key are ready.
+DEV_REPO = ""   # e.g. "McCal-Codes/folio-dev-builds"
+DEV_KEYS = ""   # public key(s), SPKI base64, comma separated: the dev code key (DevSourceKeys.CODE). Never a supporter key.
+
+# The only secret, set with `wrangler secret put DEV_GITHUB_TOKEN` (never in this file):
+#   DEV_GITHUB_TOKEN  a fine-grained token with Contents: read on the dev repository, and nothing else.
+# Optional secret:
+#   DEV_WITHDRAWN     serials of dev codes that no longer work, separated by commas

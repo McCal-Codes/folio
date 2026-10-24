@@ -175,6 +175,8 @@ internal object DevRouting {
 internal object DevSource {
     /** Stands in for an address, so the Sources tab can open the Folio Dev page like any other source. */
     const val PAGE_URL = "folio://dev/"
+    /** Folio Dev's own small worker (tools/dev-worker). Never the supporter worker: the dev code is sent here and nowhere else. */
+    const val WORKER = "https://folio-dev-source.mccal.workers.dev"
     const val LOOPBACK_BASE = "http://127.0.0.1:8787"
     private const val PREFS = "dev_source"
     private const val CODE = "code"
@@ -194,7 +196,7 @@ internal object DevSource {
         list.value = ListState.Idle
     }
 
-    fun base(context: Context): String = if (loopback(context)) LOOPBACK_BASE else SoftwareUpdate.BETA_BROKER.trimEnd('/')
+    fun base(context: Context): String = if (loopback(context)) LOOPBACK_BASE else WORKER
 
     /** The stored dev code, only when it still verifies against the dev code key and carries the dev scope. */
     fun code(context: Context): String? {
@@ -241,7 +243,7 @@ internal object DevSource {
     fun backgroundSkip(@Suppress("UNUSED_PARAMETER") context: Context): (String) -> Boolean = { url -> isDevAddress(url) }
 
     internal fun isDevAddress(url: String) =
-        DevRouting.isDevRoute(url, SoftwareUpdate.BETA_BROKER.trimEnd('/')) || DevRouting.isDevRoute(url, LOOPBACK_BASE)
+        DevRouting.isDevRoute(url, WORKER) || DevRouting.isDevRoute(url, LOOPBACK_BASE)
 
     fun tweaksUrl(context: Context) = base(context) + "/dev/file/tweaks/"
 

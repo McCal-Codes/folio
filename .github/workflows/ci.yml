@@ -46,7 +46,7 @@ jobs:
       # the servers, webhooks and databases are stood in for.
       - name: Tool tests
         run: |
-          node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs
+          node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs tools/dev-worker/*.test.mjs
           python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug

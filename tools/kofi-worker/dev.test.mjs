@@ -7,7 +7,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { betaReleases, checkBetaCode } from './beta.js'
 import { checkDevCode, devRoutes, resetDevCaches, safeFilePath } from './dev.js'
-import worker from './worker.js'
 
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 const DAY = 86_400_000
@@ -379,17 +378,6 @@ test('only GET is answered', async () => {
   const request = new Request('https://codes.example/dev/file/builds.json',
     { method: 'POST', headers: { Authorization: `Bearer ${await mint(dev)}` } })
   assert.equal((await devRoutes(request, env, new URL(request.url), NOW)).status, 405)
-})
-
-test('the worker mounts /dev/ after the beta routes, and keeps /beta separate', async () => {
-  const { dev, env } = await setup()
-  const open = await worker.fetch(new Request('https://codes.example/dev/file/builds.json'), env)
-  assert.equal(open.status, 400, 'no code, no way in')
-  const post = await worker.fetch(new Request('https://codes.example/dev/file/builds.json', { method: 'POST' }), env)
-  assert.equal(post.status, 405, 'a POST under /dev/ is not mistaken for a Ko-fi payment')
-  const code = await mint(dev, { scopes: SCOPE_BETA | SCOPE_DEV })
-  const beta = await worker.fetch(new Request('https://codes.example/beta/releases', { headers: { Authorization: `Bearer ${code}` } }), env)
-  assert.equal(beta.status, 403, 'a dev code does not open /beta')
 })
 
 test('a redirect to a host that is not GitHub is not handed to the app', async () => {
