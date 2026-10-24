@@ -631,7 +631,7 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
     Column(Modifier.fillMaxWidth().swipeUpToHide(!replying, onDismiss)
         .padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.COMFY.dp, bottom = FolioSpace.COMFY.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-        Row(verticalAlignment = Alignment.Top, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen)) {
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onOpen)) {
             Box {
                 MessageAvatar(message, 44.dp)
                 if (message.avatar != null) message.appIcon?.let {
@@ -645,7 +645,7 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(message.appLabel, color = Color.White.copy(alpha = .5f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
                 }
-                message.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, maxLines = if (replying) 2 else 3,
+                message.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, maxLines = if (replying) 2 else 3,
                     overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
             }
         }
@@ -660,13 +660,13 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
 internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = FolioSpace.LARGE.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onOpen)) {
             if (activity is IslandActivity.Call) CallAvatar(activity, 44.dp)
             else ((activity as? IslandActivity.Media)?.art ?: activity.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(activity.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(activity.title, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val subtitle = when (activity) {
                     is IslandActivity.Media -> activity.subtitle
                     is IslandActivity.Progress -> activity.subtitle
@@ -687,7 +687,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
                 val t = activity.controller.transportControls
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
                 Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = Color.White,
-                    modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
+                    modifier = Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
             }
             is IslandActivity.Progress -> activity.fraction?.let { f ->
@@ -734,7 +734,7 @@ private fun CallButton(icon: ImageVector, label: String, color: Color, onClick: 
         Box(Modifier.size(52.dp).clip(CircleShape).background(color).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
         }
-        Text(label, color = Color.White.copy(alpha = .7f), fontSize = 11.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+        Text(label, color = Color.White.copy(alpha = .7f), fontSize = FolioType.CAPTION.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
 

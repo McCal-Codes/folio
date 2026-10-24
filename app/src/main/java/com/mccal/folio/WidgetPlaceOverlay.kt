@@ -81,7 +81,7 @@ internal fun WidgetPlaceOverlay(
     val rowShift = { target: Int -> rowToPx(target.toFloat()) - rowToPx(placement.row.toFloat()) }
     val target = freePlacement(placement, column, row)
     val valid = target != null && placeWidget(layout, target).placement(placement.slot) == target
-    val line = if (valid) Color.White else Color(0xFFFF6B6B)
+    val line = if (valid) Color.White else FolioColors.InvalidDrop
     val window = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current
     val widgetBox = Rect(bounds.left + dx, bounds.top + dy, bounds.right + dx, bounds.bottom + dy)
