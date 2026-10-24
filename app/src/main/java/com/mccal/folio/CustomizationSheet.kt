@@ -899,6 +899,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.for_sharing_your_setup_folio_shows_9_41))
                         IosNavRow(stringResource(R.string.screenshot_swap_apps), null, { onPage(CustomizationPage.SCREENSHOT_SWAP) }, "screenshot-swap-row")
                     }
+                    // Android 15 added the recording callback this needs; on older Android the card is not offered.
+                    if (PrivateRecording.supported) SettingsCard(stringResource(R.string.private_while_recording)) {
+                        val privateWhileRecording by PrivateRecording.enabled.collectAsState()
+                        SettingsSwitch(stringResource(R.string.private_while_recording), privateWhileRecording, { PrivateRecording.setEnabled(sheetContext, it) }, "private-while-recording-switch")
+                        CardNote(stringResource(R.string.while_folio_s_screen_is_recorded_or_shared))
+                    }
                     if (FolioMotion.switchVisible(sheetContext)) SettingsCard(stringResource(R.string.motion_pass)) {
                         SettingsSwitch(stringResource(R.string.motion_pass), FolioMotion.v2, { FolioMotion.setEnabled(sheetContext, it) }, "motion-pass-switch")
                         CardNote(stringResource(R.string.motion_pass_note))
@@ -1518,6 +1524,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
     R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,
+    R.string.private_while_recording to CustomizationPage.ADVANCED,
     R.string.other_notifications_2 to CustomizationPage.ISLAND,
     R.string.suggestions to CustomizationPage.TODAY,
     R.string.rounded_corners to CustomizationPage.WALLPAPER,
@@ -2340,7 +2347,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     val context = androidx.compose.ui.platform.LocalContext.current
     val hidden = state.apps.filter { it.id in state.hiddenApps }.sortedBy { it.label.lowercase() }
     var unlocked by remember { mutableStateOf(false) }
-    if (hidden.isEmpty()) return
+    // Private While Recording: the row and its count go, and the list relocks.
+    val recording by PrivateRecording.on.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(recording) { if (recording) unlocked = false }
+    if (hidden.isEmpty() || recording) return
     if (!unlocked) {
         IosActionRow(stringResource(R.string.hidden_apps_count, hidden.size), "hidden-apps") {
             val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or

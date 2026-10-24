@@ -2053,6 +2053,10 @@
     <string name="action_a11y_splitscreen">Split screen</string>
     <string name="action_a11y_mediaplaypause">Play or pause (system)</string>
     <string name="screenshot_swap_apps">Swap Apps</string>
+    <string name="private_while_recording">Private While Recording</string>
+    <string name="while_folio_s_screen_is_recorded_or_shared">While Folio\'s screen is recorded or shared, the apps you chose in Swap Apps are swapped, and notification text, badge numbers and hidden apps are hidden. Everything comes back when the recording stops. Needs Android 15 or later.</string>
+    <string name="recording_private_view_on">Recording: private view on</string>
+    <string name="private_notification_word">Notification</string>
     <string name="screenshot_swap_intro">While Screenshot Mode is on, the apps you choose show as a stock app on this phone, with its icon and name. Tapping one still opens the real app; only the screen changes. Apps that came with the phone are never swapped.</string>
     <string name="screenshot_swap_all_third_party">Swap All Third-Party Apps</string>
     <string name="screenshot_swap_all_third_party_note">Every app that didn’t come with this phone, including ones you install later.</string>

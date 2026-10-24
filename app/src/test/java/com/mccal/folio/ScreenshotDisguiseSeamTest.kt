@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Rule
@@ -40,6 +41,7 @@ class ScreenshotDisguiseSeamTest {
 
     @After fun tearDown() {
         ScreenshotMode.set(false)
+        PrivateRecording.setEnabled(context, false)
         ScreenshotSwap.set(context, DisguiseRules())
     }
 
@@ -64,6 +66,23 @@ class ScreenshotDisguiseSeamTest {
         assertEquals(reddit.component, swapped.component)
 
         ScreenshotMode.set(false)
+        compose.waitUntil(5_000) { shown === state }
+    }
+
+    @Test fun `the private view swaps on its own, without Screenshot Mode, and nothing with no apps chosen`() {
+        var shown: LauncherState? = null
+        compose.setContent { shown = rememberDisguised(state) }
+        PrivateRecording.setEnabled(context, true)
+        PrivateRecording.report(true)
+        compose.waitForIdle()
+        assertSame("recording but no apps chosen: nothing swapped", state, shown)
+
+        ScreenshotSwap.set(context, DisguiseRules(chosen = setOf(reddit.id)))
+        compose.waitUntil(5_000) { shown?.apps?.any { it.iconFrom != null } == true }
+        assertEquals("Camera", shown!!.apps.single { it.id == reddit.id }.label)
+        assertFalse("Screenshot Mode is untouched, so clocks keep the real time", ScreenshotMode.on.value)
+
+        PrivateRecording.setEnabled(context, false)
         compose.waitUntil(5_000) { shown === state }
     }
 }
