@@ -201,12 +201,12 @@ internal object MarketApkInstall {
 /** Android's answer to an install Folio handed over: the confirm screen, then whether it worked. */
 class MarketInstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
-            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+        when (installOutcome(intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE))) {
+            InstallOutcome.NEEDS_CONFIRM -> {
                 @Suppress("DEPRECATION") val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
                 caught("Market: showing Android's install prompt") { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
-            PackageInstaller.STATUS_SUCCESS -> {
+            InstallOutcome.SUCCESS -> {
                 val handed = MarketApkInstall.status.value as? MarketApkInstall.Status.Handed
                 MarketApkInstall.status.value = MarketApkInstall.Status.Installed(
                     name = handed?.name ?: intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME).orEmpty(),
@@ -214,7 +214,9 @@ class MarketInstallReceiver : BroadcastReceiver() {
                     updated = handed?.updating == true,
                 )
             }
-            else -> MarketApkInstall.status.value = MarketApkInstall.Status.Failed(
+            // Cancel on Android's prompt is not a failure: nothing to report, so the banner goes quiet.
+            InstallOutcome.CANCELLED -> MarketApkInstall.status.value = MarketApkInstall.Status.Idle
+            InstallOutcome.FAILED -> MarketApkInstall.status.value = MarketApkInstall.Status.Failed(
                 intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                     ?.let { context.getString(R.string.android_didn_t_install_it_1_s, it) }
                     ?: context.getString(R.string.android_didn_t_install_that_app),

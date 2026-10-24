@@ -151,7 +151,7 @@ internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> 
                                     modifier = androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
                                         .background(FolioColors.Cyan.copy(alpha = .16f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp))
                                 it.date?.takeIf { d -> !d.equals("Unreleased", true) }?.let { d -> androidx.compose.material3.Text(d,
-                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = 14.sp,
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp,
                                     modifier = androidx.compose.ui.Modifier.padding(start = FolioSpace.SMALL.dp)) }
                             }
                         }
@@ -193,7 +193,7 @@ internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> 
                             androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 .clickable { expanded = if (open) expanded - notes.version else expanded + notes.version }
                                 .padding(horizontal = FolioSpace.LARGE.dp).testTag("history-${notes.version}"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                androidx.compose.material3.Text(stringResource(R.string.version_1, notes.version), color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
+                                androidx.compose.material3.Text(stringResource(R.string.version_1, notes.version), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.CALLOUT.sp,
                                     modifier = androidx.compose.ui.Modifier.weight(1f))
                                 notes.date?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp) }
                                 androidx.compose.material3.Icon(if (open) androidx.compose.material.icons.Icons.Rounded.ExpandLess else androidx.compose.material.icons.Icons.Rounded.ExpandMore,
@@ -249,7 +249,7 @@ private fun FeatureRow(note: NoteItem) {
 private fun DisclosureRow(label: String, open: Boolean, count: Int? = null, tag: String, onClick: () -> Unit) {
     androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
         .padding(horizontal = FolioSpace.LARGE.dp).testTag(tag), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        androidx.compose.material3.Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
+        androidx.compose.material3.Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.CALLOUT.sp,
             modifier = androidx.compose.ui.Modifier.weight(1f))
         count?.let { androidx.compose.material3.Text("$it", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp) }
         androidx.compose.material3.Icon(if (open) androidx.compose.material.icons.Icons.Rounded.ExpandLess else androidx.compose.material.icons.Icons.Rounded.ExpandMore,
