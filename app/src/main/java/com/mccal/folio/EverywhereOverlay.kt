@@ -130,9 +130,15 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     /** What the island would show right now; the window only exists while this is non-null. */
     private val islandContent = MutableStateFlow<IslandContent?>(null)
 
+    private val recordingWatch = RecordingWatch(PrivateViewState.OVERLAY)
+
     fun start() {
         owner.start()
         IslandEvents.acquire(service)
+        // The overlay can stay on screen over another app while that app is recorded, with Folio's own window stopped.
+        PrivateRecording.load(service)
+        ScreenshotSwap.load(service) // the saved Swap Apps rules, so a swapped app is never named without Home
+        recordingWatch.start(wm, service.mainExecutor)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         // Going Home takes the user away from whatever the panels were drawn over, so they go too.
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync(); if (it) removeShade() } }
@@ -161,6 +167,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         fullScreenJob?.cancel(); fullScreenJob = null
         removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade()
         IslandEvents.release()
+        recordingWatch.stop(wm)
         owner.stop()
     }
 
