@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -157,15 +158,18 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                         (slideOutHorizontally { if (forward) -it / 4 else it / 4 } + fadeOut())
                 }) { i ->
                 val p = all[i]
-                Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = FolioSpace.HUGE.dp),
+                // With big text the apps page keeps its picker in view: a smaller icon and tighter spacing above it.
+                val compactHead = p.key == "apps" && LocalDensity.current.fontScale > 1.3f
+                Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.HUGE.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     val appIcon = if (p.appIcon) remember { folioIconBitmap(context) } else null
-                    if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)))
-                    else Box(Modifier.size(96.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
-                        Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(56.dp))
+                    val headSize = if (compactHead) 56.dp else 96.dp
+                    if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(headSize).clip(RoundedCornerShape(22.dp)))
+                    else Box(Modifier.size(headSize).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
+                        Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(if (compactHead) 32.dp else 56.dp))
                     }
                     Text(p.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                        lineHeight = 40.sp, modifier = Modifier.padding(top = FolioSpace.XXL.dp))
+                        lineHeight = 40.sp, modifier = Modifier.padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.XXL.dp))
                     Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
                         modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                     if (p.uses.isNotEmpty()) SheetGroup(Modifier.padding(top = FolioSpace.XXL.dp)) {
@@ -233,9 +237,9 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 Text(primary, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index + 1) }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-not-now"))
-                else if (page.key == "welcome") Text(stringResource(R.string.use_folio_now), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                else if (page.key == "welcome") Text(stringResource(R.string.use_folio_now), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(role = Role.Button) { useFolioNow() }.padding(FolioSpace.COMPACT.dp).wrapContentHeight(Alignment.CenterVertically).testTag("onboarding-use-now"))
             }
             Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.Center,
