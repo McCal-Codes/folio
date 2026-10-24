@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
+import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -17,6 +18,7 @@ import android.os.HandlerThread
 import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
+import android.view.Display
 import android.view.FrameMetrics
 import android.view.Window
 import androidx.core.content.ContextCompat
@@ -35,6 +37,11 @@ internal data class PerfStatus(val running: Boolean = false, val readings: Int =
  * threads, the battery and the frame times every few seconds, and writes one plain-text report. Nothing is sent
  * anywhere and it asks for no permission; the numbers stay in memory until you copy or share them. It stops itself
  * after [PerfMath.LIMIT_MS].
+ *
+ * Besides those it reads, on the same thread and at the same times, the battery's charge counter and temperature,
+ * Android's thermal status, battery saver, the display's refresh rate and which of Folio's own services are connected,
+ * and counts Folio's CPU time and the battery readings inside each scenario. A value the phone does not report is
+ * recorded as missing and the report says Unavailable.
  *
  * It costs next to nothing: one reading is a few file and service reads on a thread of its own, memory (the dear one)
  * is read every sixth time, and the frame callback only increments counters.
@@ -73,7 +80,7 @@ internal object PerfLog {
         if (mutable.value.running) return
         val application = appContext.applicationContext as Application
         app = application
-        samples.clear(); histogram = FrameHistogram(); scenarios = PerfScenarios(); tick = 0; mem = IntArray(3)
+        samples.clear(); histogram = FrameHistogram(); scenarios = PerfScenarios({ SystemClock.elapsedRealtime() }, { Process.getElapsedCpuTime() }); tick = 0; mem = IntArray(3)
         startedReal = SystemClock.elapsedRealtime()
         startedAtText = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
         val power = application.getSystemService(PowerManager::class.java)
@@ -154,20 +161,44 @@ internal object PerfLog {
         val battery = batteryIntent
         val manager = application.getSystemService(BatteryManager::class.java)
         val (front, screen, charging) = clock.totals()
+        val power = application.getSystemService(PowerManager::class.java)
+        val tempTenthsC = battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+        val currentUa = manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)?.takeIf { it != Int.MIN_VALUE } ?: 0
         samples += PerfSample(
             atMs = now - startedReal, cpuMs = Process.getElapsedCpuTime(),
             pssKb = mem[0], nativePssKb = mem[1], javaPssKb = mem[2], javaHeapKb = ((runtime.totalMemory() - runtime.freeMemory()) / 1024).toInt(),
             threads = threadCount(),
             batteryPercent = battery?.let { level(it) } ?: manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1,
             chargeUah = manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)?.takeIf { it != Int.MIN_VALUE } ?: 0,
-            currentUa = manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)?.takeIf { it != Int.MIN_VALUE } ?: 0,
+            currentUa = currentUa,
             status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, 0) ?: 0,
             plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0,
-            tempTenthsC = battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0,
+            tempTenthsC = tempTenthsC,
             frames = histogram.frames, janky = histogram.janky,
-            frontMs = front, screenOnMs = screen, chargingMs = charging, folds = clock.folds)
+            frontMs = front, screenOnMs = screen, chargingMs = charging, folds = clock.folds,
+            thermal = power?.let { runCatching { it.currentThermalStatus }.getOrNull() } ?: -1,
+            powerSave = power?.let { if (it.isPowerSaveMode) 1 else 0 } ?: -1,
+            refreshHz = refreshHz(application), features = features())
+        scenarios.noteReading(currentUa, tempTenthsC)
         mutable.value = PerfStatus(running = true, readings = samples.size, elapsedMs = now - startedReal, hasReport = samples.size >= 2)
     }
+
+    /** The display Folio is on (or the default one when Folio is not in front): its current mode's rate in Hz, 0 when unknown. */
+    private fun refreshHz(application: Context): Int = runCatching {
+        val display = resumed?.display ?: application.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
+        display?.refreshRate?.let { Math.round(it) } ?: 0
+    }.getOrDefault(0)
+
+    /** Which of Folio's own services are connected now, as [PerfFeature] bits. Plain flag reads; they start and wake nothing. */
+    private fun features(): Int = runCatching {
+        var bits = 0
+        if (IslandListenerService.connected.value) bits = bits or PerfFeature.ISLAND_LISTENER
+        if (SystemShadeAccessibilityService.isConnected()) bits = bits or PerfFeature.GESTURES_SERVICE
+        if (SmartInkService.connected.value) bits = bits or PerfFeature.SMART_INK
+        if (PrivateRecording.enabled.value) bits = bits or PerfFeature.PRIVATE_ENABLED
+        if (PrivateRecording.on.value) bits = bits or PerfFeature.PRIVATE_ACTIVE
+        bits
+    }.getOrDefault(0)
 
     private fun level(i: Intent): Int {
         val level = i.getIntExtra(BatteryManager.EXTRA_LEVEL, -1); val scale = i.getIntExtra(BatteryManager.EXTRA_SCALE, 100)

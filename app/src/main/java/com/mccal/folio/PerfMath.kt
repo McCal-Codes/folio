@@ -20,7 +20,33 @@ internal data class PerfSample(
     val frames: Long, val janky: Long,
     /** Cumulative ms Folio was in front, the screen was on, and the phone was charging; and folds seen so far. */
     val frontMs: Long, val screenOnMs: Long, val chargingMs: Long, val folds: Int,
+    /** Android's thermal status (0 none to 6 shutdown), or -1 where the phone gives none. */
+    val thermal: Int = -1,
+    /** Battery saver: 1 on, 0 off, -1 not read. */
+    val powerSave: Int = -1,
+    /** The display's current mode rate in Hz, or 0 where it could not be read. */
+    val refreshHz: Int = 0,
+    /** Which of Folio's own services were on, as [PerfFeature] bits. */
+    val features: Int = 0,
 )
+
+/** Folio's own services and switches worth knowing about when judging battery: one bit each in [PerfSample.features]. */
+internal object PerfFeature {
+    const val ISLAND_LISTENER = 1
+    const val GESTURES_SERVICE = 2
+    const val SMART_INK = 4
+    const val PRIVATE_ENABLED = 8
+    const val PRIVATE_ACTIVE = 16
+
+    /** English on purpose, like the rest of the report. */
+    val names = listOf(
+        ISLAND_LISTENER to "Dynamic Island (notification listener connected)", // english-only
+        GESTURES_SERVICE to "Gestures service (also hosts panels and the island over other apps)", // english-only
+        SMART_INK to "Smart clock ink service", // english-only
+        PRIVATE_ENABLED to "Private While Recording switched on", // english-only
+        PRIVATE_ACTIVE to "Private view showing (a recording was seen)", // english-only
+    )
+}
 
 internal object PerfMath {
     /** The longest a run lasts before it stops itself. */
@@ -67,6 +93,42 @@ internal object PerfMath {
     }
 
     data class Drain(val percentPerHour: Double, val mahPerHour: Double?)
+
+    /** The first, last, lowest and highest of a series; null when the series is empty (nothing was reported). */
+    data class Span(val first: Double, val last: Double, val min: Double, val max: Double) {
+        val change get() = last - first
+    }
+
+    fun span(values: List<Double>): Span? =
+        if (values.isEmpty()) null else Span(values.first(), values.last(), values.min(), values.max())
+
+    /**
+     * How much the charge counter fell between the first and last readings that have one, in mAh (positive = the
+     * battery gave charge, negative = it took charge). Null when the phone gives no counter or fewer than two readings have it.
+     */
+    fun chargeUsedMah(samples: List<PerfSample>): Double? {
+        val have = samples.filter { it.chargeUah > 0 }
+        if (have.size < 2) return null
+        return (have.first().chargeUah - have.last().chargeUah) / 1000.0
+    }
+
+    /** The percent of readings for which [test] holds; 0 for no readings. Readings are evenly spaced, so this is also a share of time. */
+    fun share(samples: List<PerfSample>, test: (PerfSample) -> Boolean): Double =
+        percent(samples.count(test).toLong(), samples.size.toLong())
+
+    /** PowerManager's thermal status as a word. -1 is how this log marks a phone that gave none. */
+    fun thermalName(status: Int): String = when (status) {
+        0 -> "None" // english-only
+        1 -> "Light" // english-only
+        2 -> "Moderate" // english-only
+        3 -> "Severe" // english-only
+        4 -> "Critical" // english-only
+        5 -> "Emergency" // english-only
+        6 -> "Shutdown" // english-only
+        else -> UNAVAILABLE
+    }
+
+    const val UNAVAILABLE = "Unavailable" // english-only
 
     fun fmt(value: Double, digits: Int = 1) = String.format(Locale.US, "%.${digits}f", value)
 }
@@ -117,17 +179,61 @@ internal enum class PerfScenario { FOLD, HOME_SWIPE, FOLDER, WIDGET_RESIZE, SHEE
  * Counts which scenarios are going on and gives each its own frame histogram. [begin] and [end] nest and may repeat, so two things at once,
  * or a stray [end], never leave a scenario stuck on. A frame counts toward every scenario active when it is drawn.
  */
-internal class PerfScenarios {
-    private val active = AtomicIntegerArray(PerfScenario.entries.size)
-    private val histograms = Array(PerfScenario.entries.size) { FrameHistogram() }
+internal class PerfScenarios(private val wallMs: (() -> Long)? = null, private val cpuMs: (() -> Long)? = null) {
+    private val n = PerfScenario.entries.size
+    private val active = AtomicIntegerArray(n)
+    private val histograms = Array(n) { FrameHistogram() }
 
-    fun begin(s: PerfScenario) { active.incrementAndGet(s.ordinal) }
-    fun end(s: PerfScenario) { active.updateAndGet(s.ordinal) { if (it > 0) it - 1 else 0 } }
+    // Touched only by begin, end and the sampling thread, under the lock; never by the per-frame path.
+    private val lock = Any()
+    private val startWall = LongArray(n); private val startCpu = LongArray(n)
+    private val doneWall = LongArray(n); private val doneCpu = LongArray(n)
+    private val currentCount = IntArray(n); private val currentSum = LongArray(n)
+    private val tempCount = IntArray(n); private val tempSum = LongArray(n)
+
+    /** What one scenario cost: time it was going on, Folio's CPU time in that time, and the battery readings that fell inside it. */
+    data class Usage(val activeMs: Long, val cpuMs: Long, val currentReadings: Int, val avgCurrentUa: Long, val tempReadings: Int, val avgTempTenthsC: Long)
+
+    fun begin(s: PerfScenario) {
+        synchronized(lock) {
+            if (active.getAndIncrement(s.ordinal) == 0 && wallMs != null) { startWall[s.ordinal] = wallMs.invoke(); startCpu[s.ordinal] = cpuMs?.invoke() ?: 0 }
+        }
+    }
+
+    fun end(s: PerfScenario) {
+        synchronized(lock) {
+            if (active.get(s.ordinal) <= 0) return
+            if (active.decrementAndGet(s.ordinal) == 0 && wallMs != null) {
+                doneWall[s.ordinal] += wallMs.invoke() - startWall[s.ordinal]
+                doneCpu[s.ordinal] += ((cpuMs?.invoke() ?: 0) - startCpu[s.ordinal]).coerceAtLeast(0)
+            }
+        }
+    }
+
     fun isActive(s: PerfScenario) = active.get(s.ordinal) > 0
     fun histogram(s: PerfScenario) = histograms[s.ordinal]
 
     fun record(totalNs: Long, janky: Boolean) {
         for (i in histograms.indices) if (active.get(i) > 0) histograms[i].record(totalNs, janky)
+    }
+
+    /** One battery reading (0 means the phone gave none), counted for every scenario going on right now. */
+    fun noteReading(currentUa: Int, tempTenthsC: Int) {
+        synchronized(lock) {
+            for (i in 0 until n) if (active.get(i) > 0) {
+                if (currentUa != 0) { currentCount[i]++; currentSum[i] += currentUa }
+                if (tempTenthsC > 0) { tempCount[i]++; tempSum[i] += tempTenthsC }
+            }
+        }
+    }
+
+    /** Time and CPU include a scenario still going on. All zero when the log has no clock (nothing was started). */
+    fun usage(s: PerfScenario): Usage = synchronized(lock) {
+        val i = s.ordinal
+        var wall = doneWall[i]; var cpu = doneCpu[i]
+        if (wallMs != null && active.get(i) > 0) { wall += wallMs.invoke() - startWall[i]; cpu += ((cpuMs?.invoke() ?: 0) - startCpu[i]).coerceAtLeast(0) }
+        Usage(wall, cpu, currentCount[i], if (currentCount[i] > 0) currentSum[i] / currentCount[i] else 0,
+            tempCount[i], if (tempCount[i] > 0) tempSum[i] / tempCount[i] else 0)
     }
 }
 
@@ -187,6 +293,9 @@ internal object PerfReport {
         val spanMs = last.atMs - first.atMs
         val cpu = cpuSeries(samples)
         sb.append("Duration: ${duration(spanMs)} (${samples.size} readings, every ${PerfMath.INTERVAL_MS / 1000} s)\n\n")
+        sb.append("What changed, first reading to last\n") // english-only
+        whatChanged(samples).forEach { sb.append("  ").append(it).append('\n') }
+        sb.append('\n')
 
         sb.append("CPU (Folio's own process, percent of one core; 100 = one core fully busy)\n")
         sb.append("  Average: ${PerfMath.fmt(PerfMath.cpuPercent(first.cpuMs, last.cpuMs, first.atMs, last.atMs))} %\n")
@@ -205,6 +314,10 @@ internal object PerfReport {
         }
         sb.append("  Level ${first.batteryPercent} % to ${last.batteryPercent} %, temperature ${PerfMath.fmt(last.tempTenthsC / 10.0)} C, current now ${last.currentUa / 1000} mA (sign differs by phone)\n\n")
 
+        sb.append("Phone state during the run (as the phone reported it)\n") // english-only
+        deviceState(samples).forEach { sb.append("  ").append(it).append('\n') }
+        sb.append('\n')
+
         sb.append("Frames (only while Folio was in front)\n")
         if (histogram.frames == 0L) sb.append("  None drawn: Folio was not in front.\n\n") else {
             sb.append("  Total: ${histogram.frames}, janky (past the frame deadline): ${histogram.janky} (${PerfMath.fmt(PerfMath.percent(histogram.janky, histogram.frames))} %)\n")
@@ -217,6 +330,7 @@ internal object PerfReport {
                 val h = scenarios.histogram(sc)
                 if (h.frames == 0L) continue
                 sb.append("  ${scenarioName(sc)}: ${h.frames} frames, janky ${h.janky} (${PerfMath.fmt(PerfMath.percent(h.janky, h.frames))} %), p50 ${PerfMath.fmt(h.percentileMs(50.0))} ms, p95 ${PerfMath.fmt(h.percentileMs(95.0))} ms, p99 ${PerfMath.fmt(h.percentileMs(99.0))} ms\n") // english-only
+                usageLine(scenarios.usage(sc))?.let { sb.append("    ").append(it).append('\n') }
             }
             sb.append("\n")
         }
@@ -243,6 +357,76 @@ internal object PerfReport {
         sb.append("\nThese numbers are Folio's own view of itself. Android's own account is `dumpsys batterystats`; see tools/perf-capture.sh.\n")
         sb.append("Nothing in this report left the phone unless you shared it.\n")
         return sb.toString()
+    }
+
+    private fun signed(v: Double, digits: Int = 1) = (if (v >= 0) "+" else "") + PerfMath.fmt(v, digits)
+
+    /** What one scenario cost, or null when the log had no clock for it. */
+    internal fun usageLine(u: PerfScenarios.Usage): String? {
+        if (u.activeMs <= 0) return null
+        val battery = if (u.currentReadings == 0 && u.tempReadings == 0) "no battery reading fell inside it (readings are ${PerfMath.INTERVAL_MS / 1000} s apart)" // english-only
+        else "${u.currentReadings} battery readings inside it" + // english-only
+            (if (u.currentReadings > 0) ", average current ${u.avgCurrentUa / 1000} mA (sign differs by phone)" else "") + // english-only
+            (if (u.tempReadings > 0) ", temperature ${PerfMath.fmt(u.avgTempTenthsC / 10.0)} C" else "") // english-only
+        return "Going on for ${PerfMath.fmt(u.activeMs / 1000.0)} s, Folio CPU ${PerfMath.fmt(u.cpuMs / 1000.0)} s " + // english-only
+            "(${PerfMath.fmt(PerfMath.percent(u.cpuMs, u.activeMs))} % of one core); $battery" // english-only
+    }
+
+    /** The first reading against the last, one line per thing, saying Unavailable where the phone gave nothing. Facts only. */
+    internal fun whatChanged(samples: List<PerfSample>): List<String> {
+        val first = samples.first(); val last = samples.last()
+        val out = mutableListOf<String>()
+        fun ints(label: String, a: Int, b: Int, ok: (Int) -> Boolean, unit: String) {
+            out += if (ok(a) && ok(b)) "$label: $a$unit to $b$unit (${signed((b - a).toDouble(), 0)})" else "$label: ${PerfMath.UNAVAILABLE}" // english-only
+        }
+        ints("Battery level", first.batteryPercent, last.batteryPercent, { it >= 0 }, " %") // english-only
+        val mah = PerfMath.chargeUsedMah(samples)
+        val counters = samples.filter { it.chargeUah > 0 }
+        out += if (mah == null) "Charge counter: ${PerfMath.UNAVAILABLE}" // english-only
+        else "Charge counter: ${PerfMath.fmt(counters.first().chargeUah / 1000.0, 0)} mAh to ${PerfMath.fmt(counters.last().chargeUah / 1000.0, 0)} mAh (${signed(-mah, 0)} mAh)" // english-only
+        val temps = PerfMath.span(samples.filter { it.tempTenthsC > 0 }.map { it.tempTenthsC / 10.0 })
+        out += if (temps == null) "Temperature: ${PerfMath.UNAVAILABLE}" // english-only
+        else "Temperature: ${PerfMath.fmt(temps.first)} C to ${PerfMath.fmt(temps.last)} C (${signed(temps.change)} C)" // english-only
+        val th = samples.filter { it.thermal >= 0 }
+        out += if (th.isEmpty()) "Thermal status: ${PerfMath.UNAVAILABLE}" else "Thermal status: ${PerfMath.thermalName(th.first().thermal)} to ${PerfMath.thermalName(th.last().thermal)}" // english-only
+        fun plug(s: PerfSample) = if (s.plugged != 0) "plugged in" else "on battery" // english-only
+        out += "Power: ${plug(first)} to ${plug(last)}" // english-only
+        val ps = samples.filter { it.powerSave >= 0 }
+        fun onOff(v: Int) = if (v == 1) "on" else "off" // english-only
+        out += if (ps.isEmpty()) "Battery saver: ${PerfMath.UNAVAILABLE}" else "Battery saver: ${onOff(ps.first().powerSave)} to ${onOff(ps.last().powerSave)}" // english-only
+        ints("Display refresh rate", first.refreshHz, last.refreshHz, { it > 0 }, " Hz") // english-only
+        val pss = samples.filter { it.pssKb > 0 }
+        out += if (pss.isEmpty()) "Folio memory (PSS): ${PerfMath.UNAVAILABLE}" else "Folio memory (PSS): ${pss.first().pssKb / 1024} MB to ${pss.last().pssKb / 1024} MB" // english-only
+        ints("Folio threads", first.threads, last.threads, { it > 0 }, "") // english-only
+        out += "Folio CPU time: ${PerfMath.fmt((last.cpuMs - first.cpuMs).coerceAtLeast(0) / 1000.0)} s over the run" // english-only
+        val flipped = PerfFeature.names.filter { (bit, _) -> (first.features and bit) != (last.features and bit) }
+        out += if (flipped.isEmpty()) "Folio services: none switched on or off" // english-only
+        else flipped.joinToString("; ") { (bit, name) -> "$name went ${if (last.features and bit != 0) "on" else "off"}" } // english-only
+        return out
+    }
+
+    /** Readings that describe the phone around Folio: heat, power, display and which of Folio's services were running. */
+    internal fun deviceState(samples: List<PerfSample>): List<String> {
+        val first = samples.first(); val last = samples.last()
+        val out = mutableListOf<String>()
+        val temps = PerfMath.span(samples.filter { it.tempTenthsC > 0 }.map { it.tempTenthsC / 10.0 })
+        out += if (temps == null) "Battery temperature: ${PerfMath.UNAVAILABLE}" // english-only
+        else "Battery temperature: lowest ${PerfMath.fmt(temps.min)} C, highest ${PerfMath.fmt(temps.max)} C, ${signed(temps.change)} C from first to last" // english-only
+        val th = samples.filter { it.thermal >= 0 }
+        out += if (th.isEmpty()) "Thermal status: ${PerfMath.UNAVAILABLE}" // english-only
+        else "Thermal status: highest ${PerfMath.thermalName(th.maxOf { it.thermal })}, above None for ${PerfMath.fmt(PerfMath.share(th) { it.thermal > 0 }, 0)} % of readings" // english-only
+        val ps = samples.filter { it.powerSave >= 0 }
+        out += if (ps.isEmpty()) "Battery saver: ${PerfMath.UNAVAILABLE}" else "Battery saver: on for ${PerfMath.fmt(PerfMath.share(ps) { it.powerSave == 1 }, 0)} % of readings" // english-only
+        val hz = samples.filter { it.refreshHz > 0 }.map { it.refreshHz }
+        out += if (hz.isEmpty()) "Display refresh rate: ${PerfMath.UNAVAILABLE}" // english-only
+        else "Display refresh rate: ${hz.min()} to ${hz.max()} Hz (the display's mode, not the instant rate an adaptive panel is drawing at)" // english-only
+        val spanMs = last.atMs - first.atMs
+        val onMs = (last.screenOnMs - first.screenOnMs).coerceIn(0, spanMs)
+        out += "Screen: on ${duration(onMs)}, off ${duration(spanMs - onMs)}" // english-only
+        out += "Folio services, share of readings they were on:" // english-only
+        PerfFeature.names.forEach { (bit, name) -> out += "  $name: ${PerfMath.fmt(PerfMath.share(samples) { it.features and bit != 0 }, 0)} %" } // english-only
+        out += "A service being on is not the same as it drawing something; Android reports whether it is connected." // english-only
+        return out
     }
 
     private fun cpuSeries(s: List<PerfSample>) = s.zipWithNext { a, b -> PerfMath.cpuPercent(a.cpuMs, b.cpuMs, a.atMs, b.atMs) }
