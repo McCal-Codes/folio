@@ -664,6 +664,10 @@
     <string name="all_controls_added">모든 제어 항목이 추가됨</string>
     <string name="add_a_control">제어 항목 추가</string>
     <string name="not_playing">재생 중이 아님</string>
+    <string name="music">음악</string>
+    <string name="now_playing">지금 재생 중</string>
+    <string name="playing">재생 중</string>
+    <string name="paused">일시 정지됨</string>
     <string name="contacts">연락처</string>
     <string name="search_the_web_ask_ai">웹 검색 및 AI에게 질문</string>
     <string name="top_hit">상위 결과</string>
