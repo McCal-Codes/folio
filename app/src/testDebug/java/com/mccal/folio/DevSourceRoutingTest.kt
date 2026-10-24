@@ -84,11 +84,9 @@ class DevSourceRoutingTest {
             override fun connect() = Unit
             override fun disconnect() = Unit
             override fun usingProxy() = false
-            override fun setRequestProperty(key: String?, value: String?) { require(value?.contains('
-') != true) }
+            override fun setRequestProperty(key: String?, value: String?) { require(value?.contains('\n') != true) }
         }
-        val open = DevRouting.opener({ base }, { "AB
-CD" }) { strict }
+        val open = DevRouting.opener({ base }, { "AB\r\nCD" }) { strict }
         open(URL("$base/dev/file/x"))
     }
 }
