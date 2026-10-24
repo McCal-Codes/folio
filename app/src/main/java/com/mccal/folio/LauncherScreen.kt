@@ -1295,8 +1295,10 @@ fun LauncherScreen(
                     containerColor = MaterialTheme.colorScheme.surface, fullScreen = sheet.startsWith("settings") || sheet == "market") {
                     // Settings answers Back first while it's past its top page, here and in the Market's Settings tab
                     // (CustomizationSheet); whatever reaches the sheet closes it.
+                    // With New motion, closing with Back or Done plays the page's or sheet's exit first.
+                    val sheetExit = LocalOverlayExit.current
                     ModalDialogBackHandler {
-                        sheet = ""; picker.packageName = null; picker.exactTarget = false
+                        sheetExit.closeWithExit { sheet = ""; picker.packageName = null; picker.exactTarget = false }
                     }
                     when (sheet) {
                         "dock" -> AppPicker(pickerApps(state), dockSlot,
@@ -1311,7 +1313,7 @@ fun LauncherScreen(
                             blockedHint = if (state.dock.none { it == null }) stringResource(R.string.dock_full_move_an_app_out_first) else null)
                         "pins" -> Column(Modifier.fillMaxHeight(.9f).imePadding()) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.XL.dp), horizontalArrangement = Arrangement.End) {
-                                TextButton(onClick = { sheet = "" }) { Text(stringResource(R.string.done)) }
+                                TextButton(onClick = { sheetExit.closeWithExit { sheet = "" } }) { Text(stringResource(R.string.done)) }
                             }
                             AppLibrary(state, pinQuery, { pinQuery = it }, onLaunch, model::setPinned,
                                 onActions = { overlays.menu = it.id; sheet = "" }, editing = true, modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -1323,7 +1325,7 @@ fun LauncherScreen(
                             CustomizationSheet(state, wide, model, initiallyUpright = layoutScreen == LayoutScreen.INNER_UPRIGHT, isDefaultHome = isDefaultHome,
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
-                            onClose = { sheet = "" }, onEditPins = { sheet = "pins" },
+                            onClose = { sheetExit.closeWithExit { sheet = "" } }, onEditPins = { sheet = "pins" },
                             onWidget = { picker.slot = it; picker.anyApp(); sheet = "widgets" },
                             onAddWidget = { page -> picker.slot = model.nextWidgetSlot(); picker.targetIndex = page * HOME_CELLS; picker.anyApp(); sheet = "widgets" },
                             onRemoveWidget = widgets::remove,
@@ -1343,7 +1345,7 @@ fun LauncherScreen(
                           }
                           if (sheet == "market") {
                               // The Market lives here, so its Settings tab is Folio's own Settings rather than a jump.
-                              MarketScreen(marketSession, state.installedTweaks, onClose = { sheet = "" },
+                              MarketScreen(marketSession, state.installedTweaks, onClose = { sheetExit.closeWithExit { sheet = "" } },
                                   settingsContent = { settingsSheet("market") })
                           } else {
                               settingsSheet("settings")
@@ -1995,7 +1997,7 @@ fun LauncherScreen(
                 launcherActivity.backups.applyImport(); sheet = ""
             }, onCancel = launcherActivity.backups::cancelImport)
         }
-        if (launcherActivity.backups.pickerPending) AlertDialog(onDismissRequest = {},
+        if (launcherActivity.backups.pickerPending) AlertDialog(onDismissRequest = {}, dismissible = false,
             title = { Text(stringResource(R.string.layout_document)) },
             text = { Text(stringResource(R.string.the_system_document_picker_is_still_open)) },
             confirmButton = { TextButton(onClick = { launcherActivity.backups.resumePendingPicker() },
@@ -2025,7 +2027,7 @@ fun LauncherScreen(
                 confirmButton = { TextButton(onClick = widgets::clearFailure) { Text(stringResource(R.string.ok)) } })
         }
         if (widgets.pendingPlacement != null && widgets.setupStatus != null) {
-            AlertDialog(onDismissRequest = {}, title = { Text(stringResource(R.string.finish_widget_setup)) },
+            AlertDialog(onDismissRequest = {}, dismissible = false, title = { Text(stringResource(R.string.finish_widget_setup)) },
                 text = { Text(stringResource(R.string.the_widget_is_waiting_at_its_chosen_spot)) },
                 confirmButton = { TextButton(onClick = widgets::finishPendingSetup,
                     modifier = Modifier.description(R.string.continue_widget_setup)) { Text(stringResource(R.string.finish_setup)) } },
@@ -2033,7 +2035,7 @@ fun LauncherScreen(
                     modifier = Modifier.description(R.string.cancel_widget_setup)) { Text(cancelLabel) } })
         }
         widgets.reconfigureWidgetId?.let {
-            AlertDialog(onDismissRequest = {}, title = { Text(stringResource(R.string.widget_settings)) },
+            AlertDialog(onDismissRequest = {}, dismissible = false, title = { Text(stringResource(R.string.widget_settings)) },
                 text = { Text(stringResource(R.string.widget_settings_were_interrupted_resume)) },
                 confirmButton = { TextButton(onClick = widgets::finishPendingReconfigure,
                     modifier = Modifier.testTag("widget-reconfigure-resume")) { Text(stringResource(R.string.resume)) } },
