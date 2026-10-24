@@ -43,19 +43,38 @@ SOURCE_DESCRIPTION = "Work in progress. Not for release builds."
 MAX_AGE_DAYS = 3
 
 
+REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+
+
+def check_ref(name: str) -> str:
+    """A branch or ref name that cannot be mistaken for an option or a path."""
+    if not REF.match(name) or ".." in name:
+        sys.exit(f"{name!r} is not a plain branch name.")
+    return name
+
+
 def git(checkout: pathlib.Path, *args: str) -> bytes:
     return subprocess.run(["git", "-C", str(checkout), *args], capture_output=True, check=True).stdout
 
 
-def export_branch(checkout: pathlib.Path, branch: str, into: pathlib.Path) -> None:
-    """The branch's files, without touching the checkout's working tree, index or other branches."""
-    data = git(checkout, "archive", "--format=tar", branch)
+def export_ref(checkout: pathlib.Path, ref: str, into: pathlib.Path) -> None:
+    """The ref's files, without touching the checkout's working tree, index or other branches.
+
+    Links and special files are refused outright, and extraction uses tarfile's `data` filter where this Python has it.
+    """
+    data = git(checkout, "archive", "--format=tar", check_ref(ref))
+    root = into.resolve()
     with tarfile.open(fileobj=io.BytesIO(data)) as tar:
         for member in tar.getmembers():
+            if not (member.isfile() or member.isdir()):
+                sys.exit(f"{ref}: {member.name} is a link or special file, which a tweaks branch may not contain")
             target = (into / member.name).resolve()
-            if into.resolve() not in target.parents and target != into.resolve():
+            if root not in target.parents and target != root:
                 sys.exit(f"{member.name} would land outside the work folder")
-        tar.extractall(into)
+        if hasattr(tarfile, "data_filter"):
+            tar.extractall(into, filter="data")
+        else:
+            tar.extractall(into)
 
 
 def wip_id(package_id: str) -> str:
@@ -97,6 +116,7 @@ def rewrite_source(work: pathlib.Path, branch: str, sha: str, count: int) -> lis
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build a signed WIP tweaks source from a folio-tweaks branch.")
     parser.add_argument("--branch", required=True, help="the folio-tweaks branch to build")
+    parser.add_argument("--trusted-ref", default="main", help="the ref whose tools/ build and validate the source (default main); a branch's own tools/ is never run")
     parser.add_argument("--checkout", default=os.environ.get("FOLIO_TWEAKS", DEFAULT_CHECKOUT), help="the folio-tweaks checkout")
     parser.add_argument("--to-folder", required=True, help="write DIR/tweaks/ here (no network)")
     parser.add_argument("--key", default=os.environ.get("FOLIO_DEV_PUBLISHER_KEY", dp.DEFAULT_KEY), help="the dev publisher key (PEM)")
@@ -107,13 +127,28 @@ def main(argv: list[str] | None = None) -> int:
     checkout = pathlib.Path(args.checkout).expanduser()
     if not (checkout / "tools/build.py").is_file():
         sys.exit(f"{checkout} is not a folio-tweaks checkout (no tools/build.py).")
-    sha = git(checkout, "rev-parse", "--short=8", args.branch).decode().strip()
-    count = int(git(checkout, "rev-list", "--count", args.branch).decode().strip())
+    branch = check_ref(args.branch)
+    trusted = check_ref(args.trusted_ref)
+    try:
+        sha = git(checkout, "rev-parse", "--verify", "--short=8", branch + "^{commit}").decode().strip()
+        count = int(git(checkout, "rev-list", "--count", branch, "--").decode().strip())
+        git(checkout, "rev-parse", "--verify", trusted + "^{commit}")
+    except subprocess.CalledProcessError:
+        sys.exit(f"{branch} or {trusted} is not a ref in {checkout}.")
     out = pathlib.Path(args.to_folder) / "tweaks"
     with tempfile.TemporaryDirectory(prefix="folio-dev-tweaks-") as tmp:
         work = pathlib.Path(tmp) / "src"
+        theirs = pathlib.Path(tmp) / "branch"
         work.mkdir()
-        export_branch(checkout, args.branch, work)
+        theirs.mkdir()
+        # The build and the validator come from the trusted ref; the branch supplies package folders and nothing else, so
+        # code on a branch can never run with the publisher key in reach.
+        export_ref(checkout, trusted, work)
+        export_ref(checkout, branch, theirs)
+        shutil.rmtree(work / "packages", ignore_errors=True)
+        shutil.copytree(theirs / "packages", work / "packages")
+        if git(checkout, "diff", "--name-only", trusted, branch, "--", "tools").strip():
+            print(f"Note: {branch} changes tools/; those changes are ignored (tools/ comes from {trusted}).")
         ids = rewrite_source(work, args.branch, sha, count)
         if not ids:
             sys.exit(f"Branch {args.branch} has no packages.")
@@ -124,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
         # build.py reads its own folder, so it runs from the copy; plain `openssl` must be on its PATH.
         env = dict(os.environ, PATH=str(pathlib.Path(dp.openssl()).parent) + os.pathsep + os.environ.get("PATH", ""))
         env.pop("FOLIO_SOURCE_KEY", None)  # never the public source's key
-        build = subprocess.run([sys.executable, "tools/build.py", "--key", str(key)], cwd=work, env=env)
+        build = subprocess.run([sys.executable, "tools/build.py", "--key", str(key)], cwd=work, env=env)  # tools/ is the trusted ref's
         if build.returncode != 0:
             return build.returncode
         check = subprocess.run([sys.executable, "tools/folio-pkg.py", "validate", "_site"], cwd=work, env=env)

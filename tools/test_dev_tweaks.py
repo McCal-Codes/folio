@@ -36,9 +36,15 @@ class DevTweaksTest(unittest.TestCase):
                     shutil.copytree(src, repo / name, ignore=shutil.ignore_patterns("_site", ".git"))
                 else:
                     shutil.copyfile(src, repo / name)
-            git(repo, "init", "-q", "-b", "duet")
+            git(repo, "init", "-q", "-b", "main")
             git(repo, "add", "-A")
-            git(repo, "commit", "-q", "-m", "wip")
+            git(repo, "commit", "-q", "-m", "base")
+            # The branch tries to run code with the publisher key in reach: its own build.py writes a marker.
+            git(repo, "checkout", "-q", "-b", "duet")
+            marker = tmp / "PWNED"
+            build = repo / "tools/build.py"
+            build.write_text("import pathlib\npathlib.Path(%r).write_text('x')\n" % str(marker), encoding="utf-8")
+            git(repo, "commit", "-q", "-am", "evil tools")
             key = tmp / "throwaway.pem"
             subprocess.run([dt.dp.openssl(), "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(key)], check=True, capture_output=True)
             out = tmp / "out"
@@ -53,6 +59,13 @@ class DevTweaksTest(unittest.TestCase):
             self.assertTrue((site / "entry.json.sig").is_file())
             self.assertTrue((site / "key.pub").is_file())
             self.assertFalse((repo / "_site").exists(), "the checkout is untouched")
+            self.assertFalse(marker.exists(), "the branch's own tools never ran")
+
+    def test_ref_names_cannot_be_options_or_climb(self):
+        for bad in ("--output=x", "-x", "a..b", "a b", "", "$(x)"):
+            with self.assertRaises(SystemExit):
+                dt.check_ref(bad)
+        self.assertEqual(dt.check_ref("duet/x-1.2"), "duet/x-1.2")
 
     @unittest.skipUnless((REAL / "tools/build.py").is_file(), "needs the folio-tweaks checkout")
     def test_dry_run_writes_nothing(self):
@@ -61,7 +74,7 @@ class DevTweaksTest(unittest.TestCase):
             key = tmp / "k.pem"
             subprocess.run([dt.dp.openssl(), "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(key)], check=True, capture_output=True)
             out = tmp / "out"
-            self.assertEqual(dt.main(["--branch", "HEAD", "--checkout", str(REAL), "--to-folder", str(out), "--key", str(key), "--dry-run"]), 0)
+            self.assertEqual(dt.main(["--branch", "main", "--checkout", str(REAL), "--to-folder", str(out), "--key", str(key), "--dry-run"]), 0)
             self.assertFalse(out.exists())
 
 
