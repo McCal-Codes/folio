@@ -115,7 +115,15 @@ internal enum class FeatureGate(
      * instead of the numbers each one picked for itself. A small change in feel, so it goes to supporters and Folio
      * Dev first to say whether it reads as smoother. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Settings > General > Storage: how full the phone is, any USB or SD storage that is connected, and shortcuts to
+     * Android's own cleanup screens. It only reads sizes and opens system screens, but it needs real phones with real
+     * drives before it goes to everyone, so supporters and Folio Dev try it first. Flip [OPEN_IN_0_7_1] to true in
+     * the 0.7.1 release.
+     */
+    STORAGE("storage", closedSince = "2026-10-24", opensIn = "0.7.1", { OPEN_IN_0_7_1 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -141,6 +149,9 @@ internal enum class FeatureGate(
 
         /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
         private const val OPEN_IN_0_7_0 = false
+
+        /** The features built during 0.7.1 for supporters to try first, which open together in the 0.7.1 release. */
+        private const val OPEN_IN_0_7_1 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }

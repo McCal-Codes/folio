@@ -91,7 +91,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP, STORAGE;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -101,7 +101,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         FOCUS_MODE -> FOCUS
         ISLAND_APPS -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
-        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
+        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, STORAGE -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE, SCREENSHOT_SWAP -> ADVANCED
         WHAT_TO_TEST -> HELP
@@ -124,6 +124,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         GESTURES -> R.string.gestures_actions
         FOLD -> R.string.fold_displays
         BACKUP -> R.string.backup
+        STORAGE -> R.string.storage
         HELP -> R.string.help
         SIDE_KEY -> R.string.side_key
         LOCK -> R.string.lock_cover
@@ -796,6 +797,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.CREDITS -> CreditsPage()
+                CustomizationPage.STORAGE -> StoragePage()
                 CustomizationPage.SUPPORTERS -> SupportersPage()
                 CustomizationPage.GENERAL -> {
                     val generalContext = androidx.compose.ui.platform.LocalContext.current
@@ -820,6 +822,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 runCatching { generalContext.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_LOCALE_SETTINGS,
                                     android.net.Uri.parse("package:${generalContext.packageName}")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                             }
+                            MenuDivider()
+                        }
+                        // Storage: supporters and Folio Dev first (FeatureGate.STORAGE).
+                        if (remember { FeatureGate.STORAGE.isOpen(generalContext) }) {
+                            TweakRow(Icons.Rounded.Storage, FolioColors.Value.Gray, stringResource(R.string.storage), "customization-storage") { onPage(CustomizationPage.STORAGE) }
                             MenuDivider()
                         }
                         TweakRow(Icons.Rounded.Save, FolioColors.Value.Gray, stringResource(R.string.backup), "customization-backup") { onPage(CustomizationPage.BACKUP) }
@@ -1410,6 +1417,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.screenshot_mode, R.string.settings_keywords_screenshot_mode, CustomizationPage.ADVANCED),
     Triple(R.string.system_bridge, R.string.settings_keywords_system_bridge, CustomizationPage.SYSTEM_BRIDGE),
     Triple(R.string.screenshot_swap_apps, R.string.settings_keywords_screenshot_swap, CustomizationPage.SCREENSHOT_SWAP),
+    Triple(R.string.storage, R.string.settings_keywords_storage, CustomizationPage.STORAGE),
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
@@ -1574,6 +1582,11 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
     R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
+    R.string.storage_free_up_space to CustomizationPage.STORAGE,
+    R.string.storage_settings to CustomizationPage.STORAGE,
+    R.string.storage_files to CustomizationPage.STORAGE,
+    R.string.storage_downloads to CustomizationPage.STORAGE,
+    R.string.storage_show_app_sizes to CustomizationPage.STORAGE,
     R.string.performance_log to CustomizationPage.ADVANCED,
     R.string.performance_start to CustomizationPage.ADVANCED,
     R.string.performance_stop to CustomizationPage.ADVANCED,
@@ -1621,6 +1634,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // Storage is held back for supporters and Folio Dev (FeatureGate.STORAGE), so search doesn't offer it to anyone else.
+            .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
