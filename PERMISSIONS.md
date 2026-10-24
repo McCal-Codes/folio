@@ -38,6 +38,14 @@ Folio's own Notification Center and Control Center. Two launchable entries, Foli
 (`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
 shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
+**Folio's Smart clock ink service** (`SmartInkService`, a second accessibility service, off until you turn it on in Android Settings ›
+Accessibility) can take a picture of the screen, and does nothing else: it observes no events, cannot inspect windows and
+cannot tap or type. Folio uses it only when Android's own wallpaper is behind Home, to choose light or dark text for the Big
+Clock from what is really behind it, and only while Folio's Home is in front. The picture is measured under the clock and
+thrown away at once, at most one every two seconds; only a few brightness numbers are kept in memory, nothing is saved or
+sent (`SmartInkService.kt`, `SmartClockInk.kt`). It is separate from the gestures service above, which still cannot read
+what is on screen. Without it, the clock's text color comes from Android's wallpaper colors, as before.
+
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a
 service that reads nothing from one that reads everything. If a bank app does it, turning Folio's service off in
