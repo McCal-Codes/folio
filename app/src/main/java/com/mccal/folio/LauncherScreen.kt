@@ -2000,7 +2000,7 @@ fun LauncherScreen(
             dismissButton = { TextButton(onClick = launcherActivity.backups::cancelImport,
                 modifier = Modifier.testTag("backup-picker-cancel")) { Text(stringResource(R.string.cancel)) } })
         if (launcherActivity.backgrounds.pickerPending && !launcherActivity.backgrounds.loading) AlertDialog(
-            onDismissRequest = {}, title = { Text(stringResource(R.string.background_photo)) },
+            onDismissRequest = {}, dismissible = false, title = { Text(stringResource(R.string.background_photo)) },
             text = { Text(stringResource(R.string.the_photo_picker_was_interrupted_resume)) },
             confirmButton = { TextButton(onClick = launcherActivity.backgrounds::choosePhoto,
                 modifier = Modifier.testTag("background-picker-resume")) { Text(stringResource(R.string.resume)) } },
