@@ -1999,6 +1999,117 @@
     <string name="action_a11y_shade">Android 通知栏</string>
     <string name="action_a11y_splitscreen">分屏</string>
     <string name="action_a11y_mediaplaypause">播放或暂停（系统）</string>
+    <!-- Simple Mode preview (0.6.9 beta 4). A draft translation, waiting for a native speaker to review it. -->
+    <string name="experience">体验</string>
+    <string name="profile_simple">简易</string>
+    <string name="profile_simple_detail">带文字的大按钮、保持不变的主屏幕，只显示你选择的应用。</string>
+    <string name="simple_experience_note">体验列表是预览版。Folio Dev 和测试版支持者会先看到简易模式。</string>
+    <string name="simple_use_title">使用简易模式？</string>
+    <string name="simple_change_buttons">大按钮，始终显示文字</string>
+    <string name="simple_change_locked">主屏幕保持不变。由协助者在协助者设置中更改。</string>
+    <string name="simple_change_hidden">设置、Market、插件和聚焦搜索的附加功能不在主屏幕上</string>
+    <string name="simple_change_solid">纯色背景，无模糊，减少动态效果</string>
+    <string name="simple_change_saved">当前主屏幕会被保存，关闭简易模式时恢复。</string>
+    <string name="simple_how_to_leave">如何退出：轻点简易主屏幕底部的“协助者设置”，用手机的屏幕锁解锁，然后选择“退出简易模式”。</string>
+    <string name="simple_use">使用简易模式</string>
+    <string name="simple_preview_label">简易模式预览</string>
+    <string name="simple_call">打电话</string>
+    <string name="simple_charging">正在充电</string>
+    <string name="simple_battery_percent">%1$d%%</string>
+    <string name="simple_helper_settings">协助者设置</string>
+    <string name="simple_more_apps">更多应用</string>
+    <string name="simple_back_to_home">返回主屏幕</string>
+    <string name="simple_home_stays_put">主屏幕保持不变</string>
+    <string name="simple_home_stays_put_detail">协助者可以在“协助者设置”的“编辑主屏幕”中更改这里的应用。</string>
+    <string name="simple_unlock_title">打开协助者设置</string>
+    <string name="simple_unlock_subtitle">使用屏幕锁继续</string>
+    <string name="simple_hold_body">这部手机没有设置屏幕锁。按住按钮 2 秒即可打开。</string>
+    <string name="simple_hold">按住</string>
+    <string name="simple_keep_holding">继续按住</string>
+    <string name="simple_hold_description">按住 2 秒打开协助者设置</string>
+    <string name="simple_edit_home">编辑主屏幕</string>
+    <string name="simple_home_style">主屏幕样式</string>
+    <string name="simple_style_list">列表</string>
+    <string name="simple_style_grid">大网格</string>
+    <string name="simple_text_size">文字大小</string>
+    <string name="simple_text_size_detail">%1$s。只更改 Folio，不影响其他应用。</string>
+    <string name="simple_text_size_note">只更改 Folio，不影响其他应用。</string>
+    <string name="simple_text_larger">较大</string>
+    <string name="simple_text_largest">最大</string>
+    <string name="simple_leave">退出简易模式</string>
+    <string name="simple_leave_detail">已保存的主屏幕会恢复</string>
+    <string name="simple_leave_title">退出简易模式？</string>
+    <string name="simple_leave_body">已保存的主屏幕会恢复，和开启简易模式前完全一样。</string>
+    <string name="simple_settings_note">此页面需要用手机的屏幕锁打开。Android 自带的设置仍可从状态栏打开。</string>
+    <string name="simple_settings_note_hold">此页面需按住 2 秒打开。在 Android 设置中设置屏幕锁即可保护它。</string>
+    <string name="simple_edit_note">主屏幕保持锁定。更改会立即显示在主屏幕上。</string>
+    <string name="simple_add_apps">添加应用</string>
+    <string name="simple_home_full">主屏幕已满。请先移除一个。</string>
+    <string name="simple_home_full_short">主屏幕已满。</string>
+    <string name="simple_two_sentences">%1$s%2$s</string>
+    <string name="simple_shows_as">在主屏幕上显示为“%1$s”</string>
+    <string name="simple_reorder_apps">调整应用顺序</string>
+    <string name="simple_reorder_note">轻点一个应用，然后选择“向上移动”或“向下移动”。这就是主屏幕上的顺序。</string>
+    <string name="simple_home_order">主屏幕顺序</string>
+    <string name="simple_save_order">保存顺序</string>
+    <string name="simple_remove_apps">移除应用</string>
+    <string name="simple_remove_from_home">从主屏幕移除</string>
+    <string name="simple_remove_note">应用仍保留在手机上，只更改主屏幕。</string>
+    <string name="simple_list_separator">、</string>
+    <string name="simple_setup_row_title">在为别人设置这部手机？</string>
+    <string name="simple_setup_row_detail">简易模式：大按钮，锁定的主屏幕</string>
+    <string name="simple_setup_style_title">主屏幕要怎么显示？</string>
+    <string name="simple_setup_style_body">两种都是带文字的大按钮。以后可以在协助者设置中更改。</string>
+    <string name="simple_setup_apps_title">放哪些应用？</string>
+    <string name="simple_setup_apps_body">这部手机自带的电话、信息、相机、照片、时钟和通讯录应用。取消勾选他们不会用的。</string>
+    <string name="simple_setup_apps_none">这部手机上没有找到这些应用。以后可以在协助者设置的“编辑主屏幕”中添加。</string>
+    <string name="simple_setup_shows_as">显示为“%1$s”</string>
+    <string name="simple_setup_ready_title">准备好了</string>
+    <string name="simple_setup_see_title">他们会看到什么</string>
+    <string name="simple_setup_back_in_title">你如何回到设置</string>
+    <string name="simple_setup_back_in_lock">轻点主屏幕底部的“协助者设置”，然后使用这部手机的屏幕锁。</string>
+    <string name="simple_setup_back_in_hold">轻点主屏幕底部的“协助者设置”，然后按住按钮 2 秒。</string>
+    <string name="simple_setup_leave_title">如何退出</string>
+    <string name="simple_setup_leave_body">在协助者设置中轻点“退出简易模式”。Folio 平常的主屏幕会回来。</string>
+    <string name="simple_setup_lock_title">添加屏幕锁？</string>
+    <string name="simple_setup_lock_body">这部手机没有设置屏幕锁。设置后，打开协助者设置前会要求输入，手机唤醒时也会要求输入。</string>
+    <string name="simple_setup_set_lock">设置屏幕锁</string>
+    <string name="simple_first_open">协助者设置在最下方</string>
+    <plurals name="simple_setup_apps_note">
+        <item quantity="other">主屏幕上有 %1$d 个。其他的以后可在协助者设置的“编辑主屏幕”中添加。</item>
+    </plurals>
+    <plurals name="simple_setup_see_list">
+        <item quantity="other">一个有 %1$d 个应用的列表，文字大，顶部显示时间、日期和电量。主屏幕保持不变。</item>
+    </plurals>
+    <plurals name="simple_setup_see_grid">
+        <item quantity="other">一个有 %1$d 个应用的大网格，文字大，顶部显示时间、日期和电量。主屏幕保持不变。</item>
+    </plurals>
+    <string name="simple_open_confirm_title">打开协助者设置？</string>
+    <string name="simple_open_confirm_body">这是给帮忙设置这部手机的人使用的。</string>
+    <string name="simple_open_settings">打开设置</string>
+    <string name="simple_send_feedback">发送反馈</string>
+    <string name="simple_send_feedback_detail">一封由你撰写、发给 Folio 的邮件。不会发送其他内容。</string>
+    <string name="simple_feedback_subject">Folio 简易模式反馈</string>
+    <string name="simple_all_settings">所有设置</string>
+    <string name="simple_all_settings_detail">Folio 的完整设置。关闭后会回到简易模式。</string>
+    <plurals name="simple_apps_on_home">
+        <item quantity="other">主屏幕上有 %1$d 个应用</item>
+    </plurals>
+    <plurals name="simple_room_for">
+        <item quantity="other">还可添加 %1$d 个</item>
+    </plurals>
+    <plurals name="simple_room_for_sentence">
+        <item quantity="other">还可添加 %1$d 个。</item>
+    </plurals>
+    <plurals name="simple_selected">
+        <item quantity="other">已选择 %1$d 个。</item>
+    </plurals>
+    <plurals name="simple_remove_title">
+        <item quantity="other">从主屏幕移除 %1$d 个应用？</item>
+    </plurals>
+    <plurals name="simple_remove_body">
+        <item quantity="other">%2$s。它们仍保留在手机上，你可以在“添加应用”中重新添加。</item>
+    </plurals>
     <string name="screenshot_swap_apps">替换 App</string>
     <string name="screenshot_swap_intro">截图模式开启时，你选择的 App 会显示为这部手机上的一个系统自带 App，使用它的图标和名称。点按后仍会打开真实的 App，只有屏幕显示会改变。手机自带的 App 不会被替换。</string>
     <string name="screenshot_swap_all_third_party">替换所有第三方 App</string>

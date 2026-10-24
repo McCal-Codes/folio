@@ -115,7 +115,14 @@ internal enum class FeatureGate(
      * instead of the numbers each one picked for itself. A small change in feel, so it goes to supporters and Folio
      * Dev first to say whether it reads as smoother. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Simple Mode (SimpleMode.kt): a calm Home of a few big labeled apps that a helper sets up. A preview of roadmap
+     * 0.7.2 for beta testers who help an older relative. The gate is at the entry point, Settings › Accessibility ›
+     * Experience: a phone already in Simple keeps its Simple Home, and its way out, whatever the gate says.
+     */
+    SIMPLE_MODE("simpleMode", closedSince = "2026-10-12", opensIn = "0.7.2", { OPEN_IN_0_7_2 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -141,6 +148,9 @@ internal enum class FeatureGate(
 
         /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
         private const val OPEN_IN_0_7_0 = false
+
+        /** The features previewed for supporters ahead of 0.7.2, which open together in the 0.7.2 release. */
+        private const val OPEN_IN_0_7_2 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
