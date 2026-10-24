@@ -135,7 +135,7 @@ internal fun DevSourcePage(showBack: Boolean, backTitle: String, onBack: () -> U
                 }
             }
             SheetGroup(Modifier.padding(top = FolioSpace.SMALL.dp)) {
-                IosActionRow(stringResource(R.string.dev_source_tweaks_add), "dev-source-tweaks", enabled = !stub) {
+                IosActionRow(stringResource(R.string.dev_source_tweaks_add), "dev-source-tweaks") {
                     addTweaksSource(context); tweaksAdded = true
                 }
             }

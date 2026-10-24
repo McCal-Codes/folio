@@ -51,7 +51,7 @@
     <string name="dev_source_local_stub_on" translatable="false">Asking the stub on this phone, over adb reverse. The real server is not contacted.</string>
     <string name="dev_source_stub_off" translatable="false">Stop using the stub</string>
     <string name="dev_source_tweaks_add" translatable="false">Add the dev tweaks source</string>
-    <string name="dev_source_tweaks_note" translatable="false">Work-in-progress tweaks, signed by the dev publisher key. Their names start with WIP. Needs the real server: sources must use https.</string>
+    <string name="dev_source_tweaks_note" translatable="false">Work-in-progress tweaks, signed by the dev publisher key. Their names start with WIP. They come from the real server, or from the local stub when it is on.</string>
     <string name="dev_source_tweaks_added" translatable="false">Added. Open the Market\'s Sources tab to see it.</string>
 
     <!-- Folio Beta test (src/devsource/DevBeta.kt): the supporter beta, tried from Folio Dev. English only, like the rest. -->
