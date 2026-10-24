@@ -54,7 +54,7 @@ internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, mod
     // The thumb widens a little while a finger is on it and while it travels (motion pass), anchored to the side it came from.
     val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val squished = FolioMotion.v2 && enabled && (pressed || offset != target)
+    val squished = FolioMotion.v2 && !reduce && enabled && (pressed || offset != target)
     val thumb by animateDpAsState(if (squished) 27.dp * SWITCH_SQUISH else 27.dp, FolioMotion.spring(FolioMotion.calm(FolioMotion.Quick, reduce)), label = "switch squish")
     Box(modifier.minimumInteractiveComponentSize()
         .toggleable(checked, interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current,
