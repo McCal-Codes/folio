@@ -315,13 +315,13 @@ test('the apk route answers a bodiless 302 to the address GitHub gave, and the t
   const github = pretendGitHub(baseAnswers({
     [`/releases/tags/${tag}`]: () => Response.json({ draft: false, assets: [
       { id: 11, name: 'SHA256SUMS.txt' }, { id: 12, name: 'FolioDev-duet.apk' }] }),
-    '/releases/assets/12': () => new Response(null, { status: 302, headers: { Location: 'https://objects.example/folio.apk?signed=1' } }),
+    '/releases/assets/12': () => new Response(null, { status: 302, headers: { Location: 'https://objects.githubusercontent.com/folio.apk?signed=1' } }),
   }))
   try {
     const ask = asking(await mint(dev), `/dev/apk/${tag}`)
     const answer = await devRoutes(ask.request, env, ask.url, NOW)
     assert.equal(answer.status, 302)
-    assert.equal(answer.headers.get('Location'), 'https://objects.example/folio.apk?signed=1')
+    assert.equal(answer.headers.get('Location'), 'https://objects.githubusercontent.com/folio.apk?signed=1')
     assert.equal(answer.headers.get('Cache-Control'), 'no-store')
     assert.equal(await answer.text(), '', 'the worker never carries the file')
     const asset = github.calls.find(call => call.address.endsWith('/releases/assets/12'))
@@ -336,13 +336,13 @@ test('the sums route redirects to the checksum asset', async () => {
   const tag = 'dev-1'
   const github = pretendGitHub(baseAnswers({
     [`/releases/tags/${tag}`]: () => Response.json({ assets: [{ id: 11, name: 'SHA256SUMS.txt' }, { id: 12, name: 'a.apk' }] }),
-    '/releases/assets/11': () => new Response(null, { status: 302, headers: { Location: 'https://objects.example/sums?signed=1' } }),
+    '/releases/assets/11': () => new Response(null, { status: 302, headers: { Location: 'https://objects.githubusercontent.com/sums?signed=1' } }),
   }))
   try {
     const ask = asking(await mint(dev), `/dev/sums/${tag}`)
     const answer = await devRoutes(ask.request, env, ask.url, NOW)
     assert.equal(answer.status, 302)
-    assert.equal(answer.headers.get('Location'), 'https://objects.example/sums?signed=1')
+    assert.equal(answer.headers.get('Location'), 'https://objects.githubusercontent.com/sums?signed=1')
   } finally { github.restore() }
 })
 
@@ -390,4 +390,44 @@ test('the worker mounts /dev/ after the beta routes, and keeps /beta separate', 
   const code = await mint(dev, { scopes: SCOPE_BETA | SCOPE_DEV })
   const beta = await worker.fetch(new Request('https://codes.example/beta/releases', { headers: { Authorization: `Bearer ${code}` } }), env)
   assert.equal(beta.status, 403, 'a dev code does not open /beta')
+})
+
+test('a redirect to a host that is not GitHub is not handed to the app', async () => {
+  const { dev, env } = await setup()
+  const tag = 'dev-202610241200-duet-abc1234'
+  for (const location of ['https://objects.example/a.apk', 'https://github.com.evil.example/a.apk', 'https://evil.example/githubusercontent.com']) {
+    const github = pretendGitHub(baseAnswers({
+      [`/releases/tags/${tag}`]: () => Response.json({ draft: false, assets: [{ id: 12, name: 'FolioDev-duet.apk' }] }),
+      '/releases/assets/12': () => new Response(null, { status: 302, headers: { Location: location } }),
+    }))
+    try {
+      const ask = asking(await mint(dev), `/dev/apk/${tag}`)
+      assert.equal((await devRoutes(ask.request, env, ask.url, NOW)).status, 502, location)
+    } finally { github.restore() }
+  }
+})
+
+test('a file with no Content-Length is cut off at the cap while it streams', async () => {
+  const { dev, env } = await setup()
+  const chunk = new Uint8Array(1024 * 1024)
+  const github = pretendGitHub(baseAnswers({
+    '/contents/big.bin?ref=source': () => new Response(new ReadableStream({
+      pull(controller) { controller.enqueue(chunk) },  // never ends
+    })),
+  }))
+  try {
+    const ask = asking(await mint(dev), '/dev/file/big.bin')
+    assert.equal((await devRoutes(ask.request, env, ask.url, NOW)).status, 502)
+  } finally { github.restore() }
+})
+
+test('a GitHub that throws is a 502, not a crash', async () => {
+  const { dev, env } = await setup()
+  const github = pretendGitHub(baseAnswers({
+    '/contents/builds.json?ref=source': () => { throw new Error('connection reset') },
+  }))
+  try {
+    const ask = asking(await mint(dev), '/dev/file/builds.json')
+    assert.equal((await devRoutes(ask.request, env, ask.url, NOW)).status, 502)
+  } finally { github.restore() }
 })
