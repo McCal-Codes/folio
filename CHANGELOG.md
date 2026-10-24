@@ -85,6 +85,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Folio's own tweak source is trusted only for what it signed:** a copy of a built-in tweak counts as Folio's own only when Folio's key signed the copy on your phone, and a source Folio has pulled can no longer offer packages to install.
 - **The Rows menu names Automatic correctly:** with a fixed number of rows chosen (6, say), the Automatic option read "Automatic (6)" even though Automatic would give 4. It now always shows what Automatic would give.
 - **Folio's panels over other apps no longer crash Folio from the Quick Settings shortcut:** with Folio's panels over other apps on, the Folio Quick Settings shortcut (and a swipe that opens Control Center over an app) closed Folio, because Control Center listened for Back in a window that has no Back. It now skips that where there is none.
 - **The Dynamic Island no longer risks a crash when a notification is swiped away at the wrong moment:** its two short-term memories of what already popped up were used from two threads at once, and a chat app clearing a burst of notifications could corrupt them and take the island down. They now take a lock.
