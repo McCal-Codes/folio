@@ -69,7 +69,7 @@ internal fun SupporterPage() {
                 }
                 Column(Modifier.padding(start = FolioSpace.COMFY.dp)) {
                     Text(stringResource(R.string.folio_supporter), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.since_1_s, monthYearLabel(since)), color = FolioColors.SecondaryLabel, fontSize = 14.sp)
+                    Text(stringResource(R.string.since_1_s, monthYearLabel(since)), color = FolioColors.SecondaryLabel, fontSize = FolioType.COMPACT.sp)
                 }
             }
         }
@@ -240,5 +240,5 @@ private fun unlocksText(context: android.content.Context, scopes: Set<String>): 
 internal fun monthYearLabel(yearMonth: String): String = runCatching {
     val (year, month) = yearMonth.split('-')
     java.time.YearMonth.of(year.toInt(), month.toInt())
-        .format(DateTimeFormatter.ofPattern("LLLL yyyy").withLocale(java.util.Locale.getDefault()))
+        .format(DateTimeFormatter.ofPattern("LLLL yyyy").withLocale(java.util.Locale.getDefault())) // english-only
 }.getOrDefault(yearMonth)

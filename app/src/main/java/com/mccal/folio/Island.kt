@@ -64,7 +64,9 @@ data class NotificationItem(val key: String, val packageName: String, val appLab
     val title: String?, val text: String?, val postTime: Long, val clearable: Boolean,
     val contentIntent: android.app.PendingIntent?,
     /** Messaging notifications: whether quick reply / mark-as-read are offered by the app. */
-    val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null)
+    val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null,
+    /** From Android's ranking, for sections: how loud the channel is ([IMPORTANCE_UNKNOWN] when not ranked), and the flags below. */
+    val importance: Int = IMPORTANCE_UNKNOWN, val conversation: Boolean = false, val ongoing: Boolean = false, val urgent: Boolean = false)
 
 /** A messaging app's notification channel and whether Android pops it up itself (importance HIGH or above). */
 data class MessageChannel(val packageName: String, val appLabel: String, val channelId: String, val channelName: String?, val importance: Int,
@@ -183,14 +185,10 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     /** Last alerting post time per notification key, so updates that don't alert don't pop up again. */
-    private val announced = object : LinkedHashMap<String, Long>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?) = size > 64
-    }
+    private val announced = RecentMap<String, Long>(64)
 
     /** What each notification last popped up with, so an app re-posting the same warning doesn't pop up again. */
-    private val shownContent = object : LinkedHashMap<String, Pair<Int, Long>>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Long>>?) = size > 64
-    }
+    private val shownContent = RecentMap<String, Pair<Int, Long>>(64)
     private fun isRepeat(key: String, title: String?, text: String?, posted: Long): Boolean {
         // The time the app itself posted goes into the signature: an app re-posting one warning keeps its own
         // `when`, while a person sending "ok" twice in a conversation makes a new notification with a new one —
@@ -326,13 +324,22 @@ class IslandListenerService : NotificationListenerService() {
         .sortedByDescending { it.postTime }
         .map { sbn ->
             val extras = sbn.notification.extras
+            val ranking = Ranking()
+            val ranked = currentRanking?.getRanking(sbn.key, ranking) == true
             NotificationItem(sbn.key, sbn.packageName, appLabel(sbn.packageName), appIcon(sbn.packageName),
                 extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
                 (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString(),
                 sbn.postTime, sbn.isClearable, sbn.notification.contentIntent,
                 canReply = Messaging.replyAction(sbn.notification) != null, canMarkRead = Messaging.markReadAction(sbn.notification) != null,
-                channelId = sbn.notification.channelId)
+                channelId = sbn.notification.channelId, importance = if (ranked) ranking.importance else IMPORTANCE_UNKNOWN,
+                conversation = ranked && ranking.isConversation,
+                ongoing = sbn.notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
+                urgent = sbn.notification.category in URGENT_CATEGORIES || (ranked && ranking.channel?.canBypassDnd() == true))
         }
+
+    /** Calls, alarms, timers and the like: never put in Quiet, whatever the channel's importance says. */
+    private val URGENT_CATEGORIES = setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_ALARM, Notification.CATEGORY_REMINDER,
+        Notification.CATEGORY_EVENT, Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_ERROR)
 
     /** Samsung's System UI posts a "1 more notification" stand-in for its own overflow; it isn't a real notification. */
     private fun isOverflowPlaceholder(sbn: StatusBarNotification): Boolean {
@@ -356,7 +363,7 @@ class IslandListenerService : NotificationListenerService() {
             val person = runCatching { androidx.core.os.BundleCompat.getParcelable(n.extras, Notification.EXTRA_CALL_PERSON, android.app.Person::class.java) }.getOrNull()
             val avatar = runCatching { person?.icon?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
                 ?: runCatching { n.getLargeIcon()?.loadDrawable(this)?.toBitmap(96, 96) }.getOrNull()
-            return IslandActivity.Call(sbn.packageName, person?.name?.toString() ?: title(sbn) ?: "Call", appIcon(sbn.packageName), since, sbn.key,
+            return IslandActivity.Call(sbn.packageName, person?.name?.toString() ?: title(sbn) ?: getString(R.string.island_call), appIcon(sbn.packageName), since, sbn.key,
                 incoming = incoming, avatar = avatar,
                 canAnswer = CallControls.intent(n, CallControls.Kind.ANSWER) != null,
                 canDecline = CallControls.intent(n, CallControls.Kind.DECLINE) != null,
@@ -366,7 +373,7 @@ class IslandListenerService : NotificationListenerService() {
         }
         ongoing.firstOrNull { it.notification.category == Notification.CATEGORY_NAVIGATION }?.let { sbn ->
             val extras = sbn.notification.extras
-            return IslandActivity.Navigation(sbn.packageName, title(sbn) ?: "Navigating",
+            return IslandActivity.Navigation(sbn.packageName, title(sbn) ?: getString(R.string.island_navigating),
                 extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(), appIcon(sbn.packageName), sbn.key)
         }
         ongoing.firstOrNull { it.notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) }?.let { sbn ->
@@ -514,7 +521,8 @@ class IslandListenerService : NotificationListenerService() {
                 ?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
         }
         private val mutable = MutableStateFlow<IslandActivity?>(null)
-        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(mutable.asStateFlow(), null)
+        /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
+        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
         val connected = MutableStateFlow(false)
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)
@@ -576,5 +584,3 @@ class IslandListenerService : NotificationListenerService() {
         }
     }
 }
-
-private val IslandAccent = Color(0xFF6EE39A)

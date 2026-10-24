@@ -101,8 +101,9 @@ internal fun hingeCapabilityKey(source: HingeSource) = when (source) {
 
 /**
  * The one-time permission that lets Folio change Android's protected settings. The owner grants it from a computer with adb
- * (`pm grant`); Folio never grants it to itself, and nothing in Folio uses it yet. It sits at the shell tier, so the system-access switch and
- * Safe Mode turn it off like every other provider above accessibility.
+ * (`pm grant`), or, on a rooted phone, lets System Bridge run the same `pm grant` on Folio through root ([RootSettingsGrantRunner]);
+ * nothing in Folio uses it yet. It sits at the shell tier, so the system-access switch and Safe Mode turn it off like every other
+ * provider above accessibility.
  */
 internal object SecureSettingsGrant {
     const val PERMISSION = "android.permission.WRITE_SECURE_SETTINGS"
@@ -110,8 +111,8 @@ internal object SecureSettingsGrant {
     /** Only a plain package name is put in a command the owner will run; anything else gets no command. */
     private val PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
 
-    fun grantCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm grant $it $PERMISSION" }
-    fun revokeCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm revoke $it $PERMISSION" }
+    fun grantCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm grant $it $PERMISSION" } // english-only
+    fun revokeCommand(packageName: String): String? = packageName.takeIf { PACKAGE.matches(it) }?.let { "adb shell pm revoke $it $PERMISSION" } // english-only
 
     fun isGranted(context: android.content.Context): Boolean =
         context.checkSelfPermission(PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED

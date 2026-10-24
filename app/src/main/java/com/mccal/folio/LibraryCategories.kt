@@ -35,7 +35,16 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
     SHOPPING(R.string.shopping_food), UTILITIES(R.string.utilities), OTHER(R.string.other);
 
     companion object {
-        fun of(pm: PackageManager, packageName: String): LibraryCategory {
+        // One answer per package for the life of the process: the same apps are sorted again on every change to the list.
+        private val known = java.util.concurrent.ConcurrentHashMap<String, LibraryCategory>()
+
+        fun of(pm: PackageManager, packageName: String): LibraryCategory =
+            known.getOrPut(packageName) { lookup(pm, packageName) }
+
+        /** An installed, updated or removed package may declare another category now; the next list asks again. */
+        fun forget(packageName: String) { known.remove(packageName) }
+
+        private fun lookup(pm: PackageManager, packageName: String): LibraryCategory {
             val p0 = packageName.lowercase()
             // Browsers and system tools often declare odd categories; our hints win for them.
             if (hint(p0, "chrome", "firefox", "browser", "opera", "brave", "edge", "duckduckgo", "settings", "myfiles", "files",
@@ -70,6 +79,10 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
     }
 }
 
+/** What a screen reader says for an icon with no label beside it: a clone adds Dual, so it isn't read as its original. */
+@Composable
+private fun spokenName(app: AppEntry): String = if (app.kind == ProfileKind.CLONE && app.iconFrom == null) "${app.label}, ${profileName(app)}" else app.label
+
 /** iOS App Library tile: three big icons and a mini cluster that opens the whole category. */
 @Composable
 internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifier, labelColor: Color = Color.White, onLaunch: (AppEntry) -> Unit, onOpen: () -> Unit) {
@@ -86,7 +99,7 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                     for (col in 0 until 2) {
                         val index = row * 2 + col
                         when {
-                            index < big.size -> AppIcon(big[index], big[index].label, Modifier.size(cell)
+                            index < big.size -> AppIcon(big[index], spokenName(big[index]), Modifier.size(cell)
                                 .clickable { onLaunch(big[index]) }, shape = RoundedCornerShape(cell * .24f))
                             index == 3 && rest.isNotEmpty() -> Box(Modifier.size(cell).clip(RoundedCornerShape(cell * .24f))
                                 .clickable(onClick = onOpen).semantics { contentDescription = showAllText }) {
@@ -149,8 +162,11 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                                 .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
-                                Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
+                                // A clone sits beside its original with the same name, as in the A to Z list.
+                                if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = Color.White.copy(alpha = .6f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                    maxLines = 1, modifier = Modifier.testTag("category-profile-${app.id}"))
                             }
                         }
                     }

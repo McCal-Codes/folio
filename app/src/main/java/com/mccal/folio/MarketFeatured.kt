@@ -113,7 +113,7 @@ internal fun MarketFeatured(
             verticalArrangement = Arrangement.Bottom,
         ) {
             item.label?.english?.let { Text(it, color = Color.White.copy(alpha = .95f), fontSize = FolioType.GROUP_LABEL.sp) }
-            Text(name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+            Text(name, color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Medium)
             entry.manifest?.description?.english?.let {
                 Text(it, color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2)
             }
