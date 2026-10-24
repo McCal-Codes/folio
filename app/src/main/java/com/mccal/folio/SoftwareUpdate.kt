@@ -438,7 +438,7 @@ internal object SoftwareUpdate {
      * GitHub's own short-lived address, which is followed here by hand, without the code, rather than trusting the
      * connection to leave the header behind.
      */
-    private fun open(url: String, code: String?, readTimeout: Int): HttpURLConnection {
+    internal fun open(url: String, code: String?, readTimeout: Int, redirectOk: (String) -> Boolean = { it.startsWith("https://") }): HttpURLConnection {
         fun connect(address: String) = (URL(address).openConnection() as HttpURLConnection).apply {
             setRequestProperty("User-Agent", "Folio")  // HTTP headers, never shown // english-only
             connectTimeout = 10_000; this.readTimeout = readTimeout
@@ -449,7 +449,7 @@ internal object SoftwareUpdate {
         val location = first.getHeaderField("Location")  // HTTP headers, never shown // english-only
         first.disconnect()
         // No message: the page then says the update couldn't be downloaded, in the reader's language.
-        if (location == null || !location.startsWith("https://")) throw java.io.IOException()
+        if (location == null || !redirectOk(location)) throw java.io.IOException()
         return connect(location).apply { instanceFollowRedirects = true }
     }
 
@@ -459,8 +459,9 @@ internal object SoftwareUpdate {
         try { return c.inputStream.bufferedReader().use { it.readText() } } finally { c.disconnect() }
     }
 
-    private fun download(url: String, target: File, expectedSize: Long, code: String?, onProgress: (Float?) -> Unit) {
-        val c = open(url, code, 60_000)
+    internal fun download(url: String, target: File, expectedSize: Long, code: String?,
+        redirectOk: (String) -> Boolean = { it.startsWith("https://") }, maxBytes: Long = Long.MAX_VALUE, onProgress: (Float?) -> Unit) {
+        val c = open(url, code, 60_000, redirectOk)
         try {
             val total = c.contentLengthLong.takeIf { it > 0 } ?: expectedSize
             var done = 0L; var reported = -1
@@ -469,6 +470,7 @@ internal object SoftwareUpdate {
                 while (true) {
                     val n = input.read(buffer); if (n < 0) break
                     out.write(buffer, 0, n); done += n
+                    if (done > maxBytes) throw java.io.IOException()  // more than the signed list said: stop, don't fill the disk
                     val percent = if (total > 0) (done * 100 / total).toInt() else -1
                     if (percent != reported) { reported = percent; onProgress(if (total > 0) done.toFloat() / total else null) }
                 }
@@ -476,7 +478,7 @@ internal object SoftwareUpdate {
         } finally { c.disconnect() }
     }
 
-    private fun sha256(file: File): String {
+    internal fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input -> val buf = ByteArray(64 * 1024); while (true) { val n = input.read(buf); if (n < 0) break; digest.update(buf, 0, n) } }
         return digest.digest().joinToString("") { "%02x".format(it) }
@@ -493,7 +495,7 @@ internal object SoftwareUpdate {
         return a.isNotEmpty() && a == b
     }
 
-    private fun install(context: Context, apk: File) {
+    internal fun install(context: Context, apk: File) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)

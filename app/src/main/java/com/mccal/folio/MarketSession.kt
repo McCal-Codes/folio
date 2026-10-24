@@ -86,12 +86,12 @@ internal class MarketSession(
     val sources = MarketSources(
         client = RepoClient(
             // Folio Dev, and only Folio Dev, may read a source served off this phone in the clear.
-            http = UrlHttpClient(allowLocalhost = localDevAllowed),
+            http = DevSource.httpClient(appContext, allowLocalhost = localDevAllowed),
             store = SourceStore(files),
             allowLocalDev = localDevAllowed,
         ),
         list = SourceList(files),
-        http = UrlHttpClient(allowLocalhost = localDevAllowed),
+        http = DevSource.httpClient(appContext, allowLocalhost = localDevAllowed),
         io = io,
         knownRevocations = { source.revocations() },
     )
@@ -449,7 +449,7 @@ internal object MarketAccess {
 }
 
 /** Adding or forgetting a source changes no setting and applies no package, and with this it can't. */
-private object ReadOnlyMarketLauncher : MarketLauncher {
+internal object ReadOnlyMarketLauncher : MarketLauncher {
     override val state = LauncherState()
     override fun installTweak(feature: TweakFeature) = Unit
     override fun removeTweak(feature: TweakFeature) = Unit

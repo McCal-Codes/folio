@@ -204,9 +204,13 @@ android {
     }
     // "fast" uses release's no-op tracing/diagnostic sources.
     sourceSets {
-        getByName("fast") { kotlin.directories.add("src/release/java"); res.directories.add("src/dev/res") }
+        // The Folio Dev debug source (docs/sdk/threat-model.md, T24): the real code is in src/devsource and only the two
+        // Folio Dev build types get it. Release gets a same-named no-op from src/nodevsource, so main compiles either way.
+        // Not src/release/java: fast already includes that one, and a real class there would collide with its twin.
+        getByName("fast") { kotlin.directories.add("src/release/java"); kotlin.directories.add("src/devsource/java"); res.directories.add("src/dev/res") }
         // Folio Dev (debug and fast builds) gets an amber icon so it's easy to tell apart from the release.
-        getByName("debug") { res.directories.add("src/dev/res") }
+        getByName("debug") { kotlin.directories.add("src/devsource/java"); res.directories.add("src/dev/res") }
+        getByName("release") { kotlin.directories.add("src/nodevsource/java") }
         getByName("main") {
             assets.srcDir(layout.buildDirectory.dir("generated/changelog").get().asFile)
             assets.srcDir(layout.buildDirectory.dir("generated/market").get().asFile)

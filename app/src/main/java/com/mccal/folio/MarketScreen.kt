@@ -452,6 +452,7 @@ internal fun MarketScreen(
         val open = openId?.let { id -> entries.firstOrNull { it.id == id } }
         val folioBeta = remember(returns) { SoftwareUpdate.betaSourceReady(context) }
         val betaOpen = folioBeta && tab == MarketTab.SOURCES && open == null && openSourceUrl == FOLIO_BETA_SOURCE_URL
+        val devOpen = DevSource.enabled(context) && tab == MarketTab.SOURCES && open == null && openSourceUrl == DevSource.PAGE_URL
         // A source's page, when one is open and no package is open in front of it. Only on the Sources tab: the
         // same source seen from a package's "Show source" row lands here too, by way of that tab.
         val openSource = openSourceUrl
@@ -502,7 +503,7 @@ internal fun MarketScreen(
             }
         }
         // While a page previews going back (narrow windows only: beside, the list is already there), the list is drawn under it.
-        val pageOpen = open != null || openSource != null || betaOpen
+        val pageOpen = open != null || openSource != null || betaOpen || devOpen
         val peeking = pageBackPass && !beside && pageOpen && (pageSwipe.value > 0f || pageGone.value > 0f)
         val pagePreview = if (pageBackPass && !beside) Modifier.graphicsLayer {
             val sw = pageSwipe.value.coerceIn(0f, 1f); val gone = pageGone.value
@@ -520,13 +521,18 @@ internal fun MarketScreen(
                     Box(Modifier.fillMaxSize()) {
                         CompositionLocalProvider(LocalSettingsMaxColumns provides settingsMost) { settingsContent() }
                     }
-                } else if (beside || (open == null && openSource == null && !betaOpen)) {
-                    val narrow = beside && (open != null || openSource != null || betaOpen)
+                } else if (beside || (open == null && openSource == null && !betaOpen && !devOpen)) {
+                    val narrow = beside && (open != null || openSource != null || betaOpen || devOpen)
                     listPane(if (narrow) Modifier.width(360.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight(), narrow)
                 }
                 if (betaOpen) {
                     Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
                         MarketFolioBetaPage(showBack = !beside, backTitle = stringResource(tab.label), onBack = { openSourceUrl = null })
+                    }
+                }
+                if (devOpen) {
+                    Box(Modifier.weight(1f).fillMaxHeight().then(pagePreview)) {
+                        DevSourcePage(showBack = !beside, backTitle = stringResource(tab.label), onBack = { openSourceUrl = null })
                     }
                 }
                 if (openSource != null) {

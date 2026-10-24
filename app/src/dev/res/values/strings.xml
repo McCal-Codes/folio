@@ -2,4 +2,52 @@
 <resources>
     <!-- Folio Dev installs next to the release; its accessibility service needs a name you can tell apart. -->
     <string name="shade_service_label">Folio Dev gestures &amp; overlays</string>
+
+    <!--
+        The Folio Dev debug source (src/devsource). These strings live here, not in src/main, so a release build carries
+        none of them, and they are English only on purpose: the page is a developer tool for the person who builds Folio.
+    -->
+    <string name="dev_source_name" translatable="false">Folio Dev builds</string>
+    <string name="dev_source_row_ready" translatable="false">Debug builds and work in progress</string>
+    <string name="dev_source_row_needs_code" translatable="false">Add a dev code to begin</string>
+    <string name="dev_source_page_note" translatable="false">Builds come from a private repository through Folio\'s own server, and are signed by McCal. Each one must carry this app\'s id and signature, and Android will not install an older version over a newer one. Work in progress is marked WIP.</string>
+    <string name="dev_source_code_label" translatable="false">Dev code</string>
+    <string name="dev_source_code_hint" translatable="false">Paste the dev code</string>
+    <string name="dev_source_save_code" translatable="false">Save code</string>
+    <string name="dev_source_code_rejected" translatable="false">That is not a dev code for this source.</string>
+    <string name="dev_source_forget_code" translatable="false">Remove the dev code</string>
+    <string name="dev_source_check" translatable="false">Check for builds</string>
+    <string name="dev_source_checking" translatable="false">Checking…</string>
+    <string name="dev_source_builds" translatable="false">Builds</string>
+    <string name="dev_source_none" translatable="false">The list has no builds yet.</string>
+    <string name="dev_source_running" translatable="false">Running now</string>
+    <string name="dev_source_wip" translatable="false">WIP</string>
+    <string name="dev_source_install" translatable="false">Install</string>
+    <string name="dev_source_downloading" translatable="false">Downloading</string>
+    <string name="dev_source_installing" translatable="false">Android is installing it. Folio Dev restarts when it finishes.</string>
+    <string name="dev_source_older_build" translatable="false">Older than the build you are on. Your Home and settings stay, but a newer migration may already have run.</string>
+    <string name="dev_source_built_with" translatable="false">%1$s, %2$s</string>
+    <string name="dev_source_checked" translatable="false">Checked %1$s</string>
+
+    <string name="dev_source_fail_no_code" translatable="false">Add a dev code first.</string>
+    <string name="dev_source_fail_network" translatable="false">Could not reach the server.</string>
+    <string name="dev_source_fail_refused" translatable="false">The server refused the dev code. It may have run out or been withdrawn.</string>
+    <string name="dev_source_fail_signature" translatable="false">The list is not signed by the dev publisher key, so it was ignored.</string>
+    <string name="dev_source_fail_unreadable" translatable="false">The list could not be read.</string>
+    <string name="dev_source_fail_stale" translatable="false">The list is out of date. Publish a build to refresh it.</string>
+    <string name="dev_source_fail_rollback" translatable="false">The list is older than one already seen, so it was ignored.</string>
+
+    <string name="dev_source_refuse_size" translatable="false">The download was not the size the list promised, so it was thrown away.</string>
+    <string name="dev_source_refuse_hash" translatable="false">The download did not match its checksum, so it was thrown away.</string>
+    <string name="dev_source_refuse_package" translatable="false">That file is for a different app, so it was thrown away.</string>
+    <string name="dev_source_refuse_signer" translatable="false">That file is not signed with this app\'s key, so it was thrown away. A build made on another computer has another debug key.</string>
+    <string name="dev_source_refuse_older" translatable="false">That build is from an older version line. Android will not downgrade; use adb install -r -d.</string>
+    <string name="dev_source_work_failed" translatable="false">The build could not be downloaded.</string>
+
+    <string name="dev_source_local_stub" translatable="false">Use the local stub (127.0.0.1:8787)</string>
+    <string name="dev_source_local_stub_on" translatable="false">Asking the stub on this phone, over adb reverse. The real server is not contacted.</string>
+    <string name="dev_source_stub_off" translatable="false">Stop using the stub</string>
+    <string name="dev_source_tweaks_add" translatable="false">Add the dev tweaks source</string>
+    <string name="dev_source_tweaks_note" translatable="false">Work-in-progress tweaks, signed by the dev publisher key. Their names start with WIP. Needs the real server: sources must use https.</string>
+    <string name="dev_source_tweaks_added" translatable="false">Added. Open the Market\'s Sources tab to see it.</string>
 </resources>
