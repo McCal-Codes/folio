@@ -1233,7 +1233,7 @@
     <string name="performance_status_off">Off. Start it to record what Folio costs.</string>
     <string name="performance_status_running">Recording: %1$d min, %2$d readings</string>
     <string name="performance_status_done">Stopped: %1$d min recorded</string>
-    <string name="performance_note">While on, this reads Folio\'s CPU use, memory, frame times and the battery every few seconds, and stops by itself after 6 hours. Nothing leaves the phone unless you copy or share the report.</string>
+    <string name="performance_note">While on, this reads Folio\'s CPU use, memory, frame times, the battery and heat, the screen\'s refresh rate and which of Folio\'s own services are on every few seconds, and stops by itself after 6 hours. Nothing leaves the phone unless you copy or share the report.</string>
     <string name="the_report_couldn_t_be_opened">The report couldn\'t be opened. Settings › Help › Report a Bug has it too.</string>
     <string name="what_s_new">What\'s New</string>
     <string name="support_folio">Support Folio</string>

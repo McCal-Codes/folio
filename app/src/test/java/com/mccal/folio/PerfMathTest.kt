@@ -9,8 +9,9 @@ import org.junit.Test
 
 class PerfMathTest {
     private fun sample(atMs: Long, cpuMs: Long = 0, battery: Int = 80, uah: Int = 0, plugged: Int = 0, charging: Long = 0,
-                       frames: Long = 0, janky: Long = 0, front: Long = 0, screen: Long = 0, pss: Int = 0, folds: Int = 0) =
-        PerfSample(atMs, cpuMs, pss, pss / 2, pss / 4, pss / 8, 40, battery, uah, -300_000, 3, plugged, 310, frames, janky, front, screen, charging, folds)
+                       frames: Long = 0, janky: Long = 0, front: Long = 0, screen: Long = 0, pss: Int = 0, folds: Int = 0,
+                       temp: Int = 310, thermal: Int = -1, powerSave: Int = -1, hz: Int = 0, features: Int = 0) =
+        PerfSample(atMs, cpuMs, pss, pss / 2, pss / 4, pss / 8, 40, battery, uah, -300_000, 3, plugged, temp, frames, janky, front, screen, charging, folds, thermal, powerSave, hz, features)
 
     @Test fun `cpu percent is process time over wall time`() {
         assertEquals(10.0, PerfMath.cpuPercent(1_000, 1_500, 10_000, 15_000), 1e-9)
@@ -127,5 +128,73 @@ class PerfMathTest {
     @Test fun `duration reads in minutes then hours`() {
         assertEquals("2 min 5 s", PerfReport.duration(125_000))
         assertEquals("1 h 30 min", PerfReport.duration(90 * 60_000L))
+    }
+
+    @Test fun `span gives first, last, lowest and highest, and nothing for no readings`() {
+        val sp = PerfMath.span(listOf(31.0, 35.5, 30.0, 33.0))!!
+        assertEquals(31.0, sp.first, 0.0); assertEquals(33.0, sp.last, 0.0)
+        assertEquals(30.0, sp.min, 0.0); assertEquals(35.5, sp.max, 0.0)
+        assertEquals(2.0, sp.change, 1e-9)
+        assertNull(PerfMath.span(emptyList()))
+    }
+
+    @Test fun `charge used comes from the first and last counters the phone gave`() {
+        val s = listOf(sample(0, uah = 0), sample(5_000, uah = 4_000_000), sample(10_000, uah = 3_990_000), sample(15_000, uah = 0))
+        assertEquals(10.0, PerfMath.chargeUsedMah(s)!!, 1e-9)
+        assertEquals(-5.0, PerfMath.chargeUsedMah(listOf(sample(0, uah = 3_000_000), sample(1, uah = 3_005_000)))!!, 1e-9) // charging
+        assertNull(PerfMath.chargeUsedMah(listOf(sample(0), sample(5_000))))
+        assertNull(PerfMath.chargeUsedMah(listOf(sample(0, uah = 3_000_000), sample(5_000))))
+    }
+
+    @Test fun `share is the percent of readings that pass, and zero for none`() {
+        val s = listOf(sample(0, features = PerfFeature.SMART_INK), sample(5_000), sample(10_000, features = PerfFeature.SMART_INK), sample(15_000))
+        assertEquals(50.0, PerfMath.share(s) { it.features and PerfFeature.SMART_INK != 0 }, 1e-9)
+        assertEquals(0.0, PerfMath.share(s) { it.features and PerfFeature.ISLAND_LISTENER != 0 }, 0.0)
+        assertEquals(0.0, PerfMath.share(emptyList()) { true }, 0.0)
+    }
+
+    @Test fun `thermal status has a word for each level and Unavailable for the phone that gives none`() {
+        assertEquals("None", PerfMath.thermalName(0))
+        assertEquals("Severe", PerfMath.thermalName(3))
+        assertEquals("Shutdown", PerfMath.thermalName(6))
+        assertEquals("Unavailable", PerfMath.thermalName(-1))
+        assertEquals("Unavailable", PerfMath.thermalName(9))
+    }
+
+    @Test fun `what changed compares the first reading with the last and says Unavailable for what the phone did not report`() {
+        val s = listOf(
+            sample(0, cpuMs = 0, battery = 80, uah = 4_000_000, temp = 300, thermal = 0, powerSave = 0, hz = 120, pss = 200_000, features = PerfFeature.GESTURES_SERVICE),
+            sample(60_000, cpuMs = 6_000, battery = 79, uah = 3_980_000, temp = 335, thermal = 1, powerSave = 1, hz = 60, pss = 220_000,
+                features = PerfFeature.GESTURES_SERVICE or PerfFeature.SMART_INK))
+        val text = PerfReport.whatChanged(s).joinToString("\n")
+        listOf("Battery level: 80 % to 79 % (-1)", "Charge counter: 4000 mAh to 3980 mAh (-20 mAh)", "Temperature: 30.0 C to 33.5 C (+3.5 C)",
+            "Thermal status: None to Light", "Battery saver: off to on", "Display refresh rate: 120 Hz to 60 Hz (-60)",
+            "Folio CPU time: 6.0 s", "Smart clock ink service went on").forEach { assertTrue("$it\n$text", it in text) }
+        assertTrue(text, "Folio memory (PSS): 195 MB to 214 MB" in text)
+        assertFalse("Gestures service did not change", "Gestures service (also hosts panels and the island over other apps) went" in text)
+        val bare = PerfReport.whatChanged(listOf(sample(0, battery = -1, temp = 0), sample(5_000, battery = -1, temp = 0))).joinToString("\n")
+        listOf("Battery level: Unavailable", "Charge counter: Unavailable", "Temperature: Unavailable", "Thermal status: Unavailable", "Battery saver: Unavailable",
+            "Display refresh rate: Unavailable", "Folio memory (PSS): Unavailable", "Folio services: none switched on or off").forEach { assertTrue("$it\n$bare", it in bare) }
+    }
+
+    @Test fun `phone state reports heat, thermal peak, battery saver, refresh rates, screen time and service shares`() {
+        val s = listOf(
+            sample(0, temp = 300, thermal = 0, powerSave = 0, hz = 120, screen = 0, features = PerfFeature.ISLAND_LISTENER),
+            sample(5_000, temp = 340, thermal = 2, powerSave = 1, hz = 60, screen = 5_000, features = PerfFeature.ISLAND_LISTENER),
+            sample(10_000, temp = 320, thermal = 0, powerSave = 1, hz = 60, screen = 5_000, features = 0),
+            sample(15_000, temp = 310, thermal = 0, powerSave = 0, hz = 120, screen = 5_000, features = 0))
+        val text = PerfReport.deviceState(s).joinToString("\n")
+        listOf("lowest 30.0 C, highest 34.0 C, +1.0 C from first to last", "highest Moderate, above None for 25 % of readings", "on for 50 % of readings",
+            "60 to 120 Hz", "Screen: on 0 min 5 s, off 0 min 10 s", "Dynamic Island (notification listener connected): 50 %",
+            "Smart clock ink service: 0 %").forEach { assertTrue("$it\n$text", it in text) }
+        val none = PerfReport.deviceState(listOf(sample(0, temp = 0), sample(5_000, temp = 0))).joinToString("\n")
+        listOf("Battery temperature: Unavailable", "Thermal status: Unavailable", "Battery saver: Unavailable", "Display refresh rate: Unavailable").forEach { assertTrue("$it\n$none", it in none) }
+    }
+
+    @Test fun `the full report carries the new sections and no em dashes`() {
+        val s = (0..4).map { sample(it * 5_000L, cpuMs = it * 100L, thermal = 0, powerSave = 0, hz = 120) }
+        val text = PerfReport.build(header, s, FrameHistogram())
+        listOf("What changed, first reading to last", "Phone state during the run", "Folio services, share of readings they were on").forEach { assertTrue("$it\n$text", it in text) }
+        assertFalse(text.contains('\u2014'))
     }
 }

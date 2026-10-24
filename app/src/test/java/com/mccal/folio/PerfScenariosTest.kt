@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -95,5 +96,51 @@ class PerfScenariosTest {
         val missing = calls.filter { "scenario =" !in it }
         assertTrue("These entrances do not say what they are: $missing", missing.isEmpty() || missing.all { it.startsWith("FolioSheet.kt") && "rememberEntrance(spring" in it })
         assertTrue("There should be sheet and menu entrances to check: $calls", calls.size >= 4)
+    }
+
+    @Test fun `a scenario counts the time it was going on and Folio's CPU time in it, nesting included`() {
+        var wall = 0L; var cpu = 0L
+        val s = PerfScenarios({ wall }, { cpu })
+        wall = 1_000; cpu = 100; s.begin(PerfScenario.HOME_SWIPE); s.begin(PerfScenario.HOME_SWIPE)
+        wall = 3_000; cpu = 700; s.end(PerfScenario.HOME_SWIPE)
+        wall = 4_000; cpu = 900
+        assertEquals(PerfScenarios.Usage(3_000, 800, 0, 0, 0, 0), s.usage(PerfScenario.HOME_SWIPE)) // still going on: counted so far
+        s.end(PerfScenario.HOME_SWIPE)
+        wall = 9_000; cpu = 5_000
+        assertEquals(3_000L, s.usage(PerfScenario.HOME_SWIPE).activeMs)
+        s.begin(PerfScenario.HOME_SWIPE); wall = 9_500; cpu = 5_100; s.end(PerfScenario.HOME_SWIPE); s.end(PerfScenario.HOME_SWIPE)
+        assertEquals(PerfScenarios.Usage(3_500, 900, 0, 0, 0, 0), s.usage(PerfScenario.HOME_SWIPE))
+        assertEquals(0L, s.usage(PerfScenario.FOLD).activeMs)
+    }
+
+    @Test fun `without clocks a scenario records no time, and battery readings are counted only for scenarios going on`() {
+        val s = PerfScenarios()
+        s.begin(PerfScenario.FOLD); s.end(PerfScenario.FOLD)
+        assertEquals(PerfScenarios.Usage(0, 0, 0, 0, 0, 0), s.usage(PerfScenario.FOLD))
+        s.noteReading(-300_000, 310) // nothing going on
+        s.begin(PerfScenario.FOLDER)
+        s.noteReading(-300_000, 310); s.noteReading(-500_000, 330); s.noteReading(0, 0) // the last gave nothing
+        s.end(PerfScenario.FOLDER)
+        assertEquals(PerfScenarios.Usage(0, 0, 2, -400_000, 2, 320), s.usage(PerfScenario.FOLDER))
+        assertEquals(0, s.usage(PerfScenario.FOLD).currentReadings)
+    }
+
+    @Test fun `the scenario usage line says what it cost, or that no battery reading fell inside it`() {
+        assertNull(PerfReport.usageLine(PerfScenarios.Usage(0, 0, 0, 0, 0, 0)))
+        val quiet = PerfReport.usageLine(PerfScenarios.Usage(4_000, 1_000, 0, 0, 0, 0))!!
+        assertTrue(quiet, "Going on for 4.0 s, Folio CPU 1.0 s (25.0 % of one core)" in quiet)
+        assertTrue(quiet, "no battery reading fell inside it" in quiet)
+        val read = PerfReport.usageLine(PerfScenarios.Usage(8_000, 2_000, 2, -400_000, 2, 320))!!
+        assertTrue(read, "2 battery readings inside it, average current -400 mA" in read)
+        assertTrue(read, "temperature 32.0 C" in read)
+    }
+
+    @Test fun `the report shows each scenario's cost under its frame line`() {
+        var wall = 0L; var cpu = 0L
+        val all = FrameHistogram().also { it.record(8_000_000L, false) }
+        val s = PerfScenarios({ wall }, { cpu })
+        s.begin(PerfScenario.HOME_SWIPE); s.record(9_000_000L, false); wall = 2_000; cpu = 500; s.end(PerfScenario.HOME_SWIPE)
+        val text = PerfReport.build(header, listOf(sample(0, 0), sample(60_000, 3_000)), all, s)
+        assertTrue(text, Regex("""Home swipe: 1 frames.*\n    Going on for 2.0 s, Folio CPU 0.5 s \(25.0 % of one core\)""").containsMatchIn(text))
     }
 }
