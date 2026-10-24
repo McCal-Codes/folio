@@ -135,20 +135,95 @@ sealed interface PackageChange {
     data class PageEffect(
         val id: String, val name: String,
         val maxRotation: Float, val pivot: String, val shrink: Float, val cameraWidths: Float,
+        /**
+         * The `channels` object (format 0.7.0) as checked JSON text: only the channels, keys and fields this Folio
+         * read, in its own words. Null for a v1 effect. The app clamps and bakes it before drawing anything.
+         */
+        val channels: String? = null,
     ) : PackageChange {
-        override val capabilities get() = setOf(Capability.PAGE_EFFECTS)
+        override val capabilities get() =
+            if (channels == null) setOf(Capability.PAGE_EFFECTS) else setOf(Capability.PAGE_EFFECTS, Capability.PAGE_EFFECT_CHANNELS)
         override val hostTweak get() = PackageKind.PAGE_EFFECT.hostTweak
 
         companion object {
             val PIVOTS = setOf("seam", "center")
+            const val MAX_CHARS = 16 * 1024
 
-            /** Reads `effect.json`; null when a number is missing or not finite, or the pivot isn't one Folio knows. */
+            /** The curves a `channels` object may hold, in the order Folio writes them back. */
+            val CHANNELS = listOf("rotationY", "rotationZ", "translateX", "translateY", "scale")
+            val EASES = setOf("linear", "in", "out", "inOut")
+            val PIVOT_X = setOf("seam", "center", "outer")
+            const val MAX_KEYS = 8
+
+            /**
+             * Reads a saved record's copy of the change. Lenient on purpose: the record was written from a change
+             * [read] had already checked. Null when a number is missing or not finite, or the pivot isn't one Folio knows.
+             */
             fun parse(id: String, name: String, text: String): PageEffect? {
                 val json = runCatching { org.json.JSONObject(text) }.getOrNull() ?: return null
                 fun number(key: String) = json.optDouble(key, Double.NaN).toFloat().takeIf { it.isFinite() }
                 val pivot = json.optString("pivot").takeIf { it in PIVOTS } ?: return null
                 return PageEffect(id, name, number("maxRotation") ?: return null, pivot,
-                    number("shrink") ?: return null, number("cameraWidths") ?: return null)
+                    number("shrink") ?: return null, number("cameraWidths") ?: return null,
+                    json.optJSONObject("channels")?.toString())
+            }
+
+            /**
+             * Reads a package's `effect.json` the way `effect.schema.json` describes it.
+             *
+             * The four v1 numbers only have to be numbers: the app clamps them, as it always has, so a number out of
+             * range is `folio-pkg`'s warning and not a refusal. `channels` is checked for shape (curves of 1 to
+             * [MAX_KEYS] keys, each `at` 0 to 1 and rising, an ease Folio knows); its values are clamped by the app
+             * too. A channel this Folio doesn't know is skipped like any newer field. `icons` is reserved for per-icon
+             * effects, so a package that uses it needs a newer Folio.
+             */
+            fun read(id: String, name: String, text: String): ParseResult<PageEffect> {
+                val p = Problems()
+                val json = parseStrictObject(text, MAX_CHARS, p) ?: return p.result { error("unreachable") }
+                val f = Fields(json, "", p, setOf("\$schema", "maxRotation", "pivot", "shrink", "cameraWidths", "channels", "icons"))
+                f.anyString("\$schema")
+                val any = -Double.MAX_VALUE..Double.MAX_VALUE
+                val maxRotation = f.number("maxRotation", true, any)
+                val pivot = f.choice("pivot", true, PIVOTS.toList())
+                val shrink = f.number("shrink", true, any)
+                val cameraWidths = f.number("cameraWidths", true, any)
+                if (f.has("icons")) p.unsupported += "icons"
+                val channels = f.obj("channels", false, CHANNELS.toSet() + setOf("pivotX", "pivotY"))?.let { readChannels(it, json.getJSONObject("channels")) }
+                return p.result {
+                    PageEffect(id, name, maxRotation!!.toFloat(), pivot!!, shrink!!.toFloat(), cameraWidths!!.toFloat(), channels)
+                }
+            }
+
+            /** The checked `channels` object as text, or null when it held nothing this Folio reads. */
+            private fun readChannels(c: Fields, raw: org.json.JSONObject): String? {
+                val out = org.json.JSONObject()
+                for (channel in CHANNELS) {
+                    val curve = c.obj(channel, false, setOf("keys", "ease")) ?: continue
+                    val keys = curve.objects("keys", true, minItems = 1, maxItems = MAX_KEYS) ?: continue
+                    val read = org.json.JSONArray()
+                    var last = -1.0
+                    for ((i, item) in keys) {
+                        val k = curve.child(item, "${curve.where("keys")}[$i]", setOf("at", "value"))
+                        val at = k.number("at", true, 0.0..1.0) ?: continue
+                        val value = k.number("value", true, -Double.MAX_VALUE..Double.MAX_VALUE) ?: continue
+                        if (at <= last) c.problems.errors += "${curve.where("keys")}[$i].at must be after the key before it"
+                        last = at
+                        read.put(org.json.JSONObject().put("at", at).put("value", value))
+                    }
+                    val ease = if (curve.has("ease")) curve.id("ease", false) { it.takeIf { e -> e in EASES } } else "linear"
+                    out.put(channel, org.json.JSONObject().put("keys", read).put("ease", ease ?: "linear"))
+                }
+                if (c.has("pivotX")) {
+                    val value = raw.opt("pivotX")
+                    when {
+                        value is String && value in PIVOT_X -> out.put("pivotX", value)
+                        value is Number -> c.number("pivotX", true, -Double.MAX_VALUE..Double.MAX_VALUE)?.let { out.put("pivotX", it) }
+                        else -> c.problems.errors += "${c.where("pivotX")} must be seam, center, outer or a number"
+                    }
+                }
+                c.number("pivotY", false, -Double.MAX_VALUE..Double.MAX_VALUE)?.let { out.put("pivotY", it) }
+                if (raw.length() == 0) c.problems.errors += "channels needs at least one channel"
+                return out.takeIf { it.length() > 0 }?.toString()
             }
         }
     }

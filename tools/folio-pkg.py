@@ -345,20 +345,80 @@ def check_picture(root: pathlib.Path, named: str, where: str, report: Report) ->
         report.warn(f"{where}: {named} is {size // 1024} KB; it is downloaded just to show the package")
 
 
-def check_effect(effect, where: str, report: Report):
-    """A page effect's numbers, as PageEffectSpec.of reads them: out of range is clamped, so only a warning; anything
-    it can't read at all, starting with an effect that isn't an object, is an error."""
+# What Folio clamps each channel's values to (PageEffectChannels.Channel), and what channels need from the manifest.
+EFFECT_CHANNELS = {
+    "rotationY": (-90, 90), "rotationZ": (-45, 45), "translateX": (-1, 1), "translateY": (0, 0.25), "scale": (0.6, 1),
+}
+CHANNELS_FEATURE = "tweaks.pageEffects.channels"
+CHANNELS_SINCE = (0, 7, 0)
+
+
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def check_effect(effect, where: str, report: Report, schemas: SchemaSet | None = None, manifest=None):
+    """A page effect, as Folio reads it: the schema for its shape, then what a schema can't say. Out of range is
+    clamped, so only a warning; anything Folio can't read at all, starting with an effect that isn't an object, is an
+    error. With [manifest], channels also need tweaks.pageEffects.channels and minFolio 0.7.0, or an older Folio would
+    install the effect and draw only its four numbers."""
     if not isinstance(effect, dict):
         report.error(f"{where}: must be a JSON object with maxRotation, pivot, shrink and cameraWidths")
         return
+    if schemas is not None:
+        for problem in schemas.validate(effect, schemas.get("effect.schema.json"), where):
+            if not problem.startswith(f"{where}.icons:"):  # said more plainly below
+                report.error(problem)
     for key, low, high in (("maxRotation", -90, 90), ("shrink", 0, 0.3), ("cameraWidths", 1.5, 4)):
         value = effect.get(key)
-        if not isinstance(value, (int, float)) or isinstance(value, bool):
+        if not _is_number(value):
             report.error(f"{where}: {key} must be a number")
         elif not low <= value <= high:
             report.warn(f"{where}: {key} {value} is outside {low} to {high}; Folio will clamp it")
     if effect.get("pivot") not in ("seam", "center"):
         report.error(f"{where}: pivot must be seam or center")
+    if "icons" in effect:
+        report.error(f"{where}: icons is reserved for effects on each icon; Folio refuses a package that uses it")
+    if "channels" in effect:
+        check_channels(effect["channels"], f"{where}: channels", report)
+        if isinstance(manifest, dict):
+            requires = manifest.get("requires")
+            features = requires.get("features") if isinstance(requires, dict) else None
+            if not isinstance(features, list) or CHANNELS_FEATURE not in features:
+                report.error(f"{where}: channels need {CHANNELS_FEATURE} in requires.features, "
+                             f"or an older Folio would draw only the four numbers")
+            version = manifest.get("minFolio")
+            if not isinstance(version, str) or not VERSION_RE.match(version) or \
+                    tuple(int(x) for x in version.split("-")[0].split(".")) < CHANNELS_SINCE:
+                report.error(f"{where}: channels need minFolio 0.7.0 or later")
+
+
+def check_channels(channels, where: str, report: Report):
+    """The values in a channels object: what the schema can't say. Shapes are the schema's to report."""
+    if not isinstance(channels, dict):
+        return
+    for name, (low, high) in EFFECT_CHANNELS.items():
+        curve = channels.get(name)
+        if not isinstance(curve, dict) or not isinstance(curve.get("keys"), list):
+            continue
+        last = None
+        for i, key in enumerate(curve["keys"]):
+            if not isinstance(key, dict):
+                continue
+            at, value = key.get("at"), key.get("value")
+            if _is_number(at):
+                if last is not None and at <= last:
+                    report.error(f"{where}.{name}.keys[{i}]: at {at} must be after the key before it ({last})")
+                last = at
+            if _is_number(value) and not low <= value <= high:
+                report.warn(f"{where}.{name}.keys[{i}]: value {value} is outside {low} to {high}; Folio will clamp it")
+            if _is_number(at) and at == 0 and _is_number(value) and value != (1 if name == "scale" else 0):
+                report.warn(f"{where}.{name}.keys[{i}]: a settled page is always drawn at rest, so {value} at 0 is ignored")
+    pivot_x, pivot_y = channels.get("pivotX"), channels.get("pivotY")
+    if _is_number(pivot_x) and not 0 <= pivot_x <= 1:
+        report.warn(f"{where}.pivotX: {pivot_x} is outside 0 to 1; Folio will clamp it")
+    if _is_number(pivot_y) and not 0 <= pivot_y <= 2:
+        report.warn(f"{where}.pivotY: {pivot_y} is outside 0 to 2; Folio will clamp it")
 
 
 def check_reserved_kinds(kinds, where: str, report: Report):
@@ -423,7 +483,7 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
             except ValueError as problem:
                 report.error(f"{name}/effect.json: not JSON ({problem})")
             else:
-                check_effect(effect, f"{name}/effect.json", report)
+                check_effect(effect, f"{name}/effect.json", report, schemas, manifest)
 
     version = manifest.get("minFolio")
     if isinstance(version, str) and not VERSION_RE.match(version):
@@ -687,7 +747,7 @@ def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report, stand
             except ValueError as problem:
                 report.error(f"{prefix}effect.json: not JSON ({problem})")
             else:
-                check_effect(effect, f"{prefix}effect.json", report)
+                check_effect(effect, f"{prefix}effect.json", report, schemas, manifest)
     if standalone:
         report.note("pictures are not checked here: they live on the source, not in the package")
     return manifest
