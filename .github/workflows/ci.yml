@@ -55,7 +55,7 @@ jobs:
       - name: Release APK has no Folio Dev debug source
         run: |
           ./gradlew :app:assembleRelease
-          bash tools/check-no-dev-source.sh
+          bash tools/check-no-dev-source.sh app/build/outputs/apk/release/app-release-unsigned.apk
       # A red unit test run is easier to read from the HTML report than from the log, so keep both modules' reports.
       - name: Keep the unit test reports
         if: failure()
