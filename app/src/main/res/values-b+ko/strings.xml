@@ -2138,4 +2138,22 @@
     <string name="package_import_market_off">이 패키지에는 Folio 마켓이 필요하며, 마켓은 서포터 코드로 열립니다.</string>
     <string name="package_import_too_large">파일이 너무 커서 Folio 패키지가 아닙니다.</string>
     <string name="package_import_too_slow">파일을 읽는 데 너무 오래 걸렸습니다. 먼저 휴대전화에 저장해 보세요.</string>
+    <string name="storage_this_phone">이 휴대전화</string>
+    <string name="storage_removable">이동식 저장공간</string>
+    <string name="storage_reading">저장공간을 읽는 중…</string>
+    <string name="storage_unavailable_note">Android가 이 휴대전화의 저장공간 크기를 알려주지 않았어요.</string>
+    <string name="storage_used_of">%2$s 중 %1$s 사용</string>
+    <string name="storage_available">%1$s 사용 가능</string>
+    <string name="storage_row_description">%1$s: %2$s, %3$s</string>
+    <string name="storage_nearly_full">저장공간이 거의 가득 찼어요. 공간을 확보하면 휴대전화가 더 원활하게 작동해요.</string>
+    <string name="storage_show_app_sizes">앱 크기 보기</string>
+    <string name="storage_app_sizes_note">Folio에 사용 정보 접근이 켜져 있어야 Android가 앱 크기를 알려줘요.</string>
+    <string name="storage_measured_by_android">Android가 측정한 가장 큰 앱 5개예요.</string>
+    <string name="storage_manage">관리</string>
+    <string name="storage_free_up_space">공간 확보</string>
+    <string name="storage_settings">저장공간 설정</string>
+    <string name="storage_files">파일</string>
+    <string name="storage_downloads">다운로드</string>
+    <string name="storage_action_unavailable">이 휴대전화에서는 %1$s 기능을 사용할 수 없어요.</string>
+    <string name="settings_keywords_storage">저장공간 용량 디스크 공간 확보 USB SD 카드 드라이브 다운로드 파일 가득</string>
 </resources>

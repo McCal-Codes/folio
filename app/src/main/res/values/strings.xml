@@ -2176,4 +2176,22 @@
     <string name="package_import_market_off">This package needs Folio\'s Market, which opens with a supporter code.</string>
     <string name="package_import_too_large">That file is too large to be a Folio package.</string>
     <string name="package_import_too_slow">Reading that file took too long. Try saving it to your phone first.</string>
+    <string name="storage_this_phone">This phone</string>
+    <string name="storage_removable">Removable storage</string>
+    <string name="storage_reading">Reading storage…</string>
+    <string name="storage_unavailable_note">Android would not say how much space this phone has.</string>
+    <string name="storage_used_of">%1$s of %2$s used</string>
+    <string name="storage_available">%1$s available</string>
+    <string name="storage_row_description">%1$s: %2$s, %3$s</string>
+    <string name="storage_nearly_full">Storage is nearly full. Free up space to keep the phone running smoothly.</string>
+    <string name="storage_show_app_sizes">Show app sizes</string>
+    <string name="storage_app_sizes_note">Android shares app sizes only when Usage Access is on for Folio.</string>
+    <string name="storage_measured_by_android">The five biggest apps, as measured by Android.</string>
+    <string name="storage_manage">Manage</string>
+    <string name="storage_free_up_space">Free up space</string>
+    <string name="storage_settings">Storage settings</string>
+    <string name="storage_files">Files</string>
+    <string name="storage_downloads">Downloads</string>
+    <string name="storage_action_unavailable">%1$s isn\'t available on this phone.</string>
+    <string name="settings_keywords_storage">storage space disk free up usb sd card drive downloads files full</string>
 </resources>
