@@ -115,7 +115,15 @@ internal enum class FeatureGate(
      * instead of the numbers each one picked for itself. A small change in feel, so it goes to supporters and Folio
      * Dev first to say whether it reads as smoother. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Home closer to the iPhone Duo's measured spacing: on the cover the rows spread out toward the Duo's pitch when the
+     * window has free height, and the dock's apps grow from 72% to about 80% of Home's icons on both screens. It moves
+     * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
+     * [OPEN_IN_0_6_9] to open it.
+     */
+    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
