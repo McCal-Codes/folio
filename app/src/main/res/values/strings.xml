@@ -567,7 +567,7 @@
     <string name="save">Save</string>
     <string name="built_into_folio_and_off_until_you_get_t">Built into Folio and off until you get them. Remove a tweak any time from its page.</string>
     <string name="show_details">Show details</string>
-    <string name="folio_dev_a_test_build_it_updates_from_n">Folio Dev, a test build. It updates from new builds, not GitHub.</string>
+    <string name="folio_dev_a_test_build_it_updates_from_n">Folio Debug, a test build. It updates from new builds, not GitHub.</string>
     <string name="checking_for_updates">Checking for updates…</string>
     <string name="folio_is_up_to_date">Folio is up to date</string>
     <string name="last_checked">Last checked %1$s</string>
@@ -963,7 +963,7 @@
     <string name="sources">Sources</string>
     <string name="built_into_the_app_no_network">Built into the app · no network</string>
     <string name="add_a_source">Add a source</string>
-    <string name="add_a_local_source_folio_dev">Add a local source (Folio Dev)</string>
+    <string name="add_a_local_source_folio_dev">Add a local source (Folio Debug)</string>
     <string name="folio_shows_a_source_s_key_fingerprint">Folio shows a source\'s key fingerprint before you trust it, and stops using a source that changes its key until you confirm the new one. It only ever reads static files, and only when you ask or when a background refresh is due.</string>
     <string name="refreshing">Refreshing…</string>
     <string name="unsigned_served_from_this_phone">Unsigned · served from this phone</string>

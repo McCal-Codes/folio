@@ -572,7 +572,7 @@
     <string name="save">저장</string>
     <string name="built_into_folio_and_off_until_you_get_t">Folio에 내장되어 있으며, 받기 전까지는 꺼져 있습니다. 언제든 각 트윅의 페이지에서 제거할 수 있습니다.</string>
     <string name="show_details">세부사항 표시</string>
-    <string name="folio_dev_a_test_build_it_updates_from_n">테스트 빌드인 Folio Dev입니다. GitHub가 아닌 새 빌드를 통해 업데이트됩니다.</string>
+    <string name="folio_dev_a_test_build_it_updates_from_n">테스트 빌드인 Folio Debug입니다. GitHub가 아닌 새 빌드를 통해 업데이트됩니다.</string>
     <string name="checking_for_updates">업데이트 확인 중…</string>
     <string name="folio_is_up_to_date">Folio가 최신 버전입니다</string>
     <string name="last_checked">마지막 확인: %1$s</string>
@@ -958,7 +958,7 @@
     <string name="sources">소스</string>
     <string name="built_into_the_app_no_network">앱에 내장됨 · 네트워크 사용 안 함</string>
     <string name="add_a_source">소스 추가</string>
-    <string name="add_a_local_source_folio_dev">로컬 소스 추가(Folio Dev)</string>
+    <string name="add_a_local_source_folio_dev">로컬 소스 추가(Folio Debug)</string>
     <string name="folio_shows_a_source_s_key_fingerprint">소스를 신뢰하기 전에 키 지문을 표시합니다. 소스의 키가 바뀌면 새 키를 확인할 때까지 사용을 중지합니다. 요청하거나 백그라운드 새로고침 시점이 된 경우에만 정적 파일을 읽습니다.</string>
     <string name="refreshing">새로고침 중…</string>
     <string name="unsigned_served_from_this_phone">서명 없음 · 이 휴대전화에서 제공</string>

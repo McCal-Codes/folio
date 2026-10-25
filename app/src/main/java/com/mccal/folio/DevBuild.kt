@@ -133,7 +133,7 @@ internal object DevBuild {
 
     /** Text for an issue or a message: which build this is, with nothing about the person. */
     fun summary(info: DevBuildInfo): String = buildString {
-        append("Folio Dev ").append(info.branch).append(' ').append(info.sha).append(if (info.dirty) " (uncommitted changes)" else "")
+        append("Folio Debug ").append(info.branch).append(' ').append(info.sha).append(if (info.dirty) " (uncommitted changes)" else "")
         append(", built ").append(info.builtAt)
     }
 }

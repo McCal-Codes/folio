@@ -573,7 +573,7 @@
     <string name="save">存储</string>
     <string name="built_into_folio_and_off_until_you_get_t">内置于 Folio，获取之前处于关闭状态。随时可以在插件页面中移除插件。</string>
     <string name="show_details">显示详细信息</string>
-    <string name="folio_dev_a_test_build_it_updates_from_n">Folio Dev，一个测试版本。它从新的构建版本更新，而不是从 GitHub。</string>
+    <string name="folio_dev_a_test_build_it_updates_from_n">Folio Debug，一个测试版本。它从新的构建版本更新，而不是从 GitHub。</string>
     <string name="checking_for_updates">正在检查更新…</string>
     <string name="folio_is_up_to_date">Folio 已是最新版本</string>
     <string name="last_checked">上次检查：%1$s</string>
@@ -959,7 +959,7 @@
     <string name="sources">源</string>
     <string name="built_into_the_app_no_network">内置于 App · 无需网络</string>
     <string name="add_a_source">添加源</string>
-    <string name="add_a_local_source_folio_dev">添加本地源（Folio Dev）</string>
+    <string name="add_a_local_source_folio_dev">添加本地源（Folio Debug）</string>
     <string name="folio_shows_a_source_s_key_fingerprint">Folio 会在你信任某个源之前显示其密钥指纹；如果源更换了密钥，Folio 会停止使用它，直到你确认新密钥。它只读取静态文件，并且只在你要求或到了后台刷新时间时才读取。</string>
     <string name="refreshing">正在刷新…</string>
     <string name="unsigned_served_from_this_phone">未签名 · 由这部手机提供</string>

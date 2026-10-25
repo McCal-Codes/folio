@@ -41,7 +41,7 @@ class DevBuildTest {
     }
 
     @Test fun `the summary says which build and nothing about the person`() {
-        assertEquals("Folio Dev capability-broker 465d9147, built 2026-10-06T15:05:10-04:00", DevBuild.summary(info()))
+        assertEquals("Folio Debug capability-broker 465d9147, built 2026-10-06T15:05:10-04:00", DevBuild.summary(info()))
         assertTrue(DevBuild.summary(info().copy(dirty = true)).contains("uncommitted changes"))
         assertNotNull(info())
     }
