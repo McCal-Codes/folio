@@ -6,4 +6,5 @@
     android:notificationTimeout="0"
     android:canRetrieveWindowContent="false"
     android:canPerformGestures="false"
+    android:canTakeScreenshot="true"
     android:settingsActivity="com.mccal.folio.FolioSettingsActivity" />

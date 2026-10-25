@@ -30,6 +30,32 @@ class SystemShadeAccessibilityService : AccessibilityService() {
         overlay = EverywhereOverlay(this).also { it.start() }
     }
     private var overlay: EverywhereOverlay? = null
+
+    /**
+     * One screenshot for the blur behind Folio's panels, shrunk and blurred at once on a worker thread ([FrostBlur]); the full picture is dropped
+     * and nothing is saved or sent. [onResult] gets it on the main thread, or null when the phone refuses (a second picture too soon, a secure window
+     * that comes out black is still a picture). It must be taken before the panel's own window exists, or the panel would be in it.
+     */
+    private fun snapshot(onResult: (android.graphics.Bitmap?) -> Unit) {
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        val deliver = { bitmap: android.graphics.Bitmap? -> main.post { onResult(bitmap) }; Unit }
+        runCatching {
+            val displayId = runCatching { display?.displayId }.getOrNull() ?: android.view.Display.DEFAULT_DISPLAY
+            takeScreenshot(displayId, backdropWorker, object : TakeScreenshotCallback {
+                override fun onSuccess(result: ScreenshotResult) {
+                    val blurred = runCatching {
+                        val hardware = android.graphics.Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
+                        val soft = hardware?.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                        hardware?.recycle()
+                        soft?.let { FrostBlur.blurred(it).also { _ -> it.recycle() } }
+                    }.getOrNull()
+                    runCatching { result.hardwareBuffer.close() }
+                    deliver(blurred)
+                }
+                override fun onFailure(errorCode: Int) { deliver(null) }
+            })
+        }.onFailure { deliver(null) }
+    }
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         overlay?.onConfigurationChanged()
@@ -45,6 +71,13 @@ class SystemShadeAccessibilityService : AccessibilityService() {
     companion object {
         private var instance = WeakReference<SystemShadeAccessibilityService>(null)
         internal fun isConnected() = instance.get() != null
+        private val backdropWorker: java.util.concurrent.Executor by lazy { java.util.concurrent.Executors.newSingleThreadExecutor() }
+
+        /** Whether a screenshot can be asked for now: the service is running (Android 11 and later; Folio's minimum is higher). */
+        internal fun canSnapshot(): Boolean = instance.get() != null
+
+        /** See [snapshot]. With no service the answer is null at once. */
+        internal fun takeBackdrop(onResult: (android.graphics.Bitmap?) -> Unit) { instance.get()?.snapshot(onResult) ?: onResult(null) }
 
         /** Screenshot, lock screen, power menu… through the gestures service; false when it isn't running. */
         internal fun global(action: Int): Boolean = instance.get()?.performGlobalAction(action) == true

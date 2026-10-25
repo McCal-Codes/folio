@@ -3,6 +3,8 @@ package com.mccal.folio
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -166,6 +168,9 @@ fun StatusRail(
     style: StatusStyle = StatusStyle(),
     /** The Focus that's on: its icon sits above the time, as iPhone shows it beside the clock. */
     focus: FocusMode? = null,
+    /** A tap on the rail, as on the iPhone Duo's status control: Home passes the one that opens Control Center. Null leaves the rail plain. */
+    onOpen: (() -> Unit)? = null,
+    openLabel: String? = null,
 ) {
     // Text sits on the frosted capsule, not straight on the wallpaper, so pick its color from how light the capsule
     // looks: the wallpaper's main color seen through the glass. An explicit Light or Dark "Text on Home" still wins.
@@ -219,7 +224,9 @@ fun StatusRail(
         else -> ink
     }
     val capsule = RoundedCornerShape(FolioRadius.RAIL.dp)
-    BoxWithConstraints(modifier.testTag("status-rail").semantics(mergeDescendants = true) { contentDescription = description }) {
+    BoxWithConstraints(modifier.testTag("status-rail")
+        .then(if (onOpen != null) Modifier.clip(capsule).clickable(onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
+        .semantics(mergeDescendants = true) { contentDescription = description }) {
         val availableWidth = (maxWidth - 16.dp).coerceAtLeast(28.dp)
         val visualSize = minOf(iconSize * .9f, availableWidth, if (compact) 34.dp else 44.dp)
         val timeSize = minOf(17f, availableWidth.value / (2.5f * fontScale)).sp
