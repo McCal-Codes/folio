@@ -86,15 +86,20 @@ internal class MarketSession(
     val sources = MarketSources(
         client = RepoClient(
             // Folio Dev, and only Folio Dev, may read a source served off this phone in the clear.
-            http = UrlHttpClient(allowLocalhost = localDevAllowed),
+            http = DevSource.httpClient(appContext, allowLocalhost = localDevAllowed),
             store = SourceStore(files),
             allowLocalDev = localDevAllowed,
+            allowInsecure = DevSource.insecureSourceOk(appContext),
         ),
-        list = SourceList(files),
-        http = UrlHttpClient(allowLocalhost = localDevAllowed),
+        list = SourceList(files, DevSource.insecureSourceOk(appContext)),
+        http = DevSource.httpClient(appContext, allowLocalhost = localDevAllowed),
         io = io,
         knownRevocations = { source.revocations() },
+        skipInBackground = DevSource.backgroundSkip(appContext),
     )
+
+    /** Sources a background job must not ask or download from: none in a release build. */
+    val skipInBackground: (String) -> Boolean = DevSource.backgroundSkip(appContext)
 
     /** The package list, or null when the bundled files are unreadable, which only a broken build can cause. */
     fun index(): RepoIndex? = source.index()
@@ -454,7 +459,7 @@ internal object MarketAccess {
 }
 
 /** Adding or forgetting a source changes no setting and applies no package, and with this it can't. */
-private object ReadOnlyMarketLauncher : MarketLauncher {
+internal object ReadOnlyMarketLauncher : MarketLauncher {
     override val state = LauncherState()
     override fun installTweak(feature: TweakFeature) = Unit
     override fun removeTweak(feature: TweakFeature) = Unit

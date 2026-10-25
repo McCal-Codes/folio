@@ -49,10 +49,16 @@ jobs:
       # the servers, webhooks and databases are stood in for.
       - name: Tool tests
         run: |
-          node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs
+          node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs tools/dev-worker/*.test.mjs
           python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
+      # The Folio Dev debug source must not reach a release: build the release APK (unsigned, no secrets needed) and
+      # look inside it (docs/sdk/threat-model.md, T34).
+      - name: Release APK has no Folio Dev debug source
+        run: |
+          ./gradlew :app:assembleRelease
+          bash tools/check-no-dev-source.sh app/build/outputs/apk/release/app-release-unsigned.apk
       # A red unit test run is easier to read from the HTML report than from the log, so keep both modules' reports.
       - name: Keep the unit test reports
         if: failure()

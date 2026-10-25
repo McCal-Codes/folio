@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <!-- Folio Dev can see the daily Folio, to test the beta and switch apps. Not in main, so a release cannot. -->
+    <queries><package android:name="com.mccal.folio" /></queries>
     <!-- The fast build exists to measure Folio on a phone: profileable lets Perfetto and Macrobenchmark read its
          trace sections and startup. The release stays unprofileable. -->
     <application>

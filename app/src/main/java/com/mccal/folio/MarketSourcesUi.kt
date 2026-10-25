@@ -79,6 +79,11 @@ internal fun MarketSourcesTab(
                 MenuDivider()
                 FolioBetaSourceRow(selected = openUrl == FOLIO_BETA_SOURCE_URL) { onOpen(FOLIO_BETA_SOURCE_URL) }
             }
+            // Folio Dev only: a no-op row in a release build (src/nodevsource).
+            if (DevSource.enabled(androidx.compose.ui.platform.LocalContext.current)) {
+                MenuDivider()
+                DevSourceRow(selected = openUrl == DevSource.PAGE_URL) { onOpen(DevSource.PAGE_URL) }
+            }
             statuses.forEach { status ->
                 MenuDivider()
                 val local = status.source.kind == Source.Kind.LOCAL_DEV

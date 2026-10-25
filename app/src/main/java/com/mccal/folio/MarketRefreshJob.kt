@@ -94,7 +94,7 @@ class MarketRefreshJob : JobService() {
          */
         internal suspend fun refreshSources(context: Context) {
             val session = MarketSession(context, ReadOnlyLauncher)
-            session.sources.refreshAll(force = false)
+            session.sources.refreshAll(force = false, background = true)
             // Packages that update themselves (M1): stage the checked update, and apply it through the running app. With
             // no running app it waits in the staging folder for the next start.
             if (MarketAutoUpdate.enabled(context)) caught("Market: updating packages in the background") {

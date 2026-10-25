@@ -2,4 +2,80 @@
 <resources>
     <!-- Folio Dev installs next to the release; its accessibility service needs a name you can tell apart. -->
     <string name="shade_service_label">Folio Dev gestures &amp; overlays</string>
+
+    <!--
+        The Folio Dev debug source (src/devsource). These strings live here, not in src/main, so a release build carries
+        none of them, and they are English only on purpose: the page is a developer tool for the person who builds Folio.
+    -->
+    <string name="dev_source_name" translatable="false">Folio Dev builds</string>
+    <string name="dev_source_row_ready" translatable="false">Debug builds and work in progress</string>
+    <string name="dev_source_row_needs_code" translatable="false">Add a dev code to begin</string>
+    <string name="dev_source_page_note" translatable="false">Builds come from a private repository through Folio\'s own server, and are signed by McCal. Each one must carry this app\'s id and signature, and Android will not install an older version over a newer one. Work in progress is marked WIP.</string>
+    <string name="dev_source_code_label" translatable="false">Dev code</string>
+    <string name="dev_source_code_hint" translatable="false">Paste the dev code</string>
+    <string name="dev_source_save_code" translatable="false">Save code</string>
+    <string name="dev_source_code_rejected" translatable="false">That is not a dev code for this source.</string>
+    <string name="dev_source_forget_code" translatable="false">Remove the dev code</string>
+    <string name="dev_source_check" translatable="false">Check for builds</string>
+    <string name="dev_source_checking" translatable="false">Checking…</string>
+    <string name="dev_source_builds" translatable="false">Builds</string>
+    <string name="dev_source_none" translatable="false">The list has no builds yet.</string>
+    <string name="dev_source_running" translatable="false">Running now</string>
+    <string name="dev_source_wip" translatable="false">WIP</string>
+    <string name="dev_source_install" translatable="false">Install</string>
+    <string name="dev_source_downloading" translatable="false">Downloading</string>
+    <string name="dev_source_installing" translatable="false">Android is installing it. Folio Dev restarts when it finishes.</string>
+    <string name="dev_source_older_build" translatable="false">Older than the build you are on. Your Home and settings stay, but a newer migration may already have run.</string>
+    <string name="dev_source_built_with" translatable="false">%1$s, %2$s</string>
+    <string name="dev_source_checked" translatable="false">Checked %1$s</string>
+
+    <string name="dev_source_fail_no_code" translatable="false">Add a dev code first.</string>
+    <string name="dev_source_fail_network" translatable="false">Could not reach the server. Check the connection.</string>
+    <string name="dev_source_fail_server" translatable="false">The server answered with an error instead of the list.</string>
+    <string name="dev_source_fail_not_a_list" translatable="false">The server answered, but what came back is not a list of builds.</string>
+    <string name="dev_source_fail_future" translatable="false">The list is dated in the future. Check this phone\'s clock.</string>
+    <string name="dev_source_fail_refused" translatable="false">The server refused the dev code. It may have run out or been withdrawn.</string>
+    <string name="dev_source_fail_signature" translatable="false">The list was altered or signed with a different key, so it was ignored.</string>
+    <string name="dev_source_fail_unreadable" translatable="false">The list could not be read.</string>
+    <string name="dev_source_fail_stale" translatable="false">The list is out of date. Publish a build to refresh it.</string>
+    <string name="dev_source_fail_rollback" translatable="false">The list is older than one already seen, so it was ignored.</string>
+
+    <string name="dev_source_refuse_size" translatable="false">The download was not the size the list promised, so it was thrown away.</string>
+    <string name="dev_source_refuse_hash" translatable="false">The download did not match its checksum, so it was thrown away.</string>
+    <string name="dev_source_refuse_package" translatable="false">That file is for a different app, so it was thrown away.</string>
+    <string name="dev_source_refuse_signer" translatable="false">That file is not signed with this app\'s key, so it was thrown away. A build made on another computer has another debug key.</string>
+    <string name="dev_source_refuse_older" translatable="false">That build is from an older version line. Android will not downgrade; use adb install -r -d.</string>
+    <string name="dev_source_work_failed" translatable="false">The build could not be downloaded.</string>
+
+    <string name="dev_source_local_stub" translatable="false">Use the local stub (127.0.0.1:8787)</string>
+    <string name="dev_source_local_stub_on" translatable="false">Asking the stub on this phone, over adb reverse. The real server is not contacted.</string>
+    <string name="dev_source_stub_off" translatable="false">Stop using the stub</string>
+    <string name="dev_source_tweaks_add" translatable="false">Add the dev tweaks source</string>
+    <string name="dev_source_tweaks_note" translatable="false">Work-in-progress tweaks, signed by the dev publisher key. Their names start with WIP. They come from the real server, or from the local stub when it is on.</string>
+    <string name="dev_source_tweaks_added" translatable="false">Added. Open the Market\'s Sources tab to see it.</string>
+
+    <!-- Folio Beta test (src/devsource/DevBeta.kt): the supporter beta, tried from Folio Dev. English only, like the rest. -->
+    <string name="dev_beta_title" translatable="false">Folio Beta</string>
+    <string name="dev_beta_note" translatable="false">Tries the supporter beta with your own supporter code, the same channel the daily Folio uses. This is separate from the dev builds above: a different server and a different code. Nothing runs by itself; installing always asks first.</string>
+    <string name="dev_beta_installed" translatable="false">Folio is installed</string>
+    <string name="dev_beta_not_installed" translatable="false">Folio is not installed on this phone</string>
+    <string name="dev_beta_version" translatable="false">Version %1$s</string>
+    <string name="dev_beta_check" translatable="false">Check for the newest beta</string>
+    <string name="dev_beta_no_code" translatable="false">Redeem your supporter code in Settings to check the beta.</string>
+    <string name="dev_beta_checking" translatable="false">Checking\u2026</string>
+    <string name="dev_beta_found" translatable="false">Newest: %1$s</string>
+    <string name="dev_beta_same" translatable="false">Newest: %1$s. The installed Folio is already this version or newer.</string>
+    <string name="dev_beta_failed" translatable="false">Could not get the beta. Check the connection and your supporter code.</string>
+    <string name="dev_beta_install" translatable="false">Install over Folio</string>
+    <string name="dev_beta_confirm_title" translatable="false">Install over your daily Folio?</string>
+    <string name="dev_beta_confirm_body" translatable="false">This installs Folio %1$s over the Folio you use every day, keeping its data. Android will ask once more. Folio Dev stays as it is.</string>
+    <string name="dev_beta_confirm_yes" translatable="false">Install</string>
+    <string name="dev_beta_confirm_no" translatable="false">Cancel</string>
+    <string name="dev_beta_downloading" translatable="false">Downloading the beta</string>
+    <string name="dev_beta_installing" translatable="false">Android is installing it. If it asks to allow installs from Folio Dev, allow it once.</string>
+    <string name="dev_beta_refuse_hash" translatable="false">The beta did not match its checksum (or had none), so it was thrown away.</string>
+    <string name="dev_beta_refuse_package" translatable="false">That file is not for Folio (com.mccal.folio), so it was thrown away.</string>
+    <string name="dev_beta_refuse_signer" translatable="false">That file is not signed with the installed Folio\'s key, so it was thrown away.</string>
+    <string name="dev_beta_refuse_older" translatable="false">That beta is older than the installed Folio. Android will not downgrade.</string>
+    <string name="dev_beta_open_folio" translatable="false">Open Folio</string>
 </resources>
