@@ -60,7 +60,7 @@ internal const val CC_MIN_CELL_DP = 44f
 internal const val CC_FILL_MAX = 1.5f
 /** The gap between cells as a share of the chosen cell size, and how many widths of the page strip a panel needs before the strip stands at its edge. */
 internal const val CC_GAP_RATIO = .18f
-internal const val CC_EDGE_STRIP_PANEL_RATIO = 10f
+internal const val CC_EDGE_STRIP_PANEL_RATIO = 5f
 
 /** The pages Control Center is split into, reached from the strip: what is used most, media and sound, and the connections. */
 internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
@@ -165,3 +165,52 @@ internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: 
  */
 internal fun ncLayoutFrom(saved: String?, legacySplit: Boolean?): NcLayout =
     NcLayout.entries.firstOrNull { it.name == saved } ?: if (legacySplit == false) NcLayout.CARD else NcLayout.FULL_SCREEN
+
+
+/**
+ * What Clear glass needs over a backdrop for white text to keep 4.5:1 (PNL-6), so the panel is as light as the backdrop allows instead of
+ * one fixed dim: a dark wallpaper gets almost no dim and see-through tiles, a bright one a stronger dim and then darker tiles. [dim] is the
+ * black over the backdrop, [tileBlack] and [tileWhite] the tile's own fill (a tile that is clear is white at 16 percent; as it darkens the white fades).
+ */
+internal data class CcGlassTone(val dim: Float, val tileBlack: Float, val tileWhite: Float)
+
+/** The tone Clear glass uses before the backdrop is known, and with any other look: today's dim and clear tiles. */
+internal val CC_DEFAULT_TONE = CcGlassTone(dim = .42f, tileBlack = 0f, tileWhite = .16f)
+
+private const val CC_CLEAR_MAX_DIM = .30f
+private const val CC_CLEAR_TILE_WHITE = .16f
+/** White text at 4.5:1 needs the background no brighter than this, as an sRGB value (relative luminance .18). */
+private const val CC_TEXT_MAX_SRGB = .46f
+
+/**
+ * [brightness] is how bright the backdrop's bright parts are (its 85th percentile, sRGB 0 to 1). Values blend in sRGB, as Compose does.
+ * The dim goes up only as far as needed, to [CC_CLEAR_MAX_DIM]; past that the tiles darken until the text is at 4.5:1.
+ */
+internal fun ccClearTone(brightness: Float): CcGlassTone {
+    val v = brightness.coerceIn(0f, 1f)
+    val w = CC_CLEAR_TILE_WHITE
+    val needed = if (v <= 0f) 0f else 1f - ((CC_TEXT_MAX_SRGB - w) / (1f - w)) / v
+    val dim = needed.coerceIn(0f, CC_CLEAR_MAX_DIM)
+    val x = v * (1f - dim)
+    fun shown(t: Float): Float {
+        val white = w * (1f - minOf(1f, t / .2f))
+        return x * (1f - t) * (1f - white) + white
+    }
+    var t = 0f
+    while (t < 1f && shown(t) > CC_TEXT_MAX_SRGB) t += .01f
+    return CcGlassTone(dim, t.coerceAtMost(1f), w * (1f - minOf(1f, t / .2f)))
+}
+
+/** The 85th percentile of sRGB luma (0 to 1) of [pixels] (ARGB), a stand-in for how bright the backdrop's bright parts are; .5 with no pixels. */
+internal fun ccBrightness(pixels: IntArray): Float {
+    if (pixels.isEmpty()) return .5f
+    val histogram = IntArray(256)
+    for (p in pixels) {
+        val luma = (((p shr 16) and 255) * 299 + ((p shr 8) and 255) * 587 + (p and 255) * 114) / 1000
+        histogram[luma.coerceIn(0, 255)]++
+    }
+    val target = (pixels.size * .85f).toInt()
+    var seen = 0
+    for (level in 0..255) { seen += histogram[level]; if (seen > target) return level / 255f }
+    return 1f
+}
