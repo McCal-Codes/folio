@@ -130,8 +130,9 @@ internal class MarketSession(
         revocations = source.revocations(),
         fromSources = sources.cached().mapNotNull { status -> status.snapshot?.let { status.source to it } },
         folio = folioVersion,
-        // The key the source was trusted with, not the one its files name: only Folio's own key makes it first-party.
-        isFirstParty = { isFirstParty(it.url, sourceKeys.state(it.url).pinnedKey) },
+        // The key the source is trusted with now AND the key that signed the copy Folio has: a snapshot accepted under
+        // another key stays someone else's even after the source is re-pinned to Folio's key.
+        isFirstParty = { source, snapshot -> isFirstParty(source.url, sourceKeys.state(source.url).pinnedKey, snapshot.entry.keyId) },
     )
 
     /**
@@ -411,10 +412,14 @@ internal const val FIRST_PARTY_SOURCE = "https://mccal-codes.github.io/folio-twe
 internal const val FIRST_PARTY_SOURCE_KEY =
     "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETzFnQluMpyJhOofDTJKap1ReL56EalQ32gPmRq32wNW+TnwKMZ7RKgLAoet4j9TY6ie/2W6626K+bCv9VQVjJQ=="
 
-/** Whether [url], trusted with [pinned], is [FIRST_PARTY_SOURCE]: that address, however it was typed, with that key. */
-internal fun isFirstParty(url: String, pinned: SourceKey?): Boolean {
+/**
+ * Whether [url], trusted with [pinned], is [FIRST_PARTY_SOURCE]: that address, however it was typed, with that key, and
+ * the copy Folio holds was signed with it too ([signedWith], the key id of the entry that was accepted with it). The
+ * pinned key alone isn't enough: re-pinning changes which key future refreshes need, not who signed what is cached.
+ */
+internal fun isFirstParty(url: String, pinned: SourceKey?, signedWith: String?): Boolean {
     val key = SourceKey.parse(FIRST_PARTY_SOURCE_KEY) ?: return false
-    return pinned == key &&
+    return pinned == key && signedWith == key.keyId &&
         normalizeSourceUrl(url).equals(FIRST_PARTY_SOURCE, ignoreCase = true)
 }
 
