@@ -58,6 +58,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Add to Home from Spotlight:** search for an app and its Top Hit has a + button that puts it on Home, the same way Add to Home in an app's menu does, and tells you with a notice. Spotlight stays open, so you can add more, and the row then says On Home. An app that is already on Home says so, and an app inside a folder says which folder holds it, instead of showing a button that would do nothing.
 
 ### Changed
+
+- **The Roadmap, rewritten:** the 0.6.9 section groups what is in the betas into fewer, clearer rows and adds what is still being built (Setup's Your Home apps page, Duo-style spacing, short windows, the missing-widget tile); 0.7.0 now lists StandBy 2, Spotlight Pro, the Music widget and a public Keyd page; Simple Mode and presets have their own 0.7.2 section; Later names the held ideas honestly.
 - **Settings regrouped:** Reduce Transparency moved from Wallpaper & Appearance › Glass to Accessibility, beside Reduce Motion. On Layout the dock's Position menu joined the card with its Width, Space between dock apps, Align and Height, and that card is now called Dock instead of Side rail.
 - **Two Backgrounds now say what they are:** the Background row under Folders is now Folder background, and the Background switch for the status bar is now Status bar background, so Settings search and the pages stop showing two rows with the same name.
 - **Home button on Home goes to the first page:** press Home while Folio is already in front and it returns to your first Home page (or a Focus's own Home page). Pressed from another app it still returns to the page you left, and with a sheet, menu, folder or Spotlight open it only closes that.
