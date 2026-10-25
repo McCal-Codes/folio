@@ -166,6 +166,13 @@ const val HOME_REGULAR_MIN_HEIGHT_DP = 560f
  */
 enum class LayoutScreen { COVER, INNER, INNER_UPRIGHT }
 
+/**
+ * What a new Folio starts with for a screen (McCal 25 Oct 2026, after the iPhone and iPad pictures: they pack apps from the top and leave
+ * the free space at the bottom). A phone-size window starts with the page at the top; the open screens keep the page centered. A saved
+ * layout keeps what it has, and Reset this layout goes back to this.
+ */
+fun defaultPreset(screen: LayoutScreen): LayoutPreset = if (screen == LayoutScreen.COVER) LayoutPreset(pageTop = true) else LayoutPreset()
+
 /** The one rule for which layout a window of this size gets; Home, Discover and Settings all ask it. */
 fun layoutScreenFor(widthDp: Float, heightDp: Float, classScale: Float = 1f): LayoutScreen =
     if (widthDp * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP)

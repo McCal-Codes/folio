@@ -7,6 +7,9 @@ package com.mccal.folio
  */
 internal enum class ShadeShape { SINGLE_TOP, SPLIT_CLOCK, CARD, BOTH }
 
+/** The narrowest window that has room for the clock beside the list when it is not a regular-size window (a phone on its side). */
+internal const val SPLIT_CLOCK_MIN_DP = 600
+
 /** The narrowest window that has room for two panels side by side; a narrower one opens a card instead. */
 internal const val SIDE_BY_SIDE_MIN_DP = 640
 
@@ -14,8 +17,10 @@ internal const val SIDE_BY_SIDE_MIN_DP = 640
  * The shape for [choice] on a window [widthDp] wide. [wide] is Folio's "regular" layout class, [landscape] whether it is wider than
  * tall, and [hinged] whether a fold is in the way (the panels stay on the side the fold leaves, so two do not fit).
  */
-internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel): ShadeShape = when {
-    !wide -> ShadeShape.SINGLE_TOP
+internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel, clockOn: Boolean = true): ShadeShape = when {
+    // A phone on its side is wide but short: the big clock above the list left room for a card and a half, so the clock goes beside it.
+    // [hinged] is not asked here: over another app it is always true (no fold information), and on Home a fold already confines the panel to its own side.
+    !wide -> if (panel == ShadePanel.NOTIFICATIONS && landscape && widthDp >= SPLIT_CLOCK_MIN_DP && clockOn) ShadeShape.SPLIT_CLOCK else ShadeShape.SINGLE_TOP
     choice == NcLayout.CARD -> ShadeShape.CARD
     choice == NcLayout.SIDE_BY_SIDE -> if (widthDp >= SIDE_BY_SIDE_MIN_DP && !hinged) ShadeShape.BOTH else ShadeShape.CARD
     panel == ShadePanel.NOTIFICATIONS && landscape -> ShadeShape.SPLIT_CLOCK
@@ -28,6 +33,79 @@ internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, wid
  */
 internal fun shadeOverAppsWanted(switchOn: Boolean, panelsOn: Boolean, safeMode: Boolean, locked: Boolean, panel: ShadePanel): Boolean =
     switchOn && panelsOn && !safeMode && !locked && panel != ShadePanel.SEARCH
+
+/** The panel a pull that starts at [x] on a screen [width] wide opens: the left half Notification Center, the right half Control Center (as on Home). */
+internal fun pullPanel(x: Float, width: Float): ShadePanel = if (x < width / 2f) ShadePanel.NOTIFICATIONS else ShadePanel.QUICK_SETTINGS
+
+/**
+ * Whether a drag of ([dx], [dy]) from the top edge is a pull down: one and a half touch slops down (early, because the system takes over a
+ * pull that goes much further and cancels this window's touch), and more down than across by half, so the
+ * diagonal swipe a one-handed reach from a corner makes counts, and a sideways swipe along the edge does not.
+ */
+internal fun isPullDown(dx: Float, dy: Float, slop: Float): Boolean = dy > slop * 1.5f && dy > kotlin.math.abs(dx) * .5f
+
+/** The pull strip's height: the status bar's own, but never so thin a finger misses it or so deep it covers the app's top bar. */
+internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarPx.coerceIn((24 * density).toInt(), (48 * density).toInt())
+
+/**
+ * Whether the strip over the top edge of other apps should exist: the switch is on and so are the panels over apps, Safe Mode is off,
+ * Folio's own Home is not in front (it has its own pulls) and the app is not full screen (Android keeps its swipe down from the top there).
+ */
+internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boolean, safeMode: Boolean, folioInFront: Boolean, fullScreen: Boolean): Boolean =
+    pullOn && overApps && panelsOn && !safeMode && !folioInFront && !fullScreen
+
+/** The smallest cell Control Center ever draws; under it the page scrolls. */
+internal const val CC_MIN_CELL_DP = 44f
+/** A cell may grow to this times the size the person chose, to fill the width; past that another pair of columns is added instead. */
+internal const val CC_FILL_MAX = 1.5f
+/** The gap between cells as a share of the chosen cell size, and how many widths of the page strip a panel needs before the strip stands at its edge. */
+internal const val CC_GAP_RATIO = .18f
+internal const val CC_EDGE_STRIP_PANEL_RATIO = 10f
+
+/** The pages Control Center is split into, reached from the strip: what is used most, media and sound, and the connections. */
+internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
+
+/**
+ * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
+ * the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
+ */
+internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int =
+    if (columns >= 6) 3 + (if (focus) 1 else 0) + (controls + columns - 1) / columns
+    else 5 + (if (focus) 1 else 0) + (maxOf(0, controls - 4) + 3) / 4
+
+/** Columns, the size of one cell and of the gap in dp, and where the page strip stands. */
+internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float, val stripAtEdge: Boolean, val stripDp: Float)
+
+/**
+ * Control Center fills the window instead of sitting in a corner. Nothing here is a device: it is worked out from the panel's width and
+ * height, the size the person chose ([sizeCellDp]), the touch target ([touchDp], the strip's buttons), the side padding the caller draws
+ * ([sidePaddingDp]) and the controls they have ([controls]).
+ *  - Columns come in pairs (4, 6, 8 ...): the fewest whose cell is not bigger than [CC_FILL_MAX] times the chosen size, so a wide window
+ *    gets more columns, not giant tiles, but never more than the controls can use.
+ *  - A window too short for the rows takes the next pair while that makes the cell at least a gap bigger.
+ *  - The page strip is one touch target wide plus a gap. It stands at the edge when the panel is wide enough for that to cost little, and
+ *    lies under the grid otherwise.
+ * A null [heightDp] means no height limit.
+ */
+internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float,
+    touchDp: Float = 48f, sidePaddingDp: Float = 32f): CcGrid {
+    val gap = sizeCellDp * CC_GAP_RATIO
+    val strip = touchDp + gap
+    val edge = panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
+    val gridWidth = panelWidthDp - sidePaddingDp - if (edge) strip else 0f
+    val maxCell = sizeCellDp * CC_FILL_MAX
+    val maxColumns = (((controls + 1) / 2) * 2).coerceIn(4, 12)
+    fun widthCell(c: Int) = (gridWidth - gap * (c - 1)) / c
+    fun heightCell(c: Int): Float {
+        val rows = controlCenterRows(c, controls, focus)
+        return heightDp?.let { (it - (touchDp + gap) - (if (edge) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
+    }
+    fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)
+    var columns = 4
+    while (columns < maxColumns && widthCell(columns) > maxCell) columns += 2
+    while (columns < maxColumns && cell(columns) < sizeCellDp && cell(columns + 2) >= cell(columns) + gap) columns += 2
+    return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), gap, edge, strip)
+}
 
 /**
  * The saved layout. Settings from before the choice existed only had "clock beside notifications": on is Full screen (how it was),
