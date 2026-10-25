@@ -25,11 +25,11 @@ import androidx.compose.ui.graphics.toArgb
 internal fun FrostedBackdrop(tone: WallpaperTone, modifier: Modifier = Modifier) {
     val grain = remember { grainBrush() }
     Canvas(modifier) {
-        val base = Color(0xFF16171A)
+        val base = FolioColors.FrostBase
         fun shade(argb: Int?, fallback: Color) = lerp(argb?.let { Color(it) } ?: fallback, Color.Black, .5f)
-        val a = shade(tone.primary, Color(0xFF3A4A5E))
-        val b = shade(tone.secondary ?: tone.primary, Color(0xFF4A3A5E))
-        val c = shade(tone.tertiary ?: tone.secondary ?: tone.primary, Color(0xFF3A5E52))
+        val a = shade(tone.primary, FolioColors.FrostPatchA)
+        val b = shade(tone.secondary ?: tone.primary, FolioColors.FrostPatchB)
+        val c = shade(tone.tertiary ?: tone.secondary ?: tone.primary, FolioColors.FrostPatchC)
         val reach = maxOf(size.width, size.height)
         drawRect(base)
         drawRect(Brush.radialGradient(listOf(a.copy(alpha = .95f), Color.Transparent), Offset(0f, 0f), reach * .9f))

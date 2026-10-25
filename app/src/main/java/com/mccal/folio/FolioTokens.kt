@@ -7,6 +7,11 @@ import androidx.compose.ui.graphics.Color
  * point at the same values. Use these instead of writing hex colors in a screen.
  */
 internal object FolioColors {
+    /** The frosted glass behind panels over another app (see FrostedBackdrop): its dark base, and the three patches' colors when the wallpaper gives none. */
+    val FrostBase = Color(0xFF16171A)
+    val FrostPatchA = Color(0xFF3A4A5E)
+    val FrostPatchB = Color(0xFF4A3A5E)
+    val FrostPatchC = Color(0xFF3A5E52)
     /**
      * The palette as ARGB numbers, for the places that hold a color as a value rather than a `Color`: a tweak's
      * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a color can't drift.
