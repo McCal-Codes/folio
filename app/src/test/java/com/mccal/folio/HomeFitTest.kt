@@ -127,6 +127,28 @@ class HomeFitTest {
         }
     }
 
+    /** Every dp width around the two-half threshold, at the heights phones are held at in landscape: same rules, no jump, no clipped row. */
+    @Test fun `widths around the two-half threshold behave alike at every short height`() {
+        val report = StringBuilder("width,height,preview,duo,split,icon,rowHeight,cellWidth,reachable" + "\n")
+        for (h in listOf(320f, 360f, 384f, 411f, 448f, 480f)) for (preview in listOf(false, true)) for (duo in listOf(false, true)) {
+            var last: HomeGeometry? = null
+            for (wi in 560..760) {
+                val w = wi.toFloat()
+                val g = geo(w, h, duo, preview = preview)
+                val p = place(g, h, preview, BASE_APP_ROWS)
+                val room = h - 16f - limitShortfall(g, h, preview)
+                val name = "${wi}x${h.toInt()} preview=$preview duo=$duo"
+                report.append("$wi,${h.toInt()},$preview,$duo,${g.splitColumns},${g.iconSize},${g.rowHeight},${g.cellWidth},${p.reachableRows}" + "\n")
+                assertTrue("$name touch targets: row ${g.rowHeight} cell ${g.cellWidth}", g.rowHeight >= 48f && g.cellWidth >= MIN_SPLIT_CELL - 0.01f)
+                if (room >= floorHeight(g)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
+                // One dp of width must not change the icon by more than a few dp, in either layout, unless it crosses the split.
+                last?.let { prev -> if (prev.splitColumns == g.splitColumns) assertTrue("$name icon jumps ${prev.iconSize} to ${g.iconSize}", Math.abs(prev.iconSize - g.iconSize) <= 3f) }
+                last = g
+            }
+        }
+        java.io.File(System.getProperty("java.io.tmpdir"), "home-fit-sweep.csv").writeText(report.toString())
+    }
+
     // ---- DUO_SPACING: rows added for a bigger window, pitch capped, free height shared above and below ----
 
     @Test fun `with DUO_SPACING the pitch never passes the cap and no window gets fewer rows or cells`() {

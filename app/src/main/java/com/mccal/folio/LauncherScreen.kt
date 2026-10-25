@@ -880,9 +880,9 @@ fun LauncherScreen(
             val pagerWidth = if (geometry.horizontalDock && !geometry.dockBesideRail) maxWidth else maxWidth - preset.dockWidth.dp - 28.dp
             val leftColumnOrigin = (maxWidth / 2f - geometry.gridWidth.dp) / 2f - 16.dp
             val homeStride = panelWidth - leftColumnOrigin
-            // As the Home app it stays 44dp unless the dots are taller, so no one's automatic rows shrink; the Preview
-            // bar gets a clear gap above it.
-            val controlsSpace = if (isDefaultHome) maxOf(44.dp, bottomControlsHeight) else maxOf(88.dp, bottomControlsHeight + 12.dp)
+            // The same space the geometry was laid out for (the measured controls, never below the strip's own 54dp), so the
+            // page box and the rows in it agree; the Preview bar gets a clear gap above it.
+            val controlsSpace = homeControlsSpace(isDefaultHome, bottomControlsHeight.value).dp
             val bottomSpace = controlsSpace + if (geometry.horizontalDock) (geometry.dockBarHeight + 16f).dp else 0.dp
             val workspaceMotion = if (geometry.expanded) remember(firstHome, visibleHomePages, pagerWidth, homeStride, density) {
                 WorkspacePageMotion(firstHome, visibleHomePages, with(density) { pagerWidth.toPx() }, with(density) { homeStride.toPx() })

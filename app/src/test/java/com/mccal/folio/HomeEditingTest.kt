@@ -155,6 +155,18 @@ class HomeEditingTest {
         assertEquals(listOf("a", null, null, "b"), normalizeHomeSlots(listOf("a", "a", null, "b", null)))
         assertEquals(emptyList<String?>(), normalizeHomeSlots(listOf(null, null)))
     }
+    @Test fun `a new app fills the left half of a two-half page before the right half and moves nothing else`() {
+        // A two-half page holds rows 2 and 3 (cells 8..15) in its left half under the widget rows, rows 4 and up in the right.
+        val widgetCells = (0 until 8).toSet()
+        val left = List(8) { "app$it" }.toMutableList<String?>().also { it[2] = null }
+        val saved = List(8) { null } + left + listOf("right")
+        val withGap = pinHomeApp(saved, "new", true, widgetCells, appRows = 4)
+        assertEquals("new", withGap[10])
+        assertEquals(saved.filterIndexed { i, _ -> i != 10 }, withGap.filterIndexed { i, _ -> i != 10 })
+        val full = pinHomeApp(saved.toMutableList().also { it[10] = "x" }, "new", true, widgetCells, appRows = 4)
+        assertEquals("new", full[17])
+        assertEquals(saved.size + 1, full.size)
+    }
     @Test fun `invalid drop leaves layout unchanged`() {
         assertEquals(layout, dropApp(layout, "a", DropTarget.Home(-HOME_CELLS - 1)))
         assertEquals(layout, dropApp(layout, "a", DropTarget.Home(2 * HOME_CELLS)))

@@ -51,14 +51,17 @@ internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>, firstR
 internal fun homePicksFor(firstRun: Boolean, onHome: List<String>, starters: () -> List<String>): List<String> =
     if (!firstRun && onHome.isNotEmpty()) onHome else starters()
 
+/**
+ * The changes that make Home hold exactly the ticked apps, as (app id, put on Home) in the order they are made: every app coming off
+ * first, then every app going on. Taking the cells free before the new apps look for one means an arrival fills the first free cell
+ * of the page (the left half of a two-half page first) instead of landing after cells that are about to open.
+ */
+internal fun homePickChanges(onHome: Set<String>, appIds: List<String>, picked: Set<String>): List<Pair<String, Boolean>> =
+    appIds.filter { it in onHome && it !in picked }.map { it to false } + appIds.filter { it in picked && it !in onHome }.map { it to true }
+
 /** Puts exactly the ticked apps on Home. Apps that were already on Home and are unticked come off; nothing else is touched. */
 internal fun applyHomePicks(model: LauncherModel, state: LauncherState, apps: List<AppEntry>, picked: Set<String>) {
-    val onHome = state.homeSlots.filterNotNull().toSet()
-    apps.forEach { app ->
-        val want = app.id in picked
-        if (want && app.id !in onHome) model.setPinned(app.id, true)
-        else if (!want && app.id in onHome) model.setPinned(app.id, false)
-    }
+    homePickChanges(state.homeSlots.filterNotNull().toSet(), apps.map { it.id }, picked).forEach { (id, pinned) -> model.setPinned(id, pinned) }
 }
 
 /**
