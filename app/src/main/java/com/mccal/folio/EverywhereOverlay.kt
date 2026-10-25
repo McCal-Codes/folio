@@ -391,6 +391,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     }
 
     private fun removeShade() {
+        shadeRequest++ // a request still waiting for its picture must not add a window after this (Home came to the front, or the configuration changed)
         shadeTimer?.cancel(); shadeTimer = null
         shadeBlurAnimator?.cancel(); shadeBlurAnimator = null
         shade?.let { it.removeCallbacks(shadeRemoval); runCatching { wm.removeView(it) } }; shade = null
