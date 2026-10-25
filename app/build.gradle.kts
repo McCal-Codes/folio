@@ -204,10 +204,12 @@ android {
     }
     // "fast" uses release's no-op tracing/diagnostic sources.
     sourceSets {
-        // The Folio Dev debug source (docs/sdk/threat-model.md, T34): the real code is in src/devsource and only the two
-        // Folio Dev build types get it. Release gets a same-named no-op from src/nodevsource, so main compiles either way.
+        // The Folio Dev debug source (docs/sdk/threat-model.md, T34): the real code is in src/devsource and only the
+        // debug build type gets it. Release and fast get a same-named no-op from src/nodevsource, so main compiles either way. Fast
+        // does not carry it on purpose: with the real code in the fast build, R8 produced a LauncherScreen lambda that ART's verifier
+        // rejects at launch (24 Oct 2026), so the fast build stays release-like. Launch-test fast and release with tools/smoke-release-apk.sh.
         // Not src/release/java: fast already includes that one, and a real class there would collide with its twin.
-        getByName("fast") { kotlin.directories.add("src/release/java"); kotlin.directories.add("src/devsource/java"); res.directories.add("src/dev/res") }
+        getByName("fast") { kotlin.directories.add("src/release/java"); kotlin.directories.add("src/nodevsource/java"); res.directories.add("src/dev/res") }
         // Folio Dev (debug and fast builds) gets an amber icon so it's easy to tell apart from the release.
         getByName("debug") { kotlin.directories.add("src/devsource/java"); res.directories.add("src/dev/res") }
         getByName("release") { kotlin.directories.add("src/nodevsource/java") }
