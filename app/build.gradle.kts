@@ -192,7 +192,7 @@ android {
             matchingFallbacks += "release"
             // Its own app ("Folio Dev") so test builds install next to the signed release instead of over it.
             applicationIdSuffix = ".dev"
-            manifestPlaceholders["appLabel"] = "Folio Dev"
+            manifestPlaceholders["appLabel"] = "Folio Debug"
         }
         // Same app id as "fast", so one build installs over the other and Folio Dev keeps its layout and settings.
         // Only the name differs, because that is the one place you can tell them apart on the phone, and it matters:
