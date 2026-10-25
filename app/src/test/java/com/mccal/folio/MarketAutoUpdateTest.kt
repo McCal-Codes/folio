@@ -12,7 +12,8 @@ class MarketAutoUpdateTest {
     private fun candidate(
         origin: Origin = Origin.FOLIO_SOURCE, enabled: Boolean = true, installedSource: String? = "https://a/", listingSource: String = "https://a/",
         installed: DebVersion = old, listing: DebVersion = newer, revoked: Boolean = false, impostor: Boolean = false, needs: Boolean = false, installable: Boolean = true,
-    ) = MarketAutoUpdate.isCandidate(origin, enabled, installedSource, installed, listingSource, listing, revoked, impostor, needs, installable)
+        updatesBuiltIn: Boolean = false,
+    ) = MarketAutoUpdate.isCandidate(origin, enabled, installedSource, installed, listingSource, listing, revoked, impostor, needs, installable, updatesBuiltIn)
 
     @Test fun `a newer version from the source that installed it is a candidate`() {
         assertTrue(candidate())
@@ -38,5 +39,18 @@ class MarketAutoUpdateTest {
 
     @Test fun `a listing with no size or checksum is never installed by itself`() {
         assertFalse(candidate(installable = false))
+    }
+
+    @Test fun `a built-in install follows a listing that stands in for it, and nothing else`() {
+        // A built-in install has no source address; only Folio's own tweaks source standing in for it may update it.
+        assertTrue(candidate(installedSource = null, listingSource = "https://a/", updatesBuiltIn = true))
+        assertFalse(candidate(installedSource = null, listingSource = "https://a/"))
+        // The flag doesn't excuse any other check.
+        assertFalse(candidate(installedSource = null, updatesBuiltIn = true, revoked = true))
+        assertFalse(candidate(installedSource = null, updatesBuiltIn = true, listing = old))
+        assertFalse(candidate(installedSource = null, updatesBuiltIn = true, installable = false))
+        assertFalse(candidate(installedSource = null, updatesBuiltIn = true, enabled = false))
+        // A package already installed from some other source isn't taken over by the flag.
+        assertFalse(candidate(installedSource = "https://other/", listingSource = "https://a/", updatesBuiltIn = true))
     }
 }

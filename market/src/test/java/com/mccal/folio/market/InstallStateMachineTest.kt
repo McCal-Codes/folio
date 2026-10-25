@@ -183,4 +183,26 @@ class InstallStateMachineTest {
         installer.remove(id)
         assertTrue("removed: nothing to undo", !installer.undoUpdateInPlace(id, one, two))
     }
+
+    @Test fun `undoing an update of a built-in package puts the built-in copy back, with no source address`() {
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, Host(), authors = AuthorTrust(MemoryStore()))
+        val one = DebVersion.parse("1.0.0")!!; val two = DebVersion.parse("1.1.0")!!
+        installer.install(pack("1.0.0"))
+        installer.updateKeepingSettings(pack("1.1.0"), sourceUrl = "https://hosted.example/")
+        assertEquals("https://hosted.example/", store.find(id)?.sourceUrl)
+        assertTrue(installer.undoUpdateInPlace(id, one, two, builtInVersion = one))
+        assertEquals(one, store.find(id)?.version)
+        assertEquals(null, store.find(id)?.sourceUrl)
+    }
+
+    @Test fun `undoing an update of a package that is not built in keeps its source address`() {
+        val store = InstalledStore(MemoryStore())
+        val installer = PackageInstaller(store, Host(), authors = AuthorTrust(MemoryStore()))
+        val one = DebVersion.parse("1.0.0")!!; val two = DebVersion.parse("1.1.0")!!
+        installer.install(pack("1.0.0"), sourceUrl = "https://hosted.example/")
+        installer.updateKeepingSettings(pack("1.1.0"), sourceUrl = "https://hosted.example/")
+        assertTrue(installer.undoUpdateInPlace(id, one, two, builtInVersion = null))
+        assertEquals("https://hosted.example/", store.find(id)?.sourceUrl)
+    }
 }
