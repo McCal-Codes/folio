@@ -104,7 +104,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val listMax = minOf(620.dp, (config.screenHeightDp * .62f).dp)
 
     // Scrim: tap or swipe up anywhere to close.
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }.background(FolioGlass.scrim)
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
+        .background(if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) FolioGlass.scrimUnblurred else FolioGlass.scrim)
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
@@ -436,6 +437,9 @@ private fun SwipeAction(label: String, onClick: () -> Unit) {
 
 /** True while the panels are drawn over another app from the gestures service rather than on Home: no dialogs, no typing, no fold information. */
 internal val LocalShadeOverApps = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Whether the window behind the panels is really blurred (the phone allows it and Settings › Blur is on); over an app without it the dim is stronger. */
+internal val LocalShadeBackdropBlur = androidx.compose.runtime.staticCompositionLocalOf { true }
 
 /** Over another app, what Reply does: starts a box to type in (the overlay cannot take the keyboard). Null on Home, where the card has its own field. */
 internal val LocalShadeReply = androidx.compose.runtime.staticCompositionLocalOf<((NotificationItem) -> Unit)?> { null }

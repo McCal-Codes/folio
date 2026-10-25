@@ -293,7 +293,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
                 val wide = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
                 CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
-                    LocalReduceMotion provides reduceMotion,
+                    LocalReduceMotion provides reduceMotion, LocalShadeBackdropBlur provides (shadeBlurPx > 0),
                     LocalTintOptions provides (look?.let { tintOptionsFor(it, wide) } ?: TintOptions()),
                     LocalGlassLook provides (look?.let { GlassLook(it.widgetGlass, it.glassOutline) } ?: GlassLook())) {
                     TopPanels(current, { progress }, status, onClose = { closeShade() },
