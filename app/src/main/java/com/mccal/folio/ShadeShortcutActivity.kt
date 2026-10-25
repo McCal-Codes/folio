@@ -15,6 +15,7 @@ import android.os.Bundle
 abstract class ShadeShortcutActivity(private val panelName: String) : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        created.incrementAndGet()
         val panel = ShadePanel.fromShortcut(panelName)
         if (panel == null) { finish(); return }
         // With "Folio's panels over other apps" on, the shortcut draws Folio's own panel; otherwise (or locked, or in Safe Mode) the phone's.
@@ -25,6 +26,11 @@ abstract class ShadeShortcutActivity(private val panelName: String) : Activity()
             ShadeOpenResult.OPENED, ShadeOpenResult.ACTION_REJECTED -> Unit
         }
         finish()
+    }
+
+    companion object {
+        /** How many times an entry has started, so a caller can tell a start Android quietly refused from one that happened. */
+        val created = java.util.concurrent.atomic.AtomicInteger()
     }
 }
 

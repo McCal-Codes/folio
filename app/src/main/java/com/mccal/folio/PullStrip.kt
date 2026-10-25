@@ -17,6 +17,7 @@ import android.view.WindowManager
  */
 internal class PullStrip(private val service: AccessibilityService, private val wm: WindowManager, private val onPull: (ShadePanel) -> Unit) {
     private var view: View? = null
+    val showing get() = view != null
     private val density get() = service.resources.displayMetrics.density
 
     fun add() {

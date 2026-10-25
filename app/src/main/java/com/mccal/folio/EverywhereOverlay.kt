@@ -102,7 +102,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private var buttonSettings: ButtonBarSettings? = null
     private var buttonParams: WindowManager.LayoutParams? = null
     private val dockOpen = MutableStateFlow(false)
-    private companion object { const val SHADE_WAIT_MS = 45_000L; const val SHADE_CLOSE_MS = 450L }
+    private companion object { const val SHADE_WAIT_MS = 45_000L; const val PULL_ENTRY_WAIT_MS = 700L; const val SHADE_CLOSE_MS = 450L }
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
@@ -226,11 +226,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val islandWanted = s.islandEverywhere && !home && content != null
         val pullPossible = pullStripWanted(s.shadePull, s.shadeOverApps, s.folioPanels, SafeMode.active, home, false)
         watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen) || pullPossible))
+        val stripJoins = pullPossible && !fullScreen && !pullStrip.showing
         if (pullPossible && !fullScreen) pullStrip.add() else pullStrip.remove()
         if (s.dockEverywhere && !home) addHandle(s.leftHanded) else { removeHandle(); removeDock() }
         // The bar presses the same buttons the system's does, so it steps aside where the system's bar does.
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
         val stepAside = overlayStepsAside(s.islandHideFullScreen, s.islandHideLandscape, fullScreen, landscapeNow(), onUnfoldedScreen(), s.islandHideLandscapeInner)
+        // The newest window is on top: a strip added over a standing island would take its taps, so the island goes back above it.
+        if (stripJoins) removeIsland()
         if (islandWanted && !stepAside) { addIsland(); resizeIsland(content!!) } else removeIsland()
     }
 
@@ -380,8 +383,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         // Through the same transparent entry a shortcut uses: a shade opened with an activity of ours in front gets the blur behind it,
         // and one opened from the service alone did not on the Android 17 emulator (the blur layer stayed invisible).
         val entry = if (panel == ShadePanel.NOTIFICATIONS) ShadeShortcutNotifications::class.java else ShadeShortcutQuickSettings::class.java
+        val before = ShadeShortcutActivity.created.get()
         val started = runCatching { service.startActivity(Intent(service, entry).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
         if (!started && !openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
+        // A start the system quietly refuses throws nothing and shows nothing: if the entry never ran, open the panel directly (no blur, but it opens).
+        else if (started) scope.launch {
+            kotlinx.coroutines.delay(PULL_ENTRY_WAIT_MS)
+            if (ShadeShortcutActivity.created.get() == before && !openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
+        }
     }
 
     // ---- Dock handle -------------------------------------------------------------------------
