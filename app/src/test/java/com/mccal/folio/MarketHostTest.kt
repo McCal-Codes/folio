@@ -606,4 +606,39 @@ class MarketHostTest {
         assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
         assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
     }
+
+    /** Harborline's shipped files with only the version raised: an update that changes none of the settings. */
+    private fun sameChanges(version: String): ByteArray {
+        val files = requireNotNull(builtInSourceForTests().filesFor(harborlineId)).toMutableMap()
+        files["manifest.json"] = requireNotNull(files["manifest.json"]).decodeToString()
+            .replace(""""version": "1.0.0"""", """"version": "$version"""").toByteArray()
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            for ((name, bytes) in files) { zip.putNextEntry(java.util.zip.ZipEntry(name)); zip.write(bytes); zip.closeEntry() }
+        }
+        return out.toByteArray()
+    }
+
+    // Slice 3: the built-in package, updated from the hosted source by the automatic path. The record takes the source
+    // address (so auto-update follows it from then on), the person's choices stay, and Undo gives the built-in copy back.
+    @Test fun `a built-in package updated from the hosted source keeps the person's choices and Undo restores the built-in`() {
+        val t = tweaked()
+        val builtIn = installedNow(t.installer.installBuiltIn(requireNotNull(builtInSourceForTests().filesFor(harborlineId)))).installed
+        assertEquals(null, builtIn.sourceUrl)
+        val mine = personChanges(t.launcher)
+        val hostedUrl = "https://mccal-codes.github.io/folio-tweaks/"
+
+        val updated = installedNow(
+            t.installer.updateKeepingSettings(sameChanges("1.0.1"), origin = com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = hostedUrl),
+        )
+        assertEquals(hostedUrl, updated.installed.sourceUrl)
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
+        assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
+
+        assertTrue(t.installer.undoUpdateInPlace(harborlineId, builtIn.version, updated.installed.version, builtInVersion = builtIn.version))
+        val back = requireNotNull(t.store.find(harborlineId))
+        assertEquals(builtIn.version, back.version)
+        assertEquals("the built-in copy has no source address again", null, back.sourceUrl)
+        assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
+    }
 }

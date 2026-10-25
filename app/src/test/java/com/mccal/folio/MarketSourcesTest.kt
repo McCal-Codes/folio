@@ -314,4 +314,26 @@ class MarketSourcesTest {
         override fun apply(change: com.mccal.folio.market.PackageChange): String = "before".also { applied += change }
         override fun restore(change: com.mccal.folio.market.PackageChange, snapshot: String) = Unit
     }
+
+    @Test fun `the first-party address takes Folio's key and refuses any other, at every door`() = runTest {
+        val ours = requireNotNull(SourceKey.parse(FIRST_PARTY_SOURCE_KEY))
+        // Another key at the first-party address, however it was typed: refused, and nothing is pinned or listed.
+        for (typed in listOf(FIRST_PARTY_SOURCE, FIRST_PARTY_SOURCE.trimEnd('/'), "github.com/McCal-Codes/folio-tweaks")) {
+            val refused = sources.trust(typed, key)
+            assertTrue("$refused", refused is RefreshResult.Failed && refused.reason == RefreshResult.Reason.KEY_MISMATCH)
+        }
+        assertTrue(sources.sources().isEmpty())
+        assertNull(SourceStore(store).state(FIRST_PARTY_SOURCE).pinnedKey)
+
+        // Folio's own key is accepted with no prompt, and the source is flagged first-party whatever kind was asked for.
+        sources.trust(FIRST_PARTY_SOURCE, ours, Source.Kind.ADDED)
+        assertEquals(Source.Kind.FIRST_PARTY, sources.sources().single().kind)
+        assertEquals(ours, SourceStore(store).state(FIRST_PARTY_SOURCE).pinnedKey)
+        // Trusting a different key afterwards still can't replace it.
+        assertTrue(sources.trust(FIRST_PARTY_SOURCE, key) is RefreshResult.Failed)
+        assertEquals(ours, SourceStore(store).state(FIRST_PARTY_SOURCE).pinnedKey)
+        // It can be turned off like any source.
+        sources.forget(FIRST_PARTY_SOURCE)
+        assertTrue(sources.sources().isEmpty())
+    }
 }

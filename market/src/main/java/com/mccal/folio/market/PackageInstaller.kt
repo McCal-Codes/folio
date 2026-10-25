@@ -305,10 +305,13 @@ class PackageInstaller(
      * works while the installed version is still [to] and on, and the old version's changes are still there; otherwise
      * it says no and nothing changes.
      */
-    fun undoUpdateInPlace(id: String, from: DebVersion, to: DebVersion): Boolean {
+    fun undoUpdateInPlace(id: String, from: DebVersion, to: DebVersion, builtInVersion: DebVersion? = null): Boolean {
         val current = store.find(id)?.takeIf { it.enabled && it.version == to } ?: return false
         val changes = store.changesFor(id, from) ?: return false
-        return store.put(current.copy(version = from), changes)
+        // Undoing an update of a built-in package puts the built-in copy back, and that has no source address: left on
+        // the hosted source's address it would be treated as that source's version, and judged by that source's lists.
+        val sourceUrl = if (from == builtInVersion) null else current.sourceUrl
+        return store.put(current.copy(version = from, sourceUrl = sourceUrl), changes)
     }
 
     private fun apply(

@@ -225,4 +225,20 @@ class FirstPartySourceTest {
         )
         assertNull(merged.single { it.id == shared.id && it.source == honest }.clash)
     }
+
+    @Test fun `only the first-party update is marked as standing in for a built-in package`() {
+        val merged = merge(tweaks to snapshot(tweaks, listed("1.0.1")), someone to snapshot(someone, listed("9.0.0")))
+        val rows = cabinets(merged)
+        assertTrue(rows.first { it.source == tweaks }.updatesBuiltIn)
+        assertFalse("the impostor is not an update", rows.first { it.source == someone }.updatesBuiltIn)
+        assertFalse("the other built-in packages are untouched", merged.filter { it.id != cabinet.id }.any { it.updatesBuiltIn })
+        // Equal, older, or unverifiable (pinned to another key): the built-in row stays and nothing is marked.
+        assertFalse(cabinets(merge(tweaks to snapshot(tweaks, listed("1.0.0")))).any { it.updatesBuiltIn })
+        assertFalse(cabinets(merge(tweaks to snapshot(tweaks, listed("1.0.1")), pinned = otherKey)).any { it.updatesBuiltIn })
+    }
+
+    @Test fun `the highest version a source lists wins`() {
+        val rows = cabinets(merge(tweaks to snapshot(tweaks, listed("1.0.1"), listed("1.0.2"))))
+        assertEquals("1.0.2", rows.single().entry.version.toString())
+    }
 }

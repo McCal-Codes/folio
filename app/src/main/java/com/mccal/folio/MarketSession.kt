@@ -137,7 +137,11 @@ internal class MarketSession(
         folio = folioVersion,
         // The key the source is trusted with now AND the key that signed the copy Folio has: a snapshot accepted under
         // another key stays someone else's even after the source is re-pinned to Folio's key.
-        isFirstParty = { source, snapshot -> isFirstParty(source.url, sourceKeys.state(source.url).pinnedKey, snapshot.entry.keyId) },
+        // A list past its maxAge is browse-only (T3) and installs nothing, so it doesn't stand in for the bundled copy
+        // either: the bundled one stays until the hosted list is fresh again.
+        isFirstParty = { source, snapshot ->
+            isFirstParty(source.url, sourceKeys.state(source.url).pinnedKey, snapshot.entry.keyId) && !sources.isStale(source)
+        },
     )
 
     /**
@@ -197,7 +201,7 @@ internal class MarketSession(
 
     /** Puts back the version an automatic update replaced, if it is still the one installed. Home is not touched. */
     suspend fun undoAutoUpdate(update: AutoUpdate): Boolean = withContext(io) {
-        installer.undoUpdateInPlace(update.id, update.from, update.to).also {
+        installer.undoUpdateInPlace(update.id, update.from, update.to, builtInVersion = index()?.packages?.firstOrNull { it.id == update.id }?.version).also {
             if (it) {
                 autoUpdates.markUndone(update.id, update.to)
                 // A version the person undid is not installed by itself again; a newer one still is.
@@ -407,7 +411,9 @@ internal const val SUPPORTER_SOURCE_KEY =
  * same id from any other source, is still an impostor. The key ships in the app for that reason, as
  * [SUPPORTER_SOURCE_KEY] does, so a new key for this source needs a Folio release.
  *
- * Nothing adds this source by itself yet; it counts as Folio's own once someone has added it.
+ * [MarketAccess.seedFirstPartySource] puts it in the list once, with the key pinned and no fingerprint to confirm, and
+ * only where the Market is open. It can be removed like any source and is not put back; [MarketSources.trust] refuses
+ * any other key for this address.
  */
 internal const val FIRST_PARTY_SOURCE = "https://mccal-codes.github.io/folio-tweaks/"
 
@@ -457,6 +463,27 @@ internal object MarketAccess {
             if (!session.sources.has(SUPPORTER_SOURCE)) {
                 session.sources.trust(SUPPORTER_SOURCE, key, Source.Kind.SUPPORTER)
             }
+        }
+        return true
+    }
+
+    /**
+     * Puts Folio Community Tweaks in the source list, once, where the Market is open. It does nothing on a phone whose
+     * gate is closed, and nothing after the first time, so a person who removes the source keeps it removed. A copy of
+     * the address already in the list is left as it is: if someone added it under another key, it stays an ordinary
+     * source and is not repaired behind their back.
+     */
+    fun seedFirstPartySource(context: Context): Boolean {
+        if (!isOpen(context)) return false
+        val key = SourceKey.parse(FIRST_PARTY_SOURCE_KEY) ?: return false
+        val app = context.applicationContext
+        MarketWork.background {
+            val session = MarketSession(app, ReadOnlyMarketLauncher)
+            if (session.prefs.firstPartySeeded) return@background
+            if (!session.sources.has(FIRST_PARTY_SOURCE)) {
+                session.sources.trust(FIRST_PARTY_SOURCE, key, Source.Kind.FIRST_PARTY)
+            }
+            session.prefs.firstPartySeeded = true
         }
         return true
     }

@@ -29,6 +29,13 @@ data class Source(
         SUPPORTER("supporter"),
 
         /**
+         * Folio Community Tweaks (folio-tweaks), Folio's own tweaks source. Its key ships in the app like the
+         * supporter source's, so it is never trusted on first use, and it can be removed like any source. A reader
+         * that doesn't know this kind treats it as an added source, which is only less trusted.
+         */
+        FIRST_PARTY("first-party"),
+
+        /**
          * A source served from the phone itself while someone builds a package (`folio-pkg serve` plus
          * `adb reverse`). Unsigned, http, and only in Folio Dev.
          */

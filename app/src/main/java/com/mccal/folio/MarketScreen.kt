@@ -172,6 +172,8 @@ internal fun MarketScreen(
     val busyId = MarketWork.busyId
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    // Folio's own tweaks source goes in the list once, here and nowhere before the Market is open to this phone.
+    LaunchedEffect(Unit) { MarketAccess.seedFirstPartySource(context) }
 
     fun refresh() { revision++ }
 
