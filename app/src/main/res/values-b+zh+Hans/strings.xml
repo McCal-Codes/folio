@@ -960,6 +960,7 @@
     <string name="sources">源</string>
     <string name="built_into_the_app_no_network">内置于 App · 无需网络</string>
     <string name="add_a_source">添加源</string>
+    <string name="add_folio_community_tweaks_back">重新添加 Folio 社区调整</string>
     <string name="add_a_local_source_folio_dev">添加本地源（Folio Debug）</string>
     <string name="folio_shows_a_source_s_key_fingerprint">Folio 会在你信任某个源之前显示其密钥指纹；如果源更换了密钥，Folio 会停止使用它，直到你确认新密钥。它只读取静态文件，并且只在你要求或到了后台刷新时间时才读取。</string>
     <string name="refreshing">正在刷新…</string>

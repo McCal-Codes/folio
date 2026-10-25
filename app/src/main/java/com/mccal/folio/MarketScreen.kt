@@ -89,6 +89,7 @@ import kotlinx.coroutines.launch
 import com.mccal.folio.market.RefreshResult
 import com.mccal.folio.market.RepoIndex
 import com.mccal.folio.market.Source
+import com.mccal.folio.market.SourceKey
 import com.mccal.folio.market.Section
 
 /** The Market's tabs. Adding a source over the network comes in Phase 6; Sources shows what Folio has today. */
@@ -481,6 +482,16 @@ internal fun MarketScreen(
                             onOpenSource = { openSourceUrl = it; openId = null },
                             onAddSource = { addingSource = true },
                             folioBeta = folioBeta,
+                            onRestoreCommunityTweaks = {
+                                scope.launch {
+                                    val key = SourceKey.parse(FIRST_PARTY_SOURCE_KEY) ?: return@launch
+                                    val result = session.sources.trust(FIRST_PARTY_SOURCE, key, Source.Kind.FIRST_PARTY)
+                                    session.prefs.firstPartySeeded = true
+                                    statuses = withContext(session.io) { session.sources.cached() }
+                                    say(refreshMessage(context, Source(FIRST_PARTY_SOURCE, kind = Source.Kind.FIRST_PARTY), result))
+                                    refresh()
+                                }
+                            },
                             onAddLocalDev = {
                                 scope.launch {
                                     val result = session.sources.addLocalDev(DEFAULT_LOCAL_SOURCE)
@@ -948,6 +959,7 @@ private fun MarketList(
     onOpenSource: (String) -> Unit,
     onAddSource: () -> Unit,
     onAddLocalDev: () -> Unit,
+    onRestoreCommunityTweaks: () -> Unit,
     folioBeta: Boolean,
     entries: List<MarketEntry>,
     installed: Map<String, InstalledPackage>,
@@ -1014,6 +1026,9 @@ private fun MarketList(
                     onAdd = onAddSource,
                     onAddLocalDev = onAddLocalDev,
                     folioBeta = folioBeta,
+                    // Put there once, so a person who removed it keeps it removed; this is the way back to the key Folio ships.
+                    communityTweaksMissing = statuses.none { it.source.url.trimEnd('/').equals(FIRST_PARTY_SOURCE.trimEnd('/'), ignoreCase = true) },
+                    onRestoreCommunityTweaks = onRestoreCommunityTweaks,
                 )
             }
         }

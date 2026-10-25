@@ -959,6 +959,7 @@
     <string name="sources">소스</string>
     <string name="built_into_the_app_no_network">앱에 내장됨 · 네트워크 사용 안 함</string>
     <string name="add_a_source">소스 추가</string>
+    <string name="add_folio_community_tweaks_back">Folio 커뮤니티 트윅 다시 추가</string>
     <string name="add_a_local_source_folio_dev">로컬 소스 추가(Folio Debug)</string>
     <string name="folio_shows_a_source_s_key_fingerprint">소스를 신뢰하기 전에 키 지문을 표시합니다. 소스의 키가 바뀌면 새 키를 확인할 때까지 사용을 중지합니다. 요청하거나 백그라운드 새로고침 시점이 된 경우에만 정적 파일을 읽습니다.</string>
     <string name="refreshing">새로고침 중…</string>

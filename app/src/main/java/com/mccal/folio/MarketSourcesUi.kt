@@ -60,6 +60,9 @@ internal fun MarketSourcesTab(
     onAddLocalDev: () -> Unit,
     /** Whether this supporter gets Folio Beta: a code with beta access and a broker to ask. */
     folioBeta: Boolean = false,
+    /** Folio Community Tweaks is not in the list (removed, and it is only ever put there once): offer it back. */
+    communityTweaksMissing: Boolean = false,
+    onRestoreCommunityTweaks: () -> Unit = {},
 ) {
     Column {
         SheetGroupLabel(stringResource(R.string.sources))
@@ -101,6 +104,10 @@ internal fun MarketSourcesTab(
         }
         SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
             IosActionRow(stringResource(R.string.add_a_source)) { onAdd() }
+            if (communityTweaksMissing) {
+                MenuDivider()
+                IosActionRow(stringResource(R.string.add_folio_community_tweaks_back)) { onRestoreCommunityTweaks() }
+            }
             if (localDevAllowed) {
                 MenuDivider()
                 IosActionRow(stringResource(R.string.add_a_local_source_folio_dev)) { onAddLocalDev() }
