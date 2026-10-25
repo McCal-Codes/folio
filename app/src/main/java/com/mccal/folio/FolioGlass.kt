@@ -32,7 +32,7 @@ internal object FolioGlass {
     val clearTile = Color.White.copy(alpha = .16f)
     /** Control Center, Frosted: lighter tiles on [frostedPlate], which keeps their text readable over any app. */
     val frostedTile = Color.White.copy(alpha = .11f)
-    val frostedPlate = Color.Black.copy(alpha = .34f)
+    val frostedPlate = Color.Black.copy(alpha = .5f)
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */

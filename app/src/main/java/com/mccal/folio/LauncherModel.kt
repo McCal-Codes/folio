@@ -113,7 +113,7 @@ data class LauncherState(
     val widgetPlacements: List<WidgetPlacement> = DEFAULT_WIDGET_PLACEMENTS,
     val widgetRestores: List<WidgetRestore> = emptyList(),
     val googleSearch: Boolean = true,
-    val compact: LayoutPreset = LayoutPreset(),
+    val compact: LayoutPreset = defaultPreset(LayoutScreen.COVER),
     /** The inner screen held upright, when it has a layout of its own; null means it uses [expanded], as it always did. */
     val portrait: LayoutPreset? = null,
     val expanded: LayoutPreset = LayoutPreset(),
@@ -1882,7 +1882,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         dock = loadedDock,
         widgetPlacements = placements, folders = folders, widgetRestores = restores,
         googleSearch = j.optBoolean("googleSearch", true),
-        labels = j.optBoolean("labels", true), compact = preset("compact", LayoutPreset()),
+        labels = j.optBoolean("labels", true), compact = preset("compact", defaultPreset(LayoutScreen.COVER)),
         expanded = preset("expanded", LayoutPreset()), fullWidthRestore = j.optJSONObject("fullWidthRestore")?.let { o -> o.keys().asSequence().associateWith { o.optString(it) }.filterValues(String::isNotBlank) }.orEmpty(),
         portrait = j.optJSONObject("portrait")?.let { preset("portrait", LayoutPreset()) }, verticalStatus = j.optBoolean("verticalStatus", true),
         leftHanded = j.optBoolean("leftHanded", false),

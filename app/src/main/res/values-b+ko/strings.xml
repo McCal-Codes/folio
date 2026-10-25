@@ -1663,6 +1663,7 @@
     <string name="cc_look_clear">투명 유리</string>
     <string name="cc_look_frosted">반투명 패널</string>
     <string name="cc_look_solid">단색</string>
+    <string name="cc_look_note">투명 유리는 비쳐 보이기 때문에 밝은 배경이나 앱 위에서는 글자가 읽기 어려울 수 있습니다. 반투명 패널과 단색은 어디서나 잘 보입니다.</string>
     <string name="language">언어</string>
     <string name="settings_keywords_general">일반 정보 버전 업데이트 새로운 기능 도움말 로드맵 크레딧 고급</string>
     <string name="settings_keywords_language">언어 번역 영어 한국어 중국어</string>
