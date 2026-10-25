@@ -264,6 +264,7 @@
     <string name="widget_shape_row">横排</string>
     <string name="widget_shape_column">竖排</string>
     <string name="widget_unavailable">小组件不可用</string>
+    <string name="choose_again">重新选择</string>
     <string name="notification_center">通知中心</string>
     <string name="no_notifications">没有通知</string>
     <string name="show_less">收起</string>

@@ -263,6 +263,7 @@
     <string name="widget_shape_row">가로 한 줄</string>
     <string name="widget_shape_column">세로 한 줄</string>
     <string name="widget_unavailable">위젯을 사용할 수 없음</string>
+    <string name="choose_again">다시 선택</string>
     <string name="notification_center">알림 센터</string>
     <string name="no_notifications">알림 없음</string>
     <string name="show_less">간략히 보기</string>
