@@ -167,8 +167,10 @@ class DuoSpacingTest {
                 assertTrue("$t fit rows ${off.fitAppRows} -> ${on.fitAppRows}", on.fitAppRows >= off.fitAppRows)
                 assertEquals("$t rows shown", off.appRows, on.appRows)
                 assertEquals("$t columns", off.splitColumns, on.splitColumns)
-                assertEquals("$t cell width", off.cellWidth, on.cellWidth, 0f)
-                assertEquals("$t grid width", off.gridWidth, on.gridWidth, 0f)
+                // A window wide enough that today's 460 dp page leaves most of it bare spreads its columns (WIDE_HOME_MIN_WIDTH_DP).
+                val widened = on.expanded && w >= WIDE_HOME_MIN_WIDTH_DP
+                if (widened) assertTrue("$t cell width", on.cellWidth >= off.cellWidth && on.gridWidth >= off.gridWidth)
+                else { assertEquals("$t cell width", off.cellWidth, on.cellWidth, 0f); assertEquals("$t grid width", off.gridWidth, on.gridWidth, 0f) }
                 assertEquals("$t horizontal dock", off.horizontalDock, on.horizontalDock)
                 assertTrue("$t icons never smaller", on.iconSize >= off.iconSize)
             }

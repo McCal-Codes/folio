@@ -182,6 +182,30 @@ class HomeFitTest {
         }
     }
 
+    @Test fun `windows under the wide threshold keep their page width, wider ones use their share`() {
+        forEachWindow { tag, w, h ->
+            val off = geo(w, h, false); val on = geo(w, h, true)
+            if (w < WIDE_HOME_MIN_WIDTH_DP || !on.expanded) {
+                // The Fold8 sizes (cover 475x751, inner 932x704 and upright), phones and every other window below the threshold.
+                assertEquals("$tag home width", off.homeWidth, on.homeWidth, 0f)
+                assertEquals("$tag grid width", off.gridWidth, on.gridWidth, 0f)
+                assertEquals("$tag cell", off.cellWidth, on.cellWidth, 0f)
+                assertEquals("$tag icon", off.iconSize, on.iconSize, 0f)
+            } else {
+                assertEquals("$tag page share", w * 0.56f, on.homeWidth, 0.01f)
+                assertTrue("$tag wider than before", on.homeWidth > off.homeWidth)
+                // What stays beside the page is the other pane (Today), under half the window; and the page's grid and Side Bar fit in it.
+                assertTrue("$tag bare width ${w - on.homeWidth}", w - on.homeWidth <= w * 0.44f + 0.01f)
+                assertTrue("$tag grid + dock in the page", on.gridWidth + 16f + LayoutPreset().dockWidth <= on.homeWidth + 0.01f)
+                assertTrue("$tag icon in range", on.iconSize in 40f..68f)
+            }
+        }
+        // The Fold8's own screens, by their measured sizes.
+        for ((w, h) in listOf(475.43f to 751.2f, 932f to 704f, 704f to 932f)) {
+            assertEquals("$w x $h", geo(w, h, false).homeWidth, geo(w, h, true).homeWidth, 0f)
+        }
+    }
+
     @Test fun `write the table`() {
         val file = System.getenv("FOLIO_HOME_FIT_TABLE") ?: return
         val out = StringBuilder("window | duo | rows | icon | row | top slack | bottom slack | ratio | pct top | pct bottom | reachable cells\n")

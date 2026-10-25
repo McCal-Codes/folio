@@ -181,6 +181,12 @@ const val ANDROID_MEDIUM_WIDTH_DP = 600f
  */
 /** Wide enough for two Home panels side by side: the expanded Home, Discover's expanded dock. */
 const val EXPANDED_HOME_MIN_WIDTH_DP = 650f
+/**
+ * From this width, with DUO_SPACING on, the expanded Home is no longer held to a 460 dp page. A design choice, between the widest
+ * window that keeps today's page (the Pixel C and Fold8 inner screens, 995 dp and 932 dp after the big-screen scale) and the first
+ * that leaves most of its width bare (the Pixel Tablet's 1120 dp).
+ */
+const val WIDE_HOME_MIN_WIDTH_DP = 1100f
 /** Below this height the dock and status rail draw their compact form. */
 const val COMPACT_DOCK_MAX_HEIGHT_DP = 500f
 /** Today View puts its widgets in two columns from this width. */
@@ -305,7 +311,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // A bottom bar with no status Side Bar: nothing to leave room for, so the grid takes the width (less its margins).
     val fullWidth = horizontalDock && !tallRegular && !statusRail
     val expanded = width * classScale >= 650f && height * classScale >= HOME_REGULAR_MIN_HEIGHT_DP && !tallRegular
-    val homeWidth = if (expanded) minOf(460f, width * 0.56f, if (foldAtCenter) width / 2f else Float.MAX_VALUE) else width
+    // DUO_SPACING: on a window wide enough that a 460 dp page would leave most of it bare (a large tablet or desktop window), Home takes
+    // its 56 percent share like the narrower expanded windows do; the pages keep their four columns, so saved layouts are unchanged.
+    val homeCap = if (duoSpacing && width * classScale >= WIDE_HOME_MIN_WIDTH_DP) Float.MAX_VALUE else 460f
+    val homeWidth = if (expanded) minOf(homeCap, width * 0.56f, if (foldAtCenter) width / 2f else Float.MAX_VALUE) else width
     val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) + 28f else 0f
     val homeBottomSpace = bottomSpaceIn + if (horizontalDock) dockBarHeight + 16f else 0f
     // Columns about as wide as an icon and its breathing room, centered, instead of stretching across a big screen.
@@ -372,7 +381,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         icon = spacedIcon(icon)
         cell = narrowed(cell)
         // The widget row is as wide as the four columns.
-        widget = (minOf(176f, 2f * cell - 5f) * p.widgetScale).coerceAtLeast(88f)
+        // A wider page (see homeCap) spreads its columns; the widget row keeps the height the 460 dp page gives it, so rows are as many as before.
+        val widgetCell = if (homeCap > 460f) minOf(cell, (460f - p.dockWidth - 44f).coerceAtLeast(192f) / 4f) else cell
+        widget = (minOf(176f, 2f * widgetCell - 5f) * p.widgetScale).coerceAtLeast(88f)
         fun needed(n: Int = BASE_APP_ROWS, g: Float = gap) = (if (widgetsFillRows) filledWidget(icon, g) else widget) + 18f + n * rowFor(icon, g)
         // More rows: as many app rows as fit at full size, plus one if a tighter space under the labels makes room.
         val fitting = (BASE_APP_ROWS..MAX_APP_ROWS).lastOrNull { needed(it) <= fitHeight } ?: (BASE_APP_ROWS - 1)
