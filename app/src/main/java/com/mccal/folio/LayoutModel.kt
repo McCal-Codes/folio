@@ -42,6 +42,8 @@ data class LayoutPreset(
 const val DEFAULT_COLUMN_GAP = 16f
 /** Narrowest column (dp) when app names show, so common names fit on one line. */
 const val MIN_LABELED_COLUMN = 64f
+/** Rows picked by hand (Rows › 5, 6 or 7) shrink icons to fit, but never below this, so labels stay readable. */
+const val MIN_ROWS_ICON = 48f
 
 enum class DockPlacement {
     /** Side Bar, or a bar along the bottom when a regular-size screen is upright (iPhone Duo). */
@@ -164,6 +166,13 @@ const val HOME_REGULAR_MIN_HEIGHT_DP = 560f
  */
 enum class LayoutScreen { COVER, INNER, INNER_UPRIGHT }
 
+/**
+ * What a new Folio starts with for a screen (McCal 25 Oct 2026, after the iPhone and iPad pictures: they pack apps from the top and leave
+ * the free space at the bottom). A phone-size window starts with the page at the top; the open screens keep the page centered. A saved
+ * layout keeps what it has, and Reset this layout goes back to this.
+ */
+fun defaultPreset(screen: LayoutScreen): LayoutPreset = if (screen == LayoutScreen.COVER) LayoutPreset(pageTop = true) else LayoutPreset()
+
 /** The one rule for which layout a window of this size gets; Home, Discover and Settings all ask it. */
 fun layoutScreenFor(widthDp: Float, heightDp: Float, classScale: Float = 1f): LayoutScreen =
     if (widthDp * classScale >= EXPANDED_HOME_MIN_WIDTH_DP && heightDp * classScale >= HOME_REGULAR_MIN_HEIGHT_DP)
@@ -224,7 +233,12 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
      * page with a widget or without one, and the dock, which starts where row 2 does, lines up on every page. Widget
      * Size has no job then (the widget is as tall as two rows). Off: the widget keeps the height Widget Size gives it.
      */
-    widgetsFillRows: Boolean = false): HomeGeometry {
+    widgetsFillRows: Boolean = false,
+    /**
+     * Rows were picked by hand (Rows › 5, 6 or 7): when the rows don't fit even with the space under labels tightened, the icons
+     * get smaller (down to [MIN_ROWS_ICON]) instead of the page scrolling. Automatic and Rows › 4 never shrink icons for rows.
+     */
+    shrinkIconsForRows: Boolean = false): HomeGeometry {
     val p = preset.sanitized()
     val slots = dockSlots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS).toFloat()
     // Unfolded Duo layout only with regular size both ways; the cover in landscape is still compact.
@@ -317,8 +331,16 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         // Laid out for the rows shown, so Rows › 4 looks exactly like before; switching the setting re-centers the page.
         layoutRows = rows
         // Extra rows tighten the spacing only when that's what makes them fit; otherwise the page scrolls.
-        if (layoutRows > BASE_APP_ROWS && needed(layoutRows) > fitHeight && needed(layoutRows, minOf(gap, tightGap)) <= fitHeight)
-            gap = minOf(gap, tightGap)
+        if (layoutRows > BASE_APP_ROWS && needed(layoutRows) > fitHeight) {
+            val tight = minOf(gap, tightGap)
+            if (needed(layoutRows, tight) <= fitHeight) gap = tight
+            else if (shrinkIconsForRows) {
+                // Both ways of spending the height: a filled widget is two rows tall, so everything shares (rows + 2) pitches.
+                val pitch = if (widgetsFillRows) fitHeight / (layoutRows + 2f) else (fitHeight - widget - 18f) / layoutRows
+                gap = tight
+                icon = minOf(icon, (pitch - labelSpace - tight).coerceAtLeast(MIN_ROWS_ICON))
+            }
+        }
     }
     // Automatic rows fill the height: leftover space (less than a row) is shared out as even space between rows
     // instead of a wide empty margin, capped so pages never look stretched; the rest stays as the centering margin.

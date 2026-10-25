@@ -13,11 +13,11 @@ class RedeemActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val code = redeemCode(intent?.data?.toString())
-        // A link is something anyone can put in front of you, so it may add a code but never replace one: a page
-        // offering a smaller code could otherwise quietly take the place of the one you paid for. Swapping codes
-        // is done in Settings › Supporter, where you can see what you already have.
+        // A link may add a code but never replace one that still works: swapping codes is done in Settings › Supporter,
+        // where you can see what you already have (see canRedeemFromLink).
         val held = Supporter.storedText(this)
-        val replacing = code != null && held != null && BetaCodes.group(held) != BetaCodes.group(code)
+        val replacing = code != null && held != null &&
+            !canRedeemFromLink(BetaCodes.group(held), Supporter.code(this) != null, BetaCodes.group(code))
         // The same wording Settings › Supporter uses, so a link and a typed code answer alike, in any language.
         val said = when {
             code == null -> R.string.that_link_doesn_t_carry_a_folio_code
@@ -43,11 +43,13 @@ class RedeemActivity : ComponentActivity() {
     }
 }
 
-/** The code in a folio://redeem?c=… link, or null for anything else. Plain string work, so it can be tested. */
+/**
+ * The code in a folio://redeem?c=… (or the older folio://early?c=…) link, or null for anything else. Plain string work,
+ * so it can be tested.
+ */
 internal fun redeemCode(link: String?): String? {
     val text = link?.trim() ?: return null
-    val prefix = "folio://redeem"
-    if (!text.startsWith(prefix, ignoreCase = true)) return null
+    val prefix = REDEEM_HOSTS.firstOrNull { text.startsWith("folio://$it", ignoreCase = true) }?.let { "folio://$it" } ?: return null
     val rest = text.substring(prefix.length)
     val query = rest.substringAfter('?', "")
     val code = query.split('&').firstOrNull { it.startsWith("c=", ignoreCase = true) }?.substringAfter('=')
@@ -56,3 +58,5 @@ internal fun redeemCode(link: String?): String? {
     // Long enough to be a code, and only characters a code can hold: anything else isn't worth passing on.
     return decoded.trim().takeIf { it.length in 20..200 && it.all { c -> c.isLetterOrDigit() || c == '-' } }
 }
+
+private val REDEEM_HOSTS = listOf("redeem", "early")

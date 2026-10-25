@@ -87,6 +87,18 @@ internal object ActionSpecs {
         return true
     }
 
+    /** True when the shortcut is certainly gone, false when it exists, null when this cannot be told (Folio is not the default Home, or the query failed). */
+    internal fun shortcutGone(context: Context, pkg: String?, id: String?, userSerial: String? = null): Boolean? {
+        if (pkg.isNullOrBlank() || id.isNullOrBlank()) return null
+        val user = userFor(context, userSerial) ?: return null
+        val apps = context.getSystemService(LauncherApps::class.java) ?: return null
+        if (!apps.hasShortcutHostPermission()) return null
+        val query = LauncherApps.ShortcutQuery()
+            .setPackage(pkg).setShortcutIds(listOf(id))
+            .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST)
+        return try { apps.getShortcuts(query, user).isNullOrEmpty() } catch (_: Exception) { null }
+    }
+
     /** The profile an action names by its serial number: this one when none is named, null when that profile is gone. */
     private fun userFor(context: Context, serial: String?): android.os.UserHandle? {
         if (serial.isNullOrBlank()) return Process.myUserHandle()

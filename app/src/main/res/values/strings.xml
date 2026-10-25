@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="dune_wallpaper_description">The background you chose in Folio, sized for your display.</string>
     <string name="shade_service_label">Folio gestures &amp; overlays</string>
+    <string name="shade_service_description">Lets Folio open the system notifications and Quick Settings panels from Home gestures, and, only if you turn them on, show Folio’s dock handle and Dynamic Island over other apps, launch your dock apps and go Home. It does not read screen content or observe what you do in other apps. The one exception: when Folio’s panels open over another app and Blur is on, it takes a single screenshot only to blur it behind the panel. That picture is shrunk at once, kept only in memory, never saved or sent, and dropped when the panel closes.</string>
     <string name="shade_service_description">Lets Folio use Android’s system buttons for you: the notification shade, Quick Settings, lock, screenshot, Back, Home, recent apps and a few more. It only does this when you tap a Folio control or set a gesture. It does not read your screen or see what you type.</string>
     <string name="personal">Personal</string>
     <string name="work">Work</string>
@@ -22,6 +23,9 @@
     <string name="set_as_home_app">Set as home app</string>
     <string name="undo_last_layout_change">Undo last layout change</string>
     <string name="background">Background</string>
+    <string name="folder_background">Folder background</string>
+    <string name="status_bar_background">Status bar background</string>
+    <string name="settings_keywords_folder_background">folder background glass blur look dim</string>
     <string name="android_wallpaper">Android wallpaper</string>
     <string name="folio_background">Folio background</string>
     <string name="change_android_wallpaper">Change Android wallpaper</string>
@@ -42,6 +46,29 @@
     <string name="panels">Panels</string>
     <string name="big_clock_in_notification_center">Big clock in Notification Center</string>
     <string name="stack_notifications_by_app">Stack notifications by app</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. -->
+    <!-- Settings > Notifications > Panels: what a phone's own shade action (one-hand operation, a Routine) opens while another app is in front. -->
+    <string name="shade_over_apps">Folio\'s panels over other apps</string>
+    <string name="cc_page_controls">Controls</string>
+    <string name="cc_page_media">Media and sound</string>
+    <string name="cc_page_connectivity">Connectivity</string>
+    <string name="cc_page_of">%1$s, page %2$d of %3$d</string>
+    <string name="shade_pull">Pull down from the top of any app</string>
+    <string name="shade_pull_note">A pull down on the left half of an app\'s top edge opens Notification Center, and on the right half Control Center, in place of the phone\'s shade. Taps on that top strip do not reach the app while this is on, and an app in full screen keeps Android\'s own. It follows Folio\'s panels over other apps, so it is off when that is off.</string>
+    <string name="shade_over_apps_note">When a shortcut, a Routine or One UI\'s one-hand operation opens the notification shade or Quick Settings, Folio draws its own Notification Center or Control Center over the open app instead of the phone\'s. Needs Folio\'s gestures turned on. Swiping down from the top of an app opens your phone\'s own shade unless you turn on the pull below. Over another app, Reply opens a small box to type in, and Options are on Home only. It never opens over the lock screen.</string>
+    <string name="nc_layout_title">Unfolded layout</string>
+    <string name="nc_layout_full">Full screen</string>
+    <string name="nc_layout_card">Card</string>
+    <string name="nc_layout_both">Side by side</string>
+    <string name="nc_layout_note">Full screen puts the clock beside the list. Card is a smaller panel under the corner you pulled from: Notification Center from the top left, Control Center from the top right. Side by side shows both together, and needs a wide screen. A phone always opens one panel at a time.</string>
+    <string name="notification_sections">Notification sections</string>
+    <string name="notification_sections_note">Notification Center shows what is happening now and conversations first, then the rest, with quiet notifications folded away under Quiet. Calls, alarms, timers and conversations are never put in Quiet.</string>
+    <string name="nc_section_now">Now</string>
+    <string name="nc_section_conversations">Conversations</string>
+    <string name="nc_section_quiet" tools:ignore="PluralsCandidate">Quiet · %1$d</string>
+    <string name="nc_section_quiet_open">Quiet</string>
+    <string name="clear_n_notifications" tools:ignore="PluralsCandidate">Clear %1$d</string>
+    <string name="show_quiet_notifications">Show quiet notifications</string>
     <string name="unfolded_clock_beside_notifications">Unfolded: clock beside notifications</string>
     <string name="control_center_size">Control Center size</string>
     <string name="unfolded_control_center_in_the_middle">Unfolded: Control Center in the middle</string>
@@ -485,6 +512,7 @@
     <string name="widget_size">Widget size</string>
     <string name="rows">Rows</string>
     <string name="position">Position</string>
+    <string name="placement">Placement</string>
     <string name="dock">Dock</string>
     <string name="your_apps">Your Apps</string>
     <string name="dock_position_1_d">Dock Position %1$d</string>
@@ -541,7 +569,6 @@
     <string name="tinted">Tinted</string>
     <string name="reduce_transparency">Reduce Transparency</string>
     <string name="glass_is_nearly_solid_because_android_s">Glass is nearly solid because Android\'s high contrast is on.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">Widgets, the Side Bar and the dock are nearly solid, with a clearer edge. Glass settings return when this is off.</string>
     <string name="frost_is_how_see_through_widgets_and_the">Frost is how see-through widgets and the Side Bar are; the outline is the thin light edge around them.</string>
     <string name="save_backup_2">Save Backup</string>
     <string name="save">Save</string>
@@ -1119,6 +1146,10 @@
     <string name="delete_shortcut">Delete Shortcut</string>
     <string name="remove_from_home">Remove from Home</string>
     <string name="add_to_home">Add to Home</string>
+    <!-- Spotlight's Top Hit: the app is already on Home / is inside a folder (%1$s is the folder's name) / was just added (%1$s is the app's name). -->
+    <string name="on_home">On Home</string>
+    <string name="in_folder_name">In %1$s</string>
+    <string name="added_to_home">%1$s added to Home</string>
     <string name="add_to_folder">Add to Folder</string>
     <string name="create_folder">Create Folder</string>
     <!-- Title of the Create Folder dialog; %1$s is the app's name. -->
@@ -1360,6 +1391,7 @@
         <item quantity="other">Both screens fit %1$d rows, the most Folio shows.</item>
     </plurals>
     <string name="rows_note_different" tools:ignore="PluralsCandidate">The cover screen fits %1$d and the inner screen fits %2$d, so Folio shows %3$d on both. Smaller icons or labels make room for another row.</string>
+    <string name="rows_note_fixed_more" tools:ignore="PluralsCandidate">Fixed at %1$d rows on both screens. A screen that needs the room shows smaller icons, down to 48 dp, and then scrolls.</string>
     <plurals name="count_installed">
         <item quantity="one">%1$d installed</item>
         <item quantity="other">%1$d installed</item>
@@ -1688,6 +1720,13 @@
         <item quantity="other">Show all %d</item>
     </plurals>
     <string name="general">General</string>
+    <string name="settings_group_launcher">Launcher</string>
+    <string name="settings_group_extensions">Extensions</string>
+    <string name="control_center_look">Control Center look</string>
+    <string name="cc_look_clear">Clear glass</string>
+    <string name="cc_look_frosted">Frosted</string>
+    <string name="cc_look_solid">Solid</string>
+    <string name="cc_look_note">Clear glass is see-through, so its text is harder to read over a light wallpaper or app. Frosted and Solid keep it readable everywhere.</string>
     <string name="language">Language</string>
     <string name="settings_keywords_general">general about version update what\'s new help roadmap credits advanced</string>
     <string name="settings_keywords_language">language translation english korean chinese locale</string>
@@ -2119,4 +2158,53 @@
     <string name="appearance_system_until_location">Using system theme until a location is set</string>
     <string name="appearance_system_location_stale">Using system theme because the device location is stale</string>
     <string name="appearance_system_location_unavailable">Using system theme because this location is unavailable</string>
+    <!-- Settings › Search & App Library › Suggestions. Wording is a placeholder for McCal. -->
+    <string name="clear_suggestions_history">Clear Suggestions History</string>
+    <string name="clear_suggestions_history_q">Clear Suggestions History?</string>
+    <string name="clear_suggestions_history_text">Folio forgets what it learned from your app use, including your recent apps. Android\'s own usage data is not changed.</string>
+    <string name="suggestions_start_again_from_now">Spotlight, the App Library, the Suggestions widget and Smart Stack start learning again from now.</string>
+    <string name="island_expand">Show details</string>
+    <string name="island_collapse">Hide details</string>
+    <string name="island_state_expanded">Expanded</string>
+    <string name="island_state_collapsed">Collapsed</string>
+    <string name="media_previous">Previous</string>
+    <string name="media_next">Next</string>
+    <string name="discover_no_fit">Discover couldn\'t fit beside the dock. Return home and try again.</string>
+    <string name="discover_choose_dock_app">Choose dock app on home</string>
+    <string name="profile_app">%1$s app</string>
+    <string name="reduce_transparency_note">Widgets, the Side Bar and the dock turn nearly solid with a clearer edge, and the Glass settings are hidden until this is off. Android\'s high contrast does the same.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">Glass is nearly solid because Reduce Transparency is on. Turn it off in Accessibility to bring these settings back.</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="one">%d widget was left out because its app is missing.</item>
+        <item quantity="other">%d widgets were left out because their apps are missing.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">That layout backup is larger than 2 MB, so Folio can\'t read it.</string>
+    <string name="layout_backup_is_from_a_newer_folio">That layout backup is from a newer version of Folio. Update Folio to restore it.</string>
+    <string name="document_picker_unavailable">The file picker isn\'t available right now.</string>
+    <string name="folio_was_updated_to_1_s">Folio was updated to %1$s</string>
+    <string name="island_status_ready_title">Showing over other apps</string>
+    <string name="island_status_ready_body">Music, calls and timers appear in the island. Do Not Disturb limits message pop-ups.</string>
+    <string name="island_status_ready_live_body">Music, calls and timers appear in the island.</string>
+    <string name="island_status_dnd_title">Do Not Disturb is limiting message pop-ups</string>
+    <string name="island_status_dnd_body">Do Not Disturb is on, so it decides which message pop-ups appear. Music, calls and timers still show over other apps.</string>
+    <string name="island_status_dnd_action">Open Do Not Disturb</string>
+    <string name="island_status_popup_title">Android is showing these pop-ups itself</string>
+    <string name="island_status_popup_body">Don\'t double up with Android pop-ups is on, so the island stays out of the way of important notifications such as most messages.</string>
+    <string name="island_status_popup_note">Don\'t double up with Android pop-ups is on, so important notifications stay with Android\'s own pop-up.</string>
+    <string name="island_status_popup_action">Show them in the island too</string>
+    <string name="island_status_service_title">Not showing over other apps</string>
+    <string name="island_status_service_body">Folio\'s gestures service is off. Android only lets an app draw over other apps through it.</string>
+    <string name="island_status_service_action">Turn on the gestures service</string>
+    <string name="island_status_access_title">Nothing to show yet</string>
+    <string name="island_status_access_body">Notification access is off, so Folio can\'t see music, calls or messages.</string>
+    <string name="island_status_access_action">Open Notification access</string>
+    <string name="island_status_off_title">The island is off in other apps</string>
+    <string name="island_status_off_body">Turn on Dynamic Island under In every app to see it over other apps.</string>
+    <string name="island_status_live_off_title">Music and live progress is off</string>
+    <string name="island_status_live_off_body">Turn on Music and live progress to see music, calls and timers in the island.</string>
+    <string name="island_status_safe_title">Paused by Safe Mode</string>
+    <string name="island_status_safe_body">Safe Mode keeps the island and dock on Home only. Turn Safe Mode off to use them over other apps.</string>
+    <string name="package_import_market_off">This package needs Folio\'s Market, which opens with a supporter code.</string>
+    <string name="package_import_too_large">That file is too large to be a Folio package.</string>
+    <string name="package_import_too_slow">Reading that file took too long. Try saving it to your phone first.</string>
 </resources>
