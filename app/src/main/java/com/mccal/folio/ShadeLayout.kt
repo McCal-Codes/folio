@@ -54,39 +54,54 @@ internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarP
 internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boolean, safeMode: Boolean, folioInFront: Boolean, fullScreen: Boolean): Boolean =
     pullOn && overApps && panelsOn && !safeMode && !folioInFront && !fullScreen
 
-/** Control Center's smallest cell and the 4-column gap (dp), as drawn in TopPanels. */
+/** Control Center's gap between cells and its smallest cell (dp), as drawn in TopPanels. */
 internal const val CC_GAP_DP = 12f
 internal const val CC_MIN_CELL_DP = 44f
 /** The Control Center column's own side padding (16 dp each side) inside the panel width. */
 internal const val CC_SIDE_PADDING_DP = 32f
-/** The panel width under which Control Center never uses six columns (the 25 Oct research suggested about 520 dp; to be checked against font scaling). */
-internal const val CC_SIX_COLUMN_MIN_WIDTH_DP = 520f
+/** The page strip: a column at the edge on a wide panel, a row under the grid on a narrow one. */
+internal const val CC_STRIP_DP = 56f
+internal const val CC_EDGE_STRIP_MIN_DP = 560f
+/** A cell may grow to this times the size the person chose, to fill the width; past that another column is added instead. */
+internal const val CC_FILL_MAX = 1.5f
+internal val CC_COLUMN_STEPS = listOf(4, 6, 8)
 
-/** How many rows Control Center needs: with 4 columns the first four small controls sit beside the sliders; with 6 the sliders join the top row. */
-internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int =
-    if (columns == 6) 3 + (if (focus) 1 else 0) + (controls + 5) / 6
-    else 5 + (if (focus) 1 else 0) + (maxOf(0, controls - 4) + 3) / 4
-
-/** The cell a Control Center of [columns] columns can have in a [widthDp] by [heightDp] panel, never above [sizeCellDp] (null height: unbounded). */
-internal fun controlCenterCell(columns: Int, widthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): Float {
-    val rows = controlCenterRows(columns, controls, focus)
-    val byWidth = (widthDp - CC_SIDE_PADDING_DP - CC_GAP_DP * (columns - 1)) / columns
-    val byHeight = heightDp?.let { (it - 60f - CC_GAP_DP * (rows - 1)) / rows } ?: Float.MAX_VALUE
-    return minOf(sizeCellDp, byWidth, byHeight)
-}
+/** The pages Control Center is split into, reached from the strip: what is used most, media and sound, and the connections. */
+internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
 
 /**
- * Control Center keeps its four columns, like the iPad's, unless that squeezes its cells by height while the window has width to spare
- * (a phone or a fold on its side): then six columns put the sliders in the top row and spend width instead of height. Six are used only
- * when they give cells at least 6 dp bigger, so a window that is narrow, or tall enough, never changes.
+ * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with six or eight the
+ * sliders join the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
  */
-internal fun controlCenterColumns(widthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): Int {
-    // Six columns need room to breathe: under about 520 dp of panel width (a split half, a narrow side of a fold) four stay.
-    if (widthDp < CC_SIX_COLUMN_MIN_WIDTH_DP) return 4
-    val four = controlCenterCell(4, widthDp, heightDp, controls, focus, sizeCellDp)
-    if (four >= sizeCellDp) return 4
-    val six = controlCenterCell(6, widthDp, heightDp, controls, focus, sizeCellDp)
-    return if (six >= four + 6f) 6 else 4
+internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int =
+    if (columns >= 6) 3 + (if (focus) 1 else 0) + (controls + columns - 1) / columns
+    else 5 + (if (focus) 1 else 0) + (maxOf(0, controls - 4) + 3) / 4
+
+/** Columns and the size of one cell, in dp. */
+internal data class CcGrid(val columns: Int, val cellDp: Float, val stripAtEdge: Boolean)
+
+/**
+ * Control Center fills the window instead of sitting in a corner: the narrowest of 4, 6 or 8 columns whose cells are not bigger than
+ * [CC_FILL_MAX] times the chosen size ([sizeCellDp]), so a wide window gets more columns, not giant tiles. A window too short for the
+ * rows takes a wider grid (fewer rows) while that makes the cell at least 6 dp bigger. The page strip takes a column at the edge on a
+ * wide panel and a row under the grid on a narrow one. A null [heightDp] means no height limit.
+ */
+internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): CcGrid {
+    val edge = panelWidthDp >= CC_EDGE_STRIP_MIN_DP
+    val gridWidth = panelWidthDp - CC_SIDE_PADDING_DP - if (edge) CC_STRIP_DP else 0f
+    val maxCell = sizeCellDp * CC_FILL_MAX
+    fun widthCell(c: Int) = (gridWidth - CC_GAP_DP * (c - 1)) / c
+    fun heightCell(c: Int): Float {
+        val rows = controlCenterRows(c, controls, focus)
+        return heightDp?.let { (it - 60f - (if (edge) 0f else CC_STRIP_DP) - CC_GAP_DP * (rows - 1)) / rows } ?: Float.MAX_VALUE
+    }
+    fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)
+    var columns = CC_COLUMN_STEPS.firstOrNull { widthCell(it) <= maxCell } ?: CC_COLUMN_STEPS.last()
+    while (columns < CC_COLUMN_STEPS.last() && cell(columns) < sizeCellDp) {
+        val next = CC_COLUMN_STEPS[CC_COLUMN_STEPS.indexOf(columns) + 1]
+        if (cell(next) >= cell(columns) + 6f) columns = next else break
+    }
+    return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), edge)
 }
 
 /**

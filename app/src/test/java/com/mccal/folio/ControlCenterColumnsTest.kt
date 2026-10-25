@@ -4,53 +4,59 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Control Center keeps four columns unless a wide, short window would squeeze them; then it uses six. */
+/** Control Center fills its window with 4, 6 or 8 columns of cells near the size chosen, and puts its page strip at the edge or under the grid. */
 class ControlCenterColumnsTest {
-    private val sizeCell = 66f
+    private val size = 66f
+    private fun grid(w: Float, h: Float?, controls: Int = 8, focus: Boolean = false, s: Float = size) = controlCenterGrid(w, h, controls, focus, s)
 
-    @Test fun `a tall window keeps four columns`() {
-        assertEquals(4, controlCenterColumns(460f, 900f, 8, false, sizeCell))
-        assertEquals(4, controlCenterColumns(560f, 700f, 8, true, sizeCell))
+    @Test fun `a phone upright keeps four columns and its cells fill the width`() {
+        val g = grid(379f, 700f)
+        assertEquals(4, g.columns)
+        assertEquals(false, g.stripAtEdge)
+        // 379 less 32 of padding, four cells and three gaps: the whole width is used, and the cell is a little bigger than the 66 chosen.
+        assertEquals(379f - 32f, g.cellDp * 4 + CC_GAP_DP * 3, 0.5f)
+        assertTrue(g.cellDp > size)
     }
 
-    @Test fun `a panel with no height limit keeps four columns`() {
-        assertEquals(4, controlCenterColumns(560f, null, 12, true, sizeCell))
+    @Test fun `a wider window takes more columns instead of giant tiles`() {
+        assertEquals(6, grid(672f, 848f).columns)   // the unfolded screen upright
+        assertEquals(8, grid(880f, 620f).columns)   // the unfolded screen wide
+        assertEquals(8, grid(1248f, 760f).columns)  // a tablet: never more than eight
+        for ((w, h) in listOf(379f to 700f, 672f to 848f, 880f to 620f, 1248f to 760f)) assertTrue(grid(w, h).cellDp <= size * CC_FILL_MAX + 0.01f)
     }
 
-    @Test fun `a wide short window uses six columns and its cells get bigger`() {
-        assertEquals(6, controlCenterColumns(560f, 300f, 8, false, sizeCell))
-        val four = controlCenterCell(4, 560f, 300f, 8, false, sizeCell)
-        val six = controlCenterCell(6, 560f, 300f, 8, false, sizeCell)
-        assertTrue("four $four, six $six", six >= four + 6f)
+    @Test fun `the page strip is at the edge on a wide panel and under the grid on a narrow one`() {
+        assertEquals(false, grid(CC_EDGE_STRIP_MIN_DP - 1, 700f).stripAtEdge)
+        assertEquals(true, grid(CC_EDGE_STRIP_MIN_DP, 700f).stripAtEdge)
     }
 
-    @Test fun `a narrow panel keeps four columns however short it is`() {
-        assertEquals(4, controlCenterColumns(480f, 300f, 8, false, sizeCell))
-        assertEquals(4, controlCenterColumns(519f, 260f, 8, false, sizeCell))
-        assertEquals(6, controlCenterColumns(520f, 300f, 8, false, sizeCell))
+    @Test fun `a phone on its side is wide and short, so it takes eight columns and fits`() {
+        val g = grid(880f, 327f)
+        assertEquals(8, g.columns)
+        val rows = controlCenterRows(8, 8, false)
+        assertTrue("the rows fit: ${g.cellDp}", g.cellDp * rows + CC_GAP_DP * (rows - 1) + 60f <= 327f + 0.5f)
     }
 
-    @Test fun `six columns need the gain, so a window that is barely short stays at four`() {
-        // About 2 dp short of fitting four comfortable rows: six would give almost the same cell.
-        val barely = (60f + 12f * 5 + 66f * 6) - 2f
-        assertEquals(4, controlCenterColumns(560f, barely, 8, false, sizeCell))
+    @Test fun `a window that is wide enough but only barely short stays at the narrowest grid`() {
+        val tall = grid(672f, 2000f)
+        assertEquals(6, tall.columns)
+        assertEquals(6, grid(672f, null).columns)
     }
 
-    @Test fun `the grid always fits inside the panel less its own padding`() {
-        for (size in listOf(58f, 66f, 76f, 74f, 84f)) for (w in listOf(520f, 540f, 560f)) for (h in listOf(300f, 400f, 500f, 700f)) {
-            val cols = controlCenterColumns(w, h, 8, false, size)
-            val cell = maxOf(CC_MIN_CELL_DP, controlCenterCell(cols, w, h, 8, false, size))
-            val grid = cell * cols + CC_GAP_DP * (cols - 1)
-            assertTrue("size $size panel ${w}x$h: $cols columns of $cell make a grid of $grid in ${w - CC_SIDE_PADDING_DP}", grid <= w - CC_SIDE_PADDING_DP + 0.01f)
+    @Test fun `the grid always fits inside the panel less its padding and strip`() {
+        for (s in listOf(58f, 66f, 76f)) for (w in listOf(320f, 379f, 520f, 560f, 672f, 880f, 1248f)) for (h in listOf(300f, 400f, 500f, 700f, 900f)) {
+            val g = grid(w, h, s = s)
+            val used = g.cellDp * g.columns + CC_GAP_DP * (g.columns - 1) + CC_SIDE_PADDING_DP + if (g.stripAtEdge) CC_STRIP_DP else 0f
+            assertTrue("size $s panel ${w}x$h: ${g.columns} columns of ${g.cellDp} use $used", g.cellDp <= CC_MIN_CELL_DP + 0.01f || used <= w + 0.01f)
         }
     }
 
-    @Test fun `six columns need one row fewer for the same controls`() {
+    @Test fun `eight columns need fewer rows for the same controls`() {
         assertEquals(6, controlCenterRows(4, 8, false))
         assertEquals(5, controlCenterRows(6, 8, false))
-        assertEquals(7, controlCenterRows(4, 8, true))
-        assertEquals(6, controlCenterRows(6, 8, true))
-        assertEquals(3, controlCenterRows(6, 0, false))
+        assertEquals(4, controlCenterRows(8, 8, false))
+        assertEquals(5, controlCenterRows(8, 8, true))
+        assertEquals(3, controlCenterRows(8, 0, false))
         assertEquals(5, controlCenterRows(4, 0, false))
     }
 }

@@ -68,6 +68,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -134,10 +135,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 split -> 540.dp
                 shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
                 shape == ShadeShape.BOTH -> 440.dp
+                which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP -> Dp.Infinity // Control Center fills the window; its grid sets its own width
                 wide -> 460.dp
                 else -> 560.dp
             })
-            .then(if (which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) Modifier.fillMaxWidth() else Modifier)
+            .then(if ((which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) || (which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP)) Modifier.fillMaxWidth() else Modifier)
             .then(if (split) Modifier.fillMaxHeight() else Modifier)
             // Taps on gaps inside the panel must not fall through to the scrim and close it.
             .pointerInput(Unit) { detectTapGestures() }
@@ -663,149 +665,215 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
 
     BoxWithConstraints(modifier.testTag("control-center")) {
-        val gap = 12.dp
-        // iPad-sized cells: a compact grid instead of stretching across the whole screen.
+        val gap = CC_GAP_DP.dp
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
-        // Four columns like the iPad; six when the window is wide but too short for four comfortable rows of cells.
-        val cols = controlCenterColumns(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value)
-        val cell = controlCenterCell(cols, maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value).dp.coerceAtLeast(CC_MIN_CELL_DP.dp)
+        // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
+        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value)
+        val cols = grid.columns
+        val cell = grid.cellDp.dp
         fun span(n: Int): Dp = cell * n + gap * (n - 1)
         val gridWidth = span(cols)
-        ProvideJiggle(edit) {
-        // The fade draws in its own layer, which clips: pad it so edit mode's remove and add badges past the grid's edges stay whole.
-        Column(Modifier.width(gridWidth + 32.dp).fadingVerticalScroll().padding(horizontal = FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
-            // iOS 18 header: edit on the left, power on the right.
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
-                else GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
-                Spacer(Modifier.weight(1f))
-                GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
-                    onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
-                }
-            }
-            // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing (2×2)
-            var connectivityOpen by remember { mutableStateOf(false) }
-            val connectivity = listOf(
-                ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
-                ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
-                ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
-                ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
-            )
-            val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-            // The two sliders: beside the small controls with four columns, at the end of the top row with six.
-            val sliders: @Composable () -> Unit = {
-                TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, span(2),
-                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }) { value ->
-                    controls.changeBrightness(value) }
-                TallSlider(when {
-                    controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
-                    controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
-                    else -> Icons.AutoMirrored.Rounded.VolumeUp
-                }, stringResource(R.string.volume), controls.volume, cell, span(2)) { controls.changeVolume(it) }
-            }
-            val topBlock: @Composable () -> Unit = {
-            if (connectivityOpen) Module(Modifier.width(span(if (cols == 6) 4 else cols)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
-                Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
-                    connectivity.forEach { item ->
-                        Row(Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            RoundToggle(item.icon, item.label, item.on, item.accent, 44.dp, item.onClick)
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                                Text(stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+        val pages = CcPage.entries
+        val pager = androidx.compose.foundation.pager.rememberPagerState { pages.size }
+        val pageScope = rememberCoroutineScope()
+        val reduceMotion = LocalReduceMotion.current
+        LaunchedEffect(pager.currentPage) { if (pager.currentPage != 0) edit.stop() }
+        fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
+        // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
+        val rows = controlCenterRows(cols, chosen.size, focusModes.isNotEmpty())
+        val wantedHeight = cell * (rows - 1) + gap * (rows - 2)
+        val pageHeight = if (maxHeight == Dp.Infinity) wantedHeight
+            else minOf(wantedHeight, maxHeight - 60.dp - if (grid.stripAtEdge) 0.dp else CC_STRIP_DP.dp).coerceAtLeast(cell)
+
+        // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
+        val sliders: @Composable (Dp) -> Unit = { height ->
+            TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, height,
+                onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }) { value ->
+                controls.changeBrightness(value) }
+            TallSlider(when {
+                controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
+                controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
+                else -> Icons.AutoMirrored.Rounded.VolumeUp
+            }, stringResource(R.string.volume), controls.volume, cell, height) { controls.changeVolume(it) }
+        }
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val connectivity = listOf(
+            ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
+            ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
+            ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
+            ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
+        )
+        val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
+
+        // One page's content. Pages scroll on their own when a window is too short for them.
+        val pageContent: @Composable (CcPage) -> Unit = { page ->
+            Column(Modifier.fillMaxWidth().fadingVerticalScroll(), verticalArrangement = Arrangement.spacedBy(gap)) {
+                when (page) {
+                    CcPage.CONTROLS -> {
+                        // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing; with six or eight columns the sliders end this row.
+                        var connectivityOpen by remember { mutableStateOf(false) }
+                        val topBlock: @Composable () -> Unit = {
+                            if (connectivityOpen) Module(Modifier.width(span(if (cols >= 6) cols - 2 else cols)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
+                                ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp))
                             }
-                        }
-                    }
-                }
-            }
-            else Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                Module(Modifier.size(span(2)).combinedClickable(onClick = {}, onLongClick = {
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); connectivityOpen = true
-                }, onLongClickLabel = stringResource(R.string.show_connectivity_details))) {
-                    Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
-                        connectivity.chunked(2).forEach { pair ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                pair.forEach { RoundToggle(it.icon, it.label, it.on, it.accent, cell * .7f, it.onClick) }
-                            }
-                        }
-                    }
-                }
-                MediaModule(media, Modifier.size(span(2)), cell, onOpen = { media?.let { onClose(); IslandListenerService.open(context, it) } })
-            }
-            }
-            if (cols == 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders() } else topBlock()
-            // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list.
-            if (focusModes.isNotEmpty()) {
-                var focusOpen by remember { mutableStateOf(false) }
-                val current = focusModes.firstOrNull { it.id == activeFocus }
-                if (focusOpen) Module(Modifier.width(span(cols))) {
-                    Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
-                        focusModes.forEach { mode ->
-                            val on = mode.id == activeFocus
-                            Row(Modifier.fillMaxWidth().clickable { onFocus(if (on) null else mode.id); focusOpen = false }
-                                .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("cc-focus-${mode.id}"), verticalAlignment = Alignment.CenterVertically) {
-                                RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
-                                Spacer(Modifier.width(12.dp))
-                                Text(mode.name, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                            }
-                        }
-                    }
-                } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
-                    Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
-                        val mode = current ?: focusModes.first()
-                        RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
-                            onFocus(if (current != null) null else mode.id)
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                        }
-                    }
-                }
-            }
-            // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
-            if (cols == 4) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    chosen.take(4).chunked(2).forEach { pair ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
-                        }
-                    }
-                }
-                sliders()
-            }
-            // The rest, one row of the grid at a time
-            (if (cols == 6) chosen else chosen.drop(4)).chunked(cols).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
-                }
-            }
-            // Edit mode: gallery of controls that aren't in Control Center yet
-            if (edit.active) {
-                val unused = CcControl.entries.filter { it !in chosen && available(it) }
-                Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
-                    fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
-                unused.chunked(cols).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        row.forEach { c ->
-                            Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box {
-                                    SquareToggle(c.icon(), stringResource(R.string.add_control, stringResource(c.label)), false, Color.White, cell) { onControls(controlNames + c.name) }
-                                    Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(20.dp).clip(CircleShape).background(AccentGreen),
-                                        contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp)) }
+                            else Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                Module(Modifier.size(span(2)).combinedClickable(onClick = {}, onLongClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); connectivityOpen = true
+                                }, onLongClickLabel = stringResource(R.string.show_connectivity_details))) {
+                                    Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
+                                        connectivity.chunked(2).forEach { pair ->
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                pair.forEach { RoundToggle(it.icon, it.label, it.on, it.accent, cell * .7f, it.onClick) }
+                                            }
+                                        }
+                                    }
                                 }
-                                Text(stringResource(c.label), color = Color.White, fontSize = 10.sp, maxLines = 2, lineHeight = 12.sp,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+                                MediaModule(media, Modifier.size(span(if (cols >= 6) cols - 4 else 2), span(2)), cell, onOpen = playing)
+                            }
+                        }
+                        if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock()
+                        // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list.
+                        if (focusModes.isNotEmpty()) {
+                            var focusOpen by remember { mutableStateOf(false) }
+                            val current = focusModes.firstOrNull { it.id == activeFocus }
+                            if (focusOpen) Module(Modifier.width(span(cols))) {
+                                Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
+                                    focusModes.forEach { mode ->
+                                        val on = mode.id == activeFocus
+                                        Row(Modifier.fillMaxWidth().clickable { onFocus(if (on) null else mode.id); focusOpen = false }
+                                            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("cc-focus-${mode.id}"), verticalAlignment = Alignment.CenterVertically) {
+                                            RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
+                                            Spacer(Modifier.width(12.dp))
+                                            Text(mode.name, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                            if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                                        }
+                                    }
+                                }
+                            } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
+                                Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
+                                    val mode = current ?: focusModes.first()
+                                    RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
+                                        onFocus(if (current != null) null else mode.id)
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                        if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                                    }
+                                }
+                            }
+                        }
+                        // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
+                        if (cols == 4) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
+                                chosen.take(4).chunked(2).forEach { pair ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                        pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                                    }
+                                }
+                            }
+                            sliders(span(2))
+                        }
+                        // The rest, one row of the grid at a time
+                        (if (cols >= 6) chosen else chosen.drop(4)).chunked(cols).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                            }
+                        }
+                        // Edit mode: gallery of controls that aren't in Control Center yet
+                        if (edit.active) {
+                            val unused = CcControl.entries.filter { it !in chosen && available(it) }
+                            Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
+                                fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
+                            unused.chunked(cols).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                    row.forEach { c ->
+                                        Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Box {
+                                                SquareToggle(c.icon(), stringResource(R.string.add_control, stringResource(c.label)), false, Color.White, cell) { onControls(controlNames + c.name) }
+                                                Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(20.dp).clip(CircleShape).background(AccentGreen),
+                                                    contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp)) }
+                                            }
+                                            Text(stringResource(c.label), color = Color.White, fontSize = 10.sp, maxLines = 2, lineHeight = 12.sp,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                    // Media and sound: Now Playing large, with brightness and volume tall beside it.
+                    CcPage.MEDIA -> Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        MediaModule(media, Modifier.size(span(cols - 2), span(3)), cell, onOpen = playing)
+                        sliders(span(3))
+                    }
+                    // Connectivity: each connection as a full row, with its state.
+                    CcPage.CONNECTIVITY -> Module(Modifier.width(span(cols))) { ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) }
                 }
             }
         }
+
+        // The edge or bottom strip that moves between pages (tap), as on the iPad; a swipe across the panel does the same.
+        val strip: @Composable () -> Unit = {
+            val label: @Composable (CcPage) -> String = { page -> stringResource(when (page) { CcPage.CONTROLS -> R.string.cc_page_controls; CcPage.MEDIA -> R.string.cc_page_media; CcPage.CONNECTIVITY -> R.string.cc_page_connectivity }) }
+            val items: @Composable () -> Unit = {
+                pages.forEachIndexed { index, page ->
+                    val selected = pager.currentPage == index
+                    val name = label(page)
+                    val description = stringResource(R.string.cc_page_of, name, index + 1, pages.size)
+                    Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).background(if (selected) Color.White else NotifGlass)
+                        .clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                        .semantics { contentDescription = description; this.selected = selected },
+                        contentAlignment = Alignment.Center) {
+                        Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Apps; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
+                            null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size(22.dp))
+                    }
+                }
+            }
+            if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
+            else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
+        }
+
+        ProvideJiggle(edit) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalAlignment = Alignment.Top) {
+                Column(Modifier.width(gridWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
+                    // iOS 18 header: edit on the left, power on the right.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
+                        else if (pager.currentPage == 0) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
+                        Spacer(Modifier.weight(1f))
+                        GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
+                            onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
+                        }
+                    }
+                    androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, verticalAlignment = Alignment.Top, userScrollEnabled = !edit.active) { index ->
+                        pageContent(pages[index])
+                    }
+                    if (!grid.stripAtEdge) strip()
+                }
+                if (grid.stripAtEdge) strip()
+            }
+        }
+        }
+    }
+}
+
+/** The four connections as rows, each with its switch and its state: the long-press view on the Controls page and the whole Connectivity page. */
+@Composable
+private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) {
+    Column(modifier) {
+        items.forEach { item ->
+            Row(Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                RoundToggle(item.icon, item.label, item.on, item.accent, 44.dp, item.onClick)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                }
+            }
         }
     }
 }
