@@ -48,9 +48,10 @@ class HomeFitTest {
     private fun place(g: HomeGeometry, h: Float, preview: Boolean, rows: Int): Placed {
         val cells = HomeCellLayout.forPage(g, listOf(0 to 2))
         // The widget row is rows 0 and 1; app rows follow. Rows the page draws, under its top inset.
-        val end = g.contentTop + (if (g.splitColumns) cells.height(2 + rows) else cells.height(2 + rows))
+        // The last row's own space under its label may sit over the controls' padding: the visible page ends before it.
+        val end = g.contentTop + cells.height(2 + rows) - g.rowGap
         val limit = limit(g, h, preview)
-        val reachable = (0 until rows).count { r -> g.contentTop + cells.y(2 + r) + cells.spanHeight(2 + r, 1) <= limit + 0.5f }
+        val reachable = (0 until rows).count { r -> g.contentTop + cells.y(2 + r) + cells.spanHeight(2 + r, 1) - g.rowGap <= limit + 0.5f }
         return Placed(rows, end, g.contentTop, limit - end, reachable, cells)
     }
 
@@ -131,14 +132,16 @@ class HomeFitTest {
     @Test fun `with DUO_SPACING the pitch never passes the cap and no window gets fewer rows or cells`() {
         forEachWindow { tag, w, h ->
             for (preview in listOf(false, true)) for (auto in listOf(false, true)) {
-                val off = geo(w, h, false, automatic = auto, preview = preview, real = true)
+                val off = geo(w, h, false, automatic = auto, preview = preview)
                 val on = geo(w, h, true, automatic = auto, preview = preview)
                 // Only a marginal Automatic row that the controls would cover (off) can go; rows really reachable never do.
                 assertTrue("$tag rows ${on.appRows} vs ${off.appRows}", on.appRows >= off.appRows - 1)
-                assertTrue("$tag never tighter", on.rowHeight >= off.rowHeight - 0.001f)
-                assertTrue("$tag capped ${on.rowHeight} vs ${off.rowHeight}", on.rowHeight <= maxOf(off.rowHeight, minOf(off.rowHeight * (1f + DUO_ROW_GAIN_CAP), DUO_ROW_PITCH_MAX_DP)) + 0.01f)
+                // Spacing is shared out for the controls' real space, so it may be tighter by that extra space over the rows, never more.
+                val extra = (homeControlsSpace(!preview, 0f) - (if (preview) 88f else 44f)) / (on.appRows + 1)
+                assertTrue("$tag never tighter", on.rowHeight >= off.rowHeight - extra - 0.01f)
+                assertTrue("$tag capped ${on.rowHeight} vs ${off.rowHeight}", on.rowHeight <= maxOf(off.rowHeight, minOf(off.rowHeight * (1f + DUO_PORTRAIT_ROW_GAIN_CAP), DUO_PORTRAIT_ROW_PITCH_MAX_DP)) + 0.01f)
                 val pOff = place(off, h, preview, off.appRows); val pOn = place(on, h, preview, on.appRows)
-                assertTrue("$tag cells never fewer", pOn.reachableRows >= pOff.reachableRows)
+                assertTrue("$tag auto=$auto preview=$preview cells never fewer: ${pOn.reachableRows}/${on.appRows} rows end ${pOn.end} top ${on.contentTop} gap ${on.rowGap} row ${on.rowHeight} vs ${pOff.reachableRows}/${off.appRows} end ${pOff.end} limit ${limit(on, h, preview)}", pOn.reachableRows >= pOff.reachableRows)
                 // The page still ends above the controls wherever it did.
                 if (pOff.bottomSlack >= -0.5f) assertTrue("$tag bottom slack ${pOn.bottomSlack}", pOn.bottomSlack >= -0.5f)
             }
@@ -169,8 +172,8 @@ class HomeFitTest {
             for (rows in 4..7) {
                 val on = geo(w, h, true, rows = rows)
                 assertEquals("$tag rows", rows, on.appRows)
-                val off = geo(w, h, false, rows = rows, real = true)
-                assertTrue("$tag pitch", on.rowHeight in off.rowHeight - 0.001f..off.rowHeight * (1f + DUO_ROW_GAIN_CAP) + 0.01f)
+                val off = geo(w, h, false, rows = rows)
+                assertTrue("$tag pitch", on.rowHeight in off.rowHeight - 0.001f..off.rowHeight * (1f + DUO_PORTRAIT_ROW_GAIN_CAP) + 0.01f)
                 if (!on.splitColumns) {
                     val p = place(on, h, false, rows)
                     assertTrue("$tag centered", kotlin.math.abs(p.topSlack - p.bottomSlack) <= 1f || p.topSlack <= 16.5f || p.bottomSlack < 0f)

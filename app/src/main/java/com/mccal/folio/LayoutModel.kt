@@ -17,6 +17,13 @@ const val DUO_ROW_GAIN_CAP = 0.20f
  * A window with more room than this gets another row (Automatic), or margins (a row count picked by hand), not taller rows.
  */
 const val DUO_ROW_PITCH_MAX_DP = 108.5f
+/**
+ * The same for the unfolded screen held upright (the bottom dock bar): one Duo owner's inner screen measured 19.6 mm rows (plus
+ * or minus 0.3 mm) there, with the icon still 9.9 mm, so the room goes to spacing. PROVISIONAL (one owner's setup): 19.9 mm over
+ * 0.15875 mm per dp, and a gain of up to 30 percent over Folio's own pitch. A design choice between the two measurements.
+ */
+const val DUO_PORTRAIT_ROW_PITCH_MAX_DP = 125.4f
+const val DUO_PORTRAIT_ROW_GAIN_CAP = 0.30f
 
 data class LayoutPreset(
     val iconSize: Float = 66f,
@@ -277,9 +284,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
      * this space, so a short window never clips its last row. Windows that already clear the controls are laid out as before.
      */
     controlsSpace: Float = 0f): HomeGeometry {
-    // DUO_SPACING counts the controls' real space from the start (rows, spacing and centering all see it); otherwise it is the
-    // fallback below, only for a window whose four rows would end under them.
-    val bottomSpaceIn = if (duoSpacing) maxOf(homeBottomSpace, controlsSpace) else homeBottomSpace
+    val bottomSpaceIn = homeBottomSpace
     val baseBottomSpace = bottomSpaceIn
     val p = preset.sanitized()
     val slots = dockSlots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS).toFloat()
@@ -322,6 +327,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     var icon = minOf(p.iconSize, (gridWidth / 4f * .8f).coerceAtLeast(32f))
     var gap = p.rowGap
     val fitHeight = height - 16f - homeBottomSpace
+    // DUO_SPACING spaces and centers the page for the controls' real space, not only the base it was fitted to; the last row's
+    // own space under its label may sit over the controls' padding, so the visible bands above and below come out alike.
+    val realExtra = if (duoSpacing) (controlsSpace - baseBottomSpace).coerceAtLeast(0f) else 0f
     // Space between columns, relative to Folio's own for this window: more shrinks icons (not below 40 dp), less
     // narrows the columns (never so far that apps are closer than the 8 dp / fifth-of-a-column rule).
     val columnExtra = p.columnGap - DEFAULT_COLUMN_GAP
@@ -401,7 +409,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     if (fillSpace && !splitColumns && !p.pageTop && gap >= tightGap) {
         // Filled widgets grow with the gap too (two rows each), so the share is over the rows the page really has.
         val taken = if (widgetsFillRows) (layoutRows + 2) * rowFor(icon, gap) else widget + 18f + layoutRows * rowFor(icon, gap)
-        val leftover = fitHeight - taken
+        val leftover = fitHeight - realExtra - taken
         if (leftover > 0f) gap += minOf(leftover / (layoutRows + if (widgetsFillRows) 3 else 1), 12f)
     }
     // DUO_SPACING: the Duo's rows are about 17% further apart than Folio's on the cover (an iPhone's, about 16 mm). Any window
@@ -409,8 +417,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // [DUO_ROW_GAIN_CAP]: a bigger window gets more rows (Automatic) rather than stretched ones.
     if (duoSpacing && !splitColumns && !p.pageTop && gap >= p.rowGap) {
         val taken = if (widgetsFillRows) (layoutRows + 2) * rowFor(icon, gap) else widget + 18f + layoutRows * rowFor(icon, gap)
-        val leftover = fitHeight - taken
-        val allowed = minOf(rowBeforeFill * (1f + DUO_ROW_GAIN_CAP), maxOf(rowBeforeFill, DUO_ROW_PITCH_MAX_DP)) - rowFor(icon, gap)
+        val leftover = fitHeight - realExtra - taken
+        val gainCap = if (tallRegular) DUO_PORTRAIT_ROW_GAIN_CAP else DUO_ROW_GAIN_CAP
+        val pitchMax = if (tallRegular) DUO_PORTRAIT_ROW_PITCH_MAX_DP else DUO_ROW_PITCH_MAX_DP
+        val allowed = minOf(rowBeforeFill * (1f + gainCap), maxOf(rowBeforeFill, pitchMax)) - rowFor(icon, gap)
         val units = layoutRows + if (widgetsFillRows) 2 else 0
         if (leftover > 0f && allowed > 0f) gap += minOf(leftover / units, allowed)
     }
@@ -421,7 +431,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val pageHeight = if (splitColumns) maxOf(widget + 18f + 2f * row, 3f * row) else widget + 18f + layoutRows * row
     // Centered in the free space; tall phones may sit lower (up to 18% of the height) instead of leaving the bottom empty.
     // DUO_SPACING: what is left after the rows are spaced is shared evenly above and below, so neither band looks large.
-    val contentTop = if (p.pageTop) 16f else if (duoSpacing && !splitColumns) ((height - pageHeight - homeBottomSpace) / 2f).coerceAtLeast(16f)
+    val contentTop = if (p.pageTop) 16f else if (duoSpacing && !splitColumns) ((height - (pageHeight - gap) - homeBottomSpace - realExtra) / 2f).coerceAtLeast(16f)
         else ((height - pageHeight - homeBottomSpace) / 2f).coerceIn(16f, maxOf(72f, height * .18f))
     // Search reclaims the redundant bottom controls' space for all four dock apps.
     // Extremely short windows still scroll rather than reduce touch targets below 48dp.
@@ -482,7 +492,8 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         dockBarRoom = (barRoom + 32f).coerceAtLeast(0f), dockIcon = dockIcon)
     // The page controls take more than the space this was measured for, and the usual four rows would end under them:
     // lay the window out again for the real space (once), so no row of a short window is clipped.
-    val shownEnd = contentTop + if (splitColumns) pageHeight else widget + 18f + minOf(layoutRows, BASE_APP_ROWS) * row
+    // The visible page ends before the last row's own space under its label.
+    val shownEnd = contentTop - gap + if (splitColumns) pageHeight else widget + 18f + minOf(layoutRows, BASE_APP_ROWS) * row
     val dockExtra = homeBottomSpace - baseBottomSpace
     if (controlsSpace > baseBottomSpace && shownEnd > height - controlsSpace - dockExtra + 0.5f) {
         return homeGeometry(width, height, preset, labels, statusHeight, labelHeight, inLibrary, controlsSpace, railControls, homeRailControls,
