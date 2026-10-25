@@ -656,11 +656,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     BoxWithConstraints(modifier.testTag("control-center")) {
         val gap = 12.dp
         // iPad-sized cells: a compact grid instead of stretching across the whole screen.
-        val rows = 5 + (if (focusModes.isNotEmpty()) 1 else 0) + (maxOf(0, chosen.size - 4) + 3) / 4
-        val byHeight = if (maxHeight == Dp.Infinity) Dp.Infinity else (maxHeight - 60.dp - gap * (rows - 1)) / rows
-        val cell = minOf(size.cell + if (wide) 8.dp else 0.dp, (maxWidth - gap * 3) / 4, byHeight).coerceAtLeast(44.dp)
+        val sizeCell = size.cell + if (wide) 8.dp else 0.dp
+        val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
+        // Four columns like the iPad; six when the window is wide but too short for four comfortable rows of cells.
+        val cols = controlCenterColumns(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value)
+        val cell = controlCenterCell(cols, maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value).dp.coerceAtLeast(CC_MIN_CELL_DP.dp)
         fun span(n: Int): Dp = cell * n + gap * (n - 1)
-        val gridWidth = span(4)
+        val gridWidth = span(cols)
         ProvideJiggle(edit) {
         // The fade draws in its own layer, which clips: pad it so edit mode's remove and add badges past the grid's edges stay whole.
         Column(Modifier.width(gridWidth + 32.dp).fadingVerticalScroll().padding(horizontal = FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -682,7 +684,19 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
             )
             val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-            if (connectivityOpen) Module(Modifier.width(span(4)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
+            // The two sliders: beside the small controls with four columns, at the end of the top row with six.
+            val sliders: @Composable () -> Unit = {
+                TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, span(2),
+                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }) { value ->
+                    controls.changeBrightness(value) }
+                TallSlider(when {
+                    controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
+                    controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
+                    else -> Icons.AutoMirrored.Rounded.VolumeUp
+                }, stringResource(R.string.volume), controls.volume, cell, span(2)) { controls.changeVolume(it) }
+            }
+            val topBlock: @Composable () -> Unit = {
+            if (connectivityOpen) Module(Modifier.width(span(if (cols == 6) 4 else cols)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
                 Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
                     connectivity.forEach { item ->
                         Row(Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
@@ -711,11 +725,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 }
                 MediaModule(media, Modifier.size(span(2)), cell, onOpen = { media?.let { onClose(); IslandListenerService.open(context, it) } })
             }
+            }
+            if (cols == 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders() } else topBlock()
             // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list.
             if (focusModes.isNotEmpty()) {
                 var focusOpen by remember { mutableStateOf(false) }
                 val current = focusModes.firstOrNull { it.id == activeFocus }
-                if (focusOpen) Module(Modifier.width(span(4))) {
+                if (focusOpen) Module(Modifier.width(span(cols))) {
                     Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
                         focusModes.forEach { mode ->
                             val on = mode.id == activeFocus
@@ -728,7 +744,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             }
                         }
                     }
-                } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
+                } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
                     Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
                         val mode = current ?: focusModes.first()
                         RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
@@ -742,8 +758,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
-            // Row 3–4: the first four small controls (2×2) and brightness + volume sliders
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+            // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
+            if (cols == 4) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
                     chosen.take(4).chunked(2).forEach { pair ->
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
@@ -751,17 +767,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                     }
                 }
-                TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, span(2),
-                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }) { value ->
-                    controls.changeBrightness(value) }
-                TallSlider(when {
-                    controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
-                    controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
-                    else -> Icons.AutoMirrored.Rounded.VolumeUp
-                }, stringResource(R.string.volume), controls.volume, cell, span(2)) { controls.changeVolume(it) }
+                sliders()
             }
-            // The rest, four per row
-            chosen.drop(4).chunked(4).forEach { row ->
+            // The rest, one row of the grid at a time
+            (if (cols == 6) chosen else chosen.drop(4)).chunked(cols).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
                 }
@@ -771,7 +780,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 val unused = CcControl.entries.filter { it !in chosen && available(it) }
                 Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
                     fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
-                unused.chunked(4).forEach { row ->
+                unused.chunked(cols).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                         row.forEach { c ->
                             Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {

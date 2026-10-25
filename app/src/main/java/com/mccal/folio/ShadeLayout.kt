@@ -29,6 +29,55 @@ internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, wid
 internal fun shadeOverAppsWanted(switchOn: Boolean, panelsOn: Boolean, safeMode: Boolean, locked: Boolean, panel: ShadePanel): Boolean =
     switchOn && panelsOn && !safeMode && !locked && panel != ShadePanel.SEARCH
 
+/** The panel a pull that starts at [x] on a screen [width] wide opens: the left half Notification Center, the right half Control Center (as on Home). */
+internal fun pullPanel(x: Float, width: Float): ShadePanel = if (x < width / 2f) ShadePanel.NOTIFICATIONS else ShadePanel.QUICK_SETTINGS
+
+/**
+ * Whether a drag of ([dx], [dy]) from the top edge is a pull down: one and a half touch slops down (early, because the system takes over a
+ * pull that goes much further and cancels this window's touch), and more down than across by half, so the
+ * diagonal swipe a one-handed reach from a corner makes counts, and a sideways swipe along the edge does not.
+ */
+internal fun isPullDown(dx: Float, dy: Float, slop: Float): Boolean = dy > slop * 1.5f && dy > kotlin.math.abs(dx) * .5f
+
+/** The pull strip's height: the status bar's own, but never so thin a finger misses it or so deep it covers the app's top bar. */
+internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarPx.coerceIn((24 * density).toInt(), (48 * density).toInt())
+
+/**
+ * Whether the strip over the top edge of other apps should exist: the switch is on and so are the panels over apps, Safe Mode is off,
+ * Folio's own Home is not in front (it has its own pulls) and the app is not full screen (Android keeps its swipe down from the top there).
+ */
+internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boolean, safeMode: Boolean, folioInFront: Boolean, fullScreen: Boolean): Boolean =
+    pullOn && overApps && panelsOn && !safeMode && !folioInFront && !fullScreen
+
+/** Control Center's smallest cell and the 4-column gap (dp), as drawn in TopPanels. */
+internal const val CC_GAP_DP = 12f
+internal const val CC_MIN_CELL_DP = 44f
+
+/** How many rows Control Center needs: with 4 columns the first four small controls sit beside the sliders; with 6 the sliders join the top row. */
+internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int =
+    if (columns == 6) 3 + (if (focus) 1 else 0) + (controls + 5) / 6
+    else 5 + (if (focus) 1 else 0) + (maxOf(0, controls - 4) + 3) / 4
+
+/** The cell a Control Center of [columns] columns can have in a [widthDp] by [heightDp] panel, never above [sizeCellDp] (null height: unbounded). */
+internal fun controlCenterCell(columns: Int, widthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): Float {
+    val rows = controlCenterRows(columns, controls, focus)
+    val byWidth = (widthDp - CC_GAP_DP * (columns - 1)) / columns
+    val byHeight = heightDp?.let { (it - 60f - CC_GAP_DP * (rows - 1)) / rows } ?: Float.MAX_VALUE
+    return minOf(sizeCellDp, byWidth, byHeight)
+}
+
+/**
+ * Control Center keeps its four columns, like the iPad's, unless that squeezes its cells by height while the window has width to spare
+ * (a phone or a fold on its side): then six columns put the sliders in the top row and spend width instead of height. Six are used only
+ * when they give cells at least 6 dp bigger, so a window that is narrow, or tall enough, never changes.
+ */
+internal fun controlCenterColumns(widthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): Int {
+    val four = controlCenterCell(4, widthDp, heightDp, controls, focus, sizeCellDp)
+    if (four >= sizeCellDp) return 4
+    val six = controlCenterCell(6, widthDp, heightDp, controls, focus, sizeCellDp)
+    return if (six >= four + 6f) 6 else 4
+}
+
 /**
  * The saved layout. Settings from before the choice existed only had "clock beside notifications": on is Full screen (how it was),
  * off is Card (the narrower panel it gave). Anything unreadable, or nothing at all, is Full screen.

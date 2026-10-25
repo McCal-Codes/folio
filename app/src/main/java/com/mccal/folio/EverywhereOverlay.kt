@@ -106,7 +106,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
-        val reduceMotion: Boolean = false)
+        val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -159,12 +159,12 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         scopeJob.cancel()
         fullScreenJob?.cancel(); fullScreenJob = null
-        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade()
+        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); removePull()
         IslandEvents.release()
         owner.stop()
     }
 
-    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); sync() }
+    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); removePull(); sync() }
 
     /**
      * The system bars tell us when an app has gone full screen: video players, games and readers hide them, and
@@ -215,7 +215,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 j.optBoolean(SettingKeys.BUTTON_BAR_ANDROID_ORDER, false), j.optBoolean(SettingKeys.BUTTON_BAR_LIGHT, false),
                 j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true)),
             j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
-            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false))
+            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
+            j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -223,7 +224,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val home = FolioForeground.visible.value
         val content = islandContent.value
         val islandWanted = s.islandEverywhere && !home && content != null
-        watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen)))
+        val pullPossible = pullStripWanted(s.shadePull, s.shadeOverApps, s.folioPanels, SafeMode.active, home, false)
+        watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen) || pullPossible))
+        if (pullPossible && !fullScreen) addPull() else removePull()
         if (s.dockEverywhere && !home) addHandle(s.leftHanded) else { removeHandle(); removeDock() }
         // The bar presses the same buttons the system's does, so it steps aside where the system's bar does.
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
@@ -369,6 +372,50 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shadePanel.value = null
         shadeMonitor?.onStop(owner); shadeMonitor = null
         if (shadeReceiverOn) { runCatching { service.unregisterReceiver(shadeScreenOff) }; shadeReceiverOn = false }
+    }
+
+    // ---- Pull down from the top edge ---------------------------------------------------------
+
+    private var pull: View? = null
+
+    /**
+     * A thin strip over the top edge of other apps that turns a pull down into Folio's panel: the left half opens Notification Center and the
+     * right half Control Center (or the phone's own shade when Folio's cannot be drawn, such as over the lock screen). The strip sits where the
+     * status bar is, so it takes the touches there; it draws nothing and tells TalkBack nothing.
+     */
+    private fun addPull() {
+        if (pull != null) return
+        val slop = android.view.ViewConfiguration.get(service).scaledTouchSlop.toFloat()
+        val view = object : View(service) {
+            private var downX = 0f
+            private var downY = 0f
+            private var fired = false
+            override fun onTouchEvent(event: MotionEvent): Boolean {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> { downX = event.x; downY = event.y; fired = false }
+                    MotionEvent.ACTION_MOVE -> if (!fired && isPullDown(event.x - downX, event.y - downY, slop)) {
+                        fired = true
+                        performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                        val panel = pullPanel(downX, width.toFloat())
+                        if (!openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
+                    }
+                }
+                return true
+            }
+        }.apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
+        val statusBar = runCatching { wm.currentWindowMetrics.windowInsets.getInsets(android.view.WindowInsets.Type.statusBars()).top }.getOrDefault(0)
+        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, pullStripHeight(statusBar, density),
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT).apply {
+            gravity = Gravity.TOP or Gravity.START
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
+        if (runCatching { wm.addView(view, params) }.isSuccess) pull = view
+    }
+
+    private fun removePull() {
+        pull?.let { runCatching { wm.removeView(it) } }; pull = null
     }
 
     // ---- Dock handle -------------------------------------------------------------------------

@@ -443,6 +443,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CustomizationSlider(stringResource(R.string.background_blur), "${(state.panelBlur * 100).toInt()}%", state.panelBlur, 0f..1f) { model.setPanelBlur(it) }
                         SettingsSwitch(stringResource(R.string.shade_over_apps), state.shadeOverApps, model::setShadeOverApps, "shade-over-apps-switch")
                         CardNote(stringResource(R.string.shade_over_apps_note))
+                        if (state.shadeOverApps) {
+                            SettingsSwitch(stringResource(R.string.shade_pull), state.shadePull, model::setShadePull, "shade-pull-switch")
+                            CardNote(stringResource(R.string.shade_pull_note))
+                        }
                         SettingsSwitch(stringResource(R.string.big_clock_in_notification_center), state.notificationClock, model::setNotificationClock, "notification-clock-switch")
                         SettingsSwitch(stringResource(R.string.stack_notifications_by_app), state.groupNotifications, model::setGroupNotifications, "notification-group-switch")
                         IosMenuRow(stringResource(R.string.nc_layout_title), NcLayout.entries.map { it to stringResource(it.label) }, state.ncLayout, model::setNcLayout, tag = "nc-layout")
@@ -1439,6 +1443,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.stack_notifications_by_app to CustomizationPage.NOTIFICATIONS,
     R.string.nc_layout_title to CustomizationPage.NOTIFICATIONS,
     R.string.shade_over_apps to CustomizationPage.NOTIFICATIONS,
+    R.string.shade_pull to CustomizationPage.NOTIFICATIONS,
     R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
     R.string.badge_size to CustomizationPage.STATUS,
