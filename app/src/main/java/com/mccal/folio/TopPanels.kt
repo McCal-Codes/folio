@@ -725,7 +725,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pager = androidx.compose.foundation.pager.rememberPagerState { pages.size }
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
-        LaunchedEffect(pager.currentPage) { if (pager.currentPage != 0) edit.stop() }
+        // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
+        LaunchedEffect(pager.currentPage) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
@@ -906,14 +907,14 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
-                        else if (pager.currentPage == 0) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
+                        else if (pages.getOrNull(pager.currentPage)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))
                         if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
                         GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
                             onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
                         }
                     }
-                    androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, verticalAlignment = Alignment.Top, userScrollEnabled = !edit.active) { index ->
+                    androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, verticalAlignment = Alignment.Top, userScrollEnabled = true) { index ->
                         pageContent(pages[index])
                     }
                     if (!grid.stripAtEdge && !grid.stripInHeader) strip()
