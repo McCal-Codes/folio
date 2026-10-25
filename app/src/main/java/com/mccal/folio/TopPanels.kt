@@ -105,21 +105,23 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 
     // Scrim: tap or swipe up anywhere to close.
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
-        .then(if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) Modifier else Modifier.background(FolioGlass.scrim))
+        .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
                 detectVerticalDragGestures(onDragStart = { total = 0f }) { _, drag -> total += drag; if (total < -48.dp.toPx()) onClose() }
             } else Modifier)
         .testTag("top-panel-scrim")) {
-        // Over an app the window cannot blur: the app's own picture, blurred once, under a dim; or Folio's frosted glass when there is none.
-        if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) {
-            val picture = LocalShadeBackdropImage.current
-            if (picture != null) {
-                androidx.compose.foundation.Image(picture, null, Modifier.fillMaxSize().graphicsLayer { alpha = .94f },
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
-                Box(Modifier.fillMaxSize().background(FolioGlass.scrim))
-            } else FrostedBackdrop(LocalWallpaperTone.current, Modifier.fillMaxSize().graphicsLayer { alpha = .86f })
+        // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
+        // under a dim. Over an app with no picture yet or none possible, Folio's frosted glass stands in.
+        val picture = LocalShadeBackdropImage.current
+        val fadeIn by androidx.compose.animation.core.animateFloatAsState(if (picture != null) .94f else 0f, androidx.compose.animation.core.tween(160), label = "backdrop picture")
+        if (picture != null) {
+            androidx.compose.foundation.Image(picture, null, Modifier.fillMaxSize().graphicsLayer { alpha = fadeIn },
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
+            Box(Modifier.fillMaxSize().background(FolioGlass.scrim))
+        } else if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) {
+            FrostedBackdrop(LocalWallpaperTone.current, Modifier.fillMaxSize().graphicsLayer { alpha = .86f })
         }
     }
 
