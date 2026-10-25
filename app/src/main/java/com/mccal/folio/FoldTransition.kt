@@ -630,7 +630,6 @@ internal fun coverHingeEdge(g: FoldGeometry): CoverEdge = when {
 /** How far the cover content recedes while the effect is on, so the cover has depth and not only a blur; none under Reduce Motion. */
 internal fun coverSettleScale(m: Float, reduceMotion: Boolean): Float = if (reduceMotion) 1f else 1f - COVER_SCALE * m.coerceIn(0f, 1f)
 
-private fun easeOutCubic(t: Float): Float { val u = 1f - t; return 1f - u * u * u }
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
 @RequiresApi(33)

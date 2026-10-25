@@ -156,7 +156,7 @@ class IslandEvents private constructor(private val context: Context) {
             // Simple Mode shows no notices or toasts of its own accord, except to a helper in All Settings.
             if (SimpleQuiet.active && !SimpleQuiet.allSettings.value) return false
             // A sheet or full-screen page (Settings) would cover Home's island, so those keep the toast (which has no button).
-            val covered = LauncherSheetsOpen.intValue > 0 || LauncherPagesOpen.intValue > 0
+            val covered = LauncherSheets.anyOpen() || LauncherPages.anyOpen()
             return if (noticeIslands > 0 && FolioForeground.visible.value && !covered) { post(IslandEvent.Notice(text, appIcon, action)); true }
             else if (toastFallback) { android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show(); true }
             else false
@@ -169,7 +169,7 @@ class IslandEvents private constructor(private val context: Context) {
             if (ScreenshotMode.on.value && (event is IslandEvent.Message || event is IslandEvent.Bluetooth)) return
             mutable.value = event to System.currentTimeMillis()
         }
-        @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context
+        @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context // english-only
         private var shared: IslandEvents? = null
         private var users = 0
 

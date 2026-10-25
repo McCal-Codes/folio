@@ -220,7 +220,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     if (done && p.onAction != null) Row(Modifier.padding(top = FolioSpace.XL.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green)
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.all_set), color = FolioColors.Green, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.all_set), color = FolioColors.Green, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

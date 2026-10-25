@@ -35,7 +35,7 @@ class DeveloperPageTest {
     @After fun clean() { DevLockStore.clear(context); DevLockSession.lock() }
 
     private fun page(shown: () -> Unit = {}) = compose.setContent {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) { DeveloperPage(onShowBuild = shown) }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) { DeveloperPage(onShowBuild = shown, onClose = {}) }
     }
 
     private fun setPassphrase(pass: String, again: String = pass) {

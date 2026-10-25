@@ -145,6 +145,8 @@ data class LauncherState(
     val panelBlur: Float = 1f,
     val notificationClock: Boolean = true,
     val groupNotifications: Boolean = true,
+    /** Notification Center in sections: Now, Conversations, the rest, and a closed Quiet (see [notificationBucket]). */
+    val notificationSections: Boolean = false,
     val dockEverywhere: Boolean = false,
     /** Buttons in Every App: a large Back / Home / Recents bar over other apps (Folio's accessibility service). */
     val buttonBar: Boolean = false,
@@ -201,7 +203,9 @@ data class LauncherState(
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
     /** Unfolded: iPad-style Notification Center (clock left, notifications right). */
-    val ncSplit: Boolean = true,
+    val ncLayout: NcLayout = NcLayout.FULL_SCREEN,
+    /** Shortcuts that open the shade (a phone's one-hand operation, a Routine) draw Folio's panels over the open app instead of the phone's. */
+    val shadeOverApps: Boolean = false,
     /** Smart Stacks: widget placement slot → extra widget ids stacked behind that placement's widget. */
     val widgetStacks: Map<Int, List<Int>> = emptyMap(),
     /** Smart Rotate: stacks move to the widget that matters now. */
@@ -315,6 +319,8 @@ data class LauncherState(
     /** The island steps aside for full-screen video and games (on), and for landscape apps (off). */
     val islandHideFullScreen: Boolean = true,
     val islandHideLandscape: Boolean = false,
+    /** With [islandHideLandscape] on, hide the island on the unfolded screen too; it is always wider than tall, so off keeps it showing there. */
+    val islandHideLandscapeInner: Boolean = false,
     /** Home Screen & Dock › Layout › Rows: 0 = Automatic (More rows), 4 = always four app rows. */
     val homeRows: Int = 0,
     /** App rows that last fit the cover-class and the inner-class Home (0 = not measured yet); see [homeAppRows]. */
@@ -335,6 +341,8 @@ data class LauncherState(
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
+    /** What Automatic would give, whatever fixed Rows value is chosen, so the menu can name it honestly. */
+    val automaticHomeRows: Int get() = effectiveHomeRows(0, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
     val homeReady: Boolean get() = homeAppsLoaded || !loading
 }
@@ -432,10 +440,10 @@ fun effectiveHomeRows(setting: Int, fitCompact: Int, fitExpanded: Int, fitUprigh
         .coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
 
 /**
- * The newest saved-state schema this build reads. 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
+ * The newest saved-state schema this build reads. 11: Hide in Landscape on the unfolded screen; 10: icon actions; 9: 36-cell Home pages (More rows); 6–8 had 24.
  * A save is written with [stateSchemaFor], not always with this number.
  */
-const val STATE_SCHEMA = 10
+const val STATE_SCHEMA = 11
 
 /**
  * The schema a save is written with: the lowest one that holds everything in it. A phone that uses nothing from schema 10
@@ -443,10 +451,17 @@ const val STATE_SCHEMA = 10
  * the file and says so (the damaged-state path) instead of reading it, dropping the actions on its next save, and losing
  * them without a word when the newer Folio comes back.
  */
-internal fun stateSchemaFor(s: LauncherState) = if (s.iconActions.isNotEmpty()) 10 else 9
+internal fun stateSchemaFor(s: LauncherState) = when {
+    s.islandHideLandscapeInner -> 11
+    s.iconActions.isNotEmpty() -> 10
+    else -> 9
+}
 
 /** Whether this save should keep the schema 9 file it is about to replace: it writes schema 10 over an older read and no copy exists yet. */
 internal fun v9BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 10 && writtenSchema >= 10 && !hasBackup
+
+/** Same for the first save that writes schema 11 over a schema 10 file. */
+internal fun v10BackupNeeded(sourceSchema: Int, writtenSchema: Int, hasBackup: Boolean) = sourceSchema < 11 && writtenSchema >= 11 && !hasBackup
 
 /**
  * The schema that brought More rows. A save older than this was arranged in four rows, and keeps them; anything
@@ -539,6 +554,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     val listingApps get() = refreshing
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
+            LibraryCategory.forget(packageName)
             // A package Folio didn't know is a new download (not an update or a profile coming back).
             if (mutable.value.apps.none { it.packageName == packageName }) {
                 NewApps.mark(getApplication(), packageName)
@@ -547,16 +563,18 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             refresh(packageName, user)
         }
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
+            LibraryCategory.forget(packageName)
             removedPackages += userManager.getSerialNumberForUser(user) to packageName
             refresh(packageName, user)
         }
-        override fun onPackageChanged(packageName: String, user: UserHandle) = refresh(packageName, user)
+        override fun onPackageChanged(packageName: String, user: UserHandle) { LibraryCategory.forget(packageName); refresh(packageName, user) }
         // Apps update their dynamic shortcuts often; only pinned ones matter to Home.
         override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<android.content.pm.ShortcutInfo>, user: UserHandle) {
             if (shortcuts.any { it.isPinned } || mutable.value.apps.any { it.isShortcut && it.packageName == packageName }) refresh(packageName, user)
         }
         override fun onPackagesAvailable(packages: Array<out String>, user: android.os.UserHandle, replacing: Boolean) {
             packages.forEach {
+                LibraryCategory.forget(it)
                 val key = userManager.getSerialNumberForUser(user) to it
                 invalidatedPackages += key; unavailablePackages -= key
             }; refresh()
@@ -1022,9 +1040,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val target = mutable.value.layout.placement(to) ?: return false
         return moveWidgetTo(from, target.page * HOME_CELLS + target.row * GRID_COLUMNS + target.column)
     }
-    fun moveWidgetTo(slot: Int, index: Int) = commitLayout(moveWidget(mutable.value.layout, slot, index))
+    fun moveWidgetTo(slot: Int, index: Int) = mutable.value.let { commitLayout(moveWidgetMakingRoom(it.layout, slot, index, it.homeAppRows)) }
     fun placeWidgetFreely(slot: Int, column: Float, row: Float) = commitLayout(placeWidgetFreely(mutable.value.layout, slot, column, row))
-    fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = commitLayout(resizeWidget(mutable.value.layout, slot, spanX, spanY))
+    fun resizeWidget(slot: Int, spanX: Int, spanY: Int) = mutable.value.let { commitLayout(resizeWidgetMakingRoom(it.layout, slot, spanX, spanY, it.homeAppRows)) }
     fun placeWidget(placement: WidgetPlacement) = commitLayout(placeWidget(mutable.value.layout, placement))
     fun placement(slot: Int) = mutable.value.layout.placement(slot)
     // Never reuse a slot number that a (possibly undoable) stack still refers to.
@@ -1420,7 +1438,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setCcControls(controls: List<String>) = updateSettings(soon = false) { it.copy(ccControls = controls.distinct()) }
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
-    fun setNcSplit(value: Boolean) = updateSettings(soon = false) { it.copy(ncSplit = value) }
+    fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
+    fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
     fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
@@ -1441,7 +1460,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandEverywhere(value: Boolean) = updateSettings(soon = false) { it.copy(islandEverywhere = value) }
     fun setIslandHideFullScreen(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideFullScreen = value) }
     fun setIslandHideLandscape(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscape = value) }
-    fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value == BASE_APP_ROWS) value else 0) }
+    fun setIslandHideLandscapeInner(value: Boolean) = updateSettings(soon = false) { it.copy(islandHideLandscapeInner = value) }
+    fun setHomeRows(value: Int) = updateSettings(soon = false) { it.copy(homeRows = if (value in BASE_APP_ROWS..MAX_APP_ROWS) value else 0) }
     /** Remembers how many app rows fit this screen class's full-screen Home (see [effectiveHomeRows]). */
     fun recordHomeFit(screen: LayoutScreen, rows: Int) {
         val value = rows.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS)
@@ -1452,6 +1472,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setPanelBlur(value: Float) = updateSettings(soon = true) { it.copy(panelBlur = value) }
     fun setNotificationClock(value: Boolean) = updateSettings(soon = false) { it.copy(notificationClock = value) }
     fun setGroupNotifications(value: Boolean) = updateSettings(soon = false) { it.copy(groupNotifications = value) }
+    fun setNotificationSections(value: Boolean) = updateSettings(soon = false) { it.copy(notificationSections = value) }
     fun setFoldEffect(value: Boolean) = updateSettings(soon = false) { it.copy(foldEffect = value) }
     fun setFoldIntensity(value: Float) = updateSettings(soon = true) { it.copy(foldIntensity = value) }
     internal fun setDuet(value: com.mccal.folio.duet.DuetOptions) = updateSettings(soon = true) { it.copy(duet = value) }
@@ -1580,6 +1601,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     /** Whether the saved Home layout couldn't be read (it's kept untouched and editing is paused until the user decides). */
     val layoutDamaged get() = statePayloadInvalid
 
+    /**
+     * Whether the layout that couldn't be read was saved by a newer Folio (a downgrade). It isn't broken: updating Folio
+     * reads it again, so Home offers no Start Fresh for it.
+     */
+    val layoutFromNewerFolio get() = statePayloadInvalid && sourceSchema > STATE_SCHEMA
+
     /** Starts over with a default Home after a damaged save; the damaged copy stays as `state_damaged_backup`. */
     fun resetDamagedLayout() {
         if (!statePayloadInvalid) return
@@ -1646,13 +1673,15 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("minPages", s.minPages)
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
-            .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications)
+            .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications).put("notificationSections", s.notificationSections)
             .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncSplit", s.ncSplit)
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ncLayout", s.ncLayout.name)
+            // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
+            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
             .put("stackRotate", s.stackRotate).put("railActivitiesUnderStatus", s.railActivities).put("addNewAppsToHome", s.addNewAppsToHome)
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
@@ -1689,6 +1718,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                 .apply { style.labels?.let { put("labels", it) } }) } })
             .put(SettingKeys.DOCK_EVERYWHERE, s.dockEverywhere).put(SettingKeys.ISLAND_EVERYWHERE, s.islandEverywhere)
             .put(SettingKeys.ISLAND_HIDE_FULL_SCREEN, s.islandHideFullScreen).put(SettingKeys.ISLAND_HIDE_LANDSCAPE, s.islandHideLandscape)
+            .also { o -> if (s.islandHideLandscapeInner) o.put(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, true) }
             .put(SettingKeys.BUTTON_BAR, s.buttonBar).put(SettingKeys.BUTTON_BAR_HEIGHT, s.buttonBarHeight.toDouble())
             .put(SettingKeys.BUTTON_BAR_WIDTH, s.buttonBarWidth.toDouble()).put(SettingKeys.BUTTON_BAR_ANDROID_ORDER, s.buttonBarAndroidOrder)
             .put(SettingKeys.BUTTON_BAR_LIGHT, s.buttonBarLight).put(SettingKeys.BUTTON_BAR_FADE, s.buttonBarFade)
@@ -1714,6 +1744,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         // The first save that writes schema 10 (one with icon actions) keeps the schema 9 file it replaces, like every step before it.
         if (legacyRaw != null && v9BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v9_backup")))
             editor.putString("state_v9_backup", legacyRaw)
+        if (legacyRaw != null && v10BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v10_backup")))
+            editor.putString("state_v10_backup", legacyRaw)
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
@@ -1723,7 +1755,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
-        LauncherState(loading = false, error = getApplication<Application>().getString(R.string.saved_home_layout_could_not_be_read))
+        LauncherState(loading = false, error = getApplication<Application>().getString(
+            if (statePayloadInvalid && sourceSchema > STATE_SCHEMA) R.string.home_layout_saved_by_newer_folio_short
+            else R.string.saved_home_layout_could_not_be_read))
     } }
 
     override fun onCleared() {
@@ -1898,6 +1932,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         stayAwakeOnFold = j.optBoolean("stayAwakeOnFold", true),
         panelBlur = j.optDouble("panelBlur", 1.0).toFloat().coerceIn(0f, 1f), notificationClock = j.optBoolean("notificationClock", true),
         groupNotifications = j.optBoolean("groupNotifications", true),
+        notificationSections = j.optBoolean("notificationSections", false),
         standBy = j.optBoolean("standBy", true),
         standByCharging = j.optBoolean("standByCharging", true),
         standByTent = j.optBoolean("standByTent", false),
@@ -1927,7 +1962,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ccControls = j.optJSONArray("ccControls")?.let { a -> (0 until a.length()).map(a::getString).filter { name -> CcControl.entries.any { it.name == name } } }
             ?: CcControl.DEFAULTS,
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
-        ccCentered = j.optBoolean("ccCentered", false), ncSplit = j.optBoolean("ncSplit", true),
+        ccCentered = j.optBoolean("ccCentered", false),
+        ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
+        shadeOverApps = j.optBoolean("shadeOverApps", false),
         widgetStacks = j.optJSONObject("widgetStacks")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val ids = o.optJSONArray(key) ?: return@mapNotNull null
             key.toIntOrNull()?.let { slot -> slot to (0 until ids.length()).map(ids::getInt) }
@@ -2011,6 +2048,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         dockEverywhere = j.optBoolean("dockEverywhere", false), islandEverywhere = j.optBoolean("islandEverywhere", false),
         islandHideFullScreen = j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true),
         islandHideLandscape = j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
+        islandHideLandscapeInner = j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false),
         buttonBar = j.optBoolean(SettingKeys.BUTTON_BAR, false),
         buttonBarHeight = j.optDouble(SettingKeys.BUTTON_BAR_HEIGHT, 52.0).toFloat().coerceIn(44f, 60f),
         buttonBarWidth = j.optDouble(SettingKeys.BUTTON_BAR_WIDTH, .5).toFloat().coerceIn(.3f, .8f),
