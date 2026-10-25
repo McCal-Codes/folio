@@ -17,10 +17,10 @@ internal const val SIDE_BY_SIDE_MIN_DP = 640
  * The shape for [choice] on a window [widthDp] wide. [wide] is Folio's "regular" layout class, [landscape] whether it is wider than
  * tall, and [hinged] whether a fold is in the way (the panels stay on the side the fold leaves, so two do not fit).
  */
-internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel): ShadeShape = when {
+internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel, clockOn: Boolean = true): ShadeShape = when {
     // A phone on its side is wide but short: the big clock above the list left room for a card and a half, so the clock goes beside it.
     // [hinged] is not asked here: over another app it is always true (no fold information), and on Home a fold already confines the panel to its own side.
-    !wide -> if (panel == ShadePanel.NOTIFICATIONS && landscape && widthDp >= SPLIT_CLOCK_MIN_DP) ShadeShape.SPLIT_CLOCK else ShadeShape.SINGLE_TOP
+    !wide -> if (panel == ShadePanel.NOTIFICATIONS && landscape && widthDp >= SPLIT_CLOCK_MIN_DP && clockOn) ShadeShape.SPLIT_CLOCK else ShadeShape.SINGLE_TOP
     choice == NcLayout.CARD -> ShadeShape.CARD
     choice == NcLayout.SIDE_BY_SIDE -> if (widthDp >= SIDE_BY_SIDE_MIN_DP && !hinged) ShadeShape.BOTH else ShadeShape.CARD
     panel == ShadePanel.NOTIFICATIONS && landscape -> ShadeShape.SPLIT_CLOCK
@@ -57,6 +57,8 @@ internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boole
 /** Control Center's smallest cell and the 4-column gap (dp), as drawn in TopPanels. */
 internal const val CC_GAP_DP = 12f
 internal const val CC_MIN_CELL_DP = 44f
+/** The Control Center column's own side padding (16 dp each side) inside the panel width. */
+internal const val CC_SIDE_PADDING_DP = 32f
 /** The panel width under which Control Center never uses six columns (the 25 Oct research suggested about 520 dp; to be checked against font scaling). */
 internal const val CC_SIX_COLUMN_MIN_WIDTH_DP = 520f
 
@@ -68,7 +70,7 @@ internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int
 /** The cell a Control Center of [columns] columns can have in a [widthDp] by [heightDp] panel, never above [sizeCellDp] (null height: unbounded). */
 internal fun controlCenterCell(columns: Int, widthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): Float {
     val rows = controlCenterRows(columns, controls, focus)
-    val byWidth = (widthDp - CC_GAP_DP * (columns - 1)) / columns
+    val byWidth = (widthDp - CC_SIDE_PADDING_DP - CC_GAP_DP * (columns - 1)) / columns
     val byHeight = heightDp?.let { (it - 60f - CC_GAP_DP * (rows - 1)) / rows } ?: Float.MAX_VALUE
     return minOf(sizeCellDp, byWidth, byHeight)
 }

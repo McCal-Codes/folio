@@ -96,7 +96,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val config = LocalConfiguration.current
     val wide = config.fitsRegularHomeLayout()
     val shape = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp,
-        LocalHinge.current?.active == true || LocalShadeOverApps.current, current)
+        LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
     // At most two thirds of the height: a card is as tall as its list, not the screen.

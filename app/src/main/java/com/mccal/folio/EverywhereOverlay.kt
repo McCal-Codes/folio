@@ -275,7 +275,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shadeTimer?.cancel(); shadeTimer = scope.launch { kotlinx.coroutines.delay(SHADE_WAIT_MS); closeShade() }
         shade?.removeCallbacks(shadeRemoval) // opened again while it was closing: keep it
         setShadeTouchable(true)
-        if (shade != null) return true // already up: the panel changes in place
+        if (shade != null) { animateShadeBlur(shadeBlurPx); return true } // already up (or closing): the panel changes in place and the blur comes back
         val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
         // The look Home gives the panels (tinted cards, glass strength, blur) comes from the same saved state, so over an app they read the same.
         val look = runCatching { decodeLauncherState(prefs.getString(SettingKeys.STATE, "{}") ?: "{}", null) }.getOrNull()

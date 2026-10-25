@@ -36,6 +36,15 @@ class ControlCenterColumnsTest {
         assertEquals(4, controlCenterColumns(560f, barely, 8, false, sizeCell))
     }
 
+    @Test fun `the grid always fits inside the panel less its own padding`() {
+        for (size in listOf(58f, 66f, 76f, 74f, 84f)) for (w in listOf(520f, 540f, 560f)) for (h in listOf(300f, 400f, 500f, 700f)) {
+            val cols = controlCenterColumns(w, h, 8, false, size)
+            val cell = maxOf(CC_MIN_CELL_DP, controlCenterCell(cols, w, h, 8, false, size))
+            val grid = cell * cols + CC_GAP_DP * (cols - 1)
+            assertTrue("size $size panel ${w}x$h: $cols columns of $cell make a grid of $grid in ${w - CC_SIDE_PADDING_DP}", grid <= w - CC_SIDE_PADDING_DP + 0.01f)
+        }
+    }
+
     @Test fun `six columns need one row fewer for the same controls`() {
         assertEquals(6, controlCenterRows(4, 8, false))
         assertEquals(5, controlCenterRows(6, 8, false))

@@ -24,6 +24,11 @@ class ShadeLayoutTest {
         assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN, wide = false, width = 923, hinged = true)) // over an app, hinged is always true
     }
 
+    @Test fun `with the big clock switched off a phone on its side keeps the list on its own`() {
+        assertEquals(ShadeShape.SINGLE_TOP, shadeShape(NcLayout.FULL_SCREEN, false, true, 923, true, nc, clockOn = false))
+        assertEquals(ShadeShape.SPLIT_CLOCK, shadeShape(NcLayout.FULL_SCREEN, false, true, 923, true, nc, clockOn = true))
+    }
+
     @Test fun `full screen is how it has been`() {
         assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN))
         assertEquals(ShadeShape.SINGLE_TOP, shape(NcLayout.FULL_SCREEN, landscape = false))
