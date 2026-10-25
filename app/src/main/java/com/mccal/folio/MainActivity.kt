@@ -248,6 +248,9 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.LaunchedEffect(panelOpen) {
                 if (!panelOpen) return@LaunchedEffect
                 panelSession = true; panelSnapshotFailed = false
+                // With Android's own wallpaper showing through, Home's layer is transparent around its icons and text: a picture of it would
+                // let the sharp Home show through, so that case keeps the live blur.
+                if (state.systemWallpaper && this@MainActivity.showsWallpaper) { panelSnapshotFailed = true; return@LaunchedEffect }
                 if (backdropBlurPx < 2f || LauncherPages.isOpen(this@MainActivity) || SettingsPeek.value != null) return@LaunchedEffect
                 try {
                     // Shrunk on the GPU to a quarter first, so reading the picture back costs a sixteenth of the pixels and never holds up a frame.
