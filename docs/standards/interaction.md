@@ -84,6 +84,14 @@ widget", "pick up this icon" or "open Spotlight". This standard keeps those mean
 - **INT-19 SHOULD** show feedback next to the object it's about (island pills, inline undo) rather than a `Toast` or
   modal `AlertDialog`. Keep dialogs for what can't be undone.
 
+### Resizing
+
+- **INT-20 SHOULD** make anything the person can size (widgets, Control Center tiles, folders, StandBy modules) resize the
+  same way: in edit mode a handle on the bottom-right corner (bottom-left in right-to-left), dragged to the next size the
+  thing can take. It snaps to those sizes and never to a free size, a size that does not fit the grid or the window is not
+  offered, and a drop that would overlap goes back where it was rather than pushing other items. INT-2 applies: a size
+  menu or TalkBack action reaches every size too. (McCal 25 Oct 2026, from the iOS Control Center editor.)
+
 ## Where Folio is today
 
 Good:
@@ -104,6 +112,7 @@ Not yet:
 - No hover, right-click, scroll wheel or pointer icon support; no focus rings.
 - About 15 plain `BackHandler`s without predictive progress.
 - About 26 `Toast` / `AlertDialog` calls for feedback that could sit next to the object.
+- Resize (INT-20): only Home widgets resize (`WidgetResize.kt`); Control Center tiles, folders and StandBy modules do not.
 
 ## Gaps
 
