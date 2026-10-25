@@ -24,6 +24,12 @@ class ControlCenterColumnsTest {
         assertTrue("four $four, six $six", six >= four + 6f)
     }
 
+    @Test fun `a narrow panel keeps four columns however short it is`() {
+        assertEquals(4, controlCenterColumns(480f, 300f, 8, false, sizeCell))
+        assertEquals(4, controlCenterColumns(519f, 260f, 8, false, sizeCell))
+        assertEquals(6, controlCenterColumns(520f, 300f, 8, false, sizeCell))
+    }
+
     @Test fun `six columns need the gain, so a window that is barely short stays at four`() {
         // About 2 dp short of fitting four comfortable rows: six would give almost the same cell.
         val barely = (60f + 12f * 5 + 66f * 6) - 2f

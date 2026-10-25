@@ -52,6 +52,8 @@ internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boole
 /** Control Center's smallest cell and the 4-column gap (dp), as drawn in TopPanels. */
 internal const val CC_GAP_DP = 12f
 internal const val CC_MIN_CELL_DP = 44f
+/** The panel width under which Control Center never uses six columns (the 25 Oct research suggested about 520 dp; to be checked against font scaling). */
+internal const val CC_SIX_COLUMN_MIN_WIDTH_DP = 520f
 
 /** How many rows Control Center needs: with 4 columns the first four small controls sit beside the sliders; with 6 the sliders join the top row. */
 internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int =
@@ -72,6 +74,8 @@ internal fun controlCenterCell(columns: Int, widthDp: Float, heightDp: Float?, c
  * when they give cells at least 6 dp bigger, so a window that is narrow, or tall enough, never changes.
  */
 internal fun controlCenterColumns(widthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): Int {
+    // Six columns need room to breathe: under about 520 dp of panel width (a split half, a narrow side of a fold) four stay.
+    if (widthDp < CC_SIX_COLUMN_MIN_WIDTH_DP) return 4
     val four = controlCenterCell(4, widthDp, heightDp, controls, focus, sizeCellDp)
     if (four >= sizeCellDp) return 4
     val six = controlCenterCell(6, widthDp, heightDp, controls, focus, sizeCellDp)

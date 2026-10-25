@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.9] - Unreleased
 
 ### Added
+- **Tap the status rail for Control Center:** on Home, a tap on the Side Bar's status opens Control Center, as the iPhone Duo's status control does. It is off while Home is being edited or an icon is dragged, and TalkBack says what it opens.
 - **Pull down from any app:** Settings › Notifications › Panels › Pull down from the top of any app, off to start with and available once Folio's panels over other apps is on. A pull down on the left half of an app's top edge opens Notification Center and on the right half Control Center, in place of the phone's shade, and a diagonal pull from the corner counts, which helps one-handed reach. A thin strip the height of the status bar (24 to 48 dp) takes the touches there while it is on; full screen apps and Home keep their own.
 - **Control Center on short windows:** when a window is wide but too short for four rows of full-size controls, such as a phone or a fold on its side, Control Center uses six columns with brightness and volume in the top row, so everything fits with fewer rows to scroll. Tall windows keep four columns.
 - **Island status:** Settings › Dynamic Island now opens with a card that says why the island is or isn't showing over other apps (the gestures service, notification access, Do Not Disturb, or Android's own pop-ups taking over message alerts) and puts the fix one tap away.
