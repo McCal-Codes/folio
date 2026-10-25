@@ -1719,6 +1719,12 @@
         <item quantity="other">Show all %d</item>
     </plurals>
     <string name="general">General</string>
+    <string name="settings_group_launcher">Launcher</string>
+    <string name="settings_group_extensions">Extensions</string>
+    <string name="control_center_look">Control Center look</string>
+    <string name="cc_look_clear">Clear glass</string>
+    <string name="cc_look_frosted">Frosted</string>
+    <string name="cc_look_solid">Solid</string>
     <string name="language">Language</string>
     <string name="settings_keywords_general">general about version update what\'s new help roadmap credits advanced</string>
     <string name="settings_keywords_language">language translation english korean chinese locale</string>

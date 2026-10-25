@@ -240,7 +240,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     // ---- Folio's panels over other apps ------------------------------------------------------
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
-        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false)
+        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false,
+        val look: CcLook = CcLook.FROSTED)
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -250,7 +251,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 ?: CcControl.DEFAULTS,
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
-            j.optBoolean("notificationSections", false))
+            j.optBoolean("notificationSections", false),
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.FROSTED))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
@@ -310,7 +312,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout)
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look)
                     }
                 }
             }

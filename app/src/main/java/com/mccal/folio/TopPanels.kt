@@ -85,7 +85,7 @@ import java.time.format.DateTimeFormatter
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
-    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN,
+    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.FROSTED,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
@@ -129,7 +129,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
-    CompositionLocalProvider(LocalHinge provides hinge) {
+    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
             shape == ShadeShape.BOTH -> Alignment.TopCenter
@@ -466,6 +466,24 @@ enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
 /** Control Center size choice (the largest a small control can be). */
 enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) { COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp) }
 
+/**
+ * How Control Center's tiles are drawn (McCal 25 Oct 2026, from the Lab's options A to C): Clear glass is see-through with a bright edge
+ * (3.5:1 for white text on the Lab's backdrop, so best on a dark wallpaper), Frosted puts them on a darker plate (6.9:1), Solid is the
+ * opaque look it had before (10.6:1).
+ */
+enum class CcLook(@androidx.annotation.StringRes val label: Int) { CLEAR(R.string.cc_look_clear), FROSTED(R.string.cc_look_frosted), SOLID(R.string.cc_look_solid) }
+
+internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.FROSTED }
+
+private val CcLook.tile: Color get() = when (this) { CcLook.CLEAR -> FolioGlass.clearTile; CcLook.FROSTED -> FolioGlass.frostedTile; CcLook.SOLID -> FolioGlass.module }
+/** A round toggle at rest: Solid keeps the lighter disc it always had on its dark modules. */
+private val CcLook.toggleOff: Color get() = if (this == CcLook.SOLID) Color.White.copy(alpha = .16f) else tile
+private val CcLook.edge: androidx.compose.foundation.BorderStroke get() = when (this) {
+    CcLook.CLEAR -> androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color.White.copy(alpha = .42f), Color.White.copy(alpha = .12f))))
+    CcLook.FROSTED -> androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .14f))
+    CcLook.SOLID -> FolioGlass.edge
+}
+
 /** The width of "00:00" in bold, in em, with air (measured about 2.72 at 112 sp): the time is sized by the room it has. */
 private const val SPLIT_CLOCK_EM_WIDTH = 2.95f
 
@@ -682,7 +700,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
     }
 
-    BoxWithConstraints(modifier.testTag("control-center")) {
+    val look = LocalCcLook.current
+    BoxWithConstraints(modifier.testTag("control-center")
+        .then(if (look == CcLook.FROSTED) Modifier.clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioGlass.frostedPlate)
+            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp)) else Modifier)) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
@@ -932,7 +953,7 @@ private fun MediaProgress(media: IslandActivity.Media) {
 @Composable
 private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit) {
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
-    val tint by androidx.compose.animation.animateColorAsState(mixColor(ModuleGlass, artAccent, .45f), label = "music tint")
+    val tint by androidx.compose.animation.animateColorAsState(mixColor(LocalCcLook.current.tile, artAccent, .45f), label = "music tint")
     Module(modifier.clickable(enabled = media != null, onClick = onOpen), color = tint) {
         Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
@@ -963,15 +984,17 @@ private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: 
 }
 
 @Composable
-private fun Module(modifier: Modifier, color: Color = ModuleGlass, content: @Composable BoxScope.() -> Unit) =
-    Box(modifier.clip(RoundedCornerShape(26.dp)).background(color)
-        .border(FolioGlass.edge, RoundedCornerShape(26.dp)), content = content)
+private fun Module(modifier: Modifier, color: Color? = null, content: @Composable BoxScope.() -> Unit) {
+    val look = LocalCcLook.current
+    Box(modifier.clip(RoundedCornerShape(26.dp)).background(color ?: look.tile)
+        .border(look.edge, RoundedCornerShape(26.dp)), content = content)
+}
 
 @Composable
 private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(CircleShape).background(if (on) accent else Color.White.copy(alpha = .16f))
+    Box(Modifier.size(size).clip(CircleShape).background(if (on) accent else LocalCcLook.current.toggleOff)
         .clickable { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = stateText; role = androidx.compose.ui.semantics.Role.Switch },
         contentAlignment = Alignment.Center) {
@@ -983,7 +1006,7 @@ private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: C
 private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val state = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else ModuleGlass)
+    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else LocalCcLook.current.tile)
         .clickable(role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = state }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (on && accent == Color.White) Color.Black else Color.White, modifier = Modifier.size(size * .4f))
@@ -995,7 +1018,7 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
     onStart: () -> Unit = {}, onValue: (Float) -> Unit) {
     val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), FolioMotion.spring(FolioMotion.Snap), label = label)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(ModuleGlass)
+    Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(LocalCcLook.current.tile)
         .pointerInput(Unit) {
             var last = -1f
             detectVerticalDragGestures(onDragStart = { onStart(); last = -1f }) { change, _ ->
@@ -1043,7 +1066,6 @@ private fun EmptyNote(text: String, action: String?, onAction: () -> Unit) {
     }
 }
 
-private val ModuleGlass = FolioGlass.module
 private val NotifGlass = FolioGlass.card
 private val AccentBlue = FolioColors.Blue
 private val AccentGreen = FolioColors.Green

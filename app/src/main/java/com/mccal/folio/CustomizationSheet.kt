@@ -101,7 +101,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         FOCUS_MODE -> FOCUS
         ISLAND_APPS -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
-        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS -> GENERAL
+        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, PERMISSIONS, SUPPORT -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE, SCREENSHOT_SWAP -> ADVANCED
         WHAT_TO_TEST -> HELP
@@ -236,6 +236,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         MenuDivider()
                         TweakRow(Icons.Rounded.Accessibility, FolioColors.Value.Blue, stringResource(R.string.accessibility), "customization-accessibility", selected = pick(CustomizationPage.ACCESSIBILITY), chevron = !sidebar) { onPage(CustomizationPage.ACCESSIBILITY) }
                     }
+                    // The supporter's grouping (25 Oct 2026): the launcher itself, then what extends it, with General and Accessibility above.
+                    SheetGroupLabel(stringResource(R.string.settings_group_launcher))
                     SheetGroup {
                         TweakRow(Icons.Rounded.Wallpaper, FolioColors.Value.CyanLight, stringResource(R.string.wallpaper_appearance), "customization-wallpaper",
                             if (backgrounds.previewPending) stringResource(R.string.photo_ready) else null, selected = pick(CustomizationPage.WALLPAPER), chevron = !sidebar) { onPage(CustomizationPage.WALLPAPER) }
@@ -245,7 +247,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.Apps, FolioColors.Value.Indigo, stringResource(R.string.icons_side_bar), "customization-status", selected = pick(CustomizationPage.STATUS), chevron = !sidebar) { onPage(CustomizationPage.STATUS) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.Today, FolioColors.Value.Orange, stringResource(R.string.today_view), "customization-today", selected = pick(CustomizationPage.TODAY), chevron = !sidebar) { onPage(CustomizationPage.TODAY) }
+                        MenuDivider()
+                        TweakRow(Icons.Rounded.Search, FolioColors.Value.Gray, stringResource(R.string.search_app_library), "customization-search", selected = pick(CustomizationPage.SEARCH), chevron = !sidebar) { onPage(CustomizationPage.SEARCH) }
+                        MenuDivider()
+                        TweakRow(Icons.Rounded.Gesture, FolioColors.Value.Teal, stringResource(R.string.gestures_actions), "customization-gestures", selected = pick(CustomizationPage.GESTURES), chevron = !sidebar) { onPage(CustomizationPage.GESTURES) }
                     }
+                    SheetGroupLabel(stringResource(R.string.settings_group_extensions))
+                    // The Market sits inside Tweaks, where tweaks come from (McCal, 28 Sep 2026).
                     SheetGroup {
                         TweakRow(Icons.Rounded.Circle, FolioColors.Value.SecondaryBackground, stringResource(R.string.dynamic_island), "customization-island", selected = pick(CustomizationPage.ISLAND), chevron = !sidebar) { onPage(CustomizationPage.ISLAND) }
                         MenuDivider()
@@ -254,30 +262,15 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.DarkMode, FolioColors.Value.Indigo, stringResource(R.string.focus), "customization-focus",
                             state.focusModes.firstOrNull { it.id == state.activeFocus }?.name, selected = pick(CustomizationPage.FOCUS), chevron = !sidebar) { onPage(CustomizationPage.FOCUS) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.Search, FolioColors.Value.Gray, stringResource(R.string.search_app_library), "customization-search", selected = pick(CustomizationPage.SEARCH), chevron = !sidebar) { onPage(CustomizationPage.SEARCH) }
-                        MenuDivider()
-                        TweakRow(Icons.Rounded.Gesture, FolioColors.Value.Teal, stringResource(R.string.gestures_actions), "customization-gestures", selected = pick(CustomizationPage.GESTURES), chevron = !sidebar) { onPage(CustomizationPage.GESTURES) }
-                    }
-                    SheetGroup {
                         TweakRow(Icons.Rounded.Devices, FolioColors.Value.Pink, stringResource(R.string.fold_displays), "customization-fold", selected = pick(CustomizationPage.FOLD), chevron = !sidebar) { onPage(CustomizationPage.FOLD) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.TouchApp, FolioColors.Value.Orange, stringResource(R.string.side_key), "customization-side-key", selected = pick(CustomizationPage.SIDE_KEY), chevron = !sidebar) { onPage(CustomizationPage.SIDE_KEY) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.Lock, FolioColors.Value.Green, stringResource(R.string.lock_cover), "customization-lock",
                             if (state.lockCover) stringResource(R.string.on) else stringResource(R.string.off), selected = pick(CustomizationPage.LOCK), chevron = !sidebar) { onPage(CustomizationPage.LOCK) }
-                    }
-                    // The Market sits inside Tweaks, where tweaks come from (McCal, 28 Sep 2026).
-                    SheetGroup {
+                        MenuDivider()
                         TweakRow(Icons.Rounded.AutoAwesome, FolioColors.Value.Purple, stringResource(R.string.tweaks), "customization-tweaks",
                             pluralStringResource(R.plurals.count_installed, state.installedTweaks.size, state.installedTweaks.size), selected = pick(CustomizationPage.TWEAKS), chevron = !sidebar) { onPage(CustomizationPage.TWEAKS) }
-                    }
-                    SheetGroup {
-                        TweakRow(Icons.Rounded.PanTool, FolioColors.Value.Blue, stringResource(R.string.privacy_permissions), "customization-permissions", selected = pick(CustomizationPage.PERMISSIONS), chevron = !sidebar) { onPage(CustomizationPage.PERMISSIONS) }
-                    }
-                    // One row for Ko-fi, the supporter code and the Supporters list: a page of its own, not three rows here.
-                    SheetGroup {
-                        TweakRow(Icons.Rounded.LocalCafe, 0xFFFF5E5B, stringResource(R.string.support_folio), "customization-support-folio",
-                            selected = pick(CustomizationPage.SUPPORT), chevron = !sidebar) { onPage(CustomizationPage.SUPPORT) }
                     }
     }
     // Home-app actions and the setup reminder: above the list on the phone, on Folio's own page in the split view.
@@ -454,6 +447,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.notification_sections), state.notificationSections, model::setNotificationSections, "notification-sections-switch")
                         if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
+                        IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
                         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
                         if (state.ncLayout == NcLayout.FULL_SCREEN) SettingsSwitch(stringResource(R.string.unfolded_control_center_in_the_middle), state.ccCentered, model::setCcCentered, "cc-centered-switch")
                         CardNote(stringResource(R.string.tip_tap_at_the_top_of_control_center_to))
@@ -836,6 +830,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.Map, FolioColors.Value.Indigo, stringResource(R.string.roadmap), "customization-coming-soon") { onPage(CustomizationPage.COMING_SOON) }
                         MenuDivider()
                         TweakRow(Icons.Rounded.Favorite, FolioColors.Value.Red, stringResource(R.string.credits), "customization-credits") { onPage(CustomizationPage.CREDITS) }
+                    }
+                    // Moved here from the top of Settings (the supporter's idea): what Folio may use, and how to support it.
+                    SheetGroup {
+                        TweakRow(Icons.Rounded.PanTool, FolioColors.Value.Blue, stringResource(R.string.privacy_permissions), "customization-permissions") { onPage(CustomizationPage.PERMISSIONS) }
+                        MenuDivider()
+                        TweakRow(Icons.Rounded.LocalCafe, 0xFFFF5E5B, stringResource(R.string.support_folio), "customization-support-folio") { onPage(CustomizationPage.SUPPORT) }
                     }
                 }
                 CustomizationPage.SUPPORT -> {
@@ -1520,6 +1520,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.order to CustomizationPage.ACCESSIBILITY,
     R.string.size to CustomizationPage.ACCESSIBILITY,
     R.string.control_center_size to CustomizationPage.NOTIFICATIONS,
+    R.string.control_center_look to CustomizationPage.NOTIFICATIONS,
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
     R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,

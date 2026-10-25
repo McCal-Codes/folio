@@ -28,6 +28,11 @@ internal object FolioGlass {
     val card = FolioColors.SurfaceCard.copy(alpha = .82f)
     /** Controls sitting on a card (inactive toggles, pills, chips). */
     val raised = Color.White.copy(alpha = .14f)
+    /** Control Center, Clear glass: see-through tiles over the blurred app. */
+    val clearTile = Color.White.copy(alpha = .16f)
+    /** Control Center, Frosted: lighter tiles on [frostedPlate], which keeps their text readable over any app. */
+    val frostedTile = Color.White.copy(alpha = .11f)
+    val frostedPlate = Color.Black.copy(alpha = .34f)
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */

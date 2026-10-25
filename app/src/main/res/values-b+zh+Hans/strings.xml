@@ -1636,6 +1636,12 @@
         <item quantity="other">显示全部 %d 个</item>
     </plurals>
     <string name="general">通用</string>
+    <string name="settings_group_launcher">启动器</string>
+    <string name="settings_group_extensions">扩展</string>
+    <string name="control_center_look">控制中心样式</string>
+    <string name="cc_look_clear">透明玻璃</string>
+    <string name="cc_look_frosted">磨砂面板</string>
+    <string name="cc_look_solid">纯色</string>
     <string name="language">语言</string>
     <string name="settings_keywords_general">通用 关于 版本 更新 新功能 帮助 路线图 致谢 高级</string>
     <string name="settings_keywords_language">语言 翻译 英语 韩语 中文</string>
