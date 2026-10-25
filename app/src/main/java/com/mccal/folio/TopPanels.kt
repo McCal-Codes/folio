@@ -468,7 +468,7 @@ enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp
 
 /**
  * How Control Center's tiles are drawn (McCal 25 Oct 2026, from the Lab's options A to C): Clear glass is see-through with a bright edge
- * (3.5:1 for white text on the Lab's backdrop, so best on a dark wallpaper), Frosted puts them on a darker plate (6.9:1), Solid is the
+ * (3.5:1 for white text on the Lab's backdrop, so best on a dark wallpaper), Frosted gives them dark smoky tiles with no plate behind (about 9:1), Solid is the
  * opaque look it had before (10.6:1).
  */
 enum class CcLook(@androidx.annotation.StringRes val label: Int) { CLEAR(R.string.cc_look_clear), FROSTED(R.string.cc_look_frosted), SOLID(R.string.cc_look_solid) }
@@ -703,10 +703,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
     }
 
-    val look = LocalCcLook.current
-    BoxWithConstraints(modifier.testTag("control-center")
-        .then(if (look == CcLook.FROSTED) Modifier.clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioGlass.frostedPlate)
-            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp)) else Modifier)) {
+    BoxWithConstraints(modifier.testTag("control-center")) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
