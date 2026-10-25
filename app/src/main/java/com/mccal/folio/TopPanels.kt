@@ -105,13 +105,23 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 
     // Scrim: tap or swipe up anywhere to close.
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
-        .background(if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) FolioGlass.scrimUnblurred else FolioGlass.scrim)
+        .then(if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
                 detectVerticalDragGestures(onDragStart = { total = 0f }) { _, drag -> total += drag; if (total < -48.dp.toPx()) onClose() }
             } else Modifier)
-        .testTag("top-panel-scrim"))
+        .testTag("top-panel-scrim")) {
+        // Over an app the window cannot blur: the app's own picture, blurred once, under a dim; or Folio's frosted glass when there is none.
+        if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) {
+            val picture = LocalShadeBackdropImage.current
+            if (picture != null) {
+                androidx.compose.foundation.Image(picture, null, Modifier.fillMaxSize().graphicsLayer { alpha = .94f },
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
+                Box(Modifier.fillMaxSize().background(FolioGlass.scrim))
+            } else FrostedBackdrop(LocalWallpaperTone.current, Modifier.fillMaxSize().graphicsLayer { alpha = .86f })
+        }
+    }
 
     // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right (Full screen), a card under the
     // corner it was pulled from (Card), or beside Control Center (Side by side); see shadeShape.
@@ -440,6 +450,9 @@ internal val LocalShadeOverApps = androidx.compose.runtime.staticCompositionLoca
 
 /** Whether the window behind the panels is really blurred (the phone allows it and Settings › Blur is on); over an app without it the dim is stronger. */
 internal val LocalShadeBackdropBlur = androidx.compose.runtime.staticCompositionLocalOf { true }
+
+/** The shrunk, blurred picture of the app behind the panels, when one could be taken; null draws Folio's frosted glass instead. */
+internal val LocalShadeBackdropImage = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.ui.graphics.ImageBitmap?> { null }
 
 /** Over another app, what Reply does: starts a box to type in (the overlay cannot take the keyboard). Null on Home, where the card has its own field. */
 internal val LocalShadeReply = androidx.compose.runtime.staticCompositionLocalOf<((NotificationItem) -> Unit)?> { null }

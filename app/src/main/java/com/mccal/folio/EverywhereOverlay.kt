@@ -102,7 +102,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private var buttonSettings: ButtonBarSettings? = null
     private var buttonParams: WindowManager.LayoutParams? = null
     private val dockOpen = MutableStateFlow(false)
-    private companion object { const val SHADE_WAIT_MS = 45_000L; const val PULL_ENTRY_WAIT_MS = 700L; const val SHADE_CLOSE_MS = 450L }
+    private companion object { const val SHADE_WAIT_MS = 45_000L; const val PULL_ENTRY_WAIT_MS = 700L; const val SNAPSHOT_WAIT_MS = 260L; const val SHADE_CLOSE_MS = 450L }
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
@@ -276,45 +276,62 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shade?.removeCallbacks(shadeRemoval) // opened again while it was closing: keep it
         setShadeTouchable(true)
         if (shade != null) { animateShadeBlur(shadeBlurPx); return true } // already up (or closing): the panel changes in place and the blur comes back
-        val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
         // The look Home gives the panels (tinted cards, glass strength, blur) comes from the same saved state, so over an app they read the same.
+        val wallpaperTone = runCatching { android.app.WallpaperManager.getInstance(service).androidWallpaperTone(service) }.getOrDefault(WallpaperTone())
         val look = runCatching { decodeLauncherState(prefs.getString(SettingKeys.STATE, "{}") ?: "{}", null) }.getOrNull()
-        val view = ComposeView(service).apply {
-            setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
-            setContent {
-                val current by shadePanel.collectAsState()
-                val status by monitor.state.collectAsState()
-                val reduceMotion = settings.collectAsState().value.reduceMotion
-                // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
-                // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
-                var shown by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { shown = true }
-                val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
-                    MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
-                val wide = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
-                CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
-                    LocalReduceMotion provides reduceMotion, LocalShadeBackdropBlur provides (shadeBlurPx > 0),
-                    LocalTintOptions provides (look?.let { tintOptionsFor(it, wide) } ?: TintOptions()),
-                    LocalGlassLook provides (look?.let { GlassLook(it.widgetGlass, it.glassOutline) } ?: GlassLook())) {
-                    TopPanels(current, { progress }, status, onClose = { closeShade() },
-                        // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
-                        onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
-                        showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                        ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout)
-                }
-            }
-        }
-        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
         // Home blurs behind its panels by Settings › Blur; over an app the window does the same, when the phone allows blurring windows.
         shadeBlurPx = look?.let { (it.panelBlur * 32 * density).toInt() }?.takeIf { it >= 2 && wm.isCrossWindowBlurEnabled } ?: 0
-        if (shadeBlurPx > 0) params.flags = params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-        if (runCatching { wm.addView(view, params) }.isFailure) { monitor.onStop(owner); shadePanel.value = null; shadeTimer?.cancel(); return false }
-        shade = view; shadeMonitor = monitor
-        animateShadeBlur(shadeBlurPx)
-        if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
+        // Where the window cannot be blurred (One UI turns it off) and Blur is on, a screenshot is taken before the panel exists, shrunk and blurred once off
+        // the main thread, and shown behind the panels; Folio's frosted glass stands in while it is on its way or if the phone refuses it.
+        val wantSnapshot = shadeBlurPx == 0 && look != null && look.panelBlur >= .05f && !look.reduceTransparency && SystemShadeAccessibilityService.canSnapshot()
+        val request = ++shadeRequest
+        fun show(snapshot: android.graphics.Bitmap?) {
+            if (request != shadeRequest || shade != null) { snapshot?.recycle(); return }
+            shadeBackdrop.value = snapshot?.asImageBitmap()
+            val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
+            val view = ComposeView(service).apply {
+                setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
+                setContent {
+                    val current by shadePanel.collectAsState()
+                    val status by monitor.state.collectAsState()
+                    val reduceMotion = settings.collectAsState().value.reduceMotion
+                    // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
+                    // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
+                    var shown by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { shown = true }
+                    val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
+                        MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+                    val wide = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
+                    CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
+                        LocalReduceMotion provides reduceMotion, LocalShadeBackdropBlur provides (shadeBlurPx > 0), LocalShadeBackdropImage provides shadeBackdrop.collectAsState().value, LocalWallpaperTone provides wallpaperTone,
+                        LocalTintOptions provides (look?.let { tintOptionsFor(it, wide) } ?: TintOptions()),
+                        LocalGlassLook provides (look?.let { GlassLook(it.widgetGlass, it.glassOutline) } ?: GlassLook())) {
+                        TopPanels(current, { progress }, status, onClose = { closeShade() },
+                            // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
+                            onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
+                            showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout)
+                    }
+                }
+            }
+            val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
+            if (shadeBlurPx > 0) params.flags = params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+            if (runCatching { wm.addView(view, params) }.isFailure) { monitor.onStop(owner); shadePanel.value = null; shadeTimer?.cancel(); return }
+            shade = view; shadeMonitor = monitor
+            animateShadeBlur(shadeBlurPx)
+            if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
+        }
+        if (wantSnapshot) {
+            var arrived = false
+            val finish: (android.graphics.Bitmap?) -> Unit = { snapshot ->
+                if (!arrived) { arrived = true; show(snapshot) } else { snapshot?.recycle() }
+            }
+            SystemShadeAccessibilityService.takeBackdrop(finish)
+            scope.launch { kotlinx.coroutines.delay(SNAPSHOT_WAIT_MS); finish(null) }
+        } else show(null)
         return true
     }
 
@@ -331,6 +348,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     }
 
     private fun closeShade() {
+        if (shade == null) shadeRequest++ // a request still waiting for its picture is dropped
         shadePanel.value = null
         shadeTimer?.cancel()
         // The panels take about 0.4 s to settle shut; taps go through to the app underneath meanwhile, and the window goes after.
@@ -340,6 +358,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     }
 
     private var shadeBlurPx = 0
+    private var shadeRequest = 0
+    private val shadeBackdrop = MutableStateFlow<androidx.compose.ui.graphics.ImageBitmap?>(null)
     private var shadeBlurAnimator: android.animation.ValueAnimator? = null
 
     /**
