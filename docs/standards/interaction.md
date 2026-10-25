@@ -112,7 +112,7 @@ Not yet:
 - No hover, right-click, scroll wheel or pointer icon support; no focus rings.
 - About 15 plain `BackHandler`s without predictive progress.
 - About 26 `Toast` / `AlertDialog` calls for feedback that could sit next to the object.
-- Resize (INT-20): only Home widgets resize (`WidgetResize.kt`); Control Center tiles, folders and StandBy modules do not.
+- Resize (INT-20): Home widgets (`WidgetResize.kt`) and folders (by their bottom-right corner) resize; Control Center tiles and StandBy modules do not yet.
 
 ## Gaps
 
