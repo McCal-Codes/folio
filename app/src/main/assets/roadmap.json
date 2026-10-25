@@ -431,10 +431,28 @@
           "icon": "notifications",
           "color": "#FF453A",
           "title": "Notification Center and Control Center, your way",
-          "detail": "Notification Center in sections, a card or side by side on the unfolded screen, and a one-hand shortcut or Routine opens them over any app.",
+          "detail": "Notification Center in sections, a card or side by side on the unfolded screen. Control Center fills the window in pages and has a look you choose. A pull from the top of any app, a one-hand shortcut or a Routine opens them over any app, with a blur behind them even where the phone will not blur windows.",
           "status": "building",
           "beta": true,
           "inBeta": 5
+        },
+        {
+          "icon": "tune",
+          "color": "#8E8E93",
+          "title": "Settings in three groups",
+          "detail": "General and Accessibility first, then Launcher, then Extensions. Privacy & Permissions and Support Folio now live in General.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 6
+        },
+        {
+          "icon": "grid",
+          "color": "#5E5CE6",
+          "title": "Apps at the top",
+          "detail": "A new Home on a phone starts with its apps at the top, as on an iPhone, instead of centered. A layout you already have keeps what it has.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 6
         },
         {
           "icon": "dock",
@@ -792,15 +810,8 @@
         {
           "icon": "tune",
           "color": "#0A84FF",
-          "title": "Control Center on short windows",
-          "detail": "Six columns with the sliders in the top row when a window is wide but short, so a phone on its side fits without scrolling.",
-          "status": "planned"
-        },
-        {
-          "icon": "corner",
-          "color": "#5E5CE6",
-          "title": "Pull down from any app",
-          "detail": "A pull from the top edge of any app opens Folio's Notification Center or Control Center. Off unless you turn it on.",
+          "title": "Control Center editor",
+          "detail": "Move a control to any free slot and resize it from its corner, the way iOS's editor works.",
           "status": "planned"
         },
         {
