@@ -54,54 +54,57 @@ internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarP
 internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boolean, safeMode: Boolean, folioInFront: Boolean, fullScreen: Boolean): Boolean =
     pullOn && overApps && panelsOn && !safeMode && !folioInFront && !fullScreen
 
-/** Control Center's gap between cells and its smallest cell (dp), as drawn in TopPanels. */
-internal const val CC_GAP_DP = 12f
+/** The smallest cell Control Center ever draws; under it the page scrolls. */
 internal const val CC_MIN_CELL_DP = 44f
-/** The Control Center column's own side padding (16 dp each side) inside the panel width. */
-internal const val CC_SIDE_PADDING_DP = 32f
-/** The page strip: a column at the edge on a wide panel, a row under the grid on a narrow one. */
-internal const val CC_STRIP_DP = 56f
-internal const val CC_EDGE_STRIP_MIN_DP = 560f
-/** A cell may grow to this times the size the person chose, to fill the width; past that another column is added instead. */
+/** A cell may grow to this times the size the person chose, to fill the width; past that another pair of columns is added instead. */
 internal const val CC_FILL_MAX = 1.5f
-internal val CC_COLUMN_STEPS = listOf(4, 6, 8)
+/** The gap between cells as a share of the chosen cell size, and how many widths of the page strip a panel needs before the strip stands at its edge. */
+internal const val CC_GAP_RATIO = .18f
+internal const val CC_EDGE_STRIP_PANEL_RATIO = 10f
 
 /** The pages Control Center is split into, reached from the strip: what is used most, media and sound, and the connections. */
 internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
 
 /**
- * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with six or eight the
- * sliders join the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
+ * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
+ * the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
  */
 internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int =
     if (columns >= 6) 3 + (if (focus) 1 else 0) + (controls + columns - 1) / columns
     else 5 + (if (focus) 1 else 0) + (maxOf(0, controls - 4) + 3) / 4
 
-/** Columns and the size of one cell, in dp. */
-internal data class CcGrid(val columns: Int, val cellDp: Float, val stripAtEdge: Boolean)
+/** Columns, the size of one cell and of the gap in dp, and where the page strip stands. */
+internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float, val stripAtEdge: Boolean, val stripDp: Float)
 
 /**
- * Control Center fills the window instead of sitting in a corner: the narrowest of 4, 6 or 8 columns whose cells are not bigger than
- * [CC_FILL_MAX] times the chosen size ([sizeCellDp]), so a wide window gets more columns, not giant tiles. A window too short for the
- * rows takes a wider grid (fewer rows) while that makes the cell at least 6 dp bigger. The page strip takes a column at the edge on a
- * wide panel and a row under the grid on a narrow one. A null [heightDp] means no height limit.
+ * Control Center fills the window instead of sitting in a corner. Nothing here is a device: it is worked out from the panel's width and
+ * height, the size the person chose ([sizeCellDp]), the touch target ([touchDp], the strip's buttons), the side padding the caller draws
+ * ([sidePaddingDp]) and the controls they have ([controls]).
+ *  - Columns come in pairs (4, 6, 8 ...): the fewest whose cell is not bigger than [CC_FILL_MAX] times the chosen size, so a wide window
+ *    gets more columns, not giant tiles, but never more than the controls can use.
+ *  - A window too short for the rows takes the next pair while that makes the cell at least a gap bigger.
+ *  - The page strip is one touch target wide plus a gap. It stands at the edge when the panel is wide enough for that to cost little, and
+ *    lies under the grid otherwise.
+ * A null [heightDp] means no height limit.
  */
-internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float): CcGrid {
-    val edge = panelWidthDp >= CC_EDGE_STRIP_MIN_DP
-    val gridWidth = panelWidthDp - CC_SIDE_PADDING_DP - if (edge) CC_STRIP_DP else 0f
+internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float,
+    touchDp: Float = 48f, sidePaddingDp: Float = 32f): CcGrid {
+    val gap = sizeCellDp * CC_GAP_RATIO
+    val strip = touchDp + gap
+    val edge = panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
+    val gridWidth = panelWidthDp - sidePaddingDp - if (edge) strip else 0f
     val maxCell = sizeCellDp * CC_FILL_MAX
-    fun widthCell(c: Int) = (gridWidth - CC_GAP_DP * (c - 1)) / c
+    val maxColumns = (((controls + 1) / 2) * 2).coerceIn(4, 12)
+    fun widthCell(c: Int) = (gridWidth - gap * (c - 1)) / c
     fun heightCell(c: Int): Float {
         val rows = controlCenterRows(c, controls, focus)
-        return heightDp?.let { (it - 60f - (if (edge) 0f else CC_STRIP_DP) - CC_GAP_DP * (rows - 1)) / rows } ?: Float.MAX_VALUE
+        return heightDp?.let { (it - (touchDp + gap) - (if (edge) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
     }
     fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)
-    var columns = CC_COLUMN_STEPS.firstOrNull { widthCell(it) <= maxCell } ?: CC_COLUMN_STEPS.last()
-    while (columns < CC_COLUMN_STEPS.last() && cell(columns) < sizeCellDp) {
-        val next = CC_COLUMN_STEPS[CC_COLUMN_STEPS.indexOf(columns) + 1]
-        if (cell(next) >= cell(columns) + 6f) columns = next else break
-    }
-    return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), edge)
+    var columns = 4
+    while (columns < maxColumns && widthCell(columns) > maxCell) columns += 2
+    while (columns < maxColumns && cell(columns) < sizeCellDp && cell(columns + 2) >= cell(columns) + gap) columns += 2
+    return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), gap, edge, strip)
 }
 
 /**

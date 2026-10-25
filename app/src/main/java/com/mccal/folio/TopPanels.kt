@@ -665,11 +665,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
 
     BoxWithConstraints(modifier.testTag("control-center")) {
-        val gap = CC_GAP_DP.dp
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
-        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value)
+        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat())
+        val gap = grid.gapDp.dp
         val cols = grid.columns
         val cell = grid.cellDp.dp
         fun span(n: Int): Dp = cell * n + gap * (n - 1)
@@ -684,7 +684,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val rows = controlCenterRows(cols, chosen.size, focusModes.isNotEmpty())
         val wantedHeight = cell * (rows - 1) + gap * (rows - 2)
         val pageHeight = if (maxHeight == Dp.Infinity) wantedHeight
-            else minOf(wantedHeight, maxHeight - 60.dp - if (grid.stripAtEdge) 0.dp else CC_STRIP_DP.dp).coerceAtLeast(cell)
+            else minOf(wantedHeight, maxHeight - (FolioTouch.MIN.dp + gap) - if (grid.stripAtEdge) 0.dp else grid.stripDp.dp).coerceAtLeast(cell)
 
         // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
         val sliders: @Composable (Dp) -> Unit = { height ->
@@ -837,7 +837,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
 
         ProvideJiggle(edit) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalAlignment = Alignment.Top) {
+            Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 Column(Modifier.width(gridWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
