@@ -125,8 +125,8 @@ private fun SimpleAllSettingsWatch(homeRequests: Int) {
     LaunchedEffect(Unit) {
         var opened = false
         val watch = launch {
-            androidx.compose.runtime.snapshotFlow { LauncherSheetsOpen.intValue }.collect { open ->
-                if (open > 0) opened = true else if (opened) back()
+            androidx.compose.runtime.snapshotFlow { LauncherSheets.anyOpen() }.collect { open ->
+                if (open) opened = true else if (opened) back()
             }
         }
         kotlinx.coroutines.delay(SIMPLE_SETTINGS_WAIT_MS)
