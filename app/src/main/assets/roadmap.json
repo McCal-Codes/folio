@@ -856,6 +856,13 @@
           "title": "Apple services",
           "detail": "Join FaceTime links and open Find Devices from Folio. Deeper options only as optional integrations.",
           "status": "exploring"
+        },
+        {
+          "icon": "headphones",
+          "color": "#0A84FF",
+          "title": "AirPods in Folio",
+          "detail": "Battery for each AirPod and the case, and Noise Control, if it can be done without root. Tried first with a test app on a Fold 8.",
+          "status": "exploring"
         }
       ]
     }
