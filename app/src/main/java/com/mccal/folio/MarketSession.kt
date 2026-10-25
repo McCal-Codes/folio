@@ -33,6 +33,16 @@ import java.io.File
 private typealias EarlyAuthor = AuthorTrust.Result
 
 /**
+ * Folio's own tweak packages: Cabinet, Harborline, Roll Call, Palette, Afterglow and Flipbook. The phone can have each
+ * from Settings' Tweak Library with no package record, and a copy of one from a source then updates that tweak instead
+ * of replacing the person's settings. A fixed list, not the built-in source, so it holds once they move to a Community source.
+ */
+internal val LIBRARY_TWEAK_PACKAGES = setOf(
+    "com.mccal.folio.cabinet", "com.mccal.folio.harborline", "com.mccal.folio.roll-call",
+    "com.mccal.folio.palette", "com.mccal.folio.colored-albums", "com.mccal.folio.flipbook",
+)
+
+/**
  * Everything the Market needs on the phone, wired together: the packages Folio ships (read from assets), what's
  * installed (a folder under `filesDir`), and the installer that applies them through [MarketHost].
  *
@@ -64,7 +74,10 @@ internal class MarketSession(
     /** What the installer asks about the launcher; the screen asks the same thing before Get. */
     private val host = MarketHost(launcher)
     private val folioVersion = FolioVersion.fromAppVersion(WhatsNew.currentVersion(context))
-    private val installer = PackageInstaller(store, host, safeMode, folioVersion = folioVersion, androidSdk = android.os.Build.VERSION.SDK_INT)
+    private val installer = PackageInstaller(
+        store, host, safeMode, folioVersion = folioVersion, androidSdk = android.os.Build.VERSION.SDK_INT,
+        isLibraryTweakPackage = { it in LIBRARY_TWEAK_PACKAGES },
+    )
 
     /** The screens this phone has: both on a foldable, and unknown otherwise, when a package says nothing about them. */
     private val deviceScreens: Set<com.mccal.folio.market.Screen>? =
