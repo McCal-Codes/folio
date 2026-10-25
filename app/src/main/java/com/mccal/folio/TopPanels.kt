@@ -100,8 +100,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
-    // At most two thirds of the height: a card is as tall as its list, not the screen.
-    val listMax = minOf(620.dp, (config.screenHeightDp * .62f).dp)
+    // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
+    val cardListMax = (config.screenHeightDp * .62f).dp
 
     // Scrim: tap or swipe up anywhere to close.
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
@@ -177,11 +177,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
-            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = listMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
-        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections, tall = split,
-            listMax = if (shape == ShadeShape.CARD) listMax else 620.dp, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
+            listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
         else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
@@ -191,7 +191,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, tall: Boolean = false, listMax: Dp = 620.dp, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -254,7 +254,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 }
             }
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = listMax)).edgeFade(listState), state = listState,
+            // The list takes what the column has left after the header and the app row, so it follows the window, not a fixed height.
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMax).edgeFade(listState), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
                 sectioned.forEach { (bucket, bucketGroups) ->
                   if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
@@ -395,7 +396,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
             FolioMotion.spring(FolioMotion.Control), label = "notification press")
         Row(Modifier.fillMaxWidth().graphicsLayer { scaleX = pressScale; scaleY = pressScale }
             .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
-            .border(FolioGlass.edge, RoundedCornerShape(22.dp))
+            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.NOTIFICATION.dp))
             .combinedClickable(interactionSource = press, indication = null, onClick = { if (swipe.value < -1f) settle(0f) else onOpen() }, onLongClick = {
                 if (!overApps) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true }
             }, onLongClickLabel = stringResource(R.string.notification_options))
@@ -440,7 +441,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
 @Composable
 private fun SwipeAction(label: String, onClick: () -> Unit) {
     Box(Modifier.fillMaxHeight().width(80.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(NotifGlass)
-        .border(FolioGlass.edge, RoundedCornerShape(22.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Text(label, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.Medium)
     }
 }
@@ -530,7 +531,7 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(with(density) { bounds.width().toDp() }).heightIn(min = with(density) { bounds.height().toDp() })
                         .onSizeChanged { cardH = it.height }
                         .graphicsLayer { val s = 1f + .03f * appear.value; scaleX = s; scaleY = s }
-                        .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(Color(0xFF2C2C30)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
+                        .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SheetSurface).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))) }
                         Spacer(Modifier.width(12.dp))
@@ -1027,9 +1028,10 @@ private fun GlassIconButton(icon: ImageVector, label: String, onClick: () -> Uni
 
 @Composable
 private fun PanelPill(label: String, onClick: () -> Unit) {
-    Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium,
-        modifier = Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(NotifGlass).clickable(onClick = onClick)
-            .padding(horizontal = FolioSpace.COMFY.dp, vertical = 11.dp))
+    Box(Modifier.heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(50)).background(NotifGlass).clickable(onClick = onClick)
+        .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), contentAlignment = Alignment.Center) {
+        Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium)
+    }
 }
 
 @Composable
