@@ -295,13 +295,7 @@ class MainActivity : ComponentActivity() {
                     val scale = uiScale(config.screenWidthDp.toFloat(), config.screenHeightDp.toFloat(), config.classScale)
                     if (scale == 1f) d else androidx.compose.ui.unit.Density(d.density * scale, d.fontScale)
                 },
-                LocalTintOptions provides androidx.compose.ui.platform.LocalConfiguration.current.let { config ->
-                    val screen = screenFor(config.fitsRegularHomeLayout())
-                    TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
-                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
-                        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
-                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
-                },
+                LocalTintOptions provides tintOptionsFor(state, androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()),
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
                 LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, state.badgeStyle, state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },

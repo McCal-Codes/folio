@@ -104,6 +104,15 @@ internal val LocalFolderColors = androidx.compose.runtime.compositionLocalOf { e
 internal data class TintOptions(val notifications: Boolean = false, val media: Boolean = true, val notificationAppRow: Boolean = true, val mediaIsland: Boolean = true)
 internal val LocalTintOptions = androidx.compose.runtime.staticCompositionLocalOf { TintOptions() }
 
+/** The tint choices for the screen a window of this size is: Home and the panels drawn over other apps read them the same way. */
+internal fun tintOptionsFor(state: LauncherState, wide: Boolean): TintOptions {
+    val screen = screenFor(wide)
+    return TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
+        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
+        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
+        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
+}
+
 /** How strong Home's glass is: widget frost and the outline around widgets and Side Bar capsules (Settings › Glass). */
 internal data class GlassLook(val widget: Float = .26f, val outline: Float = .16f) {
     val outlineColor get() = androidx.compose.ui.graphics.Color.White.copy(alpha = outline)

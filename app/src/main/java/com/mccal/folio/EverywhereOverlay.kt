@@ -271,6 +271,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         setShadeTouchable(true)
         if (shade != null) return true // already up: the panel changes in place
         val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
+        // The look Home gives the panels (tinted cards, glass strength, blur) comes from the same saved state, so over an app they read the same.
+        val look = runCatching { decodeLauncherState(prefs.getString(SettingKeys.STATE, "{}") ?: "{}", null) }.getOrNull()
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
@@ -283,8 +285,11 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 LaunchedEffect(Unit) { shown = true }
                 val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
                     MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+                val wide = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
                 CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
-                    LocalReduceMotion provides reduceMotion) {
+                    LocalReduceMotion provides reduceMotion,
+                    LocalTintOptions provides (look?.let { tintOptionsFor(it, wide) } ?: TintOptions()),
+                    LocalGlassLook provides (look?.let { GlassLook(it.widgetGlass, it.glassOutline) } ?: GlassLook())) {
                     TopPanels(current, { progress }, status, onClose = { closeShade() },
                         // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                         onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
@@ -297,8 +302,12 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
+        // Home blurs behind its panels by Settings › Blur; over an app the window does the same, when the phone allows blurring windows.
+        shadeBlurPx = look?.let { (it.panelBlur * 32 * density).toInt() }?.takeIf { it >= 2 && wm.isCrossWindowBlurEnabled } ?: 0
+        if (shadeBlurPx > 0) params.flags = params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
         if (runCatching { wm.addView(view, params) }.isFailure) { monitor.onStop(owner); shadePanel.value = null; shadeTimer?.cancel(); return false }
         shade = view; shadeMonitor = monitor
+        animateShadeBlur(shadeBlurPx)
         if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
         return true
     }
@@ -320,7 +329,29 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shadeTimer?.cancel()
         // The panels take about 0.4 s to settle shut; taps go through to the app underneath meanwhile, and the window goes after.
         setShadeTouchable(false)
+        animateShadeBlur(0)
         shade?.postDelayed(shadeRemoval, SHADE_CLOSE_MS)
+    }
+
+    private var shadeBlurPx = 0
+    private var shadeBlurAnimator: android.animation.ValueAnimator? = null
+
+    /**
+     * Moves the blur behind the shade to [target] over about the time the panels take, a step at a time rather than in one jump; with
+     * Reduce Motion it is set at once. A window without the blur flag (blur off, or the phone not blurring windows) is left alone.
+     */
+    private fun animateShadeBlur(target: Int) {
+        val view = shade ?: return
+        val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+        if (params.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND == 0) return
+        shadeBlurAnimator?.cancel()
+        fun apply(radius: Int) { params.blurBehindRadius = radius; runCatching { wm.updateViewLayout(view, params) } }
+        if (settings.value.reduceMotion || params.blurBehindRadius == target) { apply(target); return }
+        shadeBlurAnimator = android.animation.ValueAnimator.ofInt(params.blurBehindRadius, target).apply {
+            duration = SHADE_CLOSE_MS / 2
+            addUpdateListener { apply(it.animatedValue as Int) }
+            start()
+        }
     }
 
     /** While it closes, the shade only draws: the app underneath gets the touches. */
@@ -333,6 +364,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private fun removeShade() {
         shadeTimer?.cancel(); shadeTimer = null
+        shadeBlurAnimator?.cancel(); shadeBlurAnimator = null
         shade?.let { it.removeCallbacks(shadeRemoval); runCatching { wm.removeView(it) } }; shade = null
         shadePanel.value = null
         shadeMonitor?.onStop(owner); shadeMonitor = null
