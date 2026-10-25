@@ -65,6 +65,56 @@ internal const val CC_EDGE_STRIP_PANEL_RATIO = 10f
 /** The pages Control Center is split into, reached from the strip: what is used most, media and sound, and the connections. */
 internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
 
+/** Air above the header and below the pages, inside the panel, so the first and last rows never touch its edge (the plate's border, in Frosted). */
+internal const val CC_PLATE_PAD_DP = 12f
+
+/** Below this height (dp) the page strip goes into the header instead of taking a row of its own under the grid. */
+internal const val CC_STRIP_IN_HEADER_BELOW_DP = 560f
+
+/** The width the header needs for its two buttons and [pages] dots, each dot a 24 dp touch target with 8 dp around it. */
+internal fun ccHeaderMinWidth(pages: Int): Float = 2 * 48f + pages * 24f + (pages + 1) * 8f
+
+/** Rows of [cellDp] tall with [gapDp] between them that fit in [heightDp]. */
+internal fun ccRowsThatFit(heightDp: Float, cellDp: Float, gapDp: Float): Int = ((heightDp + gapDp) / (cellDp + gapDp)).toInt().coerceAtLeast(0)
+
+/**
+ * How the small controls are split over the Controls pages so that none of them scrolls (PNL-1): [perPage] is how many go on each page, and
+ * [slidersOnFirst] says whether the two sliders fit on the first page beside them (four columns) or in its top row (six or more); if they
+ * do not fit they stay on the Media page. The first page also holds the connectivity, Now Playing and Focus modules, so it holds fewer.
+ * A null [pageHeightDp] means no height limit: everything on one page, as before.
+ */
+internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean)
+
+internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeightDp: Float?, controls: Int, focus: Boolean): CcPlan {
+    if (pageHeightDp == null) return CcPlan(listOf(controls), true)
+    val rows = ccRowsThatFit(pageHeightDp, cellDp, gapDp)
+    val free = rows - 2 - (if (focus) 1 else 0) // rows left under the modules
+    val slidersOnFirst: Boolean
+    val first: Int
+    if (columns >= 6) { slidersOnFirst = true; first = maxOf(0, free) * columns }
+    else if (free >= 2) { slidersOnFirst = true; first = 4 + (free - 2) * 4 }
+    else { slidersOnFirst = false; first = maxOf(0, free) * 4 }
+    val onFirst = minOf(controls, first)
+    var left = controls - onFirst
+    val perOther = maxOf(1, rows) * columns
+    val pages = mutableListOf(onFirst)
+    while (left > 0) { val n = minOf(left, perOther); pages += n; left -= n }
+    return CcPlan(pages, slidersOnFirst)
+}
+
+/** The rows of cells page [index] of the plan uses, for the height the pager is given. */
+internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean): Int {
+    val n = plan.perPage[index]
+    fun rowsOf(count: Int, per: Int) = (count + per - 1) / per
+    if (index > 0) return rowsOf(n, columns)
+    val top = 2 + (if (focus) 1 else 0)
+    return top + when {
+        columns >= 6 -> rowsOf(n, columns)
+        plan.slidersOnFirst -> 2 + rowsOf(maxOf(0, n - 4), 4)
+        else -> rowsOf(n, 4)
+    }
+}
+
 /**
  * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
  * the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
@@ -74,7 +124,7 @@ internal fun controlCenterRows(columns: Int, controls: Int, focus: Boolean): Int
     else 5 + (if (focus) 1 else 0) + (maxOf(0, controls - 4) + 3) / 4
 
 /** Columns, the size of one cell and of the gap in dp, and where the page strip stands. */
-internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float, val stripAtEdge: Boolean, val stripDp: Float)
+internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float, val stripAtEdge: Boolean, val stripDp: Float, val stripInHeader: Boolean = false)
 
 /**
  * Control Center fills the window instead of sitting in a corner. Nothing here is a device: it is worked out from the panel's width and
@@ -92,19 +142,21 @@ internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: 
     val gap = sizeCellDp * CC_GAP_RATIO
     val strip = touchDp + gap
     val edge = panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
+    // Too short to spend a row of height on the page strip: it moves into the header, between the two buttons, as small dots.
+    val inHeader = !edge && heightDp != null && heightDp < CC_STRIP_IN_HEADER_BELOW_DP
     val gridWidth = panelWidthDp - sidePaddingDp - if (edge) strip else 0f
     val maxCell = sizeCellDp * CC_FILL_MAX
     val maxColumns = (((controls + 1) / 2) * 2).coerceIn(4, 12)
     fun widthCell(c: Int) = (gridWidth - gap * (c - 1)) / c
     fun heightCell(c: Int): Float {
         val rows = controlCenterRows(c, controls, focus)
-        return heightDp?.let { (it - (touchDp + gap) - (if (edge) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
+        return heightDp?.let { (it - (touchDp + gap) - (if (edge || inHeader) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
     }
     fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)
     var columns = 4
     while (columns < maxColumns && widthCell(columns) > maxCell) columns += 2
     while (columns < maxColumns && cell(columns) < sizeCellDp && cell(columns + 2) >= cell(columns) + gap) columns += 2
-    return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), gap, edge, strip)
+    return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), gap, edge, strip, inHeader)
 }
 
 /**

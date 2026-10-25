@@ -475,6 +475,9 @@ enum class CcLook(@androidx.annotation.StringRes val label: Int) { CLEAR(R.strin
 
 internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.FROSTED }
 
+/** One page of Control Center: Controls pages are numbered from 0 when the controls need more than one. */
+private data class CcPageSpec(val page: CcPage, val index: Int)
+
 private val CcLook.tile: Color get() = when (this) { CcLook.CLEAR -> FolioGlass.clearTile; CcLook.FROSTED -> FolioGlass.frostedTile; CcLook.SOLID -> FolioGlass.module }
 /** A round toggle at rest: Solid keeps the lighter disc it always had on its dark modules. */
 private val CcLook.toggleOff: Color get() = if (this == CcLook.SOLID) Color.White.copy(alpha = .16f) else tile
@@ -713,17 +716,22 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val cell = grid.cellDp.dp
         fun span(n: Int): Dp = cell * n + gap * (n - 1)
         val gridWidth = span(cols)
-        val pages = CcPage.entries
+        val focusOn = focusModes.isNotEmpty()
+        // What the header and the strip take; the rest is for the pages. Controls that do not fit go on another page, never into a scroll (PNL-1).
+        val chrome = FolioTouch.MIN.dp + gap + CC_PLATE_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
+        val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
+        val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
+        val pages = remember(plan) { List(plan.perPage.size) { CcPageSpec(CcPage.CONTROLS, it) } + CcPageSpec(CcPage.MEDIA, 0) + CcPageSpec(CcPage.CONNECTIVITY, 0) }
         val pager = androidx.compose.foundation.pager.rememberPagerState { pages.size }
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
-        LaunchedEffect(pager.currentPage) { if (pager.currentPage != 0) edit.stop() }
+        // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
+        LaunchedEffect(pager.currentPage) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
-        val rows = controlCenterRows(cols, chosen.size, focusModes.isNotEmpty())
-        val wantedHeight = cell * (rows - 1) + gap * (rows - 2)
-        val pageHeight = if (maxHeight == Dp.Infinity) wantedHeight
-            else minOf(wantedHeight, maxHeight - (FolioTouch.MIN.dp + gap) - if (grid.stripAtEdge) 0.dp else grid.stripDp.dp).coerceAtLeast(cell)
+        val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
+        val wantedHeight = cell * neededRows + gap * (neededRows - 1)
+        val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
         // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
         val sliders: @Composable (Dp) -> Unit = { height ->
@@ -746,10 +754,15 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
 
         // One page's content. Pages scroll on their own when a window is too short for them.
-        val pageContent: @Composable (CcPage) -> Unit = { page ->
-            Column(Modifier.fillMaxWidth().fadingVerticalScroll(), verticalArrangement = Arrangement.spacedBy(gap)) {
-                when (page) {
+        val pageContent: @Composable (CcPageSpec) -> Unit = { spec ->
+            // The grid is centered in a header that may be wider than it (a short, narrow window puts the page dots in the header).
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.width(gridWidth).fadingVerticalScroll(), verticalArrangement = Arrangement.spacedBy(gap)) {
+                when (spec.page) {
                     CcPage.CONTROLS -> {
+                        val first = spec.index == 0
+                        val before = plan.perPage.take(spec.index).sum()
+                        val pageControls = chosen.subList(before, before + plan.perPage[spec.index])
                         // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing; with six or eight columns the sliders end this row.
                         var connectivityOpen by remember { mutableStateOf(false) }
                         val topBlock: @Composable () -> Unit = {
@@ -771,9 +784,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 MediaModule(media, Modifier.size(span(if (cols >= 6) cols - 4 else 2), span(2)), cell, onOpen = playing)
                             }
                         }
-                        if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock()
+                        if (first) { if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock() }
                         // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list.
-                        if (focusModes.isNotEmpty()) {
+                        if (first && focusModes.isNotEmpty()) {
                             var focusOpen by remember { mutableStateOf(false) }
                             val current = focusModes.firstOrNull { it.id == activeFocus }
                             if (focusOpen) Module(Modifier.width(span(cols))) {
@@ -804,9 +817,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             }
                         }
                         // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
-                        if (cols == 4) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        if (first && cols == 4 && plan.slidersOnFirst) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
-                                chosen.take(4).chunked(2).forEach { pair ->
+                                pageControls.take(4).chunked(2).forEach { pair ->
                                     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                                         pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
                                     }
@@ -815,13 +828,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             sliders(span(2))
                         }
                         // The rest, one row of the grid at a time
-                        (if (cols >= 6) chosen else chosen.drop(4)).chunked(cols).forEach { row ->
+                        (if (cols >= 6 || !first || !plan.slidersOnFirst) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                                 row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
                             }
                         }
                         // Edit mode: gallery of controls that aren't in Control Center yet
-                        if (edit.active) {
+                        if (edit.active && spec.index == plan.perPage.lastIndex) {
                             val unused = CcControl.entries.filter { it !in chosen && available(it) }
                             Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
                                 fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
@@ -851,13 +864,15 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     CcPage.CONNECTIVITY -> Module(Modifier.width(span(cols))) { ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) }
                 }
             }
+            }
         }
 
         // The edge or bottom strip that moves between pages (tap), as on the iPad; a swipe across the panel does the same.
         val strip: @Composable () -> Unit = {
             val label: @Composable (CcPage) -> String = { page -> stringResource(when (page) { CcPage.CONTROLS -> R.string.cc_page_controls; CcPage.MEDIA -> R.string.cc_page_media; CcPage.CONNECTIVITY -> R.string.cc_page_connectivity }) }
             val items: @Composable () -> Unit = {
-                pages.forEachIndexed { index, page ->
+                pages.forEachIndexed { index, spec ->
+                    val page = spec.page
                     val selected = pager.currentPage == index
                     val name = label(page)
                     val description = stringResource(R.string.cc_page_of, name, index + 1, pages.size)
@@ -870,27 +885,39 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
-            if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
+            if (grid.stripInHeader) Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Small dots, each a 24 by 48 dp target: a short window has no row to spare for round buttons.
+                pages.forEachIndexed { index, spec ->
+                    val selected = pager.currentPage == index
+                    val description = stringResource(R.string.cc_page_of, label(spec.page), index + 1, pages.size)
+                    Box(Modifier.size(24.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                        .semantics { contentDescription = description; this.selected = selected }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(if (selected) 10.dp else 8.dp).clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .4f)))
+                    }
+                }
+            }
+            else if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
             else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
         }
 
         ProvideJiggle(edit) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PLATE_PAD_DP.dp), contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
-                Column(Modifier.width(gridWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
+                Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
-                        else if (pager.currentPage == 0) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
+                        else if (pages.getOrNull(pager.currentPage)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))
+                        if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
                         GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
                             onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
                         }
                     }
-                    androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, verticalAlignment = Alignment.Top, userScrollEnabled = !edit.active) { index ->
+                    androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, verticalAlignment = Alignment.Top, userScrollEnabled = true) { index ->
                         pageContent(pages[index])
                     }
-                    if (!grid.stripAtEdge) strip()
+                    if (!grid.stripAtEdge && !grid.stripInHeader) strip()
                 }
                 if (grid.stripAtEdge) strip()
             }
