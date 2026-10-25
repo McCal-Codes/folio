@@ -25,6 +25,9 @@ class DuoSpacingTest {
         homeGeometry(w, h, preset, labels, statusHeight = if (fitsRegularHomeLayout(w, h)) 180f else 160f, appRows = rows,
             widgetsFillRows = fill, fillSpace = auto, duoSpacing = duo)
 
+    /** The unfolded screen held upright (bottom dock bar) may be spaced further; see DUO_PORTRAIT_ROW_GAIN_CAP. */
+    private fun capFor(w: Float, h: Float) = if (h > w && fitsRegularHomeLayout(w, h)) DUO_PORTRAIT_ROW_GAIN_CAP else DUO_ROW_GAIN_CAP
+
     private fun forEachWindow(block: (String, Float, Float) -> Unit) {
         for (s in screens) {
             val scale = uiScale(s.width, s.height)
@@ -48,7 +51,7 @@ class DuoSpacingTest {
                 val off = geo(w, h, false, fill = fill, auto = auto)
                 val on = geo(w, h, true, fill = fill, auto = auto)
                 assertTrue("$tag never tighter", on.rowHeight >= off.rowHeight - 0.001f)
-                assertTrue("$tag capped ${on.rowHeight} vs ${off.rowHeight}", on.rowHeight <= off.rowHeight * (1f + DUO_ROW_GAIN_CAP) + 0.01f)
+                assertTrue("$tag capped ${on.rowHeight} vs ${off.rowHeight}", on.rowHeight <= off.rowHeight * (1f + capFor(w, h)) + 0.01f)
                 assertEquals("$tag icon size is never changed", off.iconSize, on.iconSize, 0.001f)
                 // Rows are spaced on any window but a two-column page, within the cap (the free height only; a window bigger than
                 // the rows can use, with Rows picked by hand, is centered instead of stretched).
@@ -62,8 +65,9 @@ class DuoSpacingTest {
                     assertEquals("$tag dock height", off.dockHeight, on.dockHeight, 0f)
                 }
                 // Free height only: the page still ends above the bottom space, as it did before.
-                val pageEnd = on.contentTop + (if (fill) on.widgetHeight else on.widgetHeight) + 18f + 4f * on.rowHeight
-                val offEnd = off.contentTop + off.widgetHeight + 18f + 4f * off.rowHeight
+                // The visible page: the last row's own space under its label may sit over the controls' padding.
+                val pageEnd = on.contentTop - on.rowGap + on.widgetHeight + 18f + 4f * on.rowHeight
+                val offEnd = off.contentTop - off.rowGap + off.widgetHeight + 18f + 4f * off.rowHeight
                 assertTrue("$tag page end $pageEnd (was $offEnd) inside $h", pageEnd <= maxOf(offEnd, h - 44f) + 0.5f)
                 assertTrue("$tag dock inside the window", on.dockTop + on.dockHeight <= maxOf(h, off.dockTop + off.dockHeight) + 0.01f)
                 assertTrue("$tag rows >= 48", on.rowHeight >= 48f && on.dockRowHeight >= 48f)
@@ -77,7 +81,7 @@ class DuoSpacingTest {
                 val off = homeGeometry(w, h, LayoutPreset(), true, statusHeight = 160f, appRows = rows, shrinkIconsForRows = shrink)
                 val on = homeGeometry(w, h, LayoutPreset(), true, statusHeight = 160f, appRows = rows, shrinkIconsForRows = shrink, duoSpacing = true)
                 assertEquals("$tag rows=$rows count", off.appRows, on.appRows)
-                assertTrue("$tag rows=$rows pitch", on.rowHeight in off.rowHeight - 0.5f..off.rowHeight * (1f + DUO_ROW_GAIN_CAP) + 0.01f)
+                assertTrue("$tag rows=$rows pitch", on.rowHeight in off.rowHeight - 0.5f..off.rowHeight * (1f + capFor(w, h)) + 0.01f)
                 // Spacing squeezed to fit (less than the usual gap) is never widened past what fits.
                 if (off.rowGap < LayoutPreset().rowGap) assertTrue("$tag rows=$rows squeezed", on.rowHeight <= off.rowHeight + 0.5f)
             }
@@ -178,7 +182,8 @@ class DuoSpacingTest {
                 val g = homeGeometry(w, h, p, labels, statusHeight = 160f, dockSlots = slots, foldAtCenter = fold, duoSpacing = true)
                 val off = homeGeometry(w, h, p, labels, statusHeight = 160f, dockSlots = slots, foldAtCenter = fold)
                 val t = "$tag fold=$fold slots=$slots labels=$labels $placement"
-                fun end(x: HomeGeometry) = x.contentTop + (if (x.splitColumns) maxOf(x.widgetHeight + 18f + 2f * x.rowHeight, 3f * x.rowHeight)
+                // The visible page: the last row's own space under its label may sit over the controls' padding.
+                fun end(x: HomeGeometry) = x.contentTop - x.rowGap + (if (x.splitColumns) maxOf(x.widgetHeight + 18f + 2f * x.rowHeight, 3f * x.rowHeight)
                     else x.widgetHeight + 18f + x.appRows * x.rowHeight)
                 assertTrue("$t page end ${end(g)} (was ${end(off)}) of $h", end(g) <= maxOf(h - 44f, end(off)) + 0.5f)
                 assertTrue("$t dock inside", g.dockTop >= 8f)
