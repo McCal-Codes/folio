@@ -143,6 +143,18 @@ class DuoSpacingTest {
         assertTrue(DUO_ROW_PITCH_MAX_DP * 0.15875f <= 16.4f * 1.05f + 0.01f)
     }
 
+    @Test fun `Automatic's own filling never takes the pitch past the ceiling while Duo spacing is on`() {
+        // A big window with a wide row gap: Automatic first shares leftover height out as extra gap, which used to land above the ceiling
+        // and leave the Duo step with a negative allowance (Codex review of the landscape PR, 25 Oct 2026).
+        val preset = LayoutPreset(rowGap = 20f)
+        for ((w, h) in listOf(1100f to 1100f, 1280f to 800f, 735f to 1177f)) {
+            val ownPitch = geo(w, h, false, preset = preset, rows = 7).rowHeight
+            val ceiling = maxOf(ownPitch, if (h > w && fitsRegularHomeLayout(w, h)) DUO_PORTRAIT_ROW_PITCH_MAX_DP else DUO_ROW_PITCH_MAX_DP)
+            val duo = geo(w, h, true, preset = preset, rows = 7, auto = true)
+            assertTrue("${w}x$h pitch ${duo.rowHeight} past the ceiling $ceiling", duo.rowHeight <= ceiling + 0.01f)
+        }
+    }
+
     @Test fun `the cover gains rows toward the Duo's pitch and an ordinary phone gets a sensible result`() {
         val cover0 = geo(475.43f, 751.2f, false); val cover = geo(475.43f, 751.2f, true)
         assertTrue("${cover0.rowHeight} -> ${cover.rowHeight}", cover.rowHeight > cover0.rowHeight * 1.1f)

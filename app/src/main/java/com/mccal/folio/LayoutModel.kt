@@ -79,7 +79,11 @@ const val HOME_STRIP_RESERVE_DP = 54f
 /** The same with the Preview bar above it (measured 114 dp on the emulator, plus the 12 dp gap kept above it). */
 const val HOME_PREVIEW_RESERVE_DP = 126f
 
-/** The space the page controls take under Home: the strip, and the Preview bar until Folio is the Home app; more if measured so. */
+/**
+ * The space the page controls take under Home: the strip, and the Preview bar until Folio is the Home app; more if measured so.
+ * The Preview bar's space is kept while Home is edited or an icon is dragged (when the bar is hidden) on purpose: freeing it would
+ * resize every icon under the finger the moment a drag starts. The cost is smaller icons before Folio is the Home app.
+ */
 fun homeControlsSpace(isDefaultHome: Boolean, measuredDp: Float): Float =
     if (isDefaultHome) maxOf(HOME_STRIP_RESERVE_DP, measuredDp) else maxOf(HOME_PREVIEW_RESERVE_DP, measuredDp + 12f)
 
@@ -403,6 +407,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         }
     }
     val rowBeforeFill = rowFor(icon, gap)
+    val duoPitchMax = if (tallRegular) DUO_PORTRAIT_ROW_PITCH_MAX_DP else DUO_ROW_PITCH_MAX_DP
     // Automatic rows fill the height: leftover space (less than a row) is shared out as even space between rows
     // instead of a wide empty margin, capped so pages never look stretched; the rest stays as the centering margin.
     // (Not in windows so short the spacing was already squeezed to fit.)
@@ -410,7 +415,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         // Filled widgets grow with the gap too (two rows each), so the share is over the rows the page really has.
         val taken = if (widgetsFillRows) (layoutRows + 2) * rowFor(icon, gap) else widget + 18f + layoutRows * rowFor(icon, gap)
         val leftover = fitHeight - realExtra - taken
-        if (leftover > 0f) gap += minOf(leftover / (layoutRows + if (widgetsFillRows) 3 else 1), 12f)
+        // With Duo spacing the pitch ceiling holds here too (the spacing the person set may already be past it, and stays).
+        val room = if (duoSpacing) (maxOf(rowBeforeFill, duoPitchMax) - rowFor(icon, gap)).coerceAtLeast(0f) else Float.MAX_VALUE
+        if (leftover > 0f) gap += minOf(leftover / (layoutRows + if (widgetsFillRows) 3 else 1), 12f, room)
     }
     // DUO_SPACING: the Duo's rows are about 17% further apart than Folio's on the cover (an iPhone's, about 16 mm). Any window
     // and any row count, whose spacing was not squeezed to fit, and only out of height that is really free, never past
@@ -419,8 +426,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         val taken = if (widgetsFillRows) (layoutRows + 2) * rowFor(icon, gap) else widget + 18f + layoutRows * rowFor(icon, gap)
         val leftover = fitHeight - realExtra - taken
         val gainCap = if (tallRegular) DUO_PORTRAIT_ROW_GAIN_CAP else DUO_ROW_GAIN_CAP
-        val pitchMax = if (tallRegular) DUO_PORTRAIT_ROW_PITCH_MAX_DP else DUO_ROW_PITCH_MAX_DP
-        val allowed = minOf(rowBeforeFill * (1f + gainCap), maxOf(rowBeforeFill, pitchMax)) - rowFor(icon, gap)
+        val allowed = minOf(rowBeforeFill * (1f + gainCap), maxOf(rowBeforeFill, duoPitchMax)) - rowFor(icon, gap)
         val units = layoutRows + if (widgetsFillRows) 2 else 0
         if (leftover > 0f && allowed > 0f) gap += minOf(leftover / units, allowed)
     }
