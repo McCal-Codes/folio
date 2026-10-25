@@ -7,7 +7,7 @@ import org.junit.Test
 /** Clear glass is as light as the backdrop allows and no lighter: white text stays at 4.5:1 or better over any backdrop (PNL-6). */
 class ControlCenterToneTest {
     /** The sRGB value of the tile where the text sits: black dim over the backdrop, then the tile's black and white. */
-    private fun shown(v: Float, t: CcGlassTone): Float = v * (1f - t.dim) * (1f - t.tileBlack) * (1f - t.tileWhite) + t.tileWhite
+    private fun shown(v: Float, t: CcGlassTone, scale: Float = 1f): Float = v * (1f - t.dim * scale) * (1f - t.tileBlack) * (1f - t.tileWhite) + t.tileWhite
 
     private fun luminance(srgb: Float): Float = Math.pow(((srgb + .055f) / 1.055f).toDouble(), 2.4).toFloat()
 
@@ -17,6 +17,16 @@ class ControlCenterToneTest {
             val tone = ccClearTone(v)
             val contrast = 1.05f / (luminance(shown(v, tone)) + .05f)
             assertTrue("brightness $v gives $contrast", contrast >= 4.49f)
+        }
+    }
+
+    @Test fun `a scrim drawn at 60 percent opacity, as in a card, still leaves the text at 4_5 to 1`() {
+        for (i in 0..100) {
+            val v = i / 100f
+            val tone = ccClearTone(v, dimScale = .6f)
+            assertTrue("drawn dim at most 1", tone.dim <= 1f)
+            val contrast = 1.05f / (luminance(shown(v, tone, .6f)) + .05f)
+            assertTrue("brightness $v in a card gives $contrast", contrast >= 4.49f)
         }
     }
 
@@ -49,11 +59,11 @@ class ControlCenterToneTest {
         assertEquals(.5f, ccBrightness(IntArray(0)), 0.001f)
         assertEquals(0f, ccBrightness(IntArray(100) { argb(0, 0, 0) }), 0.01f)
         assertEquals(1f, ccBrightness(IntArray(100) { argb(255, 255, 255) }), 0.01f)
-        // a mostly dark picture with a bright tenth stays dark: the 85th percentile, not the maximum
-        val mixed = IntArray(100) { if (it < 10) argb(255, 255, 255) else argb(20, 20, 20) }
-        assertTrue(ccBrightness(mixed) < .2f)
-        // a quarter bright is read as bright
-        val quarter = IntArray(100) { if (it < 25) argb(255, 255, 255) else argb(20, 20, 20) }
-        assertTrue(ccBrightness(quarter) > .9f)
+        // a bright tenth under a control counts: it is read as bright, so the text over it is protected
+        val tenth = IntArray(100) { if (it < 10) argb(255, 255, 255) else argb(20, 20, 20) }
+        assertTrue(ccBrightness(tenth) > .9f)
+        // a speck of a few percent does not decide the whole panel: the 95th percentile, not the maximum
+        val speck = IntArray(100) { if (it < 3) argb(255, 255, 255) else argb(20, 20, 20) }
+        assertTrue(ccBrightness(speck) < .2f)
     }
 }

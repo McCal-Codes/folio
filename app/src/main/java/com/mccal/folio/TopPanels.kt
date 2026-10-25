@@ -107,7 +107,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val backdrop = LocalShadeBackdropImage.current
     val targetTone = androidx.compose.runtime.remember(backdrop, ccLook) {
         if (ccLook == CcLook.CLEAR && backdrop != null) {
-            ccClearTone(ccBrightness(IntArray(backdrop.width * backdrop.height).also { backdrop.readPixels(it) }))
+            ccClearTone(ccBrightness(IntArray(backdrop.width * backdrop.height).also { backdrop.readPixels(it) }), dimScale = dim)
         } else CC_DEFAULT_TONE
     }
     val toneSpec = androidx.compose.animation.core.tween<Float>(220)

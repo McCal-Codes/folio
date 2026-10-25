@@ -183,25 +183,27 @@ private const val CC_CLEAR_TILE_WHITE = .16f
 private const val CC_TEXT_MAX_SRGB = .46f
 
 /**
- * [brightness] is how bright the backdrop's bright parts are (its 85th percentile, sRGB 0 to 1). Values blend in sRGB, as Compose does.
+ * [brightness] is how bright the backdrop's bright parts are (its 95th percentile, sRGB 0 to 1: a patch under a control covering a twentieth of it counts). Values blend in sRGB, as Compose does.
  * The dim goes up only as far as needed, to [CC_CLEAR_MAX_DIM]; past that the tiles darken until the text is at 4.5:1.
  */
-internal fun ccClearTone(brightness: Float): CcGlassTone {
+internal fun ccClearTone(brightness: Float, dimScale: Float = 1f): CcGlassTone {
     val v = brightness.coerceIn(0f, 1f)
     val w = CC_CLEAR_TILE_WHITE
     val needed = if (v <= 0f) 0f else 1f - ((CC_TEXT_MAX_SRGB - w) / (1f - w)) / v
-    val dim = needed.coerceIn(0f, CC_CLEAR_MAX_DIM)
-    val x = v * (1f - dim)
+    val effective = needed.coerceIn(0f, CC_CLEAR_MAX_DIM)
+    val x = v * (1f - effective)
     fun shown(t: Float): Float {
         val white = w * (1f - minOf(1f, t / .2f))
         return x * (1f - t) * (1f - white) + white
     }
     var t = 0f
     while (t < 1f && shown(t) > CC_TEXT_MAX_SRGB) t += .01f
-    return CcGlassTone(dim, t.coerceAtMost(1f), w * (1f - minOf(1f, t / .2f)))
+    // The dim is drawn inside a layer whose opacity is [dimScale] (a card or two side by side leave Home visible and scale the scrim to .6), so the
+    // black drawn is the effective dim over that scale: it is the alpha to draw, not the dim the eye gets.
+    return CcGlassTone((effective / dimScale.coerceIn(.1f, 1f)).coerceAtMost(1f), t.coerceAtMost(1f), w * (1f - minOf(1f, t / .2f)))
 }
 
-/** The 85th percentile of sRGB luma (0 to 1) of [pixels] (ARGB), a stand-in for how bright the backdrop's bright parts are; .5 with no pixels. */
+/** The 95th percentile of sRGB luma (0 to 1) of [pixels] (ARGB), a stand-in for how bright the backdrop's bright parts are, so a bright patch under a control is not averaged away; .5 with no pixels. */
 internal fun ccBrightness(pixels: IntArray): Float {
     if (pixels.isEmpty()) return .5f
     val histogram = IntArray(256)
@@ -209,7 +211,7 @@ internal fun ccBrightness(pixels: IntArray): Float {
         val luma = (((p shr 16) and 255) * 299 + ((p shr 8) and 255) * 587 + (p and 255) * 114) / 1000
         histogram[luma.coerceIn(0, 255)]++
     }
-    val target = (pixels.size * .85f).toInt()
+    val target = (pixels.size * .95f).toInt()
     var seen = 0
     for (level in 0..255) { seen += histogram[level]; if (seen > target) return level / 255f }
     return 1f
