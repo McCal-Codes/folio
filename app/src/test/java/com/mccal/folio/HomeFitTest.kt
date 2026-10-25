@@ -140,6 +140,9 @@ class HomeFitTest {
                 val name = "${wi}x${h.toInt()} preview=$preview duo=$duo"
                 report.append("$wi,${h.toInt()},$preview,$duo,${g.splitColumns},${g.iconSize},${g.rowHeight},${g.cellWidth},${p.reachableRows}" + "\n")
                 assertTrue("$name touch targets: row ${g.rowHeight} cell ${g.cellWidth}", g.rowHeight >= 48f && g.cellWidth >= MIN_SPLIT_CELL - 0.01f)
+                // A11Y-1: an app tile is tappable over its whole cell (AppTile: full cell width, at least 48 dp tall). Icon plus its label
+                // line must not outgrow the row pitch, or neighboring tiles' hit areas would overlap, even at the 32 dp last-resort icon.
+                assertTrue("$name tile ${g.iconSize} + label 20 over row pitch ${g.rowHeight}", g.iconSize + 20f <= g.rowHeight + 0.01f)
                 if (room >= floorHeight(g)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
                 // One dp of width must not change the icon by more than a few dp, in either layout, unless it crosses the split.
                 last?.let { prev -> if (prev.splitColumns == g.splitColumns) assertTrue("$name icon jumps ${prev.iconSize} to ${g.iconSize}", Math.abs(prev.iconSize - g.iconSize) <= 3f) }
