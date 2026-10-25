@@ -3,6 +3,14 @@ package com.mccal.folio
 /** Jake's reference measures 76px dock artwork against 106px home artwork. */
 fun dockIconSize(homeIconSize: Float) = homeIconSize * (76f / 106f)
 
+/**
+ * DUO_SPACING (see FeatureGate): measured on the Fold8 against an iPhone Duo, the dock's apps are about 80% of Home's
+ * icons (Folio's 71.7% reads 14% small on the cover), and the cover's rows sit about 17% closer than the Duo's.
+ * The dock ratio is a ceiling that never drops below [dockIconSize]; the row gain is capped and only spends free height.
+ */
+const val DUO_DOCK_RATIO = 0.80f
+const val DUO_ROW_GAIN_CAP = 0.20f
+
 data class LayoutPreset(
     val iconSize: Float = 66f,
     val rowGap: Float = 8f,
@@ -87,6 +95,8 @@ data class HomeGeometry(
     val dockPitch: Float = 0f,
     /** The most width the bottom dock bar can have in this window; a bar with more apps than fit scrolls. 0 = not measured. */
     val dockBarRoom: Float = 0f,
+    /** The size of the apps in the dock (and the bar). Equal to [dockIconSize] unless DUO_SPACING made them larger. */
+    val dockIcon: Float = dockIconSize(iconSize),
 )
 
 /**
@@ -231,7 +241,13 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
      * Rows were picked by hand (Rows › 5, 6 or 7): when the rows don't fit even with the space under labels tightened, the icons
      * get smaller (down to [MIN_ROWS_ICON]) instead of the page scrolling. Automatic and Rows › 4 never shrink icons for rows.
      */
-    shrinkIconsForRows: Boolean = false): HomeGeometry {
+    shrinkIconsForRows: Boolean = false,
+    /**
+     * DUO_SPACING: dock apps up to [DUO_DOCK_RATIO] of Home's icons where the dock has the room, and on a phone-sized
+     * window (not the unfolded screen, not split columns) with the usual four rows, rows spaced out by up to
+     * [DUO_ROW_GAIN_CAP] when the window has free height. Off: exactly today's geometry.
+     */
+    duoSpacing: Boolean = false): HomeGeometry {
     val p = preset.sanitized()
     val slots = dockSlots.coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS).toFloat()
     // Unfolded Duo layout only with regular size both ways; the cover in landscape is still compact.
@@ -335,6 +351,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
             }
         }
     }
+    val rowBeforeFill = rowFor(icon, gap)
     // Automatic rows fill the height: leftover space (less than a row) is shared out as even space between rows
     // instead of a wide empty margin, capped so pages never look stretched; the rest stays as the centering margin.
     // (Not in windows so short the spacing was already squeezed to fit.)
@@ -343,6 +360,15 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         val taken = if (widgetsFillRows) (layoutRows + 2) * rowFor(icon, gap) else widget + 18f + layoutRows * rowFor(icon, gap)
         val leftover = fitHeight - taken
         if (leftover > 0f) gap += minOf(leftover / (layoutRows + if (widgetsFillRows) 3 else 1), 12f)
+    }
+    // DUO_SPACING: the Duo's rows are about 17% further apart than Folio's on the cover. Only a phone-sized window with
+    // the usual four rows, whose spacing was not squeezed to fit, and only out of height that is really free.
+    if (duoSpacing && !splitColumns && !regular && !p.pageTop && layoutRows == BASE_APP_ROWS && gap >= p.rowGap) {
+        val taken = if (widgetsFillRows) (layoutRows + 2) * rowFor(icon, gap) else widget + 18f + layoutRows * rowFor(icon, gap)
+        val leftover = fitHeight - taken
+        val allowed = rowBeforeFill * (1f + DUO_ROW_GAIN_CAP) - rowFor(icon, gap)
+        val units = layoutRows + if (widgetsFillRows) 2 else 0
+        if (leftover > 0f && allowed > 0f) gap += minOf(leftover / units, allowed)
     }
     if (widgetsFillRows) widget = filledWidget(icon, gap)
     val row = rowFor(icon, gap)
@@ -391,8 +417,13 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         .coerceIn(topLimit, maxOf(topLimit, height - homeDockHeight - homeReserve))
     val dockTop = homeDockTop.coerceIn(topLimit, maxOf(topLimit, height - dockHeight - bottomReserve))
     // Bottom bar: the spacing widens each app's slot, but the bar still fits its window (beside the Side Bar, or the whole width).
-    val basePitch = dockIconSize(icon) + 22f
     val barRoom = (if (dockBesideRail) width - p.dockWidth - 12f else width) - 32f
+    // DUO_SPACING dock apps: never smaller than today's, larger only while the pill, the row (or the bar, and its room)
+    // still holds them with margin, so every fit rule keeps working.
+    val oldDockIcon = dockIconSize(icon)
+    val dockIcon = if (!duoSpacing) oldDockIcon else maxOf(oldDockIcon, minOf(icon * DUO_DOCK_RATIO,
+        if (horizontalDock) minOf(dockBarHeight - 22f, (barRoom - 16f) / slots - 22f) else minOf(p.dockWidth - 12f, dockRowHeight - 4f)))
+    val basePitch = dockIcon + 22f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is
     // centered in the window, so narrower columns stay centered too instead of hugging the left edge.
@@ -402,7 +433,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         horizontalDock = horizontalDock, dockBarHeight = dockBarHeight, dockBesideRail = dockBesideRail, statusTop = statusTop,
         appRows = rows, fitAppRows = if (splitColumns) BASE_APP_ROWS else fitRows, rowGap = gap, columnsInset = columnsInset, dockPitch = dockPitch,
         // barRoom keeps a 32 dp margin for spacing the apps out; the bar itself may use the whole room beside the Side Bar.
-        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f))
+        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f), dockIcon = dockIcon)
 }
 
 /** Keep stored order stable across installs, removals and configuration changes. */

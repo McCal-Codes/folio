@@ -803,6 +803,7 @@ fun LauncherScreen(
                 state.dock.size < MAX_DOCK_SLOTS && state.dock.none { it == null }
             val shownDock = if (dockOpenPlace) state.dock + null else state.dock
             val fillRows = remember(launcherActivity) { FeatureGate.WIDGETS_FILL_ROWS.isOpen(launcherActivity) }
+            val duoSpacing = remember(launcherActivity) { FeatureGate.DUO_SPACING.isOpen(launcherActivity) }
             val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
@@ -812,7 +813,8 @@ fun LauncherScreen(
                 railControls = (if (pager.currentPage == -1) 1 else 0) + (if (!state.searchPill || pager.currentPage !in 0 until homePages) 1 else 0),
                 homeRailControls = if (state.searchPill) 0 else 1, classScale = classScale, appRows = homeAppRows,
                 widgetsFillRows = fillRows,
-                foldAtCenter = hinge?.vertical == true, fillSpace = state.homeRows == 0, shrinkIconsForRows = state.homeRows > BASE_APP_ROWS)
+                foldAtCenter = hinge?.vertical == true, fillSpace = state.homeRows == 0, shrinkIconsForRows = state.homeRows > BASE_APP_ROWS,
+                duoSpacing = duoSpacing)
             // Half folded like a laptop: the status (information) stays above the hinge and the dock (controls) goes
             // below it, like Folio's other fold-aware panels; the dock scrolls if the lower half is short.
             val tableHinge = hinge?.takeIf { it.active && !it.vertical }
@@ -1164,7 +1166,7 @@ fun LauncherScreen(
                 .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).testTag("dock")) {
                 Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
                     DockAppColumn(shownDock, previewLayout.dock, appsById, dockPitchShown,
-                        dockIconSize(geometry.iconSize), drag, insertionTarget,
+                        geometry.dockIcon, drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },
                         magnify = FeatureScopes.on(state.featureScopes, "dockMagnify", state.dockMagnify, screenFor(wide)) &&
                             !LocalReduceMotion.current, leftHanded = state.leftHanded, horizontal = geometry.horizontalDock,

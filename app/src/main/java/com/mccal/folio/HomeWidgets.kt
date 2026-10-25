@@ -209,7 +209,8 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
             }
             return@BoxWithConstraints
         }
-        val info = remember(id) { if (id >= 0) controller.manager.getAppWidgetInfo(id) else null }
+        // Looked up again when the app comes back (see rememberWidgetInfo), so a disabled app's widget recovers.
+        val info = rememberWidgetInfo(controller.manager, id)
         // Screenshot Mode: a swapped app's widget would show its real content, so it is a plain card instead.
         val standIn = info?.provider?.packageName?.let { LocalSwappedApps.current[it] }
         if (info == null) fallback()
@@ -299,6 +300,17 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
             Column(Modifier.padding(FolioSpace.MEDIUM.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Rounded.Add, null, tint = Color.White)
                 Text(if (id >= 0) stringResource(R.string.widget_unavailable) else stringResource(R.string.add_widget), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                // A widget whose app still can't be found: say what to do instead of leaving a dead tile. Remove is offered
+                // for a lone widget on a Home slot, never for a card inside a stack (that would take the whole stack).
+                if (id >= 0 && slot >= 0) {
+                    TextButton(onClick = onAdd, modifier = Modifier.testTag("widget-unavailable-choose-$slot")) {
+                        Text(stringResource(R.string.choose_again), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                    }
+                    if (WidgetStacks.cards(id, LocalWidgetStacks.current[slot]).size <= 1)
+                        TextButton(onClick = { edit.onRemove(DropTarget.Widget(slot)) }, modifier = Modifier.testTag("widget-unavailable-remove-$slot")) {
+                            Text(stringResource(R.string.remove), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                        }
+                }
             }
         }
     }
