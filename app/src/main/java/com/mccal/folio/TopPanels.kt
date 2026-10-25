@@ -129,7 +129,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             else -> Alignment.TopEnd
         }) {
         // Notification Center uses the width; Control Center is a compact fixed grid (like iPad) so it isn't oversized.
-        fun panelModifier(which: ShadePanel) = Modifier.widthIn(max = when {
+        // Beside the clock the list takes at most 60 percent of the width, so the clock (40 percent) is never drawn under it.
+        fun panelModifier(which: ShadePanel) = (if (split) Modifier.fillMaxWidth(.6f) else Modifier).widthIn(max = when {
                 split -> 540.dp
                 shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
                 shape == ShadeShape.BOTH -> 440.dp
@@ -445,6 +446,9 @@ enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
 /** Control Center size choice (the largest a small control can be). */
 enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) { COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp) }
 
+/** The width of "00:00" in bold, in em, with air (measured about 2.72 at 112 sp): the time is sized by the room it has. */
+private const val SPLIT_CLOCK_EM_WIDTH = 2.95f
+
 /** iPad-style clock and date for the split (unfolded) Notification Center. */
 @Composable
 private fun SplitClock(modifier: Modifier) {
@@ -452,9 +456,14 @@ private fun SplitClock(modifier: Modifier) {
     val tick by rememberMinuteTick()
     val now = displayNow(tick)
     val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
-    Column(modifier.padding(start = FolioSpace.XXL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-        Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = Color.White, fontSize = 112.sp, fontWeight = FontWeight.Bold, lineHeight = 116.sp)
+    // The time is 112 sp where there is room and shrinks with the width it is given (a phone on its side), so it never runs into the list.
+    BoxWithConstraints(modifier) {
+        val room = (maxWidth - FolioSpace.XXL.dp).value
+        val timeSize = minOf(112f, room / SPLIT_CLOCK_EM_WIDTH).coerceAtLeast(48f)
+        Column(Modifier.padding(start = FolioSpace.XXL.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = minOf(22f, timeSize / 4f + 8f).sp, fontWeight = FontWeight.SemiBold)
+            Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = Color.White, fontSize = timeSize.sp, fontWeight = FontWeight.Bold, lineHeight = (timeSize * 1.04f).sp)
+        }
     }
 }
 

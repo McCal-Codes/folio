@@ -7,6 +7,9 @@ package com.mccal.folio
  */
 internal enum class ShadeShape { SINGLE_TOP, SPLIT_CLOCK, CARD, BOTH }
 
+/** The narrowest window that has room for the clock beside the list when it is not a regular-size window (a phone on its side). */
+internal const val SPLIT_CLOCK_MIN_DP = 600
+
 /** The narrowest window that has room for two panels side by side; a narrower one opens a card instead. */
 internal const val SIDE_BY_SIDE_MIN_DP = 640
 
@@ -15,7 +18,9 @@ internal const val SIDE_BY_SIDE_MIN_DP = 640
  * tall, and [hinged] whether a fold is in the way (the panels stay on the side the fold leaves, so two do not fit).
  */
 internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel): ShadeShape = when {
-    !wide -> ShadeShape.SINGLE_TOP
+    // A phone on its side is wide but short: the big clock above the list left room for a card and a half, so the clock goes beside it.
+    // [hinged] is not asked here: over another app it is always true (no fold information), and on Home a fold already confines the panel to its own side.
+    !wide -> if (panel == ShadePanel.NOTIFICATIONS && landscape && widthDp >= SPLIT_CLOCK_MIN_DP) ShadeShape.SPLIT_CLOCK else ShadeShape.SINGLE_TOP
     choice == NcLayout.CARD -> ShadeShape.CARD
     choice == NcLayout.SIDE_BY_SIDE -> if (widthDp >= SIDE_BY_SIDE_MIN_DP && !hinged) ShadeShape.BOTH else ShadeShape.CARD
     panel == ShadePanel.NOTIFICATIONS && landscape -> ShadeShape.SPLIT_CLOCK

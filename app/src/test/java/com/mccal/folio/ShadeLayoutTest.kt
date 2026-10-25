@@ -14,6 +14,16 @@ class ShadeLayoutTest {
         NcLayout.entries.forEach { assertEquals(ShadeShape.SINGLE_TOP, shape(it, wide = false, width = 475)) }
     }
 
+    @Test fun `a phone on its side puts the clock beside Notification Center, never Control Center`() {
+        assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN, wide = false, width = 923))
+        assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.CARD, wide = false, width = 751))
+        assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN, wide = false, width = SPLIT_CLOCK_MIN_DP))
+        assertEquals(ShadeShape.SINGLE_TOP, shape(NcLayout.FULL_SCREEN, wide = false, width = SPLIT_CLOCK_MIN_DP - 1))
+        assertEquals(ShadeShape.SINGLE_TOP, shape(NcLayout.FULL_SCREEN, wide = false, width = 923, panel = cc))
+        assertEquals(ShadeShape.SINGLE_TOP, shape(NcLayout.FULL_SCREEN, wide = false, width = 923, landscape = false))
+        assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN, wide = false, width = 923, hinged = true)) // over an app, hinged is always true
+    }
+
     @Test fun `full screen is how it has been`() {
         assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN))
         assertEquals(ShadeShape.SINGLE_TOP, shape(NcLayout.FULL_SCREEN, landscape = false))
