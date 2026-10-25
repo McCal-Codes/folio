@@ -42,6 +42,10 @@ class PackageInstallerTest {
 
         override fun snapshotBefore(change: PackageChange): String = state
 
+        /** What the Tweak Library would have left for a change; null, the default, is a host with no such copy. */
+        var libraryBase: ((PackageChange) -> PackageChange?)? = null
+        override fun libraryBaseline(change: PackageChange) = libraryBase?.invoke(change)
+
         override fun apply(change: PackageChange): String {
             if (failOn?.invoke(change) == true) error("the launcher refused that change")
             if (dieOn?.invoke(change) == true) throw AssertionError("the process died here")
@@ -885,6 +889,67 @@ class PackageInstallerTest {
         assertEquals(listOf(PackageChange.Theme::class), host.restored.map { it::class })
         assertEquals(listOf(PackageChange.Theme::class), host.applied.map { it::class })
         assertEquals(PackageChange.Tweaks::class, host.moved.single().third::class)
+    }
+
+    // A tweak added from Settings' Tweak Library has no package record. A Folio tweak package of the same tweak is an
+    // update of that copy, so it moves in place from what the Library leaves and keeps what the person set.
+    private fun libraryInstaller(): PackageInstaller {
+        host.inPlace = true
+        host.libraryBase = { it }
+        return PackageInstaller(store, host, clock = { now }, isLibraryTweakPackage = { it == cabinetId })
+    }
+
+    @Test fun `a Folio tweak package over the Library's copy moves in place, and Remove puts back what was there`() {
+        val library = libraryInstaller()
+        host.state = "appPanels from the Library, inner screen turned off by hand"
+
+        val first = installed(library.install(pack()))
+
+        assertEquals("nothing was applied over the person's settings", emptyList<PackageChange>(), host.applied)
+        assertEquals(PackageChange.Tweaks::class, host.moved.single().third::class)
+        assertEquals("appPanels from the Library, inner screen turned off by hand", host.state)
+        assertEquals(listOf("appPanels from the Library, inner screen turned off by hand"), first.installed.snapshots)
+        assertTrue(library.remove(cabinetId))
+        assertEquals("appPanels from the Library, inner screen turned off by hand", host.state)
+    }
+
+    @Test fun `Undo of a package over the Library's copy puts back what the person had`() {
+        val library = libraryInstaller()
+        host.state = "appPanels from the Library, mine"
+        val first = installed(library.install(pack()))
+        host.state = "appPanels, changed again after the install"
+
+        assertTrue(library.undo(first))
+
+        assertEquals("appPanels from the Library, mine", host.state)
+        assertNull(store.find(cabinetId))
+    }
+
+    @Test fun `a package that isn't one of Folio's tweaks is a first install even where the tweak is already there`() {
+        host.inPlace = true
+        host.libraryBase = { it }
+        installed(installer.install(pack()))
+        assertTrue(host.moved.isEmpty())
+        assertEquals(1, host.applied.size)
+    }
+
+    @Test fun `a host with no Library copy gets a first install`() {
+        host.inPlace = true
+        val library = PackageInstaller(store, host, clock = { now }, isLibraryTweakPackage = { true })
+        installed(library.install(pack()))
+        assertTrue(host.moved.isEmpty())
+        assertEquals(1, host.applied.size)
+    }
+
+    @Test fun `a move over the Library's copy that fails leaves the phone as it was`() {
+        val library = libraryInstaller()
+        host.state = "appPanels from the Library, mine"
+        host.failOn = { true }
+
+        failure(library.install(pack()))
+
+        assertEquals("appPanels from the Library, mine", host.state)
+        assertNull(store.find(cabinetId))
     }
 
     @Test fun `a version Safe Mode turned off is never moved in place`() {

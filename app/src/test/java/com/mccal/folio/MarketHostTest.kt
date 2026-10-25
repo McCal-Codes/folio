@@ -410,4 +410,200 @@ class MarketHostTest {
         assertEquals(mine, launcher.state.duet)
         assertEquals(.9f, launcher.state.foldIntensity, 1e-4f)
     }
+
+    // Updating an installed Community tweak: what the person's own screens and options do through the real installer
+    // and the real host, by the manual path (install) and the automatic one (updateKeepingSettings). Harborline stands
+    // in for any hosted tweak; the other five behave the same because the host treats every tweak alike.
+
+    private val dockMagnify = TweakFeatures.first { it.id == "dockMagnify" }
+
+    private class Tweaked(val launcher: FakeLauncher, val store: com.mccal.folio.market.InstalledStore, val installer: com.mccal.folio.market.PackageInstaller)
+
+    private fun tweaked(launcher: FakeLauncher = FakeLauncher()): Tweaked {
+        val store = com.mccal.folio.market.InstalledStore(com.mccal.folio.market.MemoryStore())
+        return Tweaked(launcher, store, com.mccal.folio.market.PackageInstaller(store, MarketHost(launcher), isLibraryTweakPackage = { it in LIBRARY_TWEAK_PACKAGES }))
+    }
+
+    /** Harborline's shipped files as a package from a source: [version], and the screens its bundle names. */
+    private fun hosted(version: String, cover: Boolean = true, inner: Boolean = true, text: String? = null): ByteArray {
+        val files = requireNotNull(builtInSourceForTests().filesFor(harborlineId))
+        val manifest = requireNotNull(files["manifest.json"]).decodeToString()
+            .replace(""""version": "1.0.0"""", """"version": "$version"""")
+            .let { if (text == null) it else it.replace(Regex(""""description": ".*""""), """"description": "$text"""") }
+        val tweaks = """{"format":1,"tweaks":[{"id":"dockMagnify","enabled":true,"screens":{"cover":$cover,"inner":$inner}}]}"""
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            for ((name, bytes) in mapOf("manifest.json" to manifest.toByteArray(), "tweaks.json" to tweaks.toByteArray())) {
+                zip.putNextEntry(java.util.zip.ZipEntry(name)); zip.write(bytes); zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    private fun installedNow(result: com.mccal.folio.market.InstallResult) =
+        result as? com.mccal.folio.market.InstallResult.Installed ?: error("expected an install, got $result")
+
+    /** The person's own choices after the first version: cover turned off by hand, inner left alone, options set. */
+    private fun personChanges(launcher: FakeLauncher): Map<String, String> {
+        launcher.setFeatureScope("dockMagnify", FolioScreen.COVER, ScopeValue.OFF)
+        launcher.setTweakOptions("dockMagnify", mapOf("amount" to "strong", "tick" to "off"))
+        return launcher.state.tweakOptions.getValue("dockMagnify")
+    }
+
+    // Case (a), manual path: a text-only bump goes through PackageInstaller.install. Observed: the screens and options
+    // are kept, because install() already moves tweak changes in place (carriedOver/updateInPlace, 0.6.9).
+    @Test fun `a text-only update by hand keeps the screens and options the person set`() {
+        val t = tweaked()
+        installedNow(t.installer.install(hosted("1.0.0")))
+        val mine = personChanges(t.launcher)
+
+        installedNow(t.installer.install(hosted("1.0.1", text = "New words.")))
+
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
+        assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
+    }
+
+    // Case (a), automatic path. Observed: kept, and Home is not touched at all.
+    @Test fun `a text-only update by the automatic path keeps the screens and options the person set`() {
+        val t = tweaked()
+        installedNow(t.installer.install(hosted("1.0.0")))
+        val mine = personChanges(t.launcher)
+        t.launcher.switched.clear()
+
+        installedNow(t.installer.updateKeepingSettings(hosted("1.0.1", text = "New words.")))
+
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
+        assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
+        assertTrue(t.launcher.switched.isEmpty())
+    }
+
+    // Case (a) with a package that leaves a screen off and the person turning it on by hand.
+    @Test fun `a screen the person turned on by hand stays on through a text-only update`() {
+        val t = tweaked()
+        installedNow(t.installer.install(hosted("1.0.0", inner = false)))
+        t.launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.ON)
+
+        installedNow(t.installer.install(hosted("1.0.1", inner = false, text = "New words.")))
+
+        assertEquals(ScopeValue.ON, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+    }
+
+    // Case (b), manual path: version 2 turns the inner screen off. Observed: the inner screen follows the update, the
+    // cover screen and options the person set are kept.
+    @Test fun `an update that changes a screen follows it and keeps the rest of what the person set`() {
+        val t = tweaked()
+        installedNow(t.installer.install(hosted("1.0.0")))
+        val mine = personChanges(t.launcher)
+
+        installedNow(t.installer.install(hosted("1.1.0", inner = false)))
+
+        assertEquals("the person's choice", ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
+        assertEquals("the update's change", ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+        assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
+    }
+
+    // Case (b), automatic path. Observed: refused, so the person taps it and the manual path above runs.
+    @Test fun `the automatic path leaves an update that changes a screen for the person to tap`() {
+        val t = tweaked()
+        installedNow(t.installer.install(hosted("1.0.0")))
+        personChanges(t.launcher)
+
+        val result = t.installer.updateKeepingSettings(hosted("1.1.0", inner = false))
+
+        assertTrue("$result", result is com.mccal.folio.market.InstallResult.Failed)
+        assertEquals("1.0.0", requireNotNull(t.store.find(harborlineId)).version.text)
+        assertEquals(ScopeValue.DEFAULT, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+    }
+
+    // Case (b) where the person had already changed the screen the update changes.
+    @Test fun `a screen the person already changed keeps their value when the update changes it too`() {
+        val t = tweaked()
+        installedNow(t.installer.install(hosted("1.0.0")))
+        t.launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.ON)
+
+        installedNow(t.installer.install(hosted("1.1.0", inner = false)))
+
+        assertEquals(ScopeValue.ON, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+    }
+
+    // Case (c): a tweak added from Settings' Tweak Library has no package record. Observed before the fix: a hosted copy
+    // with the same id was a first install, the options were kept and the screens the person turned off were reset to
+    // the bundle's (inner went from OFF back to DEFAULT). Now it is an update of the Library's copy.
+    @Test fun `a hosted copy of a tweak added from the Tweak Library keeps the screens and options`() {
+        val t = tweaked()
+        t.launcher.installTweak(dockMagnify)
+        t.launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.OFF)
+        t.launcher.setTweakOptions("dockMagnify", mapOf("amount" to "strong"))
+
+        installedNow(t.installer.install(hosted("1.0.0")))
+
+        assertEquals(mapOf("amount" to "strong"), t.launcher.state.tweakOptions["dockMagnify"])
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+        assertTrue("dockMagnify" in t.launcher.state.installedTweaks)
+    }
+
+    @Test fun `a hosted copy over the Tweak Library's copy follows its own change to a screen the person left alone`() {
+        val t = tweaked()
+        t.launcher.installTweak(dockMagnify)
+        t.launcher.setFeatureScope("dockMagnify", FolioScreen.COVER, ScopeValue.ON)
+
+        installedNow(t.installer.install(hosted("1.0.0", cover = false, inner = false)))
+
+        assertEquals("the person's own choice", ScopeValue.ON, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
+        assertEquals("left alone, so it follows the package", ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+    }
+
+    @Test fun `Undo and Remove of a hosted copy over the Tweak Library's copy put back what the person had`() {
+        val t = tweaked()
+        t.launcher.installTweak(dockMagnify)
+        t.launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.OFF)
+        t.launcher.setTweakOptions("dockMagnify", mapOf("amount" to "strong"))
+        val update = installedNow(t.installer.install(hosted("1.0.0")))
+
+        assertTrue(t.installer.undo(update))
+
+        assertTrue("the person's tweak is still there", "dockMagnify" in t.launcher.state.installedTweaks)
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+        assertEquals(mapOf("amount" to "strong"), t.launcher.state.tweakOptions["dockMagnify"])
+
+        installedNow(t.installer.install(hosted("1.0.0")))
+        assertTrue(t.installer.remove(harborlineId))
+        assertTrue("Remove leaves the Library's tweak, as the person had it", "dockMagnify" in t.launcher.state.installedTweaks)
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+    }
+
+    @Test fun `a hosted copy where the Library has none is a first install, as before`() {
+        val t = tweaked()
+
+        installedNow(t.installer.install(hosted("1.0.0", inner = false)))
+
+        assertTrue("dockMagnify" in t.launcher.state.installedTweaks)
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+        assertTrue(t.installer.remove(harborlineId))
+        assertFalse("dockMagnify" in t.launcher.state.installedTweaks)
+    }
+
+    @Test fun `the next update after a hosted copy over the Library's copy still keeps what the person set`() {
+        val t = tweaked()
+        t.launcher.installTweak(dockMagnify)
+        t.launcher.setFeatureScope("dockMagnify", FolioScreen.INNER, ScopeValue.OFF)
+        installedNow(t.installer.install(hosted("1.0.0")))
+
+        installedNow(t.installer.updateKeepingSettings(hosted("1.0.1", text = "New words.")))
+
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.INNER))
+    }
+
+    // Case (c): the built-in package itself recorded (installBuiltIn), then the hosted copy as its update.
+    // Observed: kept, the record is the old version.
+    @Test fun `a hosted copy over the built-in package keeps the screens and options`() {
+        val t = tweaked()
+        installedNow(t.installer.installBuiltIn(requireNotNull(builtInSourceForTests().filesFor(harborlineId))))
+        val mine = personChanges(t.launcher)
+
+        installedNow(t.installer.install(hosted("1.0.1"), origin = com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = "https://example.test/"))
+
+        assertEquals(ScopeValue.OFF, scope(t.launcher, "dockMagnify", FolioScreen.COVER))
+        assertEquals(mine, t.launcher.state.tweakOptions["dockMagnify"])
+    }
 }

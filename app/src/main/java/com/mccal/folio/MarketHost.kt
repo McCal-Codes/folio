@@ -166,6 +166,14 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         else -> null
     }
 
+    // Settings' Tweak Library turns a tweak on and leaves every screen and option at its default; that is the version a
+    // package of the same tweak updates. Tweaks the phone doesn't have go on as at a first install.
+    override fun libraryBaseline(change: PackageChange): PackageChange? {
+        if (change !is PackageChange.Tweaks) return null
+        val there = change.bundle.tweaks.filter { hasTweak(it.id.id) }
+        return if (there.isEmpty()) null else PackageChange.Tweaks(TweakBundle(there.map { TweakSetting(it.id, enabled = true) }))
+    }
+
     override fun apply(change: PackageChange): String = when (change) {
         is PackageChange.Theme -> {
             val theme = FolioTheme.fromJson(change.json) ?: error("that theme file isn't one Folio can read")

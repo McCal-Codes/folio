@@ -49,6 +49,14 @@ interface PackageHost {
      * can still be put back. Null when it can't be read ahead of time, which leaves that one change as it was.
      */
     fun snapshotBefore(change: PackageChange): String? = null
+
+    /**
+     * What [change] would be an update of when the phone already has its tweaks from Settings' Tweak Library, which
+     * records no package: the same tweaks, as the Library leaves them (on, every screen on, no options). Moving from
+     * that to [change] with [updateInPlace] keeps what the person changed since, as an update from an earlier version
+     * does. Null, the default, when the host has nothing to say, which leaves the change to be applied as a first install.
+     */
+    fun libraryBaseline(change: PackageChange): PackageChange? = null
 }
 
 /** A package Folio has installed, and what it replaced. */
@@ -120,6 +128,13 @@ class PackageInstaller(
     private val folioVersion: FolioVersion? = null,
     /** This phone's Android API level, for `minSdk`/`maxSdk`. Null skips that check, which only a test does. */
     private val androidSdk: Int? = null,
+    /**
+     * Whether package [id] is one of Folio's own tweaks, which a phone can already have from Settings' Tweak Library
+     * with no package record. Installing one of those over the Library's copy is an update of it, not a first install:
+     * the person's screens and options stay ([PackageHost.libraryBaseline]). False for everything else, which only a
+     * test relies on.
+     */
+    private val isLibraryTweakPackage: (String) -> Boolean = { false },
 ) {
     private val journal = ApplyJournal(store)
 
@@ -331,6 +346,9 @@ class PackageInstaller(
         val previousChanges = previous?.let { store.changesFor(it.id, it.version) }
         // What the update can move in place keeps what the person chose since the old version went on.
         val carried = carriedOver(previous, previousChanges, pkg.changes)
+        // No record at all, but the tweak is already on the phone from Settings' Tweak Library: that copy is what this
+        // one updates, so what the person set on it stays theirs.
+        val adopted = if (replaced == null && isLibraryTweakPackage(pkg.id)) pkg.changes.map(host::libraryBaseline) else pkg.changes.map { null }
         // Nothing is changed that Folio couldn't first write down how to put back: a store that won't take the journal
         // means the install doesn't start.
         if (!journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced, carried)) {
@@ -350,6 +368,9 @@ class PackageInstaller(
                 val from = carried[i]
                 snapshots += if (from != null && previous != null && previousChanges != null) {
                     host.updateInPlace(previousChanges[from], previous.snapshots[from], change)
+                } else if (adopted[i] != null && before != null) {
+                    // What the Library left is what Remove and Undo put back, so the snapshot is Home as it is now.
+                    host.updateInPlace(adopted[i]!!, before, change)
                 } else {
                     host.apply(change)
                 }
@@ -359,7 +380,7 @@ class PackageInstaller(
         } catch (e: Exception) {
             // A change that failed while being moved in place goes back to how it was just before.
             val failed = snapshots.size
-            if (carried.getOrNull(failed) != null) before?.let { b -> runCatching { host.restore(pkg.changes[failed], b) } }
+            if (carried.getOrNull(failed) != null || adopted.getOrNull(failed) != null) before?.let { b -> runCatching { host.restore(pkg.changes[failed], b) } }
             // Put back everything this install had already changed, newest first, and the version it replaced: a
             // failed update leaves the phone exactly as it was, with the old version still working.
             if (previous != null && previousChanges != null) {
