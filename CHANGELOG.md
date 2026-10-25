@@ -84,6 +84,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **The island's music bars no longer keep all of Home redrawing:** while music played, the equalizer bars in the Dynamic Island recomposed the island and redrew Home about 19 times a second even when nothing else moved, which cost battery and made other motion start from a busy screen. The bars now animate in a layer of their own, drawn without recomposing.
 
 - **Notification Center on a phone on its side:** in a landscape window at least 600 dp wide that is not a regular-size screen, the big clock now sits beside the notifications instead of above them, so the list is no longer cut to a card and a half. The time shrinks to the room it is given, and the list never takes more than 60 percent of the width.
 

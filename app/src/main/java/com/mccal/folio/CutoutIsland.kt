@@ -759,14 +759,18 @@ internal fun Chronometer(base: Long, countDown: Boolean, color: Color, fontSize:
 internal fun Bars(playing: Boolean, color: Color = IslandGreen) {
     // No infinite animation while paused, or with Reduce Motion on: then the bars stand still (I-9).
     val still = LocalReduceMotion.current
-    val phase = if (playing && !still) {
-        val transition = rememberInfiniteTransition(label = "island-bars")
-        transition.animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "phase").value
-    } else 0f
-    Canvas(Modifier.size(width = 20.dp, height = 14.dp)) {
+    // The phase is read while drawing, never while composing, and the bars have a layer of their own: each frame of the equalizer then
+    // redraws these few pixels. Read in composition, it recomposed the island and redrew everything under it about 19 times a second,
+    // even with Home idle (measured on the Fold 8: 226 frames in 12 s with the island, 23 without; PRF, DYN-14 to DYN-16).
+    val phase: androidx.compose.runtime.State<Float> = if (playing && !still) {
+        rememberInfiniteTransition(label = "island-bars")
+            .animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "phase")
+    } else androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0f) }
+    Canvas(Modifier.size(width = 20.dp, height = 14.dp).graphicsLayer()) {
+        val p = phase.value
         val w = size.width / 7
         for (i in 0 until 4) {
-            val wave = if (playing) (kotlin.math.sin(phase * 2 * Math.PI + i * 1.3).toFloat() + 1f) / 2f else .15f
+            val wave = if (playing) (kotlin.math.sin(p * 2 * Math.PI + i * 1.3).toFloat() + 1f) / 2f else .15f
             val h = size.height * (.3f + .7f * wave)
             drawLine(color, Offset(w * (1 + i * 1.7f), size.height / 2 + h / 2), Offset(w * (1 + i * 1.7f), size.height / 2 - h / 2),
                 strokeWidth = w, cap = StrokeCap.Round)
