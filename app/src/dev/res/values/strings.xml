@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Folio Dev installs next to the release; its accessibility service needs a name you can tell apart. -->
-    <string name="shade_service_label">Folio Dev gestures &amp; overlays</string>
+    <string name="shade_service_label">Folio Debug gestures &amp; overlays</string>
 
     <!--
         The Folio Dev debug source (src/devsource). These strings live here, not in src/main, so a release build carries
         none of them, and they are English only on purpose: the page is a developer tool for the person who builds Folio.
     -->
-    <string name="dev_source_name" translatable="false">Folio Dev builds</string>
+    <string name="dev_source_name" translatable="false">Folio Debug builds</string>
     <string name="dev_source_row_ready" translatable="false">Debug builds and work in progress</string>
     <string name="dev_source_row_needs_code" translatable="false">Add a dev code to begin</string>
     <string name="dev_source_page_note" translatable="false">Builds come from a private repository through Folio\'s own server, and are signed by McCal. Each one must carry this app\'s id and signature, and Android will not install an older version over a newer one. Work in progress is marked WIP.</string>
@@ -24,7 +24,7 @@
     <string name="dev_source_wip" translatable="false">WIP</string>
     <string name="dev_source_install" translatable="false">Install</string>
     <string name="dev_source_downloading" translatable="false">Downloading</string>
-    <string name="dev_source_installing" translatable="false">Android is installing it. Folio Dev restarts when it finishes.</string>
+    <string name="dev_source_installing" translatable="false">Android is installing it. Folio Debug restarts when it finishes.</string>
     <string name="dev_source_older_build" translatable="false">Older than the build you are on. Your Home and settings stay, but a newer migration may already have run.</string>
     <string name="dev_source_built_with" translatable="false">%1$s, %2$s</string>
     <string name="dev_source_checked" translatable="false">Checked %1$s</string>
@@ -72,7 +72,7 @@
     <string name="dev_beta_confirm_yes" translatable="false">Install</string>
     <string name="dev_beta_confirm_no" translatable="false">Cancel</string>
     <string name="dev_beta_downloading" translatable="false">Downloading the beta</string>
-    <string name="dev_beta_installing" translatable="false">Android is installing it. If it asks to allow installs from Folio Dev, allow it once.</string>
+    <string name="dev_beta_installing" translatable="false">Android is installing it. If it asks to allow installs from Folio Debug, allow it once.</string>
     <string name="dev_beta_refuse_hash" translatable="false">The beta did not match its checksum (or had none), so it was thrown away.</string>
     <string name="dev_beta_refuse_package" translatable="false">That file is not for Folio (com.mccal.folio), so it was thrown away.</string>
     <string name="dev_beta_refuse_signer" translatable="false">That file is not signed with the installed Folio\'s key, so it was thrown away.</string>
