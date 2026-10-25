@@ -159,12 +159,12 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         scopeJob.cancel()
         fullScreenJob?.cancel(); fullScreenJob = null
-        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); removePull()
+        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove()
         IslandEvents.release()
         owner.stop()
     }
 
-    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); removePull(); sync() }
+    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); sync() }
 
     /**
      * The system bars tell us when an app has gone full screen: video players, games and readers hide them, and
@@ -226,7 +226,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val islandWanted = s.islandEverywhere && !home && content != null
         val pullPossible = pullStripWanted(s.shadePull, s.shadeOverApps, s.folioPanels, SafeMode.active, home, false)
         watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen) || pullPossible))
-        if (pullPossible && !fullScreen) addPull() else removePull()
+        if (pullPossible && !fullScreen) pullStrip.add() else pullStrip.remove()
         if (s.dockEverywhere && !home) addHandle(s.leftHanded) else { removeHandle(); removeDock() }
         // The bar presses the same buttons the system's does, so it steps aside where the system's bar does.
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
@@ -374,48 +374,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         if (shadeReceiverOn) { runCatching { service.unregisterReceiver(shadeScreenOff) }; shadeReceiverOn = false }
     }
 
-    // ---- Pull down from the top edge ---------------------------------------------------------
+    // ---- Pull down from the top edge: see PullStrip ------------------------------------------
 
-    private var pull: View? = null
-
-    /**
-     * A thin strip over the top edge of other apps that turns a pull down into Folio's panel: the left half opens Notification Center and the
-     * right half Control Center (or the phone's own shade when Folio's cannot be drawn, such as over the lock screen). The strip sits where the
-     * status bar is, so it takes the touches there; it draws nothing and tells TalkBack nothing.
-     */
-    private fun addPull() {
-        if (pull != null) return
-        val slop = android.view.ViewConfiguration.get(service).scaledTouchSlop.toFloat()
-        val view = object : View(service) {
-            private var downX = 0f
-            private var downY = 0f
-            private var fired = false
-            override fun onTouchEvent(event: MotionEvent): Boolean {
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> { downX = event.x; downY = event.y; fired = false }
-                    MotionEvent.ACTION_MOVE -> if (!fired && isPullDown(event.x - downX, event.y - downY, slop)) {
-                        fired = true
-                        performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                        val panel = pullPanel(downX, width.toFloat())
-                        if (!openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
-                    }
-                }
-                return true
-            }
-        }.apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
-        val statusBar = runCatching { wm.currentWindowMetrics.windowInsets.getInsets(android.view.WindowInsets.Type.statusBars()).top }.getOrDefault(0)
-        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, pullStripHeight(statusBar, density),
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT).apply {
-            gravity = Gravity.TOP or Gravity.START
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-        }
-        if (runCatching { wm.addView(view, params) }.isSuccess) pull = view
-    }
-
-    private fun removePull() {
-        pull?.let { runCatching { wm.removeView(it) } }; pull = null
+    private val pullStrip = PullStrip(service, wm) { panel ->
+        // Through the same transparent entry a shortcut uses: a shade opened with an activity of ours in front gets the blur behind it,
+        // and one opened from the service alone did not on the Android 17 emulator (the blur layer stayed invisible).
+        val entry = if (panel == ShadePanel.NOTIFICATIONS) ShadeShortcutNotifications::class.java else ShadeShortcutQuickSettings::class.java
+        val started = runCatching { service.startActivity(Intent(service, entry).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        if (!started && !openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
     }
 
     // ---- Dock handle -------------------------------------------------------------------------
