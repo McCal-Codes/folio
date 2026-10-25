@@ -32,7 +32,14 @@ internal object MarketAutoUpdate {
         listingSource: String, listingVersion: DebVersion, revoked: Boolean, impostor: Boolean, needsAnother: Boolean,
         /** The listing promises a size and a checksum. Without them nothing could be checked, so nothing installs by itself. */
         installable: Boolean = true,
-    ): Boolean = origin == InstalledPackage.Origin.FOLIO_SOURCE && enabled && installedSource == listingSource &&
+        /**
+         * The listing is Folio's own tweaks source standing in for a package built into Folio ([MarketEntry.updatesBuiltIn]).
+         * A built-in install has no source address, so this is the one case where a missing source address is not a
+         * reason to stop. Any other listing still has to come from the source that installed the package.
+         */
+        updatesBuiltIn: Boolean = false,
+    ): Boolean = origin == InstalledPackage.Origin.FOLIO_SOURCE && enabled &&
+        (installedSource == listingSource || (updatesBuiltIn && installedSource == null)) &&
         listingVersion > installedVersion && !revoked && !impostor && !needsAnother && installable
 
     /** The newest newer listing for each installed package, from the source that installed it. */
@@ -41,7 +48,7 @@ internal object MarketAutoUpdate {
         return session.installed().mapNotNull { installed ->
             entries.filter { it.id == installed.id && "${it.id}@${it.entry.version}" !in skipped }.filter { e ->
                 isCandidate(installed.origin, installed.enabled, installed.sourceUrl, installed.version, e.source.url, e.entry.version,
-                    e.unavailable, e.clash != null, e.entry.needs.isNotEmpty(), e.entry.installable)
+                    e.unavailable, e.clash != null, e.entry.needs.isNotEmpty(), e.entry.installable, e.updatesBuiltIn)
             }.maxByOrNull { it.entry.version }?.let { installed to it }
         }
     }

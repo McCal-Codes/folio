@@ -40,6 +40,12 @@ internal data class MarketEntry(
      * nothing says so. Unlike a revocation, it can pass: a later version, or another Folio, may be fine.
      */
     val incompatibleReason: String? = null,
+    /**
+     * True when this listing stands in for a package built into Folio: Folio's own tweaks source offers a newer copy
+     * of it ([mergeEntries]). An installed built-in package is updated from this listing, though it has no source
+     * address of its own to compare.
+     */
+    val updatesBuiltIn: Boolean = false,
 ) {
     /**
      * This listing, not just its id: two sources can list one id, and a sheet that looked the id back up got whichever
@@ -127,7 +133,7 @@ internal fun mergeEntries(
     builtIn.forEach {
         val update = updates[it.id]
         if (update != null) {
-            add(MarketEntry(update.second, update.first))
+            add(MarketEntry(update.second, update.first, updatesBuiltIn = true))
         } else {
             add(MarketEntry(it, builtInSource, revocations?.reasonFor(it.id, it.version), incompatibleReason = incompatible(revocations, it)))
         }
@@ -237,8 +243,18 @@ internal class MarketSources(
     /** Pins a key the user has confirmed, adds the source, and reads its list. */
     suspend fun trust(url: String, key: SourceKey, kind: Source.Kind = Source.Kind.ADDED): RefreshResult = withContext(io) {
         val base = normalizeSourceUrl(url)
+        var kept = kind
+        if (base.equals(FIRST_PARTY_SOURCE, ignoreCase = true)) {
+            // Folio Community Tweaks answers to the key built into Folio and nothing else: no prompt, fingerprint
+            // sheet or typed address can pin another key to it, and its key never changes without a Folio release.
+            val ours = SourceKey.parse(FIRST_PARTY_SOURCE_KEY)
+            if (ours == null || key != ours) {
+                return@withContext RefreshResult.Failed(RefreshResult.Reason.KEY_MISMATCH, "that source's key isn't the one Folio ships for it")
+            }
+            kept = Source.Kind.FIRST_PARTY
+        }
         client.trust(base, key)
-        list.add(Source(base, kind = kind, addedAt = System.currentTimeMillis() / 1000))
+        list.add(Source(base, kind = kept, addedAt = System.currentTimeMillis() / 1000))
         refresh(base, force = true)
     }
 

@@ -103,7 +103,16 @@ class MarketPrefs(private val store: KeyValueStore) {
         get() = store.get(INTRO_SEEN) == "1"
         set(value) { store.set(INTRO_SEEN, if (value) "1" else null) }
 
+    /**
+     * Whether Folio Community Tweaks has been put in the source list once. Set the first time, so a person who removes
+     * that source doesn't find it back the next time the store opens.
+     */
+    var firstPartySeeded: Boolean
+        get() = store.get(FIRST_PARTY_SEEDED) == "1"
+        set(value) { store.set(FIRST_PARTY_SEEDED, if (value) "1" else null) }
+
     private companion object {
+        const val FIRST_PARTY_SEEDED = "market:first-party-seeded"
         const val FEATURED_STYLE = "market:featured-style"
         const val INTRO_SEEN = "market:intro-seen"
         const val BACKGROUND_REFRESH = "market:background-refresh"
