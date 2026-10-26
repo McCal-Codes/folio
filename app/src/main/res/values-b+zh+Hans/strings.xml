@@ -9,7 +9,7 @@
 <resources>
     <string name="dune_wallpaper_description">你在 Folio 中选择的背景，已按你的屏幕尺寸调整。</string>
     <string name="shade_service_label">Folio 手势与悬浮控件</string>
-    <string name="shade_service_description">让 Folio 通过主屏幕手势打开系统的通知和快捷设置面板；并且仅在你开启时，在其他 App 上方显示 Folio 的程序坞把手和灵动岛、打开程序坞中的 App 以及返回主屏幕。它不会读取屏幕内容，也不会观察你在其他 App 中的操作。</string>
+    <string name="shade_service_description">让 Folio 通过主屏幕手势打开系统的通知和快捷设置面板；并且仅在你开启时，在其他 App 上方显示 Folio 的程序坞把手和灵动岛、打开程序坞中的 App 以及返回主屏幕。它不会读取屏幕内容，也不会观察你在其他 App 中的操作。唯一的例外：当 Folio 的面板在其他 App 上方打开且模糊已开启时，它会截取一次屏幕，仅用于在面板后方做模糊。这张图片会立即缩小，只保留在内存中，不会被保存或发送，面板关闭后即被丢弃。</string>
     <string name="personal">个人</string>
     <string name="work">工作</string>
     <string name="turn_on_work_apps">开启工作 App</string>
@@ -55,6 +55,12 @@
     <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
     <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
     <string name="shade_over_apps">在其他应用上方显示 Folio 面板</string>
+    <string name="cc_page_controls">控制</string>
+    <string name="cc_page_media">媒体和声音</string>
+    <string name="cc_page_connectivity">连接</string>
+    <string name="cc_page_of">%1$s，第 %2$d 页，共 %3$d 页</string>
+    <string name="shade_pull">在任何应用顶部下拉</string>
+    <string name="shade_pull_note">从应用顶部边缘的左半部分下拉会打开通知中心，右半部分下拉会打开控制中心，取代手机自带的通知栏。开启后，这条顶部区域内的点按不会传到应用，全屏应用仍使用 Android 自带的。它跟随“在其他应用上方显示 Folio 面板”，该选项关闭时它也会关闭。</string>
     <string name="shade_over_apps_note">当快捷方式、例行任务或 One UI 的单手操作打开通知栏或快捷设置时，Folio 会在当前打开的应用上方显示自己的通知中心或控制中心，而不是手机自带的面板。需要开启 Folio 手势。从应用顶部下滑仍会打开手机自带的通知栏。在其他应用上方时，点按“回复”会打开输入框，“选项”仅在主屏幕上可用。不会在锁屏上方打开。</string>
     <string name="nc_layout_title">展开时的布局</string>
     <string name="nc_layout_full">全屏</string>
@@ -1642,6 +1648,13 @@
         <item quantity="other">显示全部 %d 个</item>
     </plurals>
     <string name="general">通用</string>
+    <string name="settings_group_launcher">启动器</string>
+    <string name="settings_group_extensions">扩展</string>
+    <string name="control_center_look">控制中心样式</string>
+    <string name="cc_look_clear">透明玻璃</string>
+    <string name="cc_look_frosted">磨砂面板</string>
+    <string name="cc_look_solid">纯色</string>
+    <string name="cc_look_note">透明玻璃会在背景允许的范围内保持通透，只在文字需要时才变暗。磨砂面板和纯色始终更深。</string>
     <string name="language">语言</string>
     <string name="settings_keywords_general">通用 关于 版本 更新 新功能 帮助 路线图 致谢 高级</string>
     <string name="settings_keywords_language">语言 翻译 英语 韩语 中文</string>
