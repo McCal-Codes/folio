@@ -71,6 +71,15 @@ than Apple", "there should be some standards for the control center and notifica
   by name. Under Reduce Motion nothing moves except the tile being dragged.
 - **PNL-21 MUST** put a new setting for either panel in Settings with a search entry, and draw it in the Lab first.
 
+- **PNL-30 MUST** page Control Center vertically: the next page comes with a swipe down and the page strip or dots stand in a column that
+  matches, so the direction a finger moves is the direction the pages are laid out. The settle uses a [FolioMotion](../../app/src/main/java/com/mccal/folio/FolioTokens.kt)
+  spring (Sheet), a page fades and shrinks only a little as it leaves, and with Reduce Motion it snaps and does not shrink
+  ([DYN](dynamic-ui.md)).
+- **PNL-31 MUST** let Control Center be swiped away: an upward drag on the first page (the one drag that page cannot use) pulls the
+  whole panel up with the finger and closes it past 96 dp or with a quick flick, and otherwise springs back. A drag that started on a
+  later page never closes it, and editing never does. Tap outside, Back and a screen reader's dismiss action close it too, so no
+  closing depends on one gesture ([A11Y](accessibility.md)).
+
 ### Notification Center
 
 - **PNL-22 MUST** share one presentation of a notification between the Dynamic Island and Notification Center: a message can

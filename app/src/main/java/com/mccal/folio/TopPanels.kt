@@ -72,6 +72,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -758,6 +759,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
         // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
+        val closeLabel = stringResource(R.string.close)
         var swipeAway by remember { mutableFloatStateOf(0f) }
         val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
         val swipeConnection = remember(pager, edit) {
@@ -963,7 +965,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
 
         ProvideJiggle(edit) {
-        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }, contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }
+            .semantics { dismiss(closeLabel) { onClose(); true } }, contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // iOS 18 header: edit on the left, power on the right.
