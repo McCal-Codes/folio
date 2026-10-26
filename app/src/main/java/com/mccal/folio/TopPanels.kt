@@ -1021,7 +1021,9 @@ private fun BatteryRing(status: DeviceStatus) {
             if (level != null) drawArc(ring, -90f, 360f * level.coerceIn(0, 100) / 100f, false, corner, arc,
                 style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
         }
-        if (level != null) Text(level.toString(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        // The number lives inside a fixed 38 dp ring, so it follows the font size only up to 1.3 times (at 2.0 the "100" was wider than the ring); the words for TalkBack carry the full value.
+        val ringFont = with(androidx.compose.ui.platform.LocalDensity.current) { (12f * minOf(fontScale, 1.3f)).dp.toSp() }
+        if (level != null) Text(level.toString(), color = Color.White, fontSize = ringFont, fontWeight = FontWeight.SemiBold)
     }
 }
 
