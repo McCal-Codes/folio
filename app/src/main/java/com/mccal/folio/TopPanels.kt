@@ -976,11 +976,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true, reverseLayout = true,
                         flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
                             snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
-                        Box(Modifier.graphicsLayer {
+                        Box(Modifier.fillMaxSize().graphicsLayer {
                             val away = kotlin.math.abs((pager.currentPage - index) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
                             alpha = 1f - CC_PAGE_FADE * away
                             if (!reduceMotion) { val scale = 1f - CC_PAGE_SHRINK * away; scaleX = scale; scaleY = scale }
-                        }) { pageContent(pages[index]) }
+                        }, contentAlignment = Alignment.TopStart) { pageContent(pages[index]) }
                     }
                     if (!grid.stripAtEdge && !grid.stripInHeader) strip()
                 }
