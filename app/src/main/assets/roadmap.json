@@ -587,6 +587,34 @@
           "title": "A tile for a widget that went missing",
           "detail": "When a widget's app is disabled, Home shows a tile with Choose again and Remove instead of leaving a blank.",
           "status": "building"
+        },
+        {
+          "icon": "lock",
+          "color": "#30D158",
+          "title": "Private While Recording",
+          "detail": "Notification content is hidden while your screen is being recorded.",
+          "status": "building"
+        },
+        {
+          "icon": "tune",
+          "color": "#8E8E93",
+          "title": "Storage manager",
+          "detail": "A Storage page in Settings under General: what is using your space, with shortcuts to Android's own tools. Beta testers first.",
+          "status": "building"
+        },
+        {
+          "icon": "clock",
+          "color": "#FF9F0A",
+          "title": "Smart clock ink",
+          "detail": "The Big Clock's text color follows what is behind it over Android's own wallpaper. Off until you turn it on.",
+          "status": "building"
+        },
+        {
+          "icon": "dock",
+          "color": "#30D158",
+          "title": "A dock grabber that stays under your finger",
+          "detail": "Dragging the Side Bar dock in edit mode follows your finger at any speed.",
+          "status": "building"
         }
       ]
     },
@@ -656,6 +684,20 @@
           "title": "Keyd, shown publicly",
           "detail": "A public page that shows what the Keyd keyboard can do, with its downloads.",
           "status": "planned"
+        },
+        {
+          "icon": "tune",
+          "color": "#0A84FF",
+          "title": "Control Center editor",
+          "detail": "Move a control to any free slot and resize it from its corner, the way iOS's editor works.",
+          "status": "planned"
+        },
+        {
+          "icon": "notifications",
+          "color": "#FF3B30",
+          "title": "Notification styles per app",
+          "detail": "Give an app's notifications their own color or icon shape in Notification Center; apps you do not change follow your global style.",
+          "status": "planned"
         }
       ]
     },
@@ -689,6 +731,13 @@
           "color": "#BF5AF2",
           "title": "Icon Stacks",
           "detail": "A stack of icons built on folders.",
+          "status": "planned"
+        },
+        {
+          "icon": "apps",
+          "color": "#32ADE6",
+          "title": "Fits more phones",
+          "detail": "Window-size fixes for Xiaomi and other foldables, tablets and short windows. Reports are welcome: say which phone and what you saw.",
           "status": "planned"
         }
       ]
@@ -805,13 +854,6 @@
           "color": "#0A84FF",
           "title": "The Folio app",
           "detail": "A Sileo-style app for tweaks, themes and updates, with Settings as one tab. The Tweak Library is the first piece.",
-          "status": "planned"
-        },
-        {
-          "icon": "tune",
-          "color": "#0A84FF",
-          "title": "Control Center editor",
-          "detail": "Move a control to any free slot and resize it from its corner, the way iOS's editor works.",
           "status": "planned"
         },
         {
