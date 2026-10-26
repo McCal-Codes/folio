@@ -20,16 +20,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 internal object FolioGlass {
     /** Dim over the blurred Home behind an overlay. */
     val scrim = Color.Black.copy(alpha = .42f)
-    /** Over another app on a phone that does not blur windows (One UI turns it off): the app stays readable behind a plain panel, so the dim does the blur's work. */
-    val scrimUnblurred = Color.Black.copy(alpha = .74f)
     /** Large tiles (Control Center modules). */
     val module = FolioColors.SecondaryBackground.copy(alpha = .76f)
     /** Cards and rows (notifications, Spotlight sections, search field). */
     val card = FolioColors.SurfaceCard.copy(alpha = .82f)
     /** Controls sitting on a card (inactive toggles, pills, chips). */
     val raised = Color.White.copy(alpha = .14f)
-    /** Control Center, Clear glass: see-through tiles over the blurred app. */
-    val clearTile = Color.White.copy(alpha = .16f)
     /** Control Center, Frosted: smoky dark tiles that carry their own contrast, with no plate behind them (McCal 25 Oct 2026: "remove that darker background"). */
     val frostedTile = Color.Black.copy(alpha = .38f)
     /** Hairline edge that separates glass from glass. */

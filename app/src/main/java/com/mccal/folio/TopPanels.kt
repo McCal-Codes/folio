@@ -85,7 +85,7 @@ import java.time.format.DateTimeFormatter
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
-    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.FROSTED,
+    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
@@ -103,6 +103,19 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
     val cardListMax = (config.screenHeightDp * .62f).dp
 
+    // Clear glass is as light as the backdrop allows: how bright the backdrop picture is sets the dim and the tiles (the tone eases between values).
+    val backdrop = LocalShadeBackdropImage.current
+    val targetTone = androidx.compose.runtime.remember(backdrop, ccLook) {
+        if (ccLook == CcLook.CLEAR && backdrop != null) {
+            ccClearTone(ccBrightness(IntArray(backdrop.width * backdrop.height).also { backdrop.readPixels(it) }), dimScale = dim)
+        } else CC_DEFAULT_TONE
+    }
+    val toneSpec = androidx.compose.animation.core.tween<Float>(220)
+    val dimNow by androidx.compose.animation.core.animateFloatAsState(targetTone.dim, toneSpec, label = "panel dim")
+    val blackNow by androidx.compose.animation.core.animateFloatAsState(targetTone.tileBlack, toneSpec, label = "tile black")
+    val whiteNow by androidx.compose.animation.core.animateFloatAsState(targetTone.tileWhite, toneSpec, label = "tile white")
+    val tone = androidx.compose.runtime.remember(dimNow, blackNow, whiteNow) { CcGlassTone(dimNow, blackNow, whiteNow) }
+
     // Scrim: tap or swipe up anywhere to close.
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
         .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
@@ -119,7 +132,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (picture != null) {
             androidx.compose.foundation.Image(picture, null, Modifier.fillMaxSize().graphicsLayer { alpha = fadeIn },
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
-            Box(Modifier.fillMaxSize().background(FolioGlass.scrim))
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = tone.dim)))
         } else if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) {
             FrostedBackdrop(LocalWallpaperTone.current, Modifier.fillMaxSize().graphicsLayer { alpha = .86f })
         }
@@ -131,7 +144,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
-    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook) {
+    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
             shape == ShadeShape.BOTH -> Alignment.TopCenter
@@ -466,7 +479,9 @@ enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
 }
 
 /** Control Center size choice (the largest a small control can be). */
-enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) { COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp) }
+enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) {
+    SMALL(R.string.small, 50.dp), COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp), EXTRA_LARGE(R.string.extra_large, 88.dp)
+}
 
 /**
  * How Control Center's tiles are drawn (McCal 25 Oct 2026, from the Lab's options A to C): Clear glass is see-through with a bright edge
@@ -475,14 +490,28 @@ enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp
  */
 enum class CcLook(@androidx.annotation.StringRes val label: Int) { CLEAR(R.string.cc_look_clear), FROSTED(R.string.cc_look_frosted), SOLID(R.string.cc_look_solid) }
 
-internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.FROSTED }
+internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.CLEAR }
+
+/** What Clear glass uses over the backdrop at hand (its dim and its tiles), worked out from how bright the backdrop is; see [ccClearTone]. */
+private val LocalCcTone = androidx.compose.runtime.staticCompositionLocalOf { CC_DEFAULT_TONE }
 
 /** One page of Control Center: Controls pages are numbered from 0 when the controls need more than one. */
 private data class CcPageSpec(val page: CcPage, val index: Int)
 
-private val CcLook.tile: Color get() = when (this) { CcLook.CLEAR -> FolioGlass.clearTile; CcLook.FROSTED -> FolioGlass.frostedTile; CcLook.SOLID -> FolioGlass.module }
+private val CcLook.tile: Color
+    @Composable get() = when (this) {
+        CcLook.CLEAR -> {
+            // The tile's black and white fills as one color: black first, then white over it (see CcGlassTone).
+            val t = LocalCcTone.current
+            val alpha = 1f - (1f - t.tileBlack) * (1f - t.tileWhite)
+            val gray = if (alpha > 0f) t.tileWhite / alpha else 1f
+            Color(gray, gray, gray, alpha)
+        }
+        CcLook.FROSTED -> FolioGlass.frostedTile
+        CcLook.SOLID -> FolioGlass.module
+    }
 /** A round toggle at rest: Solid keeps the lighter disc it always had on its dark modules. */
-private val CcLook.toggleOff: Color get() = if (this == CcLook.SOLID) Color.White.copy(alpha = .16f) else tile
+private val CcLook.toggleOff: Color @Composable get() = if (this == CcLook.SOLID) Color.White.copy(alpha = .16f) else tile
 private val CcLook.edge: androidx.compose.foundation.BorderStroke get() = when (this) {
     CcLook.CLEAR -> androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color.White.copy(alpha = .42f), Color.White.copy(alpha = .12f))))
     CcLook.FROSTED -> androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .14f))
@@ -717,7 +746,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val gridWidth = span(cols)
         val focusOn = focusModes.isNotEmpty()
         // What the header and the strip take; the rest is for the pages. Controls that do not fit go on another page, never into a scroll (PNL-1).
-        val chrome = FolioTouch.MIN.dp + gap + CC_PLATE_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
+        val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
         val pages = remember(plan) { List(plan.perPage.size) { CcPageSpec(CcPage.CONTROLS, it) } + CcPageSpec(CcPage.MEDIA, 0) + CcPageSpec(CcPage.CONNECTIVITY, 0) }
@@ -725,7 +754,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
-        LaunchedEffect(pager.currentPage) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
+        LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
@@ -884,23 +913,27 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
-            if (grid.stripInHeader) Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Small dots, each a 24 by 48 dp target: a short window has no row to spare for round buttons.
+            if (grid.stripInHeader) Row(verticalAlignment = Alignment.CenterVertically) {
+                // Small dots, each a 32 by 48 dp target side by side (no gap between targets, so a tap near the edge cannot hit the wrong page): a short window has no row to spare for round buttons.
                 pages.forEachIndexed { index, spec ->
                     val selected = pager.currentPage == index
                     val description = stringResource(R.string.cc_page_of, label(spec.page), index + 1, pages.size)
-                    Box(Modifier.size(24.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                    Box(Modifier.size(32.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
                         .semantics { contentDescription = description; this.selected = selected }, contentAlignment = Alignment.Center) {
                         Box(Modifier.size(if (selected) 10.dp else 8.dp).clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .4f)))
                     }
                 }
             }
-            else if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
+            else if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
+                if ((tall ?: Float.MAX_VALUE) >= 360f) BatteryRing(status)
+                items()
+            }
             else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
         }
 
         ProvideJiggle(edit) {
-        Box(Modifier.fillMaxWidth().padding(vertical = CC_PLATE_PAD_DP.dp), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp), contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // iOS 18 header: edit on the left, power on the right.
@@ -922,6 +955,30 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
         }
         }
+    }
+}
+
+/** The battery as a ring with its percent, at the top of the page strip; green while charging. Says the same in words for TalkBack. */
+@Composable
+private fun BatteryRing(status: DeviceStatus) {
+    val level = status.battery
+    val words = when {
+        level == null -> stringResource(R.string.battery_unavailable)
+        status.charging -> stringResource(R.string.battery_1_d_percent_charging, level)
+        else -> stringResource(R.string.battery_1_d_percent, level)
+    }
+    val ring = if (status.charging) FolioColors.Green else Color.White
+    Box(Modifier.size(FolioTouch.MIN.dp).semantics { contentDescription = words }, contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.size(38.dp)) {
+            val stroke = size.width * .1f
+            val inset = stroke / 2f
+            val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+            val corner = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(Color.White.copy(alpha = .25f), 0f, 360f, false, corner, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            if (level != null) drawArc(ring, -90f, 360f * level.coerceIn(0, 100) / 100f, false, corner, arc,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        }
+        if (level != null) Text(level.toString(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1016,12 +1073,28 @@ private fun Module(modifier: Modifier, color: Color? = null, content: @Composabl
         .border(look.edge, RoundedCornerShape(26.dp)), content = content)
 }
 
+/**
+ * A tile dips a little under the finger and springs back (McCal 25 Oct 2026, finishing touches): a spring from FolioMotion that follows the finger and
+ * can be interrupted, scale and alpha read while drawing, and under Reduce Motion no scale at all, only the dim (DYN-6, DYN-11).
+ */
+@Composable
+private fun Modifier.ccPress(pressed: Boolean): Modifier {
+    val reduce = LocalReduceMotion.current
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed && !reduce) CC_PRESS_SCALE else 1f, FolioMotion.spring(FolioMotion.Quick), label = "tile press")
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if (pressed) .88f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "tile press alpha")
+    return graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+}
+
+private const val CC_PRESS_SCALE = .94f
+
 @Composable
 private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(CircleShape).background(if (on) accent else LocalCcLook.current.toggleOff)
-        .clickable { haptic.toggle(!on); onClick() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Box(Modifier.size(size).ccPress(pressed).clip(CircleShape).background(if (on) accent else LocalCcLook.current.toggleOff)
+        .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = stateText; role = androidx.compose.ui.semantics.Role.Switch },
         contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * .46f))
@@ -1032,8 +1105,10 @@ private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: C
 private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val state = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else LocalCcLook.current.tile)
-        .clickable(role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Box(Modifier.size(size).ccPress(pressed).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else LocalCcLook.current.tile)
+        .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = state }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (on && accent == Color.White) Color.Black else Color.White, modifier = Modifier.size(size * .4f))
     }
@@ -1044,10 +1119,12 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
     onStart: () -> Unit = {}, onValue: (Float) -> Unit) {
     val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), FolioMotion.spring(FolioMotion.Snap), label = label)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var dragging by remember { mutableStateOf(false) }
+    val readout by androidx.compose.animation.core.animateFloatAsState(if (dragging) 1f else 0f, FolioMotion.spring(FolioMotion.Quick), label = "slider readout")
     Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(LocalCcLook.current.tile)
         .pointerInput(Unit) {
             var last = -1f
-            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f }) { change, _ ->
+            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f; dragging = true }, onDragEnd = { dragging = false }, onDragCancel = { dragging = false }) { change, _ ->
                 change.consume()
                 val v = (1f - change.position.y / size.height).coerceIn(0f, 1f)
                 // Like iOS: a tick when the slider hits its top or bottom.
@@ -1064,6 +1141,11 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(shown).background(Color.White))
         Icon(icon, null, tint = if (shown > .18f) FolioColors.MenuSurface else Color.White,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * .22f).size(width * .36f))
+        // The number while a finger is on it, over the part above the fill: it fades in and out and never moves the slider.
+        // Dark once the white fill reaches it, like the icon below, so it stays readable at 100%.
+        val readoutOnFill = shown > 1f - (width * .22f + FolioType.FOOTNOTE.dp / 2) / height
+        Text((shown * 100).toInt().toString(), color = if (readoutOnFill) FolioColors.MenuSurface else Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = width * .22f).graphicsLayer { alpha = readout })
     }
 }
 
