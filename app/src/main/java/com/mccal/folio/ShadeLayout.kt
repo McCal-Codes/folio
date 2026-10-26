@@ -66,7 +66,7 @@ internal const val CC_EDGE_STRIP_PANEL_RATIO = 5f
 internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
 
 /** Air above the header and below the pages, inside the panel, so the first and last rows never touch the edge of the panel. */
-internal const val CC_PLATE_PAD_DP = 12f
+internal const val CC_PANEL_PAD_DP = 12f
 
 /** Below this height (dp) the page strip goes into the header instead of taking a row of its own under the grid. */
 internal const val CC_STRIP_IN_HEADER_BELOW_DP = 560f
