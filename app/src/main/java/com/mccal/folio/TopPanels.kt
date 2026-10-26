@@ -761,18 +761,23 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         var swipeAway by remember { mutableFloatStateOf(0f) }
         val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
         val swipeConnection = remember(pager, edit) {
+            // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
+            var startedOnFirst = false
+            var gestureActive = false
             object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
                 override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == 0 }
                     if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
                     return androidx.compose.ui.geometry.Offset.Zero
                 }
                 override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                    if (!edit.active && pager.currentPage == 0 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
+                    if (!edit.active && startedOnFirst && pager.currentPage == 0 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
                         swipeAway += available.y; return androidx.compose.ui.geometry.Offset(0f, available.y)
                     }
                     return androidx.compose.ui.geometry.Offset.Zero
                 }
                 override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                    gestureActive = false
                     if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
                     if (swipeAway < -swipeAwayPx || available.y < -CC_SWIPE_AWAY_FLICK) onClose()
                     else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
