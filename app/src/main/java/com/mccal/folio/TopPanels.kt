@@ -768,6 +768,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             var gestureActive = false
             object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
                 override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    // Only a finger starts a gesture: the pager's own settling after a release also scrolls (as a side effect) and must not pick the next gesture's page.
+                    if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) return androidx.compose.ui.geometry.Offset.Zero
                     if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == 0 }
                     if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
                     return androidx.compose.ui.geometry.Offset.Zero
