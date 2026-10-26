@@ -971,9 +971,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
                         }
                     }
-                    // Pages are stacked and move with a swipe down or up, as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
+                    // Pages are stacked and the next one comes down with a swipe down (reverseLayout: the first page is anchored, so a swipe up past it closes the panel), as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
                     // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
-                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
+                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true, reverseLayout = true,
                         flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
                             snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
                         Box(Modifier.graphicsLayer {
