@@ -30,9 +30,8 @@ internal object FolioGlass {
     val raised = Color.White.copy(alpha = .14f)
     /** Control Center, Clear glass: see-through tiles over the blurred app. */
     val clearTile = Color.White.copy(alpha = .16f)
-    /** Control Center, Frosted: lighter tiles on [frostedPlate], which keeps their text readable over any app. */
-    val frostedTile = Color.White.copy(alpha = .11f)
-    val frostedPlate = Color.Black.copy(alpha = .5f)
+    /** Control Center, Frosted: smoky dark tiles that carry their own contrast, with no plate behind them (McCal 25 Oct 2026: "remove that darker background"). */
+    val frostedTile = Color.Black.copy(alpha = .38f)
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */
