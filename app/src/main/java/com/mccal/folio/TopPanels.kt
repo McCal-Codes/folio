@@ -754,7 +754,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
-        LaunchedEffect(pager.currentPage) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
+        LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
@@ -913,12 +913,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
-            if (grid.stripInHeader) Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Small dots, each a 24 by 48 dp target: a short window has no row to spare for round buttons.
+            if (grid.stripInHeader) Row(verticalAlignment = Alignment.CenterVertically) {
+                // Small dots, each a 32 by 48 dp target side by side (no gap between targets, so a tap near the edge cannot hit the wrong page): a short window has no row to spare for round buttons.
                 pages.forEachIndexed { index, spec ->
                     val selected = pager.currentPage == index
                     val description = stringResource(R.string.cc_page_of, label(spec.page), index + 1, pages.size)
-                    Box(Modifier.size(24.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                    Box(Modifier.size(32.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
                         .semantics { contentDescription = description; this.selected = selected }, contentAlignment = Alignment.Center) {
                         Box(Modifier.size(if (selected) 10.dp else 8.dp).clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .4f)))
                     }
