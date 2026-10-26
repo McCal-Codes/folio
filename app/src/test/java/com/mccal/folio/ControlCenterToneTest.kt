@@ -20,6 +20,21 @@ class ControlCenterToneTest {
         }
     }
 
+    /** The real relative luminance of an sRGB color (each channel 0 to 1), the number the 4.5:1 rule is about. */
+    private fun relativeLuminance(r: Float, g: Float, b: Float): Float = .2126f * luminance(r) + .7152f * luminance(g) + .0722f * luminance(b)
+
+    @Test fun `white text keeps 4_5 to 1 over saturated backdrops too, not only grays`() {
+        fun argb(r: Int, g: Int, b: Int) = (255 shl 24) or (r shl 16) or (g shl 8) or b
+        var worst = 99f; var worstAt = ""
+        for (r in 0..255 step 51) for (g in 0..255 step 51) for (b in 0..255 step 51) {
+            val tone = ccClearTone(ccBrightness(IntArray(50) { argb(r, g, b) }))
+            fun shownChannel(c: Int): Float = c / 255f * (1f - tone.dim) * (1f - tone.tileBlack) * (1f - tone.tileWhite) + tone.tileWhite
+            val contrast = 1.05f / (relativeLuminance(shownChannel(r), shownChannel(g), shownChannel(b)) + .05f)
+            if (contrast < worst) { worst = contrast; worstAt = "($r, $g, $b)" }
+        }
+        assertTrue("worst contrast $worst at $worstAt", worst >= 4.49f)
+    }
+
     @Test fun `a scrim drawn at 60 percent opacity, as in a card, still leaves the text at 4_5 to 1`() {
         for (i in 0..100) {
             val v = i / 100f

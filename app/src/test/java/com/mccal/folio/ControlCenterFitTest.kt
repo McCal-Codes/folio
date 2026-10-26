@@ -48,7 +48,7 @@ class ControlCenterFitTest {
 
     @Test fun `every screen fits every Controls page without scrolling`() {
         val problems = mutableListOf<String>()
-        for (s in screens) for (size in listOf(58f, 66f, 76f)) for (n in listOf(0, 8, 15)) for (focus in listOf(false, true)) check(s, size, n, focus, problems)
+        for (s in screens) for (size in listOf(50f, 58f, 66f, 76f, 88f)) for (n in listOf(0, 8, 15)) for (focus in listOf(false, true)) check(s, size, n, focus, problems)
         assertTrue("These windows would scroll or overlap (${problems.size}):\n" + problems.take(40).joinToString("\n"), problems.isEmpty())
     }
 

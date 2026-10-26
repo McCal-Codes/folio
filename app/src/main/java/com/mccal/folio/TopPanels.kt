@@ -479,7 +479,9 @@ enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
 }
 
 /** Control Center size choice (the largest a small control can be). */
-enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) { COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp) }
+enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) {
+    SMALL(R.string.small, 50.dp), COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp), EXTRA_LARGE(R.string.extra_large, 88.dp)
+}
 
 /**
  * How Control Center's tiles are drawn (McCal 25 Oct 2026, from the Lab's options A to C): Clear glass is see-through with a bright edge
@@ -752,7 +754,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
-        LaunchedEffect(pager.currentPage) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
+        LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
@@ -911,12 +913,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
-            if (grid.stripInHeader) Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Small dots, each a 24 by 48 dp target: a short window has no row to spare for round buttons.
+            if (grid.stripInHeader) Row(verticalAlignment = Alignment.CenterVertically) {
+                // Small dots, each a 32 by 48 dp target side by side (no gap between targets, so a tap near the edge cannot hit the wrong page): a short window has no row to spare for round buttons.
                 pages.forEachIndexed { index, spec ->
                     val selected = pager.currentPage == index
                     val description = stringResource(R.string.cc_page_of, label(spec.page), index + 1, pages.size)
-                    Box(Modifier.size(24.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                    Box(Modifier.size(32.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
                         .semantics { contentDescription = description; this.selected = selected }, contentAlignment = Alignment.Center) {
                         Box(Modifier.size(if (selected) 10.dp else 8.dp).clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .4f)))
                     }
@@ -1071,12 +1073,28 @@ private fun Module(modifier: Modifier, color: Color? = null, content: @Composabl
         .border(look.edge, RoundedCornerShape(26.dp)), content = content)
 }
 
+/**
+ * A tile dips a little under the finger and springs back (McCal 25 Oct 2026, finishing touches): a spring from FolioMotion that follows the finger and
+ * can be interrupted, scale and alpha read while drawing, and under Reduce Motion no scale at all, only the dim (DYN-6, DYN-11).
+ */
+@Composable
+private fun Modifier.ccPress(pressed: Boolean): Modifier {
+    val reduce = LocalReduceMotion.current
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed && !reduce) CC_PRESS_SCALE else 1f, FolioMotion.spring(FolioMotion.Quick), label = "tile press")
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if (pressed) .88f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "tile press alpha")
+    return graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+}
+
+private const val CC_PRESS_SCALE = .94f
+
 @Composable
 private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(CircleShape).background(if (on) accent else LocalCcLook.current.toggleOff)
-        .clickable { haptic.toggle(!on); onClick() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Box(Modifier.size(size).ccPress(pressed).clip(CircleShape).background(if (on) accent else LocalCcLook.current.toggleOff)
+        .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = stateText; role = androidx.compose.ui.semantics.Role.Switch },
         contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * .46f))
@@ -1087,8 +1105,10 @@ private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: C
 private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val state = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else LocalCcLook.current.tile)
-        .clickable(role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Box(Modifier.size(size).ccPress(pressed).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else LocalCcLook.current.tile)
+        .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = state }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (on && accent == Color.White) Color.Black else Color.White, modifier = Modifier.size(size * .4f))
     }
@@ -1099,10 +1119,12 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
     onStart: () -> Unit = {}, onValue: (Float) -> Unit) {
     val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), FolioMotion.spring(FolioMotion.Snap), label = label)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    var dragging by remember { mutableStateOf(false) }
+    val readout by androidx.compose.animation.core.animateFloatAsState(if (dragging) 1f else 0f, FolioMotion.spring(FolioMotion.Quick), label = "slider readout")
     Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(LocalCcLook.current.tile)
         .pointerInput(Unit) {
             var last = -1f
-            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f }) { change, _ ->
+            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f; dragging = true }, onDragEnd = { dragging = false }, onDragCancel = { dragging = false }) { change, _ ->
                 change.consume()
                 val v = (1f - change.position.y / size.height).coerceIn(0f, 1f)
                 // Like iOS: a tick when the slider hits its top or bottom.
@@ -1119,6 +1141,11 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(shown).background(Color.White))
         Icon(icon, null, tint = if (shown > .18f) FolioColors.MenuSurface else Color.White,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * .22f).size(width * .36f))
+        // The number while a finger is on it, over the part above the fill: it fades in and out and never moves the slider.
+        // Dark once the white fill reaches it, like the icon below, so it stays readable at 100%.
+        val readoutOnFill = shown > 1f - (width * .22f + FolioType.FOOTNOTE.dp / 2) / height
+        Text((shown * 100).toInt().toString(), color = if (readoutOnFill) FolioColors.MenuSurface else Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = width * .22f).graphicsLayer { alpha = readout })
     }
 }
 
