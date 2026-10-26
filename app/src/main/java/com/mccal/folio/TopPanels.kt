@@ -1142,7 +1142,9 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
         Icon(icon, null, tint = if (shown > .18f) FolioColors.MenuSurface else Color.White,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * .22f).size(width * .36f))
         // The number while a finger is on it, over the part above the fill: it fades in and out and never moves the slider.
-        Text((shown * 100).toInt().toString(), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+        // Dark once the white fill reaches it, like the icon below, so it stays readable at 100%.
+        val readoutOnFill = shown > 1f - (width * .22f + FolioType.FOOTNOTE.dp / 2) / height
+        Text((shown * 100).toInt().toString(), color = if (readoutOnFill) FolioColors.MenuSurface else Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = width * .22f).graphicsLayer { alpha = readout })
     }
 }
