@@ -66,7 +66,7 @@ internal const val CC_EDGE_STRIP_PANEL_RATIO = 5f
 internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
 
 /** Air above the header and below the pages, inside the panel, so the first and last rows never touch the edge of the panel. */
-internal const val CC_PLATE_PAD_DP = 12f
+internal const val CC_PANEL_PAD_DP = 12f
 
 /** Below this height (dp) the page strip goes into the header instead of taking a row of its own under the grid. */
 internal const val CC_STRIP_IN_HEADER_BELOW_DP = 560f
@@ -203,13 +203,16 @@ internal fun ccClearTone(brightness: Float, dimScale: Float = 1f): CcGlassTone {
     return CcGlassTone((effective / dimScale.coerceIn(.1f, 1f)).coerceAtMost(1f), t.coerceAtMost(1f), w * (1f - minOf(1f, t / .2f)))
 }
 
-/** The 95th percentile of sRGB luma (0 to 1) of [pixels] (ARGB), a stand-in for how bright the backdrop's bright parts are, so a bright patch under a control is not averaged away; .5 with no pixels. */
+/** The 95th percentile of the relative luminance of [pixels] (ARGB) written as the gray that has it (sRGB, 0 to 1: a pure green is much brighter than its luma suggests, and the 4.5:1 rule is about luminance), a stand-in for how bright the backdrop's bright parts are, so a bright patch under a control is not averaged away; .5 with no pixels. */
+private val LINEAR = FloatArray(256) { i -> val c = i / 255f; if (c <= .04045f) c / 12.92f else Math.pow(((c + .055f) / 1.055f).toDouble(), 2.4).toFloat() }
+
 internal fun ccBrightness(pixels: IntArray): Float {
     if (pixels.isEmpty()) return .5f
     val histogram = IntArray(256)
     for (p in pixels) {
-        val luma = (((p shr 16) and 255) * 299 + ((p shr 8) and 255) * 587 + (p and 255) * 114) / 1000
-        histogram[luma.coerceIn(0, 255)]++
+        val y = .2126f * LINEAR[(p shr 16) and 255] + .7152f * LINEAR[(p shr 8) and 255] + .0722f * LINEAR[p and 255]
+        val encoded = if (y <= .0031308f) 12.92f * y else 1.055f * Math.pow(y.toDouble(), 1 / 2.4).toFloat() - .055f
+        histogram[Math.round(encoded * 255f).coerceIn(0, 255)]++
     }
     val target = (pixels.size * .95f).toInt()
     var seen = 0

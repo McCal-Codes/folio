@@ -27,7 +27,7 @@ class ControlCenterFitTest {
     private fun check(s: Screen, size: Float, n: Int, focus: Boolean, problems: MutableList<String>) {
         val panelHeight = available(s)
         val g = controlCenterGrid(s.w - 32f, panelHeight, n, focus, size)
-        val chrome = 48f + g.gapDp + 2 * CC_PLATE_PAD_DP + (if (g.stripAtEdge || g.stripInHeader) 0f else g.stripDp)
+        val chrome = 48f + g.gapDp + 2 * CC_PANEL_PAD_DP + (if (g.stripAtEdge || g.stripInHeader) 0f else g.stripDp)
         val pageHeight = panelHeight - chrome
         val rows = ccRowsThatFit(pageHeight, g.cellDp, g.gapDp)
         val plan = ccPlanControls(g.columns, g.cellDp, g.gapDp, pageHeight, n, focus)
@@ -48,7 +48,7 @@ class ControlCenterFitTest {
 
     @Test fun `every screen fits every Controls page without scrolling`() {
         val problems = mutableListOf<String>()
-        for (s in screens) for (size in listOf(58f, 66f, 76f)) for (n in listOf(0, 8, 15)) for (focus in listOf(false, true)) check(s, size, n, focus, problems)
+        for (s in screens) for (size in listOf(50f, 58f, 66f, 76f, 88f)) for (n in listOf(0, 8, 15)) for (focus in listOf(false, true)) check(s, size, n, focus, problems)
         assertTrue("These windows would scroll or overlap (${problems.size}):\n" + problems.take(40).joinToString("\n"), problems.isEmpty())
     }
 
