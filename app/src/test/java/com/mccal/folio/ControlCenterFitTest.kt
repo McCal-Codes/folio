@@ -27,7 +27,7 @@ class ControlCenterFitTest {
     private fun check(s: Screen, size: Float, n: Int, focus: Boolean, problems: MutableList<String>) {
         val panelHeight = available(s)
         val g = controlCenterGrid(s.w - 32f, panelHeight, n, focus, size)
-        val chrome = 48f + g.gapDp + 2 * CC_PLATE_PAD_DP + (if (g.stripAtEdge || g.stripInHeader) 0f else g.stripDp)
+        val chrome = 48f + g.gapDp + 2 * CC_PANEL_PAD_DP + (if (g.stripAtEdge || g.stripInHeader) 0f else g.stripDp)
         val pageHeight = panelHeight - chrome
         val rows = ccRowsThatFit(pageHeight, g.cellDp, g.gapDp)
         val plan = ccPlanControls(g.columns, g.cellDp, g.gapDp, pageHeight, n, focus)
