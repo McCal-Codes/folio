@@ -64,6 +64,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Changed
 - **The Roadmap, rewritten:** the 0.6.9 section groups what is in the betas into fewer, clearer rows and adds what is still being built (Setup's Your Home apps page, Duo-style spacing, short windows, the missing-widget tile); 0.7.0 now lists StandBy 2, Spotlight Pro, the Music widget and a public Keyd page; Simple Mode and presets have their own 0.7.2 section; Later names the held ideas honestly.
+- Control Center is closer to the iPhone Duo's: the page strip stands beside the grid on a phone too, with the battery as a ring above the pages, and Clear glass is now the start. It is as light as the picture behind it allows, with the dim and the tiles darkening only as far as the text needs (4.5 to 1), instead of one fixed dim.
 - Control Center's Frosted look no longer draws a darker plate behind the tiles: its tiles are smoky dark glass that keep text readable on their own.
 - Notification Center and Control Center open and close more smoothly over Home: the blur behind them is now one picture of Home, taken when the panel opens, shrunk and blurred once, and faded in, instead of blurring Home live on every frame. Spotlight and the sheets are unchanged.
 - **Control Center fits without scrolling:** on a short window (a phone on its side, a split-screen half) the page dots move into the header, and controls that do not fit go on another page instead of making you scroll. The panel keeps a little air above its header and below its last row.

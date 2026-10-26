@@ -12,10 +12,10 @@ class ControlCenterColumnsTest {
     @Test fun `a phone upright keeps four columns and its cells fill the width`() {
         val g = grid(379f, 700f)
         assertEquals(4, g.columns)
-        assertEquals(false, g.stripAtEdge)
-        // 379 less 32 of padding: four cells and three gaps use all of it, and the cell is a little bigger than the 66 chosen.
-        assertEquals(379f - 32f, g.cellDp * 4 + g.gapDp * 3, 0.5f)
-        assertTrue(g.cellDp > size)
+        // The page strip stands beside the grid from a phone's width, as on the iPhone and the Duo: the grid has 379 less 32 of padding less the strip.
+        assertEquals(true, g.stripAtEdge)
+        assertEquals(379f - 32f - g.stripDp, g.cellDp * 4 + g.gapDp * 3, 0.5f)
+        assertTrue(g.cellDp >= CC_MIN_CELL_DP && g.cellDp <= size * CC_FILL_MAX)
     }
 
     @Test fun `a wider window takes more columns instead of giant tiles`() {
@@ -32,7 +32,8 @@ class ControlCenterColumnsTest {
     }
 
     @Test fun `the page strip stands at the edge only when the panel is wide enough for it to cost little`() {
-        assertEquals(false, grid(500f, 700f).stripAtEdge)
+        assertEquals(false, grid(280f, 700f).stripAtEdge)
+        assertEquals(true, grid(379f, 700f).stripAtEdge)
         assertEquals(true, grid(700f, 700f).stripAtEdge)
         // The strip is one touch target and a gap wide, so the rule follows the size chosen, not a fixed width.
         val g = grid(700f, 700f)
