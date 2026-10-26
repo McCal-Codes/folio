@@ -29,7 +29,7 @@ than Apple", "there should be some standards for the control center and notifica
 
 - **PNL-5 MUST** give a tile a 48 dp touch target ([A11Y](accessibility.md)); its picture may be smaller but not under 40 dp.
 - **PNL-6 MUST** keep white text on the starting look at 4.5:1 or better over any wallpaper or app (WCAG 1.4.3), measured, not
-  judged. Measured on the Lab's backdrop: Clear glass 3.5:1, Frosted 6.9:1, Solid 10.6:1. A look that can fall below 4.5:1
+  judged. Measured on the Lab's backdrop: Clear glass 3.5:1, Frosted 9.3:1 (dark tiles, no plate), Solid 10.6:1. A look that can fall below 4.5:1
   says so beside its setting (Clear glass does) and is never the default.
 - **PNL-7 MUST** take every color and radius from `FolioColors`, `FolioGlass` and `FolioRadius`; no new raw values.
 
