@@ -71,6 +71,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -755,6 +756,30 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
         LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
+        // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
+        // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
+        var swipeAway by remember { mutableFloatStateOf(0f) }
+        val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
+        val swipeConnection = remember(pager, edit) {
+            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+                override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    if (!edit.active && pager.currentPage == 0 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
+                        swipeAway += available.y; return androidx.compose.ui.geometry.Offset(0f, available.y)
+                    }
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+                override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                    if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
+                    if (swipeAway < -swipeAwayPx || available.y < -CC_SWIPE_AWAY_FLICK) onClose()
+                    else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
+                    return available
+                }
+            }
+        }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
@@ -933,7 +958,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
 
         ProvideJiggle(edit) {
-        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }, contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // iOS 18 header: edit on the left, power on the right.
@@ -948,7 +973,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                     // Pages are stacked and move with a swipe down or up, as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
                     // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
-                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
+                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
                         flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
                             snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
                         Box(Modifier.graphicsLayer {
@@ -1097,6 +1122,10 @@ private const val CC_PRESS_SCALE = .94f
 
 /** How far a page fades and shrinks as the finger takes it away (0 to 1 of the way out): enough to read as depth, little enough that a page half-way is still readable. */
 private const val CC_PAGE_FADE = .55f
+
+/** How far up the panel has to be pulled to close, and how fast a flick (px per second) closes it from less. */
+private const val CC_SWIPE_AWAY_DP = 96f
+private const val CC_SWIPE_AWAY_FLICK = 1400f
 private const val CC_PAGE_SHRINK = .05f
 
 @Composable
