@@ -89,6 +89,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- Control Center's Clear glass keeps white text readable over saturated wallpapers too: it now judges how bright the picture is by its real luminance, so a bright green no longer leaves the text at 2.8 to 1; editing also ends cleanly when the last Controls page goes away, and the page dots on a short window are wider to tap.
 - **The Rows menu names Automatic correctly:** with a fixed number of rows chosen (6, say), the Automatic option read "Automatic (6)" even though Automatic would give 4. It now always shows what Automatic would give.
 - **Folio no longer crashes when you turn from landscape to portrait on the Home app:** an App Library card measured very narrow for a moment during the turn could be given a negative corner size, which closed Folio. The card sizes are now never below zero.
 - **Notification Center on a phone on its side:** in a landscape window at least 600 dp wide that is not a regular-size screen, the big clock now sits beside the notifications instead of above them, so the list is no longer cut to a card and a half. The time shrinks to the room it is given, and the list never takes more than 60 percent of the width.
