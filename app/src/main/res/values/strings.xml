@@ -1726,7 +1726,7 @@
     <string name="cc_look_clear">Clear glass</string>
     <string name="cc_look_frosted">Frosted</string>
     <string name="cc_look_solid">Solid</string>
-    <string name="cc_look_note">Clear glass is see-through, so its text is harder to read over a light wallpaper or app. Frosted and Solid keep it readable everywhere.</string>
+    <string name="cc_look_note">Clear glass is as light as the picture behind it allows and darkens only where text needs it. Frosted and Solid are darker everywhere.</string>
     <string name="language">Language</string>
     <string name="settings_keywords_general">general about version update what\'s new help roadmap credits advanced</string>
     <string name="settings_keywords_language">language translation english korean chinese locale</string>

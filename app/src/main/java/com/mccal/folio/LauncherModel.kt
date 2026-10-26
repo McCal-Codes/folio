@@ -203,7 +203,7 @@ data class LauncherState(
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
     /** How Control Center's tiles are drawn: Clear glass, Frosted or Solid. */
-    val ccLook: CcLook = CcLook.FROSTED,
+    val ccLook: CcLook = CcLook.CLEAR,
     /** Unfolded: iPad-style Notification Center (clock left, notifications right). */
     val ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     /** Shortcuts that open the shade (a phone's one-hand operation, a Routine) draw Folio's panels over the open app instead of the phone's. */
@@ -1927,7 +1927,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             ?: CcControl.DEFAULTS,
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
-        ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.FROSTED),
+        ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
         shadeOverApps = j.optBoolean("shadeOverApps", false),
         shadePull = j.optBoolean("shadePull", false),

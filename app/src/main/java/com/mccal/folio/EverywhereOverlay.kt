@@ -241,7 +241,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
         val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false,
-        val look: CcLook = CcLook.FROSTED)
+        val look: CcLook = CcLook.CLEAR)
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -252,7 +252,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
             j.optBoolean("notificationSections", false),
-            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.FROSTED))
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
