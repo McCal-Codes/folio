@@ -755,7 +755,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
         LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
-        fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page) } }
+        fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
@@ -946,8 +946,16 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
                         }
                     }
-                    androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, verticalAlignment = Alignment.Top, userScrollEnabled = true) { index ->
-                        pageContent(pages[index])
+                    // Pages are stacked and move with a swipe down or up, as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
+                    // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
+                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
+                        flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
+                            snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
+                        Box(Modifier.graphicsLayer {
+                            val away = kotlin.math.abs((pager.currentPage - index) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                            alpha = 1f - CC_PAGE_FADE * away
+                            if (!reduceMotion) { val scale = 1f - CC_PAGE_SHRINK * away; scaleX = scale; scaleY = scale }
+                        }) { pageContent(pages[index]) }
                     }
                     if (!grid.stripAtEdge && !grid.stripInHeader) strip()
                 }
@@ -1086,6 +1094,10 @@ private fun Modifier.ccPress(pressed: Boolean): Modifier {
 }
 
 private const val CC_PRESS_SCALE = .94f
+
+/** How far a page fades and shrinks as the finger takes it away (0 to 1 of the way out): enough to read as depth, little enough that a page half-way is still readable. */
+private const val CC_PAGE_FADE = .55f
+private const val CC_PAGE_SHRINK = .05f
 
 @Composable
 private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
