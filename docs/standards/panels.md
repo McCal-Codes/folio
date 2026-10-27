@@ -77,8 +77,13 @@ than Apple", "there should be some standards for the control center and notifica
   ([DYN](dynamic-ui.md)).
 - **PNL-31 MUST** let Control Center be swiped away: an upward drag on the first page (the one drag that page cannot use) pulls the
   whole panel up with the finger and closes it past 96 dp or with a quick flick, and otherwise springs back. A drag that started on a
-  later page never closes it, and editing never does. Tap outside, Back and a screen reader's dismiss action close it too, so no
-  closing depends on one gesture ([A11Y](accessibility.md)).
+  later page never closes it, and editing never does. Tap outside, a tap on the margins around the grid (not between controls), a
+  visible Close button where the header has room, Back and a screen reader's dismiss action close it too, so no closing depends on
+  one gesture ([A11Y](accessibility.md)). Letting go past the close point gives a light haptic tick as the pull crosses it.
+- **PNL-32 MUST** keep a page's drags for the pager: a page holds a scroll container only when its rows do not fit the window, and
+  that container has no edge stretch, because a scroll container that cannot scroll still takes the downward drag at its top. A page
+  turns after a drag of a fifth of its height or a flick, never half the screen. Test any change to a page with slow and short drags
+  that start on a tile, in a gap and on empty space.
 
 ### Notification Center
 
