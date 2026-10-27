@@ -123,7 +123,13 @@ internal enum class FeatureGate(
      * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
      * [OPEN_IN_0_6_9] to open it.
      */
-    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Adjust island: pull a handle to make the island wider, nudge it, or fit it to the camera Android reports. A supporter on a
+     * smaller minimum width found the pill narrower than the camera area; the automatic fit stays the default.
+     */
+    ISLAND_ADJUST("islandAdjust", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

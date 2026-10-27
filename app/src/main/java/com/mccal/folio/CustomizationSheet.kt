@@ -638,7 +638,14 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             runCatching { islandContext.startActivity(IslandListenerService.accessSettingsIntent(islandContext)) }
                         })
                         if (state.island) {
-                            CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext) })
+                            // Adjust island: a handle to make it wider, arrows to nudge it, Fit to camera and Reset, on a dimmed screen (IslandAdjust.kt).
+                            var adjusting by remember { mutableStateOf(false) }
+                            if (FeatureGate.ISLAND_ADJUST.isOpen(islandContext)) {
+                                CardAction(stringResource(R.string.island_adjust), onClick = { adjusting = true })
+                                CardNote(stringResource(R.string.island_adjust_note))
+                                if (adjusting) IslandAdjustDialog(onDone = { adjusting = false })
+                            }
+                            CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext); IslandSize.reset(islandContext) })
                             CardNote(stringResource(R.string.long_press_and_drag_the_island_to_move_i))
                         }
                     }
@@ -1392,6 +1399,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_other_notifications_in_the_islan, R.string.settings_keywords_other_notifications_in_the_islan, CustomizationPage.ISLAND_APPS),
     Triple(R.string.settings_island_and_dock_in_every_app, R.string.settings_keywords_island_and_dock_in_every_app, CustomizationPage.ISLAND),
     Triple(R.string.settings_hide_the_island_in_full_screen, R.string.settings_keywords_hide_the_island_in_full_screen, CustomizationPage.ISLAND),
+    Triple(R.string.island_adjust, R.string.settings_keywords_island_adjust, CustomizationPage.ISLAND),
     Triple(R.string.notification_center, R.string.settings_keywords_notification_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.control_center, R.string.settings_keywords_control_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.spotlight, R.string.settings_keywords_spotlight, CustomizationPage.SEARCH),
