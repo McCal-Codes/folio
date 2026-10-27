@@ -126,6 +126,13 @@ internal enum class FeatureGate(
     DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * Hinge detents: stops felt at 45, 90 and 135 degrees and a click at flat, in place of the single tick as the Fold passes
+     * halfway. They are on by default once the gate opens, so it changes what every fold feels like and supporters and Folio
+     * Dev try it first on real hinges. Everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it.
+     */
+    HINGE_DETENTS("hingeDetents", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * The Music widget (Strip, Card and Poster) in the widget gallery. It adds a new widget to every Home and keeps the
      * island's media reading alive for it, so supporters and Folio Dev try it first on real players; everyone gets it in
      * 0.7.0: flip [OPEN_IN_0_7_0] to open it. A Music widget already on Home (from a layout backup) keeps drawing either way.
