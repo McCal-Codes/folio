@@ -241,7 +241,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
         val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false,
-        val look: CcLook = CcLook.CLEAR)
+        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions())
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -252,7 +252,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
             j.optBoolean("notificationSections", false),
-            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR))
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
@@ -312,7 +312,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look)
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options)
                     }
                 }
             }
@@ -587,7 +587,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
         islandWindowWidth = windowWidth
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
@@ -631,7 +631,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
                         }
                         .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }) {
-                        IslandPillContent(content, g.camW.dp, g.pillH.dp)
+                        IslandPillContent(content, g.wrapW.dp, g.pillH.dp)
                     } }
                 }
                 }

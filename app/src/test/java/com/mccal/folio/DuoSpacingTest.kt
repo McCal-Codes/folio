@@ -227,14 +227,21 @@ class DuoSpacingTest {
         }
     }
 
+    // Writes the table beside the build, and asserts what every row of it must say: a window always has a usable layout, and the new spacing never fits fewer rows.
     @Test fun `table of every matrix size and orientation`() {
+        var windows = 0
         val out = StringBuilder("| window | fit rows (Rows 7) before | after | row pitch before | after | dock icon before | after |\n|---|---|---|---|---|---|---|\n")
         forEachWindow { tag, w, h ->
             val off = homeGeometry(w, h, LayoutPreset(), true, statusHeight = 160f, appRows = 7)
             val on = homeGeometry(w, h, LayoutPreset(), true, statusHeight = 160f, appRows = 7, duoSpacing = true)
             val o4 = geo(w, h, false); val n4 = geo(w, h, true)
+            windows++
+            assertTrue("$tag: rows fit before ${off.fitAppRows}, after ${on.fitAppRows}", off.fitAppRows >= 1 && on.fitAppRows >= off.fitAppRows)
+            assertTrue("$tag: row pitch ${o4.rowHeight} / ${n4.rowHeight}", o4.rowHeight > 0f && n4.rowHeight > 0f)
+            assertTrue("$tag: dock icon ${o4.dockIcon} / ${n4.dockIcon}", o4.dockIcon > 0f && n4.dockIcon > 0f)
             out.append("| $tag | ${off.fitAppRows} | ${on.fitAppRows} | ${"%.1f".format(o4.rowHeight)} | ${"%.1f".format(n4.rowHeight)} | ${"%.1f".format(o4.dockIcon)} | ${"%.1f".format(n4.dockIcon)} |\n")
         }
+        assertTrue("the matrix has windows", windows > 0)
         java.io.File("build/duo-spacing-table.md").also { it.parentFile?.mkdirs() }.writeText(out.toString())
     }
 }

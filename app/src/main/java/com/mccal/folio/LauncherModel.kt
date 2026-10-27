@@ -204,6 +204,8 @@ data class LauncherState(
     val ccCentered: Boolean = false,
     /** How Control Center's tiles are drawn: Clear glass, Frosted or Solid. */
     val ccLook: CcLook = CcLook.CLEAR,
+    /** Control Center's pages, sliders and tap behavior (FeatureGate.CC_SETTINGS_V2); the defaults are what it always did. */
+    val ccOptions: CcOptions = CcOptions(),
     /** Unfolded: iPad-style Notification Center (clock left, notifications right). */
     val ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     /** Shortcuts that open the shade (a phone's one-hand operation, a Routine) draw Folio's panels over the open app instead of the phone's. */
@@ -488,7 +490,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         }
     }
     private data class RefreshedApps(val entries: List<AppEntry>, val profiles: List<AppProfile>,
-        val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>)
+        val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>, val disabled: Set<Pair<Long, String>> = emptySet())
     private data class UndoImportSettings(val compact: LayoutPreset, val expanded: LayoutPreset, val labels: Boolean,
         val googleSearch: Boolean, val verticalStatus: Boolean, val portrait: LayoutPreset? = null)
     private val prefs = application.getSharedPreferences("launcher", 0)
@@ -666,14 +668,28 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     val live = liveApps + shortcuts
                     val liveIds = live.mapTo(mutableSetOf(), AppEntry::id)
                     val profileBySerial = profiles.associateBy(AppProfile::userSerial)
+                    // An app turned off (Settings' Disable, a sleeping app) is still installed but lists no launcher activity:
+                    // it keeps its Home and Dock place for when it comes back, unlike one that was uninstalled.
+                    val missing = (cached.map(AppEntry::id) + mutable.value.trackedAppIds()).filter { it !in liveIds && !isReservedFolderId(it) }
+                        .mapNotNullTo(mutableSetOf()) { id ->
+                            val identity = parseProfileAppId(id) ?: return@mapNotNullTo null
+                            val serial = identity.userSerial ?: personalSerial
+                            val packageName = identity.component.substringBefore('/').takeIf(String::isNotBlank) ?: return@mapNotNullTo null
+                            (serial to packageName).takeIf { serial in authoritativeProfiles }
+                        }
+                    val disabled = keptWhileDisabled(missing) { (serial, packageName) ->
+                        handles.firstOrNull { userManager.getSerialNumberForUser(it) == serial }?.let { isDisabledApp(packageName, it) } == true
+                    }
+                    // The icon Home was showing a moment ago, so an app that is away is dimmed, not replaced by a stand-in.
+                    val shownIcons = mutable.value.apps.associate { it.id to it.icon }
                     val unavailable = cached.filter { it.id !in liveIds }.mapNotNull { cachedEntry ->
                         val profile = profileBySerial[cachedEntry.userSerial]
                         val key = cachedEntry.userSerial to cachedEntry.packageName
                         // A successful profile query is authoritative except while Android explicitly
                         // reports a package unavailable (for example during an update).
-                        if (cachedEntry.userSerial in authoritativeProfiles && key !in temporarilyUnavailable) null
+                        if (cachedEntry.userSerial in authoritativeProfiles && key !in temporarilyUnavailable && key !in disabled) null
                         else cachedEntry.copy(user = profile?.let { p -> handles.firstOrNull { userManager.getSerialNumberForUser(it) == p.userSerial } } ?: personal,
-                            profileLabel = profile?.label ?: cachedEntry.profileLabel, available = false)
+                            profileLabel = profile?.label ?: cachedEntry.profileLabel, available = false, icon = shownIcons[cachedEntry.id] ?: cachedEntry.icon)
                     }
                     val entries = (live + unavailable).distinctBy(AppEntry::id)
                         .sortedWith { a, b -> collator.compare(a.label, b.label) }
@@ -683,7 +699,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     iconCache.keys.retainAll(entries.map { it.id }.toSet())
                     RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, it.kind == ProfileKind.WORK,
                         quiet = true, unlocked = false, available = false, kind = it.kind) }).distinctBy(AppProfile::userSerial),
-                        authoritativeProfiles.toSet(), removedProfileSerials)
+                        authoritativeProfiles.toSet(), removedProfileSerials, disabled)
                 }
                 mutable.update { old ->
                     val entries = apps.entries.withAppNames(old.appNames)
@@ -697,7 +713,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     val authoritative = apps.authoritativeProfiles
                     // Screenshot Mode's swap list lives in its own file, so its apps are checked here too.
                     val removedIds = removedAppIds(old.trackedAppIds() + ScreenshotSwap.chosen(getApplication()), availableIds,
-                        authoritative, temporarilyUnavailable, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
+                        authoritative, temporarilyUnavailable + apps.disabled, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
                         apps.removedProfiles)
                     // iOS "Add to Home Screen": a newly downloaded app also goes to the first free spot on Home.
                     val oldIds = old.apps.mapTo(mutableSetOf(), AppEntry::id)
@@ -744,6 +760,10 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             }
         }
     }
+
+    /** Whether [packageName] is installed for [user] but turned off. Not installed at all throws, and counts as not disabled. */
+    private fun isDisabledApp(packageName: String, user: UserHandle): Boolean =
+        runCatching { !launcherApps.getApplicationInfo(packageName, 0, user).enabled }.getOrDefault(false)
 
     private fun loadCachedApps(): List<AppEntry> = runCatching {
         val application = getApplication<Application>()
@@ -919,6 +939,19 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                 enable, old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 }, old.homeAppRows),
                 leadingSlots = if (enable) old.leadingSlots else old.leadingSlots.map { it?.takeUnless(id::equals) },
                 canUndoEdit = false)
+        }
+        persist()
+    }
+
+    /** Setup's Home page: the ticked apps from [offered] go on Home, the unticked ones come off. See [homeSlotsForPicks]. */
+    fun applyHomePicks(offered: List<String>, picked: Set<String>, firstRun: Boolean) {
+        if (statePayloadInvalid) return
+        mutable.update { old ->
+            val away = old.folders.flatMapTo(mutableSetOf()) { it.appIds } + old.leadingSlots.filterNotNull()
+            val installed = old.apps.mapTo(mutableSetOf()) { it.id }
+            val blocked = old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 }
+            old.copy(homeSlots = homeSlotsForPicks(old.homeSlots, offered, picked.filterTo(mutableSetOf()) { it in installed && it !in away }, blocked, old.homeAppRows, firstRun),
+                leadingSlots = old.leadingSlots.map { if (it != null && it in offered && it !in picked) null else it }, canUndoEdit = false)
         }
         persist()
     }
@@ -1443,6 +1476,10 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
     fun setCcLook(look: CcLook) = updateSettings(soon = false) { it.copy(ccLook = look) }
+    fun setCcOptions(options: CcOptions) = updateSettings(soon = false) { it.copy(ccOptions = options) }
+    /** Reset Control Center, and its Undo: size, look, the middle and the options, in one write. The chosen controls are not touched. */
+    fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions) =
+        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
@@ -1685,7 +1722,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).put("ncLayout", s.ncLayout.name)
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
             .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1970,6 +2007,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
         ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),
+        ccOptions = CcOptions.read(j),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
         shadeOverApps = j.optBoolean("shadeOverApps", false),
         shadePull = j.optBoolean("shadePull", false),

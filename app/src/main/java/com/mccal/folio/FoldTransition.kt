@@ -97,7 +97,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // Hinge detents replace that single tick with a stop at 45, 90 and 135 degrees, the ends and flat (see HingeDetents.kt).
     val detentContext = LocalContext.current
     val detentOptions by rememberHingeDetentOptions(detentContext)
-    val detentsOpen = remember(detentContext) { FeatureGate.HINGE_DETENTS.isOpen(detentContext) }
+    val detentsOpen = rememberGateOpen(FeatureGate.HINGE_DETENTS)
     fold.detentsOn = detentsOpen && detentOptions.on
     fold.onDetent = { d -> if (tick) view.performHapticFeedback(HingeDetents.hapticFor(d.kind, detentOptions.strength, Build.VERSION.SDK_INT)) }
     // m: 0 = clean, 1 = fully half-folded look. cover = whole-screen mode on the cover display.

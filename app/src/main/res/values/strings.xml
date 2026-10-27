@@ -1134,6 +1134,10 @@
         <item quantity="one">%1$d folder</item>
         <item quantity="other">%1$d folders</item>
     </plurals>
+    <plurals name="restore_widgets_skipped">
+        <item quantity="one">%1$d widget in this backup is from a newer Folio and will be left out.</item>
+        <item quantity="other">%1$d widgets in this backup are from a newer Folio and will be left out.</item>
+    </plurals>
     <plurals name="restore_widgets">
         <item quantity="one">%1$d widget</item>
         <item quantity="other">%1$d widgets</item>
@@ -1359,7 +1363,7 @@
     <string name="settings_hide_the_island_in_full_screen">Hide the island in full screen</string>
     <string name="settings_keywords_hide_the_island_in_full_screen">island full screen landscape video game immersive hide</string>
     <string name="settings_keywords_notification_center">notifications clock stack group split blur panels iphone style</string>
-    <string name="settings_keywords_control_center">control center size centered toggles</string>
+    <string name="settings_keywords_control_center">control center size centered toggles pages media connectivity sliders brightness auto haptic reset edit controls close</string>
     <string name="settings_keywords_spotlight">search engine google duckduckgo contacts calculator sections messages openbubbles bing brave ecosia startpage qwant kagi custom url</string>
     <string name="settings_keywords_app_library">library categories hidden apps</string>
     <string name="settings_search_button_swipe_down">Search button &amp; swipe down</string>
@@ -2323,4 +2327,38 @@
     <string name="package_import_market_off">This package needs Folio\'s Market, which opens with a supporter code.</string>
     <string name="package_import_too_large">That file is too large to be a Folio package.</string>
     <string name="package_import_too_slow">Reading that file took too long. Try saving it to your phone first.</string>
+    <string name="cc_pages_title">Pages</string>
+    <string name="cc_media_page">Media and sound page</string>
+    <string name="cc_connectivity_page">Connectivity page</string>
+    <string name="cc_open_on">Open on</string>
+    <string name="cc_open_on_last">Last page used</string>
+    <string name="cc_pages_note">A page that would only repeat the first is left out by itself, whatever these say. If the Media and sound page is off and the first page has no room for brightness and volume, they are not shown.</string>
+    <string name="cc_sliders_title">Sliders</string>
+    <string name="cc_slider_ticks">Haptic ticks while dragging</string>
+    <string name="cc_sliders_note">Brightness and volume show their percent while you drag. Dragging brightness turns Auto brightness off; the Auto chip on the slider turns it back on.</string>
+    <string name="cc_controls_count">%1$d of %2$d</string>
+    <string name="cc_close_after">Close after a toggle</string>
+    <string name="cc_close_after_note">Closes Control Center after a tap on flashlight, camera, calculator, screenshot, lock screen, wallet, notes or settings. Switches such as Do Not Disturb stay open.</string>
+    <string name="cc_edit_controls_note">Opens Control Center so you can add, remove and move controls.</string>
+    <string name="cc_reset">Reset Control Center</string>
+    <string name="cc_reset_note">Puts the size, look, pages and options on this page back to how they started. The controls you chose stay.</string>
+    <string name="cc_reset_done">Control Center is back to its defaults.</string>
+    <string name="cc_auto">Auto</string>
+    <string name="cc_auto_brightness">Auto brightness</string>
+    <string name="island_adjust">Adjust island</string>
+    <string name="island_adjust_note">Pull the handle to make the island wider, nudge it into place, or fit it to your camera.</string>
+    <string name="island_adjust_hint">Drag the round handle to resize. Use the arrows to nudge.</string>
+    <string name="island_fit_camera">Fit to camera</string>
+    <string name="island_fit_already">Already fits the camera Android reports</string>
+    <string name="island_adjust_reset">Reset</string>
+    <string name="island_wider">Wider</string>
+    <string name="island_narrower">Narrower</string>
+    <string name="island_nudge_left">Move left</string>
+    <string name="island_nudge_right">Move right</string>
+    <string name="island_nudge_up">Move up</string>
+    <string name="island_nudge_down">Move down</string>
+    <string name="island_handle_label">Island width</string>
+    <string name="island_handle_state">%1$d dp wider than automatic</string>
+    <string name="settings_keywords_island_adjust">island resize size width wider narrower camera hole fit move nudge position adjust</string>
+    <string name="island_adjust_side_note">The island stands upright around the camera in this orientation. Turn the phone to adjust its width.</string>
 </resources>

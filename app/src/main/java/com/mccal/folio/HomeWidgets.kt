@@ -122,7 +122,8 @@ internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, conte
         BoxWithConstraints {
             val scale = (minOf(maxWidth, maxHeight) / 150.dp).coerceIn(.6f, 1f)
             val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, density.fontScale)) {
+            // A11Y-13: a card never grows, so its text follows the system font scale only to 130% (at 200% "LOCAL TIME" wrapped and the day line was squeezed away).
+            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, minOf(density.fontScale, GLANCE_MAX_FONT_SCALE))) {
                 Column(Modifier.fillMaxSize().padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.SpaceBetween, content = content)
             }
         }

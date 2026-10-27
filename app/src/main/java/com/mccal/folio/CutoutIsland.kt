@@ -157,7 +157,10 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     }
     // A spot the user dragged the island to on this screen and orientation (needed on the inner screen, whose
     // under-display camera isn't reported by Android). Null = wrap the reported camera cutout.
-    var custom by remember(wide, landscape) { mutableStateOf(IslandPosition.load(context, wide, landscape)) }
+    val layoutVersion by IslandLayoutChanges.version.collectAsStateWithLifecycle()
+    var custom by remember(wide, landscape, layoutVersion) { mutableStateOf(IslandPosition.load(context, wide, landscape)) }
+    val extraWidth = remember(wide, landscape, layoutVersion) { IslandSize.load(context, wide, landscape) }
+    val nudge = remember(wide, landscape, layoutVersion) { IslandNudge.load(context, wide, landscape) }
     var dragOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var dragging by remember { mutableStateOf(false) }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -167,8 +170,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density)
         // Where the camera really is: the snap target for a drag, even when the pill is drawn at top center instead.
         val realCamera = islandGeometry(camera, windowWidth, density.density)
-        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density)
-        val camW = geometry.camW.dp
+        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density, extraWidth, nudge)
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
         val live = (content as? IslandContent.Live)?.activity
@@ -214,8 +216,9 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     onDragCancel = { dragging = false; dragOffset = androidx.compose.ui.geometry.Offset.Zero },
                     onDragEnd = {
                         dragging = false
-                        val newCenterX = (geometry.centerXPx + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
-                        val newTopDp = (geometry.top + dragOffset.y / density.density).coerceAtLeast(4f)
+                        // The drawn spot includes the saved nudge, which is stored on its own: take it out so the drop does not count it twice.
+                        val newCenterX = (geometry.centerXPx - nudge.dxDp * density.density + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
+                        val newTopDp = (geometry.top - nudge.dyDp + dragOffset.y / density.density).coerceAtLeast(4f)
                         val nearCamera = cutout != null && islandSnapsToCamera(newCenterX, newTopDp, realCamera, density.density)
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
                             .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
@@ -249,7 +252,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         ExpandedCardContent(live, onOpen = { expanded = false; onOpen(live) })
                     }
                 }
-                else Box(Modifier.width(geometry.widthFor(content).dp).height(pillH)) { IslandPillContent(content, camW, pillH) }
+                else Box(Modifier.width(geometry.widthFor(content).dp).height(pillH)) { IslandPillContent(content, geometry.wrapW.dp, pillH) }
             }
         }
         // The pill is only 34 dp tall: its touch area reaches 14 dp lower without changing what is drawn (I-10).
@@ -295,7 +298,9 @@ internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
     fun clamped(windowWidthPx: Int, windowHeightPx: Int, density: Float, pillHDp: Float): IslandPosition {
         val heightDp = windowHeightPx / density
         val maxTop = (heightDp - pillHDp - ISLAND_EDGE_GAP).coerceAtLeast(ISLAND_EDGE_GAP)
-        return IslandPosition(xFraction.coerceIn(0f, 1f), topDp.coerceIn(ISLAND_EDGE_GAP, maxTop))
+        // NaN stays NaN through coerceIn, so it is replaced here; an infinite value is pulled to the edge by coerceIn.
+        return IslandPosition((if (xFraction.isNaN()) .5f else xFraction).coerceIn(0f, 1f),
+            (if (topDp.isNaN()) ISLAND_EDGE_GAP else topDp).coerceIn(ISLAND_EDGE_GAP, maxTop))
     }
 
     companion object {
@@ -305,22 +310,120 @@ internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
             wide -> if (landscape) "island_pos_inner" else "island_pos_inner_portrait"
             else -> if (landscape) "island_pos_cover_landscape" else "island_pos_cover"
         }
+        /** The most a saved top can be, in dp: far past any screen, so only a damaged value is beyond it. */
+        private const val MAX_TOP_DP = 10_000f
+        /** "x,y" as saved, or null for anything else: NaN, infinity, a fraction outside the window or a top far off the screen are not set. */
+        fun parse(raw: String?): IslandPosition? {
+            val parts = raw?.split(',') ?: return null
+            if (parts.size != 2) return null
+            val x = parts[0].trim().toFloatOrNull() ?: return null
+            val y = parts[1].trim().toFloatOrNull() ?: return null
+            if (!x.isFinite() || !y.isFinite() || x !in 0f..1f || y !in 0f..MAX_TOP_DP) return null
+            return IslandPosition(x, y)
+        }
         fun load(context: android.content.Context, wide: Boolean, landscape: Boolean): IslandPosition? =
-            context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null)?.split(',')?.let { parts ->
-                runCatching { IslandPosition(parts[0].toFloat(), parts[1].toFloat()) }.getOrNull()
-            }
+            parse(runCatching { context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null) }.getOrNull())
         fun save(context: android.content.Context, wide: Boolean, landscape: Boolean, position: IslandPosition?) {
             context.getSharedPreferences("folio", 0).edit().apply {
                 if (position == null) remove(key(wide, landscape)) else putString(key(wide, landscape), "${position.xFraction},${position.topDp}")
             }.apply()
+            IslandLayoutChanges.changed()
         }
         fun reset(context: android.content.Context) {
             context.getSharedPreferences("folio", 0).edit().apply {
                 for (wide in listOf(true, false)) for (landscape in listOf(true, false)) remove(key(wide, landscape))
             }.apply()
+            IslandLayoutChanges.changed()
         }
     }
 }
+
+/** Tells a running island that its saved spot or size changed, so Adjust island shows on Home behind it at once. */
+internal object IslandLayoutChanges {
+    val version = kotlinx.coroutines.flow.MutableStateFlow(0)
+    fun changed() { version.value += 1 }
+}
+
+/**
+ * How much wider than the measured camera the person wants the island to wrap, in dp, per screen and orientation
+ * like [IslandPosition]. A phone set to a smaller minimum width, or one that reports its camera smaller than the real
+ * hole, can leave the pill narrower than the lens area; this is the way to say so. Zero is the automatic fit.
+ */
+internal object IslandSize {
+    /** One nudge, in dp. */
+    const val STEP_DP = 2f
+    private fun key(wide: Boolean, landscape: Boolean) = when {
+        wide -> if (landscape) "island_extra_inner" else "island_extra_inner_portrait"
+        else -> if (landscape) "island_extra_cover_landscape" else "island_extra_cover"
+    }
+    /** Never negative and never more than the room beside the camera allows ([IslandGeometry.maxExtra]). */
+    fun clamp(extraDp: Float, geometry: IslandGeometry): Float = if (extraDp.isNaN()) 0f else extraDp.coerceIn(0f, geometry.maxExtra)
+    /** The most a saved width can add, in dp: far wider than any camera area, so only a damaged value is beyond it. */
+    private const val MAX_EXTRA_DP = 1_000f
+    /** A saved width as is when it is a sensible number of dp, else 0, the automatic fit. */
+    fun sane(extraDp: Float): Float = if (extraDp.isFinite() && extraDp > 0f && extraDp <= MAX_EXTRA_DP) extraDp else 0f
+    fun load(context: android.content.Context, wide: Boolean, landscape: Boolean): Float =
+        sane(runCatching { context.getSharedPreferences("folio", 0).getFloat(key(wide, landscape), 0f) }.getOrDefault(0f))
+    fun save(context: android.content.Context, wide: Boolean, landscape: Boolean, extraDp: Float) {
+        context.getSharedPreferences("folio", 0).edit().apply {
+            if (extraDp <= 0f || extraDp.isNaN()) remove(key(wide, landscape)) else putFloat(key(wide, landscape), extraDp)
+        }.apply()
+        IslandLayoutChanges.changed()
+    }
+    fun reset(context: android.content.Context) {
+        context.getSharedPreferences("folio", 0).edit().apply {
+            for (wide in listOf(true, false)) for (landscape in listOf(true, false)) remove(key(wide, landscape))
+        }.apply()
+        IslandLayoutChanges.changed()
+    }
+    /**
+     * What "Fit to camera" asks for: the width Android reports for the camera, when it is wider than the lens outline
+     * the island wraps by default ([cameraRect]). Null when the report is not wider, so there is nothing to fit.
+     */
+    fun fitExtra(reportedWidthDp: Float?, geometry: IslandGeometry): Float? =
+        reportedWidthDp?.let { (it - geometry.camW).coerceIn(0f, geometry.maxExtra) }?.takeIf { it >= 1f }
+}
+
+/** A fine shift of the island from where it sits, in dp: Adjust island's arrows. Zero is where the camera (or a dragged spot) puts it. */
+internal data class IslandNudge(val dxDp: Float, val dyDp: Float) {
+    fun plus(dx: Float, dy: Float) = IslandNudge((dxDp + dx).coerceIn(-NUDGE_LIMIT_DP, NUDGE_LIMIT_DP), (dyDp + dy).coerceIn(-NUDGE_LIMIT_DP, NUDGE_LIMIT_DP))
+    companion object {
+        val None = IslandNudge(0f, 0f)
+        /** Far enough to line the pill up with a mis-reported camera, never far enough to lose it. */
+        const val NUDGE_LIMIT_DP = 48f
+        private fun key(wide: Boolean, landscape: Boolean) = when {
+            wide -> if (landscape) "island_nudge_inner" else "island_nudge_inner_portrait"
+            else -> if (landscape) "island_nudge_cover_landscape" else "island_nudge_cover"
+        }
+        /** "dx,dy" as saved, or [None] for anything else: NaN, infinity, or beyond [NUDGE_LIMIT_DP], which the arrows never save. */
+        fun parse(raw: String?): IslandNudge {
+            val parts = raw?.split(',') ?: return None
+            if (parts.size != 2) return None
+            val dx = parts[0].trim().toFloatOrNull() ?: return None
+            val dy = parts[1].trim().toFloatOrNull() ?: return None
+            if (!dx.isFinite() || !dy.isFinite() || kotlin.math.abs(dx) > NUDGE_LIMIT_DP || kotlin.math.abs(dy) > NUDGE_LIMIT_DP) return None
+            return IslandNudge(dx, dy)
+        }
+        fun load(context: android.content.Context, wide: Boolean, landscape: Boolean): IslandNudge =
+            parse(runCatching { context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null) }.getOrNull())
+        fun save(context: android.content.Context, wide: Boolean, landscape: Boolean, nudge: IslandNudge) {
+            context.getSharedPreferences("folio", 0).edit().apply {
+                if (nudge == None) remove(key(wide, landscape)) else putString(key(wide, landscape), "${nudge.dxDp},${nudge.dyDp}")
+            }.apply()
+            IslandLayoutChanges.changed()
+        }
+        fun reset(context: android.content.Context) {
+            context.getSharedPreferences("folio", 0).edit().apply {
+                for (wide in listOf(true, false)) for (landscape in listOf(true, false)) remove(key(wide, landscape))
+            }.apply()
+            IslandLayoutChanges.changed()
+        }
+    }
+}
+
+/** The camera width Android reports on the top edge, in dp, before [cameraRect] narrows it to the lens: the base of Fit to camera. */
+internal fun islandReportedCameraWidthDp(cutout: android.view.DisplayCutout?, density: Float): Float? =
+    cutout?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { it.width() / density }
 
 /** Island placed at a free position (no camera inside). */
 internal fun islandGeometryAt(centerXPx: Float, topDp: Float, windowWidthPx: Int, density: Float): IslandGeometry {
@@ -381,8 +484,14 @@ private const val OUTLINE_SLACK = 2
 
 /** Pure placement of the island around a camera cutout. Dp values except [centerXPx]. */
 internal data class IslandGeometry(val camW: Float, val camH: Float, val centerXPx: Float, val centerY: Float, val pillH: Float, val maxW: Float,
-    val top: Float = centerY - pillH / 2) {
-    fun widthFor(content: IslandContent): Float = minOf(islandWantWidth(content, camW.dp).value, maxW).coerceAtLeast(camW + pillH)
+    val top: Float = centerY - pillH / 2,
+    /** Width the person added to the camera area it wraps (Adjust island), in dp. Zero is the automatic fit. */
+    val extraW: Float = 0f) {
+    /** The camera width the pill is built around: the measured one plus what the person added. */
+    val wrapW: Float get() = camW + extraW
+    fun widthFor(content: IslandContent): Float = minOf(islandWantWidth(content, wrapW.dp).value, maxW).coerceAtLeast(wrapW + pillH)
+    /** The most width that can be added: the pill must still fit the room beside the camera. */
+    val maxExtra: Float get() = (maxW - (camW + pillH)).coerceAtLeast(0f)
 }
 
 internal fun Rect.ltrb(): IntArray = intArrayOf(left, top, right, bottom)
@@ -404,10 +513,18 @@ internal fun islandWideWindow(windowWidthPx: Int, density: Float, classScale: Fl
  * sits at the same spot and height in both. [camera] is left, top, right, bottom in px after [cameraRect], or null;
  * [custom] is a spot the user dragged it to on this screen and orientation, kept on screen ([IslandPosition.clamped]).
  */
-internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowWidthPx: Int, windowHeightPx: Int, density: Float): IslandGeometry {
+internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowWidthPx: Int, windowHeightPx: Int, density: Float,
+    extraWidthDp: Float = 0f, nudge: IslandNudge = IslandNudge.None): IslandGeometry {
     val atCamera = islandCameraGeometry(camera, windowWidthPx, windowHeightPx, density)
-    return custom?.clamped(windowWidthPx, windowHeightPx, density, atCamera.pillH)
+    val placed = custom?.clamped(windowWidthPx, windowHeightPx, density, atCamera.pillH)
         ?.let { islandGeometryAt(it.xFraction * windowWidthPx, it.topDp, windowWidthPx, density) } ?: atCamera
+    // A nudge shifts the pill as it is (wrapping the camera or free), so the wrap width and height are never lost to it.
+    // Kept on screen: a pill already near the bottom must not be nudged off it (the same bottom bound as a dragged spot, IslandPosition.clamped).
+    val lowest = maxOf((windowHeightPx / density - placed.pillH - ISLAND_EDGE_GAP).coerceAtLeast(0f), placed.top)
+    val top = (placed.top + nudge.dyDp).coerceIn(0f, lowest)
+    val centerX = (placed.centerXPx + nudge.dxDp * density).coerceIn(0f, windowWidthPx.toFloat())
+    val moved = placed.copy(centerXPx = centerX, centerY = top + placed.pillH / 2, top = top)
+    return moved.copy(extraW = IslandSize.clamp(extraWidthDp, placed))
 }
 
 /**
