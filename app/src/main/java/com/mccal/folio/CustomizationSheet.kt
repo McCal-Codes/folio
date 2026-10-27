@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -400,6 +401,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // Beside the text colour it exists for: the scrim is the other half of the same job, for a pale
                         // wallpaper that white text still has to read over.
                         SettingsSwitch(stringResource(R.string.darken_behind_text), state.homeScrim, model::setHomeScrim, "home-scrim-switch")
+                        // Only where it matters: Folio's own pictures are already read, Android's wallpaper needs this.
+                        if (state.systemWallpaper) SmartClockInkRow()
                         CardNote(stringResource(R.string.labels_status_page_dots_and_widget_text))
                     }
                     GlassCardSettings(state, model)
@@ -1374,6 +1377,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.tint_glass_with_wallpaper_color, R.string.settings_keywords_tint_glass_with_wallpaper_color, CustomizationPage.WALLPAPER),
     Triple(R.string.dark_appearance_dims_wallpaper, R.string.settings_keywords_dark_appearance_dims_wallpaper, CustomizationPage.WALLPAPER),
     Triple(R.string.darken_behind_text, R.string.settings_keywords_darken_behind_text, CustomizationPage.WALLPAPER),
+    Triple(R.string.smart_clock_ink, R.string.settings_keywords_smart_clock_ink, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_appearance_light_dark_sunset, R.string.settings_keywords_appearance_light_dark_sunset, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_grid_icon_size_dock, R.string.settings_keywords_grid_icon_size_dock, CustomizationPage.HOME),
     Triple(R.string.folder_background, R.string.settings_keywords_folder_background, CustomizationPage.HOME),
@@ -2810,6 +2814,37 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 }
 
 /** Before Android's screen saver list opens: the one choice to make there, and what it gives. */
+/**
+ * Smart clock ink: off until the person turns on its own accessibility service, after reading what it does. The switch
+ * follows the service, so it is on exactly when Android has the service on; both ways lead to Android's Accessibility
+ * settings, where the real switch is.
+ */
+@Composable private fun SmartClockInkRow() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val on by SmartInkService.connected.collectAsStateWithLifecycle()
+    var ask by remember { mutableStateOf(false) }
+    val openAccessibility = {
+        runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        Unit
+    }
+    SettingsSwitch(stringResource(R.string.smart_clock_ink), on, { if (on) openAccessibility() else ask = true }, "smart-clock-ink-switch")
+    CardNote(stringResource(if (on) R.string.smart_clock_ink_on_note else R.string.smart_clock_ink_off_note))
+    if (ask) AlertDialog(onDismissRequest = { ask = false },
+        title = { Text(stringResource(R.string.smart_clock_ink)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                Text(stringResource(R.string.smart_ink_lead), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_looks), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_kept), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_home), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_separate), fontSize = FolioType.SUBHEAD.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = { ask = false; openAccessibility() }, modifier = Modifier.testTag("smart-clock-ink-open")) {
+            Text(stringResource(R.string.open_accessibility_settings)) } },
+        dismissButton = { TextButton(onClick = { ask = false }) { Text(stringResource(R.string.not_now)) } })
+}
+
 @Composable private fun StandByScreenSaverAlert(onOpen: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(onDismissRequest = onCancel,
         title = { Text(stringResource(R.string.standby_screen_saver_setup_title)) },
