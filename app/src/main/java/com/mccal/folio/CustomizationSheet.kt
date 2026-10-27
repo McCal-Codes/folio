@@ -1170,19 +1170,21 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 }
 
 @Composable private fun SettingsNavBar(backLabel: String?, onBack: () -> Unit, onClose: () -> Unit, leading: (@Composable () -> Unit)? = null) {
-    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right.
-    Box(Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-        Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right. Back gives way to Done (it
+    // shortens with an ellipsis), so at a large font size the two never touch or overlap.
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             leading?.invoke()
-            if (backLabel != null) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+            if (backLabel != null) Row(Modifier.weight(1f, fill = false).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                 .clickable(onClick = onBack).padding(vertical = FolioSpace.SMALL.dp, horizontal = FolioSpace.HAIR.dp).testTag("customization-back"),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(28.dp))
-                Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
+                Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
         }
-        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.CenterEnd).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onClose)
+        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            modifier = Modifier.padding(start = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onClose)
                 .padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.SMALL.dp).description(R.string.close_customization))
     }
 }
