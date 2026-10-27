@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -400,6 +401,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // Beside the text colour it exists for: the scrim is the other half of the same job, for a pale
                         // wallpaper that white text still has to read over.
                         SettingsSwitch(stringResource(R.string.darken_behind_text), state.homeScrim, model::setHomeScrim, "home-scrim-switch")
+                        // Only where it matters: Folio's own pictures are already read, Android's wallpaper needs this.
+                        if (state.systemWallpaper) SmartClockInkRow()
                         CardNote(stringResource(R.string.labels_status_page_dots_and_widget_text))
                     }
                     GlassCardSettings(state, model)
@@ -1374,6 +1377,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.tint_glass_with_wallpaper_color, R.string.settings_keywords_tint_glass_with_wallpaper_color, CustomizationPage.WALLPAPER),
     Triple(R.string.dark_appearance_dims_wallpaper, R.string.settings_keywords_dark_appearance_dims_wallpaper, CustomizationPage.WALLPAPER),
     Triple(R.string.darken_behind_text, R.string.settings_keywords_darken_behind_text, CustomizationPage.WALLPAPER),
+    Triple(R.string.smart_clock_ink, R.string.settings_keywords_smart_clock_ink, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_appearance_light_dark_sunset, R.string.settings_keywords_appearance_light_dark_sunset, CustomizationPage.WALLPAPER),
     Triple(R.string.settings_grid_icon_size_dock, R.string.settings_keywords_grid_icon_size_dock, CustomizationPage.HOME),
     Triple(R.string.folder_background, R.string.settings_keywords_folder_background, CustomizationPage.HOME),
@@ -1567,6 +1571,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
+    R.string.hinge_detents to CustomizationPage.FOLD_TWEAK,
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
@@ -1628,6 +1633,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
+            .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
@@ -2125,7 +2132,8 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
         railControls = if (state.searchPill) 0 else 1, // the Home pages' rail, as Home lays it out
         widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current),
-        shrinkIconsForRows = state.homeRows > BASE_APP_ROWS)
+        shrinkIconsForRows = state.homeRows > BASE_APP_ROWS,
+        duoSpacing = FeatureGate.DUO_SPACING.isOpen(androidx.compose.ui.platform.LocalContext.current))
     val placements = state.widgetPlacements.filter { it.page == page }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
@@ -2194,7 +2202,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                         .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).padding(horizontal = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
                         state.dock.forEach { id ->
                             Box(Modifier.width(geometry.dockPitch.dp), contentAlignment = Alignment.Center) {
-                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(dockIconSize(iconSize).dp), shape = RoundedCornerShape(11.dp)) }
+                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(geometry.dockIcon.dp), shape = RoundedCornerShape(11.dp)) }
                             }
                         }
                     } }
@@ -2203,7 +2211,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                         .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).padding(vertical = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         state.dock.forEach { id ->
                             Box(Modifier.fillMaxWidth().height(geometry.dockRowHeight.dp), contentAlignment = Alignment.Center) {
-                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(dockIconSize(iconSize).dp), shape = RoundedCornerShape(11.dp)) }
+                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(geometry.dockIcon.dp), shape = RoundedCornerShape(11.dp)) }
                             }
                         }
                     }
@@ -2300,6 +2308,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
         CardNote(stringResource(R.string.fold_motion_note))
     }
+    if (remember(motionContext) { FeatureGate.HINGE_DETENTS.isOpen(motionContext) }) HingeDetentsCard(state.haptics)
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
             state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")
@@ -2809,6 +2818,37 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 }
 
 /** Before Android's screen saver list opens: the one choice to make there, and what it gives. */
+/**
+ * Smart clock ink: off until the person turns on its own accessibility service, after reading what it does. The switch
+ * follows the service, so it is on exactly when Android has the service on; both ways lead to Android's Accessibility
+ * settings, where the real switch is.
+ */
+@Composable private fun SmartClockInkRow() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val on by SmartInkService.connected.collectAsStateWithLifecycle()
+    var ask by remember { mutableStateOf(false) }
+    val openAccessibility = {
+        runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        Unit
+    }
+    SettingsSwitch(stringResource(R.string.smart_clock_ink), on, { if (on) openAccessibility() else ask = true }, "smart-clock-ink-switch")
+    CardNote(stringResource(if (on) R.string.smart_clock_ink_on_note else R.string.smart_clock_ink_off_note))
+    if (ask) AlertDialog(onDismissRequest = { ask = false },
+        title = { Text(stringResource(R.string.smart_clock_ink)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                Text(stringResource(R.string.smart_ink_lead), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_looks), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_kept), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_home), fontSize = FolioType.SUBHEAD.sp)
+                Text(stringResource(R.string.smart_ink_fact_separate), fontSize = FolioType.SUBHEAD.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = { ask = false; openAccessibility() }, modifier = Modifier.testTag("smart-clock-ink-open")) {
+            Text(stringResource(R.string.open_accessibility_settings)) } },
+        dismissButton = { TextButton(onClick = { ask = false }) { Text(stringResource(R.string.not_now)) } })
+}
+
 @Composable private fun StandByScreenSaverAlert(onOpen: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(onDismissRequest = onCancel,
         title = { Text(stringResource(R.string.standby_screen_saver_setup_title)) },

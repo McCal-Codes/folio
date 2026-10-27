@@ -115,7 +115,37 @@ internal enum class FeatureGate(
      * instead of the numbers each one picked for itself. A small change in feel, so it goes to supporters and Folio
      * Dev first to say whether it reads as smoother. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Home closer to the iPhone Duo's measured spacing: on the cover the rows spread out toward the Duo's pitch when the
+     * window has free height, and the dock's apps grow from 72% to about 80% of Home's icons on both screens. It moves
+     * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
+     * [OPEN_IN_0_6_9] to open it.
+     */
+    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Hinge detents: stops felt at 45, 90 and 135 degrees and a click at flat, in place of the single tick as the Fold passes
+     * halfway. They are on by default once the gate opens, so it changes what every fold feels like and supporters and Folio
+     * Dev try it first on real hinges. Everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it.
+     */
+    HINGE_DETENTS("hingeDetents", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * The Music widget (Strip, Card and Poster) in the widget gallery. It adds a new widget to every Home and keeps the
+     * island's media reading alive for it, so supporters and Folio Dev try it first on real players; everyone gets it in
+     * 0.7.0: flip [OPEN_IN_0_7_0] to open it. A Music widget already on Home (from a layout backup) keeps drawing either way.
+     */
+    MUSIC_WIDGET("musicWidget", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * Control Center without repeats: the Media and Connectivity pages show only when the first page cannot hold what they
+     * hold (a short window, a big font, many controls), Now Playing is one slim row while nothing plays, and the battery ring
+     * stands apart from the page dots. It changes how many pages the strip shows, so supporters and Folio Dev see it first.
+     * Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
+     */
+    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

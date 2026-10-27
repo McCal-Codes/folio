@@ -291,7 +291,7 @@
     <string name="onboarding_use_badges">앱 아이콘 배지</string>
     <string name="allow_access">접근 허용</string>
     <string name="pull_down_for_more">아래로 쓸어내려 더 보기</string>
-    <string name="onboarding_gestures_detail">Folio의 제스처 서비스는 상단 모서리에서 알림 센터와 제어 센터를 엽니다. 화면 내용은 읽을 수 없습니다.</string>
+    <string name="onboarding_gestures_detail">Folio의 제스처 서비스는 상단 모서리에서 알림 센터와 제어 센터를 엽니다. 다른 앱의 화면 내용은 읽을 수 없습니다. 찍는 스크린샷은 패널 뒤를 흐리게 하는 용도뿐이며, 저장되거나 전송되지 않습니다.</string>
     <string name="onboarding_use_panels">알림 센터 및 제어 센터</string>
     <string name="onboarding_use_everywhere">다른 앱에서 Dynamic Island 및 Dock 사용</string>
     <string name="turn_on_button">켜기</string>
@@ -671,6 +671,21 @@
     <string name="all_controls_added">모든 제어 항목이 추가됨</string>
     <string name="add_a_control">제어 항목 추가</string>
     <string name="not_playing">재생 중이 아님</string>
+    <string name="music">음악</string>
+    <string name="now_playing">지금 재생 중</string>
+    <string name="playing">재생 중</string>
+    <string name="paused">일시 정지됨</string>
+    <string name="smart_clock_ink">스마트 시계 글자색</string>
+    <string name="smart_clock_ink_off_note">꺼짐. 시계 글자색은 Android 배경화면 색상으로 정해집니다.</string>
+    <string name="smart_clock_ink_on_note">켜짐. 시계가 홈 화면 사진을 보고 밝은 글자와 어두운 글자 중 하나를 고릅니다. 손쉬운 사용 설정에서 끌 수 있습니다.</string>
+    <string name="smart_ink_lead">Folio가 Android 자체 배경화면 위에서도 실제로 시계 뒤에 있는 것을 보고 큰 시계의 글자색을 밝게 또는 어둡게 정할 수 있습니다.</string>
+    <string name="smart_ink_fact_looks">Folio는 시계의 밝은 글자와 어두운 글자를 고르기 위해서만 홈 화면의 사진을 찍습니다.</string>
+    <string name="smart_ink_fact_kept">시계 아래 부분만 측정하고 사진은 바로 버립니다. 밝기 수치 몇 개만 남으며 저장하거나 전송하지 않습니다.</string>
+    <string name="smart_ink_fact_home">Folio 홈이 앞에 있을 때만 작동합니다. 그 순간 홈 위에 그려진 것(예: 플로팅 창)은 사진에 담길 수 있습니다.</string>
+    <string name="smart_ink_fact_separate">별도의 손쉬운 사용 서비스이며 Folio 제스처 서비스와는 따로 켜고 끕니다. 손쉬운 사용 설정에서 언제든 끌 수 있습니다.</string>
+    <string name="open_accessibility_settings">손쉬운 사용 설정 열기</string>
+    <string name="smart_ink_service_label">Folio 스마트 시계 글자색</string>
+    <string name="smart_ink_service_description">Folio가 큰 시계의 밝은 글자와 어두운 글자를 고르기 위해 홈 화면 사진을 찍을 수 있게 합니다. 시계 아래 부분만 측정하고 사진은 바로 버립니다. 그 외에는 아무것도 하지 않습니다.</string>
     <string name="contacts">연락처</string>
     <string name="search_the_web_ask_ai">웹 검색 및 AI에게 질문</string>
     <string name="top_hit">상위 결과</string>
@@ -1642,6 +1657,7 @@
     <string name="previewing_1">%1$s 미리보기 중</string>
     <string name="set_as_phone_wallpaper_note">Android 자체 미리보기를 열어 잠금 화면에도 표시되게 합니다. 이 변경은 Folio에서 되돌릴 수 없으므로 거기에서 다시 확인합니다.</string>
     <string name="settings_keywords_darken_behind_text">스크림 어둡게 글자 가독성 배경</string>
+    <string name="settings_keywords_smart_clock_ink">시계 글자색 배경화면 스크린샷 손쉬운 사용 밝은 어두운 대비 가독성</string>
     <string name="sunset_to_sunrise">일몰부터 일출까지</string>
     <string name="tweak_cabinet_detail">앱 아이콘을 위로 밀면 바로가기, 최근 알림, 음악 컨트롤이 담긴 작은 패널이 열립니다.</string>
     <string name="tweak_colored_albums_detail">음악 카드와 아일랜드의 사운드 바가 앨범 아트 색을 띱니다.</string>
@@ -1695,6 +1711,20 @@
     <string name="fold_motion_depth">배경화면과 아이콘 사이의 깊이감</string>
     <string name="fold_motion_light">힌지의 빛</string>
     <string name="fold_motion_note">힌지가 움직일 때 펼친 화면에서 양방향으로 재생됩니다. 동작 줄이기를 켜면 꺼집니다.</string>
+    <string name="hinge_detents">힌지 걸림</string>
+    <string name="hinge_detents_note">45°, 90°, 135°에서 부드러운 틱, 완전히 펼치면 더 단단한 클릭이 느껴집니다.</string>
+    <string name="detent_light">약하게</string>
+    <string name="detent_medium">보통</string>
+    <string name="detent_firm">강하게</string>
+    <string name="detent_angle">힌지 각도 %1$d도</string>
+    <string name="detent_none">이 각도에는 걸림이 없습니다</string>
+    <string name="detent_felt_tick">%1$d°에서 부드러운 틱</string>
+    <string name="detent_felt_closed">닫힐 때 부드러운 틱</string>
+    <string name="detent_felt_flat">완전히 펼치면 단단한 클릭</string>
+    <string name="detent_way_root">루트의 힌지 각도를 사용 중입니다. 모든 걸림이 작동합니다.</string>
+    <string name="detent_way_steps">루트가 없으면 폴드의 위치(닫힘, 반쯤 열림, 펼침)가 바뀔 때 한 번만 틱합니다.</string>
+    <string name="detent_haptics_off">햅틱이 꺼져 있습니다. 걸림을 느끼려면 설정에서 햅틱 피드백을 켜세요.</string>
+    <string name="detent_footer">Folio 자체 햅틱을 사용하며, Android 터치 피드백이 꺼져 있으면 느껴지지 않습니다.</string>
     <string name="duet_moved_note">접기 애니메이션은 이제 Duet 트윅이며, 스타일과 슬라이더는 Duet 페이지에 있습니다.</string>
     <string name="tweak_duet_detail">접기 애니메이션이 힌지를 따라 열리고 닫힙니다. 움직이는 쪽은 서리 낀 유리가 되고, 안쪽 화면에서는 커버 화면이 기다립니다.</string>
     <string name="tweak_duet_credit">스타일에 joeconsorti와 기여자들의 Duo Fold Live, Ant-lib의 hingewave, Gary Keeler의 FoldFX 코드를 사용했으며 모두 MIT입니다. Duo Open에서 영감을 받았습니다.</string>
@@ -2090,6 +2120,17 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <string name="home_apps_title">홈 화면 앱</string>
+    <string name="home_apps_detail">홈 화면에 둘 앱을 선택하세요. Folio가 이 휴대전화에서 찾은 기본 앱을 용도별로 하나씩, 최대 8개까지 선택해 두었습니다. 언제든 바꿀 수 있습니다.</string>
+    <string name="home_apps_none">아직 홈 화면에 앱이 없습니다</string>
+    <string name="home_apps_show_all">모든 앱 보기</string>
+    <string name="use_folio_now">지금 Folio 사용하기</string>
+    <plurals name="home_apps_count">
+        <item quantity="other">앱 %d개</item>
+    </plurals>
+    <plurals name="home_rows_count">
+        <item quantity="other">%d줄</item>
+    </plurals>
     <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
     <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
     <plurals name="backup_widgets_left_out">
