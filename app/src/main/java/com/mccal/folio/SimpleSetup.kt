@@ -72,13 +72,13 @@ internal object SimpleSetupPages {
 
 /**
  * Setup's pages, in order, by key. Without the branch: welcome, starting point, navigation for Android, Make Folio Your
- * Home while it isn't, the Advanced step where Shizuku or root is found, and the last page. With it: welcome, starting
+ * Home while it isn't, the Home apps page where the phone has apps to pick, the Advanced step where Shizuku or root is found, and the last page. With it: welcome, starting
  * point, Home style, Apps, Make Folio Your Home while it isn't (Simple Home is no use otherwise), and Ready, which
  * finishes setup in place of the last page.
  */
-internal fun setupPageKeys(androidStart: Boolean, advanced: Boolean, homeDone: Boolean, simpleBranch: Boolean): List<String> =
+internal fun setupPageKeys(androidStart: Boolean, advanced: Boolean, homeDone: Boolean, simpleBranch: Boolean, homeApps: Boolean = false): List<String> =
     if (simpleBranch) listOfNotNull("welcome", "feel", SimpleSetupPages.STYLE, SimpleSetupPages.APPS, "home".takeUnless { homeDone }, SimpleSetupPages.READY)
-    else listOfNotNull("welcome", "feel", "nav".takeIf { androidStart }, "home".takeUnless { homeDone }, "adv".takeIf { advanced }, "done")
+    else listOfNotNull("welcome", "feel", "apps".takeIf { homeApps }, "nav".takeIf { androidStart }, "home".takeUnless { homeDone }, "adv".takeIf { advanced }, "done")
 
 /** Whether setup offers the branch, or comes back into it after a restart: only where the gate is open. */
 internal fun simpleSetupBranch(gateOpen: Boolean, wanted: Boolean): Boolean = gateOpen && wanted

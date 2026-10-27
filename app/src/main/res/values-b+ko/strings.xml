@@ -2200,6 +2200,17 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <string name="home_apps_title">홈 화면 앱</string>
+    <string name="home_apps_detail">홈 화면에 둘 앱을 선택하세요. Folio가 이 휴대전화에서 찾은 기본 앱을 용도별로 하나씩, 최대 8개까지 선택해 두었습니다. 언제든 바꿀 수 있습니다.</string>
+    <string name="home_apps_none">아직 홈 화면에 앱이 없습니다</string>
+    <string name="home_apps_show_all">모든 앱 보기</string>
+    <string name="use_folio_now">지금 Folio 사용하기</string>
+    <plurals name="home_apps_count">
+        <item quantity="other">앱 %d개</item>
+    </plurals>
+    <plurals name="home_rows_count">
+        <item quantity="other">%d줄</item>
+    </plurals>
     <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
     <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
     <plurals name="backup_widgets_left_out">

@@ -29,6 +29,13 @@ class SimpleSetupTest {
         }
     }
 
+    @Test fun `the Home apps page sits after the starting point, and the branch keeps its own`() {
+        assertEquals(listOf("welcome", "feel", "apps", "nav", "home", "done"),
+            setupPageKeys(androidStart = true, advanced = false, homeDone = false, simpleBranch = false, homeApps = true))
+        assertEquals(listOf("welcome", "feel", "su-style", "su-apps", "home", "su-ready"),
+            setupPageKeys(androidStart = true, advanced = false, homeDone = false, simpleBranch = true, homeApps = true))
+    }
+
     @Test fun `the branch has three pages, drops navigation and Advanced, and still asks for Home`() {
         assertEquals(listOf("welcome", "feel", "su-style", "su-apps", "home", "su-ready"),
             setupPageKeys(androidStart = true, advanced = true, homeDone = false, simpleBranch = true))
