@@ -145,7 +145,15 @@ internal enum class FeatureGate(
      * stands apart from the page dots. It changes how many pages the strip shows, so supporters and Folio Dev see it first.
      * Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * The deeper Control Center settings: switches for the Media and Connectivity pages, Open on, haptic ticks on the sliders,
+     * Close after a toggle, an Auto chip on the brightness slider, an Edit controls row and Reset Control Center (with Undo), in
+     * short cards. Until it opens the page is as it was and every one of these behaves as before, so supporters and Folio Dev
+     * see it first. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
+     */
+    CC_SETTINGS_V2("ccSettingsV2", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

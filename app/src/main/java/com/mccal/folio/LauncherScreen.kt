@@ -1331,6 +1331,8 @@ fun LauncherScreen(
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
                             onClose = { sheet = "" }, onEditPins = { sheet = "pins" },
+                            // Settings > Control Center > Edit controls: Settings closes and Control Center opens in edit mode.
+                            onEditControlCenter = { sheet = ""; CcEditRequest.request(); launcherActivity.openSystemShade(ShadePanel.QUICK_SETTINGS) },
                             onWidget = { picker.slot = it; picker.anyApp(); sheet = "widgets" },
                             onAddWidget = { page -> picker.slot = model.nextWidgetSlot(); picker.targetIndex = page * HOME_CELLS; picker.anyApp(); sheet = "widgets" },
                             onRemoveWidget = widgets::remove,

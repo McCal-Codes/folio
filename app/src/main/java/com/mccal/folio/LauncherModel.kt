@@ -204,6 +204,8 @@ data class LauncherState(
     val ccCentered: Boolean = false,
     /** How Control Center's tiles are drawn: Clear glass, Frosted or Solid. */
     val ccLook: CcLook = CcLook.CLEAR,
+    /** Control Center's pages, sliders and tap behavior (FeatureGate.CC_SETTINGS_V2); the defaults are what it always did. */
+    val ccOptions: CcOptions = CcOptions(),
     /** Unfolded: iPad-style Notification Center (clock left, notifications right). */
     val ncLayout: NcLayout = NcLayout.FULL_SCREEN,
     /** Shortcuts that open the shade (a phone's one-hand operation, a Routine) draw Folio's panels over the open app instead of the phone's. */
@@ -1402,6 +1404,10 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
     fun setCcLook(look: CcLook) = updateSettings(soon = false) { it.copy(ccLook = look) }
+    fun setCcOptions(options: CcOptions) = updateSettings(soon = false) { it.copy(ccOptions = options) }
+    /** Reset Control Center, and its Undo: size, look, the middle and the options, in one write. The chosen controls are not touched. */
+    fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions) =
+        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
@@ -1644,7 +1650,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).put("ncLayout", s.ncLayout.name)
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
             .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1928,6 +1934,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
         ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),
+        ccOptions = CcOptions.read(j),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
         shadeOverApps = j.optBoolean("shadeOverApps", false),
         shadePull = j.optBoolean("shadePull", false),
