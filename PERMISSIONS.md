@@ -40,7 +40,7 @@ turns that off). The picture behind the panels is then taken before the panel ap
 full-size picture is dropped as soon as it has been shrunk. The small blurred picture is shown behind the panels, kept only in memory, never saved, logged or sent, and
 let go of when the panels close (`EverywhereOverlay.kt`). Settings › Blur at zero, or Reduce Transparency, stops it, and without it the panels sit on Folio's frosted
 glass instead. Without the service, Home's swipe-down gestures use Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
-(`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
+(`ShadeShortcutNotifications` and `ShadeShortcutQuickSettings`), use the same service so a button or gesture action on your phone that opens an app can pull the
 shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
 **Folio's Smart clock ink service** (`SmartInkService`, a second accessibility service, off until you turn it on in Android Settings ›

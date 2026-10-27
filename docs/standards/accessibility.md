@@ -90,7 +90,7 @@ Not yet:
 - Widget picker secondary text scores 2.59:1 (`WidgetPicker.kt:228`).
 - 51 ellipses and 68 `maxLines = 1`; no 200% pass yet, except Home: its app labels and the built-in widget cards follow the font scale only to
   130% (A11Y-13, `glanceFontFactor` in `FolioTokens.kt`), the Preview bar measures its close button first, Spotlight's web chips wrap, and
-  App Library category names take two lines (27 Oct sweep, F04 to F08).
+  App Library category names take two lines (27 Oct sweep, F04 to F08). The Market sidebar grows with its tab names (180 dp up to 234 dp, `marketSidebarWidthDp`), a folder's name on Home takes its line height from the Home label cap like an app's, and `IosSegmented` grows with its labels (27 Oct, Fold 8 inner screen).
 - 3 live regions; no focus rings; no RTL check; `Role.Switch` used once.
 
 ## Gaps
