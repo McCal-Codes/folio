@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 
@@ -75,6 +76,40 @@ class HomeFitTest {
                 if (!g.horizontalDock) assertTrue("$name grid ${g.gridWidth} beside the Side Bar", g.gridWidth + 16f + LayoutPreset().dockWidth <= w + 0.01f)
                 assertTrue("$name dock inside", g.dockTop >= 8f && g.dockTop + g.dockHeight <= h + 0.01f)
             }
+        }
+    }
+
+    /** Where the page ends in edit mode: the usual rows pushed down by the room the edit bar asks for (what HomePagePane does). */
+    private fun editEnd(g: HomeGeometry, w: Float, fontScale: Float, p: Placed): Pair<Float, Boolean> {
+        val beside = jiggleBarBesideGrid(g.horizontalDock, g.dockBesideRail, g.homeWidth, g.gridWidth, fontScale)
+        return p.end + jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, g.contentTop, g.expanded, beside) to beside
+    }
+
+    @Test fun `edit mode does not push a row under the dock where the bar sits beside the page`() {
+        forEachWindow { tag, w, h ->
+            for (preview in listOf(false, true)) for (duo in listOf(false, true)) for (auto in listOf(false, true)) {
+                val g = geo(w, h, duo, preview = preview, automatic = auto)
+                val p = place(g, h, preview, BASE_APP_ROWS)
+                if (g.splitColumns || p.reachableRows < BASE_APP_ROWS) continue
+                val (end, beside) = editEnd(g, w, 1f, p)
+                if (beside) assertTrue("$tag preview=$preview duo=$duo auto=$auto edit mode ends $end, page limit ${limit(g, h, preview)}", end <= limit(g, h, preview) + 0.5f)
+            }
+        }
+    }
+
+    /** F01 (27 Oct sweep): the fold AVD's inner display, upright and regular, with the Preview bar and without it. */
+    @Test fun `the fold's inner display keeps all four rows above the dock in edit mode`() {
+        val (w, h) = 750f to 800f
+        for (preview in listOf(false, true)) for (duo in listOf(false, true)) {
+            val g = geo(w, h, duo, preview = preview)
+            assertTrue("upright regular keeps the dock bar", g.horizontalDock && !g.dockBesideRail)
+            val p = place(g, h, preview, BASE_APP_ROWS)
+            assertEquals("normal mode, preview=$preview: every row reachable", BASE_APP_ROWS, p.reachableRows)
+            val (end, beside) = editEnd(g, w, 1f, p)
+            assertTrue("the edit bar is beside the page here", beside)
+            assertTrue("edit mode, preview=$preview duo=$duo: the page ends $end, the page limit is ${limit(g, h, preview)}", end <= limit(g, h, preview) + 0.5f)
+            // A bigger text size widens the bar's pills: then they reach over the grid and it keeps its room.
+            assertTrue("at 200% text the bar needs its room", !editEnd(g, w, 2f, p).second)
         }
     }
 
@@ -208,7 +243,10 @@ class HomeFitTest {
     }
 
     @Test fun `write the table`() {
-        val file = System.getenv("FOLIO_HOME_FIT_TABLE") ?: return
+        // A generator, not a check: shown as skipped (not passed) unless the variable names a file to write.
+        val file = System.getenv("FOLIO_HOME_FIT_TABLE")
+        assumeTrue("FOLIO_HOME_FIT_TABLE is not set", file != null)
+        file!!
         val out = StringBuilder("window | duo | rows | icon | row | top slack | bottom slack | ratio | pct top | pct bottom | reachable cells\n")
         forEachWindow { tag, w, h ->
             for (duo in listOf(false, true)) {

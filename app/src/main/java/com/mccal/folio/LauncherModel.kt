@@ -923,6 +923,19 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         persist()
     }
 
+    /** Setup's Home page: the ticked apps from [offered] go on Home, the unticked ones come off. See [homeSlotsForPicks]. */
+    fun applyHomePicks(offered: List<String>, picked: Set<String>, firstRun: Boolean) {
+        if (statePayloadInvalid) return
+        mutable.update { old ->
+            val away = old.folders.flatMapTo(mutableSetOf()) { it.appIds } + old.leadingSlots.filterNotNull()
+            val installed = old.apps.mapTo(mutableSetOf()) { it.id }
+            val blocked = old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 }
+            old.copy(homeSlots = homeSlotsForPicks(old.homeSlots, offered, picked.filterTo(mutableSetOf()) { it in installed && it !in away }, blocked, old.homeAppRows, firstRun),
+                leadingSlots = old.leadingSlots.map { if (it != null && it in offered && it !in picked) null else it }, canUndoEdit = false)
+        }
+        persist()
+    }
+
     fun turnOnWork(userSerial: Long): Boolean = runCatching {
         val user = userManager.getUserForSerialNumber(userSerial) ?: return false
         if (userManager.getSerialNumberForUser(Process.myUserHandle()) == userSerial || user !in launcherApps.profiles) return false

@@ -1421,6 +1421,9 @@
     <plurals name="restore_folders">
         <item quantity="other">%1$d 个文件夹</item>
     </plurals>
+    <plurals name="restore_widgets_skipped">
+        <item quantity="other">此备份中有 %1$d 个小组件来自更新版本的 Folio，将不会恢复。</item>
+    </plurals>
     <plurals name="restore_widgets">
         <item quantity="other">%1$d 个小组件</item>
     </plurals>
