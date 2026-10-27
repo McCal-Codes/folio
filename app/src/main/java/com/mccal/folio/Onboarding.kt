@@ -124,7 +124,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Use Folio now: the starting point stays at its default, Home gets the starter apps if it is empty, and setup goes straight to
     // the one step that cannot wait. Everything skipped waits in Finish setting up.
     fun useFolioNow() {
-        if (state != null && model != null && homeApps.isNotEmpty() && (!SetupReplay.active || state.homeSlots.none { it != null })) applyHomePicks(model, state, homeApps, initialHomePicks(state, homeApps, firstRun = !SetupReplay.active))
+        if (state != null && model != null && homeApps.isNotEmpty() && (!SetupReplay.active || state.homeSlots.none { it != null })) applyHomePicks(model, homeApps, initialHomePicks(state, homeApps, firstRun = !SetupReplay.active), firstRun = !SetupReplay.active)
         go(all.indexOfFirst { it.key == "home" }.takeIf { it >= 0 } ?: all.lastIndex)
     }
     val page = all[index]
@@ -168,8 +168,10 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     else Box(Modifier.size(headSize).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
                         Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(if (compactHead) 32.dp else 56.dp))
                     }
-                    Text(p.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                        lineHeight = 40.sp, modifier = Modifier.padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.XXL.dp))
+                    // 200% is the largest size Android's own Settings offers; past it (adb can set 300%) a word like "Welcome"
+                    // is wider than the screen and broke in the middle, so the headline stops growing there (the body keeps scaling).
+                    Text(p.title, color = Color.White, fontSize = cappedSp(34, HEADLINE_TEXT_CAP), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                        lineHeight = cappedSp(40, HEADLINE_TEXT_CAP), modifier = Modifier.padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.XXL.dp))
                     Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
                         modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                     if (p.uses.isNotEmpty()) SheetGroup(Modifier.padding(top = FolioSpace.XXL.dp)) {
@@ -229,7 +231,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     when {
                         page.key == "done" -> finish()
                         page.key == "nav" -> { applyNavigation(); go(index + 1) }
-                        page.key == "apps" -> { if (state != null && model != null) applyHomePicks(model, state, homeApps, picked); go(index + 1) }
+                        page.key == "apps" -> { if (state != null && model != null) applyHomePicks(model, homeApps, picked, firstRun = !SetupReplay.active); go(index + 1) }
                         page.onAction != null && !done -> page.onAction.invoke()
                         else -> go(index + 1)
                     }

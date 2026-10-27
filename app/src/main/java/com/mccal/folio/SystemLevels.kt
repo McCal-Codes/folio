@@ -81,8 +81,21 @@ internal class LiveLevel(initial: Float) {
     }
 }
 
+/** Whether the phone sets the brightness itself, as the SCREEN_BRIGHTNESS_MODE setting says; [UNKNOWN] where the phone has no such setting. */
+internal enum class BrightnessMode { AUTO, MANUAL, UNKNOWN }
+
+/** The mode for a raw SCREEN_BRIGHTNESS_MODE value (null when it could not be read). */
+internal fun brightnessModeOf(raw: Int?): BrightnessMode = when (raw) {
+    Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC -> BrightnessMode.AUTO
+    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL -> BrightnessMode.MANUAL
+    else -> BrightnessMode.UNKNOWN
+}
+
 /** What one reading of the system says. */
-internal data class SystemReading(val volume: Float, val brightness: Float, val brightnessManual: Boolean)
+internal data class SystemReading(val volume: Float, val brightness: Float, val brightnessMode: BrightnessMode) {
+    /** A drag has to switch the mode to manual unless the phone is known to be on automatic. */
+    val brightnessManual: Boolean get() = brightnessMode != BrightnessMode.AUTO
+}
 
 /**
  * Watches the music volume and the screen brightness and calls [onChange] on the main thread with a fresh reading.
@@ -137,10 +150,8 @@ internal class SystemLevels(private val context: Context, private val onChange: 
                 audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC), audio.isStreamMute(AudioManager.STREAM_MUSIC))
         }.getOrDefault(0f)
         val brightness = runCatching { brightnessFraction(Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS)) }.getOrDefault(.5f)
-        val manual = runCatching {
-            Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE) == Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
-        }.getOrDefault(true)
-        return SystemReading(volume, brightness, manual)
+        val mode = brightnessModeOf(runCatching { Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE) }.getOrNull())
+        return SystemReading(volume, brightness, mode)
     }
 
     /** Asks for a reading soon; many asks before it happens make one. */

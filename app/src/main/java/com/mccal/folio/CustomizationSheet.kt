@@ -192,6 +192,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     onOpenMarket: () -> Unit = {},
     onShowWelcome: () -> Unit = {},
     onShowWhatsNew: () -> Unit = {},
+    onEditControlCenter: () -> Unit = {},
 ) {
     var wide by rememberSaveable { mutableStateOf(initiallyWide) }
     // Which inner layout the layout sliders edit, when the upright one is separate.
@@ -433,7 +434,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.touch_and_hold_note))
                     }
                     // One page for the panels: the on/off switch and, when on, their options.
-                    if (page == CustomizationPage.NOTIFICATIONS) SettingsCard(stringResource(R.string.panels)) {
+                    if (page == CustomizationPage.NOTIFICATIONS) {
+                    // The deeper Control Center settings, in short cards, for supporters and Folio Dev first (FeatureGate.CC_SETTINGS_V2).
+                    val ccV2 = FeatureGate.CC_SETTINGS_V2.isOpen(androidx.compose.ui.platform.LocalContext.current)
+                    SettingsCard(stringResource(R.string.panels)) {
                         SettingsSwitch(stringResource(R.string.iphone_style_control_center_and_notifica), state.folioPanels, model::setFolioPanels, "folio-panels-switch")
                         if (state.folioPanels) {
                         CustomizationSlider(stringResource(R.string.background_blur), "${(state.panelBlur * 100).toInt()}%", state.panelBlur, 0f..1f) { model.setPanelBlur(it) }
@@ -449,6 +453,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.nc_layout_note))
                         SettingsSwitch(stringResource(R.string.notification_sections), state.notificationSections, model::setNotificationSections, "notification-sections-switch")
                         if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
+                        if (!ccV2) {
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
                         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
                         CardNote(stringResource(R.string.cc_look_note))
@@ -457,6 +462,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.tip_tap_at_the_top_of_control_center_to))
                         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
                         }
+                        }
+                    }
+                    if (ccV2 && state.folioPanels) ControlCenterSettingsCards(state, model, onEditControlCenter)
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.spotlight)) {
                         IosMenuRow(stringResource(R.string.search_with_enter),
@@ -523,8 +531,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.search)) {
                         // One choice instead of a switch: what sits above the dock at rest. Nothing is still in beta.
-                        val stripContext = androidx.compose.ui.platform.LocalContext.current
-                        val nothingOpen = remember(stripContext) { FeatureGate.HOME_STRIP_NOTHING.isOpen(stripContext) }
+                        val nothingOpen = rememberGateOpen(FeatureGate.HOME_STRIP_NOTHING)
                         IosMenuRow(stringResource(R.string.home_strip), HomeStrip.entries.filter { it != HomeStrip.NOTHING || nothingOpen || state.homeStrip == it }
                             .map { it to stringResource(it.label) }, state.homeStrip, model::setHomeStrip, tag = "home-strip")
                         CardNote(stringResource(R.string.home_strip_note))
@@ -579,7 +586,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to stringResource(it.label) }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
                             BadgePreviewRow(state)
                             // Clear Badges When Opened, for supporters until 0.6.8 (FeatureGate.BADGES_WHEN_OPENED).
-                            val badgesWhenOpenedOpen = remember { FeatureGate.BADGES_WHEN_OPENED.isOpen(iconContext) }
+                            val badgesWhenOpenedOpen = rememberGateOpen(FeatureGate.BADGES_WHEN_OPENED)
                             if (badgesWhenOpenedOpen) {
                                 SettingsSwitch(stringResource(R.string.clear_badges_when_opened), state.badgesWhenOpened,
                                     model::setBadgesWhenOpened, "badges-when-opened-switch")
@@ -709,9 +716,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             { tweakId = DUET_ID; onPage(CustomizationPage.FOLD_TWEAK) }, "fold-duet")
                         CardNote(stringResource(R.string.duet_moved_note))
                     }
-                    val standByMoreOpen = remember { FeatureGate.STANDBY_CHARGING.isOpen(sheetContext) }
+                    val standByMoreOpen = rememberGateOpen(FeatureGate.STANDBY_CHARGING)
                     // Only the ways this phone can use: half-open and tent need a hinge.
-                    val standByOffered = remember { standByWaysOffered(hasHinge(sheetContext), standByMoreOpen) }
+                    val standByOffered = remember(standByMoreOpen) { standByWaysOffered(hasHinge(sheetContext), standByMoreOpen) }
                     if (standByOffered.isNotEmpty()) SettingsCard(stringResource(R.string.standby)) {
                         if (StandByWay.HALF_OPEN in standByOffered)
                             SettingsSwitch(stringResource(R.string.standby_half_open_like_a_laptop), state.standBy, model::setStandBy, "standby-switch")
@@ -1177,25 +1184,27 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 }
 
 @Composable private fun SettingsNavBar(backLabel: String?, onBack: () -> Unit, onClose: () -> Unit, leading: (@Composable () -> Unit)? = null) {
-    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right.
-    Box(Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-        Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right. Back gives way to Done (it
+    // shortens with an ellipsis), so at a large font size the two never touch or overlap.
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             leading?.invoke()
-            if (backLabel != null) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+            if (backLabel != null) Row(Modifier.weight(1f, fill = false).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                 .clickable(onClick = onBack).padding(vertical = FolioSpace.SMALL.dp, horizontal = FolioSpace.HAIR.dp).testTag("customization-back"),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(28.dp))
-                Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
+                Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
         }
-        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.CenterEnd).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onClose)
+        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            modifier = Modifier.padding(start = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onClose)
                 .padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.SMALL.dp).description(R.string.close_customization))
     }
 }
 
-@Composable private fun SettingsLargeTitle(title: String) = Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = 32.sp,
-    fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
+@Composable private fun SettingsLargeTitle(title: String) = Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.LARGE_TITLE.sp,
+    lineHeight = FolioType.LARGE_TITLE_LINE.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
 
 /** Sidebar header row: Folio's icon, name and setup state, like the account card in iPad Settings. */
 @Composable private fun SidebarAppRow(selected: Boolean, setupLeft: Int, onClick: () -> Unit) {
@@ -1534,6 +1543,13 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.size to CustomizationPage.ACCESSIBILITY,
     R.string.control_center_size to CustomizationPage.NOTIFICATIONS,
     R.string.control_center_look to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_media_page to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_connectivity_page to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_open_on to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_slider_ticks to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_close_after to CustomizationPage.NOTIFICATIONS,
+    R.string.edit_controls to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_reset to CustomizationPage.NOTIFICATIONS,
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
     R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,
@@ -1610,6 +1626,10 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
  * A search result scrolls to its row when it is a row: an entry with no keywords, or one with keywords whose title is also
  * a row (Folder background is found by "glass" or "blur" and is still one control further down its page).
  */
+/** The rows that exist only while [FeatureGate.CC_SETTINGS_V2] is open; search skips them until then. */
+internal val CC_SETTINGS_V2_ROWS: Set<Int> = setOf(R.string.cc_media_page, R.string.cc_connectivity_page, R.string.cc_open_on, R.string.cc_slider_ticks,
+    R.string.cc_close_after, R.string.edit_controls, R.string.cc_reset)
+
 internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null || SettingsRows.any { it.first == title }
 
 /**
@@ -1648,6 +1668,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
             .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
+            // The deeper Control Center rows are on the page only while their gate is open, so search only finds them then.
+            .filter { it.first !in CC_SETTINGS_V2_ROWS || FeatureGate.CC_SETTINGS_V2.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
@@ -1919,8 +1941,7 @@ internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, o
         }
     }
     // Supporters and Folio Dev first (FeatureGate.FOCUS_TRIGGERS); everyone from 0.6.9.
-    val gateContext = androidx.compose.ui.platform.LocalContext.current
-    val triggersOpen = remember { FeatureGate.FOCUS_TRIGGERS.isOpen(gateContext) }
+    val triggersOpen = rememberGateOpen(FeatureGate.FOCUS_TRIGGERS)
     if (triggersOpen) SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
         val triggers = mode.triggers
         SettingsSwitch(stringResource(R.string.focus_trigger_folding), triggers.fold != null,
@@ -2199,7 +2220,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (app != null) AppIcon(app, null, Modifier.size(iconSize.dp), shape = RoundedCornerShape((iconSize * .24f).dp))
                                 else if (folder != null) PreviewFolder(folder, apps, iconSize)
-                                if (labels) Text(app?.label ?: folder?.title.orEmpty(), color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                if (labels) Text(app?.label ?: folder?.title.orEmpty(), color = ink.primary, fontSize = (LocalLabelSize.current.sp * glanceFontFactor(LocalDensity.current.fontScale)).sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp),
                                     style = androidx.compose.ui.text.TextStyle(shadow = ink.labelShadow))
                             }
@@ -2321,7 +2342,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
         CardNote(stringResource(R.string.fold_motion_note))
     }
-    if (remember(motionContext) { FeatureGate.HINGE_DETENTS.isOpen(motionContext) }) HingeDetentsCard(state.haptics)
+    if (rememberGateOpen(FeatureGate.HINGE_DETENTS)) HingeDetentsCard(state.haptics)
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
             state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")

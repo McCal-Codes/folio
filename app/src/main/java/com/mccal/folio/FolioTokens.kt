@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 
 /**
  * Folio's shared colors: Apple's dark-appearance system colors, named once so screens, themes and Market packages all
@@ -217,7 +218,19 @@ internal object FolioType {
     const val CAPTION = 11
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
+    /** The big title at the top of a Settings page, and its line height (a two-line title keeps air between its lines). */
+    const val LARGE_TITLE = 32
+    const val LARGE_TITLE_LINE = 38
 }
+
+/** The largest system font scale glanceable chrome follows (A11Y-13): Home's app labels, and the text on a built-in widget card. */
+internal const val GLANCE_MAX_FONT_SCALE = 1.3f
+
+/**
+ * What to multiply an sp size by so the system's [fontScale] stops growing it at [GLANCE_MAX_FONT_SCALE]: 1 up to that scale,
+ * less beyond it. Text that cannot grow with its box (an icon's one-line label, a card of fixed size) would otherwise be cut off at 200%.
+ */
+internal fun glanceFontFactor(fontScale: Float): Float = if (fontScale <= GLANCE_MAX_FONT_SCALE) 1f else GLANCE_MAX_FONT_SCALE / fontScale
 
 /**
  * The smallest a finger's target may be, in dp (A11Y-1). What a control *draws* can be smaller: put the drawn thing
@@ -226,6 +239,24 @@ internal object FolioType {
 internal object FolioTouch {
     const val MIN = 48
 }
+
+/** How far glanceable chrome text (tab labels) follows the font size: up to 1.3 times (A11Y-13). */
+internal const val CHROME_TEXT_CAP = 1.3f
+
+/** The most a page headline grows with the font size: 200%, the largest Android's Settings offers (A11Y-12). */
+internal const val HEADLINE_TEXT_CAP = 2f
+
+/**
+ * The size in sp to give chrome text so that, drawn at [fontScale], it is no larger than [size] x [cap]. Only for a short
+ * label that cannot wrap, like a tab's; body text keeps the full scale (A11Y-12). A font scale that is not a positive
+ * number leaves the size alone.
+ */
+internal fun cappedTextSize(size: Float, fontScale: Float, cap: Float = CHROME_TEXT_CAP): Float =
+    if (!(fontScale > cap)) size else size * cap / fontScale
+
+@androidx.compose.runtime.Composable
+internal fun cappedSp(size: Int, cap: Float = CHROME_TEXT_CAP): androidx.compose.ui.unit.TextUnit =
+    cappedTextSize(size.toFloat(), androidx.compose.ui.platform.LocalDensity.current.fontScale, cap).sp
 
 /** Row heights, in dp: iOS's list metrics, and never below the 48dp touch target (A11Y-1). */
 internal object FolioRow {
