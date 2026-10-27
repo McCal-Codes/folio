@@ -107,12 +107,15 @@ internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, onRemo
 @Composable
 internal fun JigglePill(label: String, icon: ImageVector? = null, description: String = label, emphasized: Boolean = false,
     modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // The bar sits on the wallpaper, so it follows Home's ink like the Search pill does: white text on a light surface vanished (27 Oct sweep, F03 follow-up).
+    val homeInk = LocalHomeInk.current
     Box(modifier.minimumInteractiveComponentSize(), contentAlignment = Alignment.Center) {
         Row(Modifier.heightIn(min = 34.dp).clip(CircleShape)
-            .background(if (emphasized) Color.White.copy(alpha = .92f) else Color.White.copy(alpha = .22f))
+            .background(if (emphasized) (if (homeInk.dark) homeInk.primary.copy(alpha = .92f) else Color.White.copy(alpha = .92f))
+                else if (homeInk.dark) Color.White.copy(alpha = .45f) else Color.White.copy(alpha = .22f))
             .clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = description }
             .padding(horizontal = if (label.isEmpty()) 7.dp else FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
-            val ink = if (emphasized) Color.Black else Color.White
+            val ink = if (emphasized) (if (homeInk.dark) Color.White else Color.Black) else homeInk.primary
             icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(20.dp)) }
             if (label.isNotEmpty()) Text(label, color = ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
         }

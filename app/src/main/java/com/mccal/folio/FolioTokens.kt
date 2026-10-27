@@ -217,7 +217,19 @@ internal object FolioType {
     const val CAPTION = 11
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
+    /** The big title at the top of a Settings page, and its line height (a two-line title keeps air between its lines). */
+    const val LARGE_TITLE = 32
+    const val LARGE_TITLE_LINE = 38
 }
+
+/** The largest system font scale glanceable chrome follows (A11Y-13): Home's app labels, and the text on a built-in widget card. */
+internal const val GLANCE_MAX_FONT_SCALE = 1.3f
+
+/**
+ * What to multiply an sp size by so the system's [fontScale] stops growing it at [GLANCE_MAX_FONT_SCALE]: 1 up to that scale,
+ * less beyond it. Text that cannot grow with its box (an icon's one-line label, a card of fixed size) would otherwise be cut off at 200%.
+ */
+internal fun glanceFontFactor(fontScale: Float): Float = if (fontScale <= GLANCE_MAX_FONT_SCALE) 1f else GLANCE_MAX_FONT_SCALE / fontScale
 
 /**
  * The smallest a finger's target may be, in dp (A11Y-1). What a control *draws* can be smaller: put the drawn thing
