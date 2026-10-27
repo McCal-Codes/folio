@@ -50,6 +50,13 @@ thrown away at once, at most one every two seconds; only a few brightness number
 sent (`SmartInkService.kt`, `SmartClockInk.kt`). It is a separate switch from the gestures service above. Both hold the
 screenshot capability; the gestures service uses its own only for the panel blur described there. Without it, the clock's text color comes from Android's wallpaper colors, as before.
 
+**AirPods battery with root** (optional, System Bridge, for supporters and Folio Dev first) asks Android for no permission
+at all. On a phone where you have tested root in Settings › Advanced › System Bridge, with Advanced options on, Folio runs
+one fixed command as root, `dumpsys bluetooth_manager`, and reads the AirPods battery that Android's Bluetooth service
+already holds. It runs only when you tap Refresh there, or when the headphones card appears with "Show on the headphones
+card" turned on (off to start with), at most once every 30 seconds (`AirPodsBattery.kt`). Nothing is kept or sent; the
+report you can copy replaces Bluetooth addresses and shortens device names. Turning system access off or Safe Mode stops it.
+
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a
 service that reads nothing from one that reads everything. If a bank app does it, turning Folio's service off in
