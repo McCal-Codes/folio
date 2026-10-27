@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
@@ -20,7 +21,9 @@ class GeometryExportTest {
     )
 
     @Test fun export() {
-        val out = System.getenv("FOLIO_GEOMETRY_OUT") ?: return
+        val out = System.getenv("FOLIO_GEOMETRY_OUT")
+        assumeTrue("FOLIO_GEOMETRY_OUT is not set", out != null)
+        out!!
         val rows = mutableListOf<String>()
         for ((name, size) in screens) for (rotated in listOf(false, true)) for (half in listOf(false, true)) {
             val (w0, h0) = if (rotated) size.second to size.first else size

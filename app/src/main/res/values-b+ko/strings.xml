@@ -1122,6 +1122,9 @@
     <plurals name="restore_folders">
         <item quantity="other">폴더 %1$d개</item>
     </plurals>
+    <plurals name="restore_widgets_skipped">
+        <item quantity="other">이 백업의 위젯 %1$d개는 더 최신 버전의 Folio에서 만든 것이라 제외됩니다.</item>
+    </plurals>
     <plurals name="restore_widgets">
         <item quantity="other">위젯 %1$d개</item>
     </plurals>
@@ -1336,7 +1339,7 @@
     <string name="settings_hide_the_island_in_full_screen">전체 화면에서 Dynamic Island 숨기기</string>
     <string name="settings_keywords_hide_the_island_in_full_screen">Dynamic Island 전체 화면 가로 동영상 게임 몰입 숨기기</string>
     <string name="settings_keywords_notification_center">알림 시계 스택 그룹 분할 흐림 패널 아이폰 스타일</string>
-    <string name="settings_keywords_control_center">제어 센터 크기 가운데 스위치</string>
+    <string name="settings_keywords_control_center">제어 센터 크기 가운데 스위치 페이지 미디어 연결 슬라이더 밝기 자동 햅틱 재설정 편집 닫기</string>
     <string name="settings_keywords_spotlight">검색 엔진 Google 구글 DuckDuckGo 덕덕고 연락처 계산기 섹션 메시지 OpenBubbles bing brave ecosia startpage qwant kagi custom url</string>
     <string name="settings_keywords_app_library">보관함 카테고리 숨긴 앱</string>
     <string name="settings_search_button_swipe_down">검색 버튼 및 쓸어내리기</string>
@@ -2182,6 +2185,24 @@
     <string name="storage_downloads">다운로드</string>
     <string name="storage_action_unavailable">이 휴대전화에서는 %1$s 기능을 사용할 수 없어요.</string>
     <string name="settings_keywords_storage">저장공간 용량 디스크 공간 확보 USB SD 카드 드라이브 다운로드 파일 가득</string>
+    <string name="cc_pages_title">페이지</string>
+    <string name="cc_media_page">미디어 및 소리 페이지</string>
+    <string name="cc_connectivity_page">연결 페이지</string>
+    <string name="cc_open_on">열 때 표시</string>
+    <string name="cc_open_on_last">마지막으로 본 페이지</string>
+    <string name="cc_pages_note">첫 페이지와 내용이 겹치는 페이지는 설정과 관계없이 자동으로 숨겨집니다. 미디어 및 소리 페이지를 끈 상태에서 첫 페이지에 밝기와 볼륨을 둘 공간이 없으면 표시되지 않습니다.</string>
+    <string name="cc_sliders_title">슬라이더</string>
+    <string name="cc_slider_ticks">드래그할 때 햅틱 틱</string>
+    <string name="cc_sliders_note">밝기와 볼륨은 드래그하는 동안 퍼센트를 표시합니다. 밝기를 드래그하면 자동 밝기가 꺼지며, 슬라이더의 자동 칩으로 다시 켤 수 있습니다.</string>
+    <string name="cc_controls_count">%2$d개 중 %1$d개</string>
+    <string name="cc_close_after">토글 후 닫기</string>
+    <string name="cc_close_after_note">손전등, 카메라, 계산기, 스크린샷, 화면 잠금, Wallet, 메모, 설정을 탭하면 제어 센터를 닫습니다. 방해 금지 같은 스위치는 열린 상태로 유지됩니다.</string>
+    <string name="cc_edit_controls_note">제어 센터를 열어 제어 항목을 추가, 제거, 이동할 수 있습니다.</string>
+    <string name="cc_reset">제어 센터 재설정</string>
+    <string name="cc_reset_note">이 페이지의 크기, 스타일, 페이지, 옵션을 처음 상태로 되돌립니다. 선택한 제어 항목은 그대로 유지됩니다.</string>
+    <string name="cc_reset_done">제어 센터를 기본값으로 되돌렸습니다.</string>
+    <string name="cc_auto">자동</string>
+    <string name="cc_auto_brightness">자동 밝기</string>
     <string name="island_adjust">Dynamic Island 조정</string>
     <string name="island_adjust_note">핸들을 끌어 Dynamic Island를 넓히거나, 위치를 조금씩 옮기거나, 카메라에 맞출 수 있습니다.</string>
     <string name="island_adjust_hint">둥근 핸들을 끌어 크기를 바꾸세요. 화살표로 조금씩 옮길 수 있습니다.</string>

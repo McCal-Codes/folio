@@ -298,7 +298,9 @@ internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
     fun clamped(windowWidthPx: Int, windowHeightPx: Int, density: Float, pillHDp: Float): IslandPosition {
         val heightDp = windowHeightPx / density
         val maxTop = (heightDp - pillHDp - ISLAND_EDGE_GAP).coerceAtLeast(ISLAND_EDGE_GAP)
-        return IslandPosition(xFraction.coerceIn(0f, 1f), topDp.coerceIn(ISLAND_EDGE_GAP, maxTop))
+        // NaN stays NaN through coerceIn, so it is replaced here; an infinite value is pulled to the edge by coerceIn.
+        return IslandPosition((if (xFraction.isNaN()) .5f else xFraction).coerceIn(0f, 1f),
+            (if (topDp.isNaN()) ISLAND_EDGE_GAP else topDp).coerceIn(ISLAND_EDGE_GAP, maxTop))
     }
 
     companion object {
@@ -308,10 +310,19 @@ internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
             wide -> if (landscape) "island_pos_inner" else "island_pos_inner_portrait"
             else -> if (landscape) "island_pos_cover_landscape" else "island_pos_cover"
         }
+        /** The most a saved top can be, in dp: far past any screen, so only a damaged value is beyond it. */
+        private const val MAX_TOP_DP = 10_000f
+        /** "x,y" as saved, or null for anything else: NaN, infinity, a fraction outside the window or a top far off the screen are not set. */
+        fun parse(raw: String?): IslandPosition? {
+            val parts = raw?.split(',') ?: return null
+            if (parts.size != 2) return null
+            val x = parts[0].trim().toFloatOrNull() ?: return null
+            val y = parts[1].trim().toFloatOrNull() ?: return null
+            if (!x.isFinite() || !y.isFinite() || x !in 0f..1f || y !in 0f..MAX_TOP_DP) return null
+            return IslandPosition(x, y)
+        }
         fun load(context: android.content.Context, wide: Boolean, landscape: Boolean): IslandPosition? =
-            context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null)?.split(',')?.let { parts ->
-                runCatching { IslandPosition(parts[0].toFloat(), parts[1].toFloat()) }.getOrNull()
-            }
+            parse(runCatching { context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null) }.getOrNull())
         fun save(context: android.content.Context, wide: Boolean, landscape: Boolean, position: IslandPosition?) {
             context.getSharedPreferences("folio", 0).edit().apply {
                 if (position == null) remove(key(wide, landscape)) else putString(key(wide, landscape), "${position.xFraction},${position.topDp}")
@@ -347,8 +358,12 @@ internal object IslandSize {
     }
     /** Never negative and never more than the room beside the camera allows ([IslandGeometry.maxExtra]). */
     fun clamp(extraDp: Float, geometry: IslandGeometry): Float = if (extraDp.isNaN()) 0f else extraDp.coerceIn(0f, geometry.maxExtra)
+    /** The most a saved width can add, in dp: far wider than any camera area, so only a damaged value is beyond it. */
+    private const val MAX_EXTRA_DP = 1_000f
+    /** A saved width as is when it is a sensible number of dp, else 0, the automatic fit. */
+    fun sane(extraDp: Float): Float = if (extraDp.isFinite() && extraDp > 0f && extraDp <= MAX_EXTRA_DP) extraDp else 0f
     fun load(context: android.content.Context, wide: Boolean, landscape: Boolean): Float =
-        context.getSharedPreferences("folio", 0).getFloat(key(wide, landscape), 0f).takeIf { !it.isNaN() && it > 0f } ?: 0f
+        sane(runCatching { context.getSharedPreferences("folio", 0).getFloat(key(wide, landscape), 0f) }.getOrDefault(0f))
     fun save(context: android.content.Context, wide: Boolean, landscape: Boolean, extraDp: Float) {
         context.getSharedPreferences("folio", 0).edit().apply {
             if (extraDp <= 0f || extraDp.isNaN()) remove(key(wide, landscape)) else putFloat(key(wide, landscape), extraDp)
@@ -380,10 +395,17 @@ internal data class IslandNudge(val dxDp: Float, val dyDp: Float) {
             wide -> if (landscape) "island_nudge_inner" else "island_nudge_inner_portrait"
             else -> if (landscape) "island_nudge_cover_landscape" else "island_nudge_cover"
         }
+        /** "dx,dy" as saved, or [None] for anything else: NaN, infinity, or beyond [NUDGE_LIMIT_DP], which the arrows never save. */
+        fun parse(raw: String?): IslandNudge {
+            val parts = raw?.split(',') ?: return None
+            if (parts.size != 2) return None
+            val dx = parts[0].trim().toFloatOrNull() ?: return None
+            val dy = parts[1].trim().toFloatOrNull() ?: return None
+            if (!dx.isFinite() || !dy.isFinite() || kotlin.math.abs(dx) > NUDGE_LIMIT_DP || kotlin.math.abs(dy) > NUDGE_LIMIT_DP) return None
+            return IslandNudge(dx, dy)
+        }
         fun load(context: android.content.Context, wide: Boolean, landscape: Boolean): IslandNudge =
-            context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null)?.split(',')?.let { parts ->
-                runCatching { IslandNudge(parts[0].toFloat(), parts[1].toFloat()).takeIf { !it.dxDp.isNaN() && !it.dyDp.isNaN() } }.getOrNull()
-            }?.let { IslandNudge(it.dxDp.coerceIn(-NUDGE_LIMIT_DP, NUDGE_LIMIT_DP), it.dyDp.coerceIn(-NUDGE_LIMIT_DP, NUDGE_LIMIT_DP)) } ?: None
+            parse(runCatching { context.getSharedPreferences("folio", 0).getString(key(wide, landscape), null) }.getOrNull())
         fun save(context: android.content.Context, wide: Boolean, landscape: Boolean, nudge: IslandNudge) {
             context.getSharedPreferences("folio", 0).edit().apply {
                 if (nudge == None) remove(key(wide, landscape)) else putString(key(wide, landscape), "${nudge.dxDp},${nudge.dyDp}")

@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 
@@ -78,6 +79,40 @@ class HomeFitTest {
         }
     }
 
+    /** Where the page ends in edit mode: the usual rows pushed down by the room the edit bar asks for (what HomePagePane does). */
+    private fun editEnd(g: HomeGeometry, w: Float, fontScale: Float, p: Placed): Pair<Float, Boolean> {
+        val beside = jiggleBarBesideGrid(g.horizontalDock, g.dockBesideRail, g.homeWidth, g.gridWidth, fontScale)
+        return p.end + jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, g.contentTop, g.expanded, beside) to beside
+    }
+
+    @Test fun `edit mode does not push a row under the dock where the bar sits beside the page`() {
+        forEachWindow { tag, w, h ->
+            for (preview in listOf(false, true)) for (duo in listOf(false, true)) for (auto in listOf(false, true)) {
+                val g = geo(w, h, duo, preview = preview, automatic = auto)
+                val p = place(g, h, preview, BASE_APP_ROWS)
+                if (g.splitColumns || p.reachableRows < BASE_APP_ROWS) continue
+                val (end, beside) = editEnd(g, w, 1f, p)
+                if (beside) assertTrue("$tag preview=$preview duo=$duo auto=$auto edit mode ends $end, page limit ${limit(g, h, preview)}", end <= limit(g, h, preview) + 0.5f)
+            }
+        }
+    }
+
+    /** F01 (27 Oct sweep): the fold AVD's inner display, upright and regular, with the Preview bar and without it. */
+    @Test fun `the fold's inner display keeps all four rows above the dock in edit mode`() {
+        val (w, h) = 750f to 800f
+        for (preview in listOf(false, true)) for (duo in listOf(false, true)) {
+            val g = geo(w, h, duo, preview = preview)
+            assertTrue("upright regular keeps the dock bar", g.horizontalDock && !g.dockBesideRail)
+            val p = place(g, h, preview, BASE_APP_ROWS)
+            assertEquals("normal mode, preview=$preview: every row reachable", BASE_APP_ROWS, p.reachableRows)
+            val (end, beside) = editEnd(g, w, 1f, p)
+            assertTrue("the edit bar is beside the page here", beside)
+            assertTrue("edit mode, preview=$preview duo=$duo: the page ends $end, the page limit is ${limit(g, h, preview)}", end <= limit(g, h, preview) + 0.5f)
+            // A bigger text size widens the bar's pills: then they reach over the grid and it keeps its room.
+            assertTrue("at 200% text the bar needs its room", !editEnd(g, w, 2f, p).second)
+        }
+    }
+
     /** Height the usual four rows need at the smallest sizes Home goes to: widget, gap, four rows. */
     private fun floorHeight(g: HomeGeometry) = if (g.splitColumns) MIN_WIDGET_HEIGHT + 18f + 2f * 52f else MIN_WIDGET_HEIGHT + 18f + 4f * 52f
 
@@ -124,6 +159,32 @@ class HomeFitTest {
             val end = plain.contentTop + cells.height(2 + BASE_APP_ROWS)
             val cleared = end <= h - homeControlsSpace(true, 0f) - (if (plain.horizontalDock) plain.dockBarHeight + 16f else 0f) + 0.5f
             if (cleared) assertEquals(tag, plain, counted)
+        }
+    }
+
+    /**
+     * BI-4 of the 27 Oct break-it test: very short and narrow windows, below the support envelope. A window of micro size is
+     * Tier C and draws its own small Home (MicroHome.kt); anything else keeps tappable rows, the dock inside the window, and
+     * every one of the four rows reachable wherever the window has the height the usual layout needs (floorHeight). Under
+     * that height (411 x 381 dp, 1080 x 1000 at 420 dpi) the rows cannot all clear the controls and the last ones are covered:
+     * that is the documented floor, not a placement bug, and the test says how many rows stay reachable there.
+     */
+    @Test fun `tiny windows are the micro Home or keep tappable rows with the dock inside`() {
+        assertTrue(isMicroWindow(320f, 400f))
+        assertTrue("720 x 1280 at 420 dpi leaves under 480 dp of height once the bars are out", isMicroWindow(274f, 460f))
+        assertTrue(!isMicroWindow(411f, 381f))
+        for ((w, h) in listOf(320f to 400f, 280f to 480f, 274f to 488f, 411f to 381f)) {
+            if (isMicroWindow(w, h)) continue
+            for (preview in listOf(false, true)) {
+                val g = geo(w, h, false, preview = preview)
+                val p = place(g, h, preview, BASE_APP_ROWS)
+                val name = "${w.toInt()}x${h.toInt()} preview=$preview"
+                assertTrue("$name rows ${g.rowHeight} cells ${g.cellWidth}", g.rowHeight >= 48f && g.cellWidth >= 48f - 0.01f)
+                assertTrue("$name dock inside", g.dockTop >= 8f && g.dockTop + g.dockHeight <= h + 0.01f)
+                val room = h - 16f - limitShortfall(g, h, preview)
+                if (room >= floorHeight(g)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
+                else assertTrue("$name under the floor still reaches two rows, got ${p.reachableRows}", p.reachableRows >= 2)
+            }
         }
     }
 
@@ -208,7 +269,10 @@ class HomeFitTest {
     }
 
     @Test fun `write the table`() {
-        val file = System.getenv("FOLIO_HOME_FIT_TABLE") ?: return
+        // A generator, not a check: shown as skipped (not passed) unless the variable names a file to write.
+        val file = System.getenv("FOLIO_HOME_FIT_TABLE")
+        assumeTrue("FOLIO_HOME_FIT_TABLE is not set", file != null)
+        file!!
         val out = StringBuilder("window | duo | rows | icon | row | top slack | bottom slack | ratio | pct top | pct bottom | reachable cells\n")
         forEachWindow { tag, w, h ->
             for (duo in listOf(false, true)) {

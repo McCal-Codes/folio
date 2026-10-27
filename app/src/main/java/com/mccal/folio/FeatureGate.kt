@@ -159,7 +159,15 @@ internal enum class FeatureGate(
      * stands apart from the page dots. It changes how many pages the strip shows, so supporters and Folio Dev see it first.
      * Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * The deeper Control Center settings: switches for the Media and Connectivity pages, Open on, haptic ticks on the sliders,
+     * Close after a toggle, an Auto chip on the brightness slider, an Edit controls row and Reset Control Center (with Undo), in
+     * short cards. Until it opens the page is as it was and every one of these behaves as before, so supporters and Folio Dev
+     * see it first. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
+     */
+    CC_SETTINGS_V2("ccSettingsV2", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
@@ -192,4 +200,25 @@ internal enum class FeatureGate(
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
     }
+}
+
+/**
+ * Whether [gate] is open for this phone, kept up to date while the screen is up. A gate can change under a screen that stays composed (a supporter
+ * code redeemed or the Early access switch flipped in Settings, with Home behind it), and asking once per composition left Home showing the old
+ * answer until the activity was recreated. It asks again when the supporter preferences change, which is when the answer can.
+ */
+@androidx.compose.runtime.Composable
+internal fun rememberGateOpen(gate: FeatureGate): Boolean = rememberSupporterFlag(gate) { gate.isOpen(it) }
+
+/** [compute] of the context, asked again whenever the supporter preferences change; [key] says which question this is. */
+@androidx.compose.runtime.Composable
+internal fun rememberSupporterFlag(key: Any, compute: (Context) -> Boolean): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val value = androidx.compose.runtime.remember(context, key) { androidx.compose.runtime.mutableStateOf(compute(context)) }
+    androidx.compose.runtime.DisposableEffect(context, key) {
+        value.value = compute(context) // a change between composing and this effect starting
+        val stop = Supporter.watch(context) { value.value = compute(context) }
+        onDispose(stop)
+    }
+    return value.value
 }

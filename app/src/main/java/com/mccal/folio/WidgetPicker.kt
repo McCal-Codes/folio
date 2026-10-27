@@ -233,8 +233,7 @@ internal fun VisualWidgetPicker(
     val suggestionsLabel = stringResource(R.string.suggestions)
     val bigClockLabel = stringResource(R.string.big_clock)
     val musicWidgetLabel = stringResource(R.string.music)
-    val musicWidgetContext = LocalContext.current
-    val musicWidgetOpen = remember(musicWidgetContext) { FeatureGate.MUSIC_WIDGET.isOpen(musicWidgetContext) }
+    val musicWidgetOpen = rememberGateOpen(FeatureGate.MUSIC_WIDGET)
     val upNextLabel = stringResource(R.string.up_next)
     val dateLabel = stringResource(R.string.date)
     val clockLabel = stringResource(R.string.clock)
