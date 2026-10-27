@@ -2179,4 +2179,5 @@
     <string name="island_handle_label">Dynamic Island 너비</string>
     <string name="island_handle_state">자동보다 %1$d dp 넓음</string>
     <string name="settings_keywords_island_adjust">아일랜드 크기 너비 넓게 좁게 카메라 구멍 맞추기 이동 위치 조정</string>
+    <string name="island_adjust_side_note">이 방향에서는 Dynamic Island가 카메라를 둘러싸고 세로로 서 있습니다. 너비를 조정하려면 휴대전화를 돌려 주세요.</string>
 </resources>

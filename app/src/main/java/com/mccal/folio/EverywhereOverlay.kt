@@ -585,7 +585,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
         islandWindowWidth = windowWidth
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)

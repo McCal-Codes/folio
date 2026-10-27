@@ -2158,4 +2158,5 @@
     <string name="island_handle_label">灵动岛宽度</string>
     <string name="island_handle_state">比自动宽度宽 %1$d dp</string>
     <string name="settings_keywords_island_adjust">灵动岛 大小 宽度 加宽 变窄 摄像头 孔 贴合 移动 位置 调整</string>
+    <string name="island_adjust_side_note">在这个方向上，灵动岛会竖立在摄像头周围。请旋转手机再调整宽度。</string>
 </resources>

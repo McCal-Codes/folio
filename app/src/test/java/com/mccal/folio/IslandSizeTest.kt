@@ -16,8 +16,8 @@ class IslandSizeTest {
     private val window = 2000 to 1800
     private val event = IslandContent.Event(IslandEvent.Silent(true))
 
-    private fun place(extra: Float = 0f, custom: IslandPosition? = null) =
-        islandPlacement(camera, custom, window.first, window.second, 2f, extra)
+    private fun place(extra: Float = 0f, custom: IslandPosition? = null, nudge: IslandNudge = IslandNudge.None) =
+        islandPlacement(camera, custom, window.first, window.second, 2f, extra, nudge)
 
     @Test fun `no extra is the automatic fit`() {
         val g = place()
@@ -44,7 +44,8 @@ class IslandSizeTest {
         assertEquals(auto.maxW - (auto.camW + auto.pillH), auto.maxExtra)
         val huge = place(extra = 5000f)
         assertEquals(auto.maxExtra, huge.extraW)
-        assertTrue(huge.widthFor(event) <= auto.maxW + .001f || huge.widthFor(event) <= huge.wrapW + huge.pillH + .001f)
+        // The pill never asks for more than the room, or the camera plus its padding when even that is more.
+        assertTrue(huge.widthFor(event) <= maxOf(auto.maxW, huge.wrapW + huge.pillH) + .001f)
         assertEquals(0f, place(extra = -8f).extraW)
         assertEquals(0f, place(extra = Float.NaN).extraW)
     }
@@ -53,6 +54,32 @@ class IslandSizeTest {
         val moved = place(extra = 8f, custom = IslandPosition(.3f, 40f))
         assertEquals(8f, moved.extraW)
         assertEquals(600f, moved.centerXPx)
+    }
+
+    @Test fun `a nudge shifts the pill and keeps what it wraps`() {
+        val still = place(extra = 10f)
+        val nudged = place(extra = 10f, nudge = IslandNudge(6f, 2f))
+        assertEquals(still.wrapW, nudged.wrapW)
+        assertEquals(still.pillH, nudged.pillH)
+        assertEquals(still.camW, nudged.camW)
+        assertEquals(still.centerXPx + 6f * 2f, nudged.centerXPx, .001f)
+        assertEquals(still.top + 2f, nudged.top, .001f)
+        assertEquals(still.centerY + 2f, nudged.centerY, .001f)
+    }
+
+    @Test fun `a nudge moves a dragged pill as it is and cannot push the top above the screen`() {
+        val moved = place(extra = 0f, custom = IslandPosition(.3f, 40f), nudge = IslandNudge(-4f, 3f))
+        assertEquals(600f - 8f, moved.centerXPx, .001f)
+        assertEquals(43f, moved.top, .001f)
+        val up = place(nudge = IslandNudge(0f, -500f))
+        assertEquals(0f, up.top)
+    }
+
+    @Test fun `nudges add up and stay inside the limit`() {
+        assertEquals(IslandNudge(4f, -2f), IslandNudge.None.plus(2f, -1f).plus(2f, -1f))
+        val far = IslandNudge.None.plus(1000f, -1000f)
+        assertEquals(IslandNudge.NUDGE_LIMIT_DP, far.dxDp)
+        assertEquals(-IslandNudge.NUDGE_LIMIT_DP, far.dyDp)
     }
 
     @Test fun `fit to camera asks for the reported width only when it is wider than the lens`() {

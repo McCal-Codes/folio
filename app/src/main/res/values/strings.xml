@@ -2218,4 +2218,5 @@
     <string name="island_handle_label">Island width</string>
     <string name="island_handle_state">%1$d dp wider than automatic</string>
     <string name="settings_keywords_island_adjust">island resize size width wider narrower camera hole fit move nudge position adjust</string>
+    <string name="island_adjust_side_note">The island stands upright around the camera in this orientation. Turn the phone to adjust its width.</string>
 </resources>
