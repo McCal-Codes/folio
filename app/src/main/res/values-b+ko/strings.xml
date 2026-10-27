@@ -6,7 +6,7 @@
 -->
     <string name="dune_wallpaper_description">Folio에서 고른 배경을 화면 크기에 맞춰 표시합니다.</string>
     <string name="shade_service_label">Folio 제스처 및 오버레이</string>
-    <string name="shade_service_description">홈 화면 제스처로 시스템 알림창과 빠른 설정창을 엽니다. 해당 기능을 켠 경우에만 다른 앱 위에 Folio의 Dock 핸들과 Dynamic Island를 표시하고, Dock의 앱을 실행하거나 홈 화면으로 이동합니다. 화면 내용을 읽거나 다른 앱에서 하는 활동을 관찰하지 않습니다.</string>
+    <string name="shade_service_description">홈 화면 제스처로 시스템 알림창과 빠른 설정창을 엽니다. 해당 기능을 켠 경우에만 다른 앱 위에 Folio의 Dock 핸들과 Dynamic Island를 표시하고, Dock의 앱을 실행하거나 홈 화면으로 이동합니다. 화면 내용을 읽거나 다른 앱에서 하는 활동을 관찰하지 않습니다. 단 하나의 예외: Folio 패널이 다른 앱 위에 열리고 흐림 효과가 켜져 있으면, 패널 뒤를 흐리게 하려고 스크린샷을 한 번 찍습니다. 그 사진은 즉시 축소되어 메모리에만 있고, 저장되거나 전송되지 않으며 패널이 닫히면 버려집니다.</string>
     <string name="personal">개인용</string>
     <string name="work">업무용</string>
     <string name="turn_on_work_apps">업무용 앱 켜기</string>
@@ -53,6 +53,12 @@
     <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
     <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
     <string name="shade_over_apps">다른 앱 위에 Folio 패널 표시</string>
+    <string name="cc_page_controls">제어</string>
+    <string name="cc_page_media">미디어 및 소리</string>
+    <string name="cc_page_connectivity">연결</string>
+    <string name="cc_page_of">%1$s, %3$d페이지 중 %2$d페이지</string>
+    <string name="shade_pull">모든 앱 상단에서 아래로 당기기</string>
+    <string name="shade_pull_note">앱 상단 가장자리의 왼쪽 절반을 아래로 당기면 알림 센터가, 오른쪽 절반을 당기면 제어 센터가 휴대전화의 알림창 대신 열립니다. 이 기능을 켜면 상단 띠에서의 탭은 앱에 전달되지 않으며, 전체 화면 앱은 Android 기본 동작을 유지합니다. 다른 앱 위에 Folio 패널 표시를 끄면 함께 꺼집니다.</string>
     <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 입력 상자가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
     <string name="nc_layout_title">펼쳤을 때 레이아웃</string>
     <string name="nc_layout_full">전체 화면</string>
@@ -1655,6 +1661,13 @@
         <item quantity="other">%d개 모두 보기</item>
     </plurals>
     <string name="general">일반</string>
+    <string name="settings_group_launcher">런처</string>
+    <string name="settings_group_extensions">확장</string>
+    <string name="control_center_look">제어 센터 스타일</string>
+    <string name="cc_look_clear">투명 유리</string>
+    <string name="cc_look_frosted">반투명 패널</string>
+    <string name="cc_look_solid">단색</string>
+    <string name="cc_look_note">투명 유리는 뒤의 그림이 허용하는 만큼 밝게 유지하고 글자가 필요할 때만 어두워집니다. 반투명 패널과 단색은 항상 더 어둡습니다.</string>
     <string name="language">언어</string>
     <string name="settings_keywords_general">일반 정보 버전 업데이트 새로운 기능 도움말 로드맵 크레딧 고급</string>
     <string name="settings_keywords_language">언어 번역 영어 한국어 중국어</string>
@@ -2080,6 +2093,17 @@
     <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
     <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
     <string name="profile_app">%1$s 앱</string>
+    <string name="home_apps_title">홈 화면 앱</string>
+    <string name="home_apps_detail">홈 화면에 둘 앱을 선택하세요. Folio가 이 휴대전화에서 찾은 기본 앱을 용도별로 하나씩, 최대 8개까지 선택해 두었습니다. 언제든 바꿀 수 있습니다.</string>
+    <string name="home_apps_none">아직 홈 화면에 앱이 없습니다</string>
+    <string name="home_apps_show_all">모든 앱 보기</string>
+    <string name="use_folio_now">지금 Folio 사용하기</string>
+    <plurals name="home_apps_count">
+        <item quantity="other">앱 %d개</item>
+    </plurals>
+    <plurals name="home_rows_count">
+        <item quantity="other">%d줄</item>
+    </plurals>
     <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
     <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
     <plurals name="backup_widgets_left_out">
