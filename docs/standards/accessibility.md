@@ -88,7 +88,9 @@ Not yet:
 - What it cost in layout: Home's page-indicator row grew from 32 to 48 dp, the folder panel's swatch row from 30 to
   48, the widget picker's header by 8, and an app panel's media row by 14. Nothing changed size on screen.
 - Widget picker secondary text scores 2.59:1 (`WidgetPicker.kt:228`).
-- 51 ellipses and 68 `maxLines = 1`; no 200% pass yet.
+- 51 ellipses and 68 `maxLines = 1`; no 200% pass yet, except Home: its app labels and the built-in widget cards follow the font scale only to
+  130% (A11Y-13, `glanceFontFactor` in `FolioTokens.kt`), the Preview bar measures its close button first, Spotlight's web chips wrap, and
+  App Library category names take two lines (27 Oct sweep, F04 to F08).
 - 3 live regions; no focus rings; no RTL check; `Role.Switch` used once.
 
 ## Gaps

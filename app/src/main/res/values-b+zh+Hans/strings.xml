@@ -2144,4 +2144,20 @@
     <string name="package_import_market_off">此包需要 Folio 市场，市场需使用支持者代码开启。</string>
     <string name="package_import_too_large">该文件太大，不是 Folio 软件包。</string>
     <string name="package_import_too_slow">读取该文件用时过长。请先将其保存到手机上。</string>
+    <string name="island_adjust">调整灵动岛</string>
+    <string name="island_adjust_note">拖动手柄可加宽灵动岛，也可以微调位置，或让它贴合摄像头。</string>
+    <string name="island_adjust_hint">拖动圆形手柄调整大小，用箭头微调位置。</string>
+    <string name="island_fit_camera">贴合摄像头</string>
+    <string name="island_fit_already">已经贴合 Android 报告的摄像头</string>
+    <string name="island_adjust_reset">重置</string>
+    <string name="island_wider">加宽</string>
+    <string name="island_narrower">变窄</string>
+    <string name="island_nudge_left">向左移动</string>
+    <string name="island_nudge_right">向右移动</string>
+    <string name="island_nudge_up">向上移动</string>
+    <string name="island_nudge_down">向下移动</string>
+    <string name="island_handle_label">灵动岛宽度</string>
+    <string name="island_handle_state">比自动宽度宽 %1$d dp</string>
+    <string name="settings_keywords_island_adjust">灵动岛 大小 宽度 加宽 变窄 摄像头 孔 贴合 移动 位置 调整</string>
+    <string name="island_adjust_side_note">在这个方向上，灵动岛会竖立在摄像头周围。请旋转手机再调整宽度。</string>
 </resources>

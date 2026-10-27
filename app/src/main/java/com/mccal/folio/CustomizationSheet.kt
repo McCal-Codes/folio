@@ -641,7 +641,14 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             runCatching { islandContext.startActivity(IslandListenerService.accessSettingsIntent(islandContext)) }
                         })
                         if (state.island) {
-                            CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext) })
+                            // Adjust island: a handle to make it wider, arrows to nudge it, Fit to camera and Reset, on a dimmed screen (IslandAdjust.kt).
+                            var adjusting by remember { mutableStateOf(false) }
+                            if (remember { FeatureGate.ISLAND_ADJUST.isOpen(islandContext) }) {
+                                CardAction(stringResource(R.string.island_adjust), onClick = { adjusting = true })
+                                CardNote(stringResource(R.string.island_adjust_note))
+                                if (adjusting) IslandAdjustDialog(onDone = { adjusting = false })
+                            }
+                            CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext); IslandSize.reset(islandContext); IslandNudge.reset(islandContext) })
                             CardNote(stringResource(R.string.long_press_and_drag_the_island_to_move_i))
                         }
                     }
@@ -1187,8 +1194,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     }
 }
 
-@Composable private fun SettingsLargeTitle(title: String) = Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = 32.sp,
-    fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
+@Composable private fun SettingsLargeTitle(title: String) = Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.LARGE_TITLE.sp,
+    lineHeight = FolioType.LARGE_TITLE_LINE.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
 
 /** Sidebar header row: Folio's icon, name and setup state, like the account card in iPad Settings. */
 @Composable private fun SidebarAppRow(selected: Boolean, setupLeft: Int, onClick: () -> Unit) {
@@ -1396,6 +1403,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_other_notifications_in_the_islan, R.string.settings_keywords_other_notifications_in_the_islan, CustomizationPage.ISLAND_APPS),
     Triple(R.string.settings_island_and_dock_in_every_app, R.string.settings_keywords_island_and_dock_in_every_app, CustomizationPage.ISLAND),
     Triple(R.string.settings_hide_the_island_in_full_screen, R.string.settings_keywords_hide_the_island_in_full_screen, CustomizationPage.ISLAND),
+    Triple(R.string.island_adjust, R.string.settings_keywords_island_adjust, CustomizationPage.ISLAND),
     Triple(R.string.notification_center, R.string.settings_keywords_notification_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.control_center, R.string.settings_keywords_control_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.spotlight, R.string.settings_keywords_spotlight, CustomizationPage.SEARCH),
@@ -1633,6 +1641,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
+            .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
             .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
@@ -2186,7 +2196,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (app != null) AppIcon(app, null, Modifier.size(iconSize.dp), shape = RoundedCornerShape((iconSize * .24f).dp))
                                 else if (folder != null) PreviewFolder(folder, apps, iconSize)
-                                if (labels) Text(app?.label ?: folder?.title.orEmpty(), color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                if (labels) Text(app?.label ?: folder?.title.orEmpty(), color = ink.primary, fontSize = (LocalLabelSize.current.sp * glanceFontFactor(LocalDensity.current.fontScale)).sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp),
                                     style = androidx.compose.ui.text.TextStyle(shadow = ink.labelShadow))
                             }
