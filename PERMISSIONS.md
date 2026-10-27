@@ -31,11 +31,14 @@ app open the system notifications and Quick Settings panels: there is no other w
 Folio's dock handle and Dynamic Island over other apps, if you turn those on. And it runs Android's "global actions"
 when you ask for one: Back, Home and Recents (Big Buttons and the dock), lock screen, screenshot, the power menu, split
 screen, play/pause, closing the shade, and Android's accessibility All Apps menu, from Control Center and Folio's
-actions (`EverywhereOverlay.kt`, `ActionSpecs.kt`, `FolioActions.kt`, `TopPanels.kt`). It observes no events and cannot tap or type for you (`SystemShadeController.kt`). It can take one screenshot, and only for this: when Folio's panels open over another app
-and Blur is on, the picture behind them is taken before the panel appears, shrunk at once to a few hundred pixels, blurred, and shown behind the panels (`FrostBlur.kt`).
-The picture stays in memory, is never saved, logged or sent, and is dropped when the panel closes; Settings › Blur at zero, or Reduce Transparency, turns it off. This is the
-`canTakeScreenshot` capability, and it is the one thing the service can do with what is on screen. Without it the panels sit on Folio's frosted glass instead. Without it, Home's swipe-down gestures use
-Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
+actions (`EverywhereOverlay.kt`, `ActionSpecs.kt`, `FolioActions.kt`, `TopPanels.kt`). It observes no events, cannot read the text or structure of other apps' windows, and cannot tap or type for you
+(`SystemShadeController.kt`; `canRetrieveWindowContent` and `canPerformGestures` are off in `system_shade_accessibility_service.xml`).
+It does hold Android's `canTakeScreenshot` capability, and a screenshot is of the whole display, not only Folio's own windows.
+Folio asks for one in a single case: Folio's panels open over another app, Blur is on, Reduce Transparency is off, and the phone does not blur windows itself (One UI
+turns that off). The picture behind the panels is then taken before the panel appears, shrunk at once to a few hundred pixels and blurred (`FrostBlur.kt`), and the
+full-size picture is dropped as soon as it has been shrunk. The small blurred picture is shown behind the panels, kept only in memory, never saved, logged or sent, and
+let go of when the panels close (`EverywhereOverlay.kt`). Settings › Blur at zero, or Reduce Transparency, stops it, and without it the panels sit on Folio's frosted
+glass instead. Without the service, Home's swipe-down gestures use Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
 (`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
 shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
@@ -44,8 +47,8 @@ Accessibility) can take a picture of the screen, and does nothing else: it obser
 cannot tap or type. Folio uses it only when Android's own wallpaper is behind Home, to choose light or dark text for the Big
 Clock from what is really behind it, and only while Folio's Home is in front. The picture is measured under the clock and
 thrown away at once, at most one every two seconds; only a few brightness numbers are kept in memory, nothing is saved or
-sent (`SmartInkService.kt`, `SmartClockInk.kt`). It is separate from the gestures service above, which still cannot read
-what is on screen. Without it, the clock's text color comes from Android's wallpaper colors, as before.
+sent (`SmartInkService.kt`, `SmartClockInk.kt`). It is a separate switch from the gestures service above. Both hold the
+screenshot capability; the gestures service uses its own only for the panel blur described there. Without it, the clock's text color comes from Android's wallpaper colors, as before.
 
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a

@@ -285,7 +285,7 @@
     <string name="onboarding_use_badges">App icon badges</string>
     <string name="allow_access">Allow Access</string>
     <string name="pull_down_for_more">Pull Down for More</string>
-    <string name="onboarding_gestures_detail">Folio\'s gestures service opens Notification Center and Control Center from the top corners. It can\'t read your screen.</string>
+    <string name="onboarding_gestures_detail">Folio\'s gestures service opens Notification Center and Control Center from the top corners. It can\'t read what other apps show. Its only screenshot is the blurred picture behind a panel, which is never saved or sent.</string>
     <string name="onboarding_use_panels">Notification Center and Control Center</string>
     <string name="onboarding_use_everywhere">Dynamic Island and dock in other apps</string>
     <string name="turn_on_button">Turn On</string>
@@ -676,7 +676,7 @@
     <string name="smart_ink_fact_looks">Folio takes a picture of your Home screen, only to choose light or dark text for the clock.</string>
     <string name="smart_ink_fact_kept">It measures the part under the clock and throws the picture away straight away. Only a few brightness numbers are kept. Nothing is saved or sent.</string>
     <string name="smart_ink_fact_home">It only happens while Folio\'s Home is in front. Anything drawn on top of Home at that moment, such as a floating window, can be in the picture.</string>
-    <string name="smart_ink_fact_separate">This is its own accessibility service, so Folio\'s gestures service still cannot read your screen. Turn it off any time in Accessibility settings.</string>
+    <string name="smart_ink_fact_separate">This is its own accessibility service, separate from Folio\'s gestures service. Turn it off any time in Accessibility settings.</string>
     <string name="open_accessibility_settings">Open Accessibility Settings</string>
     <string name="smart_ink_service_label">Folio Smart clock ink</string>
     <string name="smart_ink_service_description">Lets Folio take a picture of your Home screen to choose light or dark text for the Big Clock. It measures the part under the clock and throws the picture away straight away. It does nothing else.</string>
