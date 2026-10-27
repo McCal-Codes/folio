@@ -92,7 +92,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, ISLAND_ADVANCED, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -100,7 +100,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         LIBRARY_TWEAK -> TWEAK_LIBRARY // a tweak opened from the Tweak Library goes back there
         FOLD_TWEAK -> FOLD // Duet opened from Fold & Displays goes back there
         FOCUS_MODE -> FOCUS
-        ISLAND_APPS -> ISLAND
+        ISLAND_APPS, ISLAND_ADVANCED -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
         SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, PERMISSIONS, SUPPORT -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
@@ -144,6 +144,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         TODAY -> R.string.today_view
         ISLAND -> R.string.dynamic_island
         ISLAND_APPS -> R.string.other_notifications
+        ISLAND_ADVANCED -> R.string.island_advanced
         PERMISSIONS -> R.string.privacy_permissions
         COMING_SOON -> R.string.roadmap
         TWEAK_LIBRARY -> R.string.tweak_library
@@ -655,6 +656,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 CardNote(stringResource(R.string.island_adjust_note))
                                 if (adjusting) IslandAdjustDialog(onDone = { adjusting = false })
                             }
+                            // Advanced island: color, corner radius, animation speed, haptics and gestures, on their own page (IslandAdvanced.kt).
+                            // Gated apart from Adjust island (FeatureGate.ISLAND_ADVANCED, opens in 0.7.0).
+                            if (remember { FeatureGate.ISLAND_ADVANCED.isOpen(islandContext) }) {
+                                CardAction(stringResource(R.string.island_advanced), onClick = { onPage(CustomizationPage.ISLAND_ADVANCED) })
+                                CardNote(stringResource(R.string.island_advanced_note))
+                            }
                             CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext); IslandSize.reset(islandContext); IslandNudge.reset(islandContext) })
                             CardNote(stringResource(R.string.long_press_and_drag_the_island_to_move_i))
                         }
@@ -876,6 +883,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     CardNote(stringResource(R.string.folio_is_free_and_always_will_be_if_it_m), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                 }
+                CustomizationPage.ISLAND_ADVANCED -> IslandAdvancedPage()
                 CustomizationPage.ISLAND_APPS -> IslandAlertApps(state.islandAlertAppsOff, state.messagesAvoidDouble, model::setIslandAlertApp)
                 CustomizationPage.HELP -> {
                     // Getting help lives here rather than as more rows in the main list (fewer choices there).
@@ -1414,6 +1422,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_island_and_dock_in_every_app, R.string.settings_keywords_island_and_dock_in_every_app, CustomizationPage.ISLAND),
     Triple(R.string.settings_hide_the_island_in_full_screen, R.string.settings_keywords_hide_the_island_in_full_screen, CustomizationPage.ISLAND),
     Triple(R.string.island_adjust, R.string.settings_keywords_island_adjust, CustomizationPage.ISLAND),
+    Triple(R.string.island_advanced, R.string.settings_keywords_island_advanced, CustomizationPage.ISLAND),
     Triple(R.string.notification_center, R.string.settings_keywords_notification_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.control_center, R.string.settings_keywords_control_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.spotlight, R.string.settings_keywords_spotlight, CustomizationPage.SEARCH),
@@ -1664,6 +1673,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
             // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
+            .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
             .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
             // The deeper Control Center rows are on the page only while their gate is open, so search only finds them then.

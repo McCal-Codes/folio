@@ -46,6 +46,12 @@ class FeatureGateTest {
         assertTrue("shut for everyone but Folio Dev and beta supporters", !gate.open)
     }
 
+    @Test fun `the Advanced island opens one release after Adjust island on its own gate`() {
+        assertEquals("0.7.0", FeatureGate.ISLAND_ADVANCED.opensIn)
+        assertEquals("0.6.9", FeatureGate.ISLAND_ADJUST.opensIn)
+        assertTrue("it is a gate of its own, not Adjust island's", FeatureGate.ISLAND_ADVANCED != FeatureGate.ISLAND_ADJUST)
+    }
+
     @Test fun `the Market is the gate it used to be`() {
         // The behaviour this replaced: released, or a .dev build, or a supporter code with the beta scope.
         val market = FeatureGate.MARKET

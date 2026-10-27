@@ -94,11 +94,13 @@ internal fun ccRowsThatFit(heightDp: Float, cellDp: Float, gapDp: Float): Int = 
  * How the small controls are split over the Controls pages so that none of them scrolls (PNL-1): [perPage] is how many go on each page, and
  * [slidersOnFirst] says whether the two sliders fit on the first page beside them (four columns) or in its top row (six or more); if they
  * do not fit they stay on the Media page, and so does Focus when the first page has no row for it. The first page also holds the connectivity, Now Playing and Focus modules, so it holds fewer.
- * A null [pageHeightDp] means no height limit: everything on one page, as before.
+ * [sliderPage] is the Controls page the sliders stand on (0 is the first), or -1 for the Media page. With the Media page switched off
+ * ([ccPlanControls] gets mediaPage = false) they are never left there: when the first page has no room they go to the top of the next
+ * Controls page, beside its first four controls, so brightness and volume stay reachable. A null [pageHeightDp] means no height limit: everything on one page, as before.
  */
-internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean, val focusOnFirst: Boolean = true)
+internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean, val focusOnFirst: Boolean = true, val sliderPage: Int = if (slidersOnFirst) 0 else -1)
 
-internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeightDp: Float?, controls: Int, focus: Boolean): CcPlan {
+internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeightDp: Float?, controls: Int, focus: Boolean, mediaPage: Boolean = true): CcPlan {
     if (pageHeightDp == null) return CcPlan(listOf(controls), true)
     val rows = ccRowsThatFit(pageHeightDp, cellDp, gapDp)
     val focusFirst = !focus || rows >= 3 // below three rows the two modules fill the page, and Focus goes to the Media page
@@ -112,15 +114,21 @@ internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeigh
     var left = controls - onFirst
     val perOther = maxOf(1, rows) * columns
     val pages = mutableListOf(onFirst)
+    // No Media page to hold the sliders: they lead the next Controls page (two rows tall, beside its first four controls), even if no control follows.
+    val sliderPage = if (slidersOnFirst) 0 else if (!mediaPage) 1 else -1
+    if (sliderPage == 1) {
+        val n = minOf(left, 4 + maxOf(0, rows - 2) * 4)
+        pages += n; left -= n
+    }
     while (left > 0) { val n = minOf(left, perOther); pages += n; left -= n }
-    return CcPlan(pages, slidersOnFirst, focusFirst)
+    return CcPlan(pages, slidersOnFirst, focusFirst, sliderPage)
 }
 
 /** The rows of cells page [index] of the plan uses, for the height the pager is given. */
 internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean): Int {
     val n = plan.perPage[index]
     fun rowsOf(count: Int, per: Int) = (count + per - 1) / per
-    if (index > 0) return rowsOf(n, columns)
+    if (index > 0) return if (columns < 6 && index == plan.sliderPage) 2 + rowsOf(maxOf(0, n - 4), 4) else rowsOf(n, columns)
     val top = 2 + (if (focus && plan.focusOnFirst) 1 else 0)
     return top + when {
         columns >= 6 -> rowsOf(n, columns)
@@ -138,7 +146,7 @@ internal fun ccMediaRows(plan: CcPlan, focus: Boolean): Int = 3 + (if (focus && 
  *  - the connectivity block and Now Playing are each two rows tall and stand at the top of the first page, so when two rows fit
  *    ([pageHeightDp], null for no limit) both are there already, and the Connectivity page (the same four switches as a list)
  *    and Media's Now Playing are not needed;
- *  - Media still holds what the plan could not put on the first page: the sliders ([CcPlan.slidersOnFirst]) and Focus
+ *  - Media still holds what the plan could not put on the first page: the sliders ([CcPlan.sliderPage] is -1) and Focus
  *    ([CcPlan.focusOnFirst], when [focus] is on);
  *  - when not even two rows fit, both pages are kept, since the first page cannot hold either module.
  * A pure function of the same numbers as [ccPlanControls], so a test can run it over every screen.
@@ -146,12 +154,12 @@ internal fun ccMediaRows(plan: CcPlan, focus: Boolean): Int = 3 + (if (focus && 
 internal fun ccExtraPages(plan: CcPlan, pageHeightDp: Float?, cellDp: Float, gapDp: Float, focus: Boolean, dedupe: Boolean): List<CcPage> {
     if (!dedupe) return listOf(CcPage.MEDIA, CcPage.CONNECTIVITY)
     val modulesFit = pageHeightDp == null || ccRowsThatFit(pageHeightDp, cellDp, gapDp) >= 2
-    val media = !modulesFit || !plan.slidersOnFirst || (focus && !plan.focusOnFirst)
+    val media = !modulesFit || plan.sliderPage < 0 || (focus && !plan.focusOnFirst)
     return listOfNotNull(CcPage.MEDIA.takeIf { media }, CcPage.CONNECTIVITY.takeIf { !modulesFit })
 }
 
 /** Whether the Media page draws the brightness and volume sliders: always before, and with [dedupe] only when the first page could not hold them. */
-internal fun ccMediaPageHasSliders(plan: CcPlan, dedupe: Boolean): Boolean = !dedupe || !plan.slidersOnFirst
+internal fun ccMediaPageHasSliders(plan: CcPlan, dedupe: Boolean): Boolean = !dedupe || plan.sliderPage < 0
 
 /** The height of the page strip standing at the edge: the battery ring (when shown) and a 48 dp dot for each of [pages], [gapDp] apart, and the extra gap under the ring when [apart]. */
 internal fun ccEdgeStripHeight(pages: Int, battery: Boolean, gapDp: Float, apart: Boolean): Float {
