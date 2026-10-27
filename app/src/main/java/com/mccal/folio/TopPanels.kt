@@ -791,7 +791,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
         fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
-        val neededRows = maxOf(3, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
+        val neededRows = maxOf(ccMediaRows(plan, focusOn), plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
@@ -814,6 +814,38 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
         )
         val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
+
+        // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list. It stands under the modules on the first page, or on the Media page when the first has no row for it.
+        val focusModule: @Composable () -> Unit = {
+            var focusOpen by remember { mutableStateOf(false) }
+            val current = focusModes.firstOrNull { it.id == activeFocus }
+            if (focusOpen) Module(Modifier.width(span(cols))) {
+                Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
+                    focusModes.forEach { mode ->
+                        val on = mode.id == activeFocus
+                        Row(Modifier.fillMaxWidth().clickable { onFocus(if (on) null else mode.id); focusOpen = false }
+                            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("cc-focus-${mode.id}"), verticalAlignment = Alignment.CenterVertically) {
+                            RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
+                            Spacer(Modifier.width(12.dp))
+                            Text(mode.name, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                        }
+                    }
+                }
+            } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
+                Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
+                    val mode = current ?: focusModes.first()
+                    RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
+                        onFocus(if (current != null) null else mode.id)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                    }
+                }
+            }
+        }
 
         // One page's content. Pages scroll on their own when a window is too short for them.
         val pageContent: @Composable (CcPageSpec) -> Unit = { spec ->
@@ -847,37 +879,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             }
                         }
                         if (first) { if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock() }
-                        // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list.
-                        if (first && focusModes.isNotEmpty()) {
-                            var focusOpen by remember { mutableStateOf(false) }
-                            val current = focusModes.firstOrNull { it.id == activeFocus }
-                            if (focusOpen) Module(Modifier.width(span(cols))) {
-                                Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
-                                    focusModes.forEach { mode ->
-                                        val on = mode.id == activeFocus
-                                        Row(Modifier.fillMaxWidth().clickable { onFocus(if (on) null else mode.id); focusOpen = false }
-                                            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("cc-focus-${mode.id}"), verticalAlignment = Alignment.CenterVertically) {
-                                            RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
-                                            Spacer(Modifier.width(12.dp))
-                                            Text(mode.name, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                            if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                                        }
-                                    }
-                                }
-                            } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
-                                Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
-                                    val mode = current ?: focusModes.first()
-                                    RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
-                                        onFocus(if (current != null) null else mode.id)
-                                    }
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                        if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                                    }
-                                }
-                            }
-                        }
+                        // Focus: see focusModule.
+                        if (first && focusOn && plan.focusOnFirst) focusModule()
                         // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
                         if (first && cols == 4 && plan.slidersOnFirst) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -918,9 +921,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                     }
                     // Media and sound: Now Playing large, with brightness and volume tall beside it.
-                    CcPage.MEDIA -> Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        MediaModule(media, Modifier.size(span(cols - 2), span(3)), cell, onOpen = playing)
-                        sliders(span(3))
+                    CcPage.MEDIA -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            MediaModule(media, Modifier.size(span(cols - 2), span(3)), cell, onOpen = playing)
+                            sliders(span(3))
+                        }
+                        if (focusOn && !plan.focusOnFirst) focusModule()
                     }
                     // Connectivity: each connection as a full row, with its state.
                     CcPage.CONNECTIVITY -> Module(Modifier.width(span(cols))) { ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) }
@@ -932,6 +938,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // The edge or bottom strip that moves between pages (tap), as on the iPad; a swipe across the panel does the same.
         val strip: @Composable () -> Unit = {
             val label: @Composable (CcPage) -> String = { page -> stringResource(when (page) { CcPage.CONTROLS -> R.string.cc_page_controls; CcPage.MEDIA -> R.string.cc_page_media; CcPage.CONNECTIVITY -> R.string.cc_page_connectivity }) }
+            val controlsPages = plan.perPage.size
             val items: @Composable () -> Unit = {
                 pages.forEachIndexed { index, spec ->
                     val page = spec.page
@@ -942,7 +949,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         .clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
                         .semantics { contentDescription = description; this.selected = selected },
                         contentAlignment = Alignment.Center) {
-                        Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Apps; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
+                        // With more than one Controls page each says which it is, so the marks are never the same.
+                        if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) FolioColors.MenuSurface else Color.White,
+                            fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
+                        else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Apps; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
                             null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size(22.dp))
                     }
                 }

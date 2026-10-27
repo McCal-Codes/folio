@@ -33,7 +33,7 @@ class ControlCenterFitTest {
         val plan = ccPlanControls(g.columns, g.cellDp, g.gapDp, pageHeight, n, focus)
         val tag = "${s.name} at %.0f x %.0f, size %.0f, %d controls, focus %s (%d columns, cell %.0f, %d rows)".format(s.w, s.h, size, n, focus, g.columns, g.cellDp, rows)
         if (plan.perPage.sum() != n) problems += "$tag: ${plan.perPage.sum()} of $n controls placed"
-        if (rows < 2 + (if (focus) 1 else 0)) problems += "$tag: not even the modules fit"
+        if (rows < 2) problems += "$tag: not even the modules fit"
         plan.perPage.indices.forEach { i ->
             val used = ccPlanRows(plan, i, g.columns, focus)
             if (used > rows) problems += "$tag: page ${i + 1} needs $used rows"
@@ -67,5 +67,18 @@ class ControlCenterFitTest {
         assertEquals(15, short.perPage.sum())
         assertTrue(short.perPage.size >= 2)
         assertEquals(4, short.perPage[0])
+    }
+
+    @Test fun `Focus moves to the Media page when the first page has only the two module rows`() {
+        // About 290 dp tall window: two rows fit. The modules fill them, so Focus cannot sit under them (it was cut off by 12 dp).
+        val tight = ccPlanControls(4, 50f, 9f, 110f, 8, true)
+        assertEquals(2, ccRowsThatFit(110f, 50f, 9f))
+        assertEquals(false, tight.focusOnFirst)
+        assertEquals(2, ccPlanRows(tight, 0, 4, true))
+        assertEquals(4, ccMediaRows(tight, true))
+        assertEquals(8, tight.perPage.sum())
+        // With the row to spare it stays where it was, and without Focus nothing moves.
+        assertEquals(true, ccPlanControls(4, 50f, 9f, 170f, 8, true).focusOnFirst)
+        assertEquals(3, ccMediaRows(ccPlanControls(4, 50f, 9f, 110f, 8, false), false))
     }
 }
