@@ -118,8 +118,9 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                 }
             }
         }
-        Text(title, color = labelColor, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = FolioSpace.SNUG.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen)
+        // iOS sets a category's title on two lines ("Productivity & Finan..." was cut at one, 27 Oct sweep F08); two 12 sp lines still fit the 48 dp target.
+        Text(title, color = labelColor, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            lineHeight = (FolioType.GROUP_LABEL * 1.25f).sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.SNUG.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen)
                 .heightIn(min = FolioTouch.MIN.dp).wrapContentHeight(Alignment.CenterVertically))
     }
 }

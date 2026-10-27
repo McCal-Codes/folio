@@ -1187,8 +1187,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     }
 }
 
-@Composable private fun SettingsLargeTitle(title: String) = Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = 32.sp,
-    fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
+@Composable private fun SettingsLargeTitle(title: String) = Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.LARGE_TITLE.sp,
+    lineHeight = FolioType.LARGE_TITLE_LINE.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp))
 
 /** Sidebar header row: Folio's icon, name and setup state, like the account card in iPad Settings. */
 @Composable private fun SidebarAppRow(selected: Boolean, setupLeft: Int, onClick: () -> Unit) {
@@ -2186,7 +2186,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (app != null) AppIcon(app, null, Modifier.size(iconSize.dp), shape = RoundedCornerShape((iconSize * .24f).dp))
                                 else if (folder != null) PreviewFolder(folder, apps, iconSize)
-                                if (labels) Text(app?.label ?: folder?.title.orEmpty(), color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                if (labels) Text(app?.label ?: folder?.title.orEmpty(), color = ink.primary, fontSize = (LocalLabelSize.current.sp * glanceFontFactor(LocalDensity.current.fontScale)).sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp),
                                     style = androidx.compose.ui.text.TextStyle(shadow = ink.labelShadow))
                             }

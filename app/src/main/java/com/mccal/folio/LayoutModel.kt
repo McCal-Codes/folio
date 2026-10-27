@@ -87,6 +87,28 @@ const val HOME_PREVIEW_RESERVE_DP = 126f
 fun homeControlsSpace(isDefaultHome: Boolean, measuredDp: Float): Float =
     if (isDefaultHome) maxOf(HOME_STRIP_RESERVE_DP, measuredDp) else maxOf(HOME_PREVIEW_RESERVE_DP, measuredDp + 12f)
 
+/**
+ * How far the edit bar's + and Edit pills reach from the window's edge at the default text size, in dp (measured on the fold
+ * AVD's inner display: the Edit pill ends 122 dp in). Grows with the text size, because the pills hold text.
+ */
+const val JIGGLE_BAR_CLUSTER_DP = 124f
+
+/**
+ * Whether the edit bar sits beside the page rather than above its first row: the upright unfolded window keeps its grid centered
+ * with the dock as a bottom bar, so the grid starts further from the window's edge than the bar's pills reach. Judged from
+ * window width, grid width and text size only.
+ */
+fun jiggleBarBesideGrid(horizontalDock: Boolean, dockBesideRail: Boolean, windowWidth: Float, gridWidth: Float, fontScale: Float): Boolean =
+    horizontalDock && !dockBesideRail && (windowWidth - gridWidth) / 2f >= JIGGLE_BAR_CLUSTER_DP * fontScale.coerceAtLeast(1f)
+
+/**
+ * The room Home keeps under the + / Edit / Done bar in edit mode: only what the bar needs above the first row, none when the bar
+ * sits in the strip beside the page, or in the free strip of an expanded window. Pushing a grid down that has no spare height
+ * (F01, 27 Oct sweep) leaves its last row under the dock.
+ */
+fun jiggleBarRoom(barBottom: Float, contentTop: Float, expanded: Boolean, besideGrid: Boolean): Float =
+    if (expanded || besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
+
 enum class DockPlacement {
     /** Side Bar, or a bar along the bottom when a regular-size screen is upright (iPhone Duo). */
     AUTOMATIC,
