@@ -227,6 +227,11 @@ class MainActivity : ComponentActivity() {
             }
             val overlayProgress by rememberSettlingProgress(if (overlayOpen) 1f else 0f,
                 MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+            // Something of Folio's own is over Home, or still fading off it; the clock ink sample must not look at that.
+            val overlayOpenNow by androidx.compose.runtime.rememberUpdatedState(overlayOpen)
+            val homeCovered by androidx.compose.runtime.remember {
+                androidx.compose.runtime.derivedStateOf { overlayOpenNow || overlayProgress > .02f || LauncherPages.isOpen(this@MainActivity) }
+            }
             // A back swipe that closed Spotlight or a panel keeps its preview until the close ends; the next one starts clean (MO7).
             val overlayShowing = topPanel.value != null || spotlightVisible.value
             androidx.compose.runtime.LaunchedEffect(overlayShowing) { if (overlayShowing) OverlayBack.swipe.snapTo(0f) }
@@ -330,6 +335,7 @@ class MainActivity : ComponentActivity() {
                 LocalLabelSize provides state.labelSize,
                 LocalDeviceStatus provides deviceStatus,
                 LocalReduceMotion provides reduceMotion,
+                LocalHomeCovered provides homeCovered,
                 LocalHinge provides rememberHinge(this@MainActivity),
                 // Tablets and desktop windows draw Folio proportionally larger instead of a phone-sized layout lost in a
                 // big window; phones and foldables stay at exactly the system density (see uiScale).

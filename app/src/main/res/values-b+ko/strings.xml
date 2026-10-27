@@ -674,6 +674,17 @@
     <string name="now_playing">지금 재생 중</string>
     <string name="playing">재생 중</string>
     <string name="paused">일시 정지됨</string>
+    <string name="smart_clock_ink">스마트 시계 글자색</string>
+    <string name="smart_clock_ink_off_note">꺼짐. 시계 글자색은 Android 배경화면 색상으로 정해집니다.</string>
+    <string name="smart_clock_ink_on_note">켜짐. 시계가 홈 화면 사진을 보고 밝은 글자와 어두운 글자 중 하나를 고릅니다. 손쉬운 사용 설정에서 끌 수 있습니다.</string>
+    <string name="smart_ink_lead">Folio가 Android 자체 배경화면 위에서도 실제로 시계 뒤에 있는 것을 보고 큰 시계의 글자색을 밝게 또는 어둡게 정할 수 있습니다.</string>
+    <string name="smart_ink_fact_looks">Folio는 시계의 밝은 글자와 어두운 글자를 고르기 위해서만 홈 화면의 사진을 찍습니다.</string>
+    <string name="smart_ink_fact_kept">시계 아래 부분만 측정하고 사진은 바로 버립니다. 밝기 수치 몇 개만 남으며 저장하거나 전송하지 않습니다.</string>
+    <string name="smart_ink_fact_home">Folio 홈이 앞에 있을 때만 작동합니다. 그 순간 홈 위에 그려진 것(예: 플로팅 창)은 사진에 담길 수 있습니다.</string>
+    <string name="smart_ink_fact_separate">별도의 손쉬운 사용 서비스이므로 Folio 제스처 서비스는 여전히 화면을 읽을 수 없습니다. 손쉬운 사용 설정에서 언제든 끌 수 있습니다.</string>
+    <string name="open_accessibility_settings">손쉬운 사용 설정 열기</string>
+    <string name="smart_ink_service_label">Folio 스마트 시계 글자색</string>
+    <string name="smart_ink_service_description">Folio가 큰 시계의 밝은 글자와 어두운 글자를 고르기 위해 홈 화면 사진을 찍을 수 있게 합니다. 시계 아래 부분만 측정하고 사진은 바로 버립니다. 그 외에는 아무것도 하지 않습니다.</string>
     <string name="contacts">연락처</string>
     <string name="search_the_web_ask_ai">웹 검색 및 AI에게 질문</string>
     <string name="top_hit">상위 결과</string>
@@ -1645,6 +1656,7 @@
     <string name="previewing_1">%1$s 미리보기 중</string>
     <string name="set_as_phone_wallpaper_note">Android 자체 미리보기를 열어 잠금 화면에도 표시되게 합니다. 이 변경은 Folio에서 되돌릴 수 없으므로 거기에서 다시 확인합니다.</string>
     <string name="settings_keywords_darken_behind_text">스크림 어둡게 글자 가독성 배경</string>
+    <string name="settings_keywords_smart_clock_ink">시계 글자색 배경화면 스크린샷 손쉬운 사용 밝은 어두운 대비 가독성</string>
     <string name="sunset_to_sunrise">일몰부터 일출까지</string>
     <string name="tweak_cabinet_detail">앱 아이콘을 위로 밀면 바로가기, 최근 알림, 음악 컨트롤이 담긴 작은 패널이 열립니다.</string>
     <string name="tweak_colored_albums_detail">음악 카드와 아일랜드의 사운드 바가 앨범 아트 색을 띱니다.</string>
