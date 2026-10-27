@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The wallpaper theme must be chosen before the window exists (switching to it starts the screen again).
         if (usesSystemWallpaper(this)) setTheme(R.style.Theme_Duo_Wallpaper)
+        intent.dropUnreadableExtras() // an extra from another app that Folio cannot unpack must not crash Home
         super.onCreate(savedInstanceState)
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
@@ -664,6 +665,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
+        intent.dropUnreadableExtras()
         super.onNewIntent(intent)
 
         setIntent(intent)
