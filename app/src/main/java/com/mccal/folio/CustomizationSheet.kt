@@ -2129,7 +2129,8 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         appRows = state.homeAppRows, dockSlots = state.dock.size, statusRail = state.verticalStatus,
         railControls = if (state.searchPill) 0 else 1, // the Home pages' rail, as Home lays it out
         widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(androidx.compose.ui.platform.LocalContext.current),
-        shrinkIconsForRows = state.homeRows > BASE_APP_ROWS)
+        shrinkIconsForRows = state.homeRows > BASE_APP_ROWS,
+        duoSpacing = FeatureGate.DUO_SPACING.isOpen(androidx.compose.ui.platform.LocalContext.current))
     val placements = state.widgetPlacements.filter { it.page == page }
     val shownRows = shownHomeRows(state.homeAppRows, state.homeSlots.drop(homeCellIndex(page, 0).coerceAtLeast(0)).take(HOME_CELLS), placements)
     val cells = HomeCellLayout.forPage(geometry, placements.map { it.row to it.spanY })
@@ -2198,7 +2199,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                         .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).padding(horizontal = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
                         state.dock.forEach { id ->
                             Box(Modifier.width(geometry.dockPitch.dp), contentAlignment = Alignment.Center) {
-                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(dockIconSize(iconSize).dp), shape = RoundedCornerShape(11.dp)) }
+                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(geometry.dockIcon.dp), shape = RoundedCornerShape(11.dp)) }
                             }
                         }
                     } }
@@ -2207,7 +2208,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                         .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).padding(vertical = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         state.dock.forEach { id ->
                             Box(Modifier.fillMaxWidth().height(geometry.dockRowHeight.dp), contentAlignment = Alignment.Center) {
-                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(dockIconSize(iconSize).dp), shape = RoundedCornerShape(11.dp)) }
+                                id?.let(apps::get)?.let { AppIcon(it, null, Modifier.size(geometry.dockIcon.dp), shape = RoundedCornerShape(11.dp)) }
                             }
                         }
                     }
