@@ -30,12 +30,12 @@ Folio keeps working.
 app open the system notifications and Quick Settings panels: there is no other way for an app to do it. It also shows
 Folio's dock handle and Dynamic Island over other apps, if you turn those on. And it runs Android's "global actions"
 when you ask for one: Back, Home and Recents (Big Buttons and the dock), lock screen, screenshot, the power menu, split
-screen, play/pause, closing the shade, and Android's accessibility All Apps menu, from Control Center and Folio's
-actions (`EverywhereOverlay.kt`, `ActionSpecs.kt`, `FolioActions.kt`, `TopPanels.kt`). It observes no events and cannot tap or type for you (`SystemShadeController.kt`). It can take one screenshot, and only for this: when Folio's panels open over another app
+screen, play/pause, closing the shade, and Android's accessibility All Apps menu, from Control Center, Folio's
+actions and any Icon Action you set, each once, when you trigger it (`EverywhereOverlay.kt`, `ActionSpecs.kt`, `FolioActions.kt`, `TopPanels.kt`). It observes no events and cannot tap or type for you (`SystemShadeController.kt`). It can take one screenshot, and only for this: when Folio's panels open over another app
 and Blur is on, the picture behind them is taken before the panel appears, shrunk at once to a few hundred pixels, blurred, and shown behind the panels (`FrostBlur.kt`).
 The picture stays in memory, is never saved, logged or sent, and is dropped when the panel closes; Settings › Blur at zero, or Reduce Transparency, turns it off. This is the
 `canTakeScreenshot` capability, and it is the one thing the service can do with what is on screen. Without it the panels sit on Folio's frosted glass instead. Without it, Home's swipe-down gestures use
-Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
+Folio's own Notification Center and Control Center, and Icon Actions that need it say so instead of failing. Two launchable entries, Folio Notification Shade and Folio Quick Settings
 (`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
 shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
