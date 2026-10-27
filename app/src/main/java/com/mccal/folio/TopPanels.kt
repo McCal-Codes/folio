@@ -1446,7 +1446,7 @@ internal fun MusicWidgetCard(onEdit: () -> Unit) {
 @Composable
 private fun MusicCard(media: IslandActivity.Media, accent: Color) {
     val t = media.controller.transportControls
-    val (position, duration) = rememberMediaPosition(media)
+    val (_, duration) = rememberMediaPosition(media)
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
         // Same fixed-budget approach as the Poster: the art gets whatever height is left over after everything
         // else, never a weight negotiation that starved it to zero the first time this was tried.
@@ -1521,9 +1521,11 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
     val (position, duration) = rememberMediaPosition(media)
     val reduceMotion = LocalReduceMotion.current
     val image = media.art ?: media.icon
+    // Built once: the graphics layer block runs on every draw, and a blur effect is not free to make.
+    val backdropBlur = remember { android.graphics.RenderEffect.createBlurEffect(60f, 60f, android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize()
-            .graphicsLayer { renderEffect = android.graphics.RenderEffect.createBlurEffect(60f, 60f, android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect(); alpha = .55f }
+            .graphicsLayer { renderEffect = backdropBlur; alpha = .55f }
             .background(Color.Black), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .3f)))
         // Everything but the art has a fixed height, so the art gets whatever is left over (never a weight

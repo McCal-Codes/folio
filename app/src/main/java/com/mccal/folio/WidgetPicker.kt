@@ -233,6 +233,8 @@ internal fun VisualWidgetPicker(
     val suggestionsLabel = stringResource(R.string.suggestions)
     val bigClockLabel = stringResource(R.string.big_clock)
     val musicWidgetLabel = stringResource(R.string.music)
+    val musicWidgetContext = LocalContext.current
+    val musicWidgetOpen = remember(musicWidgetContext) { FeatureGate.MUSIC_WIDGET.isOpen(musicWidgetContext) }
     val upNextLabel = stringResource(R.string.up_next)
     val dateLabel = stringResource(R.string.date)
     val clockLabel = stringResource(R.string.clock)
@@ -264,6 +266,7 @@ internal fun VisualWidgetPicker(
     val allBuiltins = listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
         Triple(UP_NEXT_WIDGET, upNextLabel, androidx.compose.material.icons.Icons.AutoMirrored.Rounded.EventNote), Triple(BIG_CLOCK_WIDGET, bigClockLabel, Icons.Rounded.LockClock), Triple(SUGGESTIONS_WIDGET, suggestionsLabel, androidx.compose.material.icons.Icons.Rounded.AutoAwesome),
         Triple(MUSIC_WIDGET, musicWidgetLabel, Icons.Rounded.MusicNote), Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
+        .filter { it.first != MUSIC_WIDGET || musicWidgetOpen }
     // Folio's own widgets are searchable like any app's, and shown with the Folio chip or while browsing.
     val builtins = if ((selectedApp == null || selectedApp == FOLIO_WIDGETS) && selectedProfile.isPersonal)
         allBuiltins.filter { matchesWidgetSearch(words, it.second, folioLabel) } else emptyList()

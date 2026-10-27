@@ -123,7 +123,14 @@ internal enum class FeatureGate(
      * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
      * [OPEN_IN_0_6_9] to open it.
      */
-    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * The Music widget (Strip, Card and Poster) in the widget gallery. It adds a new widget to every Home and keeps the
+     * island's media reading alive for it, so supporters and Folio Dev try it first on real players; everyone gets it in
+     * 0.7.0: flip [OPEN_IN_0_7_0] to open it. A Music widget already on Home (from a layout backup) keeps drawing either way.
+     */
+    MUSIC_WIDGET("musicWidget", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
