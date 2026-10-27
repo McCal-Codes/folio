@@ -486,7 +486,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         }
     }
     private data class RefreshedApps(val entries: List<AppEntry>, val profiles: List<AppProfile>,
-        val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>)
+        val authoritativeProfiles: Set<Long>, val removedProfiles: Set<Long>, val disabled: Set<Pair<Long, String>> = emptySet())
     private data class UndoImportSettings(val compact: LayoutPreset, val expanded: LayoutPreset, val labels: Boolean,
         val googleSearch: Boolean, val verticalStatus: Boolean, val portrait: LayoutPreset? = null)
     private val prefs = application.getSharedPreferences("launcher", 0)
@@ -664,14 +664,28 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     val live = liveApps + shortcuts
                     val liveIds = live.mapTo(mutableSetOf(), AppEntry::id)
                     val profileBySerial = profiles.associateBy(AppProfile::userSerial)
+                    // An app turned off (Settings' Disable, a sleeping app) is still installed but lists no launcher activity:
+                    // it keeps its Home and Dock place for when it comes back, unlike one that was uninstalled.
+                    val missing = (cached.map(AppEntry::id) + mutable.value.trackedAppIds()).filter { it !in liveIds && !isReservedFolderId(it) }
+                        .mapNotNullTo(mutableSetOf()) { id ->
+                            val identity = parseProfileAppId(id) ?: return@mapNotNullTo null
+                            val serial = identity.userSerial ?: personalSerial
+                            val packageName = identity.component.substringBefore('/').takeIf(String::isNotBlank) ?: return@mapNotNullTo null
+                            (serial to packageName).takeIf { serial in authoritativeProfiles }
+                        }
+                    val disabled = keptWhileDisabled(missing) { (serial, packageName) ->
+                        handles.firstOrNull { userManager.getSerialNumberForUser(it) == serial }?.let { isDisabledApp(packageName, it) } == true
+                    }
+                    // The icon Home was showing a moment ago, so an app that is away is dimmed, not replaced by a stand-in.
+                    val shownIcons = mutable.value.apps.associate { it.id to it.icon }
                     val unavailable = cached.filter { it.id !in liveIds }.mapNotNull { cachedEntry ->
                         val profile = profileBySerial[cachedEntry.userSerial]
                         val key = cachedEntry.userSerial to cachedEntry.packageName
                         // A successful profile query is authoritative except while Android explicitly
                         // reports a package unavailable (for example during an update).
-                        if (cachedEntry.userSerial in authoritativeProfiles && key !in temporarilyUnavailable) null
+                        if (cachedEntry.userSerial in authoritativeProfiles && key !in temporarilyUnavailable && key !in disabled) null
                         else cachedEntry.copy(user = profile?.let { p -> handles.firstOrNull { userManager.getSerialNumberForUser(it) == p.userSerial } } ?: personal,
-                            profileLabel = profile?.label ?: cachedEntry.profileLabel, available = false)
+                            profileLabel = profile?.label ?: cachedEntry.profileLabel, available = false, icon = shownIcons[cachedEntry.id] ?: cachedEntry.icon)
                     }
                     val entries = (live + unavailable).distinctBy(AppEntry::id)
                         .sortedWith { a, b -> collator.compare(a.label, b.label) }
@@ -681,7 +695,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     iconCache.keys.retainAll(entries.map { it.id }.toSet())
                     RefreshedApps(entries, (profiles + unavailable.map { AppProfile(it.userSerial, it.profileLabel, false, it.kind == ProfileKind.WORK,
                         quiet = true, unlocked = false, available = false, kind = it.kind) }).distinctBy(AppProfile::userSerial),
-                        authoritativeProfiles.toSet(), removedProfileSerials)
+                        authoritativeProfiles.toSet(), removedProfileSerials, disabled)
                 }
                 mutable.update { old ->
                     val entries = apps.entries.withAppNames(old.appNames)
@@ -695,7 +709,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     val authoritative = apps.authoritativeProfiles
                     // Screenshot Mode's swap list lives in its own file, so its apps are checked here too.
                     val removedIds = removedAppIds(old.trackedAppIds() + ScreenshotSwap.chosen(getApplication()), availableIds,
-                        authoritative, temporarilyUnavailable, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
+                        authoritative, temporarilyUnavailable + apps.disabled, removed, userManager.getSerialNumberForUser(Process.myUserHandle()),
                         apps.removedProfiles)
                     // iOS "Add to Home Screen": a newly downloaded app also goes to the first free spot on Home.
                     val oldIds = old.apps.mapTo(mutableSetOf(), AppEntry::id)
@@ -742,6 +756,10 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             }
         }
     }
+
+    /** Whether [packageName] is installed for [user] but turned off. Not installed at all throws, and counts as not disabled. */
+    private fun isDisabledApp(packageName: String, user: UserHandle): Boolean =
+        runCatching { !launcherApps.getApplicationInfo(packageName, 0, user).enabled }.getOrDefault(false)
 
     private fun loadCachedApps(): List<AppEntry> = runCatching {
         val application = getApplication<Application>()

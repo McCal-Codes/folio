@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -100,13 +101,14 @@ internal fun MarketFeatured(
         state = pager,
         contentPadding = PaddingValues(end = 0.dp),
         pageSpacing = 10.dp,
-        modifier = Modifier.fillMaxWidth().height(148.dp),
+        // 148 dp at the normal size; the banner grows with the text, which at 200% font scale was cut off below the title.
+        modifier = Modifier.fillMaxWidth().heightIn(min = 148.dp),
     ) { page ->
         val (item, entry) = banners[page]
         val name = entry.manifest?.name?.english ?: entry.id
         val openLabel = stringResource(R.string.open_1_s, name)
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp))
+            Modifier.fillMaxWidth().heightIn(min = 148.dp).clip(RoundedCornerShape(FolioRadius.GROUP.dp))
                 .background(bannerColor(page))
                 .clickable(onClickLabel = openLabel) { onOpen(entry.id) }
                 .padding(FolioSpace.LARGE.dp),
@@ -115,7 +117,8 @@ internal fun MarketFeatured(
             item.label?.english?.let { Text(it, color = Color.White.copy(alpha = .95f), fontSize = FolioType.GROUP_LABEL.sp) }
             Text(name, color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Medium)
             entry.manifest?.description?.english?.let {
-                Text(it, color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2)
+                Text(it, color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
