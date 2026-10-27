@@ -1154,7 +1154,7 @@ private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: 
 
 /** Now Playing (2×2): album art, title and transport controls; or, [slim], one row with the title alone. */
 @Composable
-private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit, slim: Boolean) {
+internal fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit, slim: Boolean) {
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
     val tint by androidx.compose.animation.animateColorAsState(mixColor(LocalCcLook.current.tile, artAccent, .45f), label = "music tint")
     val context = LocalContext.current
@@ -1179,8 +1179,9 @@ private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp
             Spacer(Modifier.width(FolioSpace.SMALL.dp))
             Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
                 fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        } else Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.Top) {
+        } else Column(Modifier.fillMaxSize().padding(top = cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
+            // The sides are padded row by row: the transport row below runs the full width, so each of its three controls is a third of the tile.
+            Row(Modifier.padding(horizontal = cell * .16f), verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(cell * .58f).clip(RoundedCornerShape(cell * .13f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
                     val image = media?.art ?: media?.icon
                     if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
@@ -1193,18 +1194,25 @@ private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp
                     media?.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
-            if (media != null) MediaScrubber(media, artAccent?.let { Color(vividTint(it.toArgb())) }) else Spacer(Modifier.height(1.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            if (media != null) Box(Modifier.padding(horizontal = cell * .16f)) { MediaScrubber(media, artAccent?.let { Color(vividTint(it.toArgb())) }) } else Spacer(Modifier.height(1.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 val t = media?.controller?.transportControls
                 val tint = Color.White.copy(alpha = if (t != null) 1f else .35f)
-                Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() })
-                Box(Modifier.size(cell * .46f).clip(CircleShape).background(Color.White).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() },
-                    contentAlignment = Alignment.Center) {
-                    Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        stringResource(if (media?.playing == true) R.string.pause else R.string.play),
-                        tint = if (t != null) Color.Black else Color.Black.copy(alpha = .35f), modifier = Modifier.size(cell * .26f))
+                // Each control draws as small as before and takes a third of the tile's width and at least 48 dp of height (A11Y-1): the glyph is not the only part that answers a tap.
+                Box(Modifier.testTag("cc-previous").weight(1f).heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f))
                 }
-                Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToNext() })
+                Box(Modifier.testTag("cc-play").weight(1f).heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() },
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(cell * .46f).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                        Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            stringResource(if (media?.playing == true) R.string.pause else R.string.play),
+                            tint = if (t != null) Color.Black else Color.Black.copy(alpha = .35f), modifier = Modifier.size(cell * .26f))
+                    }
+                }
+                Box(Modifier.testTag("cc-next").weight(1f).heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(t != null) { t?.skipToNext() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f))
+                }
             }
         }
     }
