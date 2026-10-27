@@ -8,6 +8,8 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.9] - Unreleased
 
 ### Added
+- **Telling same-name apps apart in setup:** when two apps share a name on the Your Home apps page (two Calendars, say), each row shows its package name underneath so you know which one you are ticking.
+- **Pick your Home apps in setup:** first setup has a new Your Home apps page after the starting point. It shows Home's grid live as you tick apps, with up to eight everyday apps ticked, one for each job Folio finds on the phone (phone, messages, camera, browser, photos, maps, calendar, Settings, and so on), and every other app under Show all apps. Nothing is applied until Continue. The first page also has Use Folio now, which puts the starter apps on Home, in place of the apps Folio first placed there, and goes straight to Make Folio Your Home.
 - **Two more Control Center sizes:** Settings › Notifications › Control Center size now has Small and Extra Large beside Compact, Standard and Large, for tiny cover screens and big ones. Every size is checked to fit without scrolling.
 - **Tiles you can feel:** a Control Center tile dips a little under your finger and springs back, and a slider shows its percent while you drag it. With Reduce Motion the tile only dims.
 - **Control Center look:** Settings › Notifications › Panels › Control Center look chooses how the tiles are drawn: Clear glass (see-through, with a bright edge), Frosted (smoky dark tiles that keep text readable over any wallpaper or app, with no plate behind them, the start) or Solid (opaque, as before).
