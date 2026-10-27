@@ -122,7 +122,8 @@ internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, conte
         BoxWithConstraints {
             val scale = (minOf(maxWidth, maxHeight) / 150.dp).coerceIn(.6f, 1f)
             val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, density.fontScale)) {
+            // A11Y-13: a card never grows, so its text follows the system font scale only to 130% (at 200% "LOCAL TIME" wrapped and the day line was squeezed away).
+            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, minOf(density.fontScale, GLANCE_MAX_FONT_SCALE))) {
                 Column(Modifier.fillMaxSize().padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.SpaceBetween, content = content)
             }
         }
@@ -141,7 +142,7 @@ internal fun ClockCard(onClick: () -> Unit) {
     val time = currentTime()
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     GlassCard(onClick = onClick) {
-        Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
+        Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
             modifier = Modifier.semantics { contentDescription = clockWidgetTapToOpenLabel })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
@@ -153,7 +154,7 @@ internal fun ClockCard(onClick: () -> Unit) {
 internal fun DateCard(onClick: () -> Unit) {
     val date = currentTime()
     GlassCard(onClick = onClick) {
-        Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = 11.sp,
+        Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = FolioType.CAPTION.sp,
             fontWeight = FontWeight.Bold, letterSpacing = .6.sp, maxLines = 1)
         Text(date.dayOfMonth.toString(), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 44.sp, lineHeight = 46.sp)
         Text(date.format(DateTimeFormatter.ofPattern("MMMM")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
@@ -166,14 +167,14 @@ internal fun ExpandedCard(onClick: () -> Unit) {
     GlassCard(onClick = onClick) {
         Column {
             Text(date.format(DateTimeFormatter.ofPattern("EEEE")), color = LocalHomeInk.current.primary, fontSize = 22.sp)
-            Text(date.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.secondary, fontSize = 16.sp)
+            Text(date.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.secondary, fontSize = FolioType.CALLOUT.sp)
         }
         Column {
             Icon(Icons.Rounded.Widgets, null, tint = LocalHomeInk.current.primary, modifier = Modifier.size(32.dp))
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.a_little_more_room), color = LocalHomeInk.current.primary, fontSize = FolioType.TITLE.sp, lineHeight = 32.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = 14.sp)
+            Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = FolioType.COMPACT.sp)
             Spacer(Modifier.height(20.dp))
             FolioButton(stringResource(R.string.add_widget), onClick, style = FolioButtonStyle.TONAL, icon = Icons.Rounded.Add)
         }
@@ -232,6 +233,7 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
     UP_NEXT_WIDGET -> context.getString(R.string.up_next)
     SUGGESTIONS_WIDGET -> context.getString(R.string.suggestions)
     BIG_CLOCK_WIDGET -> context.getString(R.string.big_clock)
+    MUSIC_WIDGET -> context.getString(R.string.music)
     INFO_WIDGET -> context.getString(R.string.widget_panel)
     EMPTY_WIDGET -> context.getString(R.string.add_widget)
     else -> controller.manager.getAppWidgetInfo(id)?.provider?.packageName?.let { swapped[it]?.label } ?: controller.label(id)
@@ -289,6 +291,7 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
         UP_NEXT_WIDGET -> UpNextCard(onTap)
         SUGGESTIONS_WIDGET -> SuggestionsCard(onAdd)
         BIG_CLOCK_WIDGET -> BigClockCard(onTap, slot, home = opensApp)
+        MUSIC_WIDGET -> MusicWidgetCard(onTap)
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)

@@ -21,6 +21,7 @@
  * its checksum and signing certificate sit beside it.
  */
 import { readFileSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 
 const SITE = 'https://foliolauncher.com'
 /** Discord's hard limit on message content. Everything below budgets against it. */
@@ -375,4 +376,4 @@ async function main() {
   if (failures.length) throw new Error(`${failures.length} of ${webhooks.length} webhooks did not take the post.`)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) await main()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main()

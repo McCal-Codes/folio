@@ -1,12 +1,18 @@
 package com.mccal.folio
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 
 /**
  * Folio's shared colors: Apple's dark-appearance system colors, named once so screens, themes and Market packages all
  * point at the same values. Use these instead of writing hex colors in a screen.
  */
 internal object FolioColors {
+    /** The frosted glass behind panels over another app (see FrostedBackdrop): its dark base, and the three patches' colors when the wallpaper gives none. */
+    val FrostBase = Color(0xFF16171A)
+    val FrostPatchA = Color(0xFF3A4A5E)
+    val FrostPatchB = Color(0xFF4A3A5E)
+    val FrostPatchC = Color(0xFF3A5E52)
     /**
      * The palette as ARGB numbers, for the places that hold a color as a value rather than a `Color`: a tweak's
      * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a color can't drift.
@@ -91,8 +97,35 @@ internal object FolioColors {
     val MenuSurface = Color(Value.MenuSurface)
     /** iOS's grouped background in light appearance, for the few Folio surfaces that follow the system theme. */
     val LightBackground = Color(Value.LightBackground)
+    /** The darkest container in the sheet scheme, under [SecondaryBackground]. */
+    val SurfaceLowest = Color(0xFF141416)
+    /** The container glass cards are built on ([FolioGlass.card]), and the sheet scheme's `surfaceContainer`. */
+    val SurfaceCard = Color(0xFF242428)
+    /** Caption and helper text in the sheet scheme (Material's `onSurfaceVariant`). */
+    val LabelVariant = Color(0xFFA1A1A6)
+    /** The sheet scheme's strong outline. */
+    val Outline = Color(0xFF545458)
+    /** Hairline dividers in the sheet scheme. */
+    val OutlineVariant = Color(0xFF38383A)
+    /**
+     * A switch's track when off. It is close to the sheet it sits on (1.3:1), so the thumb's position, not the track,
+     * carries the state.
+     */
+    val TrackOff = Color(0xFF39393D)
+    /** The sliding thumb of a segmented control; white text on it is 5.9:1. */
+    val SegmentThumb = Color(0xFF636366)
+    /** What floating menus and action sheets are drawn on, at 80 to 97% depending on the blur behind. */
+    val PopoverSurface = Color(0xFF2A2A2E)
+    /** The outline and handle of a widget that can't be dropped where it is: softer than [Red], which is for destructive actions. */
+    val InvalidDrop = Color(0xFFFF6B6B)
+    /** The bezel drawn around a phone in the Customization previews. */
+    val PreviewBezel = Color(0xFF0B0B0C)
+    /** Supporting text on [SecondaryBackground]-style cards in dark appearance (iOS secondaryLabel). */
+    val SecondaryLabelOnDark = Color(0xFF98989F)
+    /** Supporting text on [LightBackground]-style cards in light appearance (iOS secondaryLabel). */
+    val SecondaryLabelOnLight = Color(0xFF6C6C70)
     /** Supporting text on dark glass and sheets. */
-    val SecondaryLabel = Color.White.copy(alpha = .6f)
+    val SecondaryLabel = Color.White.copy(alpha = .62f)
 }
 
 /**
@@ -152,6 +185,18 @@ internal object FolioRadius {
     const val PANEL = 24
     /** The top corners of a bottom sheet. */
     const val SHEET_TOP = 28
+    /** List rows, search fields and small cards that sit on a sheet. */
+    const val ROW = 12
+    /** Floating menus and action sheets. */
+    const val FLOATING = 18
+    /** Notification cards and the stack behind them. */
+    const val NOTIFICATION = 22
+    /** The dock and the side rail: a capsule. */
+    const val RAIL = 30
+    /** A segmented control's track. */
+    const val SEGMENT = 9
+    /** A segmented control's thumb: the track's radius minus its 2 dp inset, so the corners stay concentric (DES-8). */
+    const val SEGMENT_THUMB = 7
 }
 
 /**
@@ -163,9 +208,29 @@ internal object FolioType {
     const val BODY = 17
     const val SUBHEAD = 15
     const val FOOTNOTE = 13
+    /** Dense rows, chip labels (SemiBold when selected) and secondary controls. */
+    const val COMPACT = 14
+    /** iOS Callout: list values and supporting lines a step above [SUBHEAD]. */
+    const val CALLOUT = 16
+    /** iOS Title 3: sheet and card headings. */
+    const val TITLE3 = 20
+    /** iOS Caption 2: timestamps and the smallest supporting text. Home app labels use [LabelSize] instead. */
+    const val CAPTION = 11
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
+    /** The big title at the top of a Settings page, and its line height (a two-line title keeps air between its lines). */
+    const val LARGE_TITLE = 32
+    const val LARGE_TITLE_LINE = 38
 }
+
+/** The largest system font scale glanceable chrome follows (A11Y-13): Home's app labels, and the text on a built-in widget card. */
+internal const val GLANCE_MAX_FONT_SCALE = 1.3f
+
+/**
+ * What to multiply an sp size by so the system's [fontScale] stops growing it at [GLANCE_MAX_FONT_SCALE]: 1 up to that scale,
+ * less beyond it. Text that cannot grow with its box (an icon's one-line label, a card of fixed size) would otherwise be cut off at 200%.
+ */
+internal fun glanceFontFactor(fontScale: Float): Float = if (fontScale <= GLANCE_MAX_FONT_SCALE) 1f else GLANCE_MAX_FONT_SCALE / fontScale
 
 /**
  * The smallest a finger's target may be, in dp (A11Y-1). What a control *draws* can be smaller: put the drawn thing
@@ -174,6 +239,24 @@ internal object FolioType {
 internal object FolioTouch {
     const val MIN = 48
 }
+
+/** How far glanceable chrome text (tab labels) follows the font size: up to 1.3 times (A11Y-13). */
+internal const val CHROME_TEXT_CAP = 1.3f
+
+/** The most a page headline grows with the font size: 200%, the largest Android's Settings offers (A11Y-12). */
+internal const val HEADLINE_TEXT_CAP = 2f
+
+/**
+ * The size in sp to give chrome text so that, drawn at [fontScale], it is no larger than [size] x [cap]. Only for a short
+ * label that cannot wrap, like a tab's; body text keeps the full scale (A11Y-12). A font scale that is not a positive
+ * number leaves the size alone.
+ */
+internal fun cappedTextSize(size: Float, fontScale: Float, cap: Float = CHROME_TEXT_CAP): Float =
+    if (!(fontScale > cap)) size else size * cap / fontScale
+
+@androidx.compose.runtime.Composable
+internal fun cappedSp(size: Int, cap: Float = CHROME_TEXT_CAP): androidx.compose.ui.unit.TextUnit =
+    cappedTextSize(size.toFloat(), androidx.compose.ui.platform.LocalDensity.current.fontScale, cap).sp
 
 /** Row heights, in dp: iOS's list metrics, and never below the 48dp touch target (A11Y-1). */
 internal object FolioRow {

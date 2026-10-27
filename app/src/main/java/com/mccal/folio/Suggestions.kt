@@ -42,10 +42,10 @@ internal object Suggestions {
 
     /** Folio's launch log as (app id, time). */
     private fun launches(context: Context): List<Pair<String, Long>> =
-        (context.getSharedPreferences("folio", 0).getString("launch_log", "") ?: "").split('\n').mapNotNull { line ->
+        SuggestionsHistory.keepAfter((context.getSharedPreferences("folio", 0).getString("launch_log", "") ?: "").split('\n').mapNotNull { line ->
             val cut = line.lastIndexOf('|')
             if (cut <= 0) null else line.substring(cut + 1).toLongOrNull()?.let { line.substring(0, cut) to it }
-        }
+        }, SuggestionsHistory.cutoff(context))
 
     fun hasUsageAccess(context: Context): Boolean {
         val ops = context.getSystemService(AppOpsManager::class.java)
@@ -58,14 +58,16 @@ internal object Suggestions {
     /** App opens from Usage Access over the last four weeks, as (package, time). */
     private fun usage(context: Context, now: Long): List<Pair<String, Long>> {
         if (!hasUsageAccess(context)) return emptyList()
-        val events = runCatching { context.getSystemService(UsageStatsManager::class.java).queryEvents(now - 28 * DAY_MS, now) }.getOrNull() ?: return emptyList()
+        // Android's own stats stay as they are; Folio just starts reading after the last Clear Suggestions History.
+        val cutoff = SuggestionsHistory.cutoff(context)
+        val events = runCatching { context.getSystemService(UsageStatsManager::class.java).queryEvents(maxOf(now - 28 * DAY_MS, cutoff), now) }.getOrNull() ?: return emptyList()
         val out = ArrayList<Pair<String, Long>>()
         val event = UsageEvents.Event()
         var lastPackage: String? = null
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             // One use per time an app comes to the front, not per activity inside it.
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED && event.packageName != lastPackage && event.packageName != context.packageName) {
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED && event.packageName != lastPackage && event.packageName != context.packageName && event.timeStamp > cutoff) {
                 out += event.packageName to event.timeStamp
                 lastPackage = event.packageName
             }

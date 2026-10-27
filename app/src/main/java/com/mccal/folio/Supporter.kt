@@ -209,6 +209,18 @@ internal object Supporter {
         return scope != BetaCodes.SCOPE_BETA || betaOn(context)
     }
 
+    /**
+     * Calls [onChange] whenever what [has] reads changes: a code redeemed or removed, the Early access switch, the day's clock note. Returns what
+     * stops the watching. The change arrives on the main thread, after it is written.
+     */
+    fun watch(context: Context, onChange: () -> Unit): () -> Unit {
+        val prefs = context.getSharedPreferences(PREFS, 0)
+        // Kept in a local that the returned function also holds: SharedPreferences refers to its listeners only weakly.
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> onChange() }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        return { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     fun betaOn(context: Context): Boolean = context.getSharedPreferences(PREFS, 0).getBoolean(BETA, false)
 
     fun setBetaOn(context: Context, on: Boolean) {
