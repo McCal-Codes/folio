@@ -204,11 +204,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
             NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
             listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
 }
@@ -695,7 +695,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -782,8 +782,14 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
         val closeLabel = stringResource(R.string.close)
         var swipeAway by remember { mutableFloatStateOf(0f) }
-        val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
-        val tick = androidx.compose.ui.platform.LocalHapticFeedback.current
+        // Closing leaves the pull where it was while the panel fades out. Pulled open again in that time, this same panel is reused, so it starts from rest.
+        LaunchedEffect(panelOpen) { swipeAway = ccSwipeAwayOnOpenChange(panelOpen, swipeAway) }
+        val swipeDensity = androidx.compose.ui.platform.LocalDensity.current
+        // The connection below is made once, so it reads these through State: a new density (a fold, a display-size change) or a new onClose is seen at the next gesture.
+        val swipeAwayPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_DP.dp.toPx() })
+        val flickPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_FLICK_DP.dp.toPx() })
+        val closePanel by rememberUpdatedState(onClose)
+        val tick by rememberUpdatedState(androidx.compose.ui.platform.LocalHapticFeedback.current)
         val swipeConnection = remember(pager, edit) {
             // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
             var startedOnFirst = false
@@ -810,7 +816,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
                     gestureActive = false; pastClose = false
                     if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
-                    if (swipeAway < -swipeAwayPx || available.y < -CC_SWIPE_AWAY_FLICK) onClose()
+                    if (ccSwipeAwayCloses(swipeAway, available.y, swipeAwayPx, flickPx)) closePanel()
                     else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
                     return available
                 }
@@ -1246,7 +1252,8 @@ private const val CC_PAGE_FADE = .55f
 
 /** How far up the panel has to be pulled to close, and how fast a flick (px per second) closes it from less. */
 private const val CC_SWIPE_AWAY_DP = 96f
-private const val CC_SWIPE_AWAY_FLICK = 1400f
+/** A flick up faster than this closes Control Center, in dp per second (about what 1400 px per second was on the Fold's 2.6 density), so a dense screen needs no lighter a flick. */
+private const val CC_SWIPE_AWAY_FLICK_DP = 530f
 private const val CC_PAGE_SHRINK = .05f
 
 @Composable

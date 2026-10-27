@@ -54,6 +54,19 @@ internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarP
 internal fun pullStripWanted(pullOn: Boolean, overApps: Boolean, panelsOn: Boolean, safeMode: Boolean, folioInFront: Boolean, fullScreen: Boolean): Boolean =
     pullOn && overApps && panelsOn && !safeMode && !folioInFront && !fullScreen
 
+/**
+ * Whether letting go of Control Center's swipe-away pull closes it: the panel was pulled up (the offset is negative) past [thresholdPx], or the
+ * finger left with an upward speed over [flickPxPerSec] ([velocityY] is negative going up). Both limits are in pixels of the density they are asked at.
+ */
+internal fun ccSwipeAwayCloses(offsetPx: Float, velocityY: Float, thresholdPx: Float, flickPxPerSec: Float): Boolean =
+    offsetPx < 0f && (offsetPx < -thresholdPx || velocityY < -flickPxPerSec)
+
+/**
+ * The pull's offset when the panel is [open] or closed again. A swipe-away close leaves the offset where the finger let go while the panel
+ * fades out, and the same panel is reused when it is pulled down again in that time, so opening starts from rest; closing leaves it as it is.
+ */
+internal fun ccSwipeAwayOnOpenChange(open: Boolean, offsetPx: Float): Float = if (open) 0f else offsetPx
+
 /** The smallest cell Control Center ever draws; under it the page scrolls. */
 internal const val CC_MIN_CELL_DP = 44f
 /** A cell may grow to this times the size the person chose, to fill the width; past that another pair of columns is added instead. */
