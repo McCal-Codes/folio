@@ -48,6 +48,15 @@ jobs:
         run: |
           node --test tools/*.test.mjs tools/folio-bot/*.test.mjs tools/kofi-worker/*.test.mjs
           python3 -m unittest discover -s tools -p 'test_*.py'
+      # Robolectric downloads the Android jars it runs the unit tests against from Maven Central, on every run. One dropped
+      # connection fails every test class at setup with an IOException (26 Oct: the whole build job, with nothing wrong in
+      # the code), so they are kept between runs; a miss still downloads, as before.
+      - name: Keep Robolectric's Android jars
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('app/build.gradle.kts') }}
+          restore-keys: robolectric-
       - name: Unit tests, lint and debug build
         run: ./gradlew :app:testDebugUnitTest :market:testDebugUnitTest :app:lintDebug :market:lintDebug :app:assembleDebug
       # A red unit test run is easier to read from the HTML report than from the log, so keep both modules' reports.

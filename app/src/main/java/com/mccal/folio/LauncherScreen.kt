@@ -1061,6 +1061,9 @@ fun LauncherScreen(
                     },
                 compact = contentHeight < COMPACT_DOCK_MAX_HEIGHT_DP.dp, iconSize = dockIconSize(geometry.iconSize).dp, style = state.statusStyle,
                 focus = state.focusModes.firstOrNull { it.id == state.activeFocus },
+                // A tap opens Control Center (not while Home is being edited or an icon is dragged).
+                onOpen = if (homeEdit.active || drag.active) null else ({ launcherActivity.openSystemShade(ShadePanel.QUICK_SETTINGS) }),
+                openLabel = stringResource(R.string.control_center),
                 // Live activities grow the rail under the status; the dock below moves with the measured height.
                 island = if (state.island && state.railActivities) ({
                     RailLiveActivity(IslandListenerService.activity.collectAsStateWithLifecycle().value
