@@ -244,6 +244,7 @@ class MainActivity : ComponentActivity() {
             // the sheets keep the live blur. If the picture cannot be made, the live blur is used for that panel.
             val homeLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
             val smallLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+            val folderBlurLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
             val pictureDensity = androidx.compose.ui.platform.LocalDensity.current
             val pictureDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
             var panelSession by androidx.compose.runtime.remember { mutableStateOf(false) }
@@ -371,7 +372,9 @@ class MainActivity : ComponentActivity() {
                     // Home is recorded into a layer of its own so a panel can take its picture; the effect above sits outside it.
                     .then(if (backdropBlurPx >= 2f) androidx.compose.ui.Modifier.drawWithContent {
                         homeLayer.record { this@drawWithContent.drawContent() }
-                        drawLayer(homeLayer)
+                        // An open folder fades Home's blurred copy in over the sharp one with its own opening (FolderBlur), instead of waiting for the overlay spring.
+                        val folderBlur = if (LauncherPages.isOpen(this@MainActivity) || SettingsPeek.value != null) 0f else FolderBlur.level(this@MainActivity)
+                        if (folderBlur > 0f) drawFolderBlur(homeLayer, folderBlurLayer, backdropBlur, folderBlur) else drawLayer(homeLayer)
                     } else androidx.compose.ui.Modifier)) {
                 LauncherScreen(state, model, widgets, homeRequests.intValue, homeFromFront = homeFromFront.value,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
