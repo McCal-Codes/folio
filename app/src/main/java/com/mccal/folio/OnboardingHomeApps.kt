@@ -51,15 +51,27 @@ internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>, firstR
 internal fun homePicksFor(firstRun: Boolean, onHome: List<String>, starters: () -> List<String>): List<String> =
     if (!firstRun && onHome.isNotEmpty()) onHome else starters()
 
-/** Puts exactly the ticked apps on Home. Apps that were already on Home and are unticked come off; nothing else is touched. */
-internal fun applyHomePicks(model: LauncherModel, state: LauncherState, apps: List<AppEntry>, picked: Set<String>) {
-    val onHome = state.homeSlots.filterNotNull().toSet()
-    apps.forEach { app ->
-        val want = app.id in picked
-        if (want && app.id !in onHome) model.setPinned(app.id, true)
-        else if (!want && app.id in onHome) model.setPinned(app.id, false)
+/**
+ * Home's slots once setup applies [picked], from the [offered] apps in the order the page lists them. Apps that were on Home, were
+ * offered and are not ticked come off first, so the cells they free are the first places new apps go; nothing else is touched.
+ * On the first run nobody has arranged Home yet (it only holds Folio's own suggestions), so the ticked apps are packed from the
+ * first free cell in the order the page's preview shows them: no empty cell inside the page and no app stranded after a gap
+ * (27 Oct sweep, F02: Chrome alone in row 4 under an empty row).
+ */
+internal fun homeSlotsForPicks(slots: List<String?>, offered: List<String>, picked: Set<String>, blocked: Set<Int>, appRows: Int, firstRun: Boolean): List<String?> {
+    val offeredSet = offered.toSet()
+    var result = normalizeHomeSlots(slots.map { if (it != null && it in offeredSet && it !in picked) null else it })
+    if (firstRun) {
+        val others = result.filterNotNull().filter { it !in offeredSet }
+        return (offered.filter { it in picked } + others).fold(emptyList()) { packed, id -> pinHomeApp(packed, id, true, blocked, appRows) }
     }
+    offered.filter { it in picked && it !in result }.forEach { result = pinHomeApp(result, it, true, blocked, appRows) }
+    return result
 }
+
+/** Puts exactly the ticked apps on Home (see [homeSlotsForPicks]). Apps that were already on Home and are unticked come off. */
+internal fun applyHomePicks(model: LauncherModel, apps: List<AppEntry>, picked: Set<String>, firstRun: Boolean) =
+    model.applyHomePicks(apps.map { it.id }, picked, firstRun)
 
 /**
  * Pick what goes on Home on one screen, with the layout shown live as you tap. Folio ticks one app per everyday job it
