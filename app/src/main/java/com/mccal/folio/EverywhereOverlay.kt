@@ -618,7 +618,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 val reduceMotion = settings.collectAsState().value.reduceMotion || androidRemovesAnimations()
                 // Advanced island, read again whenever it is saved so the pill over an app follows at once.
                 val styleVersion by IslandLayoutChanges.version.collectAsState()
-                val style = remember(styleVersion) { IslandStyle.load(service) }
+                val style = remember(styleVersion) { IslandStyle.active(service) }
                 val speed = IslandStyle.speedMultiplier(style.speed, MotionSpeed.current.factor)
                 val colored = IslandStyle.colorApplies(wraps)
                 val surface = if (colored) Color(style.background) else Color.Black

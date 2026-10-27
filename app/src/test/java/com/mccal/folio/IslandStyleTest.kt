@@ -32,6 +32,19 @@ class IslandStyleTest {
         assertTrue(IslandStyle.gesturesAreDefault(v.gestures))
     }
 
+    @Test fun `a shut Advanced island gate gives the defaults even with values saved`() {
+        val saved = IslandStyle.Values(
+            color = IslandColor.NAVY, corners = IslandCorners.SQUARER, speed = IslandSpeed.FASTER, haptics = IslandHaptics.OFF,
+            gestures = IslandStyle.defaultGestures + (IslandGesture.DOUBLE_TAP to IslandAction.OPEN_APP),
+        )
+        assertFalse(saved.isDefault)
+        val shut = IslandStyle.effective(saved, gateOpen = false)
+        assertTrue(shut.isDefault)
+        assertEquals(black, shut.background)
+        assertTrue(IslandStyle.gesturesAreDefault(shut.gestures))
+        assertEquals(saved, IslandStyle.effective(saved, gateOpen = true))
+    }
+
     @Test fun `an unknown saved key falls back to the default`() {
         assertEquals(IslandColor.BLACK, IslandColor.of("teal"))
         assertEquals(IslandCorners.ROUND, IslandCorners.of(null))

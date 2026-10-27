@@ -167,7 +167,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var custom by remember(wide, landscape, layoutVersion) { mutableStateOf(IslandPosition.load(context, wide, landscape)) }
     val extraWidth = remember(wide, landscape, layoutVersion) { IslandSize.load(context, wide, landscape) }
     // Advanced island: color, corners, speed, haptics and gestures. Every default is how the island always was.
-    val style = remember(layoutVersion) { IslandStyle.load(context) }
+    val style = remember(layoutVersion) { IslandStyle.active(context) }
     val speed = IslandStyle.speedMultiplier(style.speed, MotionSpeed.current.factor)
     val gestures = style.gestures
     val customGestures = !IslandStyle.gesturesAreDefault(gestures)

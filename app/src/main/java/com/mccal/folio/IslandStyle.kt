@@ -115,6 +115,13 @@ internal object IslandStyle {
         val isDefault: Boolean get() = this == Values()
     }
 
+    /** What the island is drawn and handled with: the saved [Values] once the Advanced island gate is open, otherwise the defaults. */
+    fun effective(saved: Values, gateOpen: Boolean): Values = if (gateOpen) saved else Values()
+
+    /** [load] behind [FeatureGate.ISLAND_ADVANCED]: a shut gate means today's island exactly, even with values saved by an earlier build. */
+    fun active(context: android.content.Context): Values =
+        if (FeatureGate.ISLAND_ADVANCED.isOpen(context)) load(context) else Values()
+
     fun load(context: android.content.Context): Values {
         val prefs = context.getSharedPreferences(PREFS, 0)
         return Values(

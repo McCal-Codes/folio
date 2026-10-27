@@ -648,7 +648,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 CardAction(stringResource(R.string.island_adjust), onClick = { adjusting = true })
                                 CardNote(stringResource(R.string.island_adjust_note))
                                 if (adjusting) IslandAdjustDialog(onDone = { adjusting = false })
-                                // Advanced island: color, corner radius, animation speed, haptics and gestures, on their own page (IslandAdvanced.kt).
+                            }
+                            // Advanced island: color, corner radius, animation speed, haptics and gestures, on their own page (IslandAdvanced.kt).
+                            // Gated apart from Adjust island (FeatureGate.ISLAND_ADVANCED, opens in 0.7.0).
+                            if (remember { FeatureGate.ISLAND_ADVANCED.isOpen(islandContext) }) {
                                 CardAction(stringResource(R.string.island_advanced), onClick = { onPage(CustomizationPage.ISLAND_ADVANCED) })
                                 CardNote(stringResource(R.string.island_advanced_note))
                             }
@@ -1649,6 +1652,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
             // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
+            .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
             .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.

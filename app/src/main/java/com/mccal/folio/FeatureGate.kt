@@ -151,7 +151,16 @@ internal enum class FeatureGate(
      * stands apart from the page dots. It changes how many pages the strip shows, so supporters and Folio Dev see it first.
      * Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Advanced island: color, corner radius, animation speed, haptics and gestures on their own page. It is a large new
+     * surface that reaches into the island's touch code and has not been tried on a device yet, so it is gated by risk
+     * apart from Adjust island: supporters and Folio Dev try it in the betas and everyone gets it in 0.7.0: flip
+     * [OPEN_IN_0_7_0] to open it. While shut the Settings row and its search entry are hidden and the island is drawn and
+     * handled exactly as before, whatever was saved ([IslandStyle.active]).
+     */
+    ISLAND_ADVANCED("islandAdvanced", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
