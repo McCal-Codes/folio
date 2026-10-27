@@ -76,6 +76,7 @@ class DuoApplication : Application() {
         CrashLog.install(this)
         DiscoverEmbedding.initialize(this)
         DiscoverBounds.initialize(this)
+        FolioMotion.initialize(this)
         // Matches the Market's background-refresh setting to reality, so turning it off really stops it.
         MarketRefreshJob.schedule(this)
     }
@@ -109,7 +110,7 @@ internal object DiscoverEmbedding {
         .setLayoutDirection(SplitAttributes.LayoutDirection.RIGHT_TO_LEFT).build()
 
     // Window 1.5.1's lint does not recognize these direct version guards with this toolchain.
-    @SuppressLint("RequiresWindowSdk")
+    @SuppressLint("RequiresWindowSdk") // english-only
     fun initialize(context: Context) {
         val controller = SplitController.getInstance(context)
         RuleController.getInstance(context).addRule(SplitPairRule.Builder(setOf(SplitPairFilter(
@@ -187,11 +188,12 @@ abstract class DiscoverPageActivity : ComponentActivity() {
 }
 
 class DiscoverActivity : DiscoverPageActivity() {
-    private val model: LauncherModel by viewModels()
+    // Read-only: Home owns the saved state, and a second model saving its own copy put old settings back.
+    private val model: LauncherModel by viewModels { LauncherModel.readOnlyFactory }
     private val fullSize = mutableStateOf(Size.Zero)
     private var feedLaunched = false
     private var viewportReady = false
-    @SuppressLint("RequiresWindowSdk") // Collection is directly guarded by extensionVersion >= 6.
+    @SuppressLint("RequiresWindowSdk") // Collection is directly guarded by extensionVersion >= 6. // english-only
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         feedLaunched = savedInstanceState != null
@@ -220,7 +222,8 @@ class DiscoverActivity : DiscoverPageActivity() {
             // Discover is its own window, so it needs the Glass setting too (the Side Bar outline follows it).
             androidx.compose.runtime.CompositionLocalProvider(LocalGlassLook provides GlassLook(state.widgetGlass, state.glassOutline)) {
                 BackHandler { DiscoverSession.requestHome(this) }
-                DiscoverDock(if (state.loading) state.copy(apps = startupApps) else state, status, fullSize.value, onLaunch = ::launchApp,
+                // The same swap as Home: Discover collects its own state, so it applies it here too.
+                DiscoverDock(rememberDisguised(if (state.loading) state.copy(apps = startupApps) else state), status, fullSize.value, onLaunch = ::launchApp,
                     onHome = { DiscoverSession.requestHome(this) }, onSearch = { DiscoverSession.home(this, search = true) },
                     onReady = { viewportReady = true; openFeed() })
             }
@@ -253,7 +256,7 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
     private val message = mutableStateOf<String?>("Connecting to Discover…")
     private var returnAnimator: ValueAnimator? = null
     private var connectRequest = 0
-    @SuppressLint("RequiresWindowSdk") // Collection is directly guarded by extensionVersion >= 6.
+    @SuppressLint("RequiresWindowSdk") // Collection is directly guarded by extensionVersion >= 6. // english-only
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DiscoverSession.feed = WeakReference(this)
@@ -299,7 +302,7 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
                             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium)
                             Spacer(Modifier.height(16.dp))
-                            Text(message.value ?: "Google Discover", style = MaterialTheme.typography.bodyLarge)
+                            Text(message.value ?: stringResource(R.string.google_discover), style = MaterialTheme.typography.bodyLarge)
                             Spacer(Modifier.height(20.dp))
                             FolioButton(stringResource(R.string.retry), ::connectSafely, style = FolioButtonStyle.TONAL,
                                 icon = Icons.Rounded.Refresh, tag = "discover-retry")
@@ -352,7 +355,7 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
             if (ActivityEmbeddingController.getInstance(this).isActivityEmbedded(this) &&
                 DiscoverBounds.matchesViewport(decor.width, decor.height)) client.connect()
             else if (remaining > 0) decor.postOnAnimation { attachWhenSized(remaining - 1) }
-            else message.value = "Discover couldn't fit beside the dock. Return home and try again."
+            else message.value = getString(R.string.discover_no_fit)
         }
         // Embedding can be reported before the decor has received its inset size. Attaching
         // Google during that gap can briefly create a full-screen white native window.
@@ -417,9 +420,11 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { 14.sp.toDp().value } + 6f, inLibrary = true,
                 homeBottomSpace = if (context.getSystemService(android.app.role.RoleManager::class.java)
-                    .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale, appRows = state.homeAppRows,
+                    .isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) 44f else 88f, classScale = classScale, appRows = state.homeAppRows, shrinkIconsForRows = state.homeRows > BASE_APP_ROWS,
+                // Anchored like Home's dock, so it stays put when Discover opens.
+                homeRailControls = if (state.searchPill) 0 else 1,
                 // The same rows as Home, so the dock doesn't jump when Discover opens.
-                widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(context))
+                widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(context), duoSpacing = FeatureGate.DUO_SPACING.isOpen(context))
             if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp)
                 .offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp)
                 .onSizeChanged {
@@ -433,11 +438,12 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                 Column(Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
                     state.dock.forEachIndexed { index, id ->
                         val app = apps[id]
+                        val chooseDockApp = stringResource(R.string.discover_choose_dock_app)
                         Box(Modifier.fillMaxWidth().height(geometry.dockRowHeight.dp).testTag("discover-dock-slot-$index")
-                            .semantics { contentDescription = app?.label ?: "Choose dock app on home" }
+                            .semantics { contentDescription = app?.label ?: chooseDockApp }
                             .clickable(role = Role.Button) { if (app != null) onLaunch(app) else onHome() }, contentAlignment = Alignment.Center) {
                             if (app != null) AppIcon(app, null,
-                                Modifier.size(dockIconSize(geometry.iconSize).dp).clip(RoundedCornerShape(11.dp)))
+                                Modifier.size(geometry.dockIcon.dp).clip(RoundedCornerShape(11.dp)))
                             else Icon(Icons.Rounded.Home, null, tint = Color.White)
                         }
                     }

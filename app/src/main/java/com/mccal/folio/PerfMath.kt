@@ -111,7 +111,7 @@ internal class FrameHistogram {
 }
 
 /** What Folio is doing that a frame belongs to, so a report can say how smooth each thing was and not only the whole run. */
-internal enum class PerfScenario { FOLD, HOME_SWIPE, FOLDER, WIDGET_RESIZE }
+internal enum class PerfScenario { FOLD, HOME_SWIPE, FOLDER, WIDGET_RESIZE, SHEET, MENU, ICON_MOVE }
 
 /**
  * Counts which scenarios are going on and gives each its own frame histogram. [begin] and [end] nest and may repeat, so two things at once,
@@ -169,6 +169,9 @@ internal object PerfReport {
         PerfScenario.HOME_SWIPE -> "Home swipe" // english-only
         PerfScenario.FOLDER -> "Folder opening" // english-only
         PerfScenario.WIDGET_RESIZE -> "Widget resize" // english-only
+        PerfScenario.SHEET -> "Page or sheet sliding in" // english-only
+        PerfScenario.MENU -> "Menu or alert opening" // english-only
+        PerfScenario.ICON_MOVE -> "Moving an icon" // english-only
     }
 
     fun build(header: PerfHeader, samples: List<PerfSample>, histogram: FrameHistogram, scenarios: PerfScenarios? = null): String {
@@ -193,8 +196,8 @@ internal object PerfReport {
         val drain = PerfMath.drain(samples)
         when {
             drain != null -> {
-                sb.append("  Drain: about ${PerfMath.fmt(drain.percentPerHour)} % per hour")
-                drain.mahPerHour?.let { sb.append(", ${PerfMath.fmt(it, 0)} mAh per hour from the charge counter") }
+                sb.append("  Drain: about ${PerfMath.fmt(drain.percentPerHour)} % per hour") // english-only
+                drain.mahPerHour?.let { sb.append(", ${PerfMath.fmt(it, 0)} mAh per hour from the charge counter") } // english-only
                 sb.append("\n  This is the whole phone, not only Folio.\n")
             }
             samples.any { it.plugged != 0 || it.chargingMs > 0 } -> sb.append("  Drain: not estimated, the phone was charging during this run.\n")
@@ -274,6 +277,6 @@ internal object PerfReport {
 
     fun duration(ms: Long): String {
         val m = ms / 60_000; val s = ms / 1000 % 60
-        return if (m >= 60) "${m / 60} h ${m % 60} min" else "$m min $s s"
+        return if (m >= 60) "${m / 60} h ${m % 60} min" else "$m min $s s" // english-only
     }
 }

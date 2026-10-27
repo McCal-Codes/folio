@@ -35,7 +35,16 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
     SHOPPING(R.string.shopping_food), UTILITIES(R.string.utilities), OTHER(R.string.other);
 
     companion object {
-        fun of(pm: PackageManager, packageName: String): LibraryCategory {
+        // One answer per package for the life of the process: the same apps are sorted again on every change to the list.
+        private val known = java.util.concurrent.ConcurrentHashMap<String, LibraryCategory>()
+
+        fun of(pm: PackageManager, packageName: String): LibraryCategory =
+            known.getOrPut(packageName) { lookup(pm, packageName) }
+
+        /** An installed, updated or removed package may declare another category now; the next list asks again. */
+        fun forget(packageName: String) { known.remove(packageName) }
+
+        private fun lookup(pm: PackageManager, packageName: String): LibraryCategory {
             val p0 = packageName.lowercase()
             // Browsers and system tools often declare odd categories; our hints win for them.
             if (hint(p0, "chrome", "firefox", "browser", "opera", "brave", "edge", "duckduckgo", "settings", "myfiles", "files",
@@ -70,6 +79,10 @@ internal enum class LibraryCategory(@androidx.annotation.StringRes val title: In
     }
 }
 
+/** What a screen reader says for an icon with no label beside it: a clone adds Dual, so it isn't read as its original. */
+@Composable
+private fun spokenName(app: AppEntry): String = if (app.kind == ProfileKind.CLONE && app.iconFrom == null) "${app.label}, ${profileName(app)}" else app.label
+
 /** iOS App Library tile: three big icons and a mini cluster that opens the whole category. */
 @Composable
 internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifier, labelColor: Color = Color.White, onLaunch: (AppEntry) -> Unit, onOpen: () -> Unit) {
@@ -78,7 +91,7 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
         BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioGlass.card)
             .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp)).padding(FolioSpace.MEDIUM.dp)) {
             val gap = 10.dp
-            val cell = (maxWidth - gap) / 2
+            val cell = ((maxWidth - gap) / 2).coerceAtLeast(0.dp)  // a card measured very narrow mid-resize must not give a negative corner (crash on a window-size change)
             val big = if (apps.size > 4) apps.take(3) else apps.take(4)
             val rest = if (apps.size > 4) apps.drop(3) else emptyList()
             Column(verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -86,11 +99,11 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                     for (col in 0 until 2) {
                         val index = row * 2 + col
                         when {
-                            index < big.size -> AppIcon(big[index], big[index].label, Modifier.size(cell)
+                            index < big.size -> AppIcon(big[index], spokenName(big[index]), Modifier.size(cell)
                                 .clickable { onLaunch(big[index]) }, shape = RoundedCornerShape(cell * .24f))
                             index == 3 && rest.isNotEmpty() -> Box(Modifier.size(cell).clip(RoundedCornerShape(cell * .24f))
                                 .clickable(onClick = onOpen).semantics { contentDescription = showAllText }) {
-                                val mini = (cell - 4.dp) / 2
+                                val mini = ((cell - 4.dp) / 2).coerceAtLeast(0.dp)
                                 Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                                     rest.take(4).chunked(2).forEach { pair ->
                                         Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
@@ -118,8 +131,9 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         FolioDialogWindow(dim = 0f, blurRadiusDp = 24)
-        val appear = rememberEntrance(stiffness = 600f, dampingRatio = .82f)
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
+        val appear = rememberEntrance(FolioMotion.pick(old = .82f to 600f, new = FolioMotion.Menu), scenario = PerfScenario.MENU)
+        val fade = rememberReducedFade()
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value }.background(Color.Black.copy(alpha = .45f)).clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = onDismiss)
             .testTag("category-folder-scrim"))
         FoldAvoidingBox(Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -128,7 +142,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                 // ~84dp per app: three or four columns on the cover, up to six unfolded.
                 val columns = evenColumnsOnHinge(((width - 40.dp) / 84.dp).toInt().coerceIn(3, 6), 3)
                 Column(Modifier.width(width).graphicsLayer {
-                    alpha = appear.value; scaleX = .9f + .1f * appear.value; scaleY = scaleX
+                    alpha = appear.value * fade.value; scaleX = .9f + .1f * appear.value; scaleY = scaleX
                 }) {
                     Text(title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(start = FolioSpace.SMALL.dp, bottom = FolioSpace.MEDIUM.dp))
@@ -148,8 +162,11 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                                 .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
-                                Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
+                                // A clone sits beside its original with the same name, as in the A to Z list.
+                                if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = Color.White.copy(alpha = .6f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                    maxLines = 1, modifier = Modifier.testTag("category-profile-${app.id}"))
                             }
                         }
                     }

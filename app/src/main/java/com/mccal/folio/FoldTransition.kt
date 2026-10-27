@@ -75,7 +75,10 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
     // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
     // arrive after the first frame, and a 0 kept from then would square off the panel's corners until the next switch.
-    var cornerPx by remember(view, expanded) { mutableFloatStateOf(0f) }
+    // One state for the whole life of the view: the frame loop below is launched once and keeps writing to the state it first saw, so a state made per
+    // display (remember(view, expanded)) was left at 0 after the first switch and squared off the panel's corners; a new display asks again instead.
+    var cornerPx by remember(view) { mutableFloatStateOf(0f) }
+    androidx.compose.runtime.LaunchedEffect(expanded) { cornerPx = 0f }
     // Android 15+ files a layer with no motion hint as "normal", which the Fold8 runs at 60 Hz. While the fold
     // animates, ask for the display's top rate; once it settles, hand the choice back to the system (dynamic).
     val fastest = remember(view, expanded) { view.display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f }
@@ -243,8 +246,11 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             drawRect(brush)
         }
         // Whole screen dims as it folds, like the display powering down with the hinge.
-        if (enabled && direction.allows(false) && fold.closing) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM)))
+        // It lets go with a spring as the fold reopens or stops, instead of vanishing while the fold is still easing back (a visible pop in a half fold).
+        val dimGate by androidx.compose.animation.core.animateFloatAsState(if (enabled && direction.allows(false) && fold.closing) 1f else 0f,
+            MotionSpeed.spring(.9f, androidx.compose.animation.core.Spring.StiffnessMedium), label = "fold dim")
+        if (enabled && dimGate > .002f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM) * dimGate))
         }
     }
 }
@@ -639,7 +645,6 @@ internal fun coverHingeEdge(g: FoldGeometry): CoverEdge = when {
 /** How far the cover content recedes while the effect is on, so the cover has depth and not only a blur; none under Reduce Motion. */
 internal fun coverSettleScale(m: Float, reduceMotion: Boolean): Float = if (reduceMotion) 1f else 1f - COVER_SCALE * m.coerceIn(0f, 1f)
 
-private fun easeOutCubic(t: Float): Float { val u = 1f - t; return 1f - u * u * u }
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
 @RequiresApi(33)

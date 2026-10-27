@@ -6,6 +6,8 @@ internal object SettingKeys {
     const val STATE = "state"
     /** Whether Home's window shows Android's wallpaper, saved on its own and at once (see applyWallpaperWindow). */
     const val SYSTEM_WALLPAPER = "systemWallpaperWindow"
+    /** Clear Suggestions History: uses at or before this time are ignored, a plain long beside the state so no schema changes. */
+    const val SUGGESTIONS_CLEARED_AT = "suggestionsClearedAt"
     const val DOCK = "dock"
     const val LEFT_HANDED = "leftHanded"
     const val DOCK_EVERYWHERE = "dockEverywhere"
@@ -14,6 +16,7 @@ internal object SettingKeys {
     /** Keep the island out of full-screen video and games, and optionally out of landscape. */
     const val ISLAND_HIDE_FULL_SCREEN = "islandHideFullScreen"
     const val ISLAND_HIDE_LANDSCAPE = "islandHideLandscape"
+    const val ISLAND_HIDE_LANDSCAPE_INNER = "islandHideLandscapeInner"
     /** Island message cards skip notifications Android will already show as a pop-up. */
     const val MESSAGES_AVOID_DOUBLE = "messagesAvoidDouble"
     /** Brief pop-ups › Other Notifications: any app's new notifications in the island (off by default). */

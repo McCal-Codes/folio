@@ -11,10 +11,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.togetherWith
@@ -92,8 +95,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             windowWidth = view.rootView.width
             windowHeight = view.rootView.height
             // Reported cutout first; otherwise a known under-display camera (e.g. Galaxy Z Fold8 inner screen).
-            cutout = view.rootWindowInsets?.displayCutout?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let(::Rect)
-                ?: CameraArea.hiddenCamera(view.display)
+            cutout = islandCamera(view.rootWindowInsets?.displayCutout, view.display, density.density)
         }
         view.viewTreeObserver.addOnGlobalLayoutListener(update)
         update.onGlobalLayout()
@@ -124,10 +126,20 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     val notice = eventVisible as? IslandEvent.Notice
     val content: IslandContent? = eventVisible?.let { IslandContent.Event(it) } ?: activity?.let { IslandContent.Live(it) }
     var expanded by remember(activity?.packageName) { mutableStateOf(false) }
+    // A ringing call card swiped away shrinks to the pill; the call keeps ringing and a tap opens the card again.
+    var ringPutAway by remember { mutableStateOf<String?>(null) }
+    // A later call can reuse the same notification key, so the marker goes once that call is no longer ringing.
+    LaunchedEffect(activity) { if ((activity as? IslandActivity.Call)?.incoming != true) ringPutAway = null }
     androidx.activity.compose.BackHandler(expanded) { expanded = false }
+    // A brief event or a ringing call takes the island over; the card must not come back by itself when it ends (IM-9).
+    val takeover = eventVisible != null
+    LaunchedEffect(takeover) { expanded = expandedAfterTakeover(expanded, takeover) }
+    val callRinging = (activity as? IslandActivity.Call)?.incoming == true
+    LaunchedEffect(callRinging) { expanded = expandedAfterTakeover(expanded, callRinging) }
+    val reduceMotion = LocalReduceMotion.current
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    val wide = with(density) { windowWidth.toDp() }.value * androidx.compose.ui.platform.LocalConfiguration.current.classScale >= 600f
+    val wide = islandWideWindow(windowWidth, density.density, androidx.compose.ui.platform.LocalConfiguration.current.classScale)
     val landscape = windowWidth > windowHeight
     // Camera on a side edge (a screen turned sideways): the island stands upright around it, like iPhone Duo's.
     val side = cameraSideEdge(cutout, windowWidth, windowHeight)
@@ -151,15 +163,17 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     with(density) {
-        val cameraGeometry = islandGeometry(cutout, windowWidth, density.density)
-        val geometry = custom?.clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
-            ?.let { islandGeometryAt(it.xFraction * windowWidth, it.topDp, windowWidth, density.density) } ?: cameraGeometry
+        val camera = cutout?.ltrb()
+        val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density)
+        // Where the camera really is: the snap target for a drag, even when the pill is drawn at top center instead.
+        val realCamera = islandGeometry(camera, windowWidth, density.density)
+        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density)
         val camW = geometry.camW.dp
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
         val live = (content as? IslandContent.Live)?.activity
         // A new message opens straight into a small card (like an iPhone banner coming out of the island).
-        val ringing = (live as? IslandActivity.Call)?.takeIf { it.incoming }
+        val ringing = (live as? IslandActivity.Call)?.takeIf { it.incoming && it.key != ringPutAway }
         val open = (expanded && live != null) || message != null || notice != null || ringing != null
         // A notice fits its text and keeps clear of the screen edges and a bent hinge; other cards keep their width.
         val hinge = LocalHinge.current?.takeIf { it.active }
@@ -171,15 +185,25 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val cardW = placement?.width?.dp ?: 340.dp.coerceAtMost(windowWidth.toDp() - 16.dp)
         // One shape morphs between pill and card: width, corner radius and height all spring together,
         // anchored to the camera like the real Dynamic Island.
-        val morph = spring<Dp>(dampingRatio = .74f, stiffness = Spring.StiffnessMediumLow)
+        val morph = if (reduceMotion) snap() else FolioMotion.spring<Dp>(.74f to Spring.StiffnessMediumLow)
         val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
         val corner by animateDpAsState(if (open) 34.dp else pillH / 2, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
-        val edge = ISLAND_SIDE_MARGIN.dp.toPx()
         val left = if (placement != null && open) noticeLeft(placement, centerX.toDp().value, width.value).dp.toPx()
-            else (centerX - width.toPx() / 2f).coerceIn(edge, maxOf(edge, windowWidth - width.toPx() - edge))
-        val top = geometry.top.coerceAtLeast(ISLAND_EDGE_GAP).dp
+            else islandLeftPx(centerX, width.toPx(), windowWidth, density.density)
+        // No floor here: the edge gap is the shared placement's call, so Home and the island over apps match (#394).
+        val top = geometry.top.dp
 
+        val toggles = message == null && live != null
+        // Said from what is really showing: a ringing call or a notice opens the card by itself and has nothing to toggle.
+        val a11y = islandToggleA11y(toggles, open, forced = ringing != null || notice != null)
+        val toggleLabel = a11y?.takeIf { it.hasAction }?.let { stringResource(if (it.expanded) R.string.island_collapse else R.string.island_expand) }
+        val stateLabel = a11y?.let { stringResource(if (it.expanded) R.string.island_state_expanded else R.string.island_state_collapsed) }
+        val toggle = { if (a11y?.hasAction == true) expanded = !expanded }
+        // A tap anywhere else on Home puts the card away. The tap is consumed here, like a sheet's scrim, so it never
+        // also opens whatever was under it (IM-9/IM-10).
+        if (islandCardTapOutsideCloses(expanded, live != null, message != null, notice != null, ringing != null))
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { expanded = false } }.clearAndSetSemantics { }.testTag("island-scrim"))
         Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + dragOffset.y).roundToInt()) }.width(width)
             .then(if (placement != null && open) Modifier.heightIn(max = placement.maxHeight.dp) else Modifier)
             .graphicsLayer { val s = if (dragging) 1.06f else 1f; scaleX = s; scaleY = s }
@@ -192,8 +216,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         dragging = false
                         val newCenterX = (geometry.centerXPx + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
                         val newTopDp = (geometry.top + dragOffset.y / density.density).coerceAtLeast(4f)
-                        val nearCamera = kotlin.math.abs(newCenterX - cameraGeometry.centerXPx) < 56.dp.toPx() &&
-                            kotlin.math.abs(newTopDp - cameraGeometry.top) < 40f && cutout != null
+                        val nearCamera = cutout != null && islandSnapsToCamera(newCenterX, newTopDp, realCamera, density.density)
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
                             .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
                         IslandPosition.save(context, wide, landscape, custom)
@@ -201,25 +224,65 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     },
                 ) { change, amount -> change.consume(); dragOffset += amount }
             }
-            .animateContentSize(FolioMotion.spring(FolioMotion.Appear))
+            .then(if (reduceMotion) Modifier else Modifier.animateContentSize(FolioMotion.spring(FolioMotion.Appear)))
             .clip(RoundedCornerShape(corner)).background(Color.Black)
-            .clickable(remember { MutableInteractionSource() }, null) { if (message == null && live != null) expanded = !expanded }
+            .clickable(remember { MutableInteractionSource() }, null, onClickLabel = toggleLabel) { toggle() }
             // Polite, so a notice or a new activity is read when it appears rather than only when found (A11Y-7).
-            .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+            .semantics {
+                contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                stateLabel?.let { stateDescription = it }
+            }
             .testTag("cutout-island")) {
             androidx.compose.animation.AnimatedContent(open, label = "island-content",
-                transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90)) }) { showCard ->
+                transitionSpec = {
+                    if (reduceMotion) fadeIn(tween(FolioMotion.FADE_MS)) togetherWith fadeOut(tween(FolioMotion.FADE_MS))
+                    else fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90))
+                }) { showCard ->
                 if (showCard && notice != null) NoticeCardContent(notice, topInset = pillH) { eventVisible = null; IslandEvents.dismiss() }
                 else if (showCard && message != null) MessageCardContent(message, replying, onReply = { replying = true },
                     onOpen = { replying = false; eventVisible = null; IslandListenerService.openKey(context, message.key, message.packageName) },
                     onDone = { replying = false; eventVisible = null },
                     onDismiss = { replying = false; eventVisible = null; IslandEvents.dismiss() })
-                else if (showCard && live != null) ExpandedCardContent(live, onOpen = { expanded = false; onOpen(live) })
+                else if (showCard && live != null) {
+                    val ringingNow = live is IslandActivity.Call && live.incoming
+                    Box(Modifier.swipeUpToHide(ringingNow) { expanded = false; ringPutAway = (live as IslandActivity.Call).key }) {
+                        ExpandedCardContent(live, onOpen = { expanded = false; onOpen(live) })
+                    }
+                }
                 else Box(Modifier.width(geometry.widthFor(content).dp).height(pillH)) { IslandPillContent(content, camW, pillH) }
             }
         }
+        // The pill is only 34 dp tall: its touch area reaches 14 dp lower without changing what is drawn (I-10).
+        if (toggles && !open) Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + pillH.toPx() + dragOffset.y).roundToInt()) }
+            .size(width, ISLAND_TOUCH_EXTRA.dp).clickable(remember { MutableInteractionSource() }, null) { toggle() }.clearAndSetSemantics { })
     }
 }
+
+/**
+ * Whether a card opened with a tap stays open when something takes the island over. A brief event or a ringing call
+ * shows its own card; when it ends the island goes back to the pill instead of reopening the old card (IM-9).
+ */
+internal fun expandedAfterTakeover(expanded: Boolean, takeover: Boolean): Boolean = expanded && !takeover
+
+/** Whether a tap outside the card puts it away: only a card the user opened, never a message, notice or ringing call (IM-10). */
+internal fun islandCardTapOutsideCloses(expanded: Boolean, hasLive: Boolean, message: Boolean, notice: Boolean, ringing: Boolean): Boolean =
+    expanded && hasLive && !message && !notice && !ringing
+
+/** What TalkBack says about the island's tap target: the state, and whether activating it does anything. */
+internal data class IslandToggleA11y(val expanded: Boolean, val hasAction: Boolean)
+
+/**
+ * [open] is whether a card is showing. A [forced] card (a ringing call, a notice) opened by itself, so it reads as
+ * expanded with no toggle action. Null when the island has nothing to toggle.
+ */
+internal fun islandToggleA11y(toggles: Boolean, open: Boolean, forced: Boolean): IslandToggleA11y? = when {
+    !toggles -> null
+    forced -> IslandToggleA11y(expanded = true, hasAction = false)
+    else -> IslandToggleA11y(expanded = open, hasAction = true)
+}
+
+/** How far below the 34 dp pill its touch area reaches. */
+internal const val ISLAND_TOUCH_EXTRA = 14
 
 /** Where the user dragged the island on one screen: horizontal center as a fraction of width, top in dp. */
 internal data class IslandPosition(val xFraction: Float, val topDp: Float) {
@@ -266,15 +329,110 @@ internal fun islandGeometryAt(centerXPx: Float, topDp: Float, windowWidthPx: Int
     return IslandGeometry(0f, 0f, centerXPx, topDp + pillH / 2, pillH, maxOf(room * 2, 80f), topDp)
 }
 
+/**
+ * The camera to wrap (#61): the cutout's own outline when it lies inside the reported rect and is shorter, else the
+ * rect. On Android's punch-hole emulation the outline is the hole itself, so the island wraps the lens.
+ *
+ * The Galaxy Z Fold8 cover is different: it reports its camera as a strip from the top edge down past the lens
+ * (589,0 - 659,104 px at 2.625) and its outline is that same rectangle, so there is no smaller hole to wrap. For such a
+ * strip the island wraps a band of it instead, sized so the pill keeps the usual height ([cameraStripBand]).
+ */
+internal fun cameraRect(rect: Rect, outline: android.graphics.Path?, density: Float): Rect {
+    val bounds = android.graphics.RectF().also { outline?.computeBounds(it, true) }
+    val lens = if (outline == null || bounds.isEmpty) null
+        else intArrayOf(bounds.left.toInt(), bounds.top.toInt(), kotlin.math.ceil(bounds.right).toInt(), kotlin.math.ceil(bounds.bottom).toInt())
+    return cameraRect(intArrayOf(rect.left, rect.top, rect.right, rect.bottom), lens, density).let { Rect(it[0], it[1], it[2], it[3]) }
+}
+
+/** [rect] and [outline] are left, top, right, bottom in px. An outline that spans other cutouts too is not inside. */
+internal fun cameraRect(rect: IntArray, outline: IntArray?, density: Float): IntArray {
+    if (outline == null || outline[2] <= outline[0] || outline[3] <= outline[1]) return rect
+    val inside = outline[0] >= rect[0] - OUTLINE_SLACK && outline[1] >= rect[1] - OUTLINE_SLACK &&
+        outline[2] <= rect[2] + OUTLINE_SLACK && outline[3] <= rect[3] + OUTLINE_SLACK
+    if (inside && outline[3] - outline[1] < rect[3] - rect[1] - OUTLINE_SLACK) return outline
+    return if (isCameraStrip(rect, outline, density)) cameraStripBand(rect, density) else rect
+}
+
+/**
+ * A camera reported as a strip with no smaller hole inside it: the outline's bounds are the rect (give or take
+ * rounding), it starts at the top edge, it is taller than it is wide, and taller than the usual pill. Notches are
+ * wider than tall and punch holes stand off the edge, so neither counts.
+ */
+internal fun isCameraStrip(rect: IntArray, outline: IntArray, density: Float): Boolean {
+    val same = (0..3).all { kotlin.math.abs(outline[it] - rect[it]) <= OUTLINE_SLACK }
+    val width = rect[2] - rect[0]; val height = rect[3] - rect[1]
+    return same && rect[1] in 0..OUTLINE_SLACK && height > width && height / density > ISLAND_MIN_HEIGHT
+}
+
+/**
+ * The part of a [isCameraStrip] strip the island wraps: as wide as the strip, and as tall as a camera that gives the
+ * usual pill height. It sits on the strip's center, but never so high that the pill would come closer to the edge
+ * than the usual gap, which Home keeps when it draws the island anyway; that way Home and the island over other apps
+ * place it the same.
+ */
+internal fun cameraStripBand(rect: IntArray, density: Float): IntArray {
+    val half = ISLAND_MIN_HEIGHT / 2 - ISLAND_CAMERA_MARGIN
+    val center = maxOf((rect[1] + rect[3]) / 2f / density, ISLAND_EDGE_GAP + ISLAND_MIN_HEIGHT / 2)
+    return intArrayOf(rect[0], kotlin.math.floor((center - half) * density).toInt(), rect[2], kotlin.math.floor((center + half) * density).toInt())
+}
+
+/** Pixels an outline may stick out of its rect and still count as inside (rounding). */
+private const val OUTLINE_SLACK = 2
+
 /** Pure placement of the island around a camera cutout. Dp values except [centerXPx]. */
 internal data class IslandGeometry(val camW: Float, val camH: Float, val centerXPx: Float, val centerY: Float, val pillH: Float, val maxW: Float,
     val top: Float = centerY - pillH / 2) {
     fun widthFor(content: IslandContent): Float = minOf(islandWantWidth(content, camW.dp).value, maxW).coerceAtLeast(camW + pillH)
 }
 
-internal fun islandGeometry(cutout: Rect?, windowWidthPx: Int, density: Float): IslandGeometry =
-    if (cutout == null) islandGeometry(null as IntArray?, windowWidthPx, density)
-    else islandGeometry(intArrayOf(cutout.left, cutout.top, cutout.right, cutout.bottom), windowWidthPx, density)
+internal fun Rect.ltrb(): IntArray = intArrayOf(left, top, right, bottom)
+
+/** The camera the island wraps on this window: the reported cutout ([cameraRect]), else a known hidden camera. */
+internal fun islandCamera(cutout: android.view.DisplayCutout?, display: android.view.Display?, density: Float): Rect? =
+    cutout?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { cameraRect(it, cutout.cutoutPath, density) }
+        ?: CameraArea.hiddenCamera(display)
+
+/**
+ * Which saved spot a window uses ([IslandPosition.load]). Home and the island over apps share it, so a spot dragged
+ * to on Home is the one used over apps on the same screen.
+ */
+internal fun islandWideWindow(windowWidthPx: Int, density: Float, classScale: Float): Boolean =
+    windowWidthPx / density * classScale >= 600f
+
+/**
+ * Where the compact island goes on one window. Home and the island over other apps both place it with this, so it
+ * sits at the same spot and height in both. [camera] is left, top, right, bottom in px after [cameraRect], or null;
+ * [custom] is a spot the user dragged it to on this screen and orientation, kept on screen ([IslandPosition.clamped]).
+ */
+internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowWidthPx: Int, windowHeightPx: Int, density: Float): IslandGeometry {
+    val atCamera = islandCameraGeometry(camera, windowWidthPx, windowHeightPx, density)
+    return custom?.clamped(windowWidthPx, windowHeightPx, density, atCamera.pillH)
+        ?.let { islandGeometryAt(it.xFraction * windowWidthPx, it.topDp, windowWidthPx, density) } ?: atCamera
+}
+
+/**
+ * The island wrapped around the camera. A camera that is not on the top edge (a screen turned sideways or upside
+ * down) has no pill to sit in: wrapping it put the pill mid-edge and partly off screen, so the island goes to the top
+ * center instead. Home stands an upright island at a side camera itself ([VerticalIsland]).
+ */
+internal fun islandCameraGeometry(camera: IntArray?, windowWidthPx: Int, windowHeightPx: Int, density: Float): IslandGeometry =
+    islandGeometry(camera?.takeIf { cameraOnTopEdge(it, windowWidthPx, windowHeightPx) }, windowWidthPx, density)
+
+/** Whether the top is the screen edge [camera] is nearest. An unknown window size counts as top. */
+internal fun cameraOnTopEdge(camera: IntArray, windowWidthPx: Int, windowHeightPx: Int): Boolean {
+    if (windowWidthPx <= 0 || windowHeightPx <= 0) return true
+    return camera[1] <= minOf(camera[0], windowWidthPx - camera[2], windowHeightPx - camera[3])
+}
+
+/** Whether a pill dropped at [centerXPx], [topDp] is close enough to the real camera ([camera]) to snap back to it. */
+internal fun islandSnapsToCamera(centerXPx: Float, topDp: Float, camera: IslandGeometry, density: Float): Boolean =
+    kotlin.math.abs(centerXPx - camera.centerXPx) < 56f * density && kotlin.math.abs(topDp - camera.top) < 40f
+
+/** Left of a pill [widthPx] wide centered on [centerXPx], kept the usual margin in from both screen edges. */
+internal fun islandLeftPx(centerXPx: Float, widthPx: Float, windowWidthPx: Int, density: Float): Float {
+    val edge = ISLAND_SIDE_MARGIN * density
+    return (centerXPx - widthPx / 2f).coerceIn(edge, maxOf(edge, windowWidthPx - widthPx - edge))
+}
 
 /** [cutoutLtrb] is left, top, right, bottom in px (or null when the display has no cutout). */
 internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: Float): IslandGeometry {
@@ -287,8 +445,11 @@ internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: 
     val camTop = (cutoutLtrb?.get(1) ?: (12 * density).toInt()) / density
     val camBottom = camTop + camH
     // The island always starts above the camera, even when the camera sits closer to the edge than the usual gap
-    // (a punch-hole near the top, as on the Galaxy Z Fold7's inner screen); otherwise the lens peeks over it.
-    val top = if (cutoutLtrb == null) ISLAND_EDGE_GAP
+    // (a punch-hole near the top, as on the Galaxy Z Fold7's inner screen); otherwise the lens peeks over it. A
+    // cutout that starts at the edge itself (a notch, or a strip too short for [cameraStripBand]) cannot be started
+    // above, so the island keeps the usual gap from the edge there.
+    val atEdge = cutoutLtrb != null && cutoutLtrb[1] <= OUTLINE_SLACK
+    val top = if (cutoutLtrb == null || atEdge) ISLAND_EDGE_GAP
         else minOf(maxOf(ISLAND_EDGE_GAP, camTop - ISLAND_CAMERA_MARGIN), camTop - ISLAND_CAMERA_MIN_OVERLAP).coerceAtLeast(0f)
     val pillH = maxOf(camBottom + ISLAND_CAMERA_MARGIN - top, ISLAND_MIN_HEIGHT)
     // Width stays symmetric around the camera, capped by the room on the narrower side.
@@ -470,7 +631,7 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
     Column(Modifier.fillMaxWidth().swipeUpToHide(!replying, onDismiss)
         .padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.COMFY.dp, bottom = FolioSpace.COMFY.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-        Row(verticalAlignment = Alignment.Top, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen)) {
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onOpen)) {
             Box {
                 MessageAvatar(message, 44.dp)
                 if (message.avatar != null) message.appIcon?.let {
@@ -484,7 +645,7 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(message.appLabel, color = Color.White.copy(alpha = .5f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
                 }
-                message.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, maxLines = if (replying) 2 else 3,
+                message.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, maxLines = if (replying) 2 else 3,
                     overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
             }
         }
@@ -499,13 +660,13 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
 internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = FolioSpace.LARGE.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onOpen)) {
             if (activity is IslandActivity.Call) CallAvatar(activity, 44.dp)
             else ((activity as? IslandActivity.Media)?.art ?: activity.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(activity.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(activity.title, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val subtitle = when (activity) {
                     is IslandActivity.Media -> activity.subtitle
                     is IslandActivity.Progress -> activity.subtitle
@@ -526,7 +687,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
                 val t = activity.controller.transportControls
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
                 Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = Color.White,
-                    modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
+                    modifier = Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
             }
             is IslandActivity.Progress -> activity.fraction?.let { f ->
@@ -573,7 +734,7 @@ private fun CallButton(icon: ImageVector, label: String, color: Color, onClick: 
         Box(Modifier.size(52.dp).clip(CircleShape).background(color).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
         }
-        Text(label, color = Color.White.copy(alpha = .7f), fontSize = 11.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+        Text(label, color = Color.White.copy(alpha = .7f), fontSize = FolioType.CAPTION.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
 
@@ -596,8 +757,9 @@ internal fun Chronometer(base: Long, countDown: Boolean, color: Color, fontSize:
 
 @Composable
 internal fun Bars(playing: Boolean, color: Color = IslandGreen) {
-    // No infinite animation while paused: a paused session must not redraw forever.
-    val phase = if (playing) {
+    // No infinite animation while paused, or with Reduce Motion on: then the bars stand still (I-9).
+    val still = LocalReduceMotion.current
+    val phase = if (playing && !still) {
         val transition = rememberInfiniteTransition(label = "island-bars")
         transition.animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "phase").value
     } else 0f

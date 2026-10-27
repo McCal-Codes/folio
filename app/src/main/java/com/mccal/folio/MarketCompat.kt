@@ -24,16 +24,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mccal.folio.market.AndroidRelease
 import com.mccal.folio.market.CompatCheck
 import com.mccal.folio.market.CompatState
+import com.mccal.folio.market.FolioMinor
 import com.mccal.folio.market.Screen
 
-/** One line of the Compatibility card: how it came out, and the words for it. [args] fill both strings. */
+/** One line of the Compatibility card: how it came out, and the words for it. [args] fill the title, [detailArgs] the detail. */
 internal data class CompatLine(
     val state: CompatState,
     @StringRes val title: Int,
     @StringRes val detail: Int,
     val args: List<String> = emptyList(),
+    val detailArgs: List<String> = args,
 )
 
 /**
@@ -49,8 +52,12 @@ internal fun compatLines(checks: List<CompatCheck>): List<CompatLine> = checks.m
             check.have != null -> CompatLine(CompatState.OK, R.string.compat_works, R.string.compat_works_detail, listOf(check.have.toString()))
             else -> null
         }
-        is CompatCheck.Kinds ->
-            if (check.state == CompatState.BLOCKED) CompatLine(CompatState.BLOCKED, R.string.needs_a_newer_folio, R.string.compat_kind_detail) else null
+        // A script is code, and Folio doesn't run code from a source (ADR 0004), so a newer Folio is no answer for it.
+        is CompatCheck.Kinds -> when {
+            check.state != CompatState.BLOCKED -> null
+            com.mccal.folio.market.PackageKind.SCRIPT in check.unsupported -> CompatLine(CompatState.BLOCKED, R.string.compat_no_scripts, R.string.compat_no_scripts_detail)
+            else -> CompatLine(CompatState.BLOCKED, R.string.needs_a_newer_folio, R.string.compat_kind_detail)
+        }
         is CompatCheck.Features ->
             if (check.state == CompatState.BLOCKED) CompatLine(CompatState.BLOCKED, R.string.needs_a_newer_folio, R.string.compat_features_detail) else null
         is CompatCheck.Hosts -> null
@@ -69,6 +76,26 @@ internal fun compatLines(checks: List<CompatCheck>): List<CompatLine> = checks.m
                 CompatLine(CompatState.NOTE, R.string.compat_screen_cover_only, R.string.compat_screen_cover_only_detail)
             else -> null
         }
+        is CompatCheck.Android -> check.have?.let { have ->
+            val min = check.min
+            val max = check.max
+            val (title, args) = when {
+                min != null && max != null -> R.string.compat_android_between to listOf(AndroidRelease.name(min), AndroidRelease.name(max))
+                min != null -> R.string.compat_android_from to listOf(AndroidRelease.name(min))
+                else -> R.string.compat_android_up_to to listOf(AndroidRelease.name(max ?: have))
+            }
+            val blocked = check.state == CompatState.BLOCKED
+            CompatLine(check.state, title, if (blocked) R.string.compat_android_blocked_detail else R.string.compat_android_ok_detail,
+                args, listOf(AndroidRelease.name(have)))
+        }
+        // Only past the range: inside it, "Works with your Folio" already says enough.
+        is CompatCheck.FolioRange -> check.have?.takeIf { check.state == CompatState.NOTE }?.let { have ->
+            CompatLine(CompatState.NOTE, R.string.compat_folio_untried, R.string.compat_folio_untried_detail,
+                listOf(FolioMinor.of(have).toString()), listOf(check.max.toString()))
+        }
+        is CompatCheck.Breaks -> check.broken.firstOrNull()?.let {
+            CompatLine(CompatState.BLOCKED, R.string.compat_breaks, R.string.compat_breaks_detail, listOf(it.name, it.version.toString()), listOf(it.name))
+        }
     }
 }
 
@@ -82,7 +109,7 @@ internal fun compatBlocked(lines: List<CompatLine>): CompatLine? = lines.firstOr
 private fun CompatLine.titleText() = stringResource(title, *args.toTypedArray())
 
 @Composable
-private fun CompatLine.detailText() = stringResource(detail, *args.toTypedArray())
+private fun CompatLine.detailText() = stringResource(detail, *detailArgs.toTypedArray())
 
 /** The short form for a list row, a note under the name. */
 @Composable

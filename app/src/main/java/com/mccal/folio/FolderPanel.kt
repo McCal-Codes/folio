@@ -86,22 +86,37 @@ internal fun FolderPanel(
     val carryHandled = remember(folder.id) { booleanArrayOf(false) }
     val carryFade by androidx.compose.animation.core.animateFloatAsState(if (carrying) 0f else 1f,
         FolioMotion.spring(FolioMotion.Quick), label = "folder carry fade")
+    // The 0.6.9 motion pass (MO5, the Lab's "Grow from the icon"): the apps settle in one after another and leave together.
+    val pass = FolioMotion.v2
+    val still = pass && LocalReduceMotion.current
+    val entrance = remember(folder.id) { mutableStateMapOf<String, androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D>>() }
     val close: () -> Unit = {
         if (!closing) { closing = true; scope.launch {
+            if (pass) entrance.values.forEach { launch { it.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)) } }
             appear.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)); onDismiss()
         } }
     }
     val tile = remember(folder.id) { IconBounds.of(folder.id) }
     var panelBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    // Predictive back: the folder shrinks toward its icon as you swipe, and closes (or springs back) when you let go.
-    PredictiveBack(enabled = !closing, onProgress = { p -> scope.launch { appear.snapTo(1f - .35f * p) } },
-        onCancel = { scope.launch { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) } }, onBack = close)
     DisposableEffect(folder.id) { onDispose { if (title.isNotBlank() && title != folder.title) onRename(title) } }
     DisposableEffect(drag, folder.id) {
         drag.activeSourceScope = folder.id
         onDispose { if (drag.activeSourceScope == folder.id) drag.activeSourceScope = null }
     }
-    LaunchedEffect(folder.id) { appear.animateTo(1f, MotionSpeed.spring(.78f, androidx.compose.animation.core.Spring.StiffnessMediumLow)) }
+    LaunchedEffect(folder.id) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
+    // Home reads how far this folder has opened: its tile hands over to the panel, and Home steps back (FolderOpening).
+    DisposableEffect(folder.id) {
+        FolderOpening.id = folder.id
+        onDispose { if (FolderOpening.id == folder.id) { FolderOpening.id = null; FolderOpening.progress = 0f } }
+    }
+    LaunchedEffect(folder.id) { snapshotFlow { appear.value }.collect { FolderOpening.progress = it } }
+    LaunchedEffect(folder.id, pass) {
+        if (!pass) return@LaunchedEffect
+        folder.appIds.forEachIndexed { i, id ->
+            val a = entrance.getOrPut(id) { androidx.compose.animation.core.Animatable(if (still) 1f else 0f) }
+            if (!still) launch { kotlinx.coroutines.delay(FolderOpening.FIRST_APP_MS + i * FolderOpening.STAGGER_MS); a.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) }
+        }
+    }
     val folderLook = LocalFolderLook.current
     // Mirrors Configuration.fitsRegularHomeLayout() (SizeClass.kt): the same signal every other screen already
     // uses to tell the cover screen apart from the unfolded inner screen, so a resized folder stays hinge-safe -
@@ -126,6 +141,10 @@ internal fun FolderPanel(
     // FLAG_LAYOUT_NO_LIMITS, all tried and measured with zero effect. AppContextMenu.kt and WidgetContextMenu.kt
     // already sidestep this the same way, with their own window and their own decorFitsSystemWindows = false.
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnBackPress = false)) {
+        // Predictive back: the folder shrinks toward its icon as you swipe, and closes (or springs back) when you let go.
+        // Inside the Dialog, on its own window's dispatcher: Back goes to the folder's window while it is open.
+        DialogPredictiveBack(enabled = !closing, onProgress = { p -> scope.launch { appear.snapTo(1f - .35f * p) } },
+            onCancel = { scope.launch { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) } }, onBack = close)
         val view = LocalView.current
         LaunchedEffect(view) {
             (view.parent as? DialogWindowProvider)?.window?.let { w ->
@@ -169,12 +188,16 @@ internal fun FolderPanel(
             .onGloballyPositioned { panelBounds = it.boundsInWindow() }
             .graphicsLayer {
                 val p = appear.value
-                if (tile != null && panelBounds.width > 0f) {
+                if (still) {
+                    // Reduce Motion with the pass: the folder fades in where it opens; nothing scales or moves.
+                    alpha = p.coerceIn(0f, 1f)
+                } else if (tile != null && panelBounds.width > 0f) {
                     val start = (tile.width() / panelBounds.width).coerceIn(.08f, 1f)
                     val s = start + (1f - start) * p; scaleX = s; scaleY = s
                     translationX = (tile.exactCenterX() - panelBounds.center.x) * (1f - p)
                     translationY = (tile.exactCenterY() - panelBounds.center.y) * (1f - p)
-                    alpha = (p * 1.8f).coerceIn(0f, 1f)
+                    // With the pass the tile cross-fades into the panel over the first fifth, then only the contents fade.
+                    alpha = if (pass) (p / FolderOpening.HANDOVER).coerceIn(0f, 1f) else (p * 1.8f).coerceIn(0f, 1f)
                 } else { val s = .86f + .14f * p; scaleX = s; scaleY = s }
             }) {
         // Just the title and a small options button: color and Add Apps used to sit inline below it always
@@ -183,7 +206,8 @@ internal fun FolderPanel(
         var folderMenu by remember { mutableStateOf(false) }
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(bottom = FolioSpace.COMFY.dp)
-                .onGloballyPositioned { headerHeightPx = it.size.height.toFloat() }) {
+                .onGloballyPositioned { headerHeightPx = it.size.height.toFloat() }
+                .graphicsLayer { if (pass) alpha = FolderOpening.contentAlpha(appear.value) }) {
             Spacer(Modifier.size(FolioTouch.MIN.dp))
             androidx.compose.foundation.text.BasicTextField(title, { title = it },
                 Modifier.weight(1f, fill = false).widthIn(max = 320.dp).testTag("folder-name"), singleLine = true,
@@ -283,6 +307,13 @@ internal fun FolderPanel(
                     verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                     items(order, key = { it }) { appId ->
                         apps[appId]?.let { app ->
+                          Box(Modifier.graphicsLayer {
+                              if (!pass) return@graphicsLayer
+                              // Each app settles in after the panel, a moment after the one before (scale only without Reduce Motion).
+                              val q = if (still) FolderOpening.contentAlpha(appear.value) else entrance[appId]?.value ?: 1f
+                              alpha = q.coerceIn(0f, 1f)
+                              if (!still) { val s = .8f + .2f * q; scaleX = s; scaleY = s }
+                          }) {
                             val isDragging = appId == draggingAppId
                             FolderChild(app, folder.id, drag, page, homeDestinations, dockVacancies,
                                 onLaunch = onLaunch, onMoveOut = onMoveOut,
@@ -316,6 +347,8 @@ internal fun FolderPanel(
                                             // own coroutine scope unwinds, which fires onDragCancel right after -
                                             // only clear state here if nothing newer has already claimed it.
                                             onDragCancel = { if (carrying) { if (!carryHandled[0]) { carryHandled[0] = true; latestCarryFinish(true) } } else if (draggingAppId == appId) {
+                                                // A cancelled drag saves nothing, so the grid goes back to the saved order.
+                                                order.clear(); order.addAll(latestFolder.appIds)
                                                 draggingAppId = null; dragOffset = androidx.compose.ui.geometry.Offset.Zero; pulledOut = false } },
                                         ) { change, amount ->
                                             change.consume()
@@ -358,6 +391,7 @@ internal fun FolderPanel(
                                     }
                                     .zIndex(if (isDragging) 1f else 0f)
 )
+                          }
                         }
                     }
                 }
@@ -407,19 +441,20 @@ private fun FolderChild(
     var menu by remember { mutableStateOf(false) }
     Surface(reorderModifier.fillMaxWidth().testTag("folder-child-${app.id}"), color = Color.Transparent, contentColor = Color.White,
         shape = RoundedCornerShape(18.dp)) {
-        Box {
+        androidx.compose.foundation.layout.BoxWithConstraints {
+            val badgePlacement = FolderBadge.placement(maxWidth.value)
             Column(Modifier.fillMaxWidth().dropRegion(drag, DropTarget.Library(app.id), app.id, page,
-                folderId = folderId, scope = folderId).clickable(enabled = app.available) { onLaunch(app, null) }
+                folderId = folderId, scope = folderId).clickable { onLaunch(app, null) }
                 .padding(horizontal = FolioSpace.SNUG.dp, vertical = FolioSpace.COMPACT.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // No per-app badge dot here: it would land on the same corner as the "..." button below, and the
-                // folder's own Home icon already shows the combined total (HomeTiles.kt) before you even open it.
-                AppIcon(app, null, Modifier.size(58.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp), badge = false)
+                // The badge goes where FolderBadge.CORNER says, kept clear of the "..." button below (#362).
+                AppIcon(app, null, Modifier.size(FolderBadge.ICON.dp), shape = RoundedCornerShape(FolioRadius.CARD.dp),
+                    badgePlacement = badgePlacement)
                 Text(app.label, Modifier.padding(top = FolioSpace.SNUG.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium)
-                if (app.isWork || !app.available) Text(if (app.available) app.profileLabel else stringResource(R.string.text_1_s_unavailable, app.profileLabel),
+                if (app.isWork || !app.available) Text(if (app.available) profileName(app) else stringResource(R.string.text_1_s_unavailable, profileName(app)),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
-            IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(36.dp)
+            IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(FolderBadge.BUTTON.dp)
                 .testTag("folder-options-${app.id}")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.move_1_s, app.label)) }
             // Folio's menu: anchored under this button, growing from the corner it was opened at, and scrolling
             // when a layout has more pages than the window can show.
@@ -448,4 +483,48 @@ private fun FolderChild(
     }
 }
 
+/**
+ * An app's badge inside an open folder (#362). The app's "..." button owns the cell's top-right [BUTTON] dp square,
+ * so a badge on the icon's top-right corner has to stop short of it.
+ */
+internal object FolderBadge {
+    /**
+     * McCal's pick (12 Oct): the top start corner, which is top-left and mirrors to top-right in right-to-left languages
+     * (Alignment and offset both follow the layout direction). TOP_END would pull the badge in clear of the button instead.
+     */
+    val CORNER = BadgeCorner.TOP_START
+    const val ICON = 58f
+    const val BUTTON = 36f
+
+    /** How far right, in dp from the icon's left edge, a badge may reach in a cell [cellWidth] dp wide (icon centered). */
+    fun endLimit(cellWidth: Float, icon: Float = ICON, button: Float = BUTTON) = (cellWidth - button) - (cellWidth - icon) / 2f
+
+    /** The badge's placement for a cell [cellWidth] dp wide. */
+    fun placement(cellWidth: Float, corner: BadgeCorner = CORNER) = BadgePlacement(corner, endLimit(cellWidth))
+}
+
 private val FolderSwatches = listOf(0xFFFF6B63, 0xFFFFA94D, 0xFFFFD84D, 0xFF63D98B, 0xFF4DB8FF, 0xFF8E7CFF, 0xFFFF7EB9)
+
+/**
+ * Which folder is open and how far its panel has grown, 0 to 1, for the 0.6.9 motion pass (MO5): Home's tile for that folder
+ * fades out as the panel fades in over the first [HANDOVER] of the growth, and Home steps back by [STEP_BACK]. The apps inside
+ * start [FIRST_APP_MS] after the panel and [STAGGER_MS] apart. Starting values from the Lab, to tune on the phone.
+ */
+internal object FolderOpening {
+    var id by mutableStateOf<String?>(null)
+    var progress by mutableFloatStateOf(0f)
+    const val HANDOVER = .2f
+    const val STEP_BACK = .06f
+    const val FIRST_APP_MS = 80L
+    const val STAGGER_MS = 30L
+
+    /** How visible the folder's tile on Home is while [folderId] opens: it hands over to the panel. */
+    fun tileAlpha(folderId: String, openId: String?, progress: Float) =
+        if (folderId != openId) 1f else 1f - (progress / HANDOVER).coerceIn(0f, 1f)
+
+    /** The panel's title and contents come in after the panel itself has mostly grown. */
+    fun contentAlpha(progress: Float) = ((progress - .35f) / .5f).coerceIn(0f, 1f)
+
+    /** How far Home has stepped back, as a scale, while a folder is open. */
+    fun homeScale(progress: Float) = 1f - STEP_BACK * progress.coerceIn(0f, 1f)
+}

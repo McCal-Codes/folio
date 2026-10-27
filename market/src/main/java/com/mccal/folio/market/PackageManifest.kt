@@ -21,6 +21,15 @@ data class PackageManifest(
     val via: List<ExternalSource> = emptyList(),
     val provides: Set<Provides> = emptySet(),
     val requiredFeatures: Set<Capability> = emptySet(),
+    /** Android API levels the package works on (ADR 0013). Outside them it can't be installed: no Folio update helps. */
+    val minSdk: Int? = null,
+    val maxSdk: Int? = null,
+    /** The newest Folio its author tried. Advice only: past it the page says so, and Get stays. */
+    val maxFolio: FolioMinor? = null,
+    /** One package at a time per slot, named after one of its own [requiredFeatures]. */
+    val slot: Capability? = null,
+    /** Installed versions this package doesn't work with, in the [depends] syntax: those have to be updated first. */
+    val breaks: List<PackageRelation> = emptyList(),
 ) {
     data class Author(val name: LocalizedText, val url: String?)
 
@@ -36,6 +45,9 @@ data class PackageManifest(
         const val MAX_RELATIONS = 32
         const val MAX_AI_TOOLS = 5
         const val MAX_AI_TOOL = 60
+        /** Folio's own minSdk: a package can't ask for an Android older than Folio runs on. */
+        const val MIN_SDK = 31
+        const val MAX_SDK = 99
         private val NOT_BLANK = Regex("\\S")
         val ID = Regex("^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+\\z")
         const val MAX_ID = 120
@@ -44,6 +56,7 @@ data class PackageManifest(
         private val KNOWN = setOf(
             "\$schema", "format", "id", "name", "version", "author", "minFolio", "section", "kind", "permissions",
             "screens", "depends", "conflicts", "icon", "depiction", "license", "description", "aiAssisted", "via", "provides", "requires",
+            "minSdk", "maxSdk", "maxFolio", "slot", "breaks",
         )
 
         fun parse(text: String): ParseResult<PackageManifest> {
@@ -84,6 +97,19 @@ data class PackageManifest(
             val provides = f.ids("provides", false, Provides::from)
             val features = f.obj("requires", false, setOf("features"))?.ids("features", false, Capability::from)
             if (kinds?.contains(PackageKind.EXTERNAL_APP) == true && !f.has("via")) p.errors += "via is required for externalApp packages"
+            // ADR 0013's limits. folio-pkg also requires minFolio 0.7.0 with any of them, so no older Folio skips them.
+            val sdks = MIN_SDK.toLong()..MAX_SDK.toLong()
+            val minSdk = f.long("minSdk", false, sdks)?.toInt()
+            val maxSdk = f.long("maxSdk", false, sdks)?.toInt()
+            if (minSdk != null && maxSdk != null && minSdk > maxSdk) p.errors += "minSdk must not be above maxSdk"
+            val maxFolio = f.string("maxFolio", false, maxLength = 20)?.let { raw ->
+                FolioMinor.parse(raw) ?: null.also { p.errors += "maxFolio must look like 0.7" }
+            }
+            if (maxFolio != null && minFolio != null && !maxFolio.covers(minFolio)) p.errors += "maxFolio must not be older than minFolio"
+            val slot = f.id("slot", false, Capability::from)
+            if (slot != null && features != null && slot !in features) p.errors += "slot must be one of requires.features"
+            if (slot != null && features == null) p.errors += "slot must be one of requires.features"
+            val breaks = readRelations(f, "breaks")
             return p.result {
                 PackageManifest(
                     id = id!!, name = name!!, version = version!!, author = author!!, minFolio = minFolio!!, section = section!!,
@@ -92,6 +118,7 @@ data class PackageManifest(
                     depends = depends.orEmpty(), conflicts = conflicts.orEmpty(), icon = icon, depiction = depiction,
                     license = license, description = description, aiAssisted = aiAssisted, via = via.orEmpty(),
                     provides = provides.orEmpty().toSet(), requiredFeatures = features.orEmpty().toSet(),
+                    minSdk = minSdk, maxSdk = maxSdk, maxFolio = maxFolio, slot = slot, breaks = breaks.orEmpty(),
                 )
             }
         }
@@ -182,6 +209,26 @@ data class FolioVersion(val major: Int, val minor: Int, val patch: Int) : Compar
     }
 }
 
+/** A Folio release line (`maxFolio`): `0.7` stands for every 0.7.x. */
+data class FolioMinor(val major: Int, val minor: Int) : Comparable<FolioMinor> {
+    override fun compareTo(other: FolioMinor) = compareValuesBy(this, other, { it.major }, { it.minor })
+    override fun toString() = "$major.$minor"
+
+    /** Whether [version] is on this line or an older one. */
+    fun covers(version: FolioVersion) = of(version) <= this
+
+    companion object {
+        private val PATTERN = Regex("^([0-9]{1,9})\\.([0-9]{1,9})\\z")
+
+        fun parse(text: String): FolioMinor? {
+            val (a, b) = PATTERN.find(text)?.destructured ?: return null
+            return FolioMinor(a.toInt(), b.toInt())
+        }
+
+        fun of(version: FolioVersion) = FolioMinor(version.major, version.minor)
+    }
+}
+
 enum class Section(val id: String) {
     THEMES("themes"), TWEAKS("tweaks"), LAYOUTS("layouts"), WALLPAPERS("wallpapers"), SCRIPTS("scripts");
 
@@ -252,18 +299,55 @@ enum class Provides(val id: String) {
     }
 }
 
-/** Folio capabilities a package can configure (`requires.features`). The table in format-v1.md says when each arrived. */
-enum class Capability(val id: String) {
-    THEME("theme"), HOME_LAYOUT("home.layout"), WALLPAPER("wallpaper"), ICONS("icons"), ICON_PACKS("icons.packs"),
-    APP_PANELS("tweaks.appPanels"), DOCK_MAGNIFY("tweaks.dockMagnify"), NOTIFICATION_APP_ROW("tweaks.notificationAppRow"),
-    TINT_NOTIFICATIONS("tweaks.tintNotifications"), TINT_MEDIA("tweaks.tintMedia"),
-    PAGE_EFFECTS("tweaks.pageEffects"), FOLD_TRANSITION("tweaks.foldTransition"),
-    ISLAND_MESSAGES("island.messages"), FOCUS_MODES("focus.modes"), SETTINGS_PAGES("settings.pages"), SCRIPTS("scripts");
+/**
+ * The access a package needs on this phone, the same three Android grants as ADR 0008's A0 to A2 (Standard needs nothing,
+ * then notification access, then Folio's accessibility service), ordered from least to most. Nobody declares it: it
+ * follows from a package's `requires.features` ([packageAccess]). It stops at Accessibility on purpose: Shizuku, root and
+ * hooks are never a package tier; a package that ever needs one asks for it as its own, separate requirement.
+ */
+enum class PackageAccess { STANDARD, NOTIFICATIONS, ACCESSIBILITY }
+
+/**
+ * Folio capabilities a package can configure (`requires.features`). The table in format-v1.md says when each arrived.
+ * [needs] is the access the capability can't work without; [betterWith] is access that makes it do more (it works
+ * without it). Every capability names [needs], so a new one can't arrive without saying what it needs.
+ */
+enum class Capability(val id: String, val needs: PackageAccess, val betterWith: PackageAccess? = null) {
+    THEME("theme", PackageAccess.STANDARD),
+    HOME_LAYOUT("home.layout", PackageAccess.STANDARD),
+    WALLPAPER("wallpaper", PackageAccess.STANDARD),
+    ICONS("icons", PackageAccess.STANDARD),
+    ICON_PACKS("icons.packs", PackageAccess.STANDARD),
+    /** Cabinet: shortcuts without notification access, the app's notifications and music with it (AppPanel.kt). */
+    APP_PANELS("tweaks.appPanels", PackageAccess.STANDARD, betterWith = PackageAccess.NOTIFICATIONS),
+    DOCK_MAGNIFY("tweaks.dockMagnify", PackageAccess.STANDARD),
+    /** Roll Call: Notification Center only says "allow notification access" without it (TopPanels.kt). */
+    NOTIFICATION_APP_ROW("tweaks.notificationAppRow", PackageAccess.NOTIFICATIONS),
+    /** Palette tints notifications, which Folio only has with notification access. */
+    TINT_NOTIFICATIONS("tweaks.tintNotifications", PackageAccess.NOTIFICATIONS),
+    /** Afterglow: what's playing comes only from the notification listener's media sessions (Island.kt). */
+    TINT_MEDIA("tweaks.tintMedia", PackageAccess.NOTIFICATIONS),
+    PAGE_EFFECTS("tweaks.pageEffects", PackageAccess.STANDARD),
+    FOLD_TRANSITION("tweaks.foldTransition", PackageAccess.STANDARD),
+    /** On Home without accessibility, over other apps with it. Nothing consumes it yet, so this is the plan, not a fact. */
+    ISLAND_MESSAGES("island.messages", PackageAccess.STANDARD, betterWith = PackageAccess.ACCESSIBILITY),
+    /** Silencing needs Do Not Disturb access, a Folio permission prompt rather than a tier, so it isn't counted here. */
+    FOCUS_MODES("focus.modes", PackageAccess.STANDARD),
+    SETTINGS_PAGES("settings.pages", PackageAccess.STANDARD),
+    /** A reserved kind that is refused today. When scripts exist, their access is per action, not per capability. */
+    SCRIPTS("scripts", PackageAccess.STANDARD);
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }
     }
 }
+
+/** The access a package with these features needs: the most any of them needs, and Standard for none. */
+fun packageAccess(features: Set<Capability>): PackageAccess = features.maxOfOrNull { it.needs } ?: PackageAccess.STANDARD
+
+/** Access that would let a package with these features do more than [packageAccess] allows, or null if none would. */
+fun packageBetterWith(features: Set<Capability>): PackageAccess? =
+    features.mapNotNull { it.betterWith }.maxOrNull()?.takeIf { it > packageAccess(features) }
 
 /** Where an `externalApp` package installs from. */
 data class ExternalSource(val store: Store, val appId: String?, val repoUrl: String?) {

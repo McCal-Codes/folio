@@ -6,7 +6,7 @@
 -->
     <string name="dune_wallpaper_description">Folio에서 고른 배경을 화면 크기에 맞춰 표시합니다.</string>
     <string name="shade_service_label">Folio 제스처 및 오버레이</string>
-    <string name="shade_service_description">홈 화면 제스처로 시스템 알림창과 빠른 설정창을 엽니다. 해당 기능을 켠 경우에만 다른 앱 위에 Folio의 Dock 핸들과 Dynamic Island를 표시하고, Dock의 앱을 실행하거나 홈 화면으로 이동합니다. 화면 내용을 읽거나 다른 앱에서 하는 활동을 관찰하지 않습니다.</string>
+    <string name="shade_service_description">홈 화면 제스처로 시스템 알림창과 빠른 설정창을 엽니다. 해당 기능을 켠 경우에만 다른 앱 위에 Folio의 Dock 핸들과 Dynamic Island를 표시하고, Dock의 앱을 실행하거나 홈 화면으로 이동합니다. 화면 내용을 읽거나 다른 앱에서 하는 활동을 관찰하지 않습니다. 단 하나의 예외: Folio 패널이 다른 앱 위에 열리고 흐림 효과가 켜져 있으면, 패널 뒤를 흐리게 하려고 스크린샷을 한 번 찍습니다. 그 사진은 즉시 축소되어 메모리에만 있고, 저장되거나 전송되지 않으며 패널이 닫히면 버려집니다.</string>
     <string name="personal">개인용</string>
     <string name="work">업무용</string>
     <string name="turn_on_work_apps">업무용 앱 켜기</string>
@@ -27,6 +27,9 @@
     <string name="set_as_home_app">홈 앱으로 설정</string>
     <string name="undo_last_layout_change">마지막 레이아웃 변경 실행 취소</string>
     <string name="background">배경</string>
+    <string name="folder_background">폴더 배경</string>
+    <string name="status_bar_background">상태 표시줄 배경</string>
+    <string name="settings_keywords_folder_background">폴더 배경 유리 블러 모양</string>
     <string name="android_wallpaper">Android 배경화면</string>
     <string name="folio_background">Folio 배경</string>
     <string name="change_android_wallpaper">Android 배경화면 변경</string>
@@ -36,7 +39,7 @@
     <string name="dark_appearance_dims_wallpaper">다크 모드에서 배경화면 어둡게</string>
     <string name="wallpaper_moves_with_pages">페이지와 함께 배경화면 이동</string>
     <string name="launcher_background">런처 배경</string>
-    <string name="changes_the_image_behind_folio_s_home_sc">Folio 홈 화면의 배경 이미지를 변경합니다. </string>
+    <string name="changes_the_image_behind_folio_s_home_sc">Folio 홈 화면의 배경 이미지를 변경합니다.\u0020</string>
     <string name="cancel">취소</string>
     <string name="apply">적용</string>
     <string name="opens_android_s_preview_to_use_folio_s_b">Android 미리보기를 열어 Folio 배경을 휴대전화의 라이브 배경화면으로도 설정합니다. Folio 밖에서도 같은 배경을 사용할 수 있습니다.</string>
@@ -47,6 +50,29 @@
     <string name="panels">패널</string>
     <string name="big_clock_in_notification_center">알림 센터에 큰 시계 표시</string>
     <string name="stack_notifications_by_app">앱별로 알림 쌓기</string>
+    <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
+    <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
+    <string name="shade_over_apps">다른 앱 위에 Folio 패널 표시</string>
+    <string name="cc_page_controls">제어</string>
+    <string name="cc_page_media">미디어 및 소리</string>
+    <string name="cc_page_connectivity">연결</string>
+    <string name="cc_page_of">%1$s, %3$d페이지 중 %2$d페이지</string>
+    <string name="shade_pull">모든 앱 상단에서 아래로 당기기</string>
+    <string name="shade_pull_note">앱 상단 가장자리의 왼쪽 절반을 아래로 당기면 알림 센터가, 오른쪽 절반을 당기면 제어 센터가 휴대전화의 알림창 대신 열립니다. 이 기능을 켜면 상단 띠에서의 탭은 앱에 전달되지 않으며, 전체 화면 앱은 Android 기본 동작을 유지합니다. 다른 앱 위에 Folio 패널 표시를 끄면 함께 꺼집니다.</string>
+    <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 입력 상자가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
+    <string name="nc_layout_title">펼쳤을 때 레이아웃</string>
+    <string name="nc_layout_full">전체 화면</string>
+    <string name="nc_layout_card">카드</string>
+    <string name="nc_layout_both">나란히</string>
+    <string name="nc_layout_note">전체 화면은 시계를 목록 옆에 표시합니다. 카드는 당겨 내린 모서리 아래에 작은 패널로 표시합니다. 알림 센터는 왼쪽 위, 제어 센터는 오른쪽 위입니다. 나란히는 둘을 함께 표시하며 넓은 화면이 필요합니다. 휴대전화에서는 항상 패널을 하나씩 엽니다.</string>
+    <string name="notification_sections">알림 구역</string>
+    <string name="notification_sections_note">알림 센터에 지금 진행 중인 항목과 대화를 먼저 보여 주고 나머지가 뒤따르며, 조용한 알림은 \'조용함\' 아래에 접어 둡니다. 전화, 알람, 타이머, 대화는 \'조용함\'에 들어가지 않습니다.</string>
+    <string name="nc_section_now">지금</string>
+    <string name="nc_section_conversations">대화</string>
+    <string name="nc_section_quiet" tools:ignore="PluralsCandidate">조용함 · %1$d</string>
+    <string name="nc_section_quiet_open">조용함</string>
+    <string name="clear_n_notifications" tools:ignore="PluralsCandidate">%1$d개 지우기</string>
+    <string name="show_quiet_notifications">조용한 알림 보기</string>
     <string name="unfolded_clock_beside_notifications">펼쳤을 때 알림 옆에 시계 표시</string>
     <string name="control_center_size">제어 센터 크기</string>
     <string name="unfolded_control_center_in_the_middle">펼쳤을 때 제어 센터를 가운데 표시</string>
@@ -66,8 +92,8 @@
     <string name="swipe_down_on_home_for_spotlight">홈 화면을 쓸어내려 Spotlight 열기</string>
     <string name="drag_page_dots_to_flip_pages">페이지 표시점을 드래그하여 페이지 전환</string>
     <string name="haptic_feedback">햅틱 피드백</string>
-    <string name="search_button_opens_the_google_app">검색 버튼으로 Google 앱 열기</string>
-    <string name="when_off_the_search_button_opens_spotlig">끄면 검색 버튼으로 Spotlight를 엽니다. 앱, 연락처, 설정, 계산기, AI 없는 Google 검색, ChatGPT, Claude 또는 Perplexity를 사용할 수 있습니다.</string>
+    <string name="search_button_opens_the_google_app">검색으로 Google 앱 열기</string>
+    <string name="when_off_the_search_button_opens_spotlig">끄면 검색으로 Spotlight를 엽니다. 앱, 연락처, 설정, 계산기, AI 없는 Google 검색, ChatGPT, Claude 또는 Perplexity를 사용할 수 있습니다.</string>
     <string name="app_icons">앱 아이콘</string>
     <string name="icon_pack">아이콘 팩</string>
     <string name="install_any_icon_pack_made_for_nova_styl">Nova 계열 런처용 아이콘 팩을 설치하면 여기에서 사용할 수 있습니다.</string>
@@ -124,8 +150,8 @@
     <string name="closing_from_home">홈 화면에서 접을 때</string>
     <string name="stay_awake_on_the_cover_screen">커버 화면을 켠 상태로 유지</string>
     <string name="samsung_locks_the_phone_when_you_fold_on">삼성 기기는 홈 화면에서 접으면 휴대전화가 잠깁니다. Folio는 접는 동안 잠시 다른 화면으로 전환하여 커버 화면이 켜져 있도록 합니다. 설정 › 디스플레이 › 커버 화면에서 앱 계속 사용 › 항상으로 설정해야 합니다.</string>
-    <string name="save_the_current_home_layout_folders_wid">현재 홈 화면 레이아웃, 폴더, 위젯 및 레이아웃 설정을 저장합니다. </string>
-    <string name="save_the_current_home_layout_folders_wid_2">현재 홈 화면 레이아웃, 폴더, 위젯, 레이아웃 설정 및 Market에서 받은 패키지를 저장합니다. </string>
+    <string name="save_the_current_home_layout_folders_wid">현재 홈 화면 레이아웃, 폴더, 위젯 및 레이아웃 설정을 저장합니다.\u0020</string>
+    <string name="save_the_current_home_layout_folders_wid_2">현재 홈 화면 레이아웃, 폴더, 위젯, 레이아웃 설정 및 Market에서 받은 패키지를 저장합니다.\u0020</string>
     <string name="restore">복원</string>
     <string name="restore_shows_a_review_before_changing_h">복원하기 전에 홈 화면의 변경 사항을 검토할 수 있습니다.</string>
     <string name="lock_cover">잠금 커버</string>
@@ -187,6 +213,8 @@
     <string name="place">배치</string>
     <string name="no_room_here">공간이 부족합니다</string>
     <string name="dock_full_move_an_app_out_first">Dock이 가득 찼습니다 • 먼저 앱을 하나 옮기세요</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="dock_picker_in_folder">폴더 안에 있음 · 먼저 꺼내세요</string>
     <string name="remove">제거</string>
     <string name="move_this_widget_into_the_six_row_grid_b">크기를 조절하기 전에 이 위젯을 6행 격자 안으로 옮기세요.</string>
     <string name="layout_document">레이아웃 문서</string>
@@ -313,6 +341,9 @@
     <string name="folders">폴더</string>
     <string name="columns">열 수</string>
     <string name="animation_speed">애니메이션 속도</string>
+    <string name="reduce_motion">동작 줄이기</string>
+    <string name="reduce_motion_note">페이지, 시트, 메뉴가 미끄러지거나 커지는 대신 제자리에서 서서히 나타나고, 홈 화면을 편집할 때 아이콘이 흔들리지 않으며, 스위치가 튕기지 않고 멈춥니다.</string>
+    <string name="reduce_motion_note_removed">Android의 애니메이션 삭제가 켜져 있는 동안 켜집니다. 그러면 Folio는 모든 변화를 바로 보여 줍니다.</string>
     <string name="swipe_down_on_home">홈 화면에서 아래로 쓸어내리기</string>
     <string name="nothing">없음</string>
     <string name="background_blur">배경 흐림</string>
@@ -339,6 +370,8 @@
     <string name="status_colors_green_while_charging_orang">상태 색상: 충전 중에는 초록색, 배터리가 부족하면 주황색, 무음 모드는 빨간색 종 아이콘, 링은 각 상태에 맞는 색상으로 표시합니다.</string>
     <string name="hide_in_full_screen">전체 화면에서 숨기기</string>
     <string name="hide_in_landscape">가로 모드에서 숨기기</string>
+    <string name="also_on_the_unfolded_screen">펼친 화면에서도</string>
+    <string name="the_unfolded_screen_is_always_wider_than_tall">펼친 화면은 항상 세로보다 가로가 길기 때문에, 이 옵션을 켜지 않으면 Dynamic Island가 계속 표시됩니다.</string>
     <string name="the_island_comes_back_as_soon_as_the_app">앱이 상태 막대를 다시 표시하거나 휴대전화를 세로로 돌리면 Dynamic Island가 다시 나타납니다.</string>
     <string name="big_buttons">큰 버튼</string>
     <string name="extra_large">매우 크게</string>
@@ -363,6 +396,8 @@
     <string name="restore_from_backup">백업에서 복원…</string>
     <string name="include_diagnostics">진단 정보를 포함할까요?</string>
     <string name="just_open_form">양식만 열기</string>
+    <string name="motion_pass">새 모션</string>
+    <string name="motion_pass_note">0.6.9 모션 개선: 시트, 메뉴, 알림이 같은 스프링으로 움직이고, 마켓 탭이 미끄러지듯 이동하며, 배지 숫자가 굴러가고, 설치가 끝나면 체크 표시가 튀어 오릅니다. 끄면 이전 움직임과 비교할 수 있습니다. 애니메이션 속도를 따르며 동작 줄이기가 우선합니다. 베타 빌드와 Folio Dev에서만 표시됩니다.</string>
     <string name="screenshot_mode">스크린샷 모드</string>
     <string name="safe_mode">안전 모드</string>
     <string name="folio_is_running_in_safe_mode_optional_f">Folio가 안전 모드로 실행 중입니다. 이번 실행에서는 선택적 기능이 일시 중지됩니다.</string>
@@ -418,6 +453,7 @@
     <string name="focus_fold_tent">반쯤 펼침</string>
     <string name="focus_triggers_note">이 집중 모드를 켜고 끄는 데에만 쓰입니다. 직접 끄면 다음 변화가 있을 때까지 꺼진 상태로 유지됩니다.</string>
     <string name="focus_on_because">켜짐 · %1$s</string>
+    <string name="focus_home_only">%1$s (홈 화면만)</string>
     <string name="focus_island_on">%1$s 켜짐 · %2$s</string>
     <string name="focus_island_off">%1$s 꺼짐</string>
     <string name="from">시작</string>
@@ -480,6 +516,7 @@
     <string name="widget_size">위젯 크기</string>
     <string name="rows">행 수</string>
     <string name="position">위치</string>
+    <string name="placement">배치</string>
     <string name="dock">Dock</string>
     <string name="your_apps">내 앱</string>
     <string name="dock_position_1_d">Dock 위치 %1$d</string>
@@ -536,7 +573,6 @@
     <string name="tinted">색조 적용</string>
     <string name="reduce_transparency">투명도 줄이기</string>
     <string name="glass_is_nearly_solid_because_android_s">Android의 고대비 설정이 켜져 있어 글래스가 거의 불투명하게 표시됩니다.</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해집니다. 끄면 원래 글래스 설정으로 돌아갑니다.</string>
     <string name="frost_is_how_see_through_widgets_and_the">반투명 정도는 위젯과 사이드바의 투명도를, 윤곽선은 가장자리의 얇고 밝은 테두리를 조절합니다.</string>
     <string name="save_backup_2">백업 저장</string>
     <string name="save">저장</string>
@@ -593,7 +629,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio 제스처를 시작하는 중입니다. 다시 아래로 쓸어내리세요.</string>
     <string name="android_couldn_t_open_the_system_panel">Android 시스템 패널을 열지 못했습니다.</string>
     <string name="turn_on_folio_gestures">Folio 제스처 켜기</string>
-    <string name="folio_uses_it_to_open_notification_cente">알림 센터와 제어 센터를 열고, 다른 앱 위에 Dock과 Dynamic Island를 표시하는 데 사용합니다. </string>
+    <string name="folio_uses_it_to_open_notification_cente">알림 센터와 제어 센터를 열고, 다른 앱 위에 Dock과 Dynamic Island를 표시하는 데 사용합니다.\u0020</string>
     <string name="it_can_t_read_what_s_on_your_screen">화면 내용은 읽을 수 없습니다.</string>
     <string name="app_info">앱 정보</string>
     <string name="open_settings">설정 열기</string>
@@ -767,7 +803,6 @@
     <string name="color">색상</string>
     <string name="white">흰색</string>
     <string name="weight">굵기</string>
-    <string name="wallpaper_from_folios_own_pictures_only">Android는 앱이 시스템 배경화면을 읽을 수 없게 하므로, 배경화면 및 사용자 지정 색상에는 Folio의 사진이 필요합니다.</string>
     <string name="text_1_s_unavailable">%1$s 사용 불가</string>
     <string name="headphones">헤드폰</string>
     <string name="fixes_and_improvements">수정 및 개선 사항</string>
@@ -881,6 +916,9 @@
     <string name="unavailable_apps_1">사용할 수 없는 앱(%1$d개)</string>
     <string name="its_saved_position_will_stay_empty_1">• %1$s, 저장된 위치는 비워 둡니다</string>
     <string name="folio_kept_your_saved_layout_untouched">저장된 레이아웃은 그대로 보관하고 임시로 기본 홈 화면을 표시합니다. 백업이나 이전 레이아웃을 복원하거나 새로 시작할 수 있습니다. 새로 시작해도 기존 레이아웃의 사본은 보관됩니다.</string>
+    <string name="home_layout_saved_by_newer_folio">최신 버전의 Folio에서 저장됨</string>
+    <string name="home_layout_saved_by_newer_folio_detail">홈 화면 레이아웃이 최신 버전의 Folio에서 저장되었습니다. 사용하려면 Folio를 업데이트하세요. 그때까지 저장된 레이아웃은 그대로 보관하고 기본 홈 화면을 표시합니다. 백업을 복원할 수도 있습니다.</string>
+    <string name="home_layout_saved_by_newer_folio_short">홈 화면 레이아웃이 최신 버전의 Folio에서 저장되었습니다. 사용하려면 Folio를 업데이트하세요.</string>
     <string name="folio_closed_unexpectedly_twice_so_opt">Folio가 두 번 예기치 않게 종료되어 Cabinet, 동작, 접기 애니메이션, 잠금 커버, 다른 앱 위의 Dynamic Island와 Dock, 색조 적용 기능을 일시 중지했습니다. 설정은 변경되지 않았습니다.</string>
     <string name="apply_1">“%1$s”을(를) 적용할까요?</string>
     <string name="this_changes_icons_badges_glass_text_on">아이콘, 배지, 글래스, 홈 화면 텍스트 및 상태 막대가 변경됩니다. 앱, 페이지 및 위젯은 그대로 유지됩니다. 설정 › 테마에서 실행 취소할 수 있습니다.</string>
@@ -1091,8 +1129,15 @@
     <string name="delete_shortcut">바로가기 삭제</string>
     <string name="remove_from_home">홈 화면에서 제거</string>
     <string name="add_to_home">홈 화면에 추가</string>
+    <!-- Spotlight's Top Hit: already on Home / inside a folder (%1$s is its name) / just added (%1$s is the app's name). Draft, needs a native read. -->
+    <string name="on_home">홈 화면에 있음</string>
+    <string name="in_folder_name">%1$s 폴더에 있음</string>
+    <string name="added_to_home">홈 화면에 추가됨: %1$s</string>
     <string name="add_to_folder">폴더에 추가</string>
     <string name="create_folder">폴더 생성</string>
+    <string name="create_folder_with_1_s">%1$s와(과) 함께 폴더 만들기</string>
+    <string name="add_1_s_to_a_folder">%1$s을(를) 폴더에 추가</string>
+    <string name="new_folder_name">폴더</string>
     <string name="stack_apps">앱 쌓기…</string>
     <string name="show_in_app_library">앱 보관함에 표시</string>
     <string name="hide_from_app_library">앱 보관함에서 숨기기</string>
@@ -1205,6 +1250,7 @@
     <string name="get_tweak">%1$s 받기</string>
     <string name="applied">%1$s을(를) 적용했습니다.</string>
     <string name="focus_lets_you_silence_notifications_cha">집중 모드로 알림을 무음으로 설정하고 휴대전화 외관을 바꾸며 필요한 홈 페이지를 표시할 수 있습니다. 여기 또는 제어 센터에서 켜세요.</string>
+    <string name="focus_trigger_order_note">여러 집중 모드가 동시에 자동으로 켜질 수 있으면 이 목록에서 더 위에 있는 모드가 켜집니다. 직접 켠 집중 모드는 그대로 유지됩니다.</string>
     <string name="only_these_pages_show_while_is_on_editin">%1$s 사용 중에는 이 페이지들만 표시됩니다. 숨겨진 페이지의 항목이 이동하지 않도록 집중 모드가 끝날 때까지 홈 화면 편집이 일시 중지됩니다.</string>
     <string name="page_number">%1$s페이지</string>
     <string name="home_opens_on_this_page_while_is_on">%1$s 사용 중에는 이 페이지에서 홈 화면이 열립니다.</string>
@@ -1243,6 +1289,7 @@
     <string name="settings_keywords_tweak_library">트윅 보관함 받기 설치 제거 패키지 Sileo Cydia</string>
     <string name="settings_animation_speed">애니메이션 속도</string>
     <string name="settings_keywords_animation_speed">애니메이션 동작 속도 빠르게 느리게 느긋하게</string>
+    <string name="settings_keywords_reduce_motion">동작 줄이기 애니메이션 접근성 페이드 흔들림 어지러움</string>
     <string name="settings_app_name_size">앱 이름 크기</string>
     <string name="settings_keywords_app_name_size">이름 텍스트 글자 크기 작게 크게</string>
     <string name="settings_keywords_tint_glass_with_wallpaper_color">글래스 색조 반투명 흐림</string>
@@ -1318,6 +1365,7 @@
         <item quantity="other">두 화면 모두 Folio에서 표시할 수 있는 최대치인 %1$d행이 들어갑니다.</item>
     </plurals>
     <string name="rows_note_different" tools:ignore="PluralsCandidate">커버 화면에는 %1$d행, 내부 화면에는 %2$d행이 들어가므로 두 화면 모두 %3$d행을 표시합니다. 아이콘이나 이름 크기를 줄이면 한 행을 더 표시할 수 있습니다.</string>
+    <string name="rows_note_fixed_more" tools:ignore="PluralsCandidate">두 화면 모두 %1$d행으로 고정됩니다. 공간이 필요한 화면에서는 아이콘이 48dp까지 작아지고, 그래도 부족하면 스크롤됩니다.</string>
     <plurals name="count_installed">
         <item quantity="other">%1$d개 설치됨</item>
     </plurals>
@@ -1384,6 +1432,10 @@
     <string name="text_1_s_version_2_s">%1$s · 버전 %2$s</string>
     <string name="installing_1_s">%1$s 설치 중</string>
     <string name="text_1_s_was_pulled_by_its_source_2_s">소스에서 %1$s의 배포를 중단했습니다: %2$s</string>
+    <string name="pulled_by_its_source">소스에서 배포 중단됨</string>
+    <string name="text_1_s_was_pulled_so_it_s_off">소스에서 %1$s의 배포를 중단해 꺼졌습니다. 설정은 유지됩니다.</string>
+    <string name="doesn_t_work_with_this_folio_1_s">이 버전의 Folio에서는 작동하지 않습니다: %1$s</string>
+    <string name="text_1_s_doesn_t_work_with_folio_2_s_3_s">%1$s은(는) Folio %2$s에서 작동하지 않습니다: %3$s</string>
     <string name="text_1_s_offers_this_under_a_name">%1$s에서 Folio 자체 패키지의 이름으로 이 항목을 제공합니다</string>
     <string name="that_file_uses_a_name_that_belongs">이 파일은 Folio 자체 패키지의 이름을 사용합니다.</string>
     <string name="folio_couldn_t_find_that_package">패키지를 찾지 못했습니다</string>
@@ -1507,6 +1559,8 @@
     <string name="brightness">밝기</string>
     <string name="work_apps_are_paused">업무용 앱이 일시 중지됨</string>
     <string name="work_profile_is_unavailable">업무용 프로필을 사용할 수 없음</string>
+    <!-- Claude's draft, needs a native read. Samsung's own Korean name for the feature is 듀얼 메신저. -->
+    <string name="profile_dual">듀얼</string>
     <string name="loading_apps">앱 불러오는 중…</string>
     <string name="remove_from_home_3">홈 화면에서 %1$s 제거</string>
     <string name="pin_to_home">홈 화면에 %1$s 고정</string>
@@ -1603,6 +1657,13 @@
         <item quantity="other">%d개 모두 보기</item>
     </plurals>
     <string name="general">일반</string>
+    <string name="settings_group_launcher">런처</string>
+    <string name="settings_group_extensions">확장</string>
+    <string name="control_center_look">제어 센터 스타일</string>
+    <string name="cc_look_clear">투명 유리</string>
+    <string name="cc_look_frosted">반투명 패널</string>
+    <string name="cc_look_solid">단색</string>
+    <string name="cc_look_note">투명 유리는 뒤의 그림이 허용하는 만큼 밝게 유지하고 글자가 필요할 때만 어두워집니다. 반투명 패널과 단색은 항상 더 어둡습니다.</string>
     <string name="language">언어</string>
     <string name="settings_keywords_general">일반 정보 버전 업데이트 새로운 기능 도움말 로드맵 크레딧 고급</string>
     <string name="settings_keywords_language">언어 번역 영어 한국어 중국어</string>
@@ -1736,8 +1797,8 @@
     <string name="edit_icon_picture_note">사진은 Folio 안으로 복사되어 정사각형으로 잘리므로, 원본을 지워도 계속 쓸 수 있습니다. 이 휴대전화에만 저장되며 백업에는 포함되지 않습니다.</string>
     <string name="reset_icon">아이콘 초기화</string>
     <string name="custom_search_blank">주소를 입력하기 전에는 Enter 검색에 Google이 사용됩니다.</string>
-    <string name="separate_upright_layout">세로로 들 때 별도 레이아웃</string>
-    <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 레이아웃을 줍니다. 처음에는 가로 레이아웃을 복사해 시작하며, 끄면 다시 공유합니다.</string>
+    <string name="separate_upright_layout">세로로 들 때 별도 크기</string>
+    <string name="separate_upright_layout_note">세로로 든 안쪽 화면에 자체 크기와 간격(아이콘, 행, Dock)을 줍니다. 어떤 앱이 어디에 있는지는 가로 화면과 계속 공유합니다. 처음에는 가로 크기를 복사해 시작하며, 끄면 다시 공유합니다.</string>
     <string name="sideways">가로</string>
     <string name="upright">세로</string>
     <string name="full_width_home">전체 너비 홈</string>
@@ -1756,6 +1817,10 @@
     <string name="compat_needs_folio_detail">이 휴대전화의 Folio는 %2$s입니다. Folio를 업데이트하면 설치할 수 있습니다.</string>
     <string name="compat_kind_detail">이 버전의 Folio에서 아직 사용할 수 없는 종류의 패키지입니다.</string>
     <string name="compat_features_detail">이 버전의 Folio에 아직 없는 기능을 사용합니다.</string>
+    <string name="compat_no_scripts">Folio는 스크립트를 실행하지 않습니다</string>
+    <string name="compat_no_scripts_detail">이 패키지는 스크립트입니다. Folio는 소스의 코드를 실행하지 않습니다.</string>
+    <string name="text_1_s_is_a_script">%1$s은(는) 스크립트이며, Folio는 스크립트를 실행하지 않습니다</string>
+    <string name="that_package_is_a_script">이 패키지는 스크립트이며, Folio는 스크립트를 실행하지 않습니다</string>
     <string name="compat_replaces">%1$s 대체</string>
     <string name="compat_replaces_detail">둘을 동시에 사용할 수 없습니다. 먼저 %1$s을(를) 제거하세요.</string>
     <string name="compat_needs_package">%1$s 필요</string>
@@ -1767,6 +1832,15 @@
     <string name="compat_screen_inner_only_detail">커버 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
     <string name="compat_screen_cover_only">커버 화면 전용</string>
     <string name="compat_screen_cover_only_detail">내부 화면은 바꾸지 않습니다. 문제가 아니라, 그곳에는 표시되지 않을 뿐입니다.</string>
+    <string name="compat_android_between">Android %1$s~%2$s</string>
+    <string name="compat_android_from">Android %1$s 이상</string>
+    <string name="compat_android_up_to">Android %1$s 이하</string>
+    <string name="compat_android_ok_detail">이 휴대전화는 Android %1$s입니다.</string>
+    <string name="compat_android_blocked_detail">이 휴대전화는 Android %1$s입니다. Folio를 업데이트해도 바뀌지 않습니다.</string>
+    <string name="compat_folio_untried">Folio %1$s에서는 아직 확인되지 않음</string>
+    <string name="compat_folio_untried_detail">Folio %1$s용으로 만들어졌습니다. 그래도 받을 수 있으며, 이 패키지 때문에 Folio가 닫히면 안전 모드가 패키지를 끕니다.</string>
+    <string name="compat_breaks">%1$s %2$s과(와) 호환되지 않음</string>
+    <string name="compat_breaks_detail">먼저 %1$s을(를) 업데이트한 다음 이 패키지를 설치하세요.</string>
     <string name="roadmap_now">지금</string>
     <string name="roadmap_next">다음</string>
     <string name="roadmap_shipped">출시됨</string>
@@ -1819,10 +1893,10 @@
     <string name="installing_percent">설치 중, %1$d퍼센트</string>
     <string name="fix_saved_layout">저장된 레이아웃 복구</string>
     <string name="home_strip">홈 하단</string>
-    <string name="home_strip_search">검색 버튼</string>
+    <string name="home_strip_search">검색 막대</string>
     <string name="home_strip_dots">페이지 점</string>
     <string name="home_strip_nothing">없음</string>
-    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다.</string>
+    <string name="home_strip_note">스와이프하거나 홈을 편집하는 동안 페이지 점이 나타나며, 하단을 따라 드래그하면 계속 페이지를 이동할 수 있습니다. 페이지 점이나 없음을 선택하면 검색은 아래쪽 모서리의 둥근 버튼으로 이동합니다.</string>
     <string name="stronger_rings">더 진한 링</string>
     <string name="stronger_rings_note">링을 더 두껍게 하고 바탕을 선명하게 해 한눈에 구분하기 쉽습니다. Android의 굵은 글씨가 켜져 있을 때도 켜집니다.</string>
     <string name="fine_tune_look_note">룩은 굵기, 서체, 그림자를 한 번에 정해요. 하나만 바꾸면 나만의 스타일이 돼요.</string>
@@ -1973,4 +2047,105 @@
     <string name="action_a11y_shade">Android 알림 창</string>
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
+    <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
+    <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
+    <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
+    <string name="screenshot_swap_choose">바꿀 앱</string>
+    <string name="screenshot_swap_count">%1$d개 선택됨</string>
+    <string name="screenshot_swap_system_app">기본 앱이므로 바뀌지 않음</string>
+    <string name="screenshot_swap_none">일치하는 앱이 없습니다</string>
+    <string name="screenshot_swap_footnote">스크린샷 모드가 켜져 있는 동안 바뀐 앱의 위젯은 숨겨지고 바로가기도 표시되지 않습니다. 폴더 이름은 직접 지은 것이므로 바뀌지 않습니다. Android 자체 화면, 다른 앱 위의 Dock, 그리고 열린 앱 자체에는 실제 앱이 표시됩니다.</string>
+    <string name="settings_keywords_screenshot_swap">스크린샷 바꾸기 교체 앱 숨기기 기본 아이콘 개인정보</string>
+    <string name="remove_app">앱 제거</string>
+    <string name="remove_app_title">“%1$s”을(를) 제거하시겠습니까?</string>
+    <string name="remove_app_message">홈 화면에서 제거해도 앱은 앱 보관함에 남아 있습니다.</string>
+    <string name="remove_app_came_with_phone">%1$s은(는) 휴대전화에 기본으로 들어 있던 앱이므로 Android만 삭제할 수 있습니다. 숨기거나 앱 정보에서 끌 수 있습니다.</string>
+    <string name="remove_app_work">%1$s은(는) 업무용 앱입니다. 앱 정보에서 삭제하세요.</string>
+    <string name="delete_app">앱 삭제</string>
+    <string name="app_deleted">%1$s 삭제됨</string>
+    <string name="app_not_deleted">%1$s을(를) 삭제하지 못했습니다</string>
+    <string name="clock_font">서체</string>
+    <string name="clock_colors_android_wallpaper">Android 배경화면을 쓰면 색상은 배경화면의 주요 색상이며, 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_colors_system_palette">Android가 이 배경화면의 색상을 알려 주지 않아, 휴대폰의 테마 색상(색상 팔레트)을 사용합니다. 팔레트를 배경화면에서 만들면 배경화면을 따라갑니다. 시간 뒤의 은은한 그림자가 잘 보이게 해 줍니다.</string>
+    <string name="clock_no_android_wallpaper_colors">Android가 이 배경화면의 색상을 알려 주지 않아 자동과 흰색만 쓸 수 있습니다. 일부 라이브 배경화면은 색상을 알려 주지 않습니다.</string>
+    <!-- Moved out of Kotlin (DES-21). Claude's drafts, need a native read. -->
+    <string name="in_stack">스택에 있음</string>
+    <string name="not_in_stack">스택에 없음</string>
+    <string name="install_waiting">대기 중…</string>
+    <string name="island_call">통화</string>
+    <string name="island_navigating">길 안내 중</string>
+    <string name="unavailable_app">사용할 수 없는 앱</string>
+    <string name="status_airplane">비행기</string>
+    <string name="discover_unavailable_right_now">지금은 Discover를 사용할 수 없습니다.</string>
+    <string name="discover_feed_refused">Google이 피드 연결을 받아들이지 않았습니다. Google을 다시 시작한 뒤 다시 시도하세요.</string>
+    <string name="discover_disconnected">Discover 연결이 끊겼습니다. 다시 연결하려면 다시 시도를 탭하세요.</string>
+    <string name="discover_needs_google_app">Discover를 사용하려면 Google 앱을 설치하거나 사용 설정하세요.</string>
+    <string name="discover_google_couldnt_connect">Google 앱이 Discover에 연결하지 못했습니다.</string>
+    <string name="discover_taking_a_while">Discover가 오래 걸리고 있습니다. 다시 시도하거나 Google을 열 수 있습니다.</string>
+    <string name="discover_google_version">이 버전의 Google 앱으로는 Discover를 열 수 없었습니다.</string>
+    <string name="discover_couldnt_start">Discover를 시작하지 못했습니다. 다시 연결하려면 다시 시도를 탭하세요.</string>
+    <string name="discover_couldnt_fit">Discover를 Dock 옆에 맞출 수 없었습니다.</string>
+    <string name="appearance_system_until_location">위치를 설정할 때까지 시스템 테마를 사용합니다</string>
+    <string name="appearance_system_location_stale">기기 위치 정보가 오래되어 시스템 테마를 사용합니다</string>
+    <string name="appearance_system_location_unavailable">이 위치를 사용할 수 없어 시스템 테마를 사용합니다</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="clear_suggestions_history">추천 기록 지우기</string>
+    <string name="clear_suggestions_history_q">추천 기록을 지울까요?</string>
+    <string name="clear_suggestions_history_text">Folio가 앱 사용에서 배운 내용과 최근 앱을 잊습니다. Android의 사용 데이터는 바뀌지 않습니다.</string>
+    <string name="suggestions_start_again_from_now">Spotlight, 앱 보관함, 추천 위젯, 스마트 스택이 지금부터 다시 학습합니다.</string>
+    <string name="island_expand">세부사항 보기</string>
+    <string name="island_collapse">세부사항 숨기기</string>
+    <string name="island_state_expanded">펼쳐짐</string>
+    <string name="island_state_collapsed">접힘</string>
+    <string name="media_previous">이전</string>
+    <string name="media_next">다음</string>
+    <string name="discover_no_fit">Discover를 Dock 옆에 맞출 수 없습니다. 홈으로 돌아가 다시 시도하세요.</string>
+    <string name="discover_choose_dock_app">홈에서 Dock 앱 선택</string>
+    <string name="profile_app">%1$s 앱</string>
+    <string name="home_apps_title">홈 화면 앱</string>
+    <string name="home_apps_detail">홈 화면에 둘 앱을 선택하세요. Folio가 이 휴대전화에서 찾은 기본 앱을 용도별로 하나씩, 최대 8개까지 선택해 두었습니다. 언제든 바꿀 수 있습니다.</string>
+    <string name="home_apps_none">아직 홈 화면에 앱이 없습니다</string>
+    <string name="home_apps_show_all">모든 앱 보기</string>
+    <string name="use_folio_now">지금 Folio 사용하기</string>
+    <plurals name="home_apps_count">
+        <item quantity="other">앱 %d개</item>
+    </plurals>
+    <plurals name="home_rows_count">
+        <item quantity="other">%d줄</item>
+    </plurals>
+    <string name="reduce_transparency_note">위젯, 사이드바 및 Dock이 거의 불투명해지고 테두리가 더 선명해지며, 이 항목을 끌 때까지 글래스 설정이 숨겨집니다. Android의 고대비도 같은 효과를 냅니다.</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">투명도 줄이기가 켜져 있어 글래스가 거의 불투명합니다. 접근성에서 끄면 이 설정이 다시 나타납니다.</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="other">앱이 없어 위젯 %d개를 제외했습니다.</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">레이아웃 백업이 2MB보다 커서 Folio가 읽을 수 없습니다.</string>
+    <string name="layout_backup_is_from_a_newer_folio">더 최신 버전의 Folio에서 만든 레이아웃 백업입니다. 복원하려면 Folio를 업데이트하세요.</string>
+    <string name="document_picker_unavailable">지금은 파일 선택기를 사용할 수 없습니다.</string>
+    <string name="folio_was_updated_to_1_s">Folio가 %1$s 버전으로 업데이트되었습니다</string>
+    <string name="island_status_ready_title">다른 앱 위에 표시 중</string>
+    <string name="island_status_ready_body">음악, 통화, 타이머가 아일랜드에 표시됩니다. 방해 금지 모드는 메시지 팝업을 제한합니다.</string>
+    <string name="island_status_ready_live_body">음악, 통화, 타이머가 아일랜드에 표시됩니다.</string>
+    <string name="island_status_dnd_title">방해 금지 모드가 메시지 팝업을 제한하고 있습니다</string>
+    <string name="island_status_dnd_body">방해 금지 모드가 켜져 있어서 표시되는 메시지 팝업이 제한됩니다. 음악, 통화, 타이머는 다른 앱 위에 계속 표시됩니다.</string>
+    <string name="island_status_dnd_action">방해 금지 모드 열기</string>
+    <string name="island_status_popup_title">Android가 이 팝업을 직접 표시하고 있습니다</string>
+    <string name="island_status_popup_body">Android 팝업과 중복 표시 안 함이 켜져 있어서, 대부분의 메시지 같은 중요한 알림에는 아일랜드가 나서지 않습니다.</string>
+    <string name="island_status_popup_note">Android 팝업과 중복 표시 안 함이 켜져 있어서, 중요한 알림은 Android의 팝업이 처리합니다.</string>
+    <string name="island_status_popup_action">아일랜드에도 표시</string>
+    <string name="island_status_service_title">다른 앱 위에 표시되지 않음</string>
+    <string name="island_status_service_body">Folio의 제스처 서비스가 꺼져 있습니다. Android는 이 서비스를 통해서만 앱이 다른 앱 위에 그리도록 허용합니다.</string>
+    <string name="island_status_service_action">제스처 서비스 켜기</string>
+    <string name="island_status_access_title">아직 표시할 내용이 없습니다</string>
+    <string name="island_status_access_body">알림 접근이 꺼져 있어서 Folio가 음악, 통화, 메시지를 볼 수 없습니다.</string>
+    <string name="island_status_access_action">알림 접근 열기</string>
+    <string name="island_status_off_title">다른 앱에서 아일랜드가 꺼져 있습니다</string>
+    <string name="island_status_off_body">모든 앱에서 항목의 Dynamic Island를 켜면 다른 앱 위에 표시됩니다.</string>
+    <string name="island_status_live_off_title">음악 및 실시간 진행 상태가 꺼져 있습니다</string>
+    <string name="island_status_live_off_body">음악 및 실시간 진행 상태를 켜면 음악, 통화, 타이머가 아일랜드에 표시됩니다.</string>
+    <string name="island_status_safe_title">안전 모드로 일시 중지됨</string>
+    <string name="island_status_safe_body">안전 모드에서는 아일랜드와 독이 홈에만 표시됩니다. 다른 앱 위에서 사용하려면 안전 모드를 끄세요.</string>
+    <string name="package_import_market_off">이 패키지에는 Folio 마켓이 필요하며, 마켓은 서포터 코드로 열립니다.</string>
+    <string name="package_import_too_large">파일이 너무 커서 Folio 패키지가 아닙니다.</string>
+    <string name="package_import_too_slow">파일을 읽는 데 너무 오래 걸렸습니다. 먼저 휴대전화에 저장해 보세요.</string>
 </resources>

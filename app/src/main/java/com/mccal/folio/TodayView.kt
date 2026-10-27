@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,7 +50,8 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
     val today = remember(tick) { LocalDate.now() }
     val apps = remember(state.apps, state.hiddenApps) { state.apps.filter { it.id !in state.hiddenApps } }
     // Off means no row and no usage query either.
-    val suggestions by produceState(emptyList<AppEntry>(), apps, state.todaySuggestions) {
+    val cleared by SuggestionsHistory.generation.collectAsStateWithLifecycle()
+    val suggestions by produceState(emptyList<AppEntry>(), apps, state.todaySuggestions, cleared) {
         value = if (!state.todaySuggestions) emptyList() else withContext(Dispatchers.IO) {
             Suggestions.forNow(context, apps)
         }
@@ -135,7 +137,7 @@ private fun TodaySuggestions(apps: List<AppEntry>, columns: Int, onLaunch: (AppE
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     AppIcon(app, app.label, Modifier.size(52.dp), shape = RoundedCornerShape(13.dp), badge = false)
-                    Text(app.label, color = ink.primary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    Text(app.label, color = ink.primary, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                 }
             }

@@ -46,7 +46,9 @@ Nobody has to fix the whole tree before shipping a feature.
 |---|---|---|
 | [Design](design.md) | `DES` | Visual language, tokens, components, where iOS inspiration ends |
 | [Dynamic UI](dynamic-ui.md) | `DYN` | Live, animated and context-driven elements, motion tokens, the D1 to D5 classes |
+| [Motion references](motion-references.md) | none | A reading list and way of thinking for Apple-grade motion; not rules |
 | [Interaction](interaction.md) | `INT` | Gestures, priority, cancellation, haptics, keyboard and pointer |
+| [Panels](panels.md) | `PNL` | Control Center and Notification Center: fit, readability, backdrop, truth, controls, privacy |
 | [Adaptive layout](adaptive-layout.md) | `ADP` | Window size, folds and hinges, insets, multi-window |
 | [Compose](compose.md) | `CMP` | How Folio's Kotlin and Compose code is written |
 | [State and data](state-data.md) | `STA` | Who owns each piece of state, persistence, migrations |

@@ -76,7 +76,7 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
     val margin = with(density) { 12.dp.roundToPx() }
     val reduceMotion = LocalReduceMotion.current
     val appear = remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 1f else 0f) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .8f, stiffness = 700f)) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) }
     var alignEnd by remember { mutableStateOf(false) }
     val position = remember(anchor, margin) {
         object : androidx.compose.ui.window.PopupPositionProvider {
@@ -104,7 +104,7 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
                 val g = appear.value; alpha = g.coerceIn(0f, 1f); scaleX = .7f + .3f * g; scaleY = scaleX
                 transformOrigin = androidx.compose.ui.graphics.TransformOrigin(if (alignEnd) 1f else 0f, 0f)
             }
-            .shadow(18.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f))
+            .shadow(18.dp, RoundedCornerShape(FolioRadius.FLOATING.dp)).clip(RoundedCornerShape(FolioRadius.FLOATING.dp)).background(FolioColors.PopoverSurface.copy(alpha = .97f))
             .border(FolioGlass.edge, RoundedCornerShape(18.dp)).testTag("home-edit-menu")) {
             fun act(action: () -> Unit) = { onDismiss(); action() }
             Box(Modifier.testTag("empty-space-widgets")) { MenuRow(stringResource(R.string.add_widget_2), Icons.Rounded.Widgets, onClick = act(onWidgets)) }

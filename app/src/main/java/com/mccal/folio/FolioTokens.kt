@@ -7,6 +7,11 @@ import androidx.compose.ui.graphics.Color
  * point at the same values. Use these instead of writing hex colors in a screen.
  */
 internal object FolioColors {
+    /** The frosted glass behind panels over another app (see FrostedBackdrop): its dark base, and the three patches' colors when the wallpaper gives none. */
+    val FrostBase = Color(0xFF16171A)
+    val FrostPatchA = Color(0xFF3A4A5E)
+    val FrostPatchB = Color(0xFF4A3A5E)
+    val FrostPatchC = Color(0xFF3A5E52)
     /**
      * The palette as ARGB numbers, for the places that hold a color as a value rather than a `Color`: a tweak's
      * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a color can't drift.
@@ -91,8 +96,35 @@ internal object FolioColors {
     val MenuSurface = Color(Value.MenuSurface)
     /** iOS's grouped background in light appearance, for the few Folio surfaces that follow the system theme. */
     val LightBackground = Color(Value.LightBackground)
+    /** The darkest container in the sheet scheme, under [SecondaryBackground]. */
+    val SurfaceLowest = Color(0xFF141416)
+    /** The container glass cards are built on ([FolioGlass.card]), and the sheet scheme's `surfaceContainer`. */
+    val SurfaceCard = Color(0xFF242428)
+    /** Caption and helper text in the sheet scheme (Material's `onSurfaceVariant`). */
+    val LabelVariant = Color(0xFFA1A1A6)
+    /** The sheet scheme's strong outline. */
+    val Outline = Color(0xFF545458)
+    /** Hairline dividers in the sheet scheme. */
+    val OutlineVariant = Color(0xFF38383A)
+    /**
+     * A switch's track when off. It is close to the sheet it sits on (1.3:1), so the thumb's position, not the track,
+     * carries the state.
+     */
+    val TrackOff = Color(0xFF39393D)
+    /** The sliding thumb of a segmented control; white text on it is 5.9:1. */
+    val SegmentThumb = Color(0xFF636366)
+    /** What floating menus and action sheets are drawn on, at 80 to 97% depending on the blur behind. */
+    val PopoverSurface = Color(0xFF2A2A2E)
+    /** The outline and handle of a widget that can't be dropped where it is: softer than [Red], which is for destructive actions. */
+    val InvalidDrop = Color(0xFFFF6B6B)
+    /** The bezel drawn around a phone in the Customization previews. */
+    val PreviewBezel = Color(0xFF0B0B0C)
+    /** Supporting text on [SecondaryBackground]-style cards in dark appearance (iOS secondaryLabel). */
+    val SecondaryLabelOnDark = Color(0xFF98989F)
+    /** Supporting text on [LightBackground]-style cards in light appearance (iOS secondaryLabel). */
+    val SecondaryLabelOnLight = Color(0xFF6C6C70)
     /** Supporting text on dark glass and sheets. */
-    val SecondaryLabel = Color.White.copy(alpha = .6f)
+    val SecondaryLabel = Color.White.copy(alpha = .62f)
 }
 
 /**
@@ -152,6 +184,18 @@ internal object FolioRadius {
     const val PANEL = 24
     /** The top corners of a bottom sheet. */
     const val SHEET_TOP = 28
+    /** List rows, search fields and small cards that sit on a sheet. */
+    const val ROW = 12
+    /** Floating menus and action sheets. */
+    const val FLOATING = 18
+    /** Notification cards and the stack behind them. */
+    const val NOTIFICATION = 22
+    /** The dock and the side rail: a capsule. */
+    const val RAIL = 30
+    /** A segmented control's track. */
+    const val SEGMENT = 9
+    /** A segmented control's thumb: the track's radius minus its 2 dp inset, so the corners stay concentric (DES-8). */
+    const val SEGMENT_THUMB = 7
 }
 
 /**
@@ -163,6 +207,14 @@ internal object FolioType {
     const val BODY = 17
     const val SUBHEAD = 15
     const val FOOTNOTE = 13
+    /** Dense rows, chip labels (SemiBold when selected) and secondary controls. */
+    const val COMPACT = 14
+    /** iOS Callout: list values and supporting lines a step above [SUBHEAD]. */
+    const val CALLOUT = 16
+    /** iOS Title 3: sheet and card headings. */
+    const val TITLE3 = 20
+    /** iOS Caption 2: timestamps and the smallest supporting text. Home app labels use [LabelSize] instead. */
+    const val CAPTION = 11
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
 }
@@ -199,9 +251,61 @@ internal object FolioMotion {
     val Appear = .78f to 400f
     /** Small controls answering a finger (switch thumbs, segments, a pressed card, a released pull): quick and a touch bouncy. */
     val Control = .75f to 1500f
-    /** A set of icons fanning out: the most overshoot Folio has. */
-    val Bounce = .68f to 520f
     /** A value following another with no overshoot (gauges, progress). */
     val Snap = 1f to 1500f
-    fun <T> spring(pair: Pair<Float, Float>) = MotionSpeed.spring<T>(pair.first, pair.second)
+
+    // The 0.6.9 motion pass (docs/research-motion-0-6-9.md). Damping never goes below 0.7: that is about 4.6% overshoot,
+    // the most a settle that starts with the finger's speed should have, and Apple calls more than that exaggerated.
+    /** Full pages and panels sliding in from an edge: soft, no visible overshoot, about 0.32 s. */
+    val Sheet = .9f to 380f
+    /** Menus opening from the pressed object: a hint of life, about 0.25 s. Close them on [Firm]. */
+    val Menu = .78f to 650f
+    /** A settle that starts with the finger's speed (a flick, a drop): visibly passes the line and eases back. Never for a tap. */
+    val Bounce = .7f to 480f
+
+    /**
+     * True while the 0.6.9 motion pass is on for this phone. It follows [FeatureGate.MOTION_V2] when the app starts, and
+     * on a beta or Folio Dev build a switch in Settings › Advanced can override it, to compare the old motion with the
+     * new. It is Compose state, so a screen that reads it redraws the moment the switch is flipped.
+     */
+    private val v2State = androidx.compose.runtime.mutableStateOf(false)
+    val v2: Boolean get() = v2State.value
+
+    /** What the switch says, if it was ever used: on, off, or null for "follow the gate". */
+    fun resolve(override: Boolean?, gateOpen: Boolean) = override ?: gateOpen
+
+    private const val PREFS = "folio_motion"
+    private const val OVERRIDE = "motionPassOverride"
+
+    /** Sets [v2] from the gate and the saved switch; called once when the app starts. */
+    fun initialize(context: android.content.Context) {
+        val saved = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        val override = if (saved.contains(OVERRIDE)) saved.getBoolean(OVERRIDE, false) else null
+        use(resolve(override, FeatureGate.MOTION_V2.isOpen(context)))
+    }
+
+    /** The switch in Settings › Advanced. Takes effect at once for what is on screen and for everything opened after. */
+    fun setEnabled(context: android.content.Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean(OVERRIDE, on).apply()
+        use(on)
+    }
+
+    /** Turns the pass on or off in memory only. The switch and the tests both go through here. */
+    internal fun use(on: Boolean) { v2State.value = on }
+
+    /** Whether the switch is shown: only while the pass is still on trial, on a beta or Folio Dev build. */
+    fun switchVisible(context: android.content.Context) = !FeatureGate.MOTION_V2.open && FeatureGate.MOTION_V2.isOpen(context)
+
+    /** The new spring when the motion pass is on, and the numbers the caller used before it when it is not. */
+    fun pick(old: Pair<Float, Float>, new: Pair<Float, Float>) = if (v2) new else old
+    fun <T> spring(pair: Pair<Float, Float>, visibilityThreshold: T? = null) = MotionSpeed.spring(pair.first, pair.second, visibilityThreshold)
+
+    /** Reduce Motion's stand-in for anything that would slide or grow in: a fade where it lands, this long. */
+    const val FADE_MS = 150
+
+    /**
+     * Reduce Motion keeps motion that shows a state (a switch thumb, a segment) but takes out the overshoot: the same
+     * stiffness at damping 1. Under Android's Remove animations Compose ends it at once anyway.
+     */
+    fun calm(pair: Pair<Float, Float>, reduce: Boolean) = if (reduce) 1f to pair.second else pair
 }

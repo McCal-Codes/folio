@@ -136,10 +136,17 @@ internal fun DockAppColumn(
     val dimDragged = drag.active && !drag.moved && source != null
     val launchBounds = remember(savedDock.size) { List(savedDock.size) { android.graphics.Rect() } }
     val interactions = remember(savedDock.size) { List(savedDock.size) { MutableInteractionSource() } }
+    val reduceMotion = LocalReduceMotion.current
+    // The icon stays dipped for a moment after a tap, until the app is up.
+    var launchingSlot by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(launchingSlot) { if (launchingSlot >= 0) { delay(PressFeedback.HOLD_MS); launchingSlot = -1 } }
     val slotScales = savedDock.indices.map { index ->
         val pressed by interactions[index].collectIsPressedAsState()
-        val scale by animateFloatAsState(if (pressed) .92f else 1f, label = "dock press $index")
-        scale
+        animateFloatAsState(PressFeedback.scale(pressed || launchingSlot == index, false, reduceMotion, PressFeedback.Kind.DOCK, FolioMotion.v2), FolioMotion.spring(PressFeedback.springFor(PressFeedback.Kind.DOCK, FolioMotion.v2)), label = "dock press $index")
+    }
+    val slotAlphas = savedDock.indices.map { index ->
+        val pressed by interactions[index].collectIsPressedAsState()
+        animateFloatAsState(PressFeedback.alpha(pressed || launchingSlot == index, false, PressFeedback.Kind.DOCK, FolioMotion.v2), FolioMotion.spring(PressFeedback.springFor(PressFeedback.Kind.DOCK, FolioMotion.v2)), label = "dock press alpha")
     }
     val density = LocalDensity.current
     val rowHeightPx = with(density) { rowHeight.dp.toPx() }
@@ -180,7 +187,7 @@ internal fun DockAppColumn(
                     previewId == null -> Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
-            val dockClick = { if (savedApp != null) { if (!edit.active) onLaunch(savedApp, launchBounds[index]) } else onChoose(index) }
+            val dockClick = { if (savedApp != null) { if (!edit.active) { if (FolioMotion.v2) launchingSlot = index; onLaunch(savedApp, launchBounds[index]) } } else onChoose(index) }
             val indication = LocalIndication.current
             val dockGestures = rememberIconGestures(savedApp, interactions[index], indication, null, null, dockClick,
                 plain = Modifier.combinedClickable(interactionSource = interactions[index], indication = indication, role = Role.Button, onClick = dockClick, onLongClick = null))
@@ -203,14 +210,14 @@ internal fun DockAppColumn(
             key(id) {
                 val animatedOffset by animateIntOffsetAsState(
                     if (horizontal) IntOffset((renderIndex * rowHeightPx).roundToInt(), 0) else IntOffset(0, (renderIndex * rowHeightPx).roundToInt()),
-                    animationSpec = if (drag.active) androidx.compose.animation.core.spring(visibilityThreshold = IntOffset(1, 1))
-                        else androidx.compose.animation.core.snap(), label = "dock insertion $id")
+                    animationSpec = if (drag.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
+                        else androidx.compose.animation.core.snap(), label = "dock insertion $id") // english-only
                 val visible = previewIndex >= 0 && renderIndex != hiddenIndex
                 val opacity by animateFloatAsState(
                     if (!visible) 0f else if (dimDragged && id == draggedId) .28f else 1f,
-                    label = "dock insertion visibility $id",
+                    label = "dock insertion visibility $id", // english-only
                 )
-                Box(Modifier.offset { animatedOffset }.then(if (horizontal) Modifier.fillMaxHeight().width(rowHeight.dp) else Modifier.fillMaxWidth().height(rowHeight.dp)).alpha(opacity)
+                Box(Modifier.offset { animatedOffset }.then(if (horizontal) Modifier.fillMaxHeight().width(rowHeight.dp) else Modifier.fillMaxWidth().height(rowHeight.dp)).graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }
                     .testTag("dock-app-$id"), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(iconSize.dp).testTag("dock-icon-$id")
                         .onGloballyPositioned { if (savedIndex >= 0) { launchBounds[savedIndex].set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(id, launchBounds[savedIndex]) } }
@@ -218,9 +225,9 @@ internal fun DockAppColumn(
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
-                        } ?: 1f, androidx.compose.animation.core.spring(dampingRatio = .75f, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium), label = "dock magnify $id")
+                        } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id") // english-only
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
-                            val s = slotScales[renderIndex] * magnification; scaleX = s; scaleY = s
+                            val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value
                             // Grow toward the screen, away from the edge the dock sits on.
                             transformOrigin = if (horizontal) androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
                                 else androidx.compose.ui.graphics.TransformOrigin(if (leftHanded) 0f else 1f, .5f)
@@ -228,7 +235,7 @@ internal fun DockAppColumn(
                         if (edit.active && savedIndex >= 0) JiggleRemoveButton(stringResource(R.string.remove_from_dock, app.label), inset = 6.dp) { edit.onRemove(DropTarget.Dock(savedIndex)) }
                     }
                     // Recent-app dot (Beta): below the icon in a horizontal dock, on the screen side of a side dock.
-                    if (!edit.active && app.packageName in LocalRecentPackages.current) Box(Modifier
+                    if (!edit.active && app.iconFrom == null && app.packageName in LocalRecentPackages.current) Box(Modifier
                         .align(if (horizontal) Alignment.BottomCenter else if (leftHanded) Alignment.CenterEnd else Alignment.CenterStart)
                         .size(5.dp).background(Color.White.copy(alpha = .8f), CircleShape)
                         .semantics { contentDescription = usedRecentlyLabel })
@@ -249,7 +256,12 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     val folderApps = pluralStringResource(R.plurals.folder_apps, folder.appIds.size, folder.title, folder.appIds.size)
     val folderLabel = if (unread > 0) pluralStringResource(R.plurals.folder_unread, unread, folderApps, unread) else folderApps
     // The whole cell takes the drop, not just the icon, so an app held near a folder's label still goes in.
-    Column(modifier.clickable(onClick = onClick).dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    var opening by remember { mutableStateOf(false) }
+    LaunchedEffect(opening) { if (opening) { delay(PressFeedback.HOLD_MS / 2); opening = false } }
+    val lifted = LocalOpenMenuId.current == folder.id
+    Column(modifier.clickable(interactionSource = interaction, indication = null, onClick = { if (FolioMotion.v2) opening = true; onClick() }).dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
         .semantics(mergeDescendants = true) {
         contentDescription = folderLabel
     }, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -259,9 +271,11 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
         val hovered = drag.moved && drag.source?.appId?.let { !isFolderId(it) } == true &&
             drag.destination(drag.pointer, setOf(page))?.target == DropTarget.Folder(folder.id)
         val lift by animateFloatAsState(if (hovered) 1.12f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "folder hover")
-        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift }
+        // With the motion pass, the tile hands over to the open folder's panel (FolderOpening).
+        Box(Modifier.size(size.dp).graphicsLayer { scaleX = lift; scaleY = lift
+                if (FolioMotion.v2) alpha = FolderOpening.tileAlpha(folder.id, FolderOpening.id, FolderOpening.progress) }
             .onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(folder.id, bounds) }
-            .jiggle(folder.id).foldMotionIcon()) {
+            .jiggle(folder.id).foldMotionIcon().pressFeedback(pressed || opening, lifted, size * .24f, kind = PressFeedback.Kind.FOLDER)) {
             // Like iOS: a folder's badge is the total of its apps' badges (each app counted once).
             val look = LocalIconLook.current
             val counts = LocalBadgeCounts.current
@@ -287,12 +301,16 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
 
 @Composable
 internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modifier = Modifier, onClick: (android.graphics.Rect) -> Unit, onLongClick: () -> Unit,
-    onRemove: (() -> Unit)? = null) {
+    onRemove: (() -> Unit)? = null,
+    /** How far a folder plate has grown behind this icon, 0 to 1, while another app is held over its middle (FolderOrRoom). */
+    plate: (() -> Float)? = null) {
     val appOptionsLabel = stringResource(R.string.app_options)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) .88f else 1f,
-        androidx.compose.animation.core.spring(dampingRatio = .55f, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium), label = "app press")
+    // After a tap the icon stays dipped for a moment while the app starts; the lift is while this icon's menu is open.
+    var launching by remember { mutableStateOf(false) }
+    LaunchedEffect(launching) { if (launching) { delay(PressFeedback.HOLD_MS); launching = false } }
+    val lifted = LocalOpenMenuId.current == app.id
     // No size animation: after folding, the cover's icons must appear at their own size on the first frame.
     val iconSize = size.dp
     val bounds = remember { android.graphics.Rect() }
@@ -300,9 +318,11 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     // Icon Actions: an icon with saved actions gets swipes, a double tap and TalkBack actions for them; any other runs
     // exactly the code it always did (see rememberIconGestures).
     val stack = if (app.id in LocalStackedApps.current) LocalIconStack.current else null
-    val gestures = rememberIconGestures(app, interaction, null, openPanel, stack, { onClick(bounds) },
+    // A tap holds the icon dipped while the app starts (press feedback), whichever path the tap takes.
+    val tap = { if (onRemove == null && FolioMotion.v2) launching = true; onClick(bounds) }
+    val gestures = rememberIconGestures(app, interaction, null, openPanel, stack, tap,
         plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
-            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = { onClick(bounds) }))
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = tap))
     Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
         .then(gestures.modifier)
         .semantics {
@@ -314,14 +334,22 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.
         Box(Modifier.size(iconSize).onGloballyPositioned { bounds.set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(app.id, bounds) }
             .jiggle(app.id).foldMotionIcon()) {
+            // The folder plate grows behind the icon and the icon shrinks into it; under Reduce Motion the plate only fades in.
+            val still = LocalReduceMotion.current
+            if (plate != null) Box(Modifier.matchParentSize().graphicsLayer {
+                val p = plate()
+                alpha = if (still) p else if (p > .001f) 1f else 0f
+                val grown = 1f + FolderOrRoom.PLATE_GROWTH * (if (still) 1f else p); scaleX = grown; scaleY = grown
+            }.background(Glass.copy(alpha = .72f), RoundedCornerShape((size * .24f).dp)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp)))
             if (app.id in LocalStackedApps.current) StackPeek(iconSize)
             AppIcon(app, null, Modifier.fillMaxSize()
-                .graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (pressed) .82f else 1f }, shape = RoundedCornerShape((size * .24f).dp))
+                .graphicsLayer { if (plate != null && !still) { val inside = 1f - (1f - FolderOrRoom.ICON_INSIDE) * plate(); scaleX = inside; scaleY = inside } }
+                .pressFeedback(pressed || launching, lifted, size * .24f, kind = PressFeedback.Kind.APP), shape = RoundedCornerShape((size * .24f).dp))
             if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = onRemove)
         }
         val ink = LocalHomeInk.current
         if (labels) Row(Modifier.padding(top = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
-            NewAppDot(app.packageName)
+            if (app.iconFrom == null) NewAppDot(app.packageName)
             Text(app.label, color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, lineHeight = LocalLabelSize.current.lineSp.sp, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, style = TextStyle(shadow = ink.labelShadow))
         }

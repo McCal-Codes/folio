@@ -165,6 +165,26 @@ class ScreenCoverageTest {
         org.junit.Assert.assertEquals(4, homeGeometry(751f, 475f, LayoutPreset(), true, statusHeight = 160f).fitAppRows)
     }
 
+    /** Rows picked by hand shrink icons to fit (never under 48 dp); Automatic and Rows › 4 never do, so they scroll as before. */
+    @Test fun `rows picked by hand shrink icons to fit and never below 48 dp`() {
+        fun bottom(g: HomeGeometry, rows: Int) = g.widgetHeight + 18f + rows * g.rowHeight
+        // Fold8 Ultra inner (estimated, upright): six fit at the usual size, seven only with smaller icons.
+        val auto = homeGeometry(859f, 954f, LayoutPreset(), true, statusHeight = 160f, appRows = 7)
+        val hand = homeGeometry(859f, 954f, LayoutPreset(), true, statusHeight = 160f, appRows = 7, shrinkIconsForRows = true)
+        org.junit.Assert.assertEquals(66f, auto.iconSize)
+        org.junit.Assert.assertTrue("icons ${hand.iconSize}", hand.iconSize < 66f && hand.iconSize >= MIN_ROWS_ICON)
+        val fitHeight = 954f - 16f - 44f - hand.dockBarHeight - 16f
+        org.junit.Assert.assertTrue("seven rows take ${bottom(hand, 7)} of $fitHeight", bottom(hand, 7) <= fitHeight + 0.5f)
+        org.junit.Assert.assertTrue(bottom(auto, 7) > fitHeight)
+        // Rows that already fit change nothing, with or without the switch.
+        val four = homeGeometry(859f, 954f, LayoutPreset(), true, statusHeight = 160f)
+        org.junit.Assert.assertEquals(four, homeGeometry(859f, 954f, LayoutPreset(), true, statusHeight = 160f, shrinkIconsForRows = true))
+        // Far too many rows for a short window never make icons smaller than that window's own rule already did, then the page scrolls.
+        val base = homeGeometry(475f, 420f, LayoutPreset(), true, statusHeight = 160f)
+        val short = homeGeometry(475f, 420f, LayoutPreset(), true, statusHeight = 160f, appRows = 7, shrinkIconsForRows = true)
+        org.junit.Assert.assertEquals(base.iconSize, short.iconSize)
+    }
+
     /** Default Space between columns, Widget size and dock spacing lay the Fold8 out as before those settings. */
     @Test fun `new spacing settings at their defaults keep the fold8 layout`() {
         val cover = homeGeometry(475f, 751f, LayoutPreset(), true, statusHeight = 160f)

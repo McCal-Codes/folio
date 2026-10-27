@@ -58,6 +58,22 @@ class PackageInstallerTest {
             state = snapshot
         }
 
+        /** True lets tweak changes move in place on an update, the way MarketHost does; off, the old way is tested. */
+        var inPlace = false
+        /** Each move in place: the change it came from, the snapshot it carried, and the change it went to. */
+        val moved = mutableListOf<Triple<PackageChange, String, PackageChange>>()
+
+        override fun canUpdateInPlace(old: PackageChange, new: PackageChange) =
+            inPlace && old is PackageChange.Tweaks && new is PackageChange.Tweaks
+
+        // Leaves [state] alone: what the person set stays, which is the point.
+        override fun updateInPlace(old: PackageChange, snapshot: String, new: PackageChange): String {
+            if (failOn?.invoke(new) == true) error("the launcher refused that change")
+            if (dieOn?.invoke(new) == true) throw AssertionError("the process died here")
+            moved += Triple(old, snapshot, new)
+            return snapshot
+        }
+
         private fun describe(change: PackageChange) = when (change) {
             is PackageChange.Tweaks -> change.bundle.tweaks.joinToString { it.id.id }
             is PackageChange.Theme -> "theme"
@@ -235,6 +251,21 @@ class PackageInstallerTest {
         return result as InstallResult.Failed
     }
 
+    @Test fun `a package turned off keeps what turned it off, and putting it back on clears it`() {
+        installer.install(pack())
+        assertTrue(installer.disable("com.mccal.folio.cabinet", "Its source pulled it: Malware", InstalledPackage.OffCause.PULLED))
+        val off = requireNotNull(store.find("com.mccal.folio.cabinet"))
+        assertEquals(false, off.enabled)
+        assertEquals(InstalledPackage.OffCause.PULLED, off.offCause)
+        // It survives being read back, the way a restart reads it.
+        assertEquals(InstalledPackage.OffCause.PULLED, InstalledStore(store.keyValue).find("com.mccal.folio.cabinet")?.offCause)
+        assertTrue(installer.enable("com.mccal.folio.cabinet"))
+        assertNull(store.find("com.mccal.folio.cabinet")?.offCause)
+        // Turned off with no cause given (a record from before causes were kept) reads as no cause.
+        assertTrue(installer.disable("com.mccal.folio.cabinet", "Folio stopped twice"))
+        assertNull(store.find("com.mccal.folio.cabinet")?.offCause)
+    }
+
     @Test fun `installs the real Cabinet package and records what it changed`() {
         val result = installed(installer.install(pack()))
         assertEquals("com.mccal.folio.cabinet", result.installed.id)
@@ -383,6 +414,34 @@ class PackageInstallerTest {
             ),
         )
         assertEquals("that package replaces Cabinet", failure(installer.install(rival)).message)
+    }
+
+    @Test fun `a package made for another Android is refused, never installed (ADR 0013)`() {
+        val newer = pack(replace = mapOf("\"name\": \"Cabinet\"" to "\"name\": \"Cabinet\",\n  \"minSdk\": 36"))
+        val onThirteen = PackageInstaller(store, host, clock = { now }, androidSdk = 33)
+        val failed = failure(onThirteen.install(newer))
+        assertEquals(InstallResult.Reason.ANDROID, failed.reason)
+        assertEquals("that package is made for Android 16 or later", failed.message)
+        assertTrue(host.applied.isEmpty())
+        installed(PackageInstaller(store, host, clock = { now }, androidSdk = 36).install(newer))
+    }
+
+    @Test fun `a package that breaks an installed version is refused until that one is updated (ADR 0013)`() {
+        installer.install(pack())
+        val glow = pack(
+            replace = mapOf(
+                "\"com.mccal.folio.cabinet\"" to "\"dev.example.glow\"",
+                "\"name\": \"Cabinet\"" to "\"name\": \"Glow\",\n  \"breaks\": [\"com.mccal.folio.cabinet (<< 1.1)\"]",
+            ),
+        )
+        val failed = failure(installer.install(glow))
+        assertEquals(InstallResult.Reason.BREAKS, failed.reason)
+        assertEquals("that package doesn't work with Cabinet 1.0.0; update it first", failed.message)
+    }
+
+    @Test fun `a package past its tested Folio still installs, since maxFolio is advice (ADR 0013)`() {
+        val tried = pack(replace = mapOf("\"name\": \"Cabinet\"" to "\"name\": \"Cabinet\",\n  \"maxFolio\": \"0.6\""))
+        installed(PackageInstaller(store, host, clock = { now }, folioVersion = FolioVersion(0, 9, 0)).install(tried))
     }
 
     @Test fun `a package whose dependency isn't installed is refused`() {
@@ -546,6 +605,91 @@ class PackageInstallerTest {
         assertEquals("Cabinet", fresh.find("com.mccal.folio.cabinet")?.name)
     }
 
+    // A Layout Backup is a file, and its Market packages get the checks an install makes before any goes back on.
+    /** A backup made on another phone, holding Cabinet as it went on there, from [sourceUrl]. */
+    private fun backupFromElsewhere(sourceUrl: String? = "https://example.com/source/"): String {
+        val there = InstalledStore(MemoryStore())
+        installed(PackageInstaller(there, FakeHost(), clock = { now }).install(pack(), sourceUrl = sourceUrl))
+        return there.export()
+    }
+
+    private fun checks(
+        builtIn: FolioPackage? = null,
+        listed: List<PackageManifest> = emptyList(),
+        pulled: String? = null,
+        incompatible: Boolean = false,
+    ) = object : PackageInstaller.RestoreChecks {
+        override fun builtIn(id: String) = builtIn?.takeIf { it.id == id }
+        override fun listed(record: InstalledPackage) = listed
+        override fun pulled(record: InstalledPackage) = pulled
+        override fun incompatible(record: InstalledPackage) = incompatible
+    }
+
+    @Test fun `a restored package keeps no source the backup names, and a clean one still goes back on`() {
+        val restored = installer.restoreBackup(backupFromElsewhere("https://evil.example/"), "couldn't", checks()) {}!!
+        assertEquals(listOf(cabinetId), restored.on.map { it.id })
+        val record = store.find(cabinetId)!!
+        assertTrue(record.enabled)
+        assertEquals(InstalledPackage.Origin.FILE, record.origin)
+        assertNull(record.sourceUrl)
+        assertEquals(listOf(TweakId.APP_PANELS), (host.applied.single() as PackageChange.Tweaks).bundle.tweaks.map { it.id })
+    }
+
+    @Test fun `this phone's own package comes back from its own backup with its source`() {
+        installed(installer.install(pack(), sourceUrl = "https://example.com/source/"))
+        AuthorTrust(store.keyValue).remember(cabinetId, "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEexample")
+        val restored = installer.restoreBackup(store.export(), "couldn't", checks()) {}!!
+        assertEquals(listOf(cabinetId), restored.on.map { it.id })
+        assertEquals(InstalledPackage.Origin.FOLIO_SOURCE, store.find(cabinetId)!!.origin)
+        assertEquals("https://example.com/source/", store.find(cabinetId)!!.sourceUrl)
+    }
+
+    @Test fun `a backup's copy of a name an author's key owns here stays off`() {
+        AuthorTrust(store.keyValue).remember(cabinetId, "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEexample")
+        val restored = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks()) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        assertFalse(store.find(cabinetId)!!.enabled)
+        assertEquals(InstalledPackage.Origin.FILE, store.find(cabinetId)!!.origin)
+        assertTrue("nothing was applied", host.applied.isEmpty())
+    }
+
+    @Test fun `a backup's copy of a package Folio ships goes on only if it is that package`() {
+        val shipped = cabinet()
+        val same = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks(builtIn = shipped)) {}!!
+        assertEquals(listOf(cabinetId), same.on.map { it.id })
+        assertEquals(InstalledPackage.Origin.FOLIO_SOURCE, store.find(cabinetId)!!.origin)
+
+        val altered = backupFromElsewhere().replace("\"cover\":true", "\"cover\":false")
+        val other = PackageInstaller(InstalledStore(MemoryStore()), FakeHost(), clock = { now })
+        assertEquals(listOf(cabinetId), other.restoreBackup(altered, "couldn't", checks(builtIn = shipped)) {}!!.failed.map { it.id })
+    }
+
+    @Test fun `a pulled version in a backup stays off and says it was pulled`() {
+        val restored = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks(pulled = "Its source pulled it: broken")) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        val record = store.find(cabinetId)!!
+        assertFalse(record.enabled)
+        assertEquals(InstalledPackage.OffCause.PULLED, record.offCause)
+        assertEquals("Its source pulled it: broken", record.disabledReason)
+        assertTrue(host.applied.isEmpty())
+    }
+
+    @Test fun `a version a list says doesn't work with this Folio stays off after a restore`() {
+        val restored = installer.restoreBackup(backupFromElsewhere(), "couldn't", checks(incompatible = true)) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        assertEquals("couldn't", store.find(cabinetId)!!.disabledReason)
+        assertTrue(host.applied.isEmpty())
+    }
+
+    @Test fun `a restored package whose listed manifest is for another Android stays off`() {
+        val newer = (installer.read(pack(replace = mapOf("\"name\": \"Cabinet\"" to "\"name\": \"Cabinet\",\n  \"minSdk\": 36")))
+            as PackageInstaller.ReadResult.Ok).pkg.manifest
+        val onThirteen = PackageInstaller(store, host, clock = { now }, androidSdk = 33)
+        val restored = onThirteen.restoreBackup(backupFromElsewhere(), "couldn't", checks(listed = listOf(newer))) {}!!
+        assertEquals(listOf(cabinetId), restored.failed.map { it.id })
+        assertTrue(host.applied.isEmpty())
+    }
+
     private fun index(sha256: String, size: Int, id: String = "com.mccal.folio.cabinet", version: String = "1.0.0") = IndexPackage(
         id = id,
         version = DebVersion.parse(version)!!,
@@ -662,5 +806,197 @@ class PackageInstallerTest {
         val safeMode = PackageSafeMode(store.keyValue) { now }
         assertNull(safeMode.noteCrash())
         assertNull("not even on the second crash", safeMode.noteCrash())
+    }
+
+    // Until 0.6.9 an update took the old version off and put the new one on, which set each setting back to what it
+    // was before the package and then set it again, so anything the person changed since was lost. A change the host
+    // can move in place now goes in place, and every path that puts an update back moves it back the same way.
+
+    private val cabinetId = "com.mccal.folio.cabinet"
+
+    private fun cabinetAt(version: String) = pack(replace = mapOf("\"version\": \"1.0.0\"" to "\"version\": \"$version\""))
+
+    /** Cabinet with a theme as well, so one change can move in place and the other can't. */
+    private fun cabinetAndTheme(version: String) = pack(
+        extra = mapOf("theme.json" to """{"folioTheme":1,"name":"Test"}""".toByteArray()),
+        replace = mapOf(
+            "\"kind\": [\n    \"tweakBundle\"\n  ]" to "\"kind\": [\n    \"theme\",\n    \"tweakBundle\"\n  ]",
+            "\"version\": \"1.0.0\"" to "\"version\": \"$version\"",
+        ),
+    )
+
+    @Test fun `an update the host can move in place keeps what the person changed since`() {
+        host.inPlace = true
+        installed(installer.install(pack()))
+        host.state = "applied appPanels, inner screen turned off by hand"
+        val appliedBefore = host.applied.size
+
+        val update = installed(installer.install(cabinetAt("1.1.0")))
+
+        assertEquals(DebVersion.parse("1.1.0"), update.installed.version)
+        val (from, carried, to) = host.moved.single()
+        assertEquals(cabinet().changes.single(), from)
+        assertEquals("what the first version replaced travels with the move", "tweaks off", carried)
+        assertEquals((installer.read(cabinetAt("1.1.0")) as PackageInstaller.ReadResult.Ok).pkg.changes.single(), to)
+        assertTrue("nothing was taken off", host.restored.isEmpty())
+        assertEquals("nothing was put on again", appliedBefore, host.applied.size)
+        assertEquals("applied appPanels, inner screen turned off by hand", host.state)
+        assertEquals(listOf("tweaks off"), store.find(cabinetId)!!.snapshots)
+    }
+
+    @Test fun `Remove after an update in place still puts back what was there before the package`() {
+        host.inPlace = true
+        installed(installer.install(pack()))
+        installed(installer.install(cabinetAt("1.1.0")))
+        assertTrue(installer.remove(cabinetId))
+        assertEquals("tweaks off", host.state)
+    }
+
+    @Test fun `Undo of an update in place moves back in place`() {
+        host.inPlace = true
+        val first = installed(installer.install(pack()))
+        host.state = "mine"
+        val update = installed(installer.install(cabinetAt("1.1.0")))
+
+        assertTrue(installer.undo(update))
+
+        assertEquals(2, host.moved.size)
+        val (from, carried, to) = host.moved.last()
+        assertEquals(store.changesFor(cabinetId, first.installed.version)!!.single(), to)
+        assertEquals("tweaks off", carried)
+        assertTrue(from is PackageChange.Tweaks)
+        assertTrue(host.restored.isEmpty())
+        assertEquals("mine", host.state)
+        val back = store.find(cabinetId)!!
+        assertEquals(DebVersion.parse("1.0.0"), back.version)
+        assertTrue(back.enabled)
+        assertEquals(listOf("tweaks off"), back.snapshots)
+        assertNull("the newer version's changes are gone with it", store.changesFor(cabinetId, update.installed.version))
+    }
+
+    @Test fun `only the changes the host can move go in place, the rest come off and go on as before`() {
+        host.inPlace = true
+        installed(installer.install(cabinetAndTheme("1.0.0")))
+        host.applied.clear()
+        host.restored.clear()
+
+        installed(installer.install(cabinetAndTheme("1.1.0")))
+
+        assertEquals(listOf(PackageChange.Theme::class), host.restored.map { it::class })
+        assertEquals(listOf(PackageChange.Theme::class), host.applied.map { it::class })
+        assertEquals(PackageChange.Tweaks::class, host.moved.single().third::class)
+    }
+
+    @Test fun `a version Safe Mode turned off is never moved in place`() {
+        host.inPlace = true
+        installer.install(pack())
+        installer.disable(cabinetId, "crashed")
+        installed(installer.install(cabinetAt("1.1.0")))
+        assertTrue(host.moved.isEmpty())
+        assertEquals("applied appPanels", host.state)
+    }
+
+    @Test fun `a host that can't move a change gets the old way, take off then put on`() {
+        installer.install(pack())
+        host.state = "mine"
+        installed(installer.install(cabinetAt("1.1.0")))
+        assertTrue(host.moved.isEmpty())
+        assertEquals(1, host.restored.size)
+        assertEquals("applied appPanels", host.state)
+    }
+
+    @Test fun `an update that fails while moving in place leaves the old version on as it was`() {
+        host.inPlace = true
+        installer.install(pack())
+        host.state = "mine"
+        val appliedBefore = host.applied.size
+        host.failOn = { it is PackageChange.Tweaks }
+
+        assertEquals(InstallResult.Reason.APPLY, failure(installer.install(cabinetAt("1.1.0"))).reason)
+
+        host.failOn = null
+        assertEquals("mine", host.state)
+        assertEquals("the old version was never taken off, so it isn't put on again", appliedBefore, host.applied.size)
+        val old = store.find(cabinetId)!!
+        assertEquals(DebVersion.parse("1.0.0"), old.version)
+        assertEquals(listOf("tweaks off"), old.snapshots)
+        assertTrue(installer.remove(cabinetId))
+        assertEquals("tweaks off", host.state)
+    }
+
+    @Test fun `an update that fails after a move in place moves it back`() {
+        host.inPlace = true
+        installed(installer.install(cabinetAndTheme("1.0.0")))
+        // The new version lists its tweaks first, so they move in place and then its theme fails, once.
+        var failures = 0
+        host.failOn = { it is PackageChange.Theme && failures++ == 0 }
+        val reordered = pack(
+            extra = mapOf("theme.json" to """{"folioTheme":1,"name":"Test"}""".toByteArray()),
+            replace = mapOf(
+                "\"kind\": [\n    \"tweakBundle\"\n  ]" to "\"kind\": [\n    \"tweakBundle\",\n    \"theme\"\n  ]",
+                "\"version\": \"1.0.0\"" to "\"version\": \"1.1.0\"",
+            ),
+        )
+        assertTrue((installer.read(reordered) as PackageInstaller.ReadResult.Ok).pkg.changes.first() is PackageChange.Tweaks)
+
+        assertEquals(InstallResult.Reason.APPLY, failure(installer.install(reordered)).reason)
+
+        assertEquals("moved, then moved back", 2, host.moved.size)
+        assertEquals(host.moved.first().first, host.moved.last().third)
+        val old = store.find(cabinetId)!!
+        assertEquals(DebVersion.parse("1.0.0"), old.version)
+        // The theme went on again with a new snapshot; the tweaks kept what they replaced the first time.
+        assertEquals(2, old.snapshots.size)
+        assertEquals("applied theme", old.snapshots[1])
+    }
+
+    @Test fun `an update in place killed part way is put back as it was, not applied again`() {
+        host.inPlace = true
+        installer.install(pack(), origin = InstalledPackage.Origin.FILE)
+        host.state = "mine"
+        val appliedBefore = host.applied.size
+        host.dieOn = { it is PackageChange.Tweaks }
+        try { installer.install(cabinetAt("1.1.0"), origin = InstalledPackage.Origin.FILE) } catch (e: AssertionError) { /* the process died */ }
+        host.dieOn = null
+
+        val recovered = PackageInstaller(store, host, clock = { now }).recoverInterrupted()
+
+        assertEquals(cabinetId, recovered?.id)
+        assertEquals("mine", host.state)
+        assertEquals(appliedBefore, host.applied.size)
+        val old = store.find(cabinetId)!!
+        assertEquals(DebVersion.parse("1.0.0"), old.version)
+        assertEquals(listOf("tweaks off"), old.snapshots)
+    }
+
+    @Test fun `an update in place killed after its move is moved back at the next start`() {
+        host.inPlace = true
+        installer.install(pack(), origin = InstalledPackage.Origin.FILE)
+        val old = store.find(cabinetId)!!
+        val next = (installer.read(cabinetAt("1.1.0")) as PackageInstaller.ReadResult.Ok).pkg
+        ApplyJournal(store).apply {
+            begin(old.id, "Cabinet", "1.1.0", next.changes, old, carried = listOf(0))
+            progress(listOf("tweaks off"))
+        }
+        host.state = "mine"
+
+        assertEquals(cabinetId, PackageInstaller(store, host, clock = { now }).recoverInterrupted()?.id)
+
+        assertEquals(Triple(next.changes.single(), "tweaks off", cabinet().changes.single()), host.moved.single())
+        assertTrue(host.restored.isEmpty())
+        assertEquals("mine", host.state)
+        assertEquals(listOf("tweaks off"), store.find(cabinetId)!!.snapshots)
+    }
+
+    @Test fun `a journal from before moves in place is put back the old way`() {
+        host.inPlace = true
+        installer.install(pack(), origin = InstalledPackage.Origin.FILE)
+        val old = store.find(cabinetId)!!
+        val appliedBefore = host.applied.size
+        // No carried list: everything of the old version had come off before the update began.
+        ApplyJournal(store).begin(old.id, "Cabinet", "1.1.0", cabinet().changes, old)
+        PackageInstaller(store, host, clock = { now }).recoverInterrupted()
+        assertTrue(host.moved.isEmpty())
+        assertTrue("the old version is put on again", host.applied.size > appliedBefore)
     }
 }

@@ -118,7 +118,16 @@ data class IndexPackage(
     val installable: Boolean get() = manifest != null && url != null && sha256 != null && size != null
 
     companion object {
+        /** The most a listed package may be. An app of its own (`externalApp`) may be larger: see [MAX_APP_BYTES]. */
         const val MAX_PACKAGE_BYTES = 20 * 1024 * 1024
+
+        /**
+         * The most a listed app may be (McCal, 2026-10-06, "for now"): a Folio Dev debug build is about 80 MB. Only an
+         * `externalApp` listing gets this; a package is still refused above [MAX_PACKAGE_BYTES], so the zip-bomb limits
+         * on `.foliopkg` files (T7) are unchanged. An app is read into memory once to check its sha256, so this is
+         * bounded by the phone's heap, not by the Market.
+         */
+        const val MAX_APP_BYTES = 100 * 1024 * 1024
 
         /** Why a listed package can't be used here: it names something this Folio doesn't have. */
         const val NEEDS_NEWER_FOLIO = "a newer Folio"
@@ -134,7 +143,7 @@ data class IndexPackage(
             val version = PackageManifest.readVersion(f, "version")
             val url = f.string("url", false, RELATIVE_OR_HTTPS, MAX_URL, "must be an https:// link or a relative path")
             val sha256 = f.string("sha256", false, FileRef.SHA256, 64, "must be 64 lowercase hex characters")
-            val size = f.long("size", false, 1L..MAX_PACKAGE_BYTES.toLong())
+            val size = f.long("size", false, 1L..MAX_APP_BYTES.toLong())
             if (f.has("url") != f.has("sha256") || f.has("url") != f.has("size")) {
                 p.errors += "$at needs url, sha256 and size together, or none of them"
             }
@@ -159,6 +168,10 @@ data class IndexPackage(
                 if (embedded.id != id) p.errors += "$at.id doesn't match the manifest's id"
                 if (embedded.version != version) p.errors += "$at.version doesn't match the manifest's version"
             }
+            // Only an app may be bigger than a package can be: the listing says which it is, so check here, not at download.
+            if (size != null && size > MAX_PACKAGE_BYTES && embedded != null && PackageKind.EXTERNAL_APP !in embedded.kinds) {
+                p.errors += "$at.size: a package can be at most ${MAX_PACKAGE_BYTES / 1024 / 1024} MB (only an app may be larger)"
+            }
             if (id == null || version == null) return null
             val needs = when {
                 embedded == null && f.has("manifest") -> listOf(NEEDS_NEWER_FOLIO)
@@ -175,8 +188,21 @@ data class IndexPackage(
     }
 }
 
-/** A signed list of packages (and sources) to turn off, with the reason to show the user. */
-data class RevocationList(val timestamp: Long, val packages: List<RevokedPackage>, val sources: List<RevokedSource>) {
+/**
+ * A signed list of packages (and sources) to turn off, with the reason to show the user. [incompatible] is ADR 0013's
+ * breakage found after publishing: versions that don't work with a range of Folio releases.
+ */
+data class RevocationList(
+    val timestamp: Long,
+    val packages: List<RevokedPackage>,
+    val sources: List<RevokedSource>,
+    val incompatible: List<IncompatiblePackage> = emptyList(),
+) {
+    /** Why [id] at [version] doesn't work with [folio], or null when nothing says so. */
+    fun incompatibleReason(id: String, version: DebVersion, folio: FolioVersion): String? = incompatible.firstOrNull { entry ->
+        entry.id == id && entry.folio.matches(folio) && entry.versions.any { it == null || DebVersion.parse(it)?.equals(version) == true }
+    }?.reason
+
     /** The reason [id] at [version] is revoked, or null when it isn't. `"*"` in the list means every version. */
     fun reasonFor(id: String, version: DebVersion): String? = packages.firstOrNull { entry ->
         entry.id == id && entry.versions.any { it == null || DebVersion.parse(it)?.equals(version) == true }
@@ -200,7 +226,7 @@ data class RevocationList(val timestamp: Long, val packages: List<RevokedPackage
         fun parse(text: String): ParseResult<RevocationList> {
             val p = Problems()
             val json = parseStrictObject(text, MAX_CHARS, p) ?: return p.result { error("unreachable") }
-            val f = Fields(json, "", p, setOf("\$schema", "format", "timestamp", "packages", "sources"))
+            val f = Fields(json, "", p, setOf("\$schema", "format", "timestamp", "packages", "sources", "incompatible"))
             f.anyString("\$schema")
             f.formatOne()
             val timestamp = f.long("timestamp", true, 0L..4102444800L)
@@ -221,7 +247,48 @@ data class RevocationList(val timestamp: Long, val packages: List<RevokedPackage
                     reason = e.string("reason", true, maxLength = 200).orEmpty(),
                 )
             }
-            return p.result { RevocationList(timestamp!!, packages!!, sources.orEmpty()) }
+            val incompatible = f.objects("incompatible", false, maxItems = MAX_ENTRIES)?.mapNotNull { (i, item) ->
+                val e = f.child(item, "${f.where("incompatible")}[$i]", setOf("id", "versions", "folio", "reason"))
+                val id = e.string("id", true, PackageManifest.ID, PackageManifest.MAX_ID, "must be a package id")
+                val versions = e.strings("versions", true, minItems = 1, maxItems = MAX_VERSIONS) { value, itemAt ->
+                    e.checkString(value, itemAt, VERSION_OR_ANY, DebVersion.MAX_LENGTH, "must be a version or *")
+                }?.map { if (it == "*") null else it }
+                val folio = e.string("folio", true, maxLength = 40)?.let { raw ->
+                    FolioRelation.parse(raw) ?: null.also { p.errors += "${e.where("folio")} must look like (>= 0.8.0)" }
+                }
+                val reason = e.string("reason", true, maxLength = 200)
+                if (id != null && versions != null && folio != null && reason != null) IncompatiblePackage(id, versions, folio, reason) else null
+            }
+            return p.result { RevocationList(timestamp!!, packages!!, sources.orEmpty(), incompatible.orEmpty()) }
+        }
+    }
+}
+
+/** [versions] of [id] don't work with the Folio releases [folio] matches; a null version means every version. */
+data class IncompatiblePackage(val id: String, val versions: List<String?>, val folio: FolioRelation, val reason: String)
+
+/** `(>= 0.8.0)`: a Folio release range, with dpkg's operators. `0.8` is read as `0.8.0`. */
+data class FolioRelation(val op: PackageRelation.Op, val version: FolioVersion) {
+    fun matches(folio: FolioVersion): Boolean {
+        val c = folio.compareTo(version)
+        return when (op) {
+            PackageRelation.Op.EARLIER -> c < 0
+            PackageRelation.Op.EARLIER_OR_EQUAL -> c <= 0
+            PackageRelation.Op.EQUAL -> c == 0
+            PackageRelation.Op.LATER_OR_EQUAL -> c >= 0
+            PackageRelation.Op.LATER -> c > 0
+        }
+    }
+
+    override fun toString() = "(${op.token} $version)"
+
+    companion object {
+        private val PATTERN = Regex("^\\((<<|<=|=|>=|>>) ([0-9]{1,9}\\.[0-9]{1,9}(?:\\.[0-9]{1,9})?)\\)\\z")
+
+        fun parse(text: String): FolioRelation? {
+            val (token, raw) = PATTERN.find(text)?.destructured ?: return null
+            val version = FolioVersion.parse(if (raw.count { it == '.' } == 1) "$raw.0" else raw) ?: return null
+            return FolioRelation(PackageRelation.Op.entries.first { it.token == token }, version)
         }
     }
 }

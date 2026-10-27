@@ -61,6 +61,7 @@ internal object DevBuild {
     private const val TICKS = "ticks_"
 
     const val THIS_BUILD_LABEL = "This build" // english-only
+    const val DEVELOPER_LABEL = "Developer" // english-only
 
     /** Bumped to show the page again from Settings › General › What's New. */
     val reopen = mutableIntStateOf(0)
@@ -169,11 +170,28 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
     var ticks by remember { mutableStateOf(DevBuild.ticks(context, info.sha)) }
     var moreOpen by remember { mutableStateOf(false) }
     val changes = remember { DevBuild.listed(info, seen) }
+    // On a short window the two buttons would take the whole sheet and leave the list a sliver, so they scroll with it (INT/ADP: size class, not a device).
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
     val white = androidx.compose.ui.graphics.Color.White
     val amber = androidx.compose.ui.graphics.Color(FolioColors.Value.Orange)
+    val buttons: @Composable () -> Unit = {
+        val allDone = info.notes.isNotEmpty() && ticks.size == info.notes.size
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp).heightIn(min = 52.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
+            .clickable(onClick = onDismiss).testTag("dev-build-done"), contentAlignment = Alignment.Center) {
+            Text(if (allDone) DevText.ALL_DONE else if (kind == DevBuild.Kind.REOPENED) DevText.DONE else DevText.CONTINUE, color = white, fontSize = FolioType.BODY.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        }
+        TextButton(onClick = {
+            val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clip.setPrimaryClip(android.content.ClipData.newPlainText(DevText.CLIP_LABEL, DevBuild.summary(info)))
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("dev-build-copy")) { Text(DevText.COPY, color = FolioColors.Cyan) }
+    }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.9f).padding(horizontal = FolioSpace.XXL.dp).testTag("dev-build")) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            // The row under the pinned button fades out like Settings does, instead of looking cut off.
+            val scroll = rememberScrollState()
+            Column(Modifier.weight(1f).edgeFade(scroll).verticalScroll(scroll)) {
                 Column(Modifier.fillMaxWidth().padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.foundation.layout.Box(Modifier.size(72.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(amber), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Build, null, tint = white, modifier = Modifier.size(36.dp))
@@ -217,18 +235,9 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
                 }
                 Text(DevBuild.footer(info, seen), color = white.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp, bottom = FolioSpace.MEDIUM.dp).testTag("dev-build-footer"))
+                if (compact) buttons()
             }
-            val allDone = info.notes.isNotEmpty() && ticks.size == info.notes.size
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp).heightIn(min = 52.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
-                .clickable(onClick = onDismiss).testTag("dev-build-done"), contentAlignment = Alignment.Center) {
-                Text(if (allDone) DevText.ALL_DONE else if (kind == DevBuild.Kind.REOPENED) DevText.DONE else DevText.CONTINUE, color = white, fontSize = FolioType.BODY.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-            }
-            TextButton(onClick = {
-                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                clip.setPrimaryClip(android.content.ClipData.newPlainText(DevText.CLIP_LABEL, DevBuild.summary(info)))
-            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("dev-build-copy")) { Text(DevText.COPY, color = FolioColors.Cyan) }
+            if (!compact) buttons()
         }
     }
 }

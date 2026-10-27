@@ -141,7 +141,7 @@ internal fun ClockCard(onClick: () -> Unit) {
     val time = currentTime()
     val format = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
     GlassCard(onClick = onClick) {
-        Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
+        Text(stringResource(R.string.local_time), color = LocalHomeInk.current.secondary, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp,
             modifier = Modifier.semantics { contentDescription = clockWidgetTapToOpenLabel })
         Text(time.format(DateTimeFormatter.ofPattern(format)), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
@@ -153,7 +153,7 @@ internal fun ClockCard(onClick: () -> Unit) {
 internal fun DateCard(onClick: () -> Unit) {
     val date = currentTime()
     GlassCard(onClick = onClick) {
-        Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = 11.sp,
+        Text(date.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = LocalHomeInk.current.secondary, fontSize = FolioType.CAPTION.sp,
             fontWeight = FontWeight.Bold, letterSpacing = .6.sp, maxLines = 1)
         Text(date.dayOfMonth.toString(), color = LocalHomeInk.current.primary, fontWeight = FontWeight.SemiBold, fontSize = 44.sp, lineHeight = 46.sp)
         Text(date.format(DateTimeFormatter.ofPattern("MMMM")), color = LocalHomeInk.current.secondary, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
@@ -166,14 +166,14 @@ internal fun ExpandedCard(onClick: () -> Unit) {
     GlassCard(onClick = onClick) {
         Column {
             Text(date.format(DateTimeFormatter.ofPattern("EEEE")), color = LocalHomeInk.current.primary, fontSize = 22.sp)
-            Text(date.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.secondary, fontSize = 16.sp)
+            Text(date.format(DateTimeFormatter.ofPattern(stringResource(R.string.mmmm_d))), color = LocalHomeInk.current.secondary, fontSize = FolioType.CALLOUT.sp)
         }
         Column {
             Icon(Icons.Rounded.Widgets, null, tint = LocalHomeInk.current.primary, modifier = Modifier.size(32.dp))
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.a_little_more_room), color = LocalHomeInk.current.primary, fontSize = FolioType.TITLE.sp, lineHeight = 32.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = 14.sp)
+            Text(stringResource(R.string.add_a_calendar_photos_or_another_widget), color = LocalHomeInk.current.secondary, fontSize = FolioType.COMPACT.sp)
             Spacer(Modifier.height(20.dp))
             FolioButton(stringResource(R.string.add_widget), onClick, style = FolioButtonStyle.TONAL, icon = Icons.Rounded.Add)
         }
@@ -210,7 +210,13 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
             return@BoxWithConstraints
         }
         val info = remember(id) { if (id >= 0) controller.manager.getAppWidgetInfo(id) else null }
+        // Screenshot Mode: a swapped app's widget would show its real content, so it is a plain card instead.
+        val standIn = info?.provider?.packageName?.let { LocalSwappedApps.current[it] }
         if (info == null) fallback()
+        else if (standIn != null) Surface(Modifier.fillMaxSize().testTag("widget-swapped-$slot"), color = Glass.copy(alpha = .88f),
+            shape = RoundedCornerShape(FolioRadius.PANEL.dp)) {
+            Box(contentAlignment = Alignment.Center) { Text(standIn.label, color = Ink, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center) }
+        }
         else {
             key(id) {
                 AndroidView(factory = { context -> controller.host.createView(context, id, info) },
@@ -220,7 +226,7 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
     }
 }
 
-internal fun widgetLabel(context: android.content.Context, id: Int, controller: WidgetController) = when (id) {
+internal fun widgetLabel(context: android.content.Context, id: Int, controller: WidgetController, swapped: Map<String, AppEntry> = emptyMap()) = when (id) {
     CLOCK_WIDGET -> context.getString(R.string.clock)
     DATE_WIDGET -> context.getString(R.string.date)
     UP_NEXT_WIDGET -> context.getString(R.string.up_next)
@@ -228,7 +234,7 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
     BIG_CLOCK_WIDGET -> context.getString(R.string.big_clock)
     INFO_WIDGET -> context.getString(R.string.widget_panel)
     EMPTY_WIDGET -> context.getString(R.string.add_widget)
-    else -> controller.label(id)
+    else -> controller.manager.getAppWidgetInfo(id)?.provider?.packageName?.let { swapped[it]?.label } ?: controller.label(id)
 }
 
 @Composable
@@ -302,6 +308,20 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
  * iOS Smart Stack: swipe up or down between the widgets in one spot. Dots on the side show while flipping;
  * with Smart Rotate on, the stack moves to the most relevant widget while Home is open.
  */
+/** When each stack last looked, by slot, for as long as the process lives (a stack's page can leave composition and come back). */
+internal object SmartRotateClock {
+    private val checks = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    /** The last check for [slot], or [now] when it has none yet (a new stack waits the full time once). */
+    fun lastCheck(slot: Int, now: Long): Long = checks.getOrPut(slot) { now }
+
+    fun record(slot: Int, now: Long) { checks[slot] = now }
+
+    fun forget(slot: Int) { checks.remove(slot) }
+
+    internal fun clearForTest() = checks.clear()
+}
+
 @Composable
 internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetController, modifier: Modifier, onAdd: () -> Unit) {
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { cards.size })
@@ -317,11 +337,16 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     val context = androidx.compose.ui.platform.LocalContext.current
     val homeApps = LocalHomeApps.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    // When the stack last looked, on a clock that keeps running while Home is away, so a resume picks up the wait
+    // where it was instead of starting 15 minutes over (W-3: before, opening any app reset it and it rarely fired).
+    // Kept per stack outside this composable: swiping several pages away drops the page from the pager, and a remembered
+    // value would go with it and start the wait over on return.
     LaunchedEffect(rotate, cards, lifecycleOwner) {
         // Only while Home is in front: a stack that rotates behind another app burns a read of usage stats and the
         // calendar for a screen nobody is looking at (DYN-15).
         if (rotate) lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) {
-            delay(15 * 60_000L)
+            delay(Suggestions.smartRotateWait(android.os.SystemClock.elapsedRealtime(), SmartRotateClock.lastCheck(slot, android.os.SystemClock.elapsedRealtime())))
+            SmartRotateClock.record(slot, android.os.SystemClock.elapsedRealtime())
             val relevance = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val apps = Suggestions.packageRelevance(context, homeApps.apps)
                 val soon = UpNext.events(context, limit = 1).firstOrNull()?.let { !it.allDay && it.begin - System.currentTimeMillis() in 0..60 * 60_000L } == true

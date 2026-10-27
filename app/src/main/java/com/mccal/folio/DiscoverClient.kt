@@ -62,7 +62,7 @@ internal class DiscoverClient(
                         if (closing) return@post
                         ready = status and 1 != 0
                         if (ready && resumed) { if (pagerDriven) applyPage() else show() }
-                        else if (!ready) { openRequested = false; dismissal.suspend(); onState("Discover is unavailable right now.") }
+                        else if (!ready) { openRequested = false; dismissal.suspend(); onState(activity.getString(R.string.discover_unavailable_right_now)) }
                     } else if (pagerDriven && scroll.isFinite() && scroll in 0f..1f) {
                         if (!resumed) return@post
                         lastProgress = scroll
@@ -95,7 +95,7 @@ internal class DiscoverClient(
                 // A rejected or stale Google binding can accept one-way transactions without
                 // supplying the overlay interface. Show recovery instead of waiting for callbacks.
                 if (runCatching { service.interfaceDescriptor }.getOrNull() != OVERLAY) {
-                    failed("Google didn't accept the feed connection. Restart Google, then retry.", attempt)
+                    failed(activity.getString(R.string.discover_feed_refused), attempt)
                     return
                 }
                 remote = service
@@ -131,14 +131,14 @@ internal class DiscoverClient(
             override fun onServiceDisconnected(name: ComponentName) {
                 if (generation == attempt) {
                     remote = null; ready = false; openRequested = false; dismissal.suspend()
-                    onState("Discover disconnected. Tap Retry to reconnect.")
+                    onState(activity.getString(R.string.discover_disconnected))
                 }
             }
             override fun onNullBinding(name: ComponentName) {
                 failed("The Google app did not provide a feed. Update the Google app, or use Today View instead " +
                     "(Settings \u203a Today View).", attempt)
             }
-            override fun onBindingDied(name: ComponentName) { failed("Discover disconnected. Tap Retry to reconnect.", attempt) }
+            override fun onBindingDied(name: ComponentName) { failed(activity.getString(R.string.discover_disconnected), attempt) }
         }
         val intent = Intent(OVERLAY_ACTION).setPackage(GOOGLE_PACKAGE)
             // Launcher3's own client asks for version 9 of the overlay protocol, and so must we: the Google app
@@ -146,15 +146,15 @@ internal class DiscoverClient(
             .setData(Uri.parse("app://${activity.packageName}:${Process.myUid()}?v=$OVERLAY_VERSION&cv=$OVERLAY_VERSION"))
         try {
             if (activity.bindService(intent, binding, Context.BIND_AUTO_CREATE)) connection = binding
-            else onState("Install or enable the Google app to use Discover.")
+            else onState(activity.getString(R.string.discover_needs_google_app))
         } catch (e: RuntimeException) {
             Log.w(TAG, "Cannot bind Discover", e)
-            onState("The Google app couldn't connect to Discover.")
+            onState(activity.getString(R.string.discover_google_couldnt_connect))
         }
         handler.postDelayed({
             if (generation == attempt && connection != null && !(if (pagerDriven) ready else everVisible)) {
                 disconnect()
-                onState("Discover is taking a while. You can retry or open Google.")
+                onState(activity.getString(R.string.discover_taking_a_while))
             }
         }, 12_000)
     }
@@ -252,11 +252,11 @@ internal class DiscoverClient(
         } catch (e: RemoteException) {
             Log.w(TAG, "Discover connection lost", e)
             remote = null; ready = false; dismissal.suspend()
-            onState("Discover disconnected. Tap Retry to reconnect.")
+            onState(activity.getString(R.string.discover_disconnected))
         } catch (e: RuntimeException) {
             Log.w(TAG, "Discover protocol unavailable", e)
             remote = null; ready = false; dismissal.suspend()
-            onState("This Google app version couldn't open Discover.")
+            onState(activity.getString(R.string.discover_google_version))
         } finally { data.recycle() }
     }
 

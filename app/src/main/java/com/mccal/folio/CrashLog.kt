@@ -142,11 +142,17 @@ internal object SafeMode {
     fun onCrash(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, 0)
         val quick = android.os.SystemClock.elapsedRealtime() - startedAt < WINDOW_MS
-        prefs.edit().putInt(QUICK_CRASHES, if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1).putBoolean(CRASHED_LAST_RUN, true).commit()
+        // In Safe Mode a crash, even after a long run, keeps the count at the threshold: only Restart Normally leaves it.
+        val count = if (active) maxOf(prefs.getInt(QUICK_CRASHES, 0), 2) else if (quick) prefs.getInt(QUICK_CRASHES, 0) + 1 else 1
+        prefs.edit().putInt(QUICK_CRASHES, count).putBoolean(CRASHED_LAST_RUN, true).commit()
     }
 
-    /** Folio ran a while without crashing: forget earlier quick crashes (called from Home). */
+    /**
+     * Folio ran a while without crashing: forget earlier quick crashes (called from Home). Not while Safe Mode is on:
+     * the count is what keeps Market refresh and auto-update paused ([isOn]), so only Restart Normally ([exit]) clears it.
+     */
     fun markStable(context: Context) {
+        if (active) return
         if (android.os.SystemClock.elapsedRealtime() - startedAt < WINDOW_MS) return
         context.getSharedPreferences(PREFS, 0).edit().remove(QUICK_CRASHES).apply()
     }

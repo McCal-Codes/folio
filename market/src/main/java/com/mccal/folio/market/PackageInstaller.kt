@@ -21,6 +21,22 @@ interface PackageHost {
     fun restore(change: PackageChange, snapshot: String)
 
     /**
+     * Whether an update can move [old] to [new] in place ([updateInPlace]). False, the default, means the installer
+     * takes [old] off and applies [new], which puts each setting back as it was before the package and then sets it
+     * again: anything the person chose in between is lost.
+     */
+    fun canUpdateInPlace(old: PackageChange, new: PackageChange): Boolean = false
+
+    /**
+     * Moves Home from [old], applied over [snapshot], to [new], keeping what the person changed since: whatever the two
+     * versions set the same is left as it is now. Returns the snapshot [new] keeps, which still describes Home before
+     * the package, so Remove puts back what it would have before the update. Only called when [canUpdateInPlace] said
+     * yes; the installer also calls it the other way round for Undo and to put an update back that stopped part way.
+     */
+    fun updateInPlace(old: PackageChange, snapshot: String, new: PackageChange): String =
+        error("this host can't update a change in place")
+
+    /**
      * Whether the tweak [id] is on this phone, however it got there: from the Market or from Settings' Tweak Library,
      * which records no package. An add-on ([PackageKind.hostTweak]) is only installed where its host is. False unless
      * a host says otherwise, so a host that forgets to answer refuses add-ons rather than installing them bare.
@@ -48,7 +64,20 @@ data class InstalledPackage(
     val enabled: Boolean = true,
     /** Why Safe Mode turned this package off, when it did. */
     val disabledReason: String? = null,
+    /**
+     * What turned it off, so the store can say so: a crash can be tried again, a pulled version can't. Null for a
+     * record from before this was kept, or one turned off for another reason; those read as before.
+     */
+    val offCause: OffCause? = null,
 ) {
+    enum class OffCause(val id: String) {
+        CRASH("crash"), PULLED("pulled");
+
+        companion object {
+            fun from(id: String) = entries.firstOrNull { it.id == id }
+        }
+    }
+
     enum class Origin(val id: String) {
         FOLIO_SOURCE("folio-source"), FILE("file"), PLAY_ICON_PACK("play-icon-pack"), LAUNCHER_IMPORT("launcher-import");
 
@@ -70,7 +99,7 @@ sealed interface InstallResult {
 
     data class Failed(val reason: Reason, val message: String) : InstallResult
 
-    enum class Reason { HASH, SIZE, ARCHIVE, MANIFEST, MISMATCH, CONFLICT, DEPENDS, APPLY, REVOKED, NEEDS_NEWER, AUTHOR }
+    enum class Reason { HASH, SIZE, ARCHIVE, MANIFEST, MISMATCH, CONFLICT, DEPENDS, APPLY, REVOKED, NEEDS_NEWER, AUTHOR, ANDROID, BREAKS, INCOMPATIBLE }
 }
 
 /**
@@ -89,6 +118,8 @@ class PackageInstaller(
     private val clock: () -> Long = { System.currentTimeMillis() / 1000 },
     /** This build's release number, for a package's `minFolio`. Null skips that check, which only a test does. */
     private val folioVersion: FolioVersion? = null,
+    /** This phone's Android API level, for `minSdk`/`maxSdk`. Null skips that check, which only a test does. */
+    private val androidSdk: Int? = null,
 ) {
     private val journal = ApplyJournal(store)
 
@@ -111,15 +142,12 @@ class PackageInstaller(
             // The change that was being applied when the process died has no snapshot in the list yet; the one written
             // before it was applied puts it back, newest first like the rest.
             entry.pending?.let { before -> entry.changes.getOrNull(entry.snapshots.size)?.let { runCatching { host.restore(it, before) } } }
-            entry.changes.take(entry.snapshots.size).zip(entry.snapshots).reversed().forEach { (change, snapshot) ->
-                runCatching { host.restore(change, snapshot) }
-            }
-            if (recorded != null && recorded.version.toString() == entry.replacedVersion && entry.replacedEnabled) {
-                store.changesFor(recorded.id, recorded.version)?.let { previous ->
-                    val again = mutableListOf<String>()
-                    runCatching { previous.forEach { again += host.apply(it) } }
-                    store.put(recorded.copy(snapshots = again), previous)
-                }
+            val previous = recorded?.takeIf { it.version.toString() == entry.replacedVersion && entry.replacedEnabled }
+            val previousChanges = previous?.let { store.changesFor(it.id, it.version) }
+            if (previous != null && previousChanges != null) {
+                putBack(previous, previousChanges, entry.changes, entry.snapshots, entry.carried)
+            } else {
+                takeOff(entry.changes, entry.snapshots)
             }
         }
         journal.clear()
@@ -193,12 +221,22 @@ class PackageInstaller(
     }
 
     /** What stops [pkg] from going on this phone, as the result an install gives, or null when nothing does. */
-    private fun compatStop(pkg: FolioPackage, builtIn: Boolean): InstallResult? {
+    private fun compatStop(pkg: FolioPackage, builtIn: Boolean): InstallResult? = compatStop(pkg.manifest, pkg.changes, builtIn)
+
+    private fun compatStop(manifest: PackageManifest, changes: List<PackageChange>, builtIn: Boolean): InstallResult? {
         // One answer for the page and for the installer (PackageCompatibility): what stops an install here is what the
         // page would have said before the person tapped Get, in the same order.
         val already = store.installed()
-        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak)
-        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(pkg.manifest, context, pkg.changes, builtIn))) {
+        val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak, androidSdk = androidSdk)
+        // No `else`: a new kind of check that can block must be given its result here, or this stops compiling. One
+        // that fell through to `else -> null` would install.
+        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(manifest, context, changes, builtIn))) {
+            // Nothing on the phone can change its Android version, so this is said plainly and never offered as a fix.
+            is CompatCheck.Android -> InstallResult.Failed(InstallResult.Reason.ANDROID, "that package is made for ${AndroidRelease.range(stop.min, stop.max)}")
+            is CompatCheck.Breaks -> InstallResult.Failed(
+                InstallResult.Reason.BREAKS,
+                "that package doesn't work with ${stop.broken.joinToString { "${it.name} ${it.version}" }}; update it first",
+            )
             is CompatCheck.Kinds -> InstallResult.NeedsNewerFolio(stop.unsupported.map { it.id })
             is CompatCheck.Features -> InstallResult.NeedsNewerFolio(stop.missing.map { it.id })
             // Capabilities catch a package that names something this build hasn't got; `minFolio` catches one that
@@ -209,7 +247,8 @@ class PackageInstaller(
             is CompatCheck.Replaces -> InstallResult.Failed(InstallResult.Reason.CONFLICT, "that package replaces ${stop.installed?.name}")
             // Dependencies have to be installed first; the review sheet that offers to add them is Phase 2.
             is CompatCheck.Needs -> InstallResult.Failed(InstallResult.Reason.DEPENDS, "that package needs ${stop.missing.joinToString { it.toString() }} first")
-            else -> null
+            // Notes, never blocks.
+            is CompatCheck.Screens, is CompatCheck.FolioRange, null -> null
         }
     }
 
@@ -286,39 +325,47 @@ class PackageInstaller(
         replaced: InstalledPackage?,
     ): InstallResult {
         safeMode.beginChange(pkg.id)
+        // A version Safe Mode turned off has already had its changes taken off Home, so it is neither undone nor
+        // updated in place: the new version goes on from where Home is now.
+        val previous = replaced?.takeIf { it.enabled }
+        val previousChanges = previous?.let { store.changesFor(it.id, it.version) }
+        // What the update can move in place keeps what the person chose since the old version went on.
+        val carried = carriedOver(previous, previousChanges, pkg.changes)
         // Nothing is changed that Folio couldn't first write down how to put back: a store that won't take the journal
         // means the install doesn't start.
-        if (!journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced)) {
+        if (!journal.begin(pkg.id, pkg.manifest.name.english, pkg.version.toString(), pkg.changes, replaced, carried)) {
             safeMode.abandonChange()
             return InstallResult.Failed(InstallResult.Reason.APPLY, "Folio couldn't write down what it was about to do, so nothing changed")
         }
         val snapshots = mutableListOf<String>()
+        var before: String? = null
         try {
-            // A version Safe Mode turned off has already had its changes taken off Home, so undoing them again
-            // would put back what Home looked like before it, over whatever has happened since.
-            replaced?.takeIf { it.enabled }?.let { undoChanges(it) }
-            for (change in pkg.changes) {
+            // Everything the update can't move in place comes off first, as it always has.
+            previous?.let { undoChanges(it, keep = carried.filterNotNull().toSet()) }
+            for ((i, change) in pkg.changes.withIndex()) {
                 // Where Home is right now, written before the change: a process killed after the change takes effect
                 // but before its snapshot is noted can still put it back.
-                check(journal.pending(snapshots, host.snapshotBefore(change))) { "the journal can't be written" }
-                snapshots += host.apply(change)
+                before = host.snapshotBefore(change)
+                check(journal.pending(snapshots, before)) { "the journal can't be written" }
+                val from = carried[i]
+                snapshots += if (from != null && previous != null && previousChanges != null) {
+                    host.updateInPlace(previousChanges[from], previous.snapshots[from], change)
+                } else {
+                    host.apply(change)
+                }
                 // Written after each change, so a process that dies part way knows exactly what to put back.
                 check(journal.progress(snapshots)) { "the journal can't be written" }
             }
         } catch (e: Exception) {
-            // Put back everything this install had already changed, newest first.
-            pkg.changes.take(snapshots.size).zip(snapshots).reversed().forEach { (change, snapshot) ->
-                runCatching { host.restore(change, snapshot) }
-            }
-            // An update undoes the version it replaces before applying the new one, so put that version back too:
-            // a failed update leaves the phone exactly as it was, with the old version still working.
-            replaced?.let { old ->
-                val previous = store.changesFor(old.id, old.version)?.takeIf { old.enabled }
-                if (previous != null) {
-                    val again = mutableListOf<String>()
-                    runCatching { previous.forEach { again += host.apply(it) } }
-                    store.put(old.copy(snapshots = again), previous)
-                }
+            // A change that failed while being moved in place goes back to how it was just before.
+            val failed = snapshots.size
+            if (carried.getOrNull(failed) != null) before?.let { b -> runCatching { host.restore(pkg.changes[failed], b) } }
+            // Put back everything this install had already changed, newest first, and the version it replaced: a
+            // failed update leaves the phone exactly as it was, with the old version still working.
+            if (previous != null && previousChanges != null) {
+                putBack(previous, previousChanges, pkg.changes, snapshots, carried)
+            } else {
+                takeOff(pkg.changes, snapshots)
             }
             journal.clear()
             safeMode.abandonChange()
@@ -336,8 +383,12 @@ class PackageInstaller(
         // Nothing stays applied that Folio couldn't write down. A package on the Home screen and missing from the
         // list is one nobody can remove, so a store that won't write means the whole install is put back.
         if (!store.put(installed, changes = pkg.changes)) {
-            pkg.changes.zip(snapshots).reversed().forEach { (change, snapshot) ->
-                runCatching { host.restore(change, snapshot) }
+            // An update puts the version it replaced back on, as a failed apply does, so the record Folio still has
+            // for it matches Home.
+            if (previous != null && previousChanges != null) {
+                putBack(previous, previousChanges, pkg.changes, snapshots, carried)
+            } else {
+                takeOff(pkg.changes, snapshots)
             }
             journal.clear()
             safeMode.abandonChange()
@@ -373,11 +424,11 @@ class PackageInstaller(
      * Taking the changes off is the point. Marking the record and leaving a theme applied turns nothing off — Folio
      * would start, crash on the same thing, and say it had already dealt with it.
      */
-    fun disable(id: String, reason: String): Boolean {
+    fun disable(id: String, reason: String, cause: InstalledPackage.OffCause? = null): Boolean {
         val installed = store.find(id)?.takeIf { it.enabled } ?: return false
         safeMode.beginChange(id)
         undoChanges(installed)
-        store.setEnabled(id, enabled = false, reason = reason)
+        store.setEnabled(id, enabled = false, reason = reason, cause = cause)
         safeMode.endChange()
         return true
     }
@@ -446,6 +497,7 @@ class PackageInstaller(
         // version.
         val changes = previous?.let { store.changesFor(it.id, it.version) }
         if (previous != null && changes == null) return false
+        if (previous != null && changes != null && previous.enabled && undoInPlace(result.installed, previous, changes)) return true
         remove(result.installed.id)
         if (previous == null || changes == null) return true
         safeMode.beginChange(previous.id)
@@ -456,6 +508,84 @@ class PackageInstaller(
         store.put(previous.copy(snapshots = snapshots, installedAt = clock()), changes)
         safeMode.endChange()
         return true
+    }
+
+    /**
+     * Undo of an update the way the update went: what can move back in place does, so a setting the person changed
+     * since stays theirs, and the rest comes off and goes back on as before. False, changing nothing, when no change
+     * of [installed] can move back, or it is no longer the version on the phone.
+     */
+    private fun undoInPlace(installed: InstalledPackage, previous: InstalledPackage, changes: List<PackageChange>): Boolean {
+        val current = store.find(installed.id)?.takeIf { it.enabled && it.version == installed.version } ?: return false
+        val currentChanges = store.changesFor(current.id, current.version) ?: return false
+        val carried = carriedOver(current, currentChanges, changes)
+        if (carried.all { it == null }) return false
+        safeMode.beginChange(previous.id)
+        undoChanges(current, keep = carried.filterNotNull().toSet())
+        val snapshots = mutableListOf<String>()
+        runCatching {
+            for ((i, change) in changes.withIndex()) {
+                val from = carried[i]
+                snapshots += if (from != null) host.updateInPlace(currentChanges[from], current.snapshots[from], change) else host.apply(change)
+            }
+        }
+        store.remove(current.id)
+        store.put(previous.copy(snapshots = snapshots, installedAt = clock()), changes)
+        safeMode.endChange()
+        return true
+    }
+
+    /**
+     * For each of [next], the index of the change in [previous]'s that it takes over from in place, or null where it
+     * doesn't: only for a version that is on, only where Folio kept what that change replaced, and only where the host
+     * can move it ([PackageHost.canUpdateInPlace]). Each earlier change is taken over at most once.
+     */
+    private fun carriedOver(previous: InstalledPackage?, previousChanges: List<PackageChange>?, next: List<PackageChange>): List<Int?> {
+        if (previous == null || previousChanges == null) return next.map { null }
+        val taken = mutableSetOf<Int>()
+        return next.map { change ->
+            previousChanges.indices.firstOrNull { k ->
+                k !in taken && k < previous.snapshots.size && host.canUpdateInPlace(previousChanges[k], change)
+            }?.also { taken += it }
+        }
+    }
+
+    /** Takes [changes] off Home, newest first, as far as [snapshots] say they went on. */
+    private fun takeOff(changes: List<PackageChange>, snapshots: List<String>) {
+        changes.take(snapshots.size).zip(snapshots).reversed().forEach { (change, snapshot) ->
+            runCatching { host.restore(change, snapshot) }
+        }
+    }
+
+    /**
+     * Puts [old] back on after an update to it stopped part way: in this process when a change failed, or at the next
+     * start when the process died. [snapshots] are what the new version's first [newChanges] replaced, as far as it got,
+     * and [carried] is [carriedOver] for the update.
+     *
+     * A change the update had moved in place is moved back the same way, keeping what the person chose; one it was
+     * going to move but hadn't is still on as it was. The rest of [old] came off before the update began, so it goes on
+     * again, and the record is written back with what each change now replaced.
+     */
+    private fun putBack(old: InstalledPackage, oldChanges: List<PackageChange>, newChanges: List<PackageChange>, snapshots: List<String>, carried: List<Int?>) {
+        val movedBack = mutableMapOf<Int, String>()
+        newChanges.take(snapshots.size).zip(snapshots).withIndex().reversed().forEach { (j, applied) ->
+            val (change, snapshot) = applied
+            val k = carried.getOrNull(j)?.takeIf { it in oldChanges.indices }
+            if (k != null) {
+                runCatching { host.updateInPlace(change, snapshot, oldChanges[k]) }
+                    .onSuccess { movedBack[k] = it }
+                    .onFailure { runCatching { host.restore(change, snapshot) } }
+            } else {
+                runCatching { host.restore(change, snapshot) }
+            }
+        }
+        val stillOn = carried.withIndex().filter { (j, k) -> k != null && j >= snapshots.size }.mapNotNullTo(mutableSetOf()) { it.value }
+        val again = mutableListOf<String>()
+        for ((k, change) in oldChanges.withIndex()) {
+            again += movedBack[k] ?: old.snapshots.getOrNull(k)?.takeIf { k in stillOn }
+                ?: runCatching { host.apply(change) }.getOrNull() ?: break
+        }
+        store.put(old.copy(snapshots = again), oldChanges)
     }
 
     /** What [restoreBackup] put back. */
@@ -469,6 +599,25 @@ class PackageInstaller(
     )
 
     /**
+     * What a restore asks of what Folio already trusts, never of the backup: a backup is a file, and anyone can write
+     * one. The launcher answers from the packages Folio ships and the lists its sources signed. Every answer defaults
+     * to "nothing known", which only a test relies on.
+     */
+    interface RestoreChecks {
+        /** The package Folio ships under [id], read from its own files, or null when it ships none by that name. */
+        fun builtIn(id: String): FolioPackage? = null
+
+        /** The manifests the lists Folio trusts give for [record]'s id and version, for the checks an install makes. */
+        fun listed(record: InstalledPackage): List<PackageManifest> = emptyList()
+
+        /** Why [record]'s version was pulled, worded for the person, or null when it wasn't. */
+        fun pulled(record: InstalledPackage): String? = null
+
+        /** Whether a list Folio trusts says [record]'s version doesn't work with this Folio (ADR 0013). */
+        fun incompatible(record: InstalledPackage): Boolean = false
+    }
+
+    /**
      * Puts back the packages a layout backup carried, around the launcher putting its own layout back.
      *
      * A backup records what each package *changed*, never what Home looked like when it changed: its snapshots were
@@ -476,6 +625,14 @@ class PackageInstaller(
      * in turned off, and the ones that were on when the backup was taken have their recorded changes applied again
      * from where this phone is now - which is what [enable] does for Try Again, and why a package Safe Mode had
      * turned off comes back off, with its changes not applied and its reason kept.
+     *
+     * A backup is a file, so nothing in it is taken on its word. A record keeps the source it names only when this
+     * phone already had that exact package, the same version with the same changes; one that is a package Folio ships,
+     * with that package's own changes, is Folio's; anything else is recorded as opened from a file. A name that
+     * belongs to an author's key here, or to a package Folio ships, stays off unless it is that package, as an install
+     * from a file would be refused. Then every package that was on gets the checks an install makes, as far as
+     * [checks] can answer them: pulled, not working with this Folio, its manifest's Android range, conflicts, breaks
+     * and dependencies, and what this build can do. One that fails any of them stays off.
      *
      * The order is the point, because a package's changes and the layout being restored are the same launcher:
      *  1. this phone's packages come off first, while the snapshots saying what they replaced still describe it;
@@ -485,9 +642,14 @@ class PackageInstaller(
      * [offReason] is what the user is told about a package this Folio couldn't put back on. Returns null, leaving
      * this phone's own packages alone, when the backup's packages can't be read; [putLayoutBack] runs either way.
      */
-    fun restoreBackup(text: String, offReason: String, putLayoutBack: () -> Unit): Restore? {
-        val backup = store.readBackup(text)
-        if (backup == null) {
+    fun restoreBackup(
+        text: String,
+        offReason: String,
+        checks: RestoreChecks = object : RestoreChecks {},
+        putLayoutBack: () -> Unit,
+    ): Restore? {
+        val read = store.readBackup(text)
+        if (read == null) {
             putLayoutBack()
             return null
         }
@@ -497,6 +659,11 @@ class PackageInstaller(
         // This phone's own packages, kept so a restore that fails after they come off can put them back. Without it
         // the caller said "this phone's were left as they are" about packages that were already gone.
         val mine = store.readBackup(store.export())
+        // Settled before anything comes off, while this phone's own records are still what they were.
+        val vetted = read.records.map { vet(it, read, mine, checks) }
+        val backup = InstalledStore.Backup(vetted.map { it.record }, read.changes)
+        val refused = vetted.filter { !it.trusted }.mapTo(mutableSetOf()) { it.record.id }
+        val shipped = vetted.mapNotNull { v -> v.shipped?.let { v.record.id to it } }.toMap()
         store.installed().reversed().forEach { remove(it.id) }
         putLayoutBack()
         try {
@@ -512,11 +679,17 @@ class PackageInstaller(
         val failed = mutableListOf<InstalledPackage>()
         for (id in backup.wasOn) {
             val record = store.find(id) ?: continue
-            // A backup can come from a Folio that does more than this one. A package needing something this build
-            // hasn't got is left off rather than failing halfway through being applied, as at install.
+            // Pulled says so, as it does for one Folio turns off at start, so Try Again isn't offered for it.
+            val pulled = checks.pulled(record)
+            if (pulled != null) {
+                store.setEnabled(id, enabled = false, reason = pulled, cause = InstalledPackage.OffCause.PULLED)
+                store.find(id)?.let { failed += it }
+                continue
+            }
             val changes = store.changesFor(record.id, record.version)
-            val supported = changes != null && changes.flatMap { it.capabilities }.all { it in host.capabilities }
-            if (supported && enable(id)) {
+            val passes = id !in refused && changes != null && !checks.incompatible(record) &&
+                installable(record, changes, shipped[id], checks)
+            if (passes && enable(id)) {
                 store.find(id)?.let { on += it }
             } else {
                 store.setEnabled(id, enabled = false, reason = offReason)
@@ -527,10 +700,53 @@ class PackageInstaller(
         return Restore(on, store.installed().filter { !it.enabled && it.id !in couldNot }, failed)
     }
 
-    private fun undoChanges(installed: InstalledPackage) {
+    /** A backup's record with the origin Folio can stand behind, and whether its changes may go on at all. */
+    private class Vetted(val record: InstalledPackage, val trusted: Boolean, val shipped: FolioPackage? = null)
+
+    private fun vet(record: InstalledPackage, backup: InstalledStore.Backup, mine: InstalledStore.Backup?, checks: RestoreChecks): Vetted {
+        val key = "${record.id}@${record.version}"
+        val changes = backup.changes[key]
+        // This phone's own package, unchanged: it passed every check when it went on here, so its origin is its own.
+        val own = mine?.records?.firstOrNull { it.id == record.id && it.version == record.version }
+            ?.takeIf { changes != null && mine.changes[key] == changes }
+        if (own != null) return Vetted(record.copy(origin = own.origin, sourceUrl = own.sourceUrl), trusted = true)
+        val asFile = record.copy(origin = InstalledPackage.Origin.FILE, sourceUrl = null)
+        // A name Folio ships is Folio's: the backup's copy is that package only if it changes exactly what it does.
+        checks.builtIn(record.id)?.let { pkg ->
+            val same = pkg.version == record.version && changes != null && sameChanges(pkg.changes, changes)
+            return if (same) {
+                Vetted(record.copy(origin = InstalledPackage.Origin.FOLIO_SOURCE, sourceUrl = null), trusted = true, shipped = pkg)
+            } else {
+                Vetted(asFile, trusted = false)
+            }
+        }
+        // A backup carries no signature, so a name an author's key owns here can't be shown to be theirs.
+        return Vetted(asFile, trusted = authors.keyFor(record.id) == null)
+    }
+
+    /** Whether [changes] are [pkg]'s, compared the way the store writes them down. */
+    private fun sameChanges(pkg: List<PackageChange>, changes: String): Boolean {
+        val written = store.decodeChanges(store.encodeChanges(pkg))?.let(store::encodeChanges)
+        return written != null && written == store.decodeChanges(changes)?.let(store::encodeChanges)
+    }
+
+    /**
+     * The checks an install makes that a backup's record can still be given: what this build can do, and, where Folio
+     * ships the package or a list it trusts has the manifest for that version, everything [compatStop] asks of one.
+     */
+    private fun installable(record: InstalledPackage, changes: List<PackageChange>, shipped: FolioPackage?, checks: RestoreChecks): Boolean {
+        // A backup can come from a Folio that does more than this one. A package needing something this build
+        // hasn't got is left off rather than failing halfway through being applied, as at install.
+        if (!changes.flatMap { it.capabilities }.all { it in host.capabilities }) return false
+        if (shipped != null) return compatStop(shipped.manifest, changes, builtIn = true) == null
+        return checks.listed(record).none { compatStop(it, changes, builtIn = false) != null }
+    }
+
+    /** Takes [installed]'s changes off Home, newest first, except the ones at the indexes in [keep]. */
+    private fun undoChanges(installed: InstalledPackage, keep: Set<Int> = emptySet()) {
         val changes = store.changesFor(installed.id, installed.version) ?: return
-        changes.zip(installed.snapshots).reversed().forEach { (change, snapshot) ->
-            runCatching { host.restore(change, snapshot) }
+        changes.zip(installed.snapshots).withIndex().reversed().forEach { (k, applied) ->
+            if (k !in keep) runCatching { host.restore(applied.first, applied.second) }
         }
     }
 
@@ -729,13 +945,22 @@ internal class ApplyJournal(private val store: InstalledStore) {
         val replacedVersion: String?, val replacedEnabled: Boolean,
         /** What the change being applied when the process died would have replaced, written just before it ran; null if it could not be read ahead. */
         val pending: String? = null,
+        /**
+         * For each new change, the replaced version's change it was moving in place, or null. Empty for an install,
+         * and for a journal written before updates moved anything in place, which recovery reads as before.
+         */
+        val carried: List<Int?> = emptyList(),
     )
 
     /** Each write says whether the store really took it: an install that can't be written down must not go on. */
-    fun begin(id: String, name: String, version: String, changes: List<PackageChange>, replaced: InstalledPackage?): Boolean {
+    fun begin(
+        id: String, name: String, version: String, changes: List<PackageChange>, replaced: InstalledPackage?,
+        carried: List<Int?> = emptyList(),
+    ): Boolean {
         val json = JSONObject().put("id", id).put("name", name).put("version", version).put("changes", store.encodeChanges(changes))
             .put("snapshots", JSONArray())
         replaced?.let { json.put("replacedVersion", it.version.toString()).put("replacedEnabled", it.enabled) }
+        if (carried.any { it != null }) json.put("carried", JSONArray(carried.map { it ?: -1 }))
         return store.keyValue.set(KEY, json.toString())
     }
 
@@ -763,7 +988,8 @@ internal class ApplyJournal(private val store: InstalledStore) {
         val id = json.optString("id").takeIf { it.isNotEmpty() } ?: return null
         return Entry(id, json.optString("name", id), json.optString("version"), changes, snapshots,
             json.optString("replacedVersion").takeIf { it.isNotEmpty() }, json.optBoolean("replacedEnabled"),
-            if (json.has("pending")) json.optString("pending") else null)
+            if (json.has("pending")) json.optString("pending") else null,
+            json.optJSONArray("carried")?.let { a -> (0 until a.length()).map { i -> a.optInt(i, -1).takeIf { it >= 0 } } }.orEmpty())
     }
 
     private companion object { const val KEY = "market:apply-journal" }
@@ -799,11 +1025,11 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
      * Marks a package off or on again, keeping its record and what it changed. Only the record: putting the changes
      * back or taking them off is [PackageInstaller.disable] and [PackageInstaller.enable], because that touches Home.
      */
-    fun setEnabled(id: String, enabled: Boolean, reason: String? = null, snapshots: List<String>? = null) {
+    fun setEnabled(id: String, enabled: Boolean, reason: String? = null, snapshots: List<String>? = null, cause: InstalledPackage.OffCause? = null) {
         val all = read().toMutableMap()
         all[id]?.let {
             all[id] = it.copy(enabled = enabled, disabledReason = if (enabled) null else reason,
-                snapshots = snapshots ?: it.snapshots)
+                offCause = if (enabled) null else cause, snapshots = snapshots ?: it.snapshots)
         }
         write(all)
     }
@@ -899,6 +1125,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 snapshots = json.optJSONArray("snapshots")?.let { a -> (0 until a.length()).map(a::optString) }.orEmpty(),
                 enabled = json.optBoolean("enabled", true),
                 disabledReason = json.optString("disabledReason").takeIf { it.isNotEmpty() },
+                offCause = InstalledPackage.OffCause.from(json.optString("offCause")),
             ).takeIf { it.id.isNotEmpty() }
         }
 
@@ -909,7 +1136,8 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 JSONObject()
                     .put("id", p.id).put("version", p.version.text).put("name", p.name)
                     .put("origin", p.origin.id).put("sourceUrl", p.sourceUrl).put("installedAt", p.installedAt)
-                    .put("snapshots", JSONArray(p.snapshots)).put("enabled", p.enabled).put("disabledReason", p.disabledReason),
+                    .put("snapshots", JSONArray(p.snapshots)).put("enabled", p.enabled).put("disabledReason", p.disabledReason)
+                    .put("offCause", p.offCause?.id),
             )
         }
         return keyValue.set(KEY, array.toString())

@@ -371,6 +371,32 @@ def check_reserved_kinds(kinds, where: str, report: Report):
             report.error(f"{where}: kind {kind} is reserved; Folio refuses a package of it and won't install it")
 
 
+LIMIT_FIELDS = ("minSdk", "maxSdk", "maxFolio", "slot", "breaks")
+LIMITS_SINCE = (0, 7, 0)
+
+
+def check_limits(manifest: dict, where: str, report: Report):
+    """ADR 0013's fields, the rules a schema can't state. An older Folio skips a field it doesn't know, so a package
+    that uses one of these must need a Folio that reads them, or an older one would install it while ignoring its
+    limits. Shapes are the schema's to report; this only looks at values that are already the right type."""
+    used = [field for field in LIMIT_FIELDS if field in manifest]
+    version = manifest.get("minFolio")
+    if used and isinstance(version, str) and VERSION_RE.match(version):
+        if tuple(int(x) for x in version.split("-")[0].split(".")) < LIMITS_SINCE:
+            report.error(f"{where}: {', '.join(used)} need minFolio 0.7.0 or later, or an older Folio would skip them")
+    low, high = manifest.get("minSdk"), manifest.get("maxSdk")
+    if isinstance(low, int) and isinstance(high, int) and low > high:
+        report.error(f"{where}: minSdk {low} is above maxSdk {high}")
+    slot = manifest.get("slot")
+    features = (manifest.get("requires") or {}).get("features") if isinstance(manifest.get("requires"), dict) else None
+    if isinstance(slot, str) and (not isinstance(features, list) or slot not in features):
+        report.error(f"{where}: slot {slot} must be one of requires.features")
+    newest = manifest.get("maxFolio")
+    if isinstance(newest, str) and isinstance(version, str) and VERSION_RE.match(version) and re.match(r"^\d+\.\d+$", newest):
+        if tuple(int(x) for x in newest.split(".")) < tuple(int(x) for x in version.split("-")[0].split(".")[:2]):
+            report.error(f"{where}: maxFolio {newest} is older than minFolio {version}")
+
+
 def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: SchemaSet, report: Report) -> dict | None:
     """One package folder: its manifest, its page, and the files its manifest promises."""
     name = folder.name
@@ -382,6 +408,7 @@ def check_package(folder: pathlib.Path, source_root: pathlib.Path, schemas: Sche
 
     kinds = manifest.get("kind", [])
     check_reserved_kinds(kinds, name, report)
+    check_limits(manifest, f"{name}/manifest.json", report)
     if "script" not in kinds and (folder / "script.js").is_file():
         report.error(f"{name}: there is a script.js, but kind does not include script")
     if "tweakBundle" in kinds and not (folder / "tweaks.json").is_file():
@@ -454,6 +481,9 @@ def check_source(root: pathlib.Path, schemas: SchemaSet, report: Report) -> str:
         manifest = entry.get("manifest", {})
         if manifest.get("id") and manifest["id"] != package_id:
             report.error(f"index.json: packages[{i}] is filed under {package_id} but its manifest says {manifest['id']}")
+        # The schema lets a listing be up to 100 MB because an app may be; a package may not be over 20 MB.
+        if isinstance(entry.get("size"), int) and entry["size"] > MAX_ZIP_COMPRESSED and "externalApp" not in manifest.get("kind", []):
+            report.error(f"index.json: packages[{i}] ({package_id}) is {entry['size']} bytes, over the 20 MB a package may be (only an app may be larger)")
         if manifest.get("version") and manifest["version"] != entry.get("version"):
             report.error(
                 f"index.json: {package_id} is listed as {entry.get('version')} "
@@ -643,6 +673,7 @@ def check_foliopkg(path: pathlib.Path, schemas: SchemaSet, report: Report, stand
         report.error(problem)
     # The schema lists the reserved kinds, so it passes them; a packed one would otherwise reach a source unseen.
     check_reserved_kinds(manifest.get("kind"), label, report)
+    check_limits(manifest, label, report)
     if "depiction" in manifest and manifest["depiction"] not in names:
         report.error(f"{label}: names {manifest['depiction']}, which is not in the archive")
     # A published source carries only archives, so what a phone installs gets the same effect checks as a folder.

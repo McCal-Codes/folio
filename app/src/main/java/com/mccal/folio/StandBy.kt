@@ -282,7 +282,7 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
             }
             alarm?.let {
                 val t = LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault())
-                val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "EEE HH:mm" else "EEE h:mm a"
+                val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "EEE HH:mm" else "EEE h:mm a" // english-only
                 InfoChip(Icons.Rounded.Alarm, t.format(DateTimeFormatter.ofPattern(pattern)), ink, soft)
             }
         }
@@ -296,8 +296,8 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
                 Column(Modifier.weight(1f)) {
                     Text(e.title, color = ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val begin = LocalDateTime.ofInstant(Instant.ofEpochMilli(e.begin), ZoneId.systemDefault())
-                    val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "EEE HH:mm" else "EEE h:mm a"
-                    Text(if (e.allDay) stringResource(R.string.all_day) else begin.format(DateTimeFormatter.ofPattern(pattern)), color = soft, fontSize = 14.sp)
+                    val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "EEE HH:mm" else "EEE h:mm a" // english-only
+                    Text(if (e.allDay) stringResource(R.string.all_day) else begin.format(DateTimeFormatter.ofPattern(pattern)), color = soft, fontSize = FolioType.COMPACT.sp)
                 }
             }
         }
@@ -313,7 +313,7 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
             val words: @Composable (Modifier) -> Unit = { m ->
                 Column(m) {
                     Text(media.title, color = ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    media.subtitle?.let { Text(it, color = soft, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    media.subtitle?.let { Text(it, color = soft, fontSize = FolioType.COMPACT.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
             val t = media.controller.transportControls
@@ -321,7 +321,7 @@ private fun StandByInfo(status: DeviceStatus, ink: Color, soft: Color, night: Bo
                 Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.previous_track), tint = ink,
                     modifier = Modifier.minimumInteractiveComponentSize().size(36.dp).clip(CircleShape).clickable { t.skipToPrevious() })
                 Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play), tint = ink,
-                    modifier = Modifier.size(44.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() })
+                    modifier = Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() })
                 Icon(Icons.Rounded.SkipNext, stringResource(R.string.next_track), tint = ink,
                     modifier = Modifier.minimumInteractiveComponentSize().size(36.dp).clip(CircleShape).clickable { t.skipToNext() })
             }
@@ -338,7 +338,7 @@ private fun InfoChip(icon: androidx.compose.ui.graphics.vector.ImageVector, text
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = soft, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, color = ink, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = ink, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Medium)
     }
 }
 

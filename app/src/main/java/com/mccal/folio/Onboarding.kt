@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -74,7 +75,11 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Home, a quiet step only when Shizuku or a root manager is already on the phone, and the last page.
     val androidStart = state?.startingPoint() == StartingPoint.ANDROID
     val optionalAccess = remember { OptionalAccess.found { pkg -> runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess } }
-    val all = remember(androidStart, optionalAccess) {
+    // First setup's Home apps page: this phone's own apps, ticked by what is on Home already or by the starter apps (StarterApps.kt).
+    val homeApps = remember(state?.apps, state?.hiddenApps) { state?.let(::onboardingApps) ?: emptyList() }
+    var pickedIds by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    val picked = remember(pickedIds, homeApps) { (pickedIds ?: state?.let { initialHomePicks(it, homeApps, firstRun = !SetupReplay.active).toList() } ?: emptyList()).toSet() }
+    val all = remember(androidStart, optionalAccess, homeApps.isNotEmpty()) {
         listOf(
             OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, context.getString(R.string.welcome_to_folio),
                 context.getString(R.string.onboarding_welcome_detail),
@@ -82,6 +87,8 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             // Where you are coming from: how Folio starts. Skipping keeps today's defaults, which are the iPhone starting point.
             OnboardingPage("feel", Icons.Rounded.Tune, FolioColors.Value.Blue, context.getString(R.string.where_are_you_coming_from),
                 context.getString(R.string.starting_point_detail), optional = false),
+            OnboardingPage("apps", Icons.Rounded.Apps, FolioColors.Value.Blue, context.getString(R.string.home_apps_title),
+                context.getString(R.string.home_apps_detail)),
             OnboardingPage("nav", Icons.Rounded.Navigation, FolioColors.Value.Blue, context.getString(R.string.onboarding_nav_title), "", optional = false),
             OnboardingPage("home", Icons.Rounded.Home, FolioColors.Value.Blue, context.getString(R.string.make_folio_your_home),
                 context.getString(R.string.onboarding_home_detail),
@@ -92,6 +99,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
         ).filter { page ->
             when (page.key) {
                 "nav" -> androidStart
+                "apps" -> homeApps.isNotEmpty()
                 "adv" -> optionalAccess.isNotEmpty()
                 else -> page.key in setOf("welcome", "feel", "done") || !page.done()
             }
@@ -112,6 +120,12 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             NavChoice.BIG -> { model?.setButtonBar(true); if (!SystemShadeAccessibilityService.isConnected()) onShadeSetup() }
             NavChoice.SYSTEM -> open(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
         }
+    }
+    // Use Folio now: the starting point stays at its default, Home gets the starter apps if it is empty, and setup goes straight to
+    // the one step that cannot wait. Everything skipped waits in Finish setting up.
+    fun useFolioNow() {
+        if (state != null && model != null && homeApps.isNotEmpty() && (!SetupReplay.active || state.homeSlots.none { it != null })) applyHomePicks(model, state, homeApps, initialHomePicks(state, homeApps, firstRun = !SetupReplay.active))
+        go(all.indexOfFirst { it.key == "home" }.takeIf { it >= 0 } ?: all.lastIndex)
     }
     val page = all[index]
     val reduceMotion = LocalReduceMotion.current
@@ -144,15 +158,18 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                         (slideOutHorizontally { if (forward) -it / 4 else it / 4 } + fadeOut())
                 }) { i ->
                 val p = all[i]
-                Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = FolioSpace.HUGE.dp),
+                // With big text the apps page keeps its picker in view: a smaller icon and tighter spacing above it.
+                val compactHead = p.key == "apps" && LocalDensity.current.fontScale > 1.3f
+                Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.HUGE.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     val appIcon = if (p.appIcon) remember { folioIconBitmap(context) } else null
-                    if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)))
-                    else Box(Modifier.size(96.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
-                        Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(56.dp))
+                    val headSize = if (compactHead) 56.dp else 96.dp
+                    if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(headSize).clip(RoundedCornerShape(22.dp)))
+                    else Box(Modifier.size(headSize).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
+                        Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(if (compactHead) 32.dp else 56.dp))
                     }
                     Text(p.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                        lineHeight = 40.sp, modifier = Modifier.padding(top = FolioSpace.XXL.dp))
+                        lineHeight = 40.sp, modifier = Modifier.padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.XXL.dp))
                     Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
                         modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                     if (p.uses.isNotEmpty()) SheetGroup(Modifier.padding(top = FolioSpace.XXL.dp)) {
@@ -187,13 +204,14 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     }
                     if (p.key == "feel" && state != null && model != null) StartingPointPage(state, model, tick, onShadeSetup,
                         replay = SetupReplay.active, onKeep = { finish() })
+                    if (p.key == "apps") HomeAppsPage(homeApps, picked) { id -> pickedIds = (if (id in picked) picked - id else picked + id).toList() }
                     if (p.key == "nav") NavigationPage(navChoice, { navChoice = it }, tick)
                     if (p.key == "adv") AdvancedStep(optionalAccess, onOpenBridge = { finish(); onOpenBridge() })
                     if (p.key == "done") FinishSettingUp(tick, systemWallpaper, onWallpaper, onShadeSetup, ::open)
                     if (done && p.onAction != null) Row(Modifier.padding(top = FolioSpace.XL.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green)
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.all_set), color = FolioColors.Green, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.all_set), color = FolioColors.Green, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -211,6 +229,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     when {
                         page.key == "done" -> finish()
                         page.key == "nav" -> { applyNavigation(); go(index + 1) }
+                        page.key == "apps" -> { if (state != null && model != null) applyHomePicks(model, state, homeApps, picked); go(index + 1) }
                         page.onAction != null && !done -> page.onAction.invoke()
                         else -> go(index + 1)
                     }
@@ -218,8 +237,10 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 Text(primary, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                if (page.optional && !done) Text(if (page.key == "home") context.getString(R.string.try_folio_first) else context.getString(R.string.set_up_later_in_settings), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index + 1) }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-not-now"))
+                else if (page.key == "welcome") Text(stringResource(R.string.use_folio_now), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center,
+                    modifier = Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(role = Role.Button) { useFolioNow() }.padding(FolioSpace.COMPACT.dp).wrapContentHeight(Alignment.CenterVertically).testTag("onboarding-use-now"))
             }
             Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {

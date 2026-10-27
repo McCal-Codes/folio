@@ -24,6 +24,25 @@ Accessibility settings. Folio never turns it on by itself. If it just started, s
 - Top left opens Notification Center, top right opens Control Center, lower on Home opens Spotlight.
 - A dock that's already scrolled keeps the downward swipe for itself.
 
+## Xiaomi, HyperOS and other phones that restrict other launchers
+
+Some phone makers set their own rules for an app that replaces their launcher. These come from reports by people using
+Folio on Xiaomi phones with HyperOS. What happens depends on the phone and its software version, and the rules belong to the
+phone maker, so Folio can't change them.
+
+- **Gesture navigation switches to buttons, or needs extra setup.** After you set Folio as your Home app, check the
+  navigation mode in Android's settings. Some phone makers only allow their own gesture navigation with their own launcher.
+- **A swipe down from the top sometimes shows the phone's own shade instead of Folio's.** Folio's Notification Center and
+  Control Center need the accessibility service (see above), and the phone's gesture can take the swipe first. If it keeps
+  happening, choose Android style when you set Folio up, or turn off Folio's Notification Center and Control Center in
+  Folio Settings, and use the phone's own.
+- **The phone's gesture handle still takes room at the bottom.** That space comes from the phone's own navigation settings,
+  outside Folio.
+
+If something else looks wrong on a foldable, say which screen you were on and whether you folded or unfolded just before,
+and send the report from **Settings › General › Advanced › Diagnostics › Copy Diagnostics**. See
+[Reporting a bug](#reporting-a-bug).
+
 ## The Today View or Discover is empty
 
 The Today View is Folio's own and works offline. Google Discover needs the Google app and depends on your phone
@@ -32,7 +51,7 @@ leave. Google handles swipes inside its own feed, so a short swipe that starts i
 
 ## Search doesn't open Google
 
-If **Search button opens Google** is on and the Google app can't open its search screen, Folio uses Spotlight
+If **Search opens the Google app** is on and the Google app can't open its search screen, Folio uses Spotlight
 instead. Turn the setting off to always use Spotlight.
 
 ## A widget won't add or finish setting up

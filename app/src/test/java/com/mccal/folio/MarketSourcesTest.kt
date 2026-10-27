@@ -201,6 +201,96 @@ class MarketSourcesTest {
         assertEquals(listOf(base, other.url), between.map { it.source.url })
     }
 
+    @Test fun `an installed version is pulled by Folio's list or its own source's, never by another source's`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val plain = requireNotNull(sources.cached().single())
+        val snapshot = requireNotNull(plain.snapshot)
+        val pkg = snapshot.index.packages.single()
+        val revoked = com.mccal.folio.market.RevocationList(now, listOf(com.mccal.folio.market.RevokedPackage(pkg.id, listOf(pkg.version.text), "Malware")), emptyList())
+        val pulledHere = plain.copy(snapshot = snapshot.copy(revocation = revoked))
+        val elsewhere = plain.copy(source = Source("https://someone.example/folio/", name = "Someone else"), snapshot = snapshot.copy(revocation = revoked))
+        fun installed(origin: com.mccal.folio.market.InstalledPackage.Origin, url: String?, version: String = pkg.version.text) =
+            com.mccal.folio.market.InstalledPackage(pkg.id, requireNotNull(com.mccal.folio.market.DebVersion.parse(version)), "Cabinet", origin, url, 0L, emptyList())
+        val fromHere = installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base)
+
+        assertEquals("Malware", pulledReason(fromHere, null, listOf(pulledHere)))
+        // The address is matched with or without its last slash.
+        assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base.trimEnd('/')), null, listOf(pulledHere)))
+        assertEquals(null, pulledReason(fromHere, null, listOf(plain, elsewhere)))
+        // Another version isn't pulled.
+        assertEquals(null, pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base, "9.0"), null, listOf(pulledHere)))
+        // A file has no source, so any source's list counts; a built-in package answers to Folio's list alone.
+        assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FILE, null), null, listOf(elsewhere)))
+        assertEquals(null, pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), null, listOf(pulledHere)))
+        assertEquals("Malware", pulledReason(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), revoked, emptyList()))
+    }
+
+    @Test fun `a version its own source marks broken on this Folio is unavailable, and only its own source can say so`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val plain = requireNotNull(sources.cached().single().snapshot)
+        val pkg = plain.index.packages.single()
+        val broken = com.mccal.folio.market.IncompatiblePackage(pkg.id, listOf(null), requireNotNull(com.mccal.folio.market.FolioRelation.parse("(>= 0.8)")), "The panel opens off screen")
+        val marked = plain.copy(revocation = com.mccal.folio.market.RevocationList(now, emptyList(), emptyList(), listOf(broken)))
+        val mine = Source("folio://built-in/", name = "Folio", kind = Source.Kind.BUILT_IN)
+        val theirs = sources.sources().single()
+        val on08 = com.mccal.folio.market.FolioVersion(0, 8, 0)
+
+        val listed = mergeEntries(emptyList(), mine, null, listOf(theirs to marked), folio = on08).single()
+        assertEquals("The panel opens off screen", listed.incompatibleReason)
+        assertTrue(listed.unavailable)
+        assertEquals(null, listed.revokedReason)
+
+        // On a Folio the range doesn't cover, it's fine.
+        assertEquals(null, mergeEntries(emptyList(), mine, null, listOf(theirs to marked), folio = com.mccal.folio.market.FolioVersion(0, 7, 9)).single().incompatibleReason)
+        // Folio's own list speaks for Folio's packages, not for a package another source offers (ADR 0013).
+        val folioList = com.mccal.folio.market.RevocationList(now, emptyList(), emptyList(), listOf(broken))
+        val fromFolio = mergeEntries(emptyList(), mine, folioList, listOf(theirs to plain), folio = on08).single()
+        assertEquals(null, fromFolio.incompatibleReason)
+        assertTrue(!fromFolio.unavailable)
+    }
+
+    @Test fun `an installed version's own lists say whether it works with this Folio, as a listing's do`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val plain = requireNotNull(sources.cached().single())
+        val snapshot = requireNotNull(plain.snapshot)
+        val pkg = snapshot.index.packages.single()
+        val broken = com.mccal.folio.market.IncompatiblePackage(pkg.id, listOf(null), requireNotNull(com.mccal.folio.market.FolioRelation.parse("(>= 0.8)")), "The panel opens off screen")
+        val list = com.mccal.folio.market.RevocationList(now, emptyList(), emptyList(), listOf(broken))
+        val markedHere = plain.copy(snapshot = snapshot.copy(revocation = list))
+        val on08 = com.mccal.folio.market.FolioVersion(0, 8, 0)
+        fun installed(origin: com.mccal.folio.market.InstalledPackage.Origin, url: String?) =
+            com.mccal.folio.market.InstalledPackage(pkg.id, pkg.version, "Cabinet", origin, url, 0L, emptyList())
+        val fromHere = installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base)
+        val fromFile = installed(com.mccal.folio.market.InstalledPackage.Origin.FILE, null)
+        val builtIn = installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null)
+
+        assertEquals("The panel opens off screen", incompatibleReason(fromHere, null, listOf(markedHere), on08))
+        assertEquals("The panel opens off screen", incompatibleReason(fromFile, null, listOf(markedHere), on08))
+        assertEquals(null, incompatibleReason(fromHere, null, listOf(markedHere), com.mccal.folio.market.FolioVersion(0, 7, 9)))
+        // Folio's list speaks for Folio's packages, a source's for its own (ADR 0013).
+        assertEquals(null, incompatibleReason(fromHere, list, listOf(plain), on08))
+        assertEquals(null, incompatibleReason(builtIn, null, listOf(markedHere), on08))
+        assertEquals("The panel opens off screen", incompatibleReason(builtIn, list, emptyList(), on08))
+    }
+
+    @Test fun `a package from a source is checked against that source alone, one from a file against them all`() = runTest {
+        publish()
+        sources.trust(base, key)
+        val here = requireNotNull(sources.cached().single())
+        val other = here.copy(source = here.source.copy(url = "https://other.example/folio/"))
+        val pkg = requireNotNull(here.snapshot).index.packages.single()
+        fun installed(origin: com.mccal.folio.market.InstalledPackage.Origin, url: String?) =
+            com.mccal.folio.market.InstalledPackage(pkg.id, pkg.version, "Cabinet", origin, url, 0L, emptyList())
+        val both = listOf(here, other)
+        assertEquals(listOf(here), sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base), both))
+        assertEquals(listOf(here), sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, base.trimEnd('/') + "/"), both))
+        assertEquals(both, sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FILE, null), both))
+        assertEquals(emptyList<SourceStatus>(), sourcesFor(installed(com.mccal.folio.market.InstalledPackage.Origin.FOLIO_SOURCE, null), both))
+    }
+
     @Test fun `removing a source forgets its list and its key`() = runTest {
         publish()
         sources.trust(base, key)

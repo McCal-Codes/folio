@@ -51,7 +51,10 @@ data class FocusTriggerResult(val active: String?, val state: FocusTriggerState,
 
 /** Focus triggers as pure functions, unit-tested. The Android side only reads the signals and calls these. */
 internal object FocusTriggers {
-    /** The first Focus (in list order) whose trigger holds in [signals], with the reason. A Focus you turned off by hand is skipped. */
+    /**
+     * The Focus whose trigger holds in [signals], with the reason. When several hold, the one higher in the Focus list wins
+     * (McCal, 10 Oct 2026; Settings says so), so the person decides by ordering the list. A Focus turned off by hand is skipped.
+     */
     fun wanted(modes: List<FocusMode>, signals: FocusSignals, suppressed: Set<String> = emptySet()): Pair<FocusMode, FocusReason>? {
         for (mode in modes) {
             if (mode.id in suppressed) continue
@@ -78,7 +81,11 @@ internal object FocusTriggers {
         val stillOff = state.suppressed.filter { (id, slice) -> modes.firstOrNull { it.id == id }?.triggers?.sliceOf(now) == slice }
         val fresh = state.copy(signals = now, suppressed = stillOff)
         val hit = wanted(modes, now, stillOff.keys)
+        // A Focus that is on but wasn't turned on by a trigger (by hand, or by its schedule) stays on: a trigger only switches
+        // between Focuses it turned on itself (McCal, 10 Oct 2026). It used to replace Work with the charging Focus at a plug-in.
+        val chosen = active != null && active != state.byTrigger
         return when {
+            hit != null && hit.first.id != active && chosen -> FocusTriggerResult(active, fresh.copy(byTrigger = null, reason = null), false)
             hit != null && hit.first.id != active -> FocusTriggerResult(hit.first.id, fresh.copy(byTrigger = hit.first.id, reason = hit.second), true)
             // Already on: if you turned it on yourself it stays yours, so it is not turned off when the trigger ends.
             hit != null -> FocusTriggerResult(active, fresh.copy(byTrigger = state.byTrigger, reason = if (state.byTrigger == active) hit.second else null), false)
@@ -98,6 +105,24 @@ internal object FocusTriggers {
         return state.copy(byTrigger = null, reason = null,
             suppressed = if (holds && mode != null) state.suppressed + (mode.id to mode.triggers.sliceOf(signals)) else state.suppressed)
     }
+
+    /** The "turned off by hand" memory as text for [FocusTriggerState.suppressed], so it survives the process ending. */
+    fun encodeSuppressed(suppressed: Map<String, TriggerSlice>): String = org.json.JSONObject().also { o ->
+        suppressed.forEach { (id, slice) ->
+            o.put(id, org.json.JSONObject().put("fold", slice.fold?.key ?: org.json.JSONObject.NULL)
+                .put("charging", slice.charging).put("headphones", slice.headphones))
+        }
+    }.toString()
+
+    /** Back from [encodeSuppressed]; anything unreadable is a memory of nothing, never a crash. */
+    fun decodeSuppressed(text: String?): Map<String, TriggerSlice> = runCatching {
+        val o = org.json.JSONObject(text ?: return emptyMap())
+        o.keys().asSequence().associateWith { id ->
+            val e = o.getJSONObject(id)
+            TriggerSlice(FoldState.parse(e.optString("fold").takeIf { e.has("fold") && !e.isNull("fold") }),
+                e.optBoolean("charging"), e.optBoolean("headphones"))
+        }
+    }.getOrDefault(emptyMap())
 
     /** A Focus was turned on by hand: it is no longer "turned on by a trigger", so a trigger ending won't turn it off. */
     fun onTurnedOnByHand(state: FocusTriggerState) = state.copy(byTrigger = null, reason = null)

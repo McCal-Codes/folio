@@ -41,6 +41,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,6 +92,11 @@ internal object RecentApps {
         prefs.edit().putString(KEY, list.joinToString("\n")).putString(LAUNCHES, log.joinToString("\n")).apply()
     }
 
+    /** Empties the recents list and the launch log (Clear Suggestions History). */
+    fun clear(context: Context) {
+        context.getSharedPreferences("folio", 0).edit().remove(KEY).remove(LAUNCHES).apply()
+    }
+
     fun load(context: Context): List<String> =
         (context.getSharedPreferences("folio", 0).getString(KEY, "") ?: "").split('\n').filter { it.isNotBlank() }
 
@@ -113,8 +119,8 @@ internal object RecentApps {
 /** iOS-style Spotlight over Home: suggestions, apps, contacts, settings, calculator, web and AI. */
 @Composable
 internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: LauncherState, onClose: () -> Unit,
-    onLaunch: (AppEntry) -> Unit) {
-    BackHandler(visible) { onClose() }
+    onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit) {
+    OverlayBackHandler(visible, onClose)
     // Composed while visible or still animating out; every layer follows the one shared spring,
     // so scrim, content and the blurred Home behind always move together.
     // Composed while visible or animating out. (A pre-warmed hidden copy measured no faster and stole
@@ -130,13 +136,14 @@ internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: La
         .then(if (visible) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose) else Modifier))
     Box(Modifier.fillMaxSize().graphicsLayer {
         val p = progress()
-        alpha = p; translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
+        // Moves with the back swipe's preview, fades only as it closes (OverlayBack).
+        alpha = OverlayBack.unpreviewed(p); translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f)
-    }) { SpotlightContent(state, active = visible, onClose, onLaunch) }
+    }) { SpotlightContent(state, active = visible, onClose, onLaunch, onAddToHome) }
 }
 
 @Composable
-private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () -> Unit, onLaunch: (AppEntry) -> Unit) {
+private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () -> Unit, onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
@@ -227,7 +234,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
         if (contactsGranted && q.length >= 2) kotlinx.coroutines.delay(150) // debounce typing
         value = if (contactsGranted && q.length >= 2) withContext(Dispatchers.IO) { queryContacts(context, q) } else emptyList()
     }
-    val launch = { app: AppEntry -> RecentApps.record(context, app.id); onClose(); onLaunch(app) }
+    val launch = { app: AppEntry -> onClose(); onLaunch(app) }
     val start = { intent: Intent -> onClose(); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
 
     // imeAnimationTarget changes once per keyboard show/hide (not every animation frame), so results
@@ -265,7 +272,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                             }
                         }))
                 }
-                if (query.isNotEmpty()) Box(Modifier.size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
+                if (query.isNotEmpty()) Box(Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Cancel, stringResource(R.string.clear_text), tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 }
             }
@@ -292,7 +299,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         }
                     } }
                     appHits.firstOrNull()?.let { top -> item("top") {
-                        Section(stringResource(R.string.top_hit)) { TopHit(top) { launch(top) } }
+                        Section(stringResource(R.string.top_hit)) { TopHit(top, homeOffer(state.layout, top.id), onAdd = { onAddToHome(top) }) { launch(top) } }
                     } }
                     if (appHits.size > 1) item("apps") { Section(stringResource(R.string.apps)) { AppGrid(appHits.drop(1).take(8), launch) } }
                     if (shows(SpotlightSection.CONTACTS) && contacts.isNotEmpty()) item("contacts") {
@@ -325,7 +332,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                                         Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
                                             tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
-                                        Text(target.label, color = Color.White, fontSize = 14.sp)
+                                        Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
                                     }
                                 }
                             }
@@ -373,7 +380,7 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
                             }).padding(vertical = FolioSpace.SNUG.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             AppIcon(app, app.label, Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)))
-                            Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                         }
                     }
@@ -385,14 +392,36 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
 }
 
 @Composable
-private fun TopHit(app: AppEntry, onClick: () -> Unit) {
+private fun TopHit(app: AppEntry, offer: HomeOffer, onAdd: () -> Unit, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onClick).padding(FolioSpace.SMALL.dp),
         verticalAlignment = Alignment.CenterVertically) {
         AppIcon(app, null, Modifier.size(56.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else "${app.profileLabel} app", color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            val kind = if (app.profileLabel == stringResource(R.string.personal)) stringResource(R.string.application) else stringResource(R.string.profile_app, app.profileLabel)
+            // Where the app already is, in words, instead of a button that could do nothing.
+            val where = when (offer) {
+                HomeOffer.Add -> null
+                HomeOffer.OnHome -> stringResource(R.string.on_home)
+                is HomeOffer.InFolder -> stringResource(R.string.in_folder_name, offer.title)
+            }
+            // The words fade into each other when the app lands on Home, and the + leaves with a fade and a shrink (a fade alone with
+            // Reduce Motion), so the row settles instead of jumping when Open takes its place.
+            androidx.compose.animation.AnimatedContent(if (where == null) kind else "$kind · $where", label = "top hit where",
+                transitionSpec = { androidx.compose.animation.ContentTransform(
+                    androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)),
+                    androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS))) }) { text ->
+                Text(text, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+        }
+        val reduce = LocalReduceMotion.current
+        androidx.compose.animation.AnimatedVisibility(offer == HomeOffer.Add,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) +
+                (if (reduce) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.expandHorizontally(FolioMotion.spring(FolioMotion.Quick))),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS)) +
+                (if (reduce) androidx.compose.animation.ExitTransition.None else androidx.compose.animation.shrinkHorizontally(FolioMotion.spring(FolioMotion.Quick)))) {
+            SpotlightRoundAction(Icons.Rounded.Add, stringResource(R.string.add_to_home), onAdd)
         }
         Text(stringResource(R.string.open), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
@@ -401,7 +430,7 @@ private fun TopHit(app: AppEntry, onClick: () -> Unit) {
 
 @Composable
 private fun ResultRow(icon: ImageVector, title: String, subtitle: String?, trailing: (@Composable RowScope.() -> Unit)? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
@@ -558,7 +587,7 @@ private fun settingShortcuts(context: android.content.Context) = listOf(
     SettingShortcut(context.getString(R.string.airplane_mode), Settings.ACTION_AIRPLANE_MODE_SETTINGS, listOf("airplane", "flight")),
     SettingShortcut(context.getString(R.string.display_brightness), Settings.ACTION_DISPLAY_SETTINGS, listOf("display", "brightness", "screen", "dark")),
     SettingShortcut(context.getString(R.string.sounds_vibration), Settings.ACTION_SOUND_SETTINGS, listOf("sound", "volume", "ringtone", "vibration")),
-    SettingShortcut("Notifications", if (android.os.Build.VERSION.SDK_INT >= 33) Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS else Settings.ACTION_SETTINGS, listOf("notification", "alerts")),
+    SettingShortcut(context.getString(R.string.notifications_title), if (android.os.Build.VERSION.SDK_INT >= 33) Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS else Settings.ACTION_SETTINGS, listOf("notification", "alerts")),
     SettingShortcut(context.getString(R.string.battery), Intent.ACTION_POWER_USAGE_SUMMARY, listOf("battery", "power", "charging")),
     SettingShortcut(context.getString(R.string.apps), Settings.ACTION_APPLICATION_SETTINGS, listOf("apps", "applications", "uninstall")),
     SettingShortcut(context.getString(R.string.default_apps), Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, listOf("default", "home app", "browser", "assistant")),
