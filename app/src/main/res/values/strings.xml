@@ -285,7 +285,7 @@
     <string name="onboarding_use_badges">App icon badges</string>
     <string name="allow_access">Allow Access</string>
     <string name="pull_down_for_more">Pull Down for More</string>
-    <string name="onboarding_gestures_detail">Folio\'s gestures service opens Notification Center and Control Center from the top corners. It can\'t read your screen.</string>
+    <string name="onboarding_gestures_detail">Folio\'s gestures service opens Notification Center and Control Center from the top corners. It can\'t read what other apps show. Its only screenshot is the blurred picture behind a panel, which is never saved or sent.</string>
     <string name="onboarding_use_panels">Notification Center and Control Center</string>
     <string name="onboarding_use_everywhere">Dynamic Island and dock in other apps</string>
     <string name="turn_on_button">Turn On</string>
@@ -676,7 +676,7 @@
     <string name="smart_ink_fact_looks">Folio takes a picture of your Home screen, only to choose light or dark text for the clock.</string>
     <string name="smart_ink_fact_kept">It measures the part under the clock and throws the picture away straight away. Only a few brightness numbers are kept. Nothing is saved or sent.</string>
     <string name="smart_ink_fact_home">It only happens while Folio\'s Home is in front. Anything drawn on top of Home at that moment, such as a floating window, can be in the picture.</string>
-    <string name="smart_ink_fact_separate">This is its own accessibility service, so Folio\'s gestures service still cannot read your screen. Turn it off any time in Accessibility settings.</string>
+    <string name="smart_ink_fact_separate">This is its own accessibility service, separate from Folio\'s gestures service. Turn it off any time in Accessibility settings.</string>
     <string name="open_accessibility_settings">Open Accessibility Settings</string>
     <string name="smart_ink_service_label">Folio Smart clock ink</string>
     <string name="smart_ink_service_description">Lets Folio take a picture of your Home screen to choose light or dark text for the Big Clock. It measures the part under the clock and throws the picture away straight away. It does nothing else.</string>
@@ -2203,4 +2203,20 @@
     <string name="package_import_market_off">This package needs Folio\'s Market, which opens with a supporter code.</string>
     <string name="package_import_too_large">That file is too large to be a Folio package.</string>
     <string name="package_import_too_slow">Reading that file took too long. Try saving it to your phone first.</string>
+    <string name="island_adjust">Adjust island</string>
+    <string name="island_adjust_note">Pull the handle to make the island wider, nudge it into place, or fit it to your camera.</string>
+    <string name="island_adjust_hint">Drag the round handle to resize. Use the arrows to nudge.</string>
+    <string name="island_fit_camera">Fit to camera</string>
+    <string name="island_fit_already">Already fits the camera Android reports</string>
+    <string name="island_adjust_reset">Reset</string>
+    <string name="island_wider">Wider</string>
+    <string name="island_narrower">Narrower</string>
+    <string name="island_nudge_left">Move left</string>
+    <string name="island_nudge_right">Move right</string>
+    <string name="island_nudge_up">Move up</string>
+    <string name="island_nudge_down">Move down</string>
+    <string name="island_handle_label">Island width</string>
+    <string name="island_handle_state">%1$d dp wider than automatic</string>
+    <string name="settings_keywords_island_adjust">island resize size width wider narrower camera hole fit move nudge position adjust</string>
+    <string name="island_adjust_side_note">The island stands upright around the camera in this orientation. Turn the phone to adjust its width.</string>
 </resources>

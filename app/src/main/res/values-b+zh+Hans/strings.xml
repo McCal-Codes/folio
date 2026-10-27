@@ -291,7 +291,7 @@
     <string name="onboarding_use_badges">App 图标标记</string>
     <string name="allow_access">允许访问</string>
     <string name="pull_down_for_more">下拉查看更多</string>
-    <string name="onboarding_gestures_detail">Folio 的手势服务可从顶部两角打开通知中心和控制中心。它无法读取你的屏幕内容。</string>
+    <string name="onboarding_gestures_detail">Folio 的手势服务可从顶部两角打开通知中心和控制中心。它无法读取其他 App 显示的内容；它唯一的截图是面板后方的模糊背景，不会被保存或发送。</string>
     <string name="onboarding_use_panels">通知中心和控制中心</string>
     <string name="onboarding_use_everywhere">在其他 App 中显示灵动岛和程序坞</string>
     <string name="turn_on_button">开启</string>
@@ -682,7 +682,7 @@
     <string name="smart_ink_fact_looks">Folio 会拍摄主屏幕的画面，只用于为时钟选择浅色或深色文字。</string>
     <string name="smart_ink_fact_kept">它只测量时钟下方的部分，并立即丢弃画面，只保留几个亮度数值，不会保存或发送。</string>
     <string name="smart_ink_fact_home">仅在 Folio 主屏幕位于前台时进行。此刻绘制在主屏幕上方的内容（例如悬浮窗）可能会出现在图片中。</string>
-    <string name="smart_ink_fact_separate">这是单独的辅助功能服务，因此 Folio 手势服务仍然无法读取你的屏幕。可随时在辅助功能设置中关闭。</string>
+    <string name="smart_ink_fact_separate">这是单独的辅助功能服务，与 Folio 手势服务分开。可随时在辅助功能设置中关闭。</string>
     <string name="open_accessibility_settings">打开辅助功能设置</string>
     <string name="smart_ink_service_label">Folio 智能时钟颜色</string>
     <string name="smart_ink_service_description">允许 Folio 拍摄主屏幕画面，为大时钟选择浅色或深色文字。它只测量时钟下方的部分并立即丢弃画面，不做其他任何事。</string>
@@ -2143,4 +2143,20 @@
     <string name="package_import_market_off">此包需要 Folio 市场，市场需使用支持者代码开启。</string>
     <string name="package_import_too_large">该文件太大，不是 Folio 软件包。</string>
     <string name="package_import_too_slow">读取该文件用时过长。请先将其保存到手机上。</string>
+    <string name="island_adjust">调整灵动岛</string>
+    <string name="island_adjust_note">拖动手柄可加宽灵动岛，也可以微调位置，或让它贴合摄像头。</string>
+    <string name="island_adjust_hint">拖动圆形手柄调整大小，用箭头微调位置。</string>
+    <string name="island_fit_camera">贴合摄像头</string>
+    <string name="island_fit_already">已经贴合 Android 报告的摄像头</string>
+    <string name="island_adjust_reset">重置</string>
+    <string name="island_wider">加宽</string>
+    <string name="island_narrower">变窄</string>
+    <string name="island_nudge_left">向左移动</string>
+    <string name="island_nudge_right">向右移动</string>
+    <string name="island_nudge_up">向上移动</string>
+    <string name="island_nudge_down">向下移动</string>
+    <string name="island_handle_label">灵动岛宽度</string>
+    <string name="island_handle_state">比自动宽度宽 %1$d dp</string>
+    <string name="settings_keywords_island_adjust">灵动岛 大小 宽度 加宽 变窄 摄像头 孔 贴合 移动 位置 调整</string>
+    <string name="island_adjust_side_note">在这个方向上，灵动岛会竖立在摄像头周围。请旋转手机再调整宽度。</string>
 </resources>
