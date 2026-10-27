@@ -173,6 +173,11 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Restored widgets keep their own Smart Stacks:** restoring a Layout Backup no longer puts an old Smart Stack on top of a different widget. Restored widgets get slot numbers nothing on your Home is using, so the stacks Folio keeps for Undo stay with their own widgets, and a Big Clock that was in the same place keeps its look.
 - **The island sits in the same place on Home and over apps:** it now has the same height in both, and stays on screen when the camera is on a side edge.
 - **Hide in Landscape on the unfolded screen:** the island now stays visible over apps on the unfolded screen when Hide in Landscape is on; Also on the Unfolded Screen turns the old behavior back on. Turning the cover sideways still hides it.
+- **Folio no longer crashes on a very narrow window:** long-pressing an app icon or opening an app panel in a split-screen or freeform window narrower than about 290 dp could close Folio, because the menu was asked to sit inside a window it did not fit in. It now sits against the left edge instead. The button bar's drag in other apps had the same flaw on a very short window.
+- **The Music widget no longer keeps the last track after notification access is turned off:** the title, artist and controls now go as soon as access goes, the same as the island and Notification Center already did.
+- **An app that sends Home a damaged extra can no longer crash it:** on Android 12, an extra holding a class Folio does not have made Home or the assistant picker close as it opened, and two quick closes turn on Safe Mode. Home now treats such a request as having no extras.
+- **Safe Mode stops the screen pictures too:** in Safe Mode, Smart clock ink and the blur picture behind Notification Center and Control Center no longer take a screenshot; the live blur is used instead.
+- **The blurred picture behind a panel over another app is let go when the panel closes**, as Folio's privacy notes say. Those notes and the gestures service's descriptions now say exactly what it can capture: one screenshot, only for that blur, never saved or sent, and no window contents.
 
 ## [0.6.8] - 2026-10-06
 
