@@ -523,8 +523,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.search)) {
                         // One choice instead of a switch: what sits above the dock at rest. Nothing is still in beta.
-                        val stripContext = androidx.compose.ui.platform.LocalContext.current
-                        val nothingOpen = remember(stripContext) { FeatureGate.HOME_STRIP_NOTHING.isOpen(stripContext) }
+                        val nothingOpen = rememberGateOpen(FeatureGate.HOME_STRIP_NOTHING)
                         IosMenuRow(stringResource(R.string.home_strip), HomeStrip.entries.filter { it != HomeStrip.NOTHING || nothingOpen || state.homeStrip == it }
                             .map { it to stringResource(it.label) }, state.homeStrip, model::setHomeStrip, tag = "home-strip")
                         CardNote(stringResource(R.string.home_strip_note))
@@ -579,7 +578,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             IosMenuRow(stringResource(R.string.badge_size), BadgeSize.entries.map { it to stringResource(it.label) }, state.badgeSize, model::setBadgeSize, tag = "badge-size")
                             BadgePreviewRow(state)
                             // Clear Badges When Opened, for supporters until 0.6.8 (FeatureGate.BADGES_WHEN_OPENED).
-                            val badgesWhenOpenedOpen = remember { FeatureGate.BADGES_WHEN_OPENED.isOpen(iconContext) }
+                            val badgesWhenOpenedOpen = rememberGateOpen(FeatureGate.BADGES_WHEN_OPENED)
                             if (badgesWhenOpenedOpen) {
                                 SettingsSwitch(stringResource(R.string.clear_badges_when_opened), state.badgesWhenOpened,
                                     model::setBadgesWhenOpened, "badges-when-opened-switch")
@@ -709,9 +708,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             { tweakId = DUET_ID; onPage(CustomizationPage.FOLD_TWEAK) }, "fold-duet")
                         CardNote(stringResource(R.string.duet_moved_note))
                     }
-                    val standByMoreOpen = remember { FeatureGate.STANDBY_CHARGING.isOpen(sheetContext) }
+                    val standByMoreOpen = rememberGateOpen(FeatureGate.STANDBY_CHARGING)
                     // Only the ways this phone can use: half-open and tent need a hinge.
-                    val standByOffered = remember { standByWaysOffered(hasHinge(sheetContext), standByMoreOpen) }
+                    val standByOffered = remember(standByMoreOpen) { standByWaysOffered(hasHinge(sheetContext), standByMoreOpen) }
                     if (standByOffered.isNotEmpty()) SettingsCard(stringResource(R.string.standby)) {
                         if (StandByWay.HALF_OPEN in standByOffered)
                             SettingsSwitch(stringResource(R.string.standby_half_open_like_a_laptop), state.standBy, model::setStandBy, "standby-switch")
@@ -1918,8 +1917,7 @@ internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, o
         }
     }
     // Supporters and Folio Dev first (FeatureGate.FOCUS_TRIGGERS); everyone from 0.6.9.
-    val gateContext = androidx.compose.ui.platform.LocalContext.current
-    val triggersOpen = remember { FeatureGate.FOCUS_TRIGGERS.isOpen(gateContext) }
+    val triggersOpen = rememberGateOpen(FeatureGate.FOCUS_TRIGGERS)
     if (triggersOpen) SettingsCard(stringResource(R.string.focus_also_turn_on_when)) {
         val triggers = mode.triggers
         SettingsSwitch(stringResource(R.string.focus_trigger_folding), triggers.fold != null,
@@ -2320,7 +2318,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
         CardNote(stringResource(R.string.fold_motion_note))
     }
-    if (remember(motionContext) { FeatureGate.HINGE_DETENTS.isOpen(motionContext) }) HingeDetentsCard(state.haptics)
+    if (rememberGateOpen(FeatureGate.HINGE_DETENTS)) HingeDetentsCard(state.haptics)
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
             state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")
