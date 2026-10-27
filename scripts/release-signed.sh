@@ -61,6 +61,11 @@ case "$store_file" in
         exit 1
         ;;
 esac
+# A Windows path (C:\x or C:/x) is absolute too; Git Bash only knows it as /c/x, and taking it for a relative one made
+# "$PWD/C:/..." and broke the signing of 0.6.9-beta.2 at the last step.
+if [[ "$output_dir" =~ ^[A-Za-z]:[\\/] ]] && command -v cygpath >/dev/null 2>&1; then
+    output_dir=$(cygpath -u "$output_dir")
+fi
 if [[ "$output_dir" != /* ]]; then
     output_dir="$PWD/$output_dir"
 fi
@@ -74,7 +79,9 @@ sdk_dir=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 if [[ -z "$sdk_dir" && -f "$repository_root/local.properties" ]]; then
     sdk_dir=$(sed -n 's/^sdk\.dir=//p' "$repository_root/local.properties")
 fi
-apksigner=$(ls -d "$sdk_dir"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
+[[ -n "$sdk_dir" ]] || sdk_dir=${LOCALAPPDATA:+$LOCALAPPDATA/Android/Sdk}
+# Windows ships it as apksigner.bat.
+apksigner=$(ls -d "$sdk_dir"/build-tools/*/apksigner "$sdk_dir"/build-tools/*/apksigner.bat 2>/dev/null | sort -V | tail -1 || true)
 if [[ -z "$apksigner" ]]; then
     echo "apksigner not found. Set ANDROID_HOME to your Android SDK." >&2
     exit 1
@@ -99,10 +106,23 @@ apk_name="Folio-$version.apk"
 cp -p "$apk_source" "$package_dir/$apk_name"
 
 # Fails if the APK isn't properly signed; the certificate digest lets people check updates come from the same key.
-"$apksigner" verify --print-certs "$package_dir/$apk_name" > "$package_dir/signing-certificate.txt"
+# apksigner.bat on Windows reads JAVA_HOME itself, as a Windows path. gradle.sh finds a JDK only for its own process,
+# so a JAVA_HOME that isn't a folder (this PC's points at an uninstalled JDK 21) is looked up the same way here.
+if [[ "$apksigner" == *.bat ]] && command -v cygpath >/dev/null 2>&1; then
+    signer_java=${JAVA_HOME:-}
+    if [[ ! -d "$signer_java" ]]; then
+        for jdk in '/c/Program Files/Eclipse Adoptium'/jdk-17* '/c/Program Files/Android/Android Studio/jbr'; do
+            if [[ -d "$jdk" ]]; then signer_java=$jdk; break; fi
+        done
+    fi
+    JAVA_HOME=$(cygpath -w "$signer_java") "$apksigner" verify --print-certs "$package_dir/$apk_name" > "$package_dir/signing-certificate.txt"
+else
+    "$apksigner" verify --print-certs "$package_dir/$apk_name" > "$package_dir/signing-certificate.txt"
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
-    (cd "$package_dir" && sha256sum "$apk_name" > SHA256SUMS.txt)
+    # Git Bash marks binary mode with "*name"; the published SHA256SUMS.txt files use the usual two spaces.
+    (cd "$package_dir" && sha256sum "$apk_name" | sed 's/ \*/  /' > SHA256SUMS.txt)
 else
     (cd "$package_dir" && shasum -a 256 "$apk_name" > SHA256SUMS.txt)
 fi
