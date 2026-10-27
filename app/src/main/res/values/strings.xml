@@ -2221,4 +2221,20 @@
     <string name="storage_downloads">Downloads</string>
     <string name="storage_action_unavailable">%1$s isn\'t available on this phone.</string>
     <string name="settings_keywords_storage">storage space disk free up usb sd card drive downloads files full</string>
+    <string name="island_adjust">Adjust island</string>
+    <string name="island_adjust_note">Pull the handle to make the island wider, nudge it into place, or fit it to your camera.</string>
+    <string name="island_adjust_hint">Drag the round handle to resize. Use the arrows to nudge.</string>
+    <string name="island_fit_camera">Fit to camera</string>
+    <string name="island_fit_already">Already fits the camera Android reports</string>
+    <string name="island_adjust_reset">Reset</string>
+    <string name="island_wider">Wider</string>
+    <string name="island_narrower">Narrower</string>
+    <string name="island_nudge_left">Move left</string>
+    <string name="island_nudge_right">Move right</string>
+    <string name="island_nudge_up">Move up</string>
+    <string name="island_nudge_down">Move down</string>
+    <string name="island_handle_label">Island width</string>
+    <string name="island_handle_state">%1$d dp wider than automatic</string>
+    <string name="settings_keywords_island_adjust">island resize size width wider narrower camera hole fit move nudge position adjust</string>
+    <string name="island_adjust_side_note">The island stands upright around the camera in this orientation. Turn the phone to adjust its width.</string>
 </resources>

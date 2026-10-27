@@ -148,6 +148,12 @@ internal enum class FeatureGate(
     MUSIC_WIDGET("musicWidget", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * Adjust island: pull a handle to make the island wider, nudge it, or fit it to the camera Android reports. A supporter on a
+     * smaller minimum width found the pill narrower than the camera area; the automatic fit stays the default.
+     */
+    ISLAND_ADJUST("islandAdjust", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
      * Control Center without repeats: the Media and Connectivity pages show only when the first page cannot hold what they
      * hold (a short window, a big font, many controls), Now Playing is one slim row while nothing plays, and the battery ring
      * stands apart from the page dots. It changes how many pages the strip shows, so supporters and Folio Dev see it first.

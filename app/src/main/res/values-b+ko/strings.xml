@@ -2182,4 +2182,20 @@
     <string name="storage_downloads">다운로드</string>
     <string name="storage_action_unavailable">이 휴대전화에서는 %1$s 기능을 사용할 수 없어요.</string>
     <string name="settings_keywords_storage">저장공간 용량 디스크 공간 확보 USB SD 카드 드라이브 다운로드 파일 가득</string>
+    <string name="island_adjust">Dynamic Island 조정</string>
+    <string name="island_adjust_note">핸들을 끌어 Dynamic Island를 넓히거나, 위치를 조금씩 옮기거나, 카메라에 맞출 수 있습니다.</string>
+    <string name="island_adjust_hint">둥근 핸들을 끌어 크기를 바꾸세요. 화살표로 조금씩 옮길 수 있습니다.</string>
+    <string name="island_fit_camera">카메라에 맞추기</string>
+    <string name="island_fit_already">이미 Android가 알려주는 카메라에 맞춰져 있습니다</string>
+    <string name="island_adjust_reset">초기화</string>
+    <string name="island_wider">더 넓게</string>
+    <string name="island_narrower">더 좁게</string>
+    <string name="island_nudge_left">왼쪽으로 이동</string>
+    <string name="island_nudge_right">오른쪽으로 이동</string>
+    <string name="island_nudge_up">위로 이동</string>
+    <string name="island_nudge_down">아래로 이동</string>
+    <string name="island_handle_label">Dynamic Island 너비</string>
+    <string name="island_handle_state">자동보다 %1$d dp 넓음</string>
+    <string name="settings_keywords_island_adjust">아일랜드 크기 너비 넓게 좁게 카메라 구멍 맞추기 이동 위치 조정</string>
+    <string name="island_adjust_side_note">이 방향에서는 Dynamic Island가 카메라를 둘러싸고 세로로 서 있습니다. 너비를 조정하려면 휴대전화를 돌려 주세요.</string>
 </resources>
