@@ -20,6 +20,8 @@ Contacts (optional) are searched on the device from Spotlight only. When Bluetoo
 
 AirPods battery with root (optional, System Bridge, off until you turn it on) reads Android's own Bluetooth record of the AirPods paired with this phone, only when you ask or the headphones card shows. It does not scan, so nothing about anyone else's devices is seen. The reading is kept in memory only and never sent; the report you can copy to the clipboard replaces Bluetooth addresses and shortens device names unless you choose to include them.
 
+AirPods battery without root (optional, off until you turn it on in Settings › Dynamic Island, and only with the Nearby devices permission) listens for a few seconds to the battery message AirPods broadcast, only while your AirPods are connected and an AirPods battery card is on screen. A Bluetooth scan can hear other people's AirPods nearby: Folio keeps only the strongest one close to the phone, refuses to guess when two are equally close, and drops every other one the moment it arrives. It never stores, logs or sends a Bluetooth address or the broadcast's bytes, and it is not used for location. The reading (battery, charging, model) stays in memory; the report you can copy holds only those values and the time they were read.
+
 Android controls widget-binding approval and Home-app selection. Providers can require separate setup or permissions.
 
 ## The Market (0.6.6, for supporters)

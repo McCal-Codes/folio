@@ -2036,6 +2036,27 @@
     <string name="airpods_overall">电量 %1$d%%</string>
     <string name="airpods_overall_about">约 %1$d%%</string>
     <string name="airpods_part_charging">%1$s，充电中</string>
+    <string name="airpods_ble_switch">AirPods 电量（使用蓝牙扫描）</string>
+    <string name="airpods_ble_note" formatted="false">AirPods 会向附近的手机广播电量。开启后，仅在此卡片或耳机卡片显示、且你的 AirPods 已连接时，Folio 会接收几秒钟。电量以 10% 为单位显示，不保存也不发送任何内容，并忽略其他人的 AirPods。</string>
+    <string name="airpods_ble_permission_note">Folio 需要“附近的设备”权限才能接收你的 AirPods 广播。此权限绝不用于定位。</string>
+    <string name="airpods_ble_allow">允许“附近的设备”</string>
+    <string name="airpods_ble_open_settings">在 Android 设置中允许</string>
+    <string name="airpods_ble_scanning">正在寻找你的 AirPods…</string>
+    <string name="airpods_ble_off">关闭</string>
+    <string name="airpods_ble_needs_permission">需要“附近的设备”权限。</string>
+    <string name="airpods_ble_bluetooth_off">蓝牙已关闭。</string>
+    <string name="airpods_ble_no_airpods">未连接 AirPods。</string>
+    <string name="airpods_ble_nothing_seen">附近没有收到 AirPods 电量。请将 AirPods 靠近手机，然后点按刷新。</string>
+    <string name="airpods_ble_several">附近有多副 AirPods，Folio 无法判断哪副是你的。请将你的 AirPods 靠近并点按刷新。</string>
+    <string name="airpods_ble_no_numbers">你的 AirPods 没有发送电量数值。</string>
+    <string name="airpods_ble_failed">Android 无法开始蓝牙扫描。请重试。</string>
+    <string name="airpods_ble_expired">没有最近的读数。请点按刷新。</string>
+    <string name="airpods_ble_report_note">报告只包含 Folio 从你的 AirPods 读到的电量数值和时间：没有地址、没有原始数据，也没有其他设备的信息。</string>
+    <string name="airpods_with_age">%1$s（%2$d 分钟前）</string>
+    <string name="airpods_source">来源</string>
+    <string name="airpods_source_ble">蓝牙广播</string>
+    <string name="airpods_source_root">系统记录（root）</string>
+    <string name="nearby_devices">附近的设备</string>
     <string name="bridge_cap_hinge">铰链角度</string>
     <string name="bridge_cap_actions">系统操作</string>
     <string name="bridge_cap_status">状态栏模块</string>

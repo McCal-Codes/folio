@@ -2057,6 +2057,27 @@
     <string name="airpods_overall">배터리 %1$d%%</string>
     <string name="airpods_overall_about">약 %1$d%%</string>
     <string name="airpods_part_charging">%1$s, 충전 중</string>
+    <string name="airpods_ble_switch">AirPods 배터리 (블루투스 검색 사용)</string>
+    <string name="airpods_ble_note" formatted="false">AirPods는 주변 휴대전화에 배터리 상태를 알립니다. 이 기능을 켜면 이 카드나 헤드폰 카드가 보이는 동안, AirPods가 연결된 경우에만 몇 초 동안 수신합니다. 10% 단위로 표시하며, 아무것도 저장하거나 보내지 않고, 다른 사람의 AirPods는 무시합니다.</string>
+    <string name="airpods_ble_permission_note">AirPods의 신호를 받으려면 근처 기기 권한이 필요합니다. 위치에는 절대 사용하지 않습니다.</string>
+    <string name="airpods_ble_allow">근처 기기 허용</string>
+    <string name="airpods_ble_open_settings">Android 설정에서 허용</string>
+    <string name="airpods_ble_scanning">AirPods를 찾는 중…</string>
+    <string name="airpods_ble_off">꺼짐</string>
+    <string name="airpods_ble_needs_permission">근처 기기 권한이 필요합니다.</string>
+    <string name="airpods_ble_bluetooth_off">블루투스가 꺼져 있습니다.</string>
+    <string name="airpods_ble_no_airpods">연결된 AirPods가 없습니다.</string>
+    <string name="airpods_ble_nothing_seen">주변에서 AirPods 배터리 신호를 받지 못했습니다. AirPods를 휴대전화 가까이 대고 새로고침을 누르세요.</string>
+    <string name="airpods_ble_several">주변에 AirPods가 여러 개 있어 어느 것이 내 것인지 알 수 없습니다. 내 AirPods를 가까이 대고 새로고침을 누르세요.</string>
+    <string name="airpods_ble_no_numbers">AirPods가 배터리 수치를 보내지 않았습니다.</string>
+    <string name="airpods_ble_failed">Android가 블루투스 검색을 시작하지 못했습니다. 다시 시도하세요.</string>
+    <string name="airpods_ble_expired">최근 정보가 없습니다. 새로고침을 누르세요.</string>
+    <string name="airpods_ble_report_note">보고서에는 Folio가 내 AirPods에서 읽은 배터리 값과 시간만 들어 있습니다. 주소, 원본 데이터, 다른 기기에 관한 정보는 없습니다.</string>
+    <string name="airpods_with_age">%1$s (%2$d분 전)</string>
+    <string name="airpods_source">출처</string>
+    <string name="airpods_source_ble">블루투스 신호</string>
+    <string name="airpods_source_root">시스템 기록 (루트)</string>
+    <string name="nearby_devices">근처 기기</string>
     <string name="bridge_cap_hinge">힌지 각도</string>
     <string name="bridge_cap_actions">시스템 동작</string>
     <string name="bridge_cap_status">상태 표시줄 모듈</string>

@@ -2089,6 +2089,27 @@
     <string name="airpods_overall">Battery %1$d%%</string>
     <string name="airpods_overall_about">About %1$d%%</string>
     <string name="airpods_part_charging">%1$s, charging</string>
+    <string name="airpods_ble_switch">AirPods battery (uses Bluetooth scan)</string>
+    <string name="airpods_ble_note" formatted="false">Your AirPods broadcast their battery to phones nearby. With this on, Folio listens for a few seconds while this card or the headphones card shows, and only while your AirPods are connected. It shows steps of 10%, keeps and sends nothing, and ignores other people’s AirPods.</string>
+    <string name="airpods_ble_permission_note">Folio needs the Nearby devices permission to hear your AirPods’ broadcast. It is never used for location.</string>
+    <string name="airpods_ble_allow">Allow Nearby devices</string>
+    <string name="airpods_ble_open_settings">Allow in Android Settings</string>
+    <string name="airpods_ble_scanning">Looking for your AirPods…</string>
+    <string name="airpods_ble_off">Off</string>
+    <string name="airpods_ble_needs_permission">Needs the Nearby devices permission.</string>
+    <string name="airpods_ble_bluetooth_off">Bluetooth is off.</string>
+    <string name="airpods_ble_no_airpods">No AirPods connected.</string>
+    <string name="airpods_ble_nothing_seen">No AirPods battery heard nearby. Hold your AirPods close to the phone and tap Refresh.</string>
+    <string name="airpods_ble_several">Several AirPods are nearby, so Folio can’t tell which are yours. Hold yours close and tap Refresh.</string>
+    <string name="airpods_ble_no_numbers">Your AirPods sent no battery numbers.</string>
+    <string name="airpods_ble_failed">Android could not start the Bluetooth scan. Try again.</string>
+    <string name="airpods_ble_expired">No recent reading. Tap Refresh.</string>
+    <string name="airpods_ble_report_note">The report holds only the battery values and times Folio read from your AirPods: no addresses, no raw data, nothing about other devices.</string>
+    <string name="airpods_with_age">%1$s (%2$d min ago)</string>
+    <string name="airpods_source">Source</string>
+    <string name="airpods_source_ble">Bluetooth advertisement</string>
+    <string name="airpods_source_root">System record (root)</string>
+    <string name="nearby_devices">Nearby devices</string>
     <string name="bridge_cap_hinge">Hinge angle</string>
     <string name="bridge_cap_actions">System actions</string>
     <string name="bridge_cap_status">Status bar modules</string>
