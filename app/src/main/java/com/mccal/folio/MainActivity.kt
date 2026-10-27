@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The wallpaper theme must be chosen before the window exists (switching to it starts the screen again).
         if (usesSystemWallpaper(this)) setTheme(R.style.Theme_Duo_Wallpaper)
+        intent.dropUnreadableExtras() // an extra from another app that Folio cannot unpack must not crash Home
         super.onCreate(savedInstanceState)
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
@@ -229,6 +230,11 @@ class MainActivity : ComponentActivity() {
             }
             val overlayProgress by rememberSettlingProgress(if (overlayOpen) 1f else 0f,
                 MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+            // Something of Folio's own is over Home, or still fading off it; the clock ink sample must not look at that.
+            val overlayOpenNow by androidx.compose.runtime.rememberUpdatedState(overlayOpen)
+            val homeCovered by androidx.compose.runtime.remember {
+                androidx.compose.runtime.derivedStateOf { overlayOpenNow || overlayProgress > .02f || LauncherPages.isOpen(this@MainActivity) }
+            }
             // A back swipe that closed Spotlight or a panel keeps its preview until the close ends; the next one starts clean (MO7).
             val overlayShowing = topPanel.value != null || spotlightVisible.value
             androidx.compose.runtime.LaunchedEffect(overlayShowing) { if (overlayShowing) OverlayBack.swipe.snapTo(0f) }
@@ -241,6 +247,7 @@ class MainActivity : ComponentActivity() {
             // the sheets keep the live blur. If the picture cannot be made, the live blur is used for that panel.
             val homeLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
             val smallLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+            val folderBlurLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
             val pictureDensity = androidx.compose.ui.platform.LocalDensity.current
             val pictureDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
             var panelSession by androidx.compose.runtime.remember { mutableStateOf(false) }
@@ -253,7 +260,9 @@ class MainActivity : ComponentActivity() {
                 // With Android's own wallpaper showing through, Home's layer is transparent around its icons and text: a picture of it would
                 // let the sharp Home show through, so that case keeps the live blur.
                 if (state.systemWallpaper && this@MainActivity.showsWallpaper) { panelSnapshotFailed = true; return@LaunchedEffect }
-                if (backdropBlurPx < 2f || LauncherPages.isOpen(this@MainActivity) || SettingsPeek.value != null) return@LaunchedEffect
+                // Safe Mode takes no pictures at all: the live blur stands in, as when a picture cannot be made.
+                if (SafeMode.active) { panelSnapshotFailed = true; return@LaunchedEffect }
+                if (!panelBackdropSnapshotWanted(backdropBlurPx, LauncherPages.isOpen(this@MainActivity), SettingsPeek.value != null, SafeMode.active)) return@LaunchedEffect
                 try {
                     // Shrunk on the GPU to a quarter first, so reading the picture back costs a sixteenth of the pixels and never holds up a frame.
                     val full = homeLayer.size
@@ -332,6 +341,7 @@ class MainActivity : ComponentActivity() {
                 LocalLabelSize provides state.labelSize,
                 LocalDeviceStatus provides deviceStatus,
                 LocalReduceMotion provides reduceMotion,
+                LocalHomeCovered provides homeCovered,
                 LocalHinge provides rememberHinge(this@MainActivity),
                 // Tablets and desktop windows draw Folio proportionally larger instead of a phone-sized layout lost in a
                 // big window; phones and foldables stay at exactly the system density (see uiScale).
@@ -367,7 +377,9 @@ class MainActivity : ComponentActivity() {
                     // Home is recorded into a layer of its own so a panel can take its picture; the effect above sits outside it.
                     .then(if (backdropBlurPx >= 2f) androidx.compose.ui.Modifier.drawWithContent {
                         homeLayer.record { this@drawWithContent.drawContent() }
-                        drawLayer(homeLayer)
+                        // An open folder fades Home's blurred copy in over the sharp one with its own opening (FolderBlur), instead of waiting for the overlay spring.
+                        val folderBlur = if (LauncherPages.isOpen(this@MainActivity) || SettingsPeek.value != null) 0f else FolderBlur.level(this@MainActivity)
+                        if (folderBlur > 0f) drawFolderBlur(homeLayer, folderBlurLayer, backdropBlur, folderBlur) else drawLayer(homeLayer)
                     } else androidx.compose.ui.Modifier)) {
                 LauncherScreen(state, model, widgets, homeRequests.intValue, homeFromFront = homeFromFront.value,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
@@ -660,6 +672,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
+        intent.dropUnreadableExtras()
         super.onNewIntent(intent)
 
         setIntent(intent)
@@ -897,3 +910,7 @@ internal class RequestLatch {
     private var handled = 0
     fun take(request: Int): Boolean = (request > handled).also { if (it) handled = request }
 }
+
+/** Whether a panel opening over Home takes the one-off picture it blurs behind itself: blur is on, nothing else is over Home, and Safe Mode is off. */
+internal fun panelBackdropSnapshotWanted(blurPx: Float, pagesOpen: Boolean, settingsPeeking: Boolean, safeMode: Boolean): Boolean =
+    !safeMode && blurPx >= 2f && !pagesOpen && !settingsPeeking
