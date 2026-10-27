@@ -34,6 +34,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -69,6 +70,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -96,6 +98,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
+    ccOptions: CcOptions = CcOptions(),
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
@@ -204,11 +207,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
             NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
             listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
 }
@@ -694,7 +697,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
-    size: PanelSize, wide: Boolean, onClose: () -> Unit,
+    size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
     focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
@@ -713,6 +716,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     SafeBackHandler(edit.active) { edit.stop() }
     // Pages that would repeat the first are left out, Now Playing is a slim row while nothing plays and the battery ring stands apart from the dots (FeatureGate.CC_PAGES_DEDUPE).
     val dedupe = remember { FeatureGate.CC_PAGES_DEDUPE.isOpen(context) }
+    // The deeper settings (FeatureGate.CC_SETTINGS_V2): until the gate opens the options are the defaults, so nothing below changes.
+    val v2 = remember { FeatureGate.CC_SETTINGS_V2.isOpen(context) }
+    val options = if (v2) ccOptions else CcOptions()
+    // "Edit controls" in Settings opens the panel in edit mode, on the first page.
+    val editRequested = remember { v2 && CcEditRequest.take() }
+    val closeScope = rememberCoroutineScope()
 
     fun isOn(control: CcControl) = when (control) {
         CcControl.ROTATION -> controls.rotationLocked
@@ -725,7 +734,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         CcControl.DND -> AccentPurple
         else -> Color.White
     }
-    fun run(control: CcControl) {
+    fun runNow(control: CcControl) {
         when (control) {
             CcControl.ROTATION -> if (!controls.toggleRotationLock()) open(controls.writeSettingsIntent())
             CcControl.DND -> if (!controls.toggleDnd()) open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
@@ -750,6 +759,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
     }
 
+    fun run(control: CcControl) {
+        runNow(control)
+        // After the tile's own press and haptic, not instead of them.
+        if (ccClosesAfterTap(control, options)) closeScope.launch { delay(CC_CLOSE_AFTER_MS); onClose() }
+    }
+
     BoxWithConstraints(modifier.testTag("control-center")) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
@@ -765,15 +780,27 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
-        val extraPages = remember(plan, pagesAvailable, cell, gap, focusOn, dedupe) { ccExtraPages(plan, pagesAvailable?.value, cell.value, gap.value, focusOn, dedupe) }
+        // A page is shown when the first cannot hold what it holds (the automatic hiding) and its switch is on.
+        val neededPages = remember(plan, pagesAvailable, cell, gap, focusOn, dedupe) { ccExtraPages(plan, pagesAvailable?.value, cell.value, gap.value, focusOn, dedupe) }
+        val extraPages = remember(neededPages, options.mediaPage, options.connectivityPage) { ccShownExtraPages(neededPages, options) }
         val pages = remember(plan, extraPages) { ccPageSpecs(plan.perPage.size, extraPages) }
         // The pager runs forward but its pages are in reverse (Controls at the last index): the first page is anchored at the bottom, the next ones come down from above,
         // and a swipe up past the first page has nowhere to go, so it closes the panel. (reverseLayout stopped the drag from following the finger.)
-        val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = pages.lastIndex) { pages.size }
+        // It opens on the first page, or on the page it was last left on (Open on), and always on the first when Settings asked for edit mode.
+        val startPosition = remember { if (editRequested) 0 else ccStartPage(options.openOn, CcLastPage.page, pages) }
+        val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = pages.lastIndex - startPosition) { pages.size }
         val firstIndex = pages.lastIndex
         val current = firstIndex - pager.currentPage // the page shown, in the order of [pages]
         // A different set of pages (another window, a fold, a font size) starts again on the first. With fewer pages shown the same count can hold other pages, so the pages themselves are the key.
-        LaunchedEffect(if (dedupe) pages else pages.size) { if (pager.currentPage != pages.lastIndex) pager.scrollToPage(pages.lastIndex) }
+        // (Not the first time: the pager was built on the page it should open on.)
+        val pagesSettled = remember { booleanArrayOf(false) }
+        LaunchedEffect(if (dedupe || v2) pages else pages.size) {
+            if (!pagesSettled[0]) { pagesSettled[0] = true; return@LaunchedEffect }
+            if (pager.currentPage != pages.lastIndex) pager.scrollToPage(pages.lastIndex)
+        }
+        // The page in view is remembered for Open on: Last page used.
+        LaunchedEffect(current, pages) { if (v2) CcLastPage.page = pages.getOrNull(current)?.page }
+        LaunchedEffect(Unit) { if (editRequested) edit.start() }
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
@@ -831,14 +858,21 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
         val sliders: @Composable (Dp) -> Unit = { height ->
             TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, height,
-                onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) },
-                onHold = controls::holdBrightness) { value ->
+                onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, ticks = options.sliderTicks,
+                onHold = controls::holdBrightness,
+                // Dragging the slider turns Auto off; this says so and turns it back on (v2). It follows the phone's own mode, so it also
+                // changes when automatic brightness is switched somewhere else.
+                badge = if (v2 && controls.autoBrightnessKnown) { alpha ->
+                    AutoBrightnessChip(controls.brightnessAuto, cell, alpha) {
+                        if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(!controls.brightnessAuto)
+                    }
+                } else null) { value ->
                 controls.changeBrightness(value) }
             TallSlider(when {
                 controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
                 controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
                 else -> Icons.AutoMirrored.Rounded.VolumeUp
-            }, stringResource(R.string.volume), controls.volume, cell, height, onHold = controls::holdVolume) { controls.changeVolume(it) }
+            }, stringResource(R.string.volume), controls.volume, cell, height, ticks = options.sliderTicks, onHold = controls::holdVolume) { controls.changeVolume(it) }
         }
         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         val connectivity = listOf(
@@ -1293,7 +1327,7 @@ private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: 
 
 @Composable
 private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp, height: Dp,
-    onStart: () -> Unit = {}, onHold: (Boolean) -> Unit = {}, onValue: (Float) -> Unit) {
+    onStart: () -> Unit = {}, onHold: (Boolean) -> Unit = {}, ticks: Boolean = true, badge: (@Composable BoxScope.(Float) -> Unit)? = null, onValue: (Float) -> Unit) {
     // A change from outside (a volume key, automatic brightness) moves the fill with the same no-overshoot spring as a drag,
     // and not at all under Reduce Motion. It never ticks: the haptics below run only from the finger.
     val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f),
@@ -1309,7 +1343,7 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
                 change.consume()
                 val v = (1f - change.position.y / size.height).coerceIn(0f, 1f)
                 // Like iOS: a tick when the slider hits its top or bottom.
-                if ((v == 0f || v == 1f) && v != last) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentFrequentTick)
+                if (ticks && (v == 0f || v == 1f) && v != last) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentFrequentTick)
                 last = v
                 onValue(v)
             }
@@ -1327,6 +1361,31 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
         val readoutOnFill = shown > 1f - (width * .22f + FolioType.FOOTNOTE.dp / 2) / height
         Text((shown * 100).toInt().toString(), color = if (readoutOnFill) FolioColors.MenuSurface else Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = width * .22f).graphicsLayer { alpha = readout })
+        // A chip at the top (Auto brightness) steps aside for the number while a finger is on the slider.
+        badge?.invoke(this, 1f - readout)
+    }
+}
+
+/**
+ * Auto brightness as a chip on the brightness slider: green while the phone sets the brightness, dark while the person does.
+ * A switch to TalkBack, named "Auto brightness"; its target is the slider's width by 48 dp, the drawn pill smaller.
+ */
+@Composable
+private fun BoxScope.AutoBrightnessChip(on: Boolean, width: Dp, alpha: Float, onClick: () -> Unit) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val name = stringResource(R.string.cc_auto_brightness)
+    val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
+    // The word follows the font size only up to 1.3 times: it lives on a slider as wide as one cell (the full size is in the words for TalkBack).
+    val font = with(LocalDensity.current) { (FolioType.FOOTNOTE * minOf(fontScale, 1.3f)).dp.toSp() }
+    Box(Modifier.align(Alignment.TopCenter).size(width, FolioTouch.MIN.dp).graphicsLayer { this.alpha = alpha }
+        .clickable(role = androidx.compose.ui.semantics.Role.Switch) { haptic.toggle(!on); onClick() }
+        .semantics(mergeDescendants = true) { contentDescription = name; stateDescription = stateText },
+        contentAlignment = Alignment.Center) {
+        Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) AccentGreen else FolioColors.MenuSurface.copy(alpha = .72f))
+            .padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp)) {
+            Text(stringResource(R.string.cc_auto), color = if (on) FolioColors.MenuSurface else Color.White, fontSize = font, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                modifier = Modifier.clearAndSetSemantics {})
+        }
     }
 }
 
@@ -1380,6 +1439,16 @@ private class DeviceControls(private val context: Context) {
     private val brightnessLevel = LiveLevel(.5f)
     val volume get() = volumeLevel.value
     val brightness get() = brightnessLevel.value
+    /** Whether the phone sets the brightness by itself, and whether it says (the setting is missing on some). Follows the system, like the sliders. */
+    var brightnessAuto by mutableStateOf(false); private set
+    var autoBrightnessKnown by mutableStateOf(false); private set
+    private var manualModeSet = false
+    private fun applyMode(reading: SystemReading) {
+        brightnessAuto = reading.brightnessMode == BrightnessMode.AUTO
+        autoBrightnessKnown = reading.brightnessMode != BrightnessMode.UNKNOWN
+        // Automatic brightness, or another app, took the mode: the next drag must switch it back to manual.
+        manualModeSet = reading.brightnessManual
+    }
     var rotationLocked by mutableStateOf(false); private set
     var dndOn by mutableStateOf(false); private set
     var bluetoothOn by mutableStateOf(false); private set
@@ -1391,13 +1460,12 @@ private class DeviceControls(private val context: Context) {
     private val levels = SystemLevels(context) { reading ->
         volumeLevel.fromOutside(reading.volume)
         brightnessLevel.fromOutside(reading.brightness)
-        // Automatic brightness, or another app, took the mode: the next drag must switch it back to manual.
-        manualModeSet = reading.brightnessManual
+        applyMode(reading)
     }
 
     fun start() {
         runCatching { camera.registerTorchCallback(torchCallback, null) }
-        levels.read().let { volumeLevel.fromOutside(it.volume); brightnessLevel.fromOutside(it.brightness); manualModeSet = it.brightnessManual }
+        levels.read().let { volumeLevel.fromOutside(it.volume); brightnessLevel.fromOutside(it.brightness); applyMode(it) }
         levels.start()
         rotationLocked = runCatching { Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) == 0 }.getOrDefault(false)
         dndOn = notifications.currentInterruptionFilter > NotificationManager.INTERRUPTION_FILTER_ALL
@@ -1420,19 +1488,33 @@ private class DeviceControls(private val context: Context) {
     }
 
     /** Returns false when "Modify system settings" hasn't been granted yet. */
-    private var manualModeSet = false
     fun changeBrightness(value: Float): Boolean {
         if (!Settings.System.canWrite(context)) return false
         val level = (value * 255).toInt().coerceIn(1, 255)
         if (level == (brightness * 255).toInt()) return true // skip identical writes while dragging
         brightnessLevel.fromUser(value)
         runCatching {
+            // Dragging the slider means the person is choosing the level, so Auto goes off (the Auto chip shows it and turns it back on).
             if (!manualModeSet) {
                 Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
                 manualModeSet = true
+                brightnessAuto = false
             }
             Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, level)
         }
+        return true
+    }
+
+    /** Turns Auto brightness on or off from the chip. Returns false when "Modify system settings" hasn't been granted yet. */
+    fun setBrightnessAuto(on: Boolean): Boolean {
+        if (!Settings.System.canWrite(context)) return false
+        runCatching {
+            Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
+                if (on) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+            brightnessAuto = on
+            manualModeSet = !on
+        }
+        levels.requestRefresh()
         return true
     }
 

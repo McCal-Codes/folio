@@ -390,6 +390,7 @@ internal fun MarketScreen(
         when (val link = MarketLink.pending) {
             is MarketLink.Package -> { tab = MarketTab.PACKAGES; openId = link.id }
             MarketLink.Updates -> tab = MarketTab.INSTALLED
+            MarketLink.Settings -> tab = MarketTab.SETTINGS
             is MarketLink.Source -> {
                 // What the format says a source link does: the Add Source sheet, filled in. The fingerprint still
                 // has to be confirmed, so a link can't add a source by itself.
@@ -923,7 +924,9 @@ private fun MarketTabIcon(tab: MarketTab, on: Boolean) = Icon(
 
 @Composable
 private fun MarketTabLabel(tab: MarketTab, on: Boolean) = Text(
-    stringResource(tab.label), color = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .55f), fontSize = FolioType.CAPTION.sp,
+    stringResource(tab.label), color = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .55f),
+    // A tab's name is one word that cannot wrap, so it stops growing at 1.3 times (A11Y-13); at 200% it read "Featur...".
+    fontSize = cappedSp(FolioType.CAPTION),
     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
 )
 
@@ -1663,6 +1666,14 @@ private object NoLauncher : MarketLauncher {
 }
 
 /**
+ * What the Market opens on when something asks for "Folio's settings" by name: Android's gear (APPLICATION_PREFERENCES), which
+ * the Home app settings, the Accessibility page and a tile's long press all use. Without it they landed on the Market's
+ * Featured tab, one tab away from what they asked for. The Folio icon is not this: it opens the Market as it always did.
+ */
+internal fun linkForSettingsRequest(action: String?, marketEnabled: Boolean): MarketLink? =
+    MarketLink.Settings.takeIf { action == android.content.Intent.ACTION_APPLICATION_PREFERENCES && marketEnabled }
+
+/**
  * Which sheet the Folio app icon opens. The Market holds Settings as a tab, so the icon opens the Market once it
  * exists — but anything that asked for a particular Settings page (a permission prompt, an update) still gets
  * Settings, because that's what it asked for.
@@ -1989,6 +2000,8 @@ internal sealed interface MarketLink {
     data class Source(val url: String) : MarketLink
     /** The update notice: the store, on what is installed and has a newer version. */
     data object Updates : MarketLink
+    /** Android's own gear for Folio's settings (Home app settings, a tile's long press): the Market's Settings tab. */
+    data object Settings : MarketLink
 
     // A supporter's code is a link too, but it belongs to Settings rather than the store: see RedeemActivity.
 

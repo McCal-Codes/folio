@@ -192,6 +192,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     onOpenMarket: () -> Unit = {},
     onShowWelcome: () -> Unit = {},
     onShowWhatsNew: () -> Unit = {},
+    onEditControlCenter: () -> Unit = {},
 ) {
     var wide by rememberSaveable { mutableStateOf(initiallyWide) }
     // Which inner layout the layout sliders edit, when the upright one is separate.
@@ -433,7 +434,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.touch_and_hold_note))
                     }
                     // One page for the panels: the on/off switch and, when on, their options.
-                    if (page == CustomizationPage.NOTIFICATIONS) SettingsCard(stringResource(R.string.panels)) {
+                    if (page == CustomizationPage.NOTIFICATIONS) {
+                    // The deeper Control Center settings, in short cards, for supporters and Folio Dev first (FeatureGate.CC_SETTINGS_V2).
+                    val ccV2 = FeatureGate.CC_SETTINGS_V2.isOpen(androidx.compose.ui.platform.LocalContext.current)
+                    SettingsCard(stringResource(R.string.panels)) {
                         SettingsSwitch(stringResource(R.string.iphone_style_control_center_and_notifica), state.folioPanels, model::setFolioPanels, "folio-panels-switch")
                         if (state.folioPanels) {
                         CustomizationSlider(stringResource(R.string.background_blur), "${(state.panelBlur * 100).toInt()}%", state.panelBlur, 0f..1f) { model.setPanelBlur(it) }
@@ -449,6 +453,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.nc_layout_note))
                         SettingsSwitch(stringResource(R.string.notification_sections), state.notificationSections, model::setNotificationSections, "notification-sections-switch")
                         if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
+                        if (!ccV2) {
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
                         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
                         CardNote(stringResource(R.string.cc_look_note))
@@ -457,6 +462,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.tip_tap_at_the_top_of_control_center_to))
                         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
                         }
+                        }
+                    }
+                    if (ccV2 && state.folioPanels) ControlCenterSettingsCards(state, model, onEditControlCenter)
                     }
                     if (page == CustomizationPage.SEARCH) SettingsCard(stringResource(R.string.spotlight)) {
                         IosMenuRow(stringResource(R.string.search_with_enter),
@@ -1176,19 +1184,21 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
 }
 
 @Composable private fun SettingsNavBar(backLabel: String?, onBack: () -> Unit, onClose: () -> Unit, leading: (@Composable () -> Unit)? = null) {
-    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right.
-    Box(Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-        Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+    // iOS navigation bar: the sidebar button and "‹ Back" on the left, Done on the right. Back gives way to Done (it
+    // shortens with an ellipsis), so at a large font size the two never touch or overlap.
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             leading?.invoke()
-            if (backLabel != null) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+            if (backLabel != null) Row(Modifier.weight(1f, fill = false).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                 .clickable(onClick = onBack).padding(vertical = FolioSpace.SMALL.dp, horizontal = FolioSpace.HAIR.dp).testTag("customization-back"),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(28.dp))
-                Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
+                Text(backLabel, color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
         }
-        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.CenterEnd).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onClose)
+        Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            modifier = Modifier.padding(start = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onClose)
                 .padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.SMALL.dp).description(R.string.close_customization))
     }
 }
@@ -1533,6 +1543,13 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.size to CustomizationPage.ACCESSIBILITY,
     R.string.control_center_size to CustomizationPage.NOTIFICATIONS,
     R.string.control_center_look to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_media_page to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_connectivity_page to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_open_on to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_slider_ticks to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_close_after to CustomizationPage.NOTIFICATIONS,
+    R.string.edit_controls to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_reset to CustomizationPage.NOTIFICATIONS,
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
     R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,
@@ -1606,6 +1623,10 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
  * A search result scrolls to its row when it is a row: an entry with no keywords, or one with keywords whose title is also
  * a row (Folder background is found by "glass" or "blur" and is still one control further down its page).
  */
+/** The rows that exist only while [FeatureGate.CC_SETTINGS_V2] is open; search skips them until then. */
+internal val CC_SETTINGS_V2_ROWS: Set<Int> = setOf(R.string.cc_media_page, R.string.cc_connectivity_page, R.string.cc_open_on, R.string.cc_slider_ticks,
+    R.string.cc_close_after, R.string.edit_controls, R.string.cc_reset)
+
 internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null || SettingsRows.any { it.first == title }
 
 /**
@@ -1644,6 +1665,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
             .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
+            // The deeper Control Center rows are on the page only while their gate is open, so search only finds them then.
+            .filter { it.first !in CC_SETTINGS_V2_ROWS || FeatureGate.CC_SETTINGS_V2.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }

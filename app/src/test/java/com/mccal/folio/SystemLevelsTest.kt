@@ -158,4 +158,35 @@ class SystemLevelsTest {
         assertEquals(.2f, readings.last().brightness, .005f)
         levels.stop()
     }
+
+    // --- the brightness mode (the Auto chip) ---
+
+    @Test fun `the brightness mode reads as auto, manual or unknown`() {
+        assertEquals(BrightnessMode.AUTO, brightnessModeOf(android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC))
+        assertEquals(BrightnessMode.MANUAL, brightnessModeOf(android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL))
+        assertEquals("a phone that does not say", BrightnessMode.UNKNOWN, brightnessModeOf(null))
+        assertEquals(BrightnessMode.UNKNOWN, brightnessModeOf(7))
+    }
+
+    @Test fun `a drag has to switch to manual unless the phone is known to be on automatic`() {
+        assertTrue(SystemReading(.5f, .5f, BrightnessMode.MANUAL).brightnessManual)
+        assertTrue(SystemReading(.5f, .5f, BrightnessMode.UNKNOWN).brightnessManual)
+        assertFalse(SystemReading(.5f, .5f, BrightnessMode.AUTO).brightnessManual)
+    }
+
+    @Test fun `automatic brightness switched on or off from outside is picked up`() {
+        val settings = android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE
+        android.provider.Settings.System.putInt(context.contentResolver, settings, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+        val readings = mutableListOf<SystemReading>()
+        val levels = SystemLevels(context) { readings += it }
+        assertEquals(BrightnessMode.MANUAL, levels.read().brightnessMode)
+        levels.start()
+        android.provider.Settings.System.putInt(context.contentResolver, settings, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC)
+        shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertEquals(BrightnessMode.AUTO, readings.last().brightnessMode)
+        android.provider.Settings.System.putInt(context.contentResolver, settings, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+        shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertEquals(BrightnessMode.MANUAL, readings.last().brightnessMode)
+        levels.stop()
+    }
 }
