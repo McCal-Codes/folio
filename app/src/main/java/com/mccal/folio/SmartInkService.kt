@@ -11,8 +11,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 /**
  * Smart clock ink: the one thing this service can do is take a picture of the screen, so Folio can measure what is behind
  * the Big Clock when Android's own wallpaper is behind Home. Its own accessibility service, not the gestures service,
- * so turning it on is its own decision and the gestures service still cannot read the screen. It observes no events,
- * cannot inspect windows and cannot tap or type. Nothing here keeps the picture: see [SmartClockInk].
+ * so turning it on is its own decision. Both services hold `canTakeScreenshot` (since #482 the gestures service has it
+ * too, for the panel blur: see [SystemShadeAccessibilityService]); neither can read window contents. This one observes
+ * no events, cannot inspect windows and cannot tap or type. Nothing here keeps the picture: see [SmartClockInk].
  */
 class SmartInkService : AccessibilityService() {
     override fun onServiceConnected() {
