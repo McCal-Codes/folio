@@ -259,8 +259,9 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     onDragCancel = { dragging = false; dragOffset = androidx.compose.ui.geometry.Offset.Zero },
                     onDragEnd = {
                         dragging = false
-                        val newCenterX = (geometry.centerXPx + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
-                        val newTopDp = (geometry.top + dragOffset.y / density.density).coerceAtLeast(4f)
+                        // The drawn spot includes the saved nudge, which is stored on its own: take it out so the drop does not count it twice.
+                        val newCenterX = (geometry.centerXPx - nudge.dxDp * density.density + dragOffset.x).coerceIn(0f, windowWidth.toFloat())
+                        val newTopDp = (geometry.top - nudge.dyDp + dragOffset.y / density.density).coerceAtLeast(4f)
                         val nearCamera = cutout != null && islandSnapsToCamera(newCenterX, newTopDp, realCamera, density.density)
                         custom = if (nearCamera) null else IslandPosition(newCenterX / windowWidth, newTopDp)
                             .clamped(windowWidth, windowHeight, density.density, cameraGeometry.pillH)
@@ -549,8 +550,11 @@ internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowW
     val placed = custom?.clamped(windowWidthPx, windowHeightPx, density, atCamera.pillH)
         ?.let { islandGeometryAt(it.xFraction * windowWidthPx, it.topDp, windowWidthPx, density) } ?: atCamera
     // A nudge shifts the pill as it is (wrapping the camera or free), so the wrap width and height are never lost to it.
-    val top = (placed.top + nudge.dyDp).coerceAtLeast(0f)
-    val moved = placed.copy(centerXPx = placed.centerXPx + nudge.dxDp * density, centerY = top + placed.pillH / 2, top = top)
+    // Kept on screen: a pill already near the bottom must not be nudged off it (the same bottom bound as a dragged spot, IslandPosition.clamped).
+    val lowest = maxOf((windowHeightPx / density - placed.pillH - ISLAND_EDGE_GAP).coerceAtLeast(0f), placed.top)
+    val top = (placed.top + nudge.dyDp).coerceIn(0f, lowest)
+    val centerX = (placed.centerXPx + nudge.dxDp * density).coerceIn(0f, windowWidthPx.toFloat())
+    val moved = placed.copy(centerXPx = centerX, centerY = top + placed.pillH / 2, top = top)
     return moved.copy(extraW = IslandSize.clamp(extraWidthDp, placed))
 }
 

@@ -364,7 +364,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private var shadeBlurPx = 0
     private var shadeRequest = 0
-    private val shadeBackdrop = MutableStateFlow<androidx.compose.ui.graphics.ImageBitmap?>(null)
+    internal val shadeBackdrop = MutableStateFlow<androidx.compose.ui.graphics.ImageBitmap?>(null)
     private var shadeBlurAnimator: android.animation.ValueAnimator? = null
 
     /**
@@ -393,12 +393,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         if (flags != params.flags) { params.flags = flags; runCatching { wm.updateViewLayout(view, params) } }
     }
 
-    private fun removeShade() {
+    internal fun removeShade() {
         shadeRequest++ // a request still waiting for its picture must not add a window after this (Home came to the front, or the configuration changed)
         shadeTimer?.cancel(); shadeTimer = null
         shadeBlurAnimator?.cancel(); shadeBlurAnimator = null
         shade?.let { it.removeCallbacks(shadeRemoval); runCatching { wm.removeView(it) } }; shade = null
         shadePanel.value = null
+        // The blurred picture of the app behind the panel goes with the panel. Only let go of, not recycled: a frame may still be drawing it.
+        shadeBackdrop.value = null
         shadeMonitor?.onStop(owner); shadeMonitor = null
         if (shadeReceiverOn) { runCatching { service.unregisterReceiver(shadeScreenOff) }; shadeReceiverOn = false }
     }
@@ -491,7 +493,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val params = buttonParams ?: return
         val floor = navigationInset() + (10 * density).toInt()
         val ceiling = (service.resources.displayMetrics.heightPixels * .6f).toInt()
-        params.y = (params.y - deltaPx).toInt().coerceIn(floor, ceiling)
+        params.y = liftedBarOffset((params.y - deltaPx).toInt(), floor, ceiling)
         runCatching { wm.updateViewLayout(view, params) }
         if (done) ButtonBarPosition.save(service, wideScreen(), landscapeNow(), (params.y - floor) / density)
     }

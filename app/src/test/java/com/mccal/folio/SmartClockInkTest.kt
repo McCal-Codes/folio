@@ -11,10 +11,23 @@ class SmartClockInkTest {
     }
 
     @Test fun inkIsSampledOnlyWhileFolioIsInFrontWithNothingOverHome() {
-        org.junit.Assert.assertTrue(shouldSampleClockInk(foregroundVisible = true, covered = false))
-        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = true, covered = true))
-        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = false, covered = false))
-        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = false, covered = true))
+        org.junit.Assert.assertTrue(shouldSampleClockInk(foregroundVisible = true, covered = false, safeMode = false))
+        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = true, covered = true, safeMode = false))
+        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = false, covered = false, safeMode = false))
+        org.junit.Assert.assertFalse(shouldSampleClockInk(foregroundVisible = false, covered = true, safeMode = false))
+    }
+
+    @Test fun safeModeNeverSamplesTheScreen() {
+        for (foreground in listOf(true, false)) for (covered in listOf(true, false))
+            org.junit.Assert.assertFalse(shouldSampleClockInk(foreground, covered, safeMode = true))
+    }
+
+    @Test fun thePanelBackdropPictureIsNotTakenInSafeMode() {
+        org.junit.Assert.assertTrue(panelBackdropSnapshotWanted(blurPx = 20f, pagesOpen = false, settingsPeeking = false, safeMode = false))
+        org.junit.Assert.assertFalse(panelBackdropSnapshotWanted(blurPx = 20f, pagesOpen = false, settingsPeeking = false, safeMode = true))
+        org.junit.Assert.assertFalse(panelBackdropSnapshotWanted(blurPx = 1f, pagesOpen = false, settingsPeeking = false, safeMode = false))
+        org.junit.Assert.assertFalse(panelBackdropSnapshotWanted(blurPx = 20f, pagesOpen = true, settingsPeeking = false, safeMode = false))
+        org.junit.Assert.assertFalse(panelBackdropSnapshotWanted(blurPx = 20f, pagesOpen = false, settingsPeeking = true, safeMode = false))
     }
 
     @Test fun theFirstMeasurementIsAlwaysTaken() {

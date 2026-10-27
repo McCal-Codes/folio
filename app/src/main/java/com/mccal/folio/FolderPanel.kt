@@ -118,6 +118,10 @@ internal fun FolderPanel(
         }
     }
     val folderLook = LocalFolderLook.current
+    val solidGlass = LocalSolidGlass.current
+    // Home's blur follows the folder's own opening, in the frame it draws (FolderBlur), so it arrives with the dim and the card rather than
+    // after them, and it fades out with the folder or while an app is carried out onto Home. Reduce Transparency has no blur: the stronger dim and a solid card do the work.
+    RegisterFolderBlur { FolderBackdrop.blurLevel(appear.value * carryFade, solidGlass) }
     // Mirrors Configuration.fitsRegularHomeLayout() (SizeClass.kt): the same signal every other screen already
     // uses to tell the cover screen apart from the unfolded inner screen, so a resized folder stays hinge-safe -
     // never past the inner screen's own ceiling, and never past the cover screen's narrower one.
@@ -155,7 +159,7 @@ internal fun FolderPanel(
                 }
             }
         }
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) * carryFade }.background(FolioGlass.scrim)
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) * carryFade }.background(FolderBackdrop.scrim(solidGlass))
         .clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
@@ -295,7 +299,7 @@ internal fun FolderPanel(
             )
             .testTag("folder-panel-content"),
             color = when (folderLook.background) {
-                FolderBackground.GLASS -> FolioGlass.card
+                FolderBackground.GLASS -> FolderBackdrop.card(solidGlass)
                 FolderBackground.SOLID -> FolioColors.SecondaryBackground
                 FolderBackground.CLEAR -> Color.Transparent
             }, contentColor = Color.White, shape = RoundedCornerShape(38.dp),
