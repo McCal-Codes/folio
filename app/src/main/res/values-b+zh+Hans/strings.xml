@@ -2152,7 +2152,7 @@
     <string name="cc_connectivity_page">连接页面</string>
     <string name="cc_open_on">打开时显示</string>
     <string name="cc_open_on_last">上次使用的页面</string>
-    <string name="cc_pages_note">只会重复第一页内容的页面会自动隐藏，不受这些设置影响。如果关闭了媒体和声音页面，而第一页放不下亮度和音量，它们将不会显示。</string>
+    <string name="cc_pages_note">只会重复第一页内容的页面会自动隐藏，不受这些设置影响。如果关闭了媒体和声音页面，而第一页放不下亮度和音量，它们会移到下一个控制页面，始终可用。</string>
     <string name="cc_sliders_title">滑块</string>
     <string name="cc_slider_ticks">拖动时触感反馈</string>
     <string name="cc_sliders_note">拖动时，亮度和音量会显示百分比。拖动亮度会关闭自动亮度；滑块上的“自动”标签可再次开启。</string>

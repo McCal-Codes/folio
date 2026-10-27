@@ -2173,7 +2173,7 @@
     <string name="cc_connectivity_page">연결 페이지</string>
     <string name="cc_open_on">열 때 표시</string>
     <string name="cc_open_on_last">마지막으로 본 페이지</string>
-    <string name="cc_pages_note">첫 페이지와 내용이 겹치는 페이지는 설정과 관계없이 자동으로 숨겨집니다. 미디어 및 소리 페이지를 끈 상태에서 첫 페이지에 밝기와 볼륨을 둘 공간이 없으면 표시되지 않습니다.</string>
+    <string name="cc_pages_note">첫 페이지와 내용이 겹치는 페이지는 설정과 관계없이 자동으로 숨겨집니다. 미디어 및 소리 페이지를 끈 상태에서 첫 페이지에 밝기와 볼륨을 둘 공간이 없으면 다음 제어 페이지로 옮겨져 항상 사용할 수 있습니다.</string>
     <string name="cc_sliders_title">슬라이더</string>
     <string name="cc_slider_ticks">드래그할 때 햅틱 틱</string>
     <string name="cc_sliders_note">밝기와 볼륨은 드래그하는 동안 퍼센트를 표시합니다. 밝기를 드래그하면 자동 밝기가 꺼지며, 슬라이더의 자동 칩으로 다시 켤 수 있습니다.</string>

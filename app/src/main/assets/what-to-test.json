@@ -1,52 +1,136 @@
 {
-  "release": "0.6.9-beta.5",
+  "release": "0.6.9-beta.6",
   "items": [
     {
-      "id": "panels-over-apps",
-      "title": "Folio's panels over other apps",
-      "where": "Settings > Notifications > Panels",
+      "id": "cc-swipes",
+      "title": "Control Center pages and swipe away",
+      "where": "Home, status rail. Fold: try the cover and the inner screen",
       "steps": [
-        "Turn on Folio's panels over other apps. Open any app, then use One UI's one-hand operation or a Routine that opens the Notification shade.",
-        "Folio's Notification Center should slide down over the app, and close when you tap outside, swipe up, or press Home. Try Quick settings the same way.",
-        "On a message, tap Reply: a small box to type in should open over the app, and sending should return you to it. Options and the ... button are on Home only."
+        "Tap the status rail on Home to open Control Center. Swipe down from a gap between tiles: the next page should follow your finger and settle, and a short drag should spring back. If the strip shows only one page, go to step 3.",
+        "Swipe up on that page: it should go back to the page before, without closing the panel.",
+        "On the first page, drag up from empty space: the panel should follow your finger, tick lightly at the point where letting go closes it, and close on release. A short slow drag should spring back.",
+        "Tap the close button beside power: it should close. Open it again and tap the empty margin around the grid: it should close. Tap between two tiles: it should stay open."
       ]
     },
     {
-      "id": "rows-by-hand",
-      "title": "Pick 5, 6 or 7 rows",
-      "where": "Settings > Home > Rows",
+      "id": "status-rail-press",
+      "title": "Status rail tap and hold",
+      "where": "Home, Side Bar status",
       "steps": [
-        "Open Settings > Home and choose Rows 6, then 7. Look at both screens, folded and open.",
-        "Icons get smaller to fit the rows; the cover screen shows the smallest icons. Say if any screen looks too small or scrolls.",
-        "Choose Automatic again: it should look exactly as it did before."
+        "Tap the status capsule: Control Center should open.",
+        "Hold the capsule for a couple of seconds: only the capsule should shade, with no faint second pill above it.",
+        "Enter Edit Home and tap the capsule: Control Center should not open."
       ]
     },
     {
-      "id": "notification-sections",
-      "title": "Notification sections",
-      "where": "Settings > Notifications > Panels",
+      "id": "cc-volume-keys",
+      "title": "Sliders follow the volume keys",
+      "where": "Control Center. Play something in a music app first",
       "steps": [
-        "Turn on Notification sections, then pull down Notification Center.",
-        "Music or a timer should be under Now, chats under Conversations, and silent apps folded under Quiet with a count. Tap Quiet to open it.",
-        "Check nothing urgent (a call, an alarm) is hidden in Quiet, and say what you found there that you would not call quiet."
+        "Open Control Center and press the volume keys: the volume slider should move with each press, within about a quarter of a second.",
+        "Mute the music volume with the keys: the slider should read empty."
       ]
     },
     {
-      "id": "notification-actions",
-      "title": "The ... button and Clear per app",
-      "where": "Notification Center",
+      "id": "folder-blur",
+      "title": "Open folders blur Home behind them",
+      "where": "Home and App Library. Fold: cover and inner screen",
       "steps": [
-        "With Notification sections on, tap the ... on a notification: Open, Snooze, Notification settings and Clear.",
-        "Open an app with several notifications and tap Clear next to Show Less: the first tap asks, the second clears only that app."
+        "Open a folder on Home: Home should blur and dim behind it as it opens, and none of Home's clock or date text should show behind the folder's title.",
+        "Open a category folder in the App Library: the same blur and dim.",
+        "Close it: Home should be sharp again. With Reduce Transparency on (Settings > Accessibility, switch it back after) there should be no blur, a darker dim and a solid card."
       ]
     },
     {
-      "id": "shade-layouts",
-      "title": "Shades on the unfolded screen",
-      "where": "Settings > Notifications > Panels",
+      "id": "landscape-home",
+      "title": "Landscape Home keeps every row",
+      "where": "Home app, rotation. Turn auto-rotate on for this, then set it back. Fold: cover and inner",
       "steps": [
-        "On the unfolded screen choose Full screen, Card and Side by side for the unfolded layout, and pull each shade down.",
-        "A card should sit under the corner you pulled it from and leave Home visible. Side by side shows both panels on one page."
+        "Rotate the phone to landscape on Home: every row of apps should be whole, with labels, above the Search strip. A short window should split into two columns.",
+        "Turn from landscape to portrait and back a few times, and fold and unfold with Home open: Folio should not close."
+      ]
+    },
+    {
+      "id": "disabled-app-spot",
+      "title": "A turned-off app keeps its spot",
+      "where": "Android Settings > Apps. Turn the app back on afterwards",
+      "steps": [
+        "Pick an app that is on Home or in the dock and that Android lets you Turn off (a preinstalled app). Tap Turn off, then go to Home: its icon should stay in the same spot, dimmed.",
+        "Turn the app on again: the icon should be back at full strength in the same spot, with no hole left in the grid."
+      ]
+    },
+    {
+      "id": "large-font",
+      "title": "Large text is not cut off",
+      "where": "Android Settings > Display > Font size. Set the size back afterwards",
+      "steps": [
+        "Set the font to its largest size. On Home, app labels should grow but stay whole, and the clock and date cards should fit.",
+        "Open Spotlight: the web search chips (Ask ChatGPT and the others) should wrap onto a second line, none cut off at the edge.",
+        "Open Folio's Settings and the Market: tab labels should stay whole, the back label should give way to Done, and the Market's Featured banner text should end with an ellipsis rather than being cut."
+      ]
+    },
+    {
+      "id": "settings-display-size",
+      "title": "Settings stays put on a size change",
+      "where": "Folio Settings, then Android Settings > Display. Set the size back afterwards",
+      "steps": [
+        "Open Folio's Settings on Wallpaper & Appearance. Switch to Android's Settings, change Display size (Screen zoom on Samsung) one step, and switch back: Folio's Settings should still be on Wallpaper & Appearance.",
+        "Do the same in the Market on its Installed tab: it should stay there and not jump to Featured."
+      ]
+    },
+    {
+      "id": "pull-down-any-app",
+      "title": "Pull down from any app",
+      "where": "Settings > Notifications & Control Center > Panels",
+      "steps": [
+        "Turn on Folio's panels over other apps, then Pull down from the top of any app (Android asks you to turn on Folio's gestures service).",
+        "Open another app and drag down from the top left: Notification Center should open over it. Drag down from the top right: Control Center.",
+        "Behind each panel there should be a blurred picture of that app. If there is only a flat color, turn Folio's gestures service off and on once in Android's Accessibility settings and try again."
+      ]
+    },
+    {
+      "id": "cc-look-size",
+      "title": "Control Center look and size",
+      "where": "Settings > Notifications & Control Center",
+      "steps": [
+        "Under Control Center look, step through Clear glass, Frosted and Solid. Clear glass is the start; white text should stay readable over a bright wallpaper in all three, and Frosted should have no darker plate behind the tiles.",
+        "Step Control Center size from Small to Extra Large: nothing should scroll or be cut off. Hold a tile: it should dip. Drag the brightness slider: it should show its percent."
+      ]
+    },
+    {
+      "id": "smart-clock-ink",
+      "title": "Smart clock ink",
+      "where": "Settings > Wallpaper & Appearance > Text on Home. It uses a second accessibility service",
+      "steps": [
+        "With Android's own wallpaper behind Home and a Big Clock on Home, turn on Smart clock ink. Android's Accessibility screen should open: turn on Folio Smart clock ink.",
+        "Go back to Home: the clock text should be light or dark to suit what is really behind the clock. Try a pale wallpaper and a dark one, and say if the text ever flips back and forth.",
+        "Turn the service off in Accessibility: the clock text should go back to following Android's wallpaper colors."
+      ]
+    },
+    {
+      "id": "setup-home-apps",
+      "title": "Setup: Your Home apps",
+      "where": "First setup, from the button below",
+      "action": "setup",
+      "steps": [
+        "Tap Open the New Setup below and pick a starting point. On the Your Home apps page, tick and untick apps: the grid above should change at once, with ticked apps packed in two rows. Apps that share a name should show their package name underneath.",
+        "Tap Skip: Home should stay as it was. Do not tap Use Folio now or Continue unless you have a layout backup, as they change your Home."
+      ]
+    },
+    {
+      "id": "rows-automatic-label",
+      "title": "The Rows menu names Automatic",
+      "where": "Settings > Home Screen & Dock > Rows",
+      "steps": [
+        "Choose 6 rows, then open the menu again: Automatic should show the number it would give on this screen, not 6. Put Rows back to what you had."
+      ]
+    },
+    {
+      "id": "settings-three-groups",
+      "title": "Settings in three groups",
+      "where": "Settings",
+      "steps": [
+        "Open Settings: General and Accessibility should come first, then Launcher, then Extensions. Privacy & Permissions and Support Folio should be under General. Say if anything you used to find is now hard to find."
       ]
     },
     {
@@ -57,34 +141,6 @@
         "Drag a widget onto a spot with apps, then resize one taller over a row of apps. The apps should move along instead of the spot turning red.",
         "With a full page, the last apps should carry on to a new page. Then use Undo Last Layout Change: everything should return.",
         "Watch that the apps slide into place smoothly, also with Reduce Motion on."
-      ]
-    },
-    {
-      "id": "spotlight-add",
-      "title": "Add to Home from Spotlight",
-      "where": "Spotlight",
-      "steps": [
-        "Search for an app that is not on Home and tap the + on the Top Hit: it should appear on Home, and the row should say On Home.",
-        "Try an app that is already on Home, and one inside a folder."
-      ]
-    },
-    {
-      "id": "smooth-motion",
-      "title": "Smooth animations",
-      "where": "Everywhere above",
-      "steps": [
-        "Look at each thing above at normal speed, and once with Animation Speed slower. Nothing should pop or jump.",
-        "Turn Reduce Motion on: panels and sections should fade, with no sliding or growing."
-      ]
-    },
-    {
-      "id": "new-setup",
-      "title": "The new setup (optional)",
-      "where": "Optional",
-      "action": "setup",
-      "steps": [
-        "Open the new setup from here. Nothing changes unless you choose something.",
-        "Look at the starting-point choices, and leave without changing anything if you like."
       ]
     }
   ]
