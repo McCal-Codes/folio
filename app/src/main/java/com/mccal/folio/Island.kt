@@ -185,14 +185,10 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     /** Last alerting post time per notification key, so updates that don't alert don't pop up again. */
-    private val announced = object : LinkedHashMap<String, Long>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?) = size > 64
-    }
+    private val announced = RecentMap<String, Long>(64)
 
     /** What each notification last popped up with, so an app re-posting the same warning doesn't pop up again. */
-    private val shownContent = object : LinkedHashMap<String, Pair<Int, Long>>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Long>>?) = size > 64
-    }
+    private val shownContent = RecentMap<String, Pair<Int, Long>>(64)
     private fun isRepeat(key: String, title: String?, text: String?, posted: Long): Boolean {
         // The time the app itself posted goes into the signature: an app re-posting one warning keeps its own
         // `when`, while a person sending "ok" twice in a conversation makes a new notification with a new one —
@@ -287,7 +283,11 @@ class IslandListenerService : NotificationListenerService() {
     private fun publishNow() {
         val controllers = runCatching { sessions?.getActiveSessions(component(this)) }.getOrNull().orEmpty()
         watch(controllers) // every pass, so ended sessions are unregistered even during a call
-        mutable.value = runCatching { currentOngoing() ?: currentMedia(controllers) ?: currentProgress() }.getOrNull()
+        // The island shows one thing at a time (a call or timer comes before the music), but the Music widget shows the track
+        // whatever else is going on, so the media is read on its own as well.
+        val media = runCatching { currentMedia(controllers) }.getOrNull()
+        mediaMutable.value = media
+        mutable.value = runCatching { currentOngoing() ?: media ?: currentProgress() }.getOrNull()
         notificationsMutable.value = runCatching { currentNotifications() }.getOrDefault(emptyList())
         runCatching { rememberMessageChannels() }
     }
@@ -530,6 +530,12 @@ class IslandListenerService : NotificationListenerService() {
         /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
         val activity: StateFlow<IslandActivity?> = PrivateRecording.redact(ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)) { current, swapped ->
             current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) }
+        }
+        private val mediaMutable = MutableStateFlow<IslandActivity.Media?>(null)
+        /** The playing track whatever else the island is showing: for the Music widget, which is not the island. */
+        // Private While Recording hides the playing track on Home too, not only in the island.
+        val media: StateFlow<IslandActivity.Media?> = PrivateRecording.redact(ScreenshotMode.hide(mediaMutable.asStateFlow(), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) as? IslandActivity.Media }
         }
         val connected = MutableStateFlow(false)
         private const val PUBLISH_COALESCE_MS = 120L

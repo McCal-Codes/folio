@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import androidx.compose.material.icons.rounded.LockClock
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.ui.res.stringResource
@@ -231,6 +232,9 @@ internal fun VisualWidgetPicker(
     val widgetPanelLabel = stringResource(R.string.widget_panel_title)
     val suggestionsLabel = stringResource(R.string.suggestions)
     val bigClockLabel = stringResource(R.string.big_clock)
+    val musicWidgetLabel = stringResource(R.string.music)
+    val musicWidgetContext = LocalContext.current
+    val musicWidgetOpen = remember(musicWidgetContext) { FeatureGate.MUSIC_WIDGET.isOpen(musicWidgetContext) }
     val upNextLabel = stringResource(R.string.up_next)
     val dateLabel = stringResource(R.string.date)
     val clockLabel = stringResource(R.string.clock)
@@ -257,9 +261,15 @@ internal fun VisualWidgetPicker(
     }
     val filtered = remember(entries, words, selectedApp) { entries.orEmpty().filter { entry ->
         (selectedApp == null || (selectedApp != FOLIO_WIDGETS && entry.appLabel == selectedApp)) &&
-        (words.isEmpty() || listOf(entry.appLabel, entry.providerLabel, entry.description,
-            entry.provider.provider.packageName).any { it.lowercase().contains(words) })
+        matchesWidgetSearch(words, entry.appLabel, entry.providerLabel, entry.description, entry.provider.provider.packageName)
     } }
+    val allBuiltins = listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
+        Triple(UP_NEXT_WIDGET, upNextLabel, androidx.compose.material.icons.Icons.AutoMirrored.Rounded.EventNote), Triple(BIG_CLOCK_WIDGET, bigClockLabel, Icons.Rounded.LockClock), Triple(SUGGESTIONS_WIDGET, suggestionsLabel, androidx.compose.material.icons.Icons.Rounded.AutoAwesome),
+        Triple(MUSIC_WIDGET, musicWidgetLabel, Icons.Rounded.MusicNote), Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
+        .filter { it.first != MUSIC_WIDGET || musicWidgetOpen }
+    // Folio's own widgets are searchable like any app's, and shown with the Folio chip or while browsing.
+    val builtins = if ((selectedApp == null || selectedApp == FOLIO_WIDGETS) && selectedProfile.isPersonal)
+        allBuiltins.filter { matchesWidgetSearch(words, it.second, folioLabel) } else emptyList()
     // iOS widget gallery: dark glass, large title, search capsule, grid of preview cards grouped by app.
     val ink = Color.White
     val secondary = FolioColors.SecondaryLabel
@@ -277,7 +287,7 @@ internal fun VisualWidgetPicker(
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .12f))
+            Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .12f))
                 .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
@@ -296,7 +306,7 @@ internal fun VisualWidgetPicker(
                 horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 profiles.forEach { profile ->
                     val selected = profile.userSerial == selectedProfile.userSerial
-                    Text(profile.label, color = if (selected) Color.Black else ink, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    Text(profile.label, color = if (selected) Color.Black else ink, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .14f))
                             .clickable { onSelectProfile(profile) }.padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp))
                 }
@@ -323,22 +333,19 @@ internal fun VisualWidgetPicker(
                 }
                 fun header(key: String, title: String, count: Int? = null) = item(key, span = { GridItemSpan(maxLineSpan) }) {
                     Row(Modifier.padding(top = FolioSpace.MEDIUM.dp, start = FolioSpace.HAIR.dp), verticalAlignment = Alignment.Bottom) {
-                        Text(title, color = ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        Text(title, color = ink, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold)
                         count?.let { Text("  $it", color = secondary, fontSize = FolioType.FOOTNOTE.sp) }
                     }
                 }
                 if (entries == null) item("catalog-loading", span = { GridItemSpan(maxLineSpan) }) {
                     Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.TopCenter) { CircularProgressIndicator(color = ink) }
                 }
-                if (words.isEmpty() && (selectedApp == null || selectedApp == FOLIO_WIDGETS) && selectedProfile.isPersonal) {
-                    val builtins = listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
-                        Triple(UP_NEXT_WIDGET, upNextLabel, androidx.compose.material.icons.Icons.AutoMirrored.Rounded.EventNote), Triple(BIG_CLOCK_WIDGET, bigClockLabel, Icons.Rounded.LockClock), Triple(SUGGESTIONS_WIDGET, suggestionsLabel, androidx.compose.material.icons.Icons.Rounded.AutoAwesome),
-                        Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
+                if (builtins.isNotEmpty()) {
                     // Folio's own widgets follow the same rule as any app's: one row while browsing.
                     val cappedFolio = selectedApp == null && FOLIO_WIDGETS !in expandedApps && builtins.size > columns
                     header("duo-widgets", folioLabel, if (cappedFolio) builtins.size else null)
                     items(if (cappedFolio) builtins.take(columns) else builtins, key = { "builtin-${it.first}" }) { (id, label, icon) ->
-                        GalleryCard(label, stringResource(R.string.folio), stringResource(if (id == BIG_CLOCK_WIDGET) R.string.wide else R.string.small), Modifier.testTag("widget-builtin-$id")
+                        GalleryCard(label, stringResource(R.string.folio), stringResource(if (id == BIG_CLOCK_WIDGET || id == MUSIC_WIDGET) R.string.wide else R.string.small), Modifier.testTag("widget-builtin-$id")
                             .clickable { focusManager.clearFocus(); keyboard?.hide(); onBuiltin(id) }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(22.dp))
                                 .background(Color.White.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
@@ -381,7 +388,7 @@ internal fun VisualWidgetPicker(
                     }
                     if (capped) showAll(app, group.size)
                 }
-                if (entries != null && filtered.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+                if (galleryIsEmpty(entries != null, filtered.size, builtins.size)) item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(stringResource(R.string.no_widgets_found), color = secondary, modifier = Modifier.padding(FolioSpace.XL.dp))
                 }
             }
@@ -434,3 +441,11 @@ private fun WidgetAppRow(apps: List<Pair<String, Bitmap?>>, selected: String?, l
         }
     }
 }
+
+/** True when [words] (already lowercase and trimmed) is empty or appears in any of [texts]. */
+internal fun matchesWidgetSearch(words: String, vararg texts: String): Boolean =
+    words.isEmpty() || texts.any { it.lowercase().contains(words) }
+
+/** The "No Widgets Found" message belongs only to a loaded gallery with nothing to show, Folio's own widgets included. */
+internal fun galleryIsEmpty(loaded: Boolean, systemWidgets: Int, folioWidgets: Int): Boolean =
+    loaded && systemWidgets == 0 && folioWidgets == 0

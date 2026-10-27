@@ -9,7 +9,7 @@
 <resources>
     <string name="dune_wallpaper_description">你在 Folio 中选择的背景，已按你的屏幕尺寸调整。</string>
     <string name="shade_service_label">Folio 手势与悬浮控件</string>
-    <string name="shade_service_description">让 Folio 通过主屏幕手势打开系统的通知和快捷设置面板；并且仅在你开启时，在其他 App 上方显示 Folio 的程序坞把手和灵动岛、打开程序坞中的 App 以及返回主屏幕。它不会读取屏幕内容，也不会观察你在其他 App 中的操作。</string>
+    <string name="shade_service_description">让 Folio 通过主屏幕手势打开系统的通知和快捷设置面板；并且仅在你开启时，在其他 App 上方显示 Folio 的程序坞把手和灵动岛、打开程序坞中的 App 以及返回主屏幕。它不会读取屏幕内容，也不会观察你在其他 App 中的操作。唯一的例外：当 Folio 的面板在其他 App 上方打开且模糊已开启时，它会截取一次屏幕，仅用于在面板后方做模糊。这张图片会立即缩小，只保留在内存中，不会被保存或发送，面板关闭后即被丢弃。</string>
     <string name="personal">个人</string>
     <string name="work">工作</string>
     <string name="turn_on_work_apps">开启工作 App</string>
@@ -29,6 +29,9 @@
     <string name="set_as_home_app">设为主屏幕应用</string>
     <string name="undo_last_layout_change">撤销上一次布局更改</string>
     <string name="background">背景</string>
+    <string name="folder_background">文件夹背景</string>
+    <string name="status_bar_background">状态栏背景</string>
+    <string name="settings_keywords_folder_background">文件夹 背景 玻璃 模糊 外观 folder background</string>
     <string name="android_wallpaper">Android 墙纸</string>
     <string name="folio_background">Folio 背景</string>
     <string name="change_android_wallpaper">更改 Android 墙纸</string>
@@ -52,6 +55,12 @@
     <!-- Settings > Notifications > Panels: how Notification Center sits on a big (unfolded) screen. Draft, needs a native read. -->
     <!-- Settings > Notifications > Panels: what a phone's own shade action opens while another app is in front. Draft, needs a native read. -->
     <string name="shade_over_apps">在其他应用上方显示 Folio 面板</string>
+    <string name="cc_page_controls">控制</string>
+    <string name="cc_page_media">媒体和声音</string>
+    <string name="cc_page_connectivity">连接</string>
+    <string name="cc_page_of">%1$s，第 %2$d 页，共 %3$d 页</string>
+    <string name="shade_pull">在任何应用顶部下拉</string>
+    <string name="shade_pull_note">从应用顶部边缘的左半部分下拉会打开通知中心，右半部分下拉会打开控制中心，取代手机自带的通知栏。开启后，这条顶部区域内的点按不会传到应用，全屏应用仍使用 Android 自带的。它跟随“在其他应用上方显示 Folio 面板”，该选项关闭时它也会关闭。</string>
     <string name="shade_over_apps_note">当快捷方式、例行任务或 One UI 的单手操作打开通知栏或快捷设置时，Folio 会在当前打开的应用上方显示自己的通知中心或控制中心，而不是手机自带的面板。需要开启 Folio 手势。从应用顶部下滑仍会打开手机自带的通知栏。在其他应用上方时，点按“回复”会打开输入框，“选项”仅在主屏幕上可用。不会在锁屏上方打开。</string>
     <string name="nc_layout_title">展开时的布局</string>
     <string name="nc_layout_full">全屏</string>
@@ -508,6 +517,7 @@
     <string name="widget_size">小组件大小</string>
     <string name="rows">行数</string>
     <string name="position">位置</string>
+    <string name="placement">摆放方式</string>
     <string name="dock">程序坞</string>
     <string name="your_apps">你的 App</string>
     <string name="dock_position_1_d">程序坞位置 %1$d</string>
@@ -564,7 +574,6 @@
     <string name="tinted">着色</string>
     <string name="reduce_transparency">降低透明度</string>
     <string name="glass_is_nearly_solid_because_android_s">由于 Android 的高对比度已开启，玻璃几乎不透明。</string>
-    <string name="widgets_the_side_bar_and_the_dock_are_ne">小组件、侧边栏和程序坞几乎不透明，边缘也更清晰。关闭此项后，玻璃设置会恢复。</string>
     <string name="frost_is_how_see_through_widgets_and_the">磨砂决定小组件和侧边栏的透明程度；描边是它们周围细细的浅色边缘。</string>
     <string name="save_backup_2">保存备份</string>
     <string name="save">存储</string>
@@ -662,6 +671,21 @@
     <string name="all_controls_added">已添加所有控制</string>
     <string name="add_a_control">添加控制</string>
     <string name="not_playing">未在播放</string>
+    <string name="music">音乐</string>
+    <string name="now_playing">正在播放</string>
+    <string name="playing">正在播放</string>
+    <string name="paused">已暂停</string>
+    <string name="smart_clock_ink">智能时钟文字颜色</string>
+    <string name="smart_clock_ink_off_note">已关闭。时钟文字颜色由 Android 壁纸颜色决定。</string>
+    <string name="smart_clock_ink_on_note">已开启。时钟会查看主屏幕的画面来选择浅色或深色文字。可在辅助功能设置中关闭。</string>
+    <string name="smart_ink_lead">即使使用 Android 自带壁纸，Folio 也能根据时钟背后的真实画面为大时钟选择浅色或深色文字。</string>
+    <string name="smart_ink_fact_looks">Folio 会拍摄主屏幕的画面，只用于为时钟选择浅色或深色文字。</string>
+    <string name="smart_ink_fact_kept">它只测量时钟下方的部分，并立即丢弃画面，只保留几个亮度数值，不会保存或发送。</string>
+    <string name="smart_ink_fact_home">仅在 Folio 主屏幕位于前台时进行。此刻绘制在主屏幕上方的内容（例如悬浮窗）可能会出现在图片中。</string>
+    <string name="smart_ink_fact_separate">这是单独的辅助功能服务，因此 Folio 手势服务仍然无法读取你的屏幕。可随时在辅助功能设置中关闭。</string>
+    <string name="open_accessibility_settings">打开辅助功能设置</string>
+    <string name="smart_ink_service_label">Folio 智能时钟颜色</string>
+    <string name="smart_ink_service_description">允许 Folio 拍摄主屏幕画面，为大时钟选择浅色或深色文字。它只测量时钟下方的部分并立即丢弃画面，不做其他任何事。</string>
     <string name="contacts">联系人</string>
     <string name="search_the_web_ask_ai">搜索网页并询问 AI</string>
     <string name="top_hit">最佳搜索结果</string>
@@ -1250,6 +1274,7 @@
     <string name="settings_keywords_tint_glass_with_wallpaper_color">玻璃 着色 磨砂 模糊 glass tint frost blur</string>
     <string name="settings_keywords_dark_appearance_dims_wallpaper">调暗 深色 夜间 dim dark mode night</string>
     <string name="settings_keywords_darken_behind_text">加深 暗影 渐变 可读性 对比 浅色 墙纸 scrim gradient shade legibility contrast light wallpaper</string>
+    <string name="settings_keywords_smart_clock_ink">时钟 文字颜色 壁纸 截图 辅助功能 浅色 深色 对比 可读性 clock ink screenshot accessibility</string>
     <string name="settings_appearance_light_dark_sunset">外观（浅色、深色、日落）</string>
     <string name="settings_keywords_appearance_light_dark_sunset">主题 深色 浅色 日出 日落 theme dark light sunrise sunset</string>
     <string name="settings_grid_icon_size_dock">网格、图标大小与程序坞</string>
@@ -1627,6 +1652,13 @@
         <item quantity="other">显示全部 %d 个</item>
     </plurals>
     <string name="general">通用</string>
+    <string name="settings_group_launcher">启动器</string>
+    <string name="settings_group_extensions">扩展</string>
+    <string name="control_center_look">控制中心样式</string>
+    <string name="cc_look_clear">透明玻璃</string>
+    <string name="cc_look_frosted">磨砂面板</string>
+    <string name="cc_look_solid">纯色</string>
+    <string name="cc_look_note">透明玻璃会在背景允许的范围内保持通透，只在文字需要时才变暗。磨砂面板和纯色始终更深。</string>
     <string name="language">语言</string>
     <string name="settings_keywords_general">通用 关于 版本 更新 新功能 帮助 路线图 致谢 高级</string>
     <string name="settings_keywords_language">语言 翻译 英语 韩语 中文</string>
@@ -1657,6 +1689,20 @@
     <string name="fold_motion_depth">壁纸与图标之间的层次感</string>
     <string name="fold_motion_light">铰链上的光</string>
     <string name="fold_motion_note">铰链转动时在展开的屏幕上双向播放。开启“减弱动态效果”时关闭。</string>
+    <string name="hinge_detents">铰链定位感</string>
+    <string name="hinge_detents_note">在 45°、90° 和 135° 有轻柔的点按感，完全展平时有更明显的咔嗒感。</string>
+    <string name="detent_light">轻</string>
+    <string name="detent_medium">中</string>
+    <string name="detent_firm">强</string>
+    <string name="detent_angle">铰链角度 %1$d 度</string>
+    <string name="detent_none">此处没有定位点</string>
+    <string name="detent_felt_tick">在 %1$d° 有轻柔的点按感</string>
+    <string name="detent_felt_closed">合上时有轻柔的点按感</string>
+    <string name="detent_felt_flat">展平时有明显的咔嗒感</string>
+    <string name="detent_way_root">正在使用来自 root 的铰链角度：所有定位点都有效。</string>
+    <string name="detent_way_steps">没有 root 时，折叠屏每次改变位置（合上、半开、展平）Folio 只点按一次。</string>
+    <string name="detent_haptics_off">触感已关闭。请在设置中打开触感反馈，才能感受到定位点。</string>
+    <string name="detent_footer">使用 Folio 自己的触感。Android 触摸反馈关闭时没有任何感觉。</string>
     <string name="duet_moved_note">折叠动画现在是 Duet 调整，样式和滑块都在它自己的页面上。</string>
     <string name="tweak_duet_detail">折叠动画会随铰链开合而变化：移动的一半是磨砂玻璃，内屏上等着你的是外屏的内容。</string>
     <string name="tweak_duet_credit">样式使用了 joeconsorti 及贡献者的 Duo Fold Live、Ant-lib 的 hingewave 和 Gary Keeler 的 FoldFX 的代码，均为 MIT 许可。灵感来自 Duo Open。</string>
@@ -2056,4 +2102,49 @@
     <string name="discover_no_fit">Discover 无法放在程序坞旁边。请返回主屏幕后重试。</string>
     <string name="discover_choose_dock_app">在主屏幕上选择程序坞应用</string>
     <string name="profile_app">%1$s应用</string>
+    <string name="home_apps_title">主屏幕应用</string>
+    <string name="home_apps_detail">勾选想放在主屏幕上的应用。Folio 已为在这部手机上找到的每类常用应用各勾选一个，最多八个。你可以随时更改。</string>
+    <string name="home_apps_none">主屏幕上还没有应用</string>
+    <string name="home_apps_show_all">显示全部应用</string>
+    <string name="use_folio_now">立即使用 Folio</string>
+    <plurals name="home_apps_count">
+        <item quantity="other">%d 个应用</item>
+    </plurals>
+    <plurals name="home_rows_count">
+        <item quantity="other">%d 行</item>
+    </plurals>
+    <string name="reduce_transparency_note">小组件、侧边栏和程序坞几乎不透明，边缘也更清晰，关闭此项前会隐藏玻璃设置。Android 的高对比度也有同样效果。</string>
+    <string name="glass_is_nearly_solid_turn_off_reduce_transparency">“降低透明度”已开启，因此玻璃几乎不透明。在“辅助功能”中关闭它即可恢复这些设置。</string>
+    <plurals name="backup_widgets_left_out">
+        <item quantity="other">有 %d 个小组件因其应用缺失而未包含。</item>
+    </plurals>
+    <string name="layout_backup_is_too_large">该布局备份超过 2 MB，Folio 无法读取。</string>
+    <string name="layout_backup_is_from_a_newer_folio">该布局备份来自更新版本的 Folio。请先更新 Folio 再恢复。</string>
+    <string name="document_picker_unavailable">文件选择器目前不可用。</string>
+    <string name="folio_was_updated_to_1_s">Folio 已更新到 %1$s</string>
+    <string name="island_status_ready_title">正在其他应用上方显示</string>
+    <string name="island_status_ready_body">音乐、通话和计时器会显示在灵动岛中。“勿扰模式”会限制消息弹窗。</string>
+    <string name="island_status_ready_live_body">音乐、通话和计时器会显示在灵动岛中。</string>
+    <string name="island_status_dnd_title">“勿扰模式”正在限制消息弹窗</string>
+    <string name="island_status_dnd_body">“勿扰模式”已开启，由它决定哪些消息弹窗会显示。音乐、通话和计时器仍会显示在其他应用上方。</string>
+    <string name="island_status_dnd_action">打开“勿扰模式”</string>
+    <string name="island_status_popup_title">Android 正在自行显示这些弹窗</string>
+    <string name="island_status_popup_body">“不与 Android 弹窗重复”已开启，因此灵动岛不会干预重要通知，例如大多数消息。</string>
+    <string name="island_status_popup_note">“不与 Android 弹窗重复”已开启，因此重要通知由 Android 自己的弹窗处理。</string>
+    <string name="island_status_popup_action">也在灵动岛中显示</string>
+    <string name="island_status_service_title">未在其他应用上方显示</string>
+    <string name="island_status_service_body">Folio 的手势服务已关闭。Android 只允许应用通过它在其他应用上方绘制。</string>
+    <string name="island_status_service_action">开启手势服务</string>
+    <string name="island_status_access_title">暂无可显示的内容</string>
+    <string name="island_status_access_body">通知访问权限已关闭，Folio 无法看到音乐、通话或消息。</string>
+    <string name="island_status_access_action">打开通知访问权限</string>
+    <string name="island_status_off_title">灵动岛在其他应用中已关闭</string>
+    <string name="island_status_off_body">在“所有应用中”下开启灵动岛，即可在其他应用上方看到它。</string>
+    <string name="island_status_live_off_title">音乐和实时进度已关闭</string>
+    <string name="island_status_live_off_body">开启“音乐和实时进度”后，音乐、通话和计时器会显示在灵动岛中。</string>
+    <string name="island_status_safe_title">已被安全模式暂停</string>
+    <string name="island_status_safe_body">安全模式下，灵动岛和程序坞只在主屏幕显示。关闭安全模式后即可在其他应用上方使用。</string>
+    <string name="package_import_market_off">此包需要 Folio 市场，市场需使用支持者代码开启。</string>
+    <string name="package_import_too_large">该文件太大，不是 Folio 软件包。</string>
+    <string name="package_import_too_slow">读取该文件用时过长。请先将其保存到手机上。</string>
 </resources>

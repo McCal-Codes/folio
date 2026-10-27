@@ -17,6 +17,11 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
@@ -47,7 +52,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -68,8 +76,11 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,7 +95,7 @@ import java.time.format.DateTimeFormatter
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
-    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN,
+    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
@@ -96,20 +107,46 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val config = LocalConfiguration.current
     val wide = config.fitsRegularHomeLayout()
     val shape = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp,
-        LocalHinge.current?.active == true || LocalShadeOverApps.current, current)
+        LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
-    // At most two thirds of the height: a card is as tall as its list, not the screen.
-    val listMax = minOf(620.dp, (config.screenHeightDp * .62f).dp)
+    // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
+    val cardListMax = (config.screenHeightDp * .62f).dp
+
+    // Clear glass is as light as the backdrop allows: how bright the backdrop picture is sets the dim and the tiles (the tone eases between values).
+    val backdrop = LocalShadeBackdropImage.current
+    val targetTone = androidx.compose.runtime.remember(backdrop, ccLook) {
+        if (ccLook == CcLook.CLEAR && backdrop != null) {
+            ccClearTone(ccBrightness(IntArray(backdrop.width * backdrop.height).also { backdrop.readPixels(it) }), dimScale = dim)
+        } else CC_DEFAULT_TONE
+    }
+    val toneSpec = androidx.compose.animation.core.tween<Float>(220)
+    val dimNow by androidx.compose.animation.core.animateFloatAsState(targetTone.dim, toneSpec, label = "panel dim")
+    val blackNow by androidx.compose.animation.core.animateFloatAsState(targetTone.tileBlack, toneSpec, label = "tile black")
+    val whiteNow by androidx.compose.animation.core.animateFloatAsState(targetTone.tileWhite, toneSpec, label = "tile white")
+    val tone = androidx.compose.runtime.remember(dimNow, blackNow, whiteNow) { CcGlassTone(dimNow, blackNow, whiteNow) }
 
     // Scrim: tap or swipe up anywhere to close.
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }.background(FolioGlass.scrim)
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
+        .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
                 detectVerticalDragGestures(onDragStart = { total = 0f }) { _, drag -> total += drag; if (total < -48.dp.toPx()) onClose() }
             } else Modifier)
-        .testTag("top-panel-scrim"))
+        .testTag("top-panel-scrim")) {
+        // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
+        // under a dim. Over an app with no picture yet or none possible, Folio's frosted glass stands in.
+        val picture = LocalShadeBackdropImage.current
+        val fadeIn by androidx.compose.animation.core.animateFloatAsState(if (picture != null) .94f else 0f, androidx.compose.animation.core.tween(160), label = "backdrop picture")
+        if (picture != null) {
+            androidx.compose.foundation.Image(picture, null, Modifier.fillMaxSize().graphicsLayer { alpha = fadeIn },
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = tone.dim)))
+        } else if (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current) {
+            FrostedBackdrop(LocalWallpaperTone.current, Modifier.fillMaxSize().graphicsLayer { alpha = .86f })
+        }
+    }
 
     // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right (Full screen), a card under the
     // corner it was pulled from (Card), or beside Control Center (Side by side); see shadeShape.
@@ -117,7 +154,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
-    CompositionLocalProvider(LocalHinge provides hinge) {
+    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
             shape == ShadeShape.BOTH -> Alignment.TopCenter
@@ -129,17 +166,20 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             else -> Alignment.TopEnd
         }) {
         // Notification Center uses the width; Control Center is a compact fixed grid (like iPad) so it isn't oversized.
-        fun panelModifier(which: ShadePanel) = Modifier.widthIn(max = when {
+        // Beside the clock the list takes at most 60 percent of the width, so the clock (40 percent) is never drawn under it.
+        fun panelModifier(which: ShadePanel) = (if (split) Modifier.fillMaxWidth(.6f) else Modifier).widthIn(max = when {
                 split -> 540.dp
                 shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
                 shape == ShadeShape.BOTH -> 440.dp
+                which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP -> Dp.Infinity // Control Center fills the window; its grid sets its own width
                 wide -> 460.dp
                 else -> 560.dp
             })
-            .then(if (which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) Modifier.fillMaxWidth() else Modifier)
+            .then(if ((which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) || (which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP)) Modifier.fillMaxWidth() else Modifier)
             .then(if (split) Modifier.fillMaxHeight() else Modifier)
-            // Taps on gaps inside the panel must not fall through to the scrim and close it.
-            .pointerInput(Unit) { detectTapGestures() }
+            // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
+            // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
+            .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
             .graphicsLayer {
                 val p = progress()
                 if (which == ShadePanel.NOTIFICATIONS) {
@@ -163,11 +203,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
-            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = listMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
-        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections, tall = split,
-            listMax = if (shape == ShadeShape.CARD) listMax else 620.dp, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
+            listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
         else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
@@ -177,7 +217,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, tall: Boolean = false, listMax: Dp = 620.dp, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -201,7 +241,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 lineHeight = 80.sp)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.notification_center), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             GlassIconButton(Icons.Rounded.Tune, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
             if (items.any { it.clearable }) {
                 Spacer(Modifier.width(8.dp))
@@ -240,7 +280,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                 }
             }
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().then(if (tall) Modifier.weight(1f, fill = false) else Modifier.heightIn(max = listMax)).edgeFade(listState), state = listState,
+            // The list takes what the column has left after the header and the app row, so it follows the window, not a fixed height.
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMax).edgeFade(listState), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
                 sectioned.forEach { (bucket, bucketGroups) ->
                   if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
@@ -284,17 +325,30 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     }
 }
 
-/** An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump. */
-private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier =
-    Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle), placementSpec = FolioMotion.spring(FolioMotion.Settle))
+/**
+ * An item that slides to its new place and fades in or out, the way a card does, so a section opening or closing is not a jump.
+ * With Reduce Motion it only fades: it takes its new place at once (DYN-11).
+ */
+@Composable
+private fun androidx.compose.foundation.lazy.LazyItemScope.settle(): Modifier {
+    val reduce = LocalReduceMotion.current
+    return Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
+        placementSpec = if (reduce) androidx.compose.animation.core.snap<androidx.compose.ui.unit.IntOffset>() else FolioMotion.spring<androidx.compose.ui.unit.IntOffset>(FolioMotion.Settle))
+}
 
 /** Clears one app's clearable notifications; like Clear all, the first tap asks and a second one within three seconds does it. */
 @Composable
 private fun ClearAppPill(clearable: List<NotificationItem>) {
     var confirm by remember(clearable.size) { mutableStateOf(false) }
     LaunchedEffect(confirm) { if (confirm) { kotlinx.coroutines.delay(3_000); confirm = false } }
-    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump.
-    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app") { asking ->
+    // The pill changes label in place, the way Clear all's does, instead of swapping with a jump; with Reduce Motion it only fades.
+    val reduce = LocalReduceMotion.current
+    androidx.compose.animation.AnimatedContent(confirm, label = "clear-app", transitionSpec = {
+        androidx.compose.animation.ContentTransform(
+            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduce) FolioMotion.FADE_MS else 220, delayMillis = if (reduce) 0 else 90)) +
+                (if (reduce) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.scaleIn(FolioMotion.spring(FolioMotion.Quick), initialScale = .92f)),
+            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
+    }) { asking ->
         if (asking) PanelPill(stringResource(R.string.clear_n_notifications, clearable.size)) { confirm = false; clearable.forEach { IslandListenerService.dismiss(it.key) } }
         else PanelPill(stringResource(R.string.clear)) { confirm = true }
     }
@@ -314,8 +368,8 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: 
 private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, onExpand: () -> Unit) {
     Box(modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp)) {
         // Two receding cards behind, like an iPhone notification stack.
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .45f)))
-        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF242428).copy(alpha = .66f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SurfaceCard.copy(alpha = .45f)))
+        Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SurfaceCard.copy(alpha = .66f)))
         key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, onOpen = onExpand) }
     }
 }
@@ -332,7 +386,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
     val reveal = with(density) { (if (item.clearable && !overApps) 176.dp else 92.dp).toPx() }
     var options by remember(item.key) { mutableStateOf(false) }
     fun settle(to: Float) = scope.launch { swipe.animateTo(to, MotionSpeed.spring(.85f, Spring.StiffnessMediumLow)) }
-    BoxWithConstraints(modifier.clip(RoundedCornerShape(22.dp))) {
+    BoxWithConstraints(modifier.clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp))) {
         val widthPx = constraints.maxWidth.toFloat()
         if (swipe.value < -1f) Row(Modifier.matchParentSize().padding(start = FolioSpace.MEDIUM.dp).graphicsLayer {
                 // Buttons grow in as the card slides, like iOS, instead of popping in at full size.
@@ -367,8 +421,8 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
         val pressScale by androidx.compose.animation.core.animateFloatAsState(if (pressed) .97f else 1f,
             FolioMotion.spring(FolioMotion.Control), label = "notification press")
         Row(Modifier.fillMaxWidth().graphicsLayer { scaleX = pressScale; scaleY = pressScale }
-            .clip(RoundedCornerShape(22.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
-            .border(FolioGlass.edge, RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
+            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.NOTIFICATION.dp))
             .combinedClickable(interactionSource = press, indication = null, onClick = { if (swipe.value < -1f) settle(0f) else onOpen() }, onLongClick = {
                 if (!overApps) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true }
             }, onLongClickLabel = stringResource(R.string.notification_options))
@@ -383,7 +437,7 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                     Text(relativeTime(item.postTime), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
                 }
                 item.text?.let { Text(it.lines().filter(String::isNotBlank).joinToString(" "), color = Color.White.copy(alpha = .88f),
-                    fontSize = 14.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
+                    fontSize = FolioType.COMPACT.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
                 if (extraCount > 0) Text(pluralStringResource(R.plurals.more_from_app, extraCount, extraCount, item.appLabel),
                     color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
                 if (extraCount == 0 && (item.canReply || item.canMarkRead)) {
@@ -412,14 +466,20 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
 
 @Composable
 private fun SwipeAction(label: String, onClick: () -> Unit) {
-    Box(Modifier.fillMaxHeight().width(80.dp).clip(RoundedCornerShape(22.dp)).background(NotifGlass)
-        .border(FolioGlass.edge, RoundedCornerShape(22.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    Box(Modifier.fillMaxHeight().width(80.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(NotifGlass)
+        .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(label, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 /** True while the panels are drawn over another app from the gestures service rather than on Home: no dialogs, no typing, no fold information. */
 internal val LocalShadeOverApps = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Whether the window behind the panels is really blurred (the phone allows it and Settings › Blur is on); over an app without it the dim is stronger. */
+internal val LocalShadeBackdropBlur = androidx.compose.runtime.staticCompositionLocalOf { true }
+
+/** The shrunk, blurred picture of the app behind the panels, when one could be taken; null draws Folio's frosted glass instead. */
+internal val LocalShadeBackdropImage = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.ui.graphics.ImageBitmap?> { null }
 
 /** Over another app, what Reply does: starts a box to type in (the overlay cannot take the keyboard). Null on Home, where the card has its own field. */
 internal val LocalShadeReply = androidx.compose.runtime.staticCompositionLocalOf<((NotificationItem) -> Unit)?> { null }
@@ -430,7 +490,47 @@ enum class NcLayout(@androidx.annotation.StringRes val label: Int) {
 }
 
 /** Control Center size choice (the largest a small control can be). */
-enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) { COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp) }
+enum class PanelSize(@androidx.annotation.StringRes val label: Int, val cell: Dp) {
+    SMALL(R.string.small, 50.dp), COMPACT(R.string.compact, 58.dp), STANDARD(R.string.standard, 66.dp), LARGE(R.string.large, 76.dp), EXTRA_LARGE(R.string.extra_large, 88.dp)
+}
+
+/**
+ * How Control Center's tiles are drawn (McCal 25 Oct 2026, from the Lab's options A to C): Clear glass is see-through with a bright edge
+ * (3.5:1 for white text on the Lab's backdrop, so best on a dark wallpaper), Frosted gives them dark smoky tiles with no plate behind (about 9:1), Solid is the
+ * opaque look it had before (10.6:1).
+ */
+enum class CcLook(@androidx.annotation.StringRes val label: Int) { CLEAR(R.string.cc_look_clear), FROSTED(R.string.cc_look_frosted), SOLID(R.string.cc_look_solid) }
+
+internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.CLEAR }
+
+/** What Clear glass uses over the backdrop at hand (its dim and its tiles), worked out from how bright the backdrop is; see [ccClearTone]. */
+private val LocalCcTone = androidx.compose.runtime.staticCompositionLocalOf { CC_DEFAULT_TONE }
+
+/** One page of Control Center: Controls pages are numbered from 0 when the controls need more than one. */
+private data class CcPageSpec(val page: CcPage, val index: Int)
+
+private val CcLook.tile: Color
+    @Composable get() = when (this) {
+        CcLook.CLEAR -> {
+            // The tile's black and white fills as one color: black first, then white over it (see CcGlassTone).
+            val t = LocalCcTone.current
+            val alpha = 1f - (1f - t.tileBlack) * (1f - t.tileWhite)
+            val gray = if (alpha > 0f) t.tileWhite / alpha else 1f
+            Color(gray, gray, gray, alpha)
+        }
+        CcLook.FROSTED -> FolioGlass.frostedTile
+        CcLook.SOLID -> FolioGlass.module
+    }
+/** A round toggle at rest: Solid keeps the lighter disc it always had on its dark modules. */
+private val CcLook.toggleOff: Color @Composable get() = if (this == CcLook.SOLID) Color.White.copy(alpha = .16f) else tile
+private val CcLook.edge: androidx.compose.foundation.BorderStroke get() = when (this) {
+    CcLook.CLEAR -> androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color.White.copy(alpha = .42f), Color.White.copy(alpha = .12f))))
+    CcLook.FROSTED -> androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .14f))
+    CcLook.SOLID -> FolioGlass.edge
+}
+
+/** The width of "00:00" in bold, in em, with air (measured about 2.72 at 112 sp): the time is sized by the room it has. */
+private const val SPLIT_CLOCK_EM_WIDTH = 2.95f
 
 /** iPad-style clock and date for the split (unfolded) Notification Center. */
 @Composable
@@ -439,9 +539,14 @@ private fun SplitClock(modifier: Modifier) {
     val tick by rememberMinuteTick()
     val now = displayNow(tick)
     val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
-    Column(modifier.padding(start = FolioSpace.XXL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-        Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = Color.White, fontSize = 112.sp, fontWeight = FontWeight.Bold, lineHeight = 116.sp)
+    // The time is 112 sp where there is room and shrinks with the width it is given (a phone on its side), so it never runs into the list.
+    BoxWithConstraints(modifier) {
+        val room = (maxWidth - FolioSpace.XXL.dp).value
+        val timeSize = minOf(112f, room / SPLIT_CLOCK_EM_WIDTH).coerceAtLeast(48f)
+        Column(Modifier.padding(start = FolioSpace.XXL.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = minOf(22f, timeSize / 4f + 8f).sp, fontWeight = FontWeight.SemiBold)
+            Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = Color.White, fontSize = timeSize.sp, fontWeight = FontWeight.Bold, lineHeight = (timeSize * 1.04f).sp)
+        }
     }
 }
 
@@ -489,13 +594,13 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(with(density) { bounds.width().toDp() }).heightIn(min = with(density) { bounds.height().toDp() })
                         .onSizeChanged { cardH = it.height }
                         .graphicsLayer { val s = 1f + .03f * appear.value; scaleX = s; scaleY = s }
-                        .clip(RoundedCornerShape(22.dp)).background(Color(0xFF2C2C30)).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
+                        .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SheetSurface).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         item.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(item.title ?: item.appLabel, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = FolioType.SUBHEAD.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            item.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
+                            item.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
                         }
                     }
                 }
@@ -505,7 +610,7 @@ private fun NotificationOptions(item: NotificationItem, bounds: android.graphics
                         .width(minOf(280.dp, with(density) { bounds.width().toDp() })).onSizeChanged { menuH = it.height }
                         .graphicsLayer { val s = .8f + .2f * appear.value; scaleX = s; scaleY = s
                             transformOrigin = TransformOrigin(0f, if (below) 0f else 1f) }
-                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color(0xFF2A2A2E).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
+                        .clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(FolioColors.PopoverSurface.copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUP.dp))
                         .clickable(remember { MutableInteractionSource() }, null) {}) {
                         MenuRow(stringResource(R.string.open), Icons.Rounded.OpenInNew) { act { IslandListenerService.openNotification(context, item) } }
                         if (item.clearable) {
@@ -602,7 +707,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
     val chosen = remember(controlNames) { controlNames.mapNotNull { n -> CcControl.entries.firstOrNull { it.name == n } } }.filter(::available)
     val edit = remember { HomeEditMode() }
-    BackHandler(edit.active) { edit.stop() }
+    SafeBackHandler(edit.active) { edit.stop() }
 
     fun isOn(control: CcControl) = when (control) {
         CcControl.ROTATION -> controls.rotationLocked
@@ -641,140 +746,344 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
 
     BoxWithConstraints(modifier.testTag("control-center")) {
-        val gap = 12.dp
-        // iPad-sized cells: a compact grid instead of stretching across the whole screen.
-        val rows = 5 + (if (focusModes.isNotEmpty()) 1 else 0) + (maxOf(0, chosen.size - 4) + 3) / 4
-        val byHeight = if (maxHeight == Dp.Infinity) Dp.Infinity else (maxHeight - 60.dp - gap * (rows - 1)) / rows
-        val cell = minOf(size.cell + if (wide) 8.dp else 0.dp, (maxWidth - gap * 3) / 4, byHeight).coerceAtLeast(44.dp)
+        val sizeCell = size.cell + if (wide) 8.dp else 0.dp
+        val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
+        // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
+        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat())
+        val gap = grid.gapDp.dp
+        val cols = grid.columns
+        val cell = grid.cellDp.dp
         fun span(n: Int): Dp = cell * n + gap * (n - 1)
-        val gridWidth = span(4)
-        ProvideJiggle(edit) {
-        // The fade draws in its own layer, which clips: pad it so edit mode's remove and add badges past the grid's edges stay whole.
-        Column(Modifier.width(gridWidth + 32.dp).fadingVerticalScroll().padding(horizontal = FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
-            // iOS 18 header: edit on the left, power on the right.
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
-                else GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
-                Spacer(Modifier.weight(1f))
-                GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
-                    onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
+        val gridWidth = span(cols)
+        val focusOn = focusModes.isNotEmpty()
+        // What the header and the strip take; the rest is for the pages. Controls that do not fit go on another page, never into a scroll (PNL-1).
+        val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
+        val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
+        val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
+        val pages = remember(plan) { List(plan.perPage.size) { CcPageSpec(CcPage.CONTROLS, it) } + CcPageSpec(CcPage.MEDIA, 0) + CcPageSpec(CcPage.CONNECTIVITY, 0) }
+        // The pager runs forward but its pages are in reverse (Controls at the last index): the first page is anchored at the bottom, the next ones come down from above,
+        // and a swipe up past the first page has nowhere to go, so it closes the panel. (reverseLayout stopped the drag from following the finger.)
+        val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = pages.lastIndex) { pages.size }
+        val firstIndex = pages.lastIndex
+        val current = firstIndex - pager.currentPage // the page shown, in the order of [pages]
+        // A different number of Controls pages (another window) starts again on the first.
+        LaunchedEffect(pages.size) { if (pager.currentPage != pages.lastIndex) pager.scrollToPage(pages.lastIndex) }
+        val pageScope = rememberCoroutineScope()
+        val reduceMotion = LocalReduceMotion.current
+        // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
+        LaunchedEffect(current, pages.getOrNull(current)?.page) { if (pages.getOrNull(current)?.page != CcPage.CONTROLS) edit.stop() }
+        // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
+        // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
+        val closeLabel = stringResource(R.string.close)
+        var swipeAway by remember { mutableFloatStateOf(0f) }
+        val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
+        val tick = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val swipeConnection = remember(pager, edit) {
+            // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
+            var startedOnFirst = false
+            var gestureActive = false
+            // One light tick as the pull passes the point where letting go closes the panel (and again if it goes back), so the finger knows.
+            var pastClose = false
+            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    // Only a finger starts a gesture: the pager's own settling after a release also scrolls (as a side effect) and must not pick the next gesture's page.
+                    if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) return androidx.compose.ui.geometry.Offset.Zero
+                    if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == pager.pageCount - 1 }
+                    if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+                override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                    if (!edit.active && startedOnFirst && pager.currentPage == pager.pageCount - 1 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
+                        swipeAway += available.y
+                        val past = swipeAway < -swipeAwayPx
+                        if (past != pastClose) { pastClose = past; tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) }
+                        return androidx.compose.ui.geometry.Offset(0f, available.y)
+                    }
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+                override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                    gestureActive = false; pastClose = false
+                    if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
+                    if (swipeAway < -swipeAwayPx || available.y < -CC_SWIPE_AWAY_FLICK) onClose()
+                    else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
+                    return available
                 }
             }
-            // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing (2×2)
-            var connectivityOpen by remember { mutableStateOf(false) }
-            val connectivity = listOf(
-                ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
-                ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
-                ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
-                ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
-            )
-            val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-            if (connectivityOpen) Module(Modifier.width(span(4)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
+        }
+        fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
+        // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
+        val neededRows = maxOf(ccMediaRows(plan, focusOn), plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
+        val wantedHeight = cell * neededRows + gap * (neededRows - 1)
+        val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
+
+        // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
+        val sliders: @Composable (Dp) -> Unit = { height ->
+            TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, height,
+                onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }) { value ->
+                controls.changeBrightness(value) }
+            TallSlider(when {
+                controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
+                controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
+                else -> Icons.AutoMirrored.Rounded.VolumeUp
+            }, stringResource(R.string.volume), controls.volume, cell, height) { controls.changeVolume(it) }
+        }
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val connectivity = listOf(
+            ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
+            ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
+            ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
+            ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
+        )
+        val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
+
+        // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list. It stands under the modules on the first page, or on the Media page when the first has no row for it.
+        val focusModule: @Composable () -> Unit = {
+            var focusOpen by remember { mutableStateOf(false) }
+            val current = focusModes.firstOrNull { it.id == activeFocus }
+            if (focusOpen) Module(Modifier.width(span(cols))) {
                 Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
-                    connectivity.forEach { item ->
-                        Row(Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            RoundToggle(item.icon, item.label, item.on, item.accent, 44.dp, item.onClick)
+                    focusModes.forEach { mode ->
+                        val on = mode.id == activeFocus
+                        Row(Modifier.fillMaxWidth().clickable { onFocus(if (on) null else mode.id); focusOpen = false }
+                            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("cc-focus-${mode.id}"), verticalAlignment = Alignment.CenterVertically) {
+                            RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
                             Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                                Text(stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                            }
+                            Text(mode.name, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
                         }
                     }
                 }
-            }
-            else Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                Module(Modifier.size(span(2)).combinedClickable(onClick = {}, onLongClick = {
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); connectivityOpen = true
-                }, onLongClickLabel = stringResource(R.string.show_connectivity_details))) {
-                    Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
-                        connectivity.chunked(2).forEach { pair ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                pair.forEach { RoundToggle(it.icon, it.label, it.on, it.accent, cell * .7f, it.onClick) }
-                            }
-                        }
+            } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
+                Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
+                    val mode = current ?: focusModes.first()
+                    RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
+                        onFocus(if (current != null) null else mode.id)
                     }
-                }
-                MediaModule(media, Modifier.size(span(2)), cell, onOpen = { media?.let { onClose(); IslandListenerService.open(context, it) } })
-            }
-            // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list.
-            if (focusModes.isNotEmpty()) {
-                var focusOpen by remember { mutableStateOf(false) }
-                val current = focusModes.firstOrNull { it.id == activeFocus }
-                if (focusOpen) Module(Modifier.width(span(4))) {
-                    Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
-                        focusModes.forEach { mode ->
-                            val on = mode.id == activeFocus
-                            Row(Modifier.fillMaxWidth().clickable { onFocus(if (on) null else mode.id); focusOpen = false }
-                                .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp).testTag("cc-focus-${mode.id}"), verticalAlignment = Alignment.CenterVertically) {
-                                RoundToggle(mode.icon(), mode.name, on, Color(mode.color), 40.dp) { onFocus(if (on) null else mode.id); focusOpen = false }
-                                Spacer(Modifier.width(12.dp))
-                                Text(mode.name, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                if (on) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                            }
-                        }
-                    }
-                } else Module(Modifier.width(span(4)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
-                    Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
-                        val mode = current ?: focusModes.first()
-                        RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
-                            onFocus(if (current != null) null else mode.id)
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
-                        }
-                    }
-                }
-            }
-            // Row 3–4: the first four small controls (2×2) and brightness + volume sliders
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    chosen.take(4).chunked(2).forEach { pair ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
-                        }
-                    }
-                }
-                TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, span(2),
-                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }) { value ->
-                    controls.changeBrightness(value) }
-                TallSlider(when {
-                    controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
-                    controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
-                    else -> Icons.AutoMirrored.Rounded.VolumeUp
-                }, stringResource(R.string.volume), controls.volume, cell, span(2)) { controls.changeVolume(it) }
-            }
-            // The rest, four per row
-            chosen.drop(4).chunked(4).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
-                }
-            }
-            // Edit mode: gallery of controls that aren't in Control Center yet
-            if (edit.active) {
-                val unused = CcControl.entries.filter { it !in chosen && available(it) }
-                Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
-                    fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
-                unused.chunked(4).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        row.forEach { c ->
-                            Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box {
-                                    SquareToggle(c.icon(), stringResource(R.string.add_control, stringResource(c.label)), false, Color.White, cell) { onControls(controlNames + c.name) }
-                                    Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(20.dp).clip(CircleShape).background(AccentGreen),
-                                        contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp)) }
-                                }
-                                Text(stringResource(c.label), color = Color.White, fontSize = 10.sp, maxLines = 2, lineHeight = 12.sp,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
-                            }
-                        }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(current?.name ?: stringResource(R.string.focus), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        if (current != null) Text(stringResource(R.string.on), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
                     }
                 }
             }
         }
+
+        // One page's content. Pages scroll on their own when a window is too short for them.
+        val pageContent: @Composable (CcPageSpec) -> Unit = { spec ->
+            // The grid is centered in a header that may be wider than it (a short, narrow window puts the page dots in the header).
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            // A page scrolls only where its rows do not fit the window. A scroll container that cannot scroll still took the downward drag
+            // (its edge stretch ate it), so a swipe down never reached the pager; with none, or with the stretch off, the pager gets it.
+            val rowsFit = ccRowsThatFit(pageHeight.value, cell.value, gap.value)
+            val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> ccPlanRows(plan, spec.index, cols, focusOn); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
+            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+            CompositionLocalProvider(androidx.compose.foundation.LocalOverscrollConfiguration provides null) {
+            Column(Modifier.width(gridWidth).then(if (rowsNeeded > rowsFit) Modifier.fadingVerticalScroll() else Modifier), verticalArrangement = Arrangement.spacedBy(gap)) {
+                when (spec.page) {
+                    CcPage.CONTROLS -> {
+                        val first = spec.index == 0
+                        val before = plan.perPage.take(spec.index).sum()
+                        val pageControls = chosen.subList(before, before + plan.perPage[spec.index])
+                        // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing; with six or eight columns the sliders end this row.
+                        var connectivityOpen by remember { mutableStateOf(false) }
+                        val topBlock: @Composable () -> Unit = {
+                            if (connectivityOpen) Module(Modifier.width(span(if (cols >= 6) cols - 2 else cols)).combinedClickable(onClick = { connectivityOpen = false }, onLongClick = { connectivityOpen = false })) {
+                                ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp))
+                            }
+                            else Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                Module(Modifier.size(span(2)).combinedClickable(onClick = {}, onLongClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); connectivityOpen = true
+                                }, onLongClickLabel = stringResource(R.string.show_connectivity_details))) {
+                                    Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
+                                        connectivity.chunked(2).forEach { pair ->
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                pair.forEach { RoundToggle(it.icon, it.label, it.on, it.accent, cell * .7f, it.onClick) }
+                                            }
+                                        }
+                                    }
+                                }
+                                MediaModule(media, Modifier.size(span(if (cols >= 6) cols - 4 else 2), span(2)), cell, onOpen = playing)
+                            }
+                        }
+                        if (first) { if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock() }
+                        // Focus: see focusModule.
+                        if (first && focusOn && plan.focusOnFirst) focusModule()
+                        // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
+                        if (first && cols == 4 && plan.slidersOnFirst) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
+                                pageControls.take(4).chunked(2).forEach { pair ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                        pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                                    }
+                                }
+                            }
+                            sliders(span(2))
+                        }
+                        // The rest, one row of the grid at a time
+                        (if (cols >= 6 || !first || !plan.slidersOnFirst) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                            }
+                        }
+                        // Edit mode: gallery of controls that aren't in Control Center yet
+                        if (edit.active && spec.index == plan.perPage.lastIndex) {
+                            val unused = CcControl.entries.filter { it !in chosen && available(it) }
+                            Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
+                                fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
+                            unused.chunked(cols).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                    row.forEach { c ->
+                                        Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Box {
+                                                SquareToggle(c.icon(), stringResource(R.string.add_control, stringResource(c.label)), false, Color.White, cell) { onControls(controlNames + c.name) }
+                                                Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(20.dp).clip(CircleShape).background(AccentGreen),
+                                                    contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp)) }
+                                            }
+                                            Text(stringResource(c.label), color = Color.White, fontSize = 10.sp, maxLines = 2, lineHeight = 12.sp,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Media and sound: Now Playing large, with brightness and volume tall beside it.
+                    CcPage.MEDIA -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            MediaModule(media, Modifier.size(span(cols - 2), span(3)), cell, onOpen = playing)
+                            sliders(span(3))
+                        }
+                        if (focusOn && !plan.focusOnFirst) focusModule()
+                    }
+                    // Connectivity: each connection as a full row, with its state.
+                    CcPage.CONNECTIVITY -> Module(Modifier.width(span(cols))) { ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) }
+                }
+            }
+            }
+            }
+        }
+
+        // The edge or bottom strip that moves between pages (tap), as on the iPad; a swipe across the panel does the same.
+        val strip: @Composable () -> Unit = {
+            val label: @Composable (CcPage) -> String = { page -> stringResource(when (page) { CcPage.CONTROLS -> R.string.cc_page_controls; CcPage.MEDIA -> R.string.cc_page_media; CcPage.CONNECTIVITY -> R.string.cc_page_connectivity }) }
+            val controlsPages = plan.perPage.size
+            val items: @Composable () -> Unit = {
+                pages.forEachIndexed { index, spec ->
+                    val page = spec.page
+                    val selected = current == index
+                    val name = label(page)
+                    val description = stringResource(R.string.cc_page_of, name, index + 1, pages.size)
+                    Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).background(if (selected) Color.White else NotifGlass)
+                        .clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                        .semantics { contentDescription = description; this.selected = selected },
+                        contentAlignment = Alignment.Center) {
+                        // With more than one Controls page each says which it is, so the marks are never the same.
+                        if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) FolioColors.MenuSurface else Color.White,
+                            fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
+                        else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Apps; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
+                            null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size((22 * ccIconScale(LocalDensity.current.fontScale)).dp))
+                    }
+                }
+            }
+            if (grid.stripInHeader) Row(verticalAlignment = Alignment.CenterVertically) {
+                // Small dots, each a 32 by 48 dp target side by side (no gap between targets, so a tap near the edge cannot hit the wrong page): a short window has no row to spare for round buttons.
+                pages.forEachIndexed { index, spec ->
+                    val selected = current == index
+                    val description = stringResource(R.string.cc_page_of, label(spec.page), index + 1, pages.size)
+                    Box(Modifier.size(32.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
+                        .semantics { contentDescription = description; this.selected = selected }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(if (selected) 10.dp else 8.dp).clip(CircleShape).background(if (selected) Color.White else Color.White.copy(alpha = .4f)))
+                    }
+                }
+            }
+            else if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
+                if ((tall ?: Float.MAX_VALUE) >= 360f) BatteryRing(status)
+                items()
+            }
+            else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
+        }
+
+        ProvideJiggle(edit) {
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }
+            .semantics { dismiss(closeLabel) { onClose(); true } }, contentAlignment = Alignment.TopCenter) {
+            Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
+                // The grid takes the taps that land between its controls, so only the margins around it close the panel.
+                Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)).pointerInput(Unit) { detectTapGestures() }, verticalArrangement = Arrangement.spacedBy(gap)) {
+                    // iOS 18 header: edit on the left, power on the right.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
+                        else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
+                        Spacer(Modifier.weight(1f))
+                        if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
+                        // A button for the way out, for anyone who does not know the swipe (a short, narrow window has no room for it: the swipe and a tap outside close there).
+                        else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { onClose() }
+                        GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
+                            onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
+                        }
+                    }
+                    // Pages are stacked and the next one comes down with a swipe down (reverseLayout: the first page is anchored, so a swipe up past it closes the panel), as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
+                    // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
+                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
+                        flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
+                            // A page is the whole panel tall, so the usual halfway rule asked for a drag across half the screen: a fifth of it is enough to turn the page, and a short swipe springs back.
+                            snapPositionalThreshold = CC_PAGE_TURN,
+                            snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
+                        Box(Modifier.fillMaxSize().graphicsLayer {
+                            val away = kotlin.math.abs((pager.currentPage - index) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                            alpha = 1f - CC_PAGE_FADE * away
+                            if (!reduceMotion) { val scale = 1f - CC_PAGE_SHRINK * away; scaleX = scale; scaleY = scale }
+                        }, contentAlignment = Alignment.TopStart) { pageContent(pages[firstIndex - index]) }
+                    }
+                    if (!grid.stripAtEdge && !grid.stripInHeader) strip()
+                }
+                if (grid.stripAtEdge) Box(Modifier.pointerInput(Unit) { detectTapGestures() }) { strip() }
+            }
+        }
+        }
+    }
+}
+
+/** The battery as a ring with its percent, at the top of the page strip; green while charging. Says the same in words for TalkBack. */
+@Composable
+private fun BatteryRing(status: DeviceStatus) {
+    val level = status.battery
+    val words = when {
+        level == null -> stringResource(R.string.battery_unavailable)
+        status.charging -> stringResource(R.string.battery_1_d_percent_charging, level)
+        else -> stringResource(R.string.battery_1_d_percent, level)
+    }
+    val ring = if (status.charging) FolioColors.Green else Color.White
+    Box(Modifier.size(FolioTouch.MIN.dp).semantics { contentDescription = words }, contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.size(38.dp)) {
+            val stroke = size.width * .1f
+            val inset = stroke / 2f
+            val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+            val corner = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(Color.White.copy(alpha = .25f), 0f, 360f, false, corner, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            if (level != null) drawArc(ring, -90f, 360f * level.coerceIn(0, 100) / 100f, false, corner, arc,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        }
+        // The number lives inside a fixed 38 dp ring, so it follows the font size only up to 1.3 times (at 2.0 the "100" was wider than the ring, and three digits still touched it at 1.3, so they are a little smaller); the words for TalkBack carry the full value.
+        val ringFont = with(androidx.compose.ui.platform.LocalDensity.current) { (12f * minOf(fontScale, 1.3f) * (if ((level ?: 0) >= 100) .82f else 1f)).dp.toSp() }
+        if (level != null) Text(level.toString(), color = Color.White, fontSize = ringFont, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** The four connections as rows, each with its switch and its state: the long-press view on the Controls page and the whole Connectivity page. */
+@Composable
+private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) {
+    Column(modifier) {
+        items.forEach { item ->
+            Row(Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                RoundToggle(item.icon, item.label, item.on, item.accent, 44.dp, item.onClick)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                }
+            }
         }
     }
 }
@@ -790,11 +1099,11 @@ private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell
 
 private data class ConnectivityItem(val icon: ImageVector, val label: String, val on: Boolean, val accent: Color, val onClick: () -> Unit)
 
-/** Thin iOS progress line for the playing track (ticks once a second while playing). */
+/** Elapsed and total position for a playing track, ticking once a second while playing. */
 @Composable
-private fun MediaProgress(media: IslandActivity.Media) {
+private fun rememberMediaPosition(media: IslandActivity.Media): Pair<Long, Long> {
     val tick by rememberSecondTick()
-    val (position, duration) = remember(tick, media) {
+    return remember(tick, media) {
         val controller = runCatching { media.controller }.getOrNull()
         val state = controller?.playbackState
         val duration = controller?.metadata?.getLong(android.media.MediaMetadata.METADATA_KEY_DURATION) ?: 0L
@@ -805,57 +1114,120 @@ private fun MediaProgress(media: IslandActivity.Media) {
         } ?: 0L
         elapsed.coerceIn(0L, duration.coerceAtLeast(0L)) to duration
     }
-    if (duration <= 0L) return
-    Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .22f))) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
-    }
 }
 
-/** Now Playing (2×2): album art, title and transport controls. */
+internal fun formatMediaTime(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
+}
+
+/** Now Playing (2×2): album art, title, a scrubber with times, and three controls around a larger play button.
+ * Replaces the old bare-icon tile (icons with no times, no artist, no app name): LW audit 2026-10-02 Style A. */
 @Composable
 private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit) {
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
-    val tint by androidx.compose.animation.animateColorAsState(mixColor(ModuleGlass, artAccent, .45f), label = "music tint")
-    Module(modifier.clickable(enabled = media != null, onClick = onOpen), color = tint) {
+    val tint by androidx.compose.animation.animateColorAsState(mixColor(LocalCcLook.current.tile, artAccent, .45f), label = "music tint")
+    val context = LocalContext.current
+    val appLabel = media?.packageName?.let { pkg ->
+        remember(pkg) { runCatching { context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull() }
+    }
+    val nowPlayingLabel = stringResource(R.string.now_playing)
+    val playingLabel = stringResource(R.string.playing)
+    val pausedLabel = stringResource(R.string.paused)
+    val playLabel = stringResource(R.string.play)
+    val pauseLabel = stringResource(R.string.pause)
+    val notPlayingLabel = stringResource(R.string.not_playing)
+    val description = if (media != null) "$nowPlayingLabel, ${media.title}" +
+        (media.subtitle?.let { ", $it" } ?: "") + (appLabel?.let { ", $it" } ?: "") + ", " + (if (media.playing) playingLabel else pausedLabel)
+    else notPlayingLabel
+    Module(modifier.clickable(enabled = media != null, onClick = onOpen)
+        .semantics(mergeDescendants = true) {
+            contentDescription = description
+        }, color = tint) {
         Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
-                Box(Modifier.size(cell * .62f).clip(RoundedCornerShape(cell * .14f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(cell * .58f).clip(RoundedCornerShape(cell * .13f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
                     val image = media?.art ?: media?.icon
                     if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(cell * .3f))
+                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(cell * .26f))
                 }
-                Spacer(Modifier.weight(1f))
-                if (media?.art != null) media.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(cell * .26f).clip(RoundedCornerShape(cell * .07f))) }
+                Spacer(Modifier.width(cell * .1f))
+                Column(Modifier.weight(1f)) {
+                    Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
+                        fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    media?.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
             }
-            Column {
-                Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
-                    fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                media?.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                media?.let { MediaProgress(it) }
-            }
+            if (media != null) MediaScrubber(media, artAccent?.let { Color(vividTint(it.toArgb())) }) else Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 val t = media?.controller?.transportControls
                 val tint = Color.White.copy(alpha = if (t != null) 1f else .35f)
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() })
-                Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media?.playing == true) R.string.pause else R.string.play), tint = tint,
-                    modifier = Modifier.size(cell * .42f).clip(CircleShape).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() })
+                Box(Modifier.size(cell * .46f).clip(CircleShape).background(Color.White).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() },
+                    contentAlignment = Alignment.Center) {
+                    Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        stringResource(if (media?.playing == true) R.string.pause else R.string.play),
+                        tint = if (t != null) Color.Black else Color.Black.copy(alpha = .35f), modifier = Modifier.size(cell * .26f))
+                }
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToNext() })
             }
         }
     }
 }
 
+/** The scrub line plus elapsed and remaining times, so the control center shows real progress, not just a bare line. */
 @Composable
-private fun Module(modifier: Modifier, color: Color = ModuleGlass, content: @Composable BoxScope.() -> Unit) =
-    Box(modifier.clip(RoundedCornerShape(26.dp)).background(color)
-        .border(FolioGlass.edge, RoundedCornerShape(26.dp)), content = content)
+private fun MediaScrubber(media: IslandActivity.Media, accent: Color?) {
+    val (position, duration) = rememberMediaPosition(media)
+    if (duration <= 0L) return
+    Column(Modifier.padding(top = 3.dp)) {
+        Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent ?: Color.White))
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 1.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatMediaTime(position), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
+            Text("-" + formatMediaTime(duration - position), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
+        }
+    }
+}
+
+@Composable
+private fun Module(modifier: Modifier, color: Color? = null, content: @Composable BoxScope.() -> Unit) {
+    val look = LocalCcLook.current
+    Box(modifier.clip(RoundedCornerShape(26.dp)).background(color ?: look.tile)
+        .border(look.edge, RoundedCornerShape(26.dp)), content = content)
+}
+
+/**
+ * A tile dips a little under the finger and springs back (McCal 25 Oct 2026, finishing touches): a spring from FolioMotion that follows the finger and
+ * can be interrupted, scale and alpha read while drawing, and under Reduce Motion no scale at all, only the dim (DYN-6, DYN-11).
+ */
+@Composable
+private fun Modifier.ccPress(pressed: Boolean): Modifier {
+    val reduce = LocalReduceMotion.current
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed && !reduce) CC_PRESS_SCALE else 1f, FolioMotion.spring(FolioMotion.Quick), label = "tile press")
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if (pressed) .88f else 1f, FolioMotion.spring(FolioMotion.Quick), label = "tile press alpha")
+    return graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+}
+
+private const val CC_PRESS_SCALE = .94f
+
+/** How far a page fades and shrinks as the finger takes it away (0 to 1 of the way out): enough to read as depth, little enough that a page half-way is still readable. */
+private const val CC_PAGE_FADE = .55f
+
+/** How far up the panel has to be pulled to close, and how fast a flick (px per second) closes it from less. */
+private const val CC_SWIPE_AWAY_DP = 96f
+private const val CC_SWIPE_AWAY_FLICK = 1400f
+private const val CC_PAGE_SHRINK = .05f
 
 @Composable
 private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(CircleShape).background(if (on) accent else Color.White.copy(alpha = .16f))
-        .clickable { haptic.toggle(!on); onClick() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Box(Modifier.size(size).ccPress(pressed).clip(CircleShape).background(if (on) accent else LocalCcLook.current.toggleOff)
+        .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = stateText; role = androidx.compose.ui.semantics.Role.Switch },
         contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * .46f))
@@ -866,8 +1238,10 @@ private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: C
 private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val state = stringResource(if (on) R.string.state_on else R.string.state_off)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else ModuleGlass)
-        .clickable(role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Box(Modifier.size(size).ccPress(pressed).clip(RoundedCornerShape(size * .3f)).background(if (on) accent else LocalCcLook.current.tile)
+        .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = state }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (on && accent == Color.White) Color.Black else Color.White, modifier = Modifier.size(size * .4f))
     }
@@ -878,10 +1252,12 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
     onStart: () -> Unit = {}, onValue: (Float) -> Unit) {
     val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), FolioMotion.spring(FolioMotion.Snap), label = label)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(ModuleGlass)
+    var dragging by remember { mutableStateOf(false) }
+    val readout by androidx.compose.animation.core.animateFloatAsState(if (dragging) 1f else 0f, FolioMotion.spring(FolioMotion.Quick), label = "slider readout")
+    Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(LocalCcLook.current.tile)
         .pointerInput(Unit) {
             var last = -1f
-            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f }) { change, _ ->
+            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f; dragging = true }, onDragEnd = { dragging = false }, onDragCancel = { dragging = false }) { change, _ ->
                 change.consume()
                 val v = (1f - change.position.y / size.height).coerceIn(0f, 1f)
                 // Like iOS: a tick when the slider hits its top or bottom.
@@ -898,34 +1274,41 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(shown).background(Color.White))
         Icon(icon, null, tint = if (shown > .18f) FolioColors.MenuSurface else Color.White,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * .22f).size(width * .36f))
+        // The number while a finger is on it, over the part above the fill: it fades in and out and never moves the slider.
+        // Dark once the white fill reaches it, like the icon below, so it stays readable at 100%.
+        val readoutOnFill = shown > 1f - (width * .22f + FolioType.FOOTNOTE.dp / 2) / height
+        Text((shown * 100).toInt().toString(), color = if (readoutOnFill) FolioColors.MenuSurface else Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = width * .22f).graphicsLayer { alpha = readout })
     }
 }
 
 @Composable
 private fun GlassIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    // The drawn circle and its icon follow the font size the person chose (up to a third larger), inside a target that never drops below 48 dp.
+    val grow = ccIconScale(LocalDensity.current.fontScale)
     Box(Modifier.minimumInteractiveComponentSize().clickable(onClick = onClick).semantics { contentDescription = label },
-        contentAlignment = Alignment.Center) { Box(Modifier.size(34.dp).clip(CircleShape).background(NotifGlass), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        contentAlignment = Alignment.Center) { Box(Modifier.size((34 * grow).dp).clip(CircleShape).background(NotifGlass), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size((18 * grow).dp))
     } }
 }
 
 @Composable
 private fun PanelPill(label: String, onClick: () -> Unit) {
-    Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium,
-        modifier = Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(NotifGlass).clickable(onClick = onClick)
-            .padding(horizontal = FolioSpace.COMFY.dp, vertical = 11.dp))
+    Box(Modifier.heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(50)).background(NotifGlass).clickable(onClick = onClick)
+        .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp), contentAlignment = Alignment.Center) {
+        Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium)
+    }
 }
 
 @Composable
 private fun EmptyNote(text: String, action: String?, onAction: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(NotifGlass).padding(FolioSpace.XL.dp),
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(NotifGlass).padding(FolioSpace.XL.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-        Text(text, color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
+        Text(text, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp)
         if (action != null) PanelPill(action, onAction)
     }
 }
 
-private val ModuleGlass = FolioGlass.module
 private val NotifGlass = FolioGlass.card
 private val AccentBlue = FolioColors.Blue
 private val AccentGreen = FolioColors.Green
@@ -1012,3 +1395,246 @@ private class DeviceControls(private val context: Context) {
 
 private fun androidx.compose.ui.hapticfeedback.HapticFeedback.toggle(on: Boolean) = performHapticFeedback(
     if (on) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff)
+
+internal enum class MusicShape { STRIP, CARD, POSTER }
+
+/** Which of the three shapes the Music widget draws at this size (dp). Pure, so the thresholds are tested. */
+internal fun musicShape(widthDp: Float, heightDp: Float): MusicShape = when {
+    heightDp < 110f -> MusicShape.STRIP
+    widthDp >= 160f && heightDp >= 180f -> MusicShape.POSTER
+    else -> MusicShape.CARD
+}
+
+/**
+ * The playing track as a placeable Home widget: a compact Strip at short spans, a big Poster at tall or square
+ * ones. One widget that morphs with its size, like the Big Clock, rather than two things to pick between.
+ * LW audit 2026-10-02 Style B and C. Hides itself (shows "Nothing Playing") when there is no media session.
+ */
+@Composable
+internal fun MusicWidgetCard(onEdit: () -> Unit) {
+    val media = IslandListenerService.media.collectAsStateWithLifecycle().value
+    val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
+    // Lifted the same way MediaModule's scrubber is: raw album-art colors are often too dark to read as a thin
+    // line or a bar of wave bars against the Poster's blurred backdrop.
+    val accent = artAccent?.let { Color(vividTint(it.toArgb())) } ?: Color.White
+    val notPlayingLabel = stringResource(R.string.not_playing)
+    val playingLabel = stringResource(R.string.playing)
+    val pausedLabel = stringResource(R.string.paused)
+    BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp))
+        // Tappable either way: empty, it opens widget options the same as every other built-in widget does when
+        // there's nothing to show. It used to do nothing at all when nothing was playing.
+        .background(FolioGlass.module).clickable(onClick = onEdit)
+        .semantics(mergeDescendants = true) {
+            contentDescription = media?.let { "${it.title}${it.subtitle?.let { s -> ", $s" } ?: ""}, ${if (it.playing) playingLabel else pausedLabel}" } ?: notPlayingLabel
+        }) {
+        // Strip below ~110dp; Poster once there's room for big centered art and a wave; Card in between, the same
+        // shape as the Control Center's own now-playing tile. Nothing playing uses the same three shapes, not one small
+        // icon floating in whatever space a resized widget happens to have.
+        val shape = musicShape(maxWidth.value, maxHeight.value)
+        if (media == null) when (shape) {
+            MusicShape.STRIP -> EmptyMusicStrip(notPlayingLabel)
+            MusicShape.POSTER -> EmptyMusicPoster(notPlayingLabel)
+            MusicShape.CARD -> EmptyMusicCard(notPlayingLabel)
+        } else when (shape) {
+            MusicShape.STRIP -> MusicStrip(media, accent)
+            MusicShape.POSTER -> MusicPoster(media, accent)
+            MusicShape.CARD -> MusicCard(media, accent)
+        }
+    }
+}
+
+@Composable
+private fun MusicCard(media: IslandActivity.Media, accent: Color) {
+    val t = media.controller.transportControls
+    val (_, duration) = rememberMediaPosition(media)
+    BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
+        // Same fixed-budget approach as the Poster: the art gets whatever height is left over after everything
+        // else, never a weight negotiation that starved it to zero the first time this was tried.
+        val fixedBudget = 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + FolioTouch.MIN.dp
+        val art = (maxHeight - fixedBudget).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                    val image = media.art ?: media.icon
+                    if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(art * .4f))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
+            }
+            if (duration > 0L) MediaScrubber(media, accent)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                // Each control is a 48 dp touch box (A11Y-1) around its glyph, so the small glyphs are not the only tappable part.
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToPrevious() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                        Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
+                            tint = Color.Black, modifier = Modifier.size(18.dp))
+                    }
+                }
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MusicStrip(media: IslandActivity.Media, accent: Color) {
+    val t = media.controller.transportControls
+    val (position, duration) = rememberMediaPosition(media)
+    Box(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                val image = media.art ?: media.icon
+                if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+            Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() }, contentAlignment = Alignment.Center) {
+                Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
+                    tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+            Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White.copy(alpha = .85f), modifier = Modifier.size(22.dp))
+            }
+        }
+        if (duration > 0L) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(2.dp)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent))
+        }
+    }
+}
+
+@Composable
+private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
+    val t = media.controller.transportControls
+    val (position, duration) = rememberMediaPosition(media)
+    val reduceMotion = LocalReduceMotion.current
+    val image = media.art ?: media.icon
+    // Built once: the graphics layer block runs on every draw, and a blur effect is not free to make.
+    val backdropBlur = remember { android.graphics.RenderEffect.createBlurEffect(60f, 60f, android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect() }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize()
+            .graphicsLayer { renderEffect = backdropBlur; alpha = .55f }
+            .background(Color.Black), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .3f)))
+        // Everything but the art has a fixed height, so the art gets whatever is left over (never a weight
+        // negotiation, which can starve it to zero when the rest of the card already fills the box). The wave
+        // only shows once there is enough left over for a worthwhile art size with it still on screen.
+        val fixedBudget = 8.dp + 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + 52.dp + 28.dp
+        val art = (maxHeight - fixedBudget).coerceAtLeast(32.dp)
+        val showWave = art - 26.dp >= 56.dp
+        val artSize = (if (showWave) art - 26.dp else art).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .6f, 120.dp)))
+        Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(Modifier.size(artSize).clip(RoundedCornerShape(artSize * .12f)).background(FolioGlass.raised).shadow(8.dp, RoundedCornerShape(artSize * .12f)), contentAlignment = Alignment.Center) {
+                if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(artSize * .36f))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(media.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+            if (showWave) MusicWave(media.playing && !reduceMotion, accent)
+            if (duration > 0L) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
+                Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(formatMediaTime(position), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
+                    Text("-" + formatMediaTime(duration - position), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // The Poster has room to spare, so previous and next get a real 48 dp touch box (A11Y-1) around their
+            // smaller glyph, instead of the glyph itself being the only tappable area.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToPrevious() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+                Box(Modifier.size(52.dp).clip(CircleShape).background(Color.White).clickable { if (media.playing) t.pause() else t.play() }, contentAlignment = Alignment.Center) {
+                    Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
+                        tint = Color.Black, modifier = Modifier.size(26.dp))
+                }
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Nothing playing, at Strip size: the same icon box and row [MusicStrip] uses, just without a title or controls. */
+@Composable
+private fun EmptyMusicStrip(label: String) {
+    Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(label, color = FolioGlass.secondary, fontSize = FolioType.SUBHEAD.sp)
+    }
+}
+
+/** Nothing playing, at Card size: the same art box and title row [MusicCard] uses, just without a subtitle, scrubber or transport. */
+@Composable
+private fun EmptyMusicCard(label: String) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
+        val art = (maxHeight * .5f).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
+        Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(art * .4f))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(label, color = FolioGlass.secondary, fontSize = FolioType.SUBHEAD.sp)
+        }
+    }
+}
+
+/** Nothing playing, at Poster size: the same centered art square [MusicPoster] uses, just without a wave, scrubber or transport. */
+@Composable
+private fun EmptyMusicPoster(label: String) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
+        val artSize = (minOf(maxWidth, maxHeight) * .32f).coerceIn(40.dp, 96.dp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(artSize).clip(RoundedCornerShape(artSize * .12f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(artSize * .4f))
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(label, color = FolioGlass.secondary, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/**
+ * A decorative wave: it moves with play and pause, not the audio, since reading the mic would need RECORD_AUDIO.
+ * Freezes on Reduce Motion or while paused, per LW's always-on and motion rules.
+ */
+@Composable
+private fun MusicWave(animate: Boolean, accent: Color) {
+    val bars = remember { List(24) { i -> (.3 + .7 * kotlin.math.abs(kotlin.math.sin(i * .7)) * kotlin.math.abs(kotlin.math.cos(i * .23))).toFloat() } }
+    // Nothing runs while it is still (paused, or Reduce Motion): no transition is created, so no frames are spent on it.
+    val phase = if (animate) rememberInfiniteTransition(label = "music wave")
+        .animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "phase").value else 0f
+    Row(Modifier.fillMaxWidth(.7f).height(22.dp).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
+        bars.forEachIndexed { i, base ->
+            val wobble = if (animate) (kotlin.math.sin((phase * 2 * Math.PI).toFloat() + i).let { (it + 1f) / 2f }) else 0f
+            val h = (base * .6f + wobble * .4f).coerceIn(.12f, 1f)
+            Box(Modifier.weight(1f).fillMaxHeight(h).clip(CircleShape).background(accent))
+        }
+    }
+}
+
+/** How far a drag has to take a Control Center page (as a fraction of its height) before letting go turns it. */
+private const val CC_PAGE_TURN = .2f
+
+/** How much Control Center's header and strip icons grow with the font size: never smaller than drawn, never past a third larger, so they stay inside their 48 dp targets. */
+internal fun ccIconScale(fontScale: Float): Float = fontScale.coerceIn(1f, 4f / 3f)

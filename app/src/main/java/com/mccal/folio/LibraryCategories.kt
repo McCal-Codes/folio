@@ -91,7 +91,7 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
         BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioGlass.card)
             .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp)).padding(FolioSpace.MEDIUM.dp)) {
             val gap = 10.dp
-            val cell = (maxWidth - gap) / 2
+            val cell = ((maxWidth - gap) / 2).coerceAtLeast(0.dp)  // a card measured very narrow mid-resize must not give a negative corner (crash on a window-size change)
             val big = if (apps.size > 4) apps.take(3) else apps.take(4)
             val rest = if (apps.size > 4) apps.drop(3) else emptyList()
             Column(verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -103,7 +103,7 @@ internal fun CategoryCard(title: String, apps: List<AppEntry>, modifier: Modifie
                                 .clickable { onLaunch(big[index]) }, shape = RoundedCornerShape(cell * .24f))
                             index == 3 && rest.isNotEmpty() -> Box(Modifier.size(cell).clip(RoundedCornerShape(cell * .24f))
                                 .clickable(onClick = onOpen).semantics { contentDescription = showAllText }) {
-                                val mini = (cell - 4.dp) / 2
+                                val mini = ((cell - 4.dp) / 2).coerceAtLeast(0.dp)
                                 Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                                     rest.take(4).chunked(2).forEach { pair ->
                                         Row(horizontalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
@@ -162,7 +162,7 @@ internal fun CategoryFolder(title: String, apps: List<AppEntry>, onDismiss: () -
                                 .combinedClickable(onLongClick = { onActions(app) }) { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 AppIcon(app, null, Modifier.size(54.dp), shape = RoundedCornerShape(13.dp))
-                                Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                                 // A clone sits beside its original with the same name, as in the A to Z list.
                                 if (app.kind == ProfileKind.CLONE && app.iconFrom == null) Text(profileName(app), color = Color.White.copy(alpha = .6f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall,

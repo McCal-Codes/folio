@@ -23,13 +23,15 @@ internal object FolioGlass {
     /** Large tiles (Control Center modules). */
     val module = FolioColors.SecondaryBackground.copy(alpha = .76f)
     /** Cards and rows (notifications, Spotlight sections, search field). */
-    val card = Color(0xFF242428).copy(alpha = .82f)
+    val card = FolioColors.SurfaceCard.copy(alpha = .82f)
     /** Controls sitting on a card (inactive toggles, pills, chips). */
     val raised = Color.White.copy(alpha = .14f)
+    /** Control Center, Frosted: smoky dark tiles that carry their own contrast, with no plate behind them (McCal 25 Oct 2026: "remove that darker background"). */
+    val frostedTile = Color.Black.copy(alpha = .38f)
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */
-    val secondary = Color.White.copy(alpha = .62f)
+    val secondary = FolioColors.SecondaryLabel
 }
 
 /** Dark, iOS-like colors for Folio's sheets (settings, app options, setup). */
@@ -38,10 +40,10 @@ internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
     primaryContainer = FolioColors.BlueOnDark, onPrimaryContainer = Color.White,
     secondary = FolioColors.Cyan, onSecondary = Color.Black,
     secondaryContainer = FolioColors.MenuSurface, onSecondaryContainer = Color.White,
-    surface = FolioColors.SecondaryBackground, onSurface = Color.White, onSurfaceVariant = Color(0xFFA1A1A6),
-    surfaceContainerLowest = Color(0xFF141416), surfaceContainerLow = FolioColors.SecondaryBackground,
-    surfaceContainer = Color(0xFF242428), surfaceContainerHigh = FolioColors.SheetSurface, surfaceContainerHighest = FolioColors.MenuSurface,
-    outline = Color(0xFF545458), outlineVariant = Color(0xFF38383A), error = FolioColors.Red,
+    surface = FolioColors.SecondaryBackground, onSurface = Color.White, onSurfaceVariant = FolioColors.LabelVariant,
+    surfaceContainerLowest = FolioColors.SurfaceLowest, surfaceContainerLow = FolioColors.SecondaryBackground,
+    surfaceContainer = FolioColors.SurfaceCard, surfaceContainerHigh = FolioColors.SheetSurface, surfaceContainerHighest = FolioColors.MenuSurface,
+    outline = FolioColors.Outline, outlineVariant = FolioColors.OutlineVariant, error = FolioColors.Red,
 )
 
 /**
@@ -103,6 +105,15 @@ internal val LocalFolderColors = androidx.compose.runtime.compositionLocalOf { e
 @androidx.compose.runtime.Immutable
 internal data class TintOptions(val notifications: Boolean = false, val media: Boolean = true, val notificationAppRow: Boolean = true, val mediaIsland: Boolean = true)
 internal val LocalTintOptions = androidx.compose.runtime.staticCompositionLocalOf { TintOptions() }
+
+/** The tint choices for the screen a window of this size is: Home and the panels drawn over other apps read them the same way. */
+internal fun tintOptionsFor(state: LauncherState, wide: Boolean): TintOptions {
+    val screen = screenFor(wide)
+    return TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
+        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
+        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
+        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
+}
 
 /** How strong Home's glass is: widget frost and the outline around widgets and Side Bar capsules (Settings › Glass). */
 internal data class GlassLook(val widget: Float = .26f, val outline: Float = .16f) {

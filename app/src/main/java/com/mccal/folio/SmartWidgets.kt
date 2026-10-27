@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter
 const val UP_NEXT_WIDGET = -6
 const val SUGGESTIONS_WIDGET = -7
 const val BIG_CLOCK_WIDGET = -8
+const val MUSIC_WIDGET = -9
 
 /** The size of a Home icon in dp, for widgets that show apps and must never draw them bigger than Home does. */
 internal val LocalHomeIconSize = staticCompositionLocalOf { 66f }
@@ -82,7 +83,7 @@ internal fun UpNextCard(onClick: () -> Unit) {
     }
     GlassCard(onClick = onClick) {
         Column {
-            Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = .6.sp)
+            Text(today.format(DateTimeFormatter.ofPattern("EEEE")).uppercase(), color = FolioColors.Red, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.Bold, letterSpacing = .6.sp)
             Text(today.dayOfMonth.toString(), color = ink.primary, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 32.sp)
         }
         when {
@@ -159,7 +160,7 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
     val secondaryColor = if (resolved != null) textColor.copy(alpha = .75f) else ink.secondary
     val animatedWeight by animateFloatAsState(style.weight.toFloat(), clockMotion(), label = "clock weight")
     val animatedSize by animateFloatAsState(style.size, clockMotion(), label = "clock size")
-    val shadeAlpha by animateFloatAsState(if (resolved?.shade == true) .4f else 0f, clockMotion(), label = "clock shade")
+    val shadeAlpha by animateFloatAsState(if (resolved?.shade == true) resolved.shadeAlpha else 0f, clockMotion(), label = "clock shade")
     val lightInk = if (resolved != null) resolved.color == Color.White else !ink.dark
     val shadow: androidx.compose.ui.graphics.Shadow? = when (style.shadow) {
         "OFF" -> null
@@ -214,7 +215,7 @@ internal fun BigClockCard(onClick: () -> Unit, slot: Int = -1, home: Boolean = f
             if (next != null && style.showNext) Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (event != null) Icons.Rounded.CalendarToday else Icons.Rounded.Alarm, null, tint = secondaryColor, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(next, color = secondaryColor, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = dateFamily,
+                Text(next, color = secondaryColor, fontSize = FolioType.COMPACT.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = dateFamily,
                     style = androidx.compose.ui.text.TextStyle(shadow = shadow))
             }
         }
