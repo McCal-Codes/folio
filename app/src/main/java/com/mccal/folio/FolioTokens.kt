@@ -334,9 +334,57 @@ internal object FolioMotion {
     /** Reduce Motion's stand-in for anything that would slide or grow in: a fade where it lands, this long. */
     const val FADE_MS = 150
 
+    // Advanced island › Animation speed (docs/mockups/lab/island-adjust.html, 2d). Multipliers on the island's own springs and
+    // fades, on top of Settings › Gestures › Animation Speed. Reduce Motion still wins; nothing loops at any step.
+    /** Slower: the island's morph and fades take about two thirds longer. */
+    const val ISLAND_SLOWER = .6f
+    /** Standard: exactly the island's motion before the option existed. */
+    const val ISLAND_STANDARD = 1f
+    /** Faster: half again as quick. */
+    const val ISLAND_FASTER = 1.5f
+    /** The most the island's step times Animation Speed may reach, so a change is never so quick it reads as a flicker (WCAG 2.3.1). */
+    const val ISLAND_FASTEST = 2.2f
+    /** The shortest an island fade may be made, in ms. */
+    const val ISLAND_MIN_FADE_MS = 60
+
+    /** A (damping, stiffness) pair with its stiffness scaled by [multiplier]; 1 gives the pair back unchanged. */
+    fun scaled(pair: Pair<Float, Float>, multiplier: Float) = if (multiplier == 1f) pair else pair.first to pair.second * multiplier
+
     /**
      * Reduce Motion keeps motion that shows a state (a switch thumb, a segment) but takes out the overshoot: the same
      * stiffness at damping 1. Under Android's Remove animations Compose ends it at once anyway.
      */
     fun calm(pair: Pair<Float, Float>, reduce: Boolean) = if (reduce) 1f to pair.second else pair
+}
+
+/**
+ * The Dynamic Island's own look options (Settings › Dynamic Island › Advanced island). Every default is what the island
+ * did before the options existed, so nothing changes for anyone who never opens the page.
+ */
+internal object FolioIsland {
+    /** The island's colors as ARGB numbers: Black is the default, and the only one drawn while the island wraps a real camera hole. */
+    const val Black = 0xFF000000L
+    const val Graphite = 0xFF1C1C1EL
+    const val Navy = 0xFF1D2B53L
+    const val Plum = 0xFF3A1D2EL
+    const val White = 0xFFFFFFFFL
+
+    /** Text on the island must reach this contrast against the island (WCAG 1.4.3), measured for the secondary text strength below. */
+    const val TEXT_MIN_CONTRAST = 4.5
+    /** How strong the island's secondary text is (subtitles, labels): the dimmest text the contrast rule is measured at. */
+    const val SECONDARY_TEXT_ALPHA = .6f
+    /** One step of lightness, 0 to 1, when a custom color is moved until its text is readable. */
+    const val NUDGE_STEP = .01f
+
+    /** Corner radius steps as a share of the fully round pill (half its height). Round is exactly today's pill. */
+    const val CORNERS_ROUND = 1f
+    const val CORNERS_SOFT = .72f
+    const val CORNERS_SQUARER = .5f
+    /** The expanded card's corner radius per step, in dp. Round is today's 34. */
+    const val CARD_ROUND = 34f
+    const val CARD_SOFT = 26f
+    const val CARD_SQUARER = 18f
+
+    /** How far a swipe up on the island must travel to count, in dp (the same as putting a card away). */
+    const val SWIPE_UP_DP = 24
 }
