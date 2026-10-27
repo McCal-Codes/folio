@@ -127,6 +127,32 @@ class HomeFitTest {
         }
     }
 
+    /**
+     * BI-4 of the 27 Oct break-it test: very short and narrow windows, below the support envelope. A window of micro size is
+     * Tier C and draws its own small Home (MicroHome.kt); anything else keeps tappable rows, the dock inside the window, and
+     * every one of the four rows reachable wherever the window has the height the usual layout needs (floorHeight). Under
+     * that height (411 x 381 dp, 1080 x 1000 at 420 dpi) the rows cannot all clear the controls and the last ones are covered:
+     * that is the documented floor, not a placement bug, and the test says how many rows stay reachable there.
+     */
+    @Test fun `tiny windows are the micro Home or keep tappable rows with the dock inside`() {
+        assertTrue(isMicroWindow(320f, 400f))
+        assertTrue("720 x 1280 at 420 dpi leaves under 480 dp of height once the bars are out", isMicroWindow(274f, 460f))
+        assertTrue(!isMicroWindow(411f, 381f))
+        for ((w, h) in listOf(320f to 400f, 280f to 480f, 274f to 488f, 411f to 381f)) {
+            if (isMicroWindow(w, h)) continue
+            for (preview in listOf(false, true)) {
+                val g = geo(w, h, false, preview = preview)
+                val p = place(g, h, preview, BASE_APP_ROWS)
+                val name = "${w.toInt()}x${h.toInt()} preview=$preview"
+                assertTrue("$name rows ${g.rowHeight} cells ${g.cellWidth}", g.rowHeight >= 48f && g.cellWidth >= 48f - 0.01f)
+                assertTrue("$name dock inside", g.dockTop >= 8f && g.dockTop + g.dockHeight <= h + 0.01f)
+                val room = h - 16f - limitShortfall(g, h, preview)
+                if (room >= floorHeight(g)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
+                else assertTrue("$name under the floor still reaches two rows, got ${p.reachableRows}", p.reachableRows >= 2)
+            }
+        }
+    }
+
     /** Every dp width around the two-half threshold, at the heights phones are held at in landscape: same rules, no jump, no clipped row. */
     @Test fun `widths around the two-half threshold behave alike at every short height`() {
         val report = StringBuilder("width,height,preview,duo,split,icon,rowHeight,cellWidth,reachable" + "\n")
