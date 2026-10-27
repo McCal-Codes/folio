@@ -1524,7 +1524,12 @@ fun LauncherScreen(
                         val existing = model.placement(picker.slot)
                         val special = existing?.takeIf { it.row + it.spanY > GRID_ROWS }
                         // Big Clock starts as wide as the page, like the Lock Screen clock; the others are small.
-                        val span = existing?.let { WidgetSpan(it.spanX, it.spanY) } ?: WidgetSpan(if (builtinId == BIG_CLOCK_WIDGET) 4 else 2, 2)
+                        val limits = builtinWidgetConstraints(builtinId)
+                        // Replacing keeps the old footprint only when the new widget accepts it: a narrow Suggestions slot is
+                        // too small for the Music widget, which then starts at its own preferred size.
+                        val span = existing?.let { WidgetSpan(it.spanX, it.spanY) }?.takeIf { limits == null || limits.accepts(it) }
+                            ?: limits?.preferred
+                            ?: WidgetSpan(if (builtinId == BIG_CLOCK_WIDGET) 4 else 2, 2)
                         if (special != null) {
                             widgetSession = WidgetPickerSession(null, picker.slot, span, Offset.Zero,
                                 dragging = false, candidate = special, builtinId = builtinId)
@@ -1661,6 +1666,7 @@ fun LauncherScreen(
                                                 UP_NEXT_WIDGET -> stringResource(R.string.up_next)
                                                 SUGGESTIONS_WIDGET -> stringResource(R.string.suggestions)
                                                 BIG_CLOCK_WIDGET -> stringResource(R.string.big_clock)
+                                                MUSIC_WIDGET -> stringResource(R.string.music)
                                                 else -> stringResource(R.string.widget_panel)
                                             }, color = Ink,
                                             textAlign = TextAlign.Center)

@@ -81,7 +81,7 @@ fun encodeLayoutBackup(
         if (placement.offsetX != 0f) item.put("offsetX", placement.offsetX.toDouble())
         if (placement.offsetY != 0f) item.put("offsetY", placement.offsetY.toDouble())
         when {
-            placement.id in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET) -> item.put("builtinId", placement.id)
+            placement.id in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET) -> item.put("builtinId", placement.id)
             saved != null -> item.put("provider", saved.providerComponent).put("userSerial", saved.userSerial)
                 .put("title", backupLabel(saved.title, widgetFallbackTitle(saved.providerComponent))).put("profileLabel", backupProfileLabel(saved.profileLabel, saved.isWork)).put("work", saved.isWork)
                 .put("sourceScope", exportedWidgetScope(saved, sourceScope))
@@ -237,7 +237,7 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
         val builtin = if (item.has("builtinId")) item.strictInt("builtinId") else null
         val provider = item.optString("provider").takeIf(String::isNotBlank)
         val id = if (builtin != null) {
-            require(builtin in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET)); builtin
+            require(builtin in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET)); builtin
         } else NEEDS_BINDING_WIDGET
         val placement = WidgetPlacement(slot, id, item.strictInt("page"), item.strictInt("column"), item.strictInt("row"),
             item.strictInt("spanX"), item.strictInt("spanY"),
