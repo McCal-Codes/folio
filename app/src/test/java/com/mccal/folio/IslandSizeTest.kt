@@ -75,6 +75,15 @@ class IslandSizeTest {
         assertEquals(0f, up.top)
     }
 
+    @Test fun `a nudge down never takes the pill off the bottom of the window`() {
+        // The window is 1800 px tall at density 2 (900 dp); a pill dragged to the bottom is nudged down by the largest step.
+        val low = place(custom = IslandPosition(.5f, 1700f), nudge = IslandNudge(0f, IslandNudge.NUDGE_LIMIT_DP))
+        assertTrue("top ${low.top}", low.top + low.pillH <= 900f)
+        // Sideways too: the centre stays inside the window.
+        val edge = place(custom = IslandPosition(1f, 40f), nudge = IslandNudge(IslandNudge.NUDGE_LIMIT_DP, 0f))
+        assertTrue(edge.centerXPx <= window.first.toFloat())
+    }
+
     @Test fun `nudges add up and stay inside the limit`() {
         assertEquals(IslandNudge(4f, -2f), IslandNudge.None.plus(2f, -1f).plus(2f, -1f))
         val far = IslandNudge.None.plus(1000f, -1000f)

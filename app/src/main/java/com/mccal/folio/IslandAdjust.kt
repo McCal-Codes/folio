@@ -134,6 +134,8 @@ internal fun IslandAdjustDialog(onDone: () -> Unit) {
             if (tick && fit != null && (shown < fit) != (clamped < fit)) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             extra = clamped; fitMessage = false
         }
+        // The drag below runs in one long coroutine: it reads the newest of these on every move, not the ones from when the finger went down.
+        val previewNow by androidx.compose.runtime.rememberUpdatedState<(Float, Boolean) -> Unit>({ next, tick -> preview(next, tick) })
         fun commit() { IslandSize.save(context, wide, landscape, extra) }
         fun setExtra(next: Float) { preview(next); commit() }
         fun nudgeBy(dxDp: Float, dyDp: Float) {
@@ -182,7 +184,7 @@ internal fun IslandAdjustDialog(onDone: () -> Unit) {
                     setProgress { v -> setExtra(v); true }
                 }
                 .pointerInput(geometry.maxExtra, fit) {
-                    detectDragGestures(onDragEnd = { commit() }, onDragCancel = { commit() }) { change, drag -> change.consume(); preview(extra + 2f * drag.x / d, tick = true) }
+                    detectDragGestures(onDragEnd = { commit() }, onDragCancel = { commit() }) { change, drag -> change.consume(); previewNow(extra + 2f * drag.x / d, true) }
                 }, contentAlignment = Alignment.Center) {
                 Box(Modifier.size(26.dp).clip(CircleShape).background(Color.White).border(2.dp, Color(0xFF0A84FF), CircleShape))
             }
