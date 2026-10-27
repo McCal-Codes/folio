@@ -169,8 +169,9 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             })
             .then(if ((which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) || (which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP)) Modifier.fillMaxWidth() else Modifier)
             .then(if (split) Modifier.fillMaxHeight() else Modifier)
-            // Taps on gaps inside the panel must not fall through to the scrim and close it.
-            .pointerInput(Unit) { detectTapGestures() }
+            // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
+            // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
+            .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
             .graphicsLayer {
                 val p = progress()
                 if (which == ShadePanel.NOTIFICATIONS) {
@@ -752,36 +753,48 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
         val pages = remember(plan) { List(plan.perPage.size) { CcPageSpec(CcPage.CONTROLS, it) } + CcPageSpec(CcPage.MEDIA, 0) + CcPageSpec(CcPage.CONNECTIVITY, 0) }
-        val pager = androidx.compose.foundation.pager.rememberPagerState { pages.size }
+        // The pager runs forward but its pages are in reverse (Controls at the last index): the first page is anchored at the bottom, the next ones come down from above,
+        // and a swipe up past the first page has nowhere to go, so it closes the panel. (reverseLayout stopped the drag from following the finger.)
+        val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = pages.lastIndex) { pages.size }
+        val firstIndex = pages.lastIndex
+        val current = firstIndex - pager.currentPage // the page shown, in the order of [pages]
+        // A different number of Controls pages (another window) starts again on the first.
+        LaunchedEffect(pages.size) { if (pager.currentPage != pages.lastIndex) pager.scrollToPage(pages.lastIndex) }
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
-        LaunchedEffect(pager.currentPage, pages.getOrNull(pager.currentPage)?.page) { if (pages.getOrNull(pager.currentPage)?.page != CcPage.CONTROLS) edit.stop() }
+        LaunchedEffect(current, pages.getOrNull(current)?.page) { if (pages.getOrNull(current)?.page != CcPage.CONTROLS) edit.stop() }
         // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
         val closeLabel = stringResource(R.string.close)
         var swipeAway by remember { mutableFloatStateOf(0f) }
         val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
+        val tick = androidx.compose.ui.platform.LocalHapticFeedback.current
         val swipeConnection = remember(pager, edit) {
             // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
             var startedOnFirst = false
             var gestureActive = false
+            // One light tick as the pull passes the point where letting go closes the panel (and again if it goes back), so the finger knows.
+            var pastClose = false
             object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
                 override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
                     // Only a finger starts a gesture: the pager's own settling after a release also scrolls (as a side effect) and must not pick the next gesture's page.
                     if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) return androidx.compose.ui.geometry.Offset.Zero
-                    if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == 0 }
+                    if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == pager.pageCount - 1 }
                     if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
                     return androidx.compose.ui.geometry.Offset.Zero
                 }
                 override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                    if (!edit.active && startedOnFirst && pager.currentPage == 0 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
-                        swipeAway += available.y; return androidx.compose.ui.geometry.Offset(0f, available.y)
+                    if (!edit.active && startedOnFirst && pager.currentPage == pager.pageCount - 1 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
+                        swipeAway += available.y
+                        val past = swipeAway < -swipeAwayPx
+                        if (past != pastClose) { pastClose = past; tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) }
+                        return androidx.compose.ui.geometry.Offset(0f, available.y)
                     }
                     return androidx.compose.ui.geometry.Offset.Zero
                 }
                 override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
-                    gestureActive = false
+                    gestureActive = false; pastClose = false
                     if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
                     if (swipeAway < -swipeAwayPx || available.y < -CC_SWIPE_AWAY_FLICK) onClose()
                     else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
@@ -789,7 +802,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 }
             }
         }
-        fun goTo(page: Int) { pageScope.launch { if (reduceMotion) pager.scrollToPage(page) else pager.animateScrollToPage(page, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
+        fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         val neededRows = maxOf(ccMediaRows(plan, focusOn), plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
@@ -851,7 +864,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pageContent: @Composable (CcPageSpec) -> Unit = { spec ->
             // The grid is centered in a header that may be wider than it (a short, narrow window puts the page dots in the header).
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.width(gridWidth).fadingVerticalScroll(), verticalArrangement = Arrangement.spacedBy(gap)) {
+            // A page scrolls only where its rows do not fit the window. A scroll container that cannot scroll still took the downward drag
+            // (its edge stretch ate it), so a swipe down never reached the pager; with none, or with the stretch off, the pager gets it.
+            val rowsFit = ccRowsThatFit(pageHeight.value, cell.value, gap.value)
+            val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> ccPlanRows(plan, spec.index, cols, focusOn); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
+            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+            CompositionLocalProvider(androidx.compose.foundation.LocalOverscrollConfiguration provides null) {
+            Column(Modifier.width(gridWidth).then(if (rowsNeeded > rowsFit) Modifier.fadingVerticalScroll() else Modifier), verticalArrangement = Arrangement.spacedBy(gap)) {
                 when (spec.page) {
                     CcPage.CONTROLS -> {
                         val first = spec.index == 0
@@ -933,6 +952,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 }
             }
             }
+            }
         }
 
         // The edge or bottom strip that moves between pages (tap), as on the iPad; a swipe across the panel does the same.
@@ -942,7 +962,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             val items: @Composable () -> Unit = {
                 pages.forEachIndexed { index, spec ->
                     val page = spec.page
-                    val selected = pager.currentPage == index
+                    val selected = current == index
                     val name = label(page)
                     val description = stringResource(R.string.cc_page_of, name, index + 1, pages.size)
                     Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).background(if (selected) Color.White else NotifGlass)
@@ -953,14 +973,14 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) FolioColors.MenuSurface else Color.White,
                             fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
                         else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Apps; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
-                            null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size(22.dp))
+                            null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size((22 * ccIconScale(LocalDensity.current.fontScale)).dp))
                     }
                 }
             }
             if (grid.stripInHeader) Row(verticalAlignment = Alignment.CenterVertically) {
                 // Small dots, each a 32 by 48 dp target side by side (no gap between targets, so a tap near the edge cannot hit the wrong page): a short window has no row to spare for round buttons.
                 pages.forEachIndexed { index, spec ->
-                    val selected = pager.currentPage == index
+                    val selected = current == index
                     val description = stringResource(R.string.cc_page_of, label(spec.page), index + 1, pages.size)
                     Box(Modifier.size(32.dp, FolioTouch.MIN.dp).clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
                         .semantics { contentDescription = description; this.selected = selected }, contentAlignment = Alignment.Center) {
@@ -980,31 +1000,34 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }
             .semantics { dismiss(closeLabel) { onClose(); true } }, contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
-                Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)), verticalArrangement = Arrangement.spacedBy(gap)) {
+                // The grid takes the taps that land between its controls, so only the margins around it close the panel.
+                Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)).pointerInput(Unit) { detectTapGestures() }, verticalArrangement = Arrangement.spacedBy(gap)) {
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
-                        else if (pages.getOrNull(pager.currentPage)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
+                        else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))
                         if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
+                        // A button for the way out, for anyone who does not know the swipe (a short, narrow window has no room for it: the swipe and a tap outside close there).
+                        else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { onClose() }
                         GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
                             onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
                         }
                     }
                     // Pages are stacked and the next one comes down with a swipe down (reverseLayout: the first page is anchored, so a swipe up past it closes the panel), as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
                     // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
-                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true, reverseLayout = true,
+                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
                         flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
                             snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
                         Box(Modifier.fillMaxSize().graphicsLayer {
                             val away = kotlin.math.abs((pager.currentPage - index) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
                             alpha = 1f - CC_PAGE_FADE * away
                             if (!reduceMotion) { val scale = 1f - CC_PAGE_SHRINK * away; scaleX = scale; scaleY = scale }
-                        }, contentAlignment = Alignment.TopStart) { pageContent(pages[index]) }
+                        }, contentAlignment = Alignment.TopStart) { pageContent(pages[firstIndex - index]) }
                     }
                     if (!grid.stripAtEdge && !grid.stripInHeader) strip()
                 }
-                if (grid.stripAtEdge) strip()
+                if (grid.stripAtEdge) Box(Modifier.pointerInput(Unit) { detectTapGestures() }) { strip() }
             }
         }
         }
@@ -1214,9 +1237,11 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
 
 @Composable
 private fun GlassIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    // The drawn circle and its icon follow the font size the person chose (up to a third larger), inside a target that never drops below 48 dp.
+    val grow = ccIconScale(LocalDensity.current.fontScale)
     Box(Modifier.minimumInteractiveComponentSize().clickable(onClick = onClick).semantics { contentDescription = label },
-        contentAlignment = Alignment.Center) { Box(Modifier.size(34.dp).clip(CircleShape).background(NotifGlass), contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        contentAlignment = Alignment.Center) { Box(Modifier.size((34 * grow).dp).clip(CircleShape).background(NotifGlass), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size((18 * grow).dp))
     } }
 }
 
@@ -1323,3 +1348,6 @@ private class DeviceControls(private val context: Context) {
 
 private fun androidx.compose.ui.hapticfeedback.HapticFeedback.toggle(on: Boolean) = performHapticFeedback(
     if (on) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff)
+
+/** How much Control Center's header and strip icons grow with the font size: never smaller than drawn, never past a third larger, so they stay inside their 48 dp targets. */
+internal fun ccIconScale(fontScale: Float): Float = fontScale.coerceIn(1f, 4f / 3f)

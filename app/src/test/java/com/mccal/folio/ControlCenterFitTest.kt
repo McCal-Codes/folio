@@ -39,6 +39,12 @@ class ControlCenterFitTest {
             if (used > rows) problems += "$tag: page ${i + 1} needs $used rows"
         }
         if (n > 0 && plan.perPage.any { it == 0 } && plan.perPage.size > 1 && plan.perPage.drop(1).any { it == 0 }) problems += "$tag: an empty page"
+        // The header's three buttons (edit, close, power) side by side fit the width of the grid they sit above; with the strip in the header its own check below covers them.
+        if (!g.stripInHeader) {
+            val gridWidth = g.columns * g.cellDp + (g.columns - 1) * g.gapDp
+            val needed = 3 * 48f + 2 * 8f
+            if (gridWidth < needed) problems += "$tag: header buttons need %.0f of the grid's %.0f".format(needed, gridWidth)
+        }
         // The strip in the header: the two buttons and a dot for each page fit the panel's width (the header may be wider than a narrow grid).
         if (g.stripInHeader) {
             val width = ccHeaderMinWidth(plan.perPage.size + 2)
@@ -80,5 +86,13 @@ class ControlCenterFitTest {
         // With the row to spare it stays where it was, and without Focus nothing moves.
         assertEquals(true, ccPlanControls(4, 50f, 9f, 170f, 8, true).focusOnFirst)
         assertEquals(3, ccMediaRows(ccPlanControls(4, 50f, 9f, 110f, 8, false), false))
+    }
+
+    @Test fun `header and strip icons grow with the font size but stay inside their targets`() {
+        assertEquals(1f, ccIconScale(.85f), 0f)
+        assertEquals(1f, ccIconScale(1f), 0f)
+        assertEquals(4f / 3f, ccIconScale(2f), 0f)
+        // The largest drawn circle (34 dp) and strip icon (22 dp) at the largest growth fit the 48 dp target.
+        assertTrue(34 * ccIconScale(3f) <= 48f && 22 * ccIconScale(3f) <= 48f)
     }
 }

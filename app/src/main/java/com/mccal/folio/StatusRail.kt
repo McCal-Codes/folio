@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
@@ -224,8 +225,13 @@ fun StatusRail(
         else -> ink
     }
     val capsule = RoundedCornerShape(FolioRadius.RAIL.dp)
+    // The press shows on the visible capsule, not as the default ripple over the whole rail: the rail also holds the empty location slot above the capsule,
+    // and the ripple lit that as a faint second pill behind it.
+    val press = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
+    val pressShade by animateFloatAsState(if (pressed && onOpen != null) .14f else 0f, androidx.compose.animation.core.tween(120), label = "rail press")
     BoxWithConstraints(modifier.testTag("status-rail")
-        .then(if (onOpen != null) Modifier.clip(capsule).clickable(onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
+        .then(if (onOpen != null) Modifier.clip(capsule).clickable(interactionSource = press, indication = null, onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
         .semantics(mergeDescendants = true) { contentDescription = description }) {
         val availableWidth = (maxWidth - 16.dp).coerceAtLeast(28.dp)
         val visualSize = minOf(iconSize * .9f, availableWidth, if (compact) 34.dp else 44.dp)
@@ -246,6 +252,7 @@ fun StatusRail(
             if (hasContent) Column(Modifier.fillMaxWidth()
                 .then(if (style.background) Modifier.background(Glass.copy(alpha = style.railGlass), capsule)
                     .border(1.dp, LocalGlassLook.current.outlineColor, capsule) else Modifier)
+                .then(if (pressShade > 0f) Modifier.background(ink.copy(alpha = pressShade), capsule) else Modifier)
                 // Standard (4) and Compact (0) keep their old padding; the slider moves between and past them.
                 .padding(vertical = if (compact) FolioSpace.SMALL.dp else (8f + style.spacing).coerceAtMost(12f).dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(style.spacing.dp)) {
