@@ -264,6 +264,7 @@
     <string name="widget_shape_row">Row</string>
     <string name="widget_shape_column">Column</string>
     <string name="widget_unavailable">Widget unavailable</string>
+    <string name="choose_again">Choose again</string>
     <string name="notification_center">Notification Center</string>
     <string name="no_notifications">No Notifications</string>
     <string name="show_less">Show less</string>
