@@ -64,6 +64,10 @@ data class WidgetSpanConstraints(
     val minimumFitsGrid: Boolean = true,
 )
 
+/** True when [span] is within these limits, so an existing footprint can be kept when a different widget replaces the one in it. */
+fun WidgetSpanConstraints.accepts(span: WidgetSpan): Boolean =
+    span.width in minimum.width..maximum.width && span.height in minimum.height..maximum.height
+
 /** Derives bounded spans; minimumFitsGrid reports when provider minima exceed the grid. */
 fun widgetSpanConstraints(provider: WidgetProviderSizing, grid: WidgetGridSizing): WidgetSpanConstraints? {
     require(grid.columns > 0 && grid.rows > 0)
@@ -118,11 +122,15 @@ private fun spanForSize(sizeDp: Float, cellDp: Float, gapDp: Float): Int =
 
 /**
  * Size limits for Folio's own widgets, which have no provider to ask. Suggestions resizes freely, from one cell to the
- * whole 4 x 4 grid; the others keep the defaults (null).
+ * whole 4 x 4 grid. Music is short enough for the Strip at its minimum (3 x 1: two columns of a phone leave no room for a title beside the controls) and square at its maximum for the Poster; the
+ * others keep the defaults (null).
  */
 fun builtinWidgetConstraints(id: Int): WidgetSpanConstraints? = when (id) {
     SUGGESTIONS_WIDGET -> WidgetSpanConstraints(
         preferred = WidgetSpan(2, 2), minimum = WidgetSpan(1, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
+        canResizeHorizontally = true, canResizeVertically = true)
+    MUSIC_WIDGET -> WidgetSpanConstraints(
+        preferred = WidgetSpan(4, 2), minimum = WidgetSpan(MUSIC_MIN_COLUMNS, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
         canResizeHorizontally = true, canResizeVertically = true)
     else -> null
 }

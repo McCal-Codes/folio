@@ -159,7 +159,7 @@ class PageEffectsTest {
     @Test fun `Home asks the gate and Reduce Motion before any of this runs`() {
         val screen = source("LauncherScreen.kt")
         // REL-4a: the gate is asked where the work starts, not only where the setting is drawn.
-        assertTrue("the effect itself should be gated", "FeatureGate.PAGE_EFFECTS.isOpen" in screen)
+        assertTrue("the effect itself should be gated", "rememberGateOpen(FeatureGate.PAGE_EFFECTS)" in screen)
         // DYN-11 / A11Y-14: spatial motion goes away with Reduce Motion on, and it is read through the composition local.
         assertTrue("Reduce Motion should switch it off", "!LocalReduceMotion.current" in screen)
         assertTrue("with the gate shut or Reduce Motion on it has to fall back to None", "else PageEffect.NONE" in screen)
