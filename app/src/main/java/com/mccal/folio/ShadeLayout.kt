@@ -80,15 +80,16 @@ internal fun ccRowsThatFit(heightDp: Float, cellDp: Float, gapDp: Float): Int = 
 /**
  * How the small controls are split over the Controls pages so that none of them scrolls (PNL-1): [perPage] is how many go on each page, and
  * [slidersOnFirst] says whether the two sliders fit on the first page beside them (four columns) or in its top row (six or more); if they
- * do not fit they stay on the Media page. The first page also holds the connectivity, Now Playing and Focus modules, so it holds fewer.
+ * do not fit they stay on the Media page, and so does Focus when the first page has no row for it. The first page also holds the connectivity, Now Playing and Focus modules, so it holds fewer.
  * A null [pageHeightDp] means no height limit: everything on one page, as before.
  */
-internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean)
+internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean, val focusOnFirst: Boolean = true)
 
 internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeightDp: Float?, controls: Int, focus: Boolean): CcPlan {
     if (pageHeightDp == null) return CcPlan(listOf(controls), true)
     val rows = ccRowsThatFit(pageHeightDp, cellDp, gapDp)
-    val free = rows - 2 - (if (focus) 1 else 0) // rows left under the modules
+    val focusFirst = !focus || rows >= 3 // below three rows the two modules fill the page, and Focus goes to the Media page
+    val free = rows - 2 - (if (focus && focusFirst) 1 else 0) // rows left under the modules
     val slidersOnFirst: Boolean
     val first: Int
     if (columns >= 6) { slidersOnFirst = true; first = maxOf(0, free) * columns }
@@ -99,7 +100,7 @@ internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeigh
     val perOther = maxOf(1, rows) * columns
     val pages = mutableListOf(onFirst)
     while (left > 0) { val n = minOf(left, perOther); pages += n; left -= n }
-    return CcPlan(pages, slidersOnFirst)
+    return CcPlan(pages, slidersOnFirst, focusFirst)
 }
 
 /** The rows of cells page [index] of the plan uses, for the height the pager is given. */
@@ -107,13 +108,16 @@ internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean):
     val n = plan.perPage[index]
     fun rowsOf(count: Int, per: Int) = (count + per - 1) / per
     if (index > 0) return rowsOf(n, columns)
-    val top = 2 + (if (focus) 1 else 0)
+    val top = 2 + (if (focus && plan.focusOnFirst) 1 else 0)
     return top + when {
         columns >= 6 -> rowsOf(n, columns)
         plan.slidersOnFirst -> 2 + rowsOf(maxOf(0, n - 4), 4)
         else -> rowsOf(n, 4)
     }
 }
+
+/** The rows the Media page uses: Now Playing and the sliders three tall, and Focus under them when it did not fit on the first page. */
+internal fun ccMediaRows(plan: CcPlan, focus: Boolean): Int = 3 + (if (focus && !plan.focusOnFirst) 1 else 0)
 
 /**
  * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
