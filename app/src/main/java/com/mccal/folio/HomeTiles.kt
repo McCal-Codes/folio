@@ -227,7 +227,7 @@ internal fun DockAppColumn(
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
                         } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id") // english-only
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
-                            val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value
+                            val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value * (if (app.available) 1f else UNAVAILABLE_APP_ALPHA)
                             // Grow toward the screen, away from the edge the dock sits on.
                             transformOrigin = if (horizontal) androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
                                 else androidx.compose.ui.graphics.TransformOrigin(if (leftHanded) 0f else 1f, .5f)
@@ -299,6 +299,9 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     }
 }
 
+/** How faint the icon of an app that is turned off or unavailable is drawn, the same .4 as other disabled controls. */
+private const val UNAVAILABLE_APP_ALPHA = .4f
+
 @Composable
 internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modifier = Modifier, onClick: (android.graphics.Rect) -> Unit, onLongClick: () -> Unit,
     onRemove: (() -> Unit)? = null,
@@ -343,7 +346,11 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
             }.background(Glass.copy(alpha = .72f), RoundedCornerShape((size * .24f).dp)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp)))
             if (app.id in LocalStackedApps.current) StackPeek(iconSize)
             AppIcon(app, null, Modifier.fillMaxSize()
-                .graphicsLayer { if (plate != null && !still) { val inside = 1f - (1f - FolderOrRoom.ICON_INSIDE) * plate(); scaleX = inside; scaleY = inside } }
+                .graphicsLayer {
+                    if (plate != null && !still) { val inside = 1f - (1f - FolderOrRoom.ICON_INSIDE) * plate(); scaleX = inside; scaleY = inside }
+                    // An app that is turned off keeps its place, dimmed, until it comes back (see keptWhileDisabled).
+                    if (!app.available) alpha = UNAVAILABLE_APP_ALPHA
+                }
                 .pressFeedback(pressed || launching, lifted, size * .24f, kind = PressFeedback.Kind.APP), shape = RoundedCornerShape((size * .24f).dp))
             if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = onRemove)
         }
