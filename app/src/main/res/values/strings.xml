@@ -1135,6 +1135,10 @@
         <item quantity="one">%1$d folder</item>
         <item quantity="other">%1$d folders</item>
     </plurals>
+    <plurals name="restore_widgets_skipped">
+        <item quantity="one">%1$d widget in this backup is from a newer Folio and will be left out.</item>
+        <item quantity="other">%1$d widgets in this backup are from a newer Folio and will be left out.</item>
+    </plurals>
     <plurals name="restore_widgets">
         <item quantity="one">%1$d widget</item>
         <item quantity="other">%1$d widgets</item>

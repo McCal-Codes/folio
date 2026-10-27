@@ -1123,6 +1123,9 @@
     <plurals name="restore_folders">
         <item quantity="other">폴더 %1$d개</item>
     </plurals>
+    <plurals name="restore_widgets_skipped">
+        <item quantity="other">이 백업의 위젯 %1$d개는 더 최신 버전의 Folio에서 만든 것이라 제외됩니다.</item>
+    </plurals>
     <plurals name="restore_widgets">
         <item quantity="other">위젯 %1$d개</item>
     </plurals>

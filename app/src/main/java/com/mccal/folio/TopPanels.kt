@@ -204,11 +204,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
             NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
             listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
 }
@@ -695,7 +695,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -782,8 +782,14 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
         val closeLabel = stringResource(R.string.close)
         var swipeAway by remember { mutableFloatStateOf(0f) }
-        val swipeAwayPx = with(androidx.compose.ui.platform.LocalDensity.current) { CC_SWIPE_AWAY_DP.dp.toPx() }
-        val tick = androidx.compose.ui.platform.LocalHapticFeedback.current
+        // Closing leaves the pull where it was while the panel fades out. Pulled open again in that time, this same panel is reused, so it starts from rest.
+        LaunchedEffect(panelOpen) { swipeAway = ccSwipeAwayOnOpenChange(panelOpen, swipeAway) }
+        val swipeDensity = androidx.compose.ui.platform.LocalDensity.current
+        // The connection below is made once, so it reads these through State: a new density (a fold, a display-size change) or a new onClose is seen at the next gesture.
+        val swipeAwayPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_DP.dp.toPx() })
+        val flickPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_FLICK_DP.dp.toPx() })
+        val closePanel by rememberUpdatedState(onClose)
+        val tick by rememberUpdatedState(androidx.compose.ui.platform.LocalHapticFeedback.current)
         val swipeConnection = remember(pager, edit) {
             // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
             var startedOnFirst = false
@@ -810,7 +816,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
                     gestureActive = false; pastClose = false
                     if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
-                    if (swipeAway < -swipeAwayPx || available.y < -CC_SWIPE_AWAY_FLICK) onClose()
+                    if (ccSwipeAwayCloses(swipeAway, available.y, swipeAwayPx, flickPx)) closePanel()
                     else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
                     return available
                 }
@@ -1148,7 +1154,7 @@ private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: 
 
 /** Now Playing (2×2): album art, title and transport controls; or, [slim], one row with the title alone. */
 @Composable
-private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit, slim: Boolean) {
+internal fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit, slim: Boolean) {
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
     val tint by androidx.compose.animation.animateColorAsState(mixColor(LocalCcLook.current.tile, artAccent, .45f), label = "music tint")
     val context = LocalContext.current
@@ -1173,8 +1179,9 @@ private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp
             Spacer(Modifier.width(FolioSpace.SMALL.dp))
             Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
                 fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        } else Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.Top) {
+        } else Column(Modifier.fillMaxSize().padding(top = cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
+            // The sides are padded row by row: the transport row below runs the full width, so each of its three controls is a third of the tile.
+            Row(Modifier.padding(horizontal = cell * .16f), verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(cell * .58f).clip(RoundedCornerShape(cell * .13f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
                     val image = media?.art ?: media?.icon
                     if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
@@ -1187,18 +1194,25 @@ private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp
                     media?.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
-            if (media != null) MediaScrubber(media, artAccent?.let { Color(vividTint(it.toArgb())) }) else Spacer(Modifier.height(1.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            if (media != null) Box(Modifier.padding(horizontal = cell * .16f)) { MediaScrubber(media, artAccent?.let { Color(vividTint(it.toArgb())) }) } else Spacer(Modifier.height(1.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 val t = media?.controller?.transportControls
                 val tint = Color.White.copy(alpha = if (t != null) 1f else .35f)
-                Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() })
-                Box(Modifier.size(cell * .46f).clip(CircleShape).background(Color.White).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() },
-                    contentAlignment = Alignment.Center) {
-                    Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        stringResource(if (media?.playing == true) R.string.pause else R.string.play),
-                        tint = if (t != null) Color.Black else Color.Black.copy(alpha = .35f), modifier = Modifier.size(cell * .26f))
+                // Each control draws as small as before and takes a third of the tile's width and at least 48 dp of height (A11Y-1): the glyph is not the only part that answers a tap.
+                Box(Modifier.testTag("cc-previous").weight(1f).heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f))
                 }
-                Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToNext() })
+                Box(Modifier.testTag("cc-play").weight(1f).heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() },
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(cell * .46f).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                        Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            stringResource(if (media?.playing == true) R.string.pause else R.string.play),
+                            tint = if (t != null) Color.Black else Color.Black.copy(alpha = .35f), modifier = Modifier.size(cell * .26f))
+                    }
+                }
+                Box(Modifier.testTag("cc-next").weight(1f).heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(t != null) { t?.skipToNext() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f))
+                }
             }
         }
     }
@@ -1246,11 +1260,12 @@ private const val CC_PAGE_FADE = .55f
 
 /** How far up the panel has to be pulled to close, and how fast a flick (px per second) closes it from less. */
 private const val CC_SWIPE_AWAY_DP = 96f
-private const val CC_SWIPE_AWAY_FLICK = 1400f
+/** A flick up faster than this closes Control Center, in dp per second (about what 1400 px per second was on the Fold's 2.6 density), so a dense screen needs no lighter a flick. */
+private const val CC_SWIPE_AWAY_FLICK_DP = 530f
 private const val CC_PAGE_SHRINK = .05f
 
 @Composable
-private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
+internal fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
     val source = remember { MutableInteractionSource() }
@@ -1492,15 +1507,25 @@ internal fun MusicWidgetCard(onEdit: () -> Unit) {
     }
 }
 
+/** Sp to dp at the person's font size and display size, for the Music widget's text rows (see [musicCardPlan]). */
+@Composable
+private fun rememberSpToDp(): (Float) -> Float {
+    val density = LocalDensity.current
+    return remember(density) { { sp: Float -> with(density) { sp.sp.toDp().value } } }
+}
+
 @Composable
 private fun MusicCard(media: IslandActivity.Media, accent: Color) {
     val t = media.controller.transportControls
     val (_, duration) = rememberMediaPosition(media)
+    val spToDp = rememberSpToDp()
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
         // Same fixed-budget approach as the Poster: the art gets whatever height is left over after everything
         // else, never a weight negotiation that starved it to zero the first time this was tried.
-        val fixedBudget = 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + FolioTouch.MIN.dp
-        val art = (maxHeight - fixedBudget).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
+        // The text rows are worked out from their type tokens at the font size in use, so a large font takes its room from the art, then the scrubber and the artist, and never from the title or the controls.
+        val plan = musicCardPlan(maxHeight.value, minOf(maxWidth * .3f, 64.dp).value, FolioType.SUBHEAD, FolioType.FOOTNOTE, media.subtitle != null, duration > 0L,
+            fixedDp = 8f, controlsDp = FolioTouch.MIN.toFloat(), spToDp = spToDp)
+        val art = plan.artDp.dp
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
@@ -1511,10 +1536,10 @@ private fun MusicCard(media: IslandActivity.Media, accent: Color) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    media.subtitle?.takeIf { plan.subtitle }?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
-            if (duration > 0L) MediaScrubber(media, accent)
+            if (plan.scrubber) MediaScrubber(media, accent)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 // Each control is a 48 dp touch box (A11Y-1) around its glyph, so the small glyphs are not the only tappable part.
                 Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToPrevious() }, contentAlignment = Alignment.Center) {
@@ -1538,14 +1563,18 @@ private fun MusicCard(media: IslandActivity.Media, accent: Color) {
 private fun MusicStrip(media: IslandActivity.Media, accent: Color) {
     val t = media.controller.transportControls
     val (position, duration) = rememberMediaPosition(media)
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // A narrow Strip (a cover screen, a split window) keeps its title: the next button goes first, then the art (see musicStripPlan).
+        val plan = musicStripPlan(maxWidth.value)
         Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
-                val image = media.art ?: media.icon
-                if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+            if (plan.art) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                    val image = media.art ?: media.icon
+                    if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(10.dp))
             }
-            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -1554,7 +1583,7 @@ private fun MusicStrip(media: IslandActivity.Media, accent: Color) {
                 Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
                     tint = Color.White, modifier = Modifier.size(28.dp))
             }
-            Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+            if (plan.next) Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White.copy(alpha = .85f), modifier = Modifier.size(22.dp))
             }
         }
@@ -1572,6 +1601,7 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
     val image = media.art ?: media.icon
     // Built once: the graphics layer block runs on every draw, and a blur effect is not free to make.
     val backdropBlur = remember { android.graphics.RenderEffect.createBlurEffect(60f, 60f, android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect() }
+    val spToDp = rememberSpToDp()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize()
             .graphicsLayer { renderEffect = backdropBlur; alpha = .55f }
@@ -1580,8 +1610,9 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
         // Everything but the art has a fixed height, so the art gets whatever is left over (never a weight
         // negotiation, which can starve it to zero when the rest of the card already fills the box). The wave
         // only shows once there is enough left over for a worthwhile art size with it still on screen.
-        val fixedBudget = 8.dp + 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + 52.dp + 28.dp
-        val art = (maxHeight - fixedBudget).coerceAtLeast(32.dp)
+        val plan = musicCardPlan(maxHeight.value, Float.MAX_VALUE, FolioType.BODY, FolioType.FOOTNOTE, media.subtitle != null, duration > 0L,
+            fixedDp = 8f + 8f + 28f, controlsDp = 52f, spToDp = spToDp)
+        val art = plan.artDp.dp
         val showWave = art - 26.dp >= 56.dp
         val artSize = (if (showWave) art - 26.dp else art).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .6f, 120.dp)))
         Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -1591,9 +1622,9 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
             }
             Spacer(Modifier.height(8.dp))
             Text(media.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+            media.subtitle?.takeIf { plan.subtitle }?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             if (showWave) MusicWave(media.playing && !reduceMotion, accent)
-            if (duration > 0L) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
+            if (plan.scrubber) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
                 Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
                 }

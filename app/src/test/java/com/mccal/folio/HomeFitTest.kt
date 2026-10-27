@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 
@@ -242,7 +243,10 @@ class HomeFitTest {
     }
 
     @Test fun `write the table`() {
-        val file = System.getenv("FOLIO_HOME_FIT_TABLE") ?: return
+        // A generator, not a check: shown as skipped (not passed) unless the variable names a file to write.
+        val file = System.getenv("FOLIO_HOME_FIT_TABLE")
+        assumeTrue("FOLIO_HOME_FIT_TABLE is not set", file != null)
+        file!!
         val out = StringBuilder("window | duo | rows | icon | row | top slack | bottom slack | ratio | pct top | pct bottom | reachable cells\n")
         forEachWindow { tag, w, h ->
             for (duo in listOf(false, true)) {
