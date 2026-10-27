@@ -93,6 +93,78 @@ class ControlCenterFitTest {
         }
     }
 
+    /**
+     * With the Media and sound page switched off (CcOptions.mediaPage = false), at either setting of CC_PAGES_DEDUPE: brightness and volume stand on a
+     * Controls page, exactly once, in the same plan that places every control; no Controls page is empty (one with only the sliders is not); every page
+     * fits the rows the panel has, so nothing scrolls; and the strip, built from the same page list, has one dot for each page and fits.
+     */
+    /** How many windows of the matrix had no room for the sliders on page 1, so the test knows it reached the case it is about. */
+    private var spilledSliders = 0
+
+    private fun checkMediaOff(s: Screen, size: Float, n: Int, focus: Boolean, dedupe: Boolean, problems: MutableList<String>) {
+        val panelHeight = available(s)
+        val g = controlCenterGrid(s.w - 32f, panelHeight, n, focus, size)
+        val chrome = 48f + g.gapDp + 2 * CC_PANEL_PAD_DP + (if (g.stripAtEdge || g.stripInHeader) 0f else g.stripDp)
+        val pageHeight = panelHeight - chrome
+        val rows = ccRowsThatFit(pageHeight, g.cellDp, g.gapDp)
+        val plan = ccPlanControls(g.columns, g.cellDp, g.gapDp, pageHeight, n, focus, mediaPage = false)
+        val shown = ccShownExtraPages(ccExtraPages(plan, pageHeight, g.cellDp, g.gapDp, focus, dedupe), CcOptions(mediaPage = false))
+        val specs = ccPageSpecs(plan.perPage.size, shown)
+        val tag = "${s.name} at %.0f x %.0f, size %.0f, %d controls, focus %s, dedupe %s (%d columns, %d rows)".format(s.w, s.h, size, n, focus, dedupe, g.columns, rows)
+        if (CcPage.MEDIA in shown) problems += "$tag: the Media page is shown with its switch off"
+        val onControlsPage = plan.sliderPage in plan.perPage.indices
+        if (plan.sliderPage == 1) spilledSliders++
+        if (!onControlsPage) problems += "$tag: the sliders are on no Controls page (sliderPage ${plan.sliderPage} of ${plan.perPage.size})"
+        if (plan.perPage.sum() != n) problems += "$tag: ${plan.perPage.sum()} of $n controls placed"
+        if (plan.perPage.indices.drop(1).any { plan.perPage[it] == 0 && it != plan.sliderPage }) problems += "$tag: an empty Controls page"
+        plan.perPage.indices.forEach { i ->
+            val used = ccPlanRows(plan, i, g.columns, focus)
+            if (used > maxOf(rows, 2)) problems += "$tag: page ${i + 1} needs $used rows"
+        }
+        if (specs.size != plan.perPage.size + shown.size) problems += "$tag: the strip has ${specs.size} dots for ${plan.perPage.size + shown.size} pages"
+        if (specs.map { it.page to it.index }.toSet().size != specs.size) problems += "$tag: two pages are the same page"
+        if (g.stripInHeader && ccHeaderMinWidth(specs.size) > s.w - 32f) problems += "$tag: header needs %.0f of %.0f".format(ccHeaderMinWidth(specs.size), s.w - 32f)
+        if (g.stripAtEdge && panelHeight >= 360f) {
+            val column = ccEdgeStripHeight(specs.size, battery = true, gapDp = FolioSpace.SMALL.toFloat(), apart = true)
+            if (column > panelHeight - 2 * CC_PANEL_PAD_DP) problems += "$tag: the strip column needs %.0f of %.0f".format(column, panelHeight - 2 * CC_PANEL_PAD_DP)
+        }
+        // Focus stays reachable too: on the first page, or (the Media page being off) on no page at all, which this reports.
+        if (focus && !plan.focusOnFirst) problems += "$tag: Focus is left on the Media page"
+    }
+
+    @Test fun `with the Media page off both sliders stay on a Controls page on every screen`() {
+        val problems = mutableListOf<String>()
+        for (s in screens) for (size in listOf(50f, 58f, 66f, 76f, 88f)) for (n in listOf(0, 4, 5, 8, 15)) for (focus in listOf(false, true)) for (dedupe in listOf(false, true)) checkMediaOff(s, size, n, focus, dedupe, problems)
+        println("windows with no room for the sliders on page 1: $spilledSliders")
+        assertTrue("the matrix never reaches a window without room for the sliders on page 1", spilledSliders > 0)
+        assertTrue("These windows would lose the sliders or break a page (${problems.size}): " + problems.take(40).joinToString(" | "), problems.isEmpty())
+    }
+
+    @Test fun `with the Media page off the sliders lead the next Controls page when the first has no room`() {
+        // 200 dp at 44 dp cells (four rows) and Focus: no room on page 1 for the 2 by 2 and the sliders, as in the test below this one for the Media page.
+        val on = ccPlanControls(4, 44f, 8f, 200f, 15, true)
+        assertEquals(-1, on.sliderPage)
+        assertEquals(listOf(CcPage.MEDIA), ccExtraPages(on, 200f, 44f, 8f, true, dedupe = true))
+        val off = ccPlanControls(4, 44f, 8f, 200f, 15, true, mediaPage = false)
+        assertEquals(false, off.slidersOnFirst)
+        assertEquals(1, off.sliderPage)
+        assertEquals(15, off.perPage.sum())
+        assertEquals(4, off.perPage[0])
+        assertEquals(2 + 2, ccPlanRows(off, 1, 4, true)) // sliders two rows, then the controls beside and under them
+        // Nothing left over: the sliders stand alone on a second page rather than being dropped.
+        val few = ccPlanControls(4, 44f, 8f, 200f, 4, true, mediaPage = false)
+        assertEquals(listOf(4, 0), few.perPage)
+        assertEquals(1, few.sliderPage)
+        assertEquals(2, ccPlanRows(few, 1, 4, true))
+        // Where the first page holds them, or no limit, nothing changes.
+        assertEquals(ccPlanControls(4, 66f, 12f, 700f, 8, true), ccPlanControls(4, 66f, 12f, 700f, 8, true, mediaPage = false))
+        assertEquals(ccPlanControls(6, 50f, 9f, 110f, 6, true), ccPlanControls(6, 50f, 9f, 110f, 6, true, mediaPage = false))
+        assertEquals(ccPlanControls(4, 66f, 12f, null, 8, true), ccPlanControls(4, 66f, 12f, null, 8, true, mediaPage = false))
+        // The Media page switch never takes the sliders away, so it is not asked when they already fit.
+        assertEquals(0, ccPlanControls(4, 66f, 12f, 700f, 8, true, mediaPage = false).sliderPage)
+        assertEquals(false, ccMediaPageHasSliders(off, true))
+    }
+
     @Test fun `deduped pages place every control and module once on every screen`() {
         val problems = mutableListOf<String>()
         for (s in screens) for (size in listOf(50f, 58f, 66f, 76f, 88f)) for (n in listOf(0, 8, 15)) for (focus in listOf(false, true)) checkDedupe(s, size, n, focus, problems)

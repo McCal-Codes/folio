@@ -2212,7 +2212,7 @@
     <string name="cc_connectivity_page">Connectivity page</string>
     <string name="cc_open_on">Open on</string>
     <string name="cc_open_on_last">Last page used</string>
-    <string name="cc_pages_note">A page that would only repeat the first is left out by itself, whatever these say. If the Media and sound page is off and the first page has no room for brightness and volume, they are not shown.</string>
+    <string name="cc_pages_note">A page that would only repeat the first is left out by itself, whatever these say. If the Media and sound page is off and the first page has no room for brightness and volume, they move to the next Controls page, so they are always there.</string>
     <string name="cc_sliders_title">Sliders</string>
     <string name="cc_slider_ticks">Haptic ticks while dragging</string>
     <string name="cc_sliders_note">Brightness and volume show their percent while you drag. Dragging brightness turns Auto brightness off; the Auto chip on the slider turns it back on.</string>
