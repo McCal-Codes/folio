@@ -256,7 +256,9 @@ class MainActivity : ComponentActivity() {
                 // With Android's own wallpaper showing through, Home's layer is transparent around its icons and text: a picture of it would
                 // let the sharp Home show through, so that case keeps the live blur.
                 if (state.systemWallpaper && this@MainActivity.showsWallpaper) { panelSnapshotFailed = true; return@LaunchedEffect }
-                if (backdropBlurPx < 2f || LauncherPages.isOpen(this@MainActivity) || SettingsPeek.value != null) return@LaunchedEffect
+                // Safe Mode takes no pictures at all: the live blur stands in, as when a picture cannot be made.
+                if (SafeMode.active) { panelSnapshotFailed = true; return@LaunchedEffect }
+                if (!panelBackdropSnapshotWanted(backdropBlurPx, LauncherPages.isOpen(this@MainActivity), SettingsPeek.value != null, SafeMode.active)) return@LaunchedEffect
                 try {
                     // Shrunk on the GPU to a quarter first, so reading the picture back costs a sixteenth of the pixels and never holds up a frame.
                     val full = homeLayer.size
@@ -890,3 +892,7 @@ class MainActivity : ComponentActivity() {
         const val PENDING_THEME = "folio.theme.pending"
     }
 }
+
+/** Whether a panel opening over Home takes the one-off picture it blurs behind itself: blur is on, nothing else is over Home, and Safe Mode is off. */
+internal fun panelBackdropSnapshotWanted(blurPx: Float, pagesOpen: Boolean, settingsPeeking: Boolean, safeMode: Boolean): Boolean =
+    !safeMode && blurPx >= 2f && !pagesOpen && !settingsPeeking
