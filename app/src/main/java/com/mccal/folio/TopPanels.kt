@@ -853,7 +853,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val sliders: @Composable (Dp) -> Unit = { height ->
             TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, height,
                 onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, ticks = options.sliderTicks,
-                // Dragging the slider turns Auto off; this says so and turns it back on (v2).
+                onHold = controls::holdBrightness,
+                // Dragging the slider turns Auto off; this says so and turns it back on (v2). It follows the phone's own mode, so it also
+                // changes when automatic brightness is switched somewhere else.
                 badge = if (v2 && controls.autoBrightnessKnown) { alpha ->
                     AutoBrightnessChip(controls.brightnessAuto, cell, alpha) {
                         if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(!controls.brightnessAuto)
@@ -864,7 +866,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
                 controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
                 else -> Icons.AutoMirrored.Rounded.VolumeUp
-            }, stringResource(R.string.volume), controls.volume, cell, height, ticks = options.sliderTicks) { controls.changeVolume(it) }
+            }, stringResource(R.string.volume), controls.volume, cell, height, ticks = options.sliderTicks, onHold = controls::holdVolume) { controls.changeVolume(it) }
         }
         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         val connectivity = listOf(
@@ -1310,15 +1312,19 @@ private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: 
 
 @Composable
 private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp, height: Dp,
-    onStart: () -> Unit = {}, ticks: Boolean = true, badge: (@Composable BoxScope.(Float) -> Unit)? = null, onValue: (Float) -> Unit) {
-    val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f), FolioMotion.spring(FolioMotion.Snap), label = label)
+    onStart: () -> Unit = {}, onHold: (Boolean) -> Unit = {}, ticks: Boolean = true, badge: (@Composable BoxScope.(Float) -> Unit)? = null, onValue: (Float) -> Unit) {
+    // A change from outside (a volume key, automatic brightness) moves the fill with the same no-overshoot spring as a drag,
+    // and not at all under Reduce Motion. It never ticks: the haptics below run only from the finger.
+    val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f),
+        if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Snap), label = label)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var dragging by remember { mutableStateOf(false) }
     val readout by androidx.compose.animation.core.animateFloatAsState(if (dragging) 1f else 0f, FolioMotion.spring(FolioMotion.Quick), label = "slider readout")
     Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(LocalCcLook.current.tile)
         .pointerInput(Unit) {
             var last = -1f
-            detectVerticalDragGestures(onDragStart = { onStart(); last = -1f; dragging = true }, onDragEnd = { dragging = false }, onDragCancel = { dragging = false }) { change, _ ->
+            detectVerticalDragGestures(onDragStart = { onStart(); onHold(true); last = -1f; dragging = true },
+                onDragEnd = { dragging = false; onHold(false) }, onDragCancel = { dragging = false; onHold(false) }) { change, _ ->
                 change.consume()
                 val v = (1f - change.position.y / size.height).coerceIn(0f, 1f)
                 // Like iOS: a tick when the slider hits its top or bottom.
@@ -1412,11 +1418,22 @@ private class DeviceControls(private val context: Context) {
 
     val hasTorch get() = torchId != null
     var torchOn by mutableStateOf(false); private set
-    var volume by mutableFloatStateOf(0f); private set
-    var brightness by mutableFloatStateOf(.5f); private set
-    /** Whether the phone sets the brightness by itself, and whether the phone says (the setting is missing on some). */
+    // Both sliders follow the phone while the panel is up (SystemLevels.kt): the side keys, the system volume panel, a mute,
+    // automatic brightness. The volume slider is the music stream. A held slider ignores outside changes until release.
+    private val volumeLevel = LiveLevel(0f)
+    private val brightnessLevel = LiveLevel(.5f)
+    val volume get() = volumeLevel.value
+    val brightness get() = brightnessLevel.value
+    /** Whether the phone sets the brightness by itself, and whether it says (the setting is missing on some). Follows the system, like the sliders. */
     var brightnessAuto by mutableStateOf(false); private set
     var autoBrightnessKnown by mutableStateOf(false); private set
+    private var manualModeSet = false
+    private fun applyMode(reading: SystemReading) {
+        brightnessAuto = reading.brightnessMode == BrightnessMode.AUTO
+        autoBrightnessKnown = reading.brightnessMode != BrightnessMode.UNKNOWN
+        // Automatic brightness, or another app, took the mode: the next drag must switch it back to manual.
+        manualModeSet = reading.brightnessManual
+    }
     var rotationLocked by mutableStateOf(false); private set
     var dndOn by mutableStateOf(false); private set
     var bluetoothOn by mutableStateOf(false); private set
@@ -1425,25 +1442,34 @@ private class DeviceControls(private val context: Context) {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) { if (cameraId == torchId) torchOn = enabled }
     }
 
+    private val levels = SystemLevels(context) { reading ->
+        volumeLevel.fromOutside(reading.volume)
+        brightnessLevel.fromOutside(reading.brightness)
+        applyMode(reading)
+    }
+
     fun start() {
         runCatching { camera.registerTorchCallback(torchCallback, null) }
-        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
-        brightness = runCatching { Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS) / 255f }.getOrDefault(.5f)
-        runCatching { Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE) == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC }
-            .onSuccess { brightnessAuto = it; autoBrightnessKnown = true }
+        levels.read().let { volumeLevel.fromOutside(it.volume); brightnessLevel.fromOutside(it.brightness); applyMode(it) }
+        levels.start()
         rotationLocked = runCatching { Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) == 0 }.getOrDefault(false)
         dndOn = notifications.currentInterruptionFilter > NotificationManager.INTERRUPTION_FILTER_ALL
         bluetoothOn = runCatching { context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true }.getOrDefault(false)
     }
 
-    fun stop() { runCatching { camera.unregisterTorchCallback(torchCallback) } }
+    /** Unregisters everything start() registered: the torch callback and the volume, brightness and screen observers. */
+    fun stop() { levels.stop(); runCatching { camera.unregisterTorchCallback(torchCallback) } }
+
+    /** A finger went down on, or came up from, a slider. On release the latest outside change lands, then the real value is read. */
+    fun holdVolume(down: Boolean) { if (down) volumeLevel.hold() else { volumeLevel.release(); levels.requestRefresh() } }
+    fun holdBrightness(down: Boolean) { if (down) brightnessLevel.hold() else { brightnessLevel.release(); levels.requestRefresh() } }
 
     fun toggleTorch() { torchId?.let { id -> runCatching { camera.setTorchMode(id, !torchOn) } } }
 
     fun changeVolume(value: Float) {
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, (value * max).toInt(), 0); volume = value }
+        val min = audio.getStreamMinVolume(AudioManager.STREAM_MUSIC)
+        runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, volumeStep(value, min, max), 0); volumeLevel.fromUser(value) }
     }
 
     /** Returns false when "Modify system settings" hasn't been granted yet. */
@@ -1451,11 +1477,12 @@ private class DeviceControls(private val context: Context) {
         if (!Settings.System.canWrite(context)) return false
         val level = (value * 255).toInt().coerceIn(1, 255)
         if (level == (brightness * 255).toInt()) return true // skip identical writes while dragging
-        brightness = value
+        brightnessLevel.fromUser(value)
         runCatching {
             // Dragging the slider means the person is choosing the level, so Auto goes off (the Auto chip shows it and turns it back on).
-            if (brightnessAuto || !autoBrightnessKnown) {
+            if (!manualModeSet) {
                 Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+                manualModeSet = true
                 brightnessAuto = false
             }
             Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, level)
@@ -1470,7 +1497,9 @@ private class DeviceControls(private val context: Context) {
             Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
                 if (on) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
             brightnessAuto = on
+            manualModeSet = !on
         }
+        levels.requestRefresh()
         return true
     }
 
