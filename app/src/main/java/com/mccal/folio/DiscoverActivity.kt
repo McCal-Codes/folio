@@ -426,7 +426,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                 // Anchored like Home's dock, so it stays put when Discover opens.
                 homeRailControls = if (state.searchPill) 0 else 1,
                 // The same rows as Home, so the dock doesn't jump when Discover opens.
-                widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(context))
+                widgetsFillRows = FeatureGate.WIDGETS_FILL_ROWS.isOpen(context), duoSpacing = FeatureGate.DUO_SPACING.isOpen(context))
             if (state.verticalStatus) StatusRail(status, Modifier.align(Alignment.TopEnd).padding(end = FolioSpace.MEDIUM.dp)
                 .offset(y = geometry.statusTop.dp).width(preset.dockWidth.dp)
                 .onSizeChanged {
@@ -445,7 +445,7 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
                             .semantics { contentDescription = app?.label ?: chooseDockApp }
                             .clickable(role = Role.Button) { if (app != null) onLaunch(app) else onHome() }, contentAlignment = Alignment.Center) {
                             if (app != null) AppIcon(app, null,
-                                Modifier.size(dockIconSize(geometry.iconSize).dp).clip(RoundedCornerShape(11.dp)))
+                                Modifier.size(geometry.dockIcon.dp).clip(RoundedCornerShape(11.dp)))
                             else Icon(Icons.Rounded.Home, null, tint = Color.White)
                         }
                     }

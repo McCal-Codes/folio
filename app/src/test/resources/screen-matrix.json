@@ -13,6 +13,17 @@
       }
     },
     {
+      "name": "Standard Phone (360x800)",
+      "width": 360,
+      "height": 800,
+      "group": "phone",
+      "cutout": {
+        "x": 180.0,
+        "y": 14,
+        "r": 9
+      }
+    },
+    {
       "name": "Nexus 4",
       "width": 384,
       "height": 640,
@@ -192,6 +203,12 @@
       "name": "Pixel C",
       "width": 1280,
       "height": 900,
+      "group": "tablet"
+    },
+    {
+      "name": "Large Tablet (1067x1707)",
+      "width": 1067,
+      "height": 1707,
       "group": "tablet"
     },
     {

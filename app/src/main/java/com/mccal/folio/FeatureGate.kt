@@ -122,7 +122,15 @@ internal enum class FeatureGate(
      * 0.7.2 for beta testers who help an older relative. The gate is at the entry point, Settings › Accessibility ›
      * Experience: a phone already in Simple keeps its Simple Home, and its way out, whatever the gate says.
      */
-    SIMPLE_MODE("simpleMode", closedSince = "2026-10-12", opensIn = "0.7.2", { OPEN_IN_0_7_2 });
+    SIMPLE_MODE("simpleMode", closedSince = "2026-10-12", opensIn = "0.7.2", { OPEN_IN_0_7_2 }),
+
+    /**
+     * Home closer to the iPhone Duo's measured spacing: on the cover the rows spread out toward the Duo's pitch when the
+     * window has free height, and the dock's apps grow from 72% to about 80% of Home's icons on both screens. It moves
+     * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
+     * [OPEN_IN_0_6_9] to open it.
+     */
+    DUO_SPACING("duoSpacing", closedSince = "2026-10-24", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
