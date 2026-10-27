@@ -176,3 +176,24 @@ internal enum class FeatureGate(
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
     }
 }
+
+/**
+ * Whether [gate] is open for this phone, kept up to date while the screen is up. A gate can change under a screen that stays composed (a supporter
+ * code redeemed or the Early access switch flipped in Settings, with Home behind it), and asking once per composition left Home showing the old
+ * answer until the activity was recreated. It asks again when the supporter preferences change, which is when the answer can.
+ */
+@androidx.compose.runtime.Composable
+internal fun rememberGateOpen(gate: FeatureGate): Boolean = rememberSupporterFlag(gate) { gate.isOpen(it) }
+
+/** [compute] of the context, asked again whenever the supporter preferences change; [key] says which question this is. */
+@androidx.compose.runtime.Composable
+internal fun rememberSupporterFlag(key: Any, compute: (Context) -> Boolean): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val value = androidx.compose.runtime.remember(context, key) { androidx.compose.runtime.mutableStateOf(compute(context)) }
+    androidx.compose.runtime.DisposableEffect(context, key) {
+        value.value = compute(context) // a change between composing and this effect starting
+        val stop = Supporter.watch(context) { value.value = compute(context) }
+        onDispose(stop)
+    }
+    return value.value
+}

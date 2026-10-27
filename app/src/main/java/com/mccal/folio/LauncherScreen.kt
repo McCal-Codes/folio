@@ -166,11 +166,10 @@ fun LauncherScreen(
     var clockEditSlot by remember { mutableStateOf<Int?>(null) }
     var placeSlot by remember { mutableStateOf<Int?>(null) }
     // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
-    val gateContext = androidx.compose.ui.platform.LocalContext.current
     val homeView = androidx.compose.ui.platform.LocalView.current
-    val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val folderEditing = rememberGateOpen(FeatureGate.FOLDER_EDITING)
     val newFolderTitle = stringResource(R.string.new_folder_name) // in the phone's language, not always English
-    val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
+    val clockCustomize = rememberGateOpen(FeatureGate.CLOCK_CUSTOMIZE)
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -315,7 +314,7 @@ fun LauncherScreen(
     // NONE adds no layer, no pager read and no per-frame work at all. Gated until 0.6.8, off with Reduce Motion
     // (DYN-11, A11Y-14), and off while an icon or widget is being moved, because a drop lands by coordinates and a
     // layer transform would move the coordinates under the finger.
-    val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(launcherActivity) }
+    val pageEffectsOpen = rememberGateOpen(FeatureGate.PAGE_EFFECTS)
     val pageEffect = if (pageEffectsOpen && !LocalReduceMotion.current && !drag.active && !resize.active && widgetSession == null)
         state.pageEffectSpec() else PageEffect.NONE.spec
     var nativeMotion by remember { mutableStateOf(false) }
@@ -802,8 +801,8 @@ fun LauncherScreen(
             val dockOpenPlace = drag.active && drag.source?.appId != null && drag.source?.target !is DropTarget.Dock &&
                 state.dock.size < MAX_DOCK_SLOTS && state.dock.none { it == null }
             val shownDock = if (dockOpenPlace) state.dock + null else state.dock
-            val fillRows = remember(launcherActivity) { FeatureGate.WIDGETS_FILL_ROWS.isOpen(launcherActivity) }
-            val duoSpacing = remember(launcherActivity) { FeatureGate.DUO_SPACING.isOpen(launcherActivity) }
+            val fillRows = rememberGateOpen(FeatureGate.WIDGETS_FILL_ROWS)
+            val duoSpacing = rememberGateOpen(FeatureGate.DUO_SPACING)
             // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
             // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
             var bottomControlsHeight by remember { mutableStateOf(0.dp) }
@@ -1190,7 +1189,7 @@ fun LauncherScreen(
                     // rest the dots always show, so there is always a way to tell where you are.
                     val atRest = !homeEdit.active && !drag.active && !scrubbing &&
                         !nativePager.isScrollInProgress && pager.currentPage in 0 until homePages
-                    val nothingOpen = remember(launcherActivity) { FeatureGate.HOME_STRIP_NOTHING.isOpen(launcherActivity) }
+                    val nothingOpen = rememberGateOpen(FeatureGate.HOME_STRIP_NOTHING)
                     val stripNow = stripView(state.homeStrip, atRest, nothingOpen)
                     androidx.compose.animation.AnimatedContent(stripNow, label = "search pill",
                         // Cover screen only: unfolded, Home already shows two pages side by side.
