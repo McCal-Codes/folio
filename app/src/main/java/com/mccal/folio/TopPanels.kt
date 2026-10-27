@@ -1018,6 +1018,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
                     androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
                         flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
+                            // A page is the whole panel tall, so the usual halfway rule asked for a drag across half the screen: a fifth of it is enough to turn the page, and a short swipe springs back.
+                            snapPositionalThreshold = CC_PAGE_TURN,
                             snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
                         Box(Modifier.fillMaxSize().graphicsLayer {
                             val away = kotlin.math.abs((pager.currentPage - index) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
@@ -1054,8 +1056,8 @@ private fun BatteryRing(status: DeviceStatus) {
             if (level != null) drawArc(ring, -90f, 360f * level.coerceIn(0, 100) / 100f, false, corner, arc,
                 style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
         }
-        // The number lives inside a fixed 38 dp ring, so it follows the font size only up to 1.3 times (at 2.0 the "100" was wider than the ring); the words for TalkBack carry the full value.
-        val ringFont = with(androidx.compose.ui.platform.LocalDensity.current) { (12f * minOf(fontScale, 1.3f)).dp.toSp() }
+        // The number lives inside a fixed 38 dp ring, so it follows the font size only up to 1.3 times (at 2.0 the "100" was wider than the ring, and three digits still touched it at 1.3, so they are a little smaller); the words for TalkBack carry the full value.
+        val ringFont = with(androidx.compose.ui.platform.LocalDensity.current) { (12f * minOf(fontScale, 1.3f) * (if ((level ?: 0) >= 100) .82f else 1f)).dp.toSp() }
         if (level != null) Text(level.toString(), color = Color.White, fontSize = ringFont, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -1348,6 +1350,9 @@ private class DeviceControls(private val context: Context) {
 
 private fun androidx.compose.ui.hapticfeedback.HapticFeedback.toggle(on: Boolean) = performHapticFeedback(
     if (on) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff)
+
+/** How far a drag has to take a Control Center page (as a fraction of its height) before letting go turns it. */
+private const val CC_PAGE_TURN = .2f
 
 /** How much Control Center's header and strip icons grow with the font size: never smaller than drawn, never past a third larger, so they stay inside their 48 dp targets. */
 internal fun ccIconScale(fontScale: Float): Float = fontScale.coerceIn(1f, 4f / 3f)
