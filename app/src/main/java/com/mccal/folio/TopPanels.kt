@@ -17,6 +17,11 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
@@ -47,7 +52,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -1091,11 +1099,11 @@ private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell
 
 private data class ConnectivityItem(val icon: ImageVector, val label: String, val on: Boolean, val accent: Color, val onClick: () -> Unit)
 
-/** Thin iOS progress line for the playing track (ticks once a second while playing). */
+/** Elapsed and total position for a playing track, ticking once a second while playing. */
 @Composable
-private fun MediaProgress(media: IslandActivity.Media) {
+private fun rememberMediaPosition(media: IslandActivity.Media): Pair<Long, Long> {
     val tick by rememberSecondTick()
-    val (position, duration) = remember(tick, media) {
+    return remember(tick, media) {
         val controller = runCatching { media.controller }.getOrNull()
         val state = controller?.playbackState
         val duration = controller?.metadata?.getLong(android.media.MediaMetadata.METADATA_KEY_DURATION) ?: 0L
@@ -1106,42 +1114,79 @@ private fun MediaProgress(media: IslandActivity.Media) {
         } ?: 0L
         elapsed.coerceIn(0L, duration.coerceAtLeast(0L)) to duration
     }
-    if (duration <= 0L) return
-    Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .22f))) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
-    }
 }
 
-/** Now Playing (2×2): album art, title and transport controls. */
+internal fun formatMediaTime(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
+}
+
+/** Now Playing (2×2): album art, title, a scrubber with times, and three controls around a larger play button.
+ * Replaces the old bare-icon tile (icons with no times, no artist, no app name): LW audit 2026-10-02 Style A. */
 @Composable
 private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit) {
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
     val tint by androidx.compose.animation.animateColorAsState(mixColor(LocalCcLook.current.tile, artAccent, .45f), label = "music tint")
-    Module(modifier.clickable(enabled = media != null, onClick = onOpen), color = tint) {
+    val context = LocalContext.current
+    val appLabel = media?.packageName?.let { pkg ->
+        remember(pkg) { runCatching { context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull() }
+    }
+    val nowPlayingLabel = stringResource(R.string.now_playing)
+    val playingLabel = stringResource(R.string.playing)
+    val pausedLabel = stringResource(R.string.paused)
+    val playLabel = stringResource(R.string.play)
+    val pauseLabel = stringResource(R.string.pause)
+    val notPlayingLabel = stringResource(R.string.not_playing)
+    val description = if (media != null) "$nowPlayingLabel, ${media.title}" +
+        (media.subtitle?.let { ", $it" } ?: "") + (appLabel?.let { ", $it" } ?: "") + ", " + (if (media.playing) playingLabel else pausedLabel)
+    else notPlayingLabel
+    Module(modifier.clickable(enabled = media != null, onClick = onOpen)
+        .semantics(mergeDescendants = true) {
+            contentDescription = description
+        }, color = tint) {
         Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
-                Box(Modifier.size(cell * .62f).clip(RoundedCornerShape(cell * .14f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(cell * .58f).clip(RoundedCornerShape(cell * .13f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
                     val image = media?.art ?: media?.icon
                     if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(cell * .3f))
+                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(cell * .26f))
                 }
-                Spacer(Modifier.weight(1f))
-                if (media?.art != null) media.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(cell * .26f).clip(RoundedCornerShape(cell * .07f))) }
+                Spacer(Modifier.width(cell * .1f))
+                Column(Modifier.weight(1f)) {
+                    Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
+                        fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    media?.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
             }
-            Column {
-                Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
-                    fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                media?.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                media?.let { MediaProgress(it) }
-            }
+            if (media != null) MediaScrubber(media, artAccent?.let { Color(vividTint(it.toArgb())) }) else Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 val t = media?.controller?.transportControls
                 val tint = Color.White.copy(alpha = if (t != null) 1f else .35f)
                 Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToPrevious() })
-                Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media?.playing == true) R.string.pause else R.string.play), tint = tint,
-                    modifier = Modifier.size(cell * .42f).clip(CircleShape).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() })
+                Box(Modifier.size(cell * .46f).clip(CircleShape).background(Color.White).clickable(t != null) { if (media?.playing == true) t?.pause() else t?.play() },
+                    contentAlignment = Alignment.Center) {
+                    Icon(if (media?.playing == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        stringResource(if (media?.playing == true) R.string.pause else R.string.play),
+                        tint = if (t != null) Color.Black else Color.Black.copy(alpha = .35f), modifier = Modifier.size(cell * .26f))
+                }
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = tint, modifier = Modifier.size(cell * .34f).clip(CircleShape).clickable(t != null) { t?.skipToNext() })
             }
+        }
+    }
+}
+
+/** The scrub line plus elapsed and remaining times, so the control center shows real progress, not just a bare line. */
+@Composable
+private fun MediaScrubber(media: IslandActivity.Media, accent: Color?) {
+    val (position, duration) = rememberMediaPosition(media)
+    if (duration <= 0L) return
+    Column(Modifier.padding(top = 3.dp)) {
+        Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent ?: Color.White))
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 1.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatMediaTime(position), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
+            Text("-" + formatMediaTime(duration - position), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
         }
     }
 }
@@ -1350,6 +1395,243 @@ private class DeviceControls(private val context: Context) {
 
 private fun androidx.compose.ui.hapticfeedback.HapticFeedback.toggle(on: Boolean) = performHapticFeedback(
     if (on) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff)
+
+internal enum class MusicShape { STRIP, CARD, POSTER }
+
+/** Which of the three shapes the Music widget draws at this size (dp). Pure, so the thresholds are tested. */
+internal fun musicShape(widthDp: Float, heightDp: Float): MusicShape = when {
+    heightDp < 110f -> MusicShape.STRIP
+    widthDp >= 160f && heightDp >= 180f -> MusicShape.POSTER
+    else -> MusicShape.CARD
+}
+
+/**
+ * The playing track as a placeable Home widget: a compact Strip at short spans, a big Poster at tall or square
+ * ones. One widget that morphs with its size, like the Big Clock, rather than two things to pick between.
+ * LW audit 2026-10-02 Style B and C. Hides itself (shows "Nothing Playing") when there is no media session.
+ */
+@Composable
+internal fun MusicWidgetCard(onEdit: () -> Unit) {
+    val media = IslandListenerService.media.collectAsStateWithLifecycle().value
+    val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
+    // Lifted the same way MediaModule's scrubber is: raw album-art colors are often too dark to read as a thin
+    // line or a bar of wave bars against the Poster's blurred backdrop.
+    val accent = artAccent?.let { Color(vividTint(it.toArgb())) } ?: Color.White
+    val notPlayingLabel = stringResource(R.string.not_playing)
+    val playingLabel = stringResource(R.string.playing)
+    val pausedLabel = stringResource(R.string.paused)
+    BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp))
+        // Tappable either way: empty, it opens widget options the same as every other built-in widget does when
+        // there's nothing to show. It used to do nothing at all when nothing was playing.
+        .background(FolioGlass.module).clickable(onClick = onEdit)
+        .semantics(mergeDescendants = true) {
+            contentDescription = media?.let { "${it.title}${it.subtitle?.let { s -> ", $s" } ?: ""}, ${if (it.playing) playingLabel else pausedLabel}" } ?: notPlayingLabel
+        }) {
+        // Strip below ~110dp; Poster once there's room for big centered art and a wave; Card in between, the same
+        // shape as the Control Center's own now-playing tile. Nothing playing uses the same three shapes, not one small
+        // icon floating in whatever space a resized widget happens to have.
+        val shape = musicShape(maxWidth.value, maxHeight.value)
+        if (media == null) when (shape) {
+            MusicShape.STRIP -> EmptyMusicStrip(notPlayingLabel)
+            MusicShape.POSTER -> EmptyMusicPoster(notPlayingLabel)
+            MusicShape.CARD -> EmptyMusicCard(notPlayingLabel)
+        } else when (shape) {
+            MusicShape.STRIP -> MusicStrip(media, accent)
+            MusicShape.POSTER -> MusicPoster(media, accent)
+            MusicShape.CARD -> MusicCard(media, accent)
+        }
+    }
+}
+
+@Composable
+private fun MusicCard(media: IslandActivity.Media, accent: Color) {
+    val t = media.controller.transportControls
+    val (_, duration) = rememberMediaPosition(media)
+    BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
+        // Same fixed-budget approach as the Poster: the art gets whatever height is left over after everything
+        // else, never a weight negotiation that starved it to zero the first time this was tried.
+        val fixedBudget = 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + FolioTouch.MIN.dp
+        val art = (maxHeight - fixedBudget).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                    val image = media.art ?: media.icon
+                    if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(art * .4f))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
+            }
+            if (duration > 0L) MediaScrubber(media, accent)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                // Each control is a 48 dp touch box (A11Y-1) around its glyph, so the small glyphs are not the only tappable part.
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToPrevious() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                        Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
+                            tint = Color.Black, modifier = Modifier.size(18.dp))
+                    }
+                }
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MusicStrip(media: IslandActivity.Media, accent: Color) {
+    val t = media.controller.transportControls
+    val (position, duration) = rememberMediaPosition(media)
+    Box(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                val image = media.art ?: media.icon
+                if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+            Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { if (media.playing) t.pause() else t.play() }, contentAlignment = Alignment.Center) {
+                Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
+                    tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+            Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White.copy(alpha = .85f), modifier = Modifier.size(22.dp))
+            }
+        }
+        if (duration > 0L) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(2.dp)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent))
+        }
+    }
+}
+
+@Composable
+private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
+    val t = media.controller.transportControls
+    val (position, duration) = rememberMediaPosition(media)
+    val reduceMotion = LocalReduceMotion.current
+    val image = media.art ?: media.icon
+    // Built once: the graphics layer block runs on every draw, and a blur effect is not free to make.
+    val backdropBlur = remember { android.graphics.RenderEffect.createBlurEffect(60f, 60f, android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect() }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize()
+            .graphicsLayer { renderEffect = backdropBlur; alpha = .55f }
+            .background(Color.Black), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .3f)))
+        // Everything but the art has a fixed height, so the art gets whatever is left over (never a weight
+        // negotiation, which can starve it to zero when the rest of the card already fills the box). The wave
+        // only shows once there is enough left over for a worthwhile art size with it still on screen.
+        val fixedBudget = 8.dp + 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + 52.dp + 28.dp
+        val art = (maxHeight - fixedBudget).coerceAtLeast(32.dp)
+        val showWave = art - 26.dp >= 56.dp
+        val artSize = (if (showWave) art - 26.dp else art).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .6f, 120.dp)))
+        Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(Modifier.size(artSize).clip(RoundedCornerShape(artSize * .12f)).background(FolioGlass.raised).shadow(8.dp, RoundedCornerShape(artSize * .12f)), contentAlignment = Alignment.Center) {
+                if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(artSize * .36f))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(media.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+            if (showWave) MusicWave(media.playing && !reduceMotion, accent)
+            if (duration > 0L) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
+                Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(formatMediaTime(position), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
+                    Text("-" + formatMediaTime(duration - position), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // The Poster has room to spare, so previous and next get a real 48 dp touch box (A11Y-1) around their
+            // smaller glyph, instead of the glyph itself being the only tappable area.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToPrevious() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+                Box(Modifier.size(52.dp).clip(CircleShape).background(Color.White).clickable { if (media.playing) t.pause() else t.play() }, contentAlignment = Alignment.Center) {
+                    Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
+                        tint = Color.Black, modifier = Modifier.size(26.dp))
+                }
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Nothing playing, at Strip size: the same icon box and row [MusicStrip] uses, just without a title or controls. */
+@Composable
+private fun EmptyMusicStrip(label: String) {
+    Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(label, color = FolioGlass.secondary, fontSize = FolioType.SUBHEAD.sp)
+    }
+}
+
+/** Nothing playing, at Card size: the same art box and title row [MusicCard] uses, just without a subtitle, scrubber or transport. */
+@Composable
+private fun EmptyMusicCard(label: String) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
+        val art = (maxHeight * .5f).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
+        Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(art * .4f))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(label, color = FolioGlass.secondary, fontSize = FolioType.SUBHEAD.sp)
+        }
+    }
+}
+
+/** Nothing playing, at Poster size: the same centered art square [MusicPoster] uses, just without a wave, scrubber or transport. */
+@Composable
+private fun EmptyMusicPoster(label: String) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
+        val artSize = (minOf(maxWidth, maxHeight) * .32f).coerceIn(40.dp, 96.dp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(artSize).clip(RoundedCornerShape(artSize * .12f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(artSize * .4f))
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(label, color = FolioGlass.secondary, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/**
+ * A decorative wave: it moves with play and pause, not the audio, since reading the mic would need RECORD_AUDIO.
+ * Freezes on Reduce Motion or while paused, per LW's always-on and motion rules.
+ */
+@Composable
+private fun MusicWave(animate: Boolean, accent: Color) {
+    val bars = remember { List(24) { i -> (.3 + .7 * kotlin.math.abs(kotlin.math.sin(i * .7)) * kotlin.math.abs(kotlin.math.cos(i * .23))).toFloat() } }
+    // Nothing runs while it is still (paused, or Reduce Motion): no transition is created, so no frames are spent on it.
+    val phase = if (animate) rememberInfiniteTransition(label = "music wave")
+        .animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "phase").value else 0f
+    Row(Modifier.fillMaxWidth(.7f).height(22.dp).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
+        bars.forEachIndexed { i, base ->
+            val wobble = if (animate) (kotlin.math.sin((phase * 2 * Math.PI).toFloat() + i).let { (it + 1f) / 2f }) else 0f
+            val h = (base * .6f + wobble * .4f).coerceIn(.12f, 1f)
+            Box(Modifier.weight(1f).fillMaxHeight(h).clip(CircleShape).background(accent))
+        }
+    }
+}
 
 /** How far a drag has to take a Control Center page (as a fraction of its height) before letting go turns it. */
 private const val CC_PAGE_TURN = .2f
