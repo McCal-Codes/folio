@@ -67,7 +67,7 @@ internal fun ccSwipeAwayCloses(offsetPx: Float, velocityY: Float, thresholdPx: F
  */
 internal fun ccSwipeAwayOnOpenChange(open: Boolean, offsetPx: Float): Float = if (open) 0f else offsetPx
 
-/** The smallest cell Control Center ever draws; under it the page scrolls. */
+/** The smallest cell Control Center ever draws; under it the page scrolls. 4 dp under the 48 dp target, which Compose still gives a tile or slider this small (CcTouchTargetTest); 48 here would cost a row on short windows (ControlCenterFitTest). */
 internal const val CC_MIN_CELL_DP = 44f
 /** A cell may grow to this times the size the person chose, to fill the width; past that another pair of columns is added instead. */
 internal const val CC_FILL_MAX = 1.5f

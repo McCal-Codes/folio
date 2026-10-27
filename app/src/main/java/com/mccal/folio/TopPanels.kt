@@ -1265,7 +1265,7 @@ private const val CC_SWIPE_AWAY_FLICK_DP = 530f
 private const val CC_PAGE_SHRINK = .05f
 
 @Composable
-private fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
+internal fun RoundToggle(icon: ImageVector, label: String, on: Boolean, accent: Color, size: Dp, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val stateText = stringResource(if (on) R.string.state_on else R.string.state_off)
     val source = remember { MutableInteractionSource() }
