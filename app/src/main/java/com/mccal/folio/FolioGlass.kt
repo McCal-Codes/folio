@@ -34,6 +34,26 @@ internal object FolioGlass {
     val secondary = FolioColors.SecondaryLabel
 }
 
+/**
+ * What sits behind an open folder (Home's folder panel and the App Library's category folder). The folder's title is drawn on
+ * Home itself, above the card, so the dim has to be strong enough that Home's own text behind never competes with it, and the
+ * card has to be nearly opaque so icons and names do not read through it. Home is blurred behind by the same mechanism the app
+ * menu uses (a [LauncherSheets] entry); Reduce Transparency, and a missing window blur, get the stronger dim and a solid card.
+ */
+internal object FolderBackdrop {
+    /** Dim behind an open folder. */
+    const val SCRIM = .55f
+    /** Dim when there is no blur to help: Reduce Transparency, or the system has window blur off. */
+    const val SCRIM_SOLID = .78f
+    /** Opacity of the folder's glass card. */
+    const val CARD = .92f
+
+    fun scrimAlpha(solid: Boolean): Float = if (solid) SCRIM_SOLID else SCRIM
+    fun cardAlpha(solid: Boolean): Float = if (solid) 1f else CARD
+    fun scrim(solid: Boolean): Color = Color.Black.copy(alpha = scrimAlpha(solid))
+    fun card(solid: Boolean): Color = FolioColors.SurfaceCard.copy(alpha = cardAlpha(solid))
+}
+
 /** Dark, iOS-like colors for Folio's sheets (settings, app options, setup). */
 internal val FolioSheetColors = androidx.compose.material3.darkColorScheme(
     primary = FolioColors.BlueOnDark, onPrimary = Color.White,
