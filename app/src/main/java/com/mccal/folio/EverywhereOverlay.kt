@@ -488,7 +488,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val params = buttonParams ?: return
         val floor = navigationInset() + (10 * density).toInt()
         val ceiling = (service.resources.displayMetrics.heightPixels * .6f).toInt()
-        params.y = (params.y - deltaPx).toInt().coerceIn(floor, ceiling)
+        params.y = liftedBarOffset((params.y - deltaPx).toInt(), floor, ceiling)
         runCatching { wm.updateViewLayout(view, params) }
         if (done) ButtonBarPosition.save(service, wideScreen(), landscapeNow(), (params.y - floor) / density)
     }
