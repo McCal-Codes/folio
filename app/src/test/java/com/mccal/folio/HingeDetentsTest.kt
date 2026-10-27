@@ -88,7 +88,7 @@ class HingeDetentsTest {
         assertEquals(HapticFeedbackConstants.CLOCK_TICK, HingeDetents.hapticFor(tick, DetentStrength.LIGHT, 34))
         assertEquals(HapticFeedbackConstants.SEGMENT_TICK, HingeDetents.hapticFor(tick, DetentStrength.MEDIUM, 34))
         assertEquals(HapticFeedbackConstants.CLOCK_TICK, HingeDetents.hapticFor(tick, DetentStrength.MEDIUM, 31))
-        assertEquals(HapticFeedbackConstants.CONFIRM, HingeDetents.hapticFor(click, DetentKind.CLICK.let { DetentStrength.MEDIUM }, 34))
+        assertEquals(HapticFeedbackConstants.CONFIRM, HingeDetents.hapticFor(click, DetentStrength.MEDIUM, 34))
         assertNotEquals(HingeDetents.hapticFor(tick, DetentStrength.LIGHT, 34), HingeDetents.hapticFor(tick, DetentStrength.FIRM, 34))
         assertNotEquals(HingeDetents.hapticFor(click, DetentStrength.LIGHT, 34), HingeDetents.hapticFor(click, DetentStrength.FIRM, 34))
     }

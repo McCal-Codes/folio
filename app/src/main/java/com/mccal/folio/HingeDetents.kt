@@ -146,12 +146,12 @@ internal object HingeDetents {
 
 /** Fold effect › Hinge detents: the switch, the strength, and a preview that says what is felt at an angle. */
 @Composable
-internal fun HingeDetentsCard(foliohaptics: Boolean) {
+internal fun HingeDetentsCard(folioHaptics: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val options by rememberHingeDetentOptions(context)
     val prefs = remember { FoldMotionOptions.prefs(context) }
     val onRoot = remember { RootHingeStore.useInFold(context) && hingeSource(SystemBridge.broker(context)) == HingeSource.ROOT_HELPER }
-    val active = options.on && foliohaptics
+    val active = options.on && folioHaptics
     var angle by remember { androidx.compose.runtime.mutableFloatStateOf(100f) }
     SettingsCard(androidx.compose.ui.res.stringResource(R.string.hinge_detents)) {
         SettingsSwitch(androidx.compose.ui.res.stringResource(R.string.hinge_detents), options.on, { HingeDetentOptions.write(prefs, options.copy(on = it)) }, "hinge-detents-switch")
@@ -170,9 +170,10 @@ internal fun HingeDetentsCard(foliohaptics: Boolean) {
                 felt.labelDegrees == 0 -> androidx.compose.ui.res.stringResource(R.string.detent_felt_closed)
                 else -> androidx.compose.ui.res.stringResource(R.string.detent_felt_tick, felt.labelDegrees)
             },
-            Modifier.padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SNUG.dp).testTag("hinge-detents-felt"), fontSize = FolioType.BODY.sp)
+            Modifier.padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SNUG.dp).testTag("hinge-detents-felt"), fontSize = FolioType.BODY.sp,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
         CardNote(androidx.compose.ui.res.stringResource(
-            if (!foliohaptics) R.string.detent_haptics_off else if (onRoot) R.string.detent_way_root else R.string.detent_way_steps))
+            if (!folioHaptics) R.string.detent_haptics_off else if (onRoot) R.string.detent_way_root else R.string.detent_way_steps))
         CardNote(androidx.compose.ui.res.stringResource(R.string.detent_footer))
     }
 }
