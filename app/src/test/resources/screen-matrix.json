@@ -228,6 +228,13 @@
       "width": 1920,
       "height": 1080,
       "group": "desktop"
+    },
+    {
+      "name": "Folio_Fold_API_37 inner (emulator, 27 Oct sweep)",
+      "width": 750,
+      "height": 800,
+      "group": "foldable",
+      "note": "The fold AVD's inner display, 1968 x 2184 px at 420 dpi, with the window about 800 dp tall under the gesture area: an upright regular window where Home keeps the bottom dock bar. The 27 Oct sweep (F01) found Chrome's row under the dock in edit mode here."
     }
   ]
 }

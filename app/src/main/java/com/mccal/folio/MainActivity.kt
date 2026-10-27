@@ -328,7 +328,7 @@ class MainActivity : ComponentActivity() {
             val badgeCounts = androidx.compose.runtime.remember(postedBadges, seenBadges) { BadgesWhenOpened.visible(postedBadges, seenBadges) }
             if (clearsBadgesWhenOpened) androidx.compose.runtime.LaunchedEffect(postedBadges) { model.trimBadgesSeen(postedBadges) }
             androidx.compose.runtime.SideEffect { latestNotifications = notificationItems }
-            val wallpaperTone = rememberWallpaperTone(state.systemWallpaper)
+            val wallpaperTone = rememberWallpaperTone(state.systemWallpaper, LocalDuoPalette.current.dark)
             // Re-read on every resume so turning Remove animations on/off applies without restarting.
             val reduceMotionState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(reduceMotionEnabled(this@MainActivity)) }
             androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { reduceMotionState.value = reduceMotionEnabled(this@MainActivity); onPauseOrDispose { } }
