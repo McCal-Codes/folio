@@ -290,7 +290,7 @@
     <string name="onboarding_use_badges">앱 아이콘 배지</string>
     <string name="allow_access">접근 허용</string>
     <string name="pull_down_for_more">아래로 쓸어내려 더 보기</string>
-    <string name="onboarding_gestures_detail">Folio의 제스처 서비스는 상단 모서리에서 알림 센터와 제어 센터를 엽니다. 화면 내용은 읽을 수 없습니다.</string>
+    <string name="onboarding_gestures_detail">Folio의 제스처 서비스는 상단 모서리에서 알림 센터와 제어 센터를 엽니다. 다른 앱의 화면 내용은 읽을 수 없습니다. 찍는 스크린샷은 패널 뒤를 흐리게 하는 용도뿐이며, 저장되거나 전송되지 않습니다.</string>
     <string name="onboarding_use_panels">알림 센터 및 제어 센터</string>
     <string name="onboarding_use_everywhere">다른 앱에서 Dynamic Island 및 Dock 사용</string>
     <string name="turn_on_button">켜기</string>
@@ -681,7 +681,7 @@
     <string name="smart_ink_fact_looks">Folio는 시계의 밝은 글자와 어두운 글자를 고르기 위해서만 홈 화면의 사진을 찍습니다.</string>
     <string name="smart_ink_fact_kept">시계 아래 부분만 측정하고 사진은 바로 버립니다. 밝기 수치 몇 개만 남으며 저장하거나 전송하지 않습니다.</string>
     <string name="smart_ink_fact_home">Folio 홈이 앞에 있을 때만 작동합니다. 그 순간 홈 위에 그려진 것(예: 플로팅 창)은 사진에 담길 수 있습니다.</string>
-    <string name="smart_ink_fact_separate">별도의 손쉬운 사용 서비스이므로 Folio 제스처 서비스는 여전히 화면을 읽을 수 없습니다. 손쉬운 사용 설정에서 언제든 끌 수 있습니다.</string>
+    <string name="smart_ink_fact_separate">별도의 손쉬운 사용 서비스이며 Folio 제스처 서비스와는 따로 켜고 끕니다. 손쉬운 사용 설정에서 언제든 끌 수 있습니다.</string>
     <string name="open_accessibility_settings">손쉬운 사용 설정 열기</string>
     <string name="smart_ink_service_label">Folio 스마트 시계 글자색</string>
     <string name="smart_ink_service_description">Folio가 큰 시계의 밝은 글자와 어두운 글자를 고르기 위해 홈 화면 사진을 찍을 수 있게 합니다. 시계 아래 부분만 측정하고 사진은 바로 버립니다. 그 외에는 아무것도 하지 않습니다.</string>

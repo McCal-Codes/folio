@@ -54,12 +54,14 @@ class AssistPickerActivity : ComponentActivity() {
     private val searchOnlyState = androidx.compose.runtime.mutableStateOf(false)
 
     override fun onNewIntent(intent: Intent) {
+        intent.dropUnreadableExtras()
         super.onNewIntent(intent)
         setIntent(intent)
         searchOnlyState.value = intent.getBooleanExtra(EXTRA_SEARCH_ONLY, false)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        intent.dropUnreadableExtras()
         super.onCreate(savedInstanceState)
         searchOnlyState.value = intent.getBooleanExtra(EXTRA_SEARCH_ONLY, false)
         val targets = AssistTarget.entries.mapNotNull { target ->
