@@ -331,7 +331,9 @@ internal fun HomePagePane(
         // Only as much room as the Edit bar actually needs above this page's first row; pushing the whole grid down by a
         // fixed amount cut off the bottom row's labels on screens that already had space at the top.
         // Unfolded, the bar sits in the space above the widget row, so the grid doesn't move at all (like iPad).
-        val editRoom by animateDpAsState(if (roomWanted && !geometry.expanded) (JIGGLE_BAR_BOTTOM - geometry.contentTop.dp).coerceAtLeast(0.dp) else 0.dp, label = "jiggle room")
+        // The upright unfolded window keeps its grid clear of the bar's corners, so there the bar needs no room at all.
+        val besideGrid = jiggleBarBesideGrid(geometry.horizontalDock, geometry.dockBesideRail, geometry.homeWidth, geometry.gridWidth, LocalDensity.current.fontScale)
+        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, geometry.contentTop, geometry.expanded, besideGrid).dp else 0.dp, label = "jiggle room")
         Column(Modifier.offset(x = 16.dp).width(geometry.gridWidth.dp).fillMaxHeight()
             .verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = FolioSpace.SMALL.dp)) {
             val (pageIcon, pageLabels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
@@ -353,7 +355,8 @@ internal fun CircleControl(icon: ImageVector, label: String, tag: String, visual
     IconButton(onClick = action, modifier = Modifier.size(visualSize.coerceAtLeast(48.dp)).testTag(tag)) {
         Box(Modifier.size(visualSize).testTag("$tag-visual").background(Glass.copy(alpha = .22f), CircleShape)
             .border(1.dp, Color.White.copy(alpha = .25f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, label, tint = Color.White, modifier = Modifier.size(22.dp))
+            // Home's ink, not fixed white: on a light surface a white icon on light glass vanished (27 Oct sweep, F03 follow-up).
+            Icon(icon, label, tint = LocalHomeInk.current.primary, modifier = Modifier.size(22.dp))
         }
     }
 }

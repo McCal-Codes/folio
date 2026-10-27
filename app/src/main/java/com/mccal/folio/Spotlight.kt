@@ -28,11 +28,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -324,18 +322,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                     }
                     if (shows(SpotlightSection.WEB)) item("web") {
                         Section(stringResource(R.string.search_the_web_ask_ai)) {
-                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                                WebSearchTarget.chips(state.searchEngine).forEach { target ->
-                                    Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
-                                        .clickable { onClose(); openWebSearch(context, target, q) }
-                                        .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
-                                            tint = Color.White, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
-                                    }
-                                }
-                            }
+                            WebSearchChips(WebSearchTarget.chips(state.searchEngine)) { target -> onClose(); openWebSearch(context, target, q) }
                         }
                     }
                     if (math == null && appHits.isEmpty() && contacts.isEmpty() && settingHits.isEmpty()) item("none") {
@@ -357,6 +344,27 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(SpotGlass)
             .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).padding(FolioSpace.COMPACT.dp),
             verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp), content = content)
+    }
+}
+
+/**
+ * The chips under a search, in as many lines as the window needs. A single scrolling line cut the last chip off at the edge with
+ * nothing to say it scrolled ("Ask ChatGPT" read "Ask ChatGF", 27 Oct sweep F07), and a scrolling row hides the other chips behind a swipe.
+ */
+@Composable
+internal fun WebSearchChips(targets: List<WebSearchTarget>, onPick: (WebSearchTarget) -> Unit) {
+    FlowRow(Modifier.fillMaxWidth().testTag("web-search-chips"), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+        targets.forEach { target ->
+            Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
+                .clickable { onPick(target) }
+                .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp).testTag("web-chip-${target.name}"), verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
+                    tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
+            }
+        }
     }
 }
 
