@@ -66,7 +66,7 @@ internal const val CC_EDGE_STRIP_PANEL_RATIO = 5f
 internal enum class CcPage { CONTROLS, MEDIA, CONNECTIVITY }
 
 /** Air above the header and below the pages, inside the panel, so the first and last rows never touch the edge of the panel. */
-internal const val CC_PLATE_PAD_DP = 12f
+internal const val CC_PANEL_PAD_DP = 12f
 
 /** Below this height (dp) the page strip goes into the header instead of taking a row of its own under the grid. */
 internal const val CC_STRIP_IN_HEADER_BELOW_DP = 560f
@@ -80,15 +80,16 @@ internal fun ccRowsThatFit(heightDp: Float, cellDp: Float, gapDp: Float): Int = 
 /**
  * How the small controls are split over the Controls pages so that none of them scrolls (PNL-1): [perPage] is how many go on each page, and
  * [slidersOnFirst] says whether the two sliders fit on the first page beside them (four columns) or in its top row (six or more); if they
- * do not fit they stay on the Media page. The first page also holds the connectivity, Now Playing and Focus modules, so it holds fewer.
+ * do not fit they stay on the Media page, and so does Focus when the first page has no row for it. The first page also holds the connectivity, Now Playing and Focus modules, so it holds fewer.
  * A null [pageHeightDp] means no height limit: everything on one page, as before.
  */
-internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean)
+internal data class CcPlan(val perPage: List<Int>, val slidersOnFirst: Boolean, val focusOnFirst: Boolean = true)
 
 internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeightDp: Float?, controls: Int, focus: Boolean): CcPlan {
     if (pageHeightDp == null) return CcPlan(listOf(controls), true)
     val rows = ccRowsThatFit(pageHeightDp, cellDp, gapDp)
-    val free = rows - 2 - (if (focus) 1 else 0) // rows left under the modules
+    val focusFirst = !focus || rows >= 3 // below three rows the two modules fill the page, and Focus goes to the Media page
+    val free = rows - 2 - (if (focus && focusFirst) 1 else 0) // rows left under the modules
     val slidersOnFirst: Boolean
     val first: Int
     if (columns >= 6) { slidersOnFirst = true; first = maxOf(0, free) * columns }
@@ -99,7 +100,7 @@ internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeigh
     val perOther = maxOf(1, rows) * columns
     val pages = mutableListOf(onFirst)
     while (left > 0) { val n = minOf(left, perOther); pages += n; left -= n }
-    return CcPlan(pages, slidersOnFirst)
+    return CcPlan(pages, slidersOnFirst, focusFirst)
 }
 
 /** The rows of cells page [index] of the plan uses, for the height the pager is given. */
@@ -107,13 +108,16 @@ internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean):
     val n = plan.perPage[index]
     fun rowsOf(count: Int, per: Int) = (count + per - 1) / per
     if (index > 0) return rowsOf(n, columns)
-    val top = 2 + (if (focus) 1 else 0)
+    val top = 2 + (if (focus && plan.focusOnFirst) 1 else 0)
     return top + when {
         columns >= 6 -> rowsOf(n, columns)
         plan.slidersOnFirst -> 2 + rowsOf(maxOf(0, n - 4), 4)
         else -> rowsOf(n, 4)
     }
 }
+
+/** The rows the Media page uses: Now Playing and the sliders three tall, and Focus under them when it did not fit on the first page. */
+internal fun ccMediaRows(plan: CcPlan, focus: Boolean): Int = 3 + (if (focus && !plan.focusOnFirst) 1 else 0)
 
 /**
  * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
@@ -203,13 +207,16 @@ internal fun ccClearTone(brightness: Float, dimScale: Float = 1f): CcGlassTone {
     return CcGlassTone((effective / dimScale.coerceIn(.1f, 1f)).coerceAtMost(1f), t.coerceAtMost(1f), w * (1f - minOf(1f, t / .2f)))
 }
 
-/** The 95th percentile of sRGB luma (0 to 1) of [pixels] (ARGB), a stand-in for how bright the backdrop's bright parts are, so a bright patch under a control is not averaged away; .5 with no pixels. */
+/** The 95th percentile of the relative luminance of [pixels] (ARGB) written as the gray that has it (sRGB, 0 to 1: a pure green is much brighter than its luma suggests, and the 4.5:1 rule is about luminance), a stand-in for how bright the backdrop's bright parts are, so a bright patch under a control is not averaged away; .5 with no pixels. */
+private val LINEAR = FloatArray(256) { i -> val c = i / 255f; if (c <= .04045f) c / 12.92f else Math.pow(((c + .055f) / 1.055f).toDouble(), 2.4).toFloat() }
+
 internal fun ccBrightness(pixels: IntArray): Float {
     if (pixels.isEmpty()) return .5f
     val histogram = IntArray(256)
     for (p in pixels) {
-        val luma = (((p shr 16) and 255) * 299 + ((p shr 8) and 255) * 587 + (p and 255) * 114) / 1000
-        histogram[luma.coerceIn(0, 255)]++
+        val y = .2126f * LINEAR[(p shr 16) and 255] + .7152f * LINEAR[(p shr 8) and 255] + .0722f * LINEAR[p and 255]
+        val encoded = if (y <= .0031308f) 12.92f * y else 1.055f * Math.pow(y.toDouble(), 1 / 2.4).toFloat() - .055f
+        histogram[Math.round(encoded * 255f).coerceIn(0, 255)]++
     }
     val target = (pixels.size * .95f).toInt()
     var seen = 0
