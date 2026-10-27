@@ -449,7 +449,7 @@
           "icon": "history",
           "color": "#30D158",
           "title": "What Folio can use, and what it did",
-          "detail": "Capabilities and Recent Activity in Settings › Advanced, and Copy Diagnostics.",
+          "detail": "Capabilities and Recent Activity in Settings › General › Advanced, and Copy Diagnostics.",
           "status": "building",
           "beta": true,
           "inBeta": 1
@@ -500,11 +500,92 @@
           "inBeta": 2
         },
         {
+          "icon": "grid",
+          "color": "#5E5CE6",
+          "title": "Swap apps in Screenshot Mode",
+          "detail": "Chosen apps, or every app you installed, show as the phone's own apps while Screenshot Mode is on; a tap still opens the real app.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 3
+        },
+        {
+          "icon": "apps",
+          "color": "#FF453A",
+          "title": "Delete apps from Folio",
+          "detail": "Remove App on Home and Delete App in the App Library, with Android's own confirmation.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 3
+        },
+        {
+          "icon": "accessibility",
+          "color": "#0A84FF",
+          "title": "Reduce Motion",
+          "detail": "A setting between all motion and none: things fade in where they land instead of sliding or growing.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 3
+        },
+        {
           "icon": "speed",
           "color": "#32ADE6",
           "title": "Smoother swiping",
           "detail": "Less redrawing while apps install and when offline; the swipe itself comes next, measured on the Fold8.",
           "status": "building"
+        },
+        {
+          "icon": "grid",
+          "color": "#30D158",
+          "title": "Widgets make room for apps",
+          "detail": "Move or resize a widget over apps and they move along, on to the next page if they have to. Undo puts everything back.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 5
+        },
+        {
+          "icon": "search",
+          "color": "#0A84FF",
+          "title": "Add to Home from Spotlight",
+          "detail": "The Top Hit has a + that puts the app on Home, and says where it already is.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 5
+        },
+        {
+          "icon": "apps",
+          "color": "#FF9F0A",
+          "title": "Pick 5, 6 or 7 rows",
+          "detail": "Choose the number of rows yourself; icons get smaller to fit instead of the page scrolling.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 5
+        },
+        {
+          "icon": "notifications",
+          "color": "#FF453A",
+          "title": "Notification Center in sections",
+          "detail": "Now, Conversations, the rest and a folded Quiet, with a visible ... and Clear on each app.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 5
+        },
+        {
+          "icon": "tune",
+          "color": "#5E5CE6",
+          "title": "Shades that fit the unfolded screen",
+          "detail": "Notification Center and Control Center as Full screen, a Card under their corner, or Side by side.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 5
+        },
+        {
+          "icon": "corner",
+          "color": "#64D2FF",
+          "title": "Folio's panels over other apps",
+          "detail": "A one-hand operation shortcut or a Routine opens Folio's own panels over the app, with a reply box.",
+          "status": "building",
+          "beta": true,
+          "inBeta": 5
         }
       ]
     },

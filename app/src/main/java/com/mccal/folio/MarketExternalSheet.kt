@@ -52,14 +52,14 @@ internal fun MarketExternalSheet(
     Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.XL.dp).padding(top = 18.dp).testTag("market-external-sheet")) {
         Text(
             stringResource(R.string.get_1_s, name),
-            color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+            color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold,
         )
         Text(
             stringResource(
                 if (here) R.string.install_it_with_folio_or_get_it_from
                 else R.string.folio_doesn_t_install_apps_itself_choose,
             ),
-            color = Color.White.copy(alpha = .7f), fontSize = 14.sp, modifier = Modifier.padding(top = FolioSpace.SNUG.dp),
+            color = Color.White.copy(alpha = .7f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(top = FolioSpace.SNUG.dp),
         )
         Spacer(Modifier.height(14.dp))
         onInstallHere?.let { install ->
@@ -72,7 +72,7 @@ internal fun MarketExternalSheet(
                         .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp)
                         .testTag("market-external-here"),
                 ) {
-                    Text(label, color = LocalAccent.current.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(label, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
                     Text(
                         stringResource(R.string.folio_downloads_it_and_android_asks),
                         color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
@@ -90,7 +90,7 @@ internal fun MarketExternalSheet(
                         .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.MEDIUM.dp)
                         .testTag("market-external-${source.store.id}"),
                 ) {
-                    Text(label, color = Color.White, fontSize = 16.sp)
+                    Text(label, color = Color.White, fontSize = FolioType.CALLOUT.sp)
                     Text(
                         stringResource(MarketExternalApp.detail(source.store)),
                         color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
@@ -114,7 +114,7 @@ internal fun MarketExternalSheet(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
             Text(
                 stringResource(R.string.cancel),
-                color = LocalAccent.current.ink, fontSize = 16.sp,
+                color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onCancel)
                     .heightIn(min = 44.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
             )

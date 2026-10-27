@@ -3,6 +3,9 @@ package com.mccal.folio
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -166,6 +169,9 @@ fun StatusRail(
     style: StatusStyle = StatusStyle(),
     /** The Focus that's on: its icon sits above the time, as iPhone shows it beside the clock. */
     focus: FocusMode? = null,
+    /** A tap on the rail, as on the iPhone Duo's status control: Home passes the one that opens Control Center. Null leaves the rail plain. */
+    onOpen: (() -> Unit)? = null,
+    openLabel: String? = null,
 ) {
     // Text sits on the frosted capsule, not straight on the wallpaper, so pick its color from how light the capsule
     // looks: the wallpaper's main color seen through the glass. An explicit Light or Dark "Text on Home" still wins.
@@ -218,8 +224,15 @@ fun StatusRail(
         (status.battery ?: 100) <= 20 -> low
         else -> ink
     }
-    val capsule = RoundedCornerShape(30.dp)
-    BoxWithConstraints(modifier.testTag("status-rail").semantics(mergeDescendants = true) { contentDescription = description }) {
+    val capsule = RoundedCornerShape(FolioRadius.RAIL.dp)
+    // The press shows on the visible capsule, not as the default ripple over the whole rail: the rail also holds the empty location slot above the capsule,
+    // and the ripple lit that as a faint second pill behind it.
+    val press = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
+    val pressShade by animateFloatAsState(if (pressed && onOpen != null) .14f else 0f, androidx.compose.animation.core.tween(120), label = "rail press")
+    BoxWithConstraints(modifier.testTag("status-rail")
+        .then(if (onOpen != null) Modifier.clip(capsule).clickable(interactionSource = press, indication = null, onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
+        .semantics(mergeDescendants = true) { contentDescription = description }) {
         val availableWidth = (maxWidth - 16.dp).coerceAtLeast(28.dp)
         val visualSize = minOf(iconSize * .9f, availableWidth, if (compact) 34.dp else 44.dp)
         val timeSize = minOf(17f, availableWidth.value / (2.5f * fontScale)).sp
@@ -239,6 +252,7 @@ fun StatusRail(
             if (hasContent) Column(Modifier.fillMaxWidth()
                 .then(if (style.background) Modifier.background(Glass.copy(alpha = style.railGlass), capsule)
                     .border(1.dp, LocalGlassLook.current.outlineColor, capsule) else Modifier)
+                .then(if (pressShade > 0f) Modifier.background(ink.copy(alpha = pressShade), capsule) else Modifier)
                 // Standard (4) and Compact (0) keep their old padding; the slider moves between and past them.
                 .padding(vertical = if (compact) FolioSpace.SMALL.dp else (8f + style.spacing).coerceAtMost(12f).dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(style.spacing.dp)) {
@@ -432,7 +446,7 @@ fun StatusRail(
                 }
                 // The percentage is already inside the ring in that style.
                 // Glyphs that carry the number themselves don't need it repeated underneath.
-                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) Text(if (status.airplane) "Airplane" else status.battery?.let { "$it%" } ?: "—",
+                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) Text(if (status.airplane) stringResource(R.string.status_airplane) else status.battery?.let { "$it%" } ?: "—",
                     color = if (status.charging && style.colorfulBattery) charging else ink,
                     fontSize = detailSize, fontWeight = FontWeight.Medium,
                     maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)

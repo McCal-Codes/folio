@@ -21,7 +21,7 @@ class ScreenMatrixTest {
     }
 
     @Test fun `the shared device list is complete`() {
-        assertEquals(25, devices.size)
+        assertEquals(27, devices.size)
         assertTrue(devices.any { it.name == "Galaxy Z Fold8 inner" && it.width == 932f && it.height == 704f })
         // Estimated from Samsung's specs at 420 dpi; the file says so beside each one.
         assertTrue(devices.any { it.name == "Galaxy Z TriFold main (estimated)" && it.width == 823f && it.height == 603f })

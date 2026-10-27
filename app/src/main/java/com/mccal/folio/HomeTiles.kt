@@ -211,11 +211,11 @@ internal fun DockAppColumn(
                 val animatedOffset by animateIntOffsetAsState(
                     if (horizontal) IntOffset((renderIndex * rowHeightPx).roundToInt(), 0) else IntOffset(0, (renderIndex * rowHeightPx).roundToInt()),
                     animationSpec = if (drag.active) FolioMotion.spring(FolioMotion.Snap, IntOffset(1, 1))
-                        else androidx.compose.animation.core.snap(), label = "dock insertion $id")
+                        else androidx.compose.animation.core.snap(), label = "dock insertion $id") // english-only
                 val visible = previewIndex >= 0 && renderIndex != hiddenIndex
                 val opacity by animateFloatAsState(
                     if (!visible) 0f else if (dimDragged && id == draggedId) .28f else 1f,
-                    label = "dock insertion visibility $id",
+                    label = "dock insertion visibility $id", // english-only
                 )
                 Box(Modifier.offset { animatedOffset }.then(if (horizontal) Modifier.fillMaxHeight().width(rowHeight.dp) else Modifier.fillMaxWidth().height(rowHeight.dp)).graphicsLayer { alpha = opacity * drag.landing.cellAlpha(id) }
                     .testTag("dock-app-$id"), contentAlignment = Alignment.Center) {
@@ -225,7 +225,7 @@ internal fun DockAppColumn(
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
-                        } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id")
+                        } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id") // english-only
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
                             val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value
                             // Grow toward the screen, away from the edge the dock sits on.
@@ -235,7 +235,7 @@ internal fun DockAppColumn(
                         if (edit.active && savedIndex >= 0) JiggleRemoveButton(stringResource(R.string.remove_from_dock, app.label), inset = 6.dp) { edit.onRemove(DropTarget.Dock(savedIndex)) }
                     }
                     // Recent-app dot (Beta): below the icon in a horizontal dock, on the screen side of a side dock.
-                    if (!edit.active && app.packageName in LocalRecentPackages.current) Box(Modifier
+                    if (!edit.active && app.iconFrom == null && app.packageName in LocalRecentPackages.current) Box(Modifier
                         .align(if (horizontal) Alignment.BottomCenter else if (leftHanded) Alignment.CenterEnd else Alignment.CenterStart)
                         .size(5.dp).background(Color.White.copy(alpha = .8f), CircleShape)
                         .semantics { contentDescription = usedRecentlyLabel })
@@ -349,7 +349,7 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         }
         val ink = LocalHomeInk.current
         if (labels) Row(Modifier.padding(top = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
-            NewAppDot(app.packageName)
+            if (app.iconFrom == null) NewAppDot(app.packageName)
             Text(app.label, color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, lineHeight = LocalLabelSize.current.lineSp.sp, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, style = TextStyle(shadow = ink.labelShadow))
         }

@@ -164,13 +164,13 @@ internal fun IconStackEditor(anchor: AppEntry, apps: List<AppEntry>, chosen: Lis
             AppIcon(anchor, null, Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), badge = false)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.stack_1, anchor.label), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.stack_1, anchor.label), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold)
                 Text(stringResource(R.string.swipe_down_on_1_to_open_these_2_of_3, anchor.label, chosen.size, IconStacks.MAX), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
             }
             Text(stringResource(R.string.done), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onDone).padding(FolioSpace.SMALL.dp))
         }
         AppCheckList(shown, query, { query = it }, checked = { it.id in chosen }, enabled = { it.id in chosen || chosen.size < IconStacks.MAX },
-            checkedLabel = "In stack", uncheckedLabel = "Not in stack", onToggle = { onToggle(it.id) }, modifier = Modifier.weight(1f))
+            checkedLabel = stringResource(R.string.in_stack), uncheckedLabel = stringResource(R.string.not_in_stack), onToggle = { onToggle(it.id) }, modifier = Modifier.weight(1f))
     }
 }

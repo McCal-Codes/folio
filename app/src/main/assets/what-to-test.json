@@ -1,47 +1,91 @@
 {
-  "release": "0.6.9-beta.2",
+  "release": "0.6.9-beta.5",
   "items": [
-    { "id": "new-motion", "title": "New motion", "where": "Settings > General > Advanced > New motion",
-      "steps": ["Turn New motion on, then press and hold an app: it should dip under your finger and lift with a soft shadow while its menu is open.", "Tap an app that is slow to open: the icon should stay dipped until the app is up, never stuck.", "Swipe between pages: the active page dot should stretch toward the next one and its tail follow.", "Open a sheet, a menu and an alert, and switch Market tabs: each should settle smoothly, with nothing jumping or landing in the wrong place.", "Turn on Android's Remove animations, or New motion off: everything should move as it did before."] },
-    { "id": "notices", "title": "Notices in the Dynamic Island", "where": "Home, with the island on",
-      "steps": ["Do something that shows a notice: turn a Focus trigger on or off, or save a layout backup.", "The notice should fit its text (up to three lines) and stay clear of the camera and of the fold: check the cover, the open screen and half folded.", "Open Settings or a full-screen page first: the notice should fall back to a short message, not sit under the page."] },
-    { "id": "update-undo", "title": "Undo from the update notice", "where": "The island, after a package updates itself",
-      "steps": ["With Update packages in the background on, wait for a package to update by itself, or use a source that has an update.", "The notice should say which package updated, with an Undo.", "Tap Undo: the earlier version should come back, Home should stay as it is, and the same update should not be installed again by itself."] },
-    { "id": "safe-mode-recovers", "title": "An install cut short", "where": "Market, then Folio's own start",
-      "steps": ["Only if you are comfortable force-stopping Folio: start a package install or update, then force-stop Folio from Settings > Apps while it is working.", "Start Folio again: it should put things back as they were and say which package did not finish installing.", "Folio should not offer Safe Mode just because Android closed it for memory."] },
-    { "id": "animation-speed", "title": "Animation Speed on more motion", "where": "Settings > Animation Speed",
-      "steps": ["Set Animation Speed to Slow, then open a panel, the notification shade, a switch and a segmented control, and drag an icon stack open.", "They should all slow down together. Set it to Fast or Off: they should speed up or stop moving, and nothing should end up in the wrong place."] },
-    { "id": "first-hints", "title": "The two first-use hints", "where": "The first Home after setup (optional)",
-      "steps": ["Only on a phone that has just been through setup: Home should say once to press and hold an icon to rearrange.", "Unfolded for the first time, it should say once that this is the same Home with more room.", "Neither should come back after it has been shown once."] },
-    { "id": "bottom-of-home", "title": "Bottom of Home", "where": "Settings > Search & App Library",
-      "steps": ["Switch between Search bar, Page dots and Nothing.", "Home should not shift between them.", "With Nothing, drag along the empty strip: it should still change pages."] },
-    { "id": "stronger-rings", "title": "Stronger rings", "where": "Settings > Icons & Side Bar > Status",
-      "steps": ["Turn on Stronger rings with a ring glyph and look at the Side Bar on the cover and the inner screen.", "Try a light and a dark wallpaper.", "Turn on Android's Bold text: it should turn on by itself, and off again."] },
-    { "id": "widget-rows", "title": "Rows under a widget", "where": "Home",
-      "steps": ["Put a widget at the top of a page.", "The rows below it should have the same spacing as the rest, and the dock should line up with them.", "Look on the cover, the inner screen and half folded."] },
-    { "id": "focus-triggers", "title": "Focus that turns on by itself", "where": "Settings > Focus > a Focus > Also Turn On When",
-      "steps": ["Turn on Charging for a Focus and plug the phone in: the Focus should turn on and say why.", "Unplug it: the Focus should turn off.", "Plug in again, turn the Focus off yourself and leave it plugged in: it should stay off.", "If your phone stops charging at a limit (Samsung's battery protection), plug it in anyway: the Focus should still turn on.", "Turn on a different Focus yourself, then plug in: the one you chose should stay on."] },
-    { "id": "full-width-center", "title": "Full-Width Home, centered", "where": "Settings > Home Screen & Dock > Layout > Full-Width Home",
-      "steps": ["Turn on Full-Width Home: the apps should sit in the middle, with the same space on each side.", "Make Space between columns smaller and the icons smaller: the apps should stay centered.", "Open the App Library: it should have the same margin on the left and the right."] },
-    { "id": "drag-dock", "title": "Drag the dock", "where": "Edit Home, with the dock on the Side Bar",
-      "steps": ["Drag the handle under the dock up and down.", "Fold or unfold while editing: the handle should still move the dock."] },
-    { "id": "folders", "title": "Folders you can shape", "where": "Home, in a folder",
-      "steps": ["Drop an app on another to make a folder, then drop a third onto the folder: it should go in, and the folder should lift a little while you hold it there.", "Open the folder, hold an app and drag it past the card's edge: the folder steps aside and you carry the icon to any cell, another page (hold at the screen's edge) or the dock.", "Take out the last companion and the folder should go away. Drag the folder's corner to resize it, and try Sort A to Z in its options.", "Try it on the cover and the inner screen."] },
-    { "id": "big-clock", "title": "Make the Big Clock your own", "where": "Home, long-press the Big Clock",
-      "steps": ["Choose Customize: try a Look (Stacked too), a color, and Fine tune with its 12 or 24-hour choice.", "Reset should put the clock back exactly as it was.", "Choose Place Freely: drag the clock, or nudge it with the arrows, then Apply. Snap to Grid puts it back, and over apps it should refuse.", "Close and reopen Folio: the clock should stay where you put it."] },
-    { "id": "market-updates", "title": "The Market keeps itself current", "where": "Market > Settings > Refreshing",
-      "steps": ["Nothing should be on to start with.", "The first time the Market opens, it asks once to keep packages up to date.", "Turn on Refresh in the background and Tell me about updates, and see whether Android asks to show notices."] },
-    { "id": "market-undo", "title": "Updated recently and Undo", "where": "Market > Installed",
-      "steps": ["After a package updates by itself, it should be listed under Updated recently.", "Undo should put the earlier version back and leave Home as it is.", "A package's own page has an Update automatically switch."] },
-    { "id": "safe-mode-market", "title": "Safe Mode and the Market", "where": "Safe Mode",
-      "steps": ["With Safe Mode on, background refresh and automatic updates should do nothing."] },
-    { "id": "install-smooth", "title": "Installing an app", "where": "Home",
-      "steps": ["Install or update an app from Play while Home is open: only that app's icon should show progress and Home should stay smooth.", "Turn Wi-Fi off with the Side Bar showing: Home should stay smooth."] },
-    { "id": "small-additions", "title": "Smaller additions", "where": "Several places",
-      "steps": ["Suggestions widget: resize it from 1 x 1 to the whole grid.", "Edit Icon on an app: choose your own picture.", "Settings > Advanced > Diagnostics: Capabilities, Recent Activity and Copy Diagnostics."] },
-    { "id": "language", "title": "Korean or Chinese with TalkBack", "where": "Android language settings",
-      "steps": ["With the phone in Korean or Chinese and TalkBack on, check Control Center toggles, the Market question and the notices.", "Tell us about any English you still see."] },
-    { "id": "new-setup", "title": "The new setup (optional)", "where": "Optional", "action": "setup",
-      "steps": ["Open the new setup from here. Nothing changes unless you choose something.", "Look at the starting-point choices, and leave without changing anything if you like."] }
+    {
+      "id": "panels-over-apps",
+      "title": "Folio's panels over other apps",
+      "where": "Settings > Notifications > Panels",
+      "steps": [
+        "Turn on Folio's panels over other apps. Open any app, then use One UI's one-hand operation or a Routine that opens the Notification shade.",
+        "Folio's Notification Center should slide down over the app, and close when you tap outside, swipe up, or press Home. Try Quick settings the same way.",
+        "On a message, tap Reply: a small box to type in should open over the app, and sending should return you to it. Options and the ... button are on Home only."
+      ]
+    },
+    {
+      "id": "rows-by-hand",
+      "title": "Pick 5, 6 or 7 rows",
+      "where": "Settings > Home > Rows",
+      "steps": [
+        "Open Settings > Home and choose Rows 6, then 7. Look at both screens, folded and open.",
+        "Icons get smaller to fit the rows; the cover screen shows the smallest icons. Say if any screen looks too small or scrolls.",
+        "Choose Automatic again: it should look exactly as it did before."
+      ]
+    },
+    {
+      "id": "notification-sections",
+      "title": "Notification sections",
+      "where": "Settings > Notifications > Panels",
+      "steps": [
+        "Turn on Notification sections, then pull down Notification Center.",
+        "Music or a timer should be under Now, chats under Conversations, and silent apps folded under Quiet with a count. Tap Quiet to open it.",
+        "Check nothing urgent (a call, an alarm) is hidden in Quiet, and say what you found there that you would not call quiet."
+      ]
+    },
+    {
+      "id": "notification-actions",
+      "title": "The ... button and Clear per app",
+      "where": "Notification Center",
+      "steps": [
+        "With Notification sections on, tap the ... on a notification: Open, Snooze, Notification settings and Clear.",
+        "Open an app with several notifications and tap Clear next to Show Less: the first tap asks, the second clears only that app."
+      ]
+    },
+    {
+      "id": "shade-layouts",
+      "title": "Shades on the unfolded screen",
+      "where": "Settings > Notifications > Panels",
+      "steps": [
+        "On the unfolded screen choose Full screen, Card and Side by side for the unfolded layout, and pull each shade down.",
+        "A card should sit under the corner you pulled it from and leave Home visible. Side by side shows both panels on one page."
+      ]
+    },
+    {
+      "id": "widgets-make-room",
+      "title": "Widgets make room for apps",
+      "where": "Home Screen",
+      "steps": [
+        "Drag a widget onto a spot with apps, then resize one taller over a row of apps. The apps should move along instead of the spot turning red.",
+        "With a full page, the last apps should carry on to a new page. Then use Undo Last Layout Change: everything should return.",
+        "Watch that the apps slide into place smoothly, also with Reduce Motion on."
+      ]
+    },
+    {
+      "id": "spotlight-add",
+      "title": "Add to Home from Spotlight",
+      "where": "Spotlight",
+      "steps": [
+        "Search for an app that is not on Home and tap the + on the Top Hit: it should appear on Home, and the row should say On Home.",
+        "Try an app that is already on Home, and one inside a folder."
+      ]
+    },
+    {
+      "id": "smooth-motion",
+      "title": "Smooth animations",
+      "where": "Everywhere above",
+      "steps": [
+        "Look at each thing above at normal speed, and once with Animation Speed slower. Nothing should pop or jump.",
+        "Turn Reduce Motion on: panels and sections should fade, with no sliding or growing."
+      ]
+    },
+    {
+      "id": "new-setup",
+      "title": "The new setup (optional)",
+      "where": "Optional",
+      "action": "setup",
+      "steps": [
+        "Open the new setup from here. Nothing changes unless you choose something.",
+        "Look at the starting-point choices, and leave without changing anything if you like."
+      ]
+    }
   ]
 }

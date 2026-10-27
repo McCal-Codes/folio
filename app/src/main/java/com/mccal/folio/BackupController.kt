@@ -78,25 +78,25 @@ class BackupController(
     }
 
     fun startExport(fileName: String = "folio-layout.json") {
-        val state = model.state.value
+        val state = model.stateForBackup() ?: run { errorMessage = damagedMessage(); return }
         val raw = runCatching { encodeBackup(state) }.getOrElse {
-            errorMessage = it.message ?: activity.getString(R.string.layout_backup_could_not_be_prepared); return
+            errorMessage = failureMessage(it, R.string.layout_backup_could_not_be_prepared); return
         }
         begin(OP_EXPORT, raw)
         try { createDocument.launch(fileName) }
-        catch (error: Exception) { errorMessage = error.message ?: "The document picker is unavailable."; clearTransaction(false) }
+        catch (error: Exception) { errorMessage = failureMessage(error, R.string.document_picker_unavailable); clearTransaction(false) }
     }
 
     /** Saves a backup straight to Download/Folio, no picker. */
     fun saveToFolioFolder(name: String? = null) {
-        val state = model.state.value
+        val state = model.stateForBackup() ?: run { errorMessage = damagedMessage(); return }
         val raw = runCatching { encodeBackup(state) }.getOrElse {
-            errorMessage = it.message ?: activity.getString(R.string.layout_backup_could_not_be_prepared); return
+            errorMessage = failureMessage(it, R.string.layout_backup_could_not_be_prepared); return
         }
         val name = FolioFiles.fileName(name, "folio-layout")
         activity.lifecycleScope.launch {
             val saved = withContext(Dispatchers.IO) { FolioFiles.save(activity, name, "application/json", raw.toByteArray())?.let { FolioFiles.displayName(activity, it) ?: name } }
-            if (saved != null) successMessage = activity.getString(R.string.saved_to_as, FolioFiles.displayPath, saved)
+            if (saved != null) successMessage = savedMessage(activity.getString(R.string.saved_to_as, FolioFiles.displayPath, saved))
             else errorMessage = activity.getString(R.string.layout_backup_could_not_be_saved)
         }
     }
@@ -104,7 +104,7 @@ class BackupController(
     fun startImport() {
         begin(OP_IMPORT)
         try { openDocument.launch(arrayOf("application/json", "text/json", "text/plain")) }
-        catch (error: Exception) { errorMessage = error.message ?: "The document picker is unavailable."; clearTransaction(false) }
+        catch (error: Exception) { errorMessage = failureMessage(error, R.string.document_picker_unavailable); clearTransaction(false) }
     }
 
     fun applyImport(): Boolean {
@@ -112,6 +112,7 @@ class BackupController(
         val token = generation
         activity.lifecycleScope.launch {
             val state = model.state.first { !it.loading }
+            appsNotListed()?.let { if (token == generation) { errorMessage = it; clearTransaction(clearMessages = false) }; return@launch }
             val result = runCatching { withContext(Dispatchers.Default) {
                 decodeLayoutBackup(raw, state.apps, state.profiles, scope)
             } }
@@ -132,7 +133,7 @@ class BackupController(
                 }
                 successMessage = restoredMessage(changed, imported.packages, restored)
                 clearTransaction(clearMessages = false)
-            }.onFailure { errorMessage = it.message ?: activity.getString(R.string.this_layout_backup_is_no_longer_valid) }
+            }.onFailure { errorMessage = failureMessage(it, R.string.this_layout_backup_is_no_longer_valid) }
         }
         return true
     }
@@ -151,13 +152,45 @@ class BackupController(
      * pushed the file past 2 MB and no layout backup could be made at all; the layout alone is still worth saving.
      */
     private fun encodeBackup(state: LauncherState): String {
-        val descriptors = widgetDescriptors(state)
+        val all = widgetDescriptors(state)
+        val (portable, skipped) = withoutUnportableWidgets(state, all)
+        skippedWidgets = skipped
+        val descriptors = all.filter { d -> portable.widgetPlacements.any { it.slot == d.slot } }
         val packages = savedPackages()
-        return caught("Backup: saving with Market packages") { encodeLayoutBackup(state, descriptors, scope, packages) }.getOrElse { error ->
+        return caught("Backup: saving with Market packages") { encodeLayoutBackup(portable, descriptors, scope, packages) }.getOrElse { error ->
             if (packages == null) throw error
-            encodeLayoutBackup(state, descriptors, scope, null)
+            encodeLayoutBackup(portable, descriptors, scope, null)
         }
     }
+
+    /**
+     * What the person is told when a backup step fails: a short translated sentence, never the exception's own text ("Failed
+     * requirement", "Widget 3 is unavailable"). The raw text goes to Diagnostics, where it can be read and shared on purpose.
+     */
+    private fun failureMessage(error: Throwable, fallback: Int): String {
+        caught("Backup: ${error::class.java.simpleName}: ${error.message}") { throw error }
+        return activity.getString(when (backupFailureOf(error)) {
+            BackupFailure.TOO_LARGE -> R.string.layout_backup_is_too_large
+            BackupFailure.NEWER_VERSION -> R.string.layout_backup_is_from_a_newer_folio
+            BackupFailure.OTHER -> fallback
+        })
+    }
+
+    /** Widgets the last export left out because their app is missing; the success message says how many. */
+    private var skippedWidgets = 0
+    private fun savedMessage(base: String) = if (skippedWidgets > 0)
+        base + " " + activity.resources.getQuantityString(R.plurals.backup_widgets_left_out, skippedWidgets, skippedWidgets) else base
+
+    /**
+     * Why a backup can't be read over a damaged layout yet, or null when it can. The stand-in Home has no apps until a
+     * refresh lists them, and a backup read before that would leave every app out.
+     */
+    private fun appsNotListed(): String? = if (!model.layoutDamaged || model.appsListed) null
+        else activity.getString(if (model.listingApps) R.string.loading_apps else R.string.apps_could_not_be_loaded)
+
+    /** Why no backup is made while the saved layout can't be read: the Home on screen is only a stand-in. */
+    private fun damagedMessage() = listOf(R.string.layout_backup_could_not_be_prepared, R.string.saved_home_layout_could_not_be_read)
+        .joinToString(" ") { activity.getString(it) }
 
     /** What this phone has installed from the Market, for the backup to carry. */
     private fun savedPackages(): String? = caught("Backup: reading Market packages") { market.exportPackages() }.getOrNull()
@@ -201,8 +234,8 @@ class BackupController(
             }
             result.rethrowCancellation()
             if (token != generation || operation != OP_EXPORT) return@launch
-            result.onSuccess { successMessage = activity.getString(R.string.layout_backup_saved) }
-                .onFailure { errorMessage = it.message ?: activity.getString(R.string.layout_backup_could_not_be_saved) }
+            result.onSuccess { successMessage = savedMessage(activity.getString(R.string.layout_backup_saved)) }
+                .onFailure { errorMessage = failureMessage(it, R.string.layout_backup_could_not_be_saved) }
             clearTransaction(clearMessages = false)
         }
     }
@@ -218,7 +251,7 @@ class BackupController(
                 parsePreview(it, persist = false)
             }
                 .onFailure {
-                    errorMessage = it.message ?: activity.getString(R.string.layout_backup_could_not_be_read)
+                    errorMessage = failureMessage(it, R.string.layout_backup_could_not_be_read)
                     clearTransaction(clearMessages = false)
                 }
         }
@@ -228,6 +261,7 @@ class BackupController(
         val token = generation
         activity.lifecycleScope.launch {
             val state = model.state.first { !it.loading }
+            appsNotListed()?.let { if (token == generation) { errorMessage = it; clearTransaction(clearMessages = false) }; return@launch }
             val result = runCatching { withContext(Dispatchers.Default) {
                 val imported = decodeLayoutBackup(raw, state.apps, state.profiles, scope)
                 // Only the Market can read what it wrote, so the count is filled in here rather than in the decoder,
@@ -243,7 +277,7 @@ class BackupController(
                 onExternalResultChanged(true)
             }.onFailure {
                 if (token != generation) return@onFailure
-                errorMessage = it.message ?: activity.getString(R.string.this_layout_backup_is_invalid)
+                errorMessage = failureMessage(it, R.string.this_layout_backup_is_invalid)
                 clearTransaction(clearMessages = false)
             }
         }
@@ -257,7 +291,7 @@ class BackupController(
             while (true) {
                 val count = it.read(buffer)
                 if (count < 0) break
-                require(output.size() + count <= MAX_LAYOUT_BACKUP_BYTES) { "Layout backup is larger than 2 MB" }
+                require(output.size() + count <= MAX_LAYOUT_BACKUP_BYTES) { BACKUP_TOO_LARGE }
                 output.write(buffer, 0, count)
             }
             output.toString(Charsets.UTF_8.name())
@@ -266,7 +300,8 @@ class BackupController(
 
     private fun widgetDescriptors(state: LauncherState): List<BackupWidgetDescriptor> = state.widgetPlacements.mapNotNull { placement ->
         if (placement.id < 0) return@mapNotNull null
-        val info = widgets.manager.getAppWidgetInfo(placement.id) ?: error("Widget ${placement.slot} is unavailable")
+        // Its app is gone or Android unbound it: nothing to describe. The backup leaves it out and says so (withoutUnportableWidgets).
+        val info = widgets.manager.getAppWidgetInfo(placement.id) ?: return@mapNotNull null
         BackupWidgetDescriptor(placement.slot, info.provider.flattenToString(), userManager.getSerialNumberForUser(info.profile),
             info.loadLabel(activity.packageManager).toString(), if (info.profile == android.os.Process.myUserHandle()) activity.getString(R.string.personal) else activity.getString(R.string.work),
             isWork = info.profile != android.os.Process.myUserHandle())
