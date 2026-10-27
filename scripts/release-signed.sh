@@ -93,6 +93,14 @@ if [[ ! -f "$apk_source" ]]; then
     echo "Signed release APK was not produced at the expected path." >&2
     exit 1
 fi
+# REL-32: past 256 registers in one method, R8 has written code that ART rejects at launch. This needs no device; the
+# launch itself is tools/launch-check-fast.sh, run before tagging.
+python=$(command -v python3 || command -v python || true)
+if [[ -z "$python" ]]; then
+    echo "python3 not found, and tools/check-dex-registers.py needs it." >&2
+    exit 1
+fi
+ANDROID_HOME="$sdk_dir" "$python" "$repository_root/tools/check-dex-registers.py" --variant release
 
 output_parent=$(dirname "$output_dir")
 mkdir -p "$output_parent"
