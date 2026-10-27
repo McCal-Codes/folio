@@ -249,7 +249,8 @@ class MainActivity : ComponentActivity() {
             val pictureDensity = androidx.compose.ui.platform.LocalDensity.current
             val pictureDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
             var panelSession by androidx.compose.runtime.remember { mutableStateOf(false) }
-            var panelBackdrop by androidx.compose.runtime.remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+            val panelBackdropHolder = androidx.compose.runtime.remember { PanelBackdropHolder() }
+            val panelBackdrop = panelBackdropHolder.image
             var panelSnapshotFailed by androidx.compose.runtime.remember { mutableStateOf(false) }
             val panelOpen = topPanel.value != null
             androidx.compose.runtime.LaunchedEffect(panelOpen) {
@@ -270,14 +271,23 @@ class MainActivity : ComponentActivity() {
                     }
                     val shot = smallLayer.toImageBitmap()
                     val side = (360 - 240 * state.panelBlur.coerceIn(0f, 1f)).toInt()
-                    panelBackdrop = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                        FrostBlur.blurred(shot.asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false), maxSide = side).asImageBitmap()
+                    // The software copy the blur reads is made for it alone, so it is given back as soon as the blurred picture exists.
+                    val blurred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        PanelBackdrop.blurAndRelease(shot.asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false)) { FrostBlur.blurred(it, maxSide = side) }
                     }
+                    panelBackdropHolder.put(blurred)
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { panelSnapshotFailed = true }
             }
             // Gone with the panel's close, not before: the picture stays under the dim while it settles shut.
             androidx.compose.runtime.LaunchedEffect(Unit) {
-                snapshotFlow { overlayProgress <= .02f && topPanel.value == null }.collect { settled -> if (settled) { panelSession = false; panelBackdrop = null } }
+                snapshotFlow { overlayProgress <= .02f && topPanel.value == null }.collect { settled ->
+                    if (settled) {
+                        panelSession = false; panelBackdropHolder.drop()
+                        // The reference is gone now; the bitmap is given back after two frames, when none can still be drawing it.
+                        androidx.compose.runtime.withFrameNanos { }; androidx.compose.runtime.withFrameNanos { }
+                        panelBackdropHolder.recycleRetired()
+                    }
+                }
             }
             DuoTheme(appearance.state.dark) { val notificationItems = IslandListenerService.notifications.collectAsStateWithLifecycle().value
             // Progress ticks for every install session on the phone. Kept as a State that nothing here reads, so a tick
