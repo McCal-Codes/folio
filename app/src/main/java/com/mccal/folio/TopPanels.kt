@@ -1507,15 +1507,25 @@ internal fun MusicWidgetCard(onEdit: () -> Unit) {
     }
 }
 
+/** Sp to dp at the person's font size and display size, for the Music widget's text rows (see [musicCardPlan]). */
+@Composable
+private fun rememberSpToDp(): (Float) -> Float {
+    val density = LocalDensity.current
+    return remember(density) { { sp: Float -> with(density) { sp.sp.toDp().value } } }
+}
+
 @Composable
 private fun MusicCard(media: IslandActivity.Media, accent: Color) {
     val t = media.controller.transportControls
     val (_, duration) = rememberMediaPosition(media)
+    val spToDp = rememberSpToDp()
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
         // Same fixed-budget approach as the Poster: the art gets whatever height is left over after everything
         // else, never a weight negotiation that starved it to zero the first time this was tried.
-        val fixedBudget = 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + FolioTouch.MIN.dp
-        val art = (maxHeight - fixedBudget).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .3f, 64.dp)))
+        // The text rows are worked out from their type tokens at the font size in use, so a large font takes its room from the art, then the scrubber and the artist, and never from the title or the controls.
+        val plan = musicCardPlan(maxHeight.value, minOf(maxWidth * .3f, 64.dp).value, FolioType.SUBHEAD, FolioType.FOOTNOTE, media.subtitle != null, duration > 0L,
+            fixedDp = 8f, controlsDp = FolioTouch.MIN.toFloat(), spToDp = spToDp)
+        val art = plan.artDp.dp
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(art).clip(RoundedCornerShape(art * .2f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
@@ -1526,10 +1536,10 @@ private fun MusicCard(media: IslandActivity.Media, accent: Color) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    media.subtitle?.takeIf { plan.subtitle }?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
-            if (duration > 0L) MediaScrubber(media, accent)
+            if (plan.scrubber) MediaScrubber(media, accent)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 // Each control is a 48 dp touch box (A11Y-1) around its glyph, so the small glyphs are not the only tappable part.
                 Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToPrevious() }, contentAlignment = Alignment.Center) {
@@ -1553,14 +1563,18 @@ private fun MusicCard(media: IslandActivity.Media, accent: Color) {
 private fun MusicStrip(media: IslandActivity.Media, accent: Color) {
     val t = media.controller.transportControls
     val (position, duration) = rememberMediaPosition(media)
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // A narrow Strip (a cover screen, a split window) keeps its title: the next button goes first, then the art (see musicStripPlan).
+        val plan = musicStripPlan(maxWidth.value)
         Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
-                val image = media.art ?: media.icon
-                if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+            if (plan.art) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                    val image = media.art ?: media.icon
+                    if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    else Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(10.dp))
             }
-            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(media.title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 media.subtitle?.let { Text(it, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -1569,7 +1583,7 @@ private fun MusicStrip(media: IslandActivity.Media, accent: Color) {
                 Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (media.playing) R.string.pause else R.string.play),
                     tint = Color.White, modifier = Modifier.size(28.dp))
             }
-            Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
+            if (plan.next) Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable { t.skipToNext() }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White.copy(alpha = .85f), modifier = Modifier.size(22.dp))
             }
         }
@@ -1587,6 +1601,7 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
     val image = media.art ?: media.icon
     // Built once: the graphics layer block runs on every draw, and a blur effect is not free to make.
     val backdropBlur = remember { android.graphics.RenderEffect.createBlurEffect(60f, 60f, android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect() }
+    val spToDp = rememberSpToDp()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (image != null) Image(image.asImageBitmap(), null, Modifier.fillMaxSize()
             .graphicsLayer { renderEffect = backdropBlur; alpha = .55f }
@@ -1595,8 +1610,9 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
         // Everything but the art has a fixed height, so the art gets whatever is left over (never a weight
         // negotiation, which can starve it to zero when the rest of the card already fills the box). The wave
         // only shows once there is enough left over for a worthwhile art size with it still on screen.
-        val fixedBudget = 8.dp + 20.dp + (media.subtitle?.let { 16.dp } ?: 0.dp) + (if (duration > 0L) 21.dp else 0.dp) + 8.dp + 52.dp + 28.dp
-        val art = (maxHeight - fixedBudget).coerceAtLeast(32.dp)
+        val plan = musicCardPlan(maxHeight.value, Float.MAX_VALUE, FolioType.BODY, FolioType.FOOTNOTE, media.subtitle != null, duration > 0L,
+            fixedDp = 8f + 8f + 28f, controlsDp = 52f, spToDp = spToDp)
+        val art = plan.artDp.dp
         val showWave = art - 26.dp >= 56.dp
         val artSize = (if (showWave) art - 26.dp else art).coerceIn(32.dp, maxOf(32.dp, minOf(maxWidth * .6f, 120.dp)))
         Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -1606,9 +1622,9 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
             }
             Spacer(Modifier.height(8.dp))
             Text(media.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            media.subtitle?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+            media.subtitle?.takeIf { plan.subtitle }?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             if (showWave) MusicWave(media.playing && !reduceMotion, accent)
-            if (duration > 0L) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
+            if (plan.scrubber) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
                 Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
                 }
