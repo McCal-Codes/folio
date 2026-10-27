@@ -671,6 +671,10 @@
     <string name="all_controls_added">已添加所有控制</string>
     <string name="add_a_control">添加控制</string>
     <string name="not_playing">未在播放</string>
+    <string name="music">音乐</string>
+    <string name="now_playing">正在播放</string>
+    <string name="playing">正在播放</string>
+    <string name="paused">已暂停</string>
     <string name="smart_clock_ink">智能时钟文字颜色</string>
     <string name="smart_clock_ink_off_note">已关闭。时钟文字颜色由 Android 壁纸颜色决定。</string>
     <string name="smart_clock_ink_on_note">已开启。时钟会查看主屏幕的画面来选择浅色或深色文字。可在辅助功能设置中关闭。</string>

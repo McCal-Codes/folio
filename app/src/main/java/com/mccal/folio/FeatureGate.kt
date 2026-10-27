@@ -133,6 +133,13 @@ internal enum class FeatureGate(
     HINGE_DETENTS("hingeDetents", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * The Music widget (Strip, Card and Poster) in the widget gallery. It adds a new widget to every Home and keeps the
+     * island's media reading alive for it, so supporters and Folio Dev try it first on real players; everyone gets it in
+     * 0.7.0: flip [OPEN_IN_0_7_0] to open it. A Music widget already on Home (from a layout backup) keeps drawing either way.
+     */
+    MUSIC_WIDGET("musicWidget", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Control Center without repeats: the Media and Connectivity pages show only when the first page cannot hold what they
      * hold (a short window, a big font, many controls), Now Playing is one slim row while nothing plays, and the battery ring
      * stands apart from the page dots. It changes how many pages the strip shows, so supporters and Folio Dev see it first.
