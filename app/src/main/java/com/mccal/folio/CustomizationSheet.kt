@@ -644,7 +644,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         if (state.island) {
                             // Adjust island: a handle to make it wider, arrows to nudge it, Fit to camera and Reset, on a dimmed screen (IslandAdjust.kt).
                             var adjusting by remember { mutableStateOf(false) }
-                            if (FeatureGate.ISLAND_ADJUST.isOpen(islandContext)) {
+                            if (remember { FeatureGate.ISLAND_ADJUST.isOpen(islandContext) }) {
                                 CardAction(stringResource(R.string.island_adjust), onClick = { adjusting = true })
                                 CardNote(stringResource(R.string.island_adjust_note))
                                 if (adjusting) IslandAdjustDialog(onDone = { adjusting = false })
@@ -652,7 +652,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 CardAction(stringResource(R.string.island_advanced), onClick = { onPage(CustomizationPage.ISLAND_ADVANCED) })
                                 CardNote(stringResource(R.string.island_advanced_note))
                             }
-                            CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext); IslandSize.reset(islandContext) })
+                            CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext); IslandSize.reset(islandContext); IslandNudge.reset(islandContext) })
                             CardNote(stringResource(R.string.long_press_and_drag_the_island_to_move_i))
                         }
                     }
@@ -1585,6 +1585,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
+    R.string.hinge_detents to CustomizationPage.FOLD_TWEAK,
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_use to CustomizationPage.SYSTEM_BRIDGE,
@@ -1646,6 +1647,10 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
+            .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
+            .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
             // The motion switch is only on the page while the pass is on trial, so search only finds it then.
             .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
@@ -2319,6 +2324,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         SettingsSwitch(stringResource(R.string.fold_motion_light), motion.light, { FoldMotionOptions.write(prefs, motion.copy(light = it)) }, "fold-motion-light")
         CardNote(stringResource(R.string.fold_motion_note))
     }
+    if (remember(motionContext) { FeatureGate.HINGE_DETENTS.isOpen(motionContext) }) HingeDetentsCard(state.haptics)
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
             state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")

@@ -588,7 +588,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
         islandWindowWidth = windowWidth
         // Advanced island: the saved color only applies when the pill is not wrapping a camera hole Android reports.
         val reportedCutout = metrics.windowInsets.displayCutout?.boundingRects?.any { !it.isEmpty } == true
