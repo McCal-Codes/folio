@@ -499,7 +499,10 @@ internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.
 private val LocalCcTone = androidx.compose.runtime.staticCompositionLocalOf { CC_DEFAULT_TONE }
 
 /** One page of Control Center: Controls pages are numbered from 0 when the controls need more than one. */
-private data class CcPageSpec(val page: CcPage, val index: Int)
+internal data class CcPageSpec(val page: CcPage, val index: Int)
+
+/** The pages in order, as the pager and the strip both read them: [controlsPages] Controls pages, then [extra] (see [ccExtraPages]). */
+internal fun ccPageSpecs(controlsPages: Int, extra: List<CcPage>): List<CcPageSpec> = List(controlsPages) { CcPageSpec(CcPage.CONTROLS, it) } + extra.map { CcPageSpec(it, 0) }
 
 private val CcLook.tile: Color
     @Composable get() = when (this) {
@@ -700,6 +703,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     val chosen = remember(controlNames) { controlNames.mapNotNull { n -> CcControl.entries.firstOrNull { it.name == n } } }.filter(::available)
     val edit = remember { HomeEditMode() }
     SafeBackHandler(edit.active) { edit.stop() }
+    // Pages that would repeat the first are left out, Now Playing is a slim row while nothing plays and the battery ring stands apart from the dots (FeatureGate.CC_PAGES_DEDUPE).
+    val dedupe = remember { FeatureGate.CC_PAGES_DEDUPE.isOpen(context) }
 
     fun isOn(control: CcControl) = when (control) {
         CcControl.ROTATION -> controls.rotationLocked
@@ -752,14 +757,15 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
-        val pages = remember(plan) { List(plan.perPage.size) { CcPageSpec(CcPage.CONTROLS, it) } + CcPageSpec(CcPage.MEDIA, 0) + CcPageSpec(CcPage.CONNECTIVITY, 0) }
+        val extraPages = remember(plan, pagesAvailable, cell, gap, focusOn, dedupe) { ccExtraPages(plan, pagesAvailable?.value, cell.value, gap.value, focusOn, dedupe) }
+        val pages = remember(plan, extraPages) { ccPageSpecs(plan.perPage.size, extraPages) }
         // The pager runs forward but its pages are in reverse (Controls at the last index): the first page is anchored at the bottom, the next ones come down from above,
         // and a swipe up past the first page has nowhere to go, so it closes the panel. (reverseLayout stopped the drag from following the finger.)
         val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = pages.lastIndex) { pages.size }
         val firstIndex = pages.lastIndex
         val current = firstIndex - pager.currentPage // the page shown, in the order of [pages]
-        // A different number of Controls pages (another window) starts again on the first.
-        LaunchedEffect(pages.size) { if (pager.currentPage != pages.lastIndex) pager.scrollToPage(pages.lastIndex) }
+        // A different set of pages (another window, a fold, a font size) starts again on the first. With fewer pages shown the same count can hold other pages, so the pages themselves are the key.
+        LaunchedEffect(if (dedupe) pages else pages.size) { if (pager.currentPage != pages.lastIndex) pager.scrollToPage(pages.lastIndex) }
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
@@ -804,7 +810,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
-        val neededRows = maxOf(ccMediaRows(plan, focusOn), plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
+        val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
@@ -894,7 +900,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                         }
                                     }
                                 }
-                                MediaModule(media, Modifier.size(span(if (cols >= 6) cols - 4 else 2), span(2)), cell, onOpen = playing)
+                                MediaModule(media, Modifier.size(span(if (cols >= 6) cols - 4 else 2), span(2)), cell, onOpen = playing, slimWhenIdle = dedupe, slot = span(2))
                             }
                         }
                         if (first) { if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock() }
@@ -941,9 +947,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                     // Media and sound: Now Playing large, with brightness and volume tall beside it.
                     CcPage.MEDIA -> {
+                        // The sliders stand here only if the first page has none (otherwise this page would repeat them); the larger Now Playing takes their width.
+                        val slidersHere = ccMediaPageHasSliders(plan, dedupe)
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            MediaModule(media, Modifier.size(span(cols - 2), span(3)), cell, onOpen = playing)
-                            sliders(span(3))
+                            MediaModule(media, Modifier.size(span(if (slidersHere) cols - 2 else cols), span(3)), cell, onOpen = playing, slimWhenIdle = dedupe, slot = span(3))
+                            if (slidersHere) sliders(span(3))
                         }
                         if (focusOn && !plan.focusOnFirst) focusModule()
                     }
@@ -990,7 +998,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
             else if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
-                if ((tall ?: Float.MAX_VALUE) >= 360f) BatteryRing(status)
+                // A gap on top of the strip's own keeps the ring from reading as the first page dot.
+                if ((tall ?: Float.MAX_VALUE) >= 360f) Box(if (dedupe) Modifier.padding(bottom = CC_BATTERY_APART_DP.dp) else Modifier) { BatteryRing(status) }
                 items()
             }
             else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
@@ -1112,13 +1121,33 @@ private fun MediaProgress(media: IslandActivity.Media) {
     }
 }
 
-/** Now Playing (2×2): album art, title and transport controls. */
+/**
+ * Now Playing: album art, title and transport controls in its [modifier]-sized place on the page. With [slimWhenIdle], nothing playing shrinks it to one
+ * cell high (the title alone, no dead buttons) at the top of that place; the place keeps its size, so nothing else on the page moves when playback starts
+ * or stops. The height follows a FolioMotion spring and snaps under Reduce Motion. [slot] is the place's full height.
+ */
 @Composable
-private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit) {
+private fun MediaModule(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit, slimWhenIdle: Boolean = false, slot: Dp = cell) {
+    if (!slimWhenIdle) return MediaTile(media, modifier, cell, onOpen, slim = false)
+    val reduce = LocalReduceMotion.current
+    val height by androidx.compose.animation.core.animateDpAsState(if (media == null) cell else slot, if (reduce) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet), label = "media tile height")
+    val shown = height.coerceIn(minOf(cell, slot), maxOf(cell, slot))
+    // The full card takes over once the tile has grown past a cell and a half, and the slim row again when it shrinks back below that.
+    Box(modifier) { MediaTile(media, Modifier.fillMaxWidth().height(shown), cell, onOpen, slim = shown < cell * 1.5f) }
+}
+
+/** Now Playing (2×2): album art, title and transport controls; or, [slim], one row with the title alone. */
+@Composable
+private fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: Dp, onOpen: () -> Unit, slim: Boolean) {
     val artAccent = if (LocalTintOptions.current.media) rememberAccent(media?.art) else null
     val tint by androidx.compose.animation.animateColorAsState(mixColor(LocalCcLook.current.tile, artAccent, .45f), label = "music tint")
     Module(modifier.clickable(enabled = media != null, onClick = onOpen), color = tint) {
-        Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
+        if (slim) Row(Modifier.fillMaxSize().padding(horizontal = cell * .16f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(cell * .34f))
+            Spacer(Modifier.width(FolioSpace.SMALL.dp))
+            Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
+                fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } else Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(cell * .62f).clip(RoundedCornerShape(cell * .14f)).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
                     val image = media?.art ?: media?.icon

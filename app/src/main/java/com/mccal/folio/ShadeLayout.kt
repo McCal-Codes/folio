@@ -120,6 +120,36 @@ internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean):
 internal fun ccMediaRows(plan: CcPlan, focus: Boolean): Int = 3 + (if (focus && !plan.focusOnFirst) 1 else 0)
 
 /**
+ * The pages after the Controls pages. Without [dedupe] they are always Media and Connectivity, as they were. With it, a page is
+ * shown only when the first page cannot hold what it holds, so the strip never offers a page that repeats the first:
+ *  - the connectivity block and Now Playing are each two rows tall and stand at the top of the first page, so when two rows fit
+ *    ([pageHeightDp], null for no limit) both are there already, and the Connectivity page (the same four switches as a list)
+ *    and Media's Now Playing are not needed;
+ *  - Media still holds what the plan could not put on the first page: the sliders ([CcPlan.slidersOnFirst]) and Focus
+ *    ([CcPlan.focusOnFirst], when [focus] is on);
+ *  - when not even two rows fit, both pages are kept, since the first page cannot hold either module.
+ * A pure function of the same numbers as [ccPlanControls], so a test can run it over every screen.
+ */
+internal fun ccExtraPages(plan: CcPlan, pageHeightDp: Float?, cellDp: Float, gapDp: Float, focus: Boolean, dedupe: Boolean): List<CcPage> {
+    if (!dedupe) return listOf(CcPage.MEDIA, CcPage.CONNECTIVITY)
+    val modulesFit = pageHeightDp == null || ccRowsThatFit(pageHeightDp, cellDp, gapDp) >= 2
+    val media = !modulesFit || !plan.slidersOnFirst || (focus && !plan.focusOnFirst)
+    return listOfNotNull(CcPage.MEDIA.takeIf { media }, CcPage.CONNECTIVITY.takeIf { !modulesFit })
+}
+
+/** Whether the Media page draws the brightness and volume sliders: always before, and with [dedupe] only when the first page could not hold them. */
+internal fun ccMediaPageHasSliders(plan: CcPlan, dedupe: Boolean): Boolean = !dedupe || !plan.slidersOnFirst
+
+/** The height of the page strip standing at the edge: the battery ring (when shown) and a 48 dp dot for each of [pages], [gapDp] apart, and the extra gap under the ring when [apart]. */
+internal fun ccEdgeStripHeight(pages: Int, battery: Boolean, gapDp: Float, apart: Boolean): Float {
+    val dots = pages * 48f + (pages - 1).coerceAtLeast(0) * gapDp
+    return if (battery) 48f + gapDp + (if (apart) CC_BATTERY_APART_DP else 0f) + dots else dots
+}
+
+/** The extra space between the battery ring and the first page dot, so the ring reads as a status and not as a page; on top of the strip's own gap between targets. */
+internal const val CC_BATTERY_APART_DP = FolioSpace.LARGE.toFloat()
+
+/**
  * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
  * the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
  */
