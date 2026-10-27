@@ -57,7 +57,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -90,12 +93,15 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var cutout by remember { mutableStateOf<Rect?>(null) }
     var windowWidth by remember { mutableIntStateOf(view.width) }
     var windowHeight by remember { mutableIntStateOf(view.height) }
+    // Whether Android reports the camera as a cutout. An under-display camera is not one, so the island's color may apply there.
+    var reportedCutout by remember { mutableStateOf(false) }
     DisposableEffect(view) {
         val update = ViewTreeObserver.OnGlobalLayoutListener {
             windowWidth = view.rootView.width
             windowHeight = view.rootView.height
             // Reported cutout first; otherwise a known under-display camera (e.g. Galaxy Z Fold8 inner screen).
             cutout = islandCamera(view.rootWindowInsets?.displayCutout, view.display, density.density)
+            reportedCutout = view.rootWindowInsets?.displayCutout?.boundingRects?.any { !it.isEmpty } == true
         }
         view.viewTreeObserver.addOnGlobalLayoutListener(update)
         update.onGlobalLayout()
@@ -160,6 +166,11 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     val layoutVersion by IslandLayoutChanges.version.collectAsStateWithLifecycle()
     var custom by remember(wide, landscape, layoutVersion) { mutableStateOf(IslandPosition.load(context, wide, landscape)) }
     val extraWidth = remember(wide, landscape, layoutVersion) { IslandSize.load(context, wide, landscape) }
+    // Advanced island: color, corners, speed, haptics and gestures. Every default is how the island always was.
+    val style = remember(layoutVersion) { IslandStyle.load(context) }
+    val speed = IslandStyle.speedMultiplier(style.speed, MotionSpeed.current.factor)
+    val gestures = style.gestures
+    val customGestures = !IslandStyle.gesturesAreDefault(gestures)
     var dragOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var dragging by remember { mutableStateOf(false) }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -187,9 +198,15 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val cardW = placement?.width?.dp ?: 340.dp.coerceAtMost(windowWidth.toDp() - 16.dp)
         // One shape morphs between pill and card: width, corner radius and height all spring together,
         // anchored to the camera like the real Dynamic Island.
-        val morph = if (reduceMotion) snap() else FolioMotion.spring<Dp>(.74f to Spring.StiffnessMediumLow)
+        val morph = if (reduceMotion) snap() else FolioMotion.spring<Dp>(FolioMotion.scaled(.74f to Spring.StiffnessMediumLow, speed))
         val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
-        val corner by animateDpAsState(if (open) 34.dp else pillH / 2, morph, label = "island-corner")
+        // Advanced island: the color applies only off a real camera hole, and a squarer corner never goes under the hole's own curve.
+        val wraps = IslandStyle.wrapsRealCamera(custom, camera, reportedCutout, windowWidth, windowHeight)
+        val colored = IslandStyle.colorApplies(wraps)
+        val surface = if (colored) Color(style.background) else Color.Black
+        val ink = if (colored) Color(IslandStyle.inkFor(style.background)) else Color.White
+        val pillRadius = IslandStyle.pillRadius(style.corners, geometry.pillH, if (wraps) minOf(geometry.camW, geometry.camH) / 2f else 0f).dp
+        val corner by animateDpAsState(if (open) style.corners.card.dp else pillRadius, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
         val left = if (placement != null && open) noticeLeft(placement, centerX.toDp().value, width.value).dp.toPx()
             else islandLeftPx(centerX, width.toPx(), windowWidth, density.density)
@@ -202,17 +219,43 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val toggleLabel = a11y?.takeIf { it.hasAction }?.let { stringResource(if (it.expanded) R.string.island_collapse else R.string.island_expand) }
         val stateLabel = a11y?.let { stringResource(if (it.expanded) R.string.island_state_expanded else R.string.island_state_collapsed) }
         val toggle = { if (a11y?.hasAction == true) expanded = !expanded }
+        // What each Advanced island gesture can do. Dismiss puts away whatever is showing, as a swipe up always did for a card.
+        val runAction: (IslandAction) -> Unit = { action ->
+            when (action) {
+                IslandAction.EXPAND -> toggle()
+                IslandAction.OPEN_APP -> when {
+                    message != null -> { replying = false; eventVisible = null; IslandListenerService.openKey(context, message.key, message.packageName) }
+                    live != null -> { expanded = false; onOpen(live) }
+                }
+                IslandAction.DISMISS -> when {
+                    message != null -> { replying = false; eventVisible = null; IslandEvents.dismiss() }
+                    notice != null -> { eventVisible = null; IslandEvents.dismiss() }
+                    ringing != null -> { expanded = false; ringPutAway = ringing.key }
+                    expanded -> expanded = false
+                }
+                IslandAction.MOVE, IslandAction.NOTHING -> Unit
+            }
+        }
+        val tapAction = { if (customGestures) runAction(gestures.getValue(IslandGesture.TAP)) else toggle() }
+        val actionLabels = if (customGestures) IslandGesture.entries.map { gestures.getValue(it) }.distinct().filter { it == IslandAction.EXPAND || it == IslandAction.OPEN_APP || it == IslandAction.DISMISS }
+            .associateWith { stringResource(when (it) {
+                IslandAction.EXPAND -> if (open) R.string.island_collapse else R.string.island_expand
+                IslandAction.OPEN_APP -> R.string.open
+                else -> R.string.island_action_dismiss
+            }) } else emptyMap()
+        val tapLabel = gestures.getValue(IslandGesture.TAP).let { if (it == IslandAction.EXPAND) toggleLabel else actionLabels[it] }
         // A tap anywhere else on Home puts the card away. The tap is consumed here, like a sheet's scrim, so it never
         // also opens whatever was under it (IM-9/IM-10).
+        androidx.compose.runtime.CompositionLocalProvider(LocalIslandStyle provides style, LocalIslandInk provides ink) {
         if (islandCardTapOutsideCloses(expanded, live != null, message != null, notice != null, ringing != null))
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { expanded = false } }.clearAndSetSemantics { }.testTag("island-scrim"))
         Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + dragOffset.y).roundToInt()) }.width(width)
             .then(if (placement != null && open) Modifier.heightIn(max = placement.maxHeight.dp) else Modifier)
             .graphicsLayer { val s = if (dragging) 1.06f else 1f; scaleX = s; scaleY = s }
-            // Long-press and drag to move it; dropping near the camera snaps back to the camera.
-            .pointerInput(wide, landscape, windowWidth) {
+            // Long-press and drag to move it; dropping near the camera snaps back to the camera. (Hold set to something else in Advanced island leaves moving to Adjust island.)
+            .then(if (gestures.getValue(IslandGesture.HOLD) != IslandAction.MOVE) Modifier else Modifier.pointerInput(wide, landscape, windowWidth) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { dragging = true; expanded = false; haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
+                    onDragStart = { dragging = true; expanded = false; haptics.island(style.haptics, IslandStyle.systemTouchFeedbackOn(context), androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
                     onDragCancel = { dragging = false; dragOffset = androidx.compose.ui.geometry.Offset.Zero },
                     onDragEnd = {
                         dragging = false
@@ -225,20 +268,29 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                         dragOffset = androidx.compose.ui.geometry.Offset.Zero
                     },
                 ) { change, amount -> change.consume(); dragOffset += amount }
-            }
-            .then(if (reduceMotion) Modifier else Modifier.animateContentSize(FolioMotion.spring(FolioMotion.Appear)))
-            .clip(RoundedCornerShape(corner)).background(Color.Black)
-            .clickable(remember { MutableInteractionSource() }, null, onClickLabel = toggleLabel) { toggle() }
+            })
+            .then(if (reduceMotion) Modifier else Modifier.animateContentSize(FolioMotion.spring(FolioMotion.scaled(FolioMotion.Appear, speed))))
+            .clip(RoundedCornerShape(corner)).background(surface)
+            .then(if (!customGestures) Modifier.clickable(remember { MutableInteractionSource() }, null, onClickLabel = toggleLabel) { toggle() }
+                else Modifier.islandGestureInput(gestures) { gesture, action ->
+                    if (gesture == IslandGesture.HOLD) haptics.island(style.haptics, IslandStyle.systemTouchFeedbackOn(context), androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    runAction(action)
+                })
             // Polite, so a notice or a new activity is read when it appears rather than only when found (A11Y-7).
             .semantics {
                 contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                 stateLabel?.let { stateDescription = it }
+                if (customGestures) {
+                    // Every action a gesture is set to is also a plain TalkBack action (the tap is the click).
+                    if (gestures.getValue(IslandGesture.TAP) != IslandAction.NOTHING) onClick(label = tapLabel) { tapAction(); true }
+                    customActions = actionLabels.map { (action, label) -> CustomAccessibilityAction(label) { runAction(action); true } }
+                }
             }
             .testTag("cutout-island")) {
             androidx.compose.animation.AnimatedContent(open, label = "island-content",
                 transitionSpec = {
                     if (reduceMotion) fadeIn(tween(FolioMotion.FADE_MS)) togetherWith fadeOut(tween(FolioMotion.FADE_MS))
-                    else fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90))
+                    else fadeIn(tween(IslandStyle.scaledMs(220, speed), delayMillis = IslandStyle.scaledMs(60, speed, 0))) togetherWith fadeOut(tween(IslandStyle.scaledMs(90, speed)))
                 }) { showCard ->
                 if (showCard && notice != null) NoticeCardContent(notice, topInset = pillH) { eventVisible = null; IslandEvents.dismiss() }
                 else if (showCard && message != null) MessageCardContent(message, replying, onReply = { replying = true },
@@ -256,7 +308,8 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         }
         // The pill is only 34 dp tall: its touch area reaches 14 dp lower without changing what is drawn (I-10).
         if (toggles && !open) Box(Modifier.offset { IntOffset((left + dragOffset.x).roundToInt(), (top.toPx() + pillH.toPx() + dragOffset.y).roundToInt()) }
-            .size(width, ISLAND_TOUCH_EXTRA.dp).clickable(remember { MutableInteractionSource() }, null) { toggle() }.clearAndSetSemantics { })
+            .size(width, ISLAND_TOUCH_EXTRA.dp).clickable(remember { MutableInteractionSource() }, null) { tapAction() }.clearAndSetSemantics { })
+        }
     }
 }
 
@@ -561,23 +614,23 @@ internal fun LeadingGlyph(content: IslandContent, size: Dp) {
         is IslandContent.Event -> when (val e = content.event) {
             is IslandEvent.Charging -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Bolt, null, tint = IslandGreen, modifier = Modifier.size(size * .8f))
-                Text(stringResource(R.string.charging), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.charging), color = IslandInk, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
             is IslandEvent.Silent -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (e.on) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive, null,
-                    tint = if (e.on) Red else Color.White, modifier = Modifier.size(size * .75f))
+                    tint = if (e.on) Red else IslandInk, modifier = Modifier.size(size * .75f))
                 Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.silent), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.silent), color = IslandInk, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
             is IslandEvent.Focus -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.DarkMode, null, tint = Purple, modifier = Modifier.size(size * .75f))
                 Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.focus), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.focus), color = IslandInk, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
             is IslandEvent.Bluetooth -> Icon(if (e.speaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones, null, tint = IslandBlue, modifier = Modifier.size(size * .8f))
             is IslandEvent.Message -> MessageAvatar(e, size)
             is IslandEvent.Notice -> e.appIcon?.let { Image(it.asImageBitmap(), null, Modifier.size(size).clip(RoundedCornerShape(size * .24f))) }
-                ?: CircleGlyph(Icons.Rounded.Info, Color.White, size)
+                ?: CircleGlyph(Icons.Rounded.Info, IslandInk, size)
         }
         is IslandContent.Live -> when (val a = content.activity) {
             is IslandActivity.Call -> if (a.incoming) CallAvatar(a, size) else Row(verticalAlignment = Alignment.CenterVertically) {
@@ -598,9 +651,9 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
     when (content) {
         is IslandContent.Event -> when (val e = content.event) {
             is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Red else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Purple else Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
-            is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Red else IslandInk.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Purple else IslandInk.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = IslandInk, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The app's icon beside the sender's photo; without a photo the icon is already on the left.
             is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { Image(it.asImageBitmap(), null, Modifier.size(size * .8f).clip(RoundedCornerShape(size * .22f))) }
             is IslandEvent.Notice -> Unit
@@ -610,7 +663,7 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
             is IslandActivity.Progress -> Ring(a.fraction, size)
             is IslandActivity.Call -> Bars(playing = !a.incoming)
             is IslandActivity.Timer -> Chronometer(a.base, a.countDown, IslandOrange)
-            is IslandActivity.Navigation -> Text(a.subtitle ?: a.title, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            is IslandActivity.Navigation -> Text(a.subtitle ?: a.title, color = IslandInk, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -624,6 +677,8 @@ private fun Modifier.swipeUpToHide(enabled: Boolean, onHide: () -> Unit): Modifi
     val scope = rememberCoroutineScope()
     val hideAt = with(LocalDensity.current) { 24.dp.toPx() }
     val latestOnHide by rememberUpdatedState(onHide)
+    // Advanced island: with Swipe up set to anything but Dismiss, a card is not put away by it.
+    val enabled = enabled && LocalIslandStyle.current.gestures[IslandGesture.SWIPE_UP] == IslandAction.DISMISS
     pointerInput(enabled) {
         if (!enabled) return@pointerInput
         var travel = 0f
@@ -655,7 +710,7 @@ private fun NoticeCardContent(notice: IslandEvent.Notice, topInset: Dp, onHide: 
             ?: Icon(Icons.Rounded.Info, null, tint = IslandBlue, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(12.dp))
         // Three lines at most, then an ellipsis: the card stays small and quiet. TalkBack reads all of it.
-        Text(notice.text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = NOTICE_MAX_LINES, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp,
+        Text(notice.text, color = IslandInk, fontSize = FolioType.SUBHEAD.sp, maxLines = NOTICE_MAX_LINES, overflow = TextOverflow.Ellipsis, lineHeight = 19.sp,
             modifier = Modifier.weight(1f))
         if (!large) action()
       }
@@ -699,11 +754,11 @@ private fun MessageCardContent(message: IslandEvent.Message, replying: Boolean, 
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(message.sender, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    Text(message.sender, color = IslandInk, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Text(message.appLabel, color = Color.White.copy(alpha = .5f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
+                    Text(message.appLabel, color = IslandInk.copy(alpha = .5f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1)
                 }
-                message.text?.let { Text(it, color = Color.White.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, maxLines = if (replying) 2 else 3,
+                message.text?.let { Text(it, color = IslandInk.copy(alpha = .85f), fontSize = FolioType.COMPACT.sp, maxLines = if (replying) 2 else 3,
                     overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
             }
         }
@@ -724,7 +779,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(activity.title, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(activity.title, color = IslandInk, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val subtitle = when (activity) {
                     is IslandActivity.Media -> activity.subtitle
                     is IslandActivity.Progress -> activity.subtitle
@@ -732,7 +787,7 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
                     is IslandActivity.Call -> if (activity.incoming) stringResource(R.string.incoming_call) else null
                     else -> null
                 }
-                subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                subtitle?.let { Text(it, color = IslandInk.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
             }
             when (activity) {
                 is IslandActivity.Call -> if (!activity.incoming) Chronometer(remember(activity.key) { activity.since ?: System.currentTimeMillis() }, false, IslandGreen, 20.sp)
@@ -743,13 +798,13 @@ internal fun ExpandedCardContent(activity: IslandActivity, onOpen: () -> Unit) {
         when (activity) {
             is IslandActivity.Media -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val t = activity.controller.transportControls
-                Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
-                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = Color.White,
+                Icon(Icons.Rounded.FastRewind, stringResource(R.string.previous), tint = IslandInk, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToPrevious() })
+                Icon(if (activity.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (activity.playing) R.string.pause else R.string.play), tint = IslandInk,
                     modifier = Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { if (activity.playing) t.pause() else t.play() })
-                Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = Color.White, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
+                Icon(Icons.Rounded.FastForward, stringResource(R.string.next), tint = IslandInk, modifier = Modifier.minimumInteractiveComponentSize().size(34.dp).clip(CircleShape).clickable { t.skipToNext() })
             }
             is IslandActivity.Progress -> activity.fraction?.let { f ->
-                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = .2f))) {
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(IslandInk.copy(alpha = .2f))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(IslandGreen))
                 }
             }
@@ -772,16 +827,17 @@ private fun CallAvatar(call: IslandActivity.Call, size: Dp) {
 private fun CallButtons(call: IslandActivity.Call) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    fun act(kind: CallControls.Kind) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm); IslandListenerService.callAction(context, call.key, kind) }
+    val level = LocalIslandStyle.current.haptics
+    fun act(kind: CallControls.Kind) { haptic.island(level, IslandStyle.systemTouchFeedbackOn(context), androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm); IslandListenerService.callAction(context, call.key, kind) }
     Row(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         if (call.incoming) {
             if (call.canDecline) CallButton(Icons.Rounded.CallEnd, stringResource(R.string.decline), Red) { act(CallControls.Kind.DECLINE) }
             if (call.canAnswer) CallButton(Icons.Rounded.Call, stringResource(R.string.accept), IslandGreen) { act(CallControls.Kind.ANSWER) }
         } else {
-            if (call.canMute) CallButton(Icons.Rounded.MicOff, stringResource(R.string.mute), Color.White.copy(alpha = .22f)) { act(CallControls.Kind.MUTE) }
+            if (call.canMute) CallButton(Icons.Rounded.MicOff, stringResource(R.string.mute), IslandInk.copy(alpha = .22f)) { act(CallControls.Kind.MUTE) }
             if (call.canHangUp) CallButton(Icons.Rounded.CallEnd, "End", Red) { act(CallControls.Kind.HANG_UP) }
-            if (call.canSpeaker) CallButton(Icons.AutoMirrored.Rounded.VolumeUp, stringResource(R.string.speaker), Color.White.copy(alpha = .22f)) { act(CallControls.Kind.SPEAKER) }
-            if (!call.canHangUp && !call.canMute && !call.canSpeaker) Text(stringResource(R.string.tap_to_return_to_the_call), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
+            if (call.canSpeaker) CallButton(Icons.AutoMirrored.Rounded.VolumeUp, stringResource(R.string.speaker), IslandInk.copy(alpha = .22f)) { act(CallControls.Kind.SPEAKER) }
+            if (!call.canHangUp && !call.canMute && !call.canSpeaker) Text(stringResource(R.string.tap_to_return_to_the_call), color = IslandInk.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
         }
     }
 }
@@ -790,9 +846,9 @@ private fun CallButtons(call: IslandActivity.Call) {
 private fun CallButton(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(52.dp).clip(CircleShape).background(color).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
-            Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
+            Icon(icon, label, tint = if (color.alpha < 1f) IslandInk else Color.White, modifier = Modifier.size(26.dp))
         }
-        Text(label, color = Color.White.copy(alpha = .7f), fontSize = FolioType.CAPTION.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+        Text(label, color = IslandInk.copy(alpha = .7f), fontSize = FolioType.CAPTION.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
 
@@ -834,14 +890,18 @@ internal fun Bars(playing: Boolean, color: Color = IslandGreen) {
 
 @Composable
 internal fun Ring(fraction: Float?, size: Dp) {
+    val track = IslandInk.copy(alpha = .2f)
     Canvas(Modifier.size(size)) {
         val stroke = this.size.width * .14f
         val arc = Size(this.size.width - stroke, this.size.height - stroke)
         val o = Offset(stroke / 2, stroke / 2)
-        drawArc(Color.White.copy(alpha = .2f), 0f, 360f, false, o, arc, style = Stroke(stroke))
+        drawArc(track, 0f, 360f, false, o, arc, style = Stroke(stroke))
         drawArc(IslandGreen, -90f, 360f * (fraction ?: .25f), false, o, arc, style = Stroke(stroke, cap = StrokeCap.Round))
     }
 }
+
+/** Text and icons on the island: white, or black on a light custom color (Advanced island). */
+private val IslandInk: Color @Composable get() = LocalIslandInk.current
 
 internal val IslandGreen = FolioColors.Green
 internal val IslandOrange = FolioColors.Orange
