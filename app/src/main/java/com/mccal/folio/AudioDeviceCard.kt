@@ -81,6 +81,13 @@ internal fun AudioDeviceCard(enabled: Boolean, blocked: Boolean) {
     // AirPods battery from the system (root, off until the owner turns it on): one read when the card shows, never while hidden.
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(visible, device) { device?.takeIf { visible && !it.speaker }?.let { AirPodsRoot.onCardShown(context, it.name) } }
+    // AirPods battery from the AirPods' own broadcast (no root, its switch off until turned on): a short scan only while the card
+    // shows for AirPods, stopped the moment it hides (AirPodsBle.kt).
+    val bleSurface = visible && device?.let { !it.speaker && AirPodsBle.isAppleName(it.name) } == true
+    androidx.compose.runtime.DisposableEffect(bleSurface) {
+        AirPodsBle.setVisible(context, BleSurface.HOME_CARD, bleSurface)
+        onDispose { AirPodsBle.setVisible(context, BleSurface.HOME_CARD, false) }
+    }
     val reduceMotion = LocalReduceMotion.current
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(visible,
@@ -95,17 +102,27 @@ internal fun AudioDeviceCard(enabled: Boolean, blocked: Boolean) {
 private const val AIRPODS_FRESH_MS = 60_000L
 
 /**
- * The AirPods' left, right and case battery under "Connected", when the root read for this device came back with numbers and is
- * fresh. Numbers change without animation and charging is a static glyph; nothing here moves (WCAG 2.3.1, Reduce Motion).
+ * The AirPods' left, right and case battery under "Connected", from their own broadcast or, failing that, the root read for this
+ * device when it came back with numbers and is fresh. Numbers change without animation and charging is a static glyph; nothing here moves (WCAG 2.3.1, Reduce Motion).
  */
 @Composable
 private fun AirPodsCardLine(device: IslandEvent.Bluetooth, color: Color) {
     val ui by AirPodsRoot.state.collectAsState()
-    val done = ui.last as? AirPodsRead.Done ?: return
-    if (done.forName != device.name || System.currentTimeMillis() - done.atMillis > AIRPODS_FRESH_MS) return
-    val battery = (done.reading as? AirPodsReading.Found)?.battery ?: return
+    val bleRead by AirPodsBle.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val spoken = AirPodsText.line(context, battery)
+    val now = System.currentTimeMillis()
+    // The broadcast reading wins while it is not expired (shown with its age after a few minutes); otherwise the root read for
+    // this device, only while it is fresh.
+    val ble = (bleRead as? AirPodsBleRead.Found)?.battery?.takeIf { AirPodsBle.isAppleName(device.name) }
+    val bleLine = ble?.let { AirPodsBleText.line(context, it, now) }
+    val battery: AirPodsBattery
+    val spoken: String
+    if (ble != null && bleLine != null) { battery = ble; spoken = bleLine } else {
+        val done = ui.last as? AirPodsRead.Done ?: return
+        if (done.forName != device.name || now - done.atMillis > AIRPODS_FRESH_MS) return
+        battery = (done.reading as? AirPodsReading.Found)?.battery ?: return
+        spoken = AirPodsText.line(context, battery)
+    }
     Spacer(Modifier.height(FolioSpace.SNUG.dp))
     Row(Modifier.semantics(mergeDescendants = true) { contentDescription = spoken }, verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {

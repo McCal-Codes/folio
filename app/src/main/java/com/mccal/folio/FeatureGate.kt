@@ -170,6 +170,14 @@ internal enum class FeatureGate(
     AIRPODS_ROOT("airpodsRoot", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * AirPods battery with no root (docs/airpods-ble.md): with the person's switch on and Nearby devices allowed, a few seconds of
+     * filtered Bluetooth scan while an AirPods battery card shows, reading the battery the AirPods broadcast. The decoder was written
+     * from published notes without real AirPods, so supporters and Folio Dev try it first. Everyone gets it in 0.7.0: flip
+     * [OPEN_IN_0_7_0] to open it.
+     */
+    AIRPODS_BLE("airpodsBle", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Advanced island: color, corner radius, animation speed, haptics and gestures on their own page. It is a large new
      * surface that reaches into the island's touch code and has not been tried on a device yet, so it is gated by risk
      * apart from Adjust island: supporters and Folio Dev try it in the betas and everyone gets it in 0.7.0: flip
