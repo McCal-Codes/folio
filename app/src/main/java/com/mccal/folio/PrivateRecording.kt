@@ -114,7 +114,7 @@ internal object PrivateRecording {
 
     fun load(context: Context) {
         if (!loaded) synchronized(this) {
-            if (!loaded) { state.setEnabled(prefs(context).getBoolean(SettingKeys.PRIVATE_WHILE_RECORDING, false)); loaded = true }
+            if (!loaded) { state.setEnabled(FeatureGate.PRIVATE_RECORDING.isOpen(context) && prefs(context).getBoolean(SettingKeys.PRIVATE_WHILE_RECORDING, false)); loaded = true }
         }
         notificationWord = context.getString(R.string.private_notification_word)
     }

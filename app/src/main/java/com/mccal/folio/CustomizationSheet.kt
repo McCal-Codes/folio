@@ -937,7 +937,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         IosNavRow(stringResource(R.string.screenshot_swap_apps), null, { onPage(CustomizationPage.SCREENSHOT_SWAP) }, "screenshot-swap-row")
                     }
                     // Android 15 added the recording callback this needs; on older Android the card is not offered.
-                    if (PrivateRecording.supported) SettingsCard(stringResource(R.string.private_while_recording)) {
+                    if (PrivateRecording.supported && remember { FeatureGate.PRIVATE_RECORDING.isOpen(sheetContext) }) SettingsCard(stringResource(R.string.private_while_recording)) {
                         val privateWhileRecording by PrivateRecording.enabled.collectAsState()
                         SettingsSwitch(stringResource(R.string.private_while_recording), privateWhileRecording, { PrivateRecording.setEnabled(sheetContext, it) }, "private-while-recording-switch")
                         CardNote(stringResource(R.string.while_folio_s_screen_is_recorded_or_shared))
@@ -1697,6 +1697,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
             // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Private While Recording is held back for supporters and Folio Dev (FeatureGate.PRIVATE_RECORDING).
+            .filter { it.first != R.string.private_while_recording || FeatureGate.PRIVATE_RECORDING.isOpen(context) }
             // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
             .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.

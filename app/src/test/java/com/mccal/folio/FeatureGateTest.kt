@@ -45,6 +45,12 @@ class FeatureGateTest {
         assertTrue("it is a gate of its own, not Adjust island's", FeatureGate.ISLAND_ADVANCED != FeatureGate.ISLAND_ADJUST)
     }
 
+    @Test fun `Private While Recording is held back for a later release on a gate of its own`() {
+        assertEquals("0.7.0", FeatureGate.PRIVATE_RECORDING.opensIn)
+        assertTrue("it is not Adjust island's or the island style's gate",
+            FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADJUST && FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADVANCED)
+    }
+
     @Test fun `the Market is the gate it used to be`() {
         // The behaviour this replaced: released, or a .dev build, or a supporter code with the beta scope.
         val market = FeatureGate.MARKET
