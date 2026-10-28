@@ -177,7 +177,7 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(31_000); SafeMode.markStable(this@MainActivity) }
             // Saveable: a theme or language change recreates the activity, and the answer must not be asked again.
             val safeAcknowledged = androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
-            if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {},
+            if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {}, dismissible = false,
                 title = { androidx.compose.material3.Text(getString(R.string.folio_started_in_safe_mode)) },
                 text = { androidx.compose.material3.Text(stringResource(R.string.folio_closed_unexpectedly_twice_so_opt)) },
                 confirmButton = { androidx.compose.material3.TextButton(onClick = { SafeMode.exit(this@MainActivity); safeMode.value = false }) {

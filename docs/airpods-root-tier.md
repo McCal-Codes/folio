@@ -11,6 +11,10 @@ Labels: **[read]** read on a page or in source (AOSP sources were fetched from a
 Nothing in this note was checked on a phone. No AirPods, no real `dumpsys` output and no root device were used. The
 parser was written from AOSP source and tested against fixtures written from that source.
 
+The no-root route (the AirPods' own Bluetooth advertisement, `FeatureGate.AIRPODS_BLE`) is described in
+[airpods-ble.md](airpods-ble.md). Its reading wins over this one while it is not expired, and the System Bridge card shows which
+source a number came from.
+
 ## Rules this follows
 
 PRV-17: every feature works without root; root only adds optional extras in the System Bridge tier, off until the person
