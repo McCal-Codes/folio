@@ -110,7 +110,8 @@ internal object StorageProbe {
             .mapNotNull { info ->
                 val s = runCatching { stats.queryStatsForPackage(StorageManager.UUID_DEFAULT, info.applicationInfo.packageName, user) }.getOrNull()
                     ?: return@mapNotNull null
-                AppSize(info.applicationInfo.packageName, info.label.toString(), s.appBytes + s.dataBytes + s.cacheBytes)
+                // dataBytes already includes the cache, so adding cacheBytes would count it twice.
+                AppSize(info.applicationInfo.packageName, info.label.toString(), s.appBytes + s.dataBytes)
             }
         return topApps(sizes)
     }
