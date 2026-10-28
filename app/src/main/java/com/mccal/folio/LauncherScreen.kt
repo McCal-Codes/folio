@@ -166,11 +166,10 @@ fun LauncherScreen(
     var clockEditSlot by remember { mutableStateOf<Int?>(null) }
     var placeSlot by remember { mutableStateOf<Int?>(null) }
     // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
-    val gateContext = androidx.compose.ui.platform.LocalContext.current
     val homeView = androidx.compose.ui.platform.LocalView.current
-    val folderEditing = remember { FeatureGate.FOLDER_EDITING.isOpen(gateContext) }
+    val folderEditing = rememberGateOpen(FeatureGate.FOLDER_EDITING)
     val newFolderTitle = stringResource(R.string.new_folder_name) // in the phone's language, not always English
-    val clockCustomize = remember { FeatureGate.CLOCK_CUSTOMIZE.isOpen(gateContext) }
+    val clockCustomize = rememberGateOpen(FeatureGate.CLOCK_CUSTOMIZE)
     val overlays = rememberHomeOverlays()
     var customizationPage by rememberSaveable { mutableStateOf(CustomizationPage.OVERVIEW) }
     LaunchedEffect(sheet) {
@@ -315,7 +314,7 @@ fun LauncherScreen(
     // NONE adds no layer, no pager read and no per-frame work at all. Gated until 0.6.8, off with Reduce Motion
     // (DYN-11, A11Y-14), and off while an icon or widget is being moved, because a drop lands by coordinates and a
     // layer transform would move the coordinates under the finger.
-    val pageEffectsOpen = remember { FeatureGate.PAGE_EFFECTS.isOpen(launcherActivity) }
+    val pageEffectsOpen = rememberGateOpen(FeatureGate.PAGE_EFFECTS)
     val pageEffect = if (pageEffectsOpen && !LocalReduceMotion.current && !drag.active && !resize.active && widgetSession == null)
         state.pageEffectSpec() else PageEffect.NONE.spec
     var nativeMotion by remember { mutableStateOf(false) }
@@ -802,14 +801,14 @@ fun LauncherScreen(
             val dockOpenPlace = drag.active && drag.source?.appId != null && drag.source?.target !is DropTarget.Dock &&
                 state.dock.size < MAX_DOCK_SLOTS && state.dock.none { it == null }
             val shownDock = if (dockOpenPlace) state.dock + null else state.dock
-            val fillRows = remember(launcherActivity) { FeatureGate.WIDGETS_FILL_ROWS.isOpen(launcherActivity) }
-            val duoSpacing = remember(launcherActivity) { FeatureGate.DUO_SPACING.isOpen(launcherActivity) }
+            val fillRows = rememberGateOpen(FeatureGate.WIDGETS_FILL_ROWS)
+            val duoSpacing = rememberGateOpen(FeatureGate.DUO_SPACING)
             // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
             // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
             var bottomControlsHeight by remember { mutableStateOf(0.dp) }
             val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
-                labelHeight = with(density) { LocalLabelSize.current.lineSp.sp.toDp().value } + 6f, inLibrary = inLibrary,
+                labelHeight = with(density) { (LocalLabelSize.current.lineSp * glanceFontFactor(fontScale)).sp.toDp().value } + 6f, inLibrary = inLibrary,
                 homeBottomSpace = if (isDefaultHome) 44f else 88f,
                 // What the controls really take: a window whose four rows would end under them is laid out again for it.
                 controlsSpace = homeControlsSpace(isDefaultHome, bottomControlsHeight.value),
@@ -1115,17 +1114,22 @@ fun LauncherScreen(
                 DisposableEffect(Unit) { onDispose { grabberBounds = androidx.compose.ui.geometry.Rect.Zero } }
                 var dragStartCenter by remember { mutableFloatStateOf(0f) }
                 var dragged by remember { mutableFloatStateOf(0f) }
+                // The grabber follows the dock, so it moves under the finger while it is dragged. Drag deltas in its own
+                // coordinates then shrink towards zero and the dock only moved sometimes (#326). Measure the finger in
+                // window coordinates instead: the grabber's top in the window plus where the finger is inside it.
+                var grabberTop by remember { mutableFloatStateOf(0f) }
+                var dragStartY by remember { mutableFloatStateOf(0f) }
                 val moveLabel = stringResource(R.string.move_dock)
                 val upLabel = stringResource(R.string.move_dock_up)
                 val downLabel = stringResource(R.string.move_dock_down)
                 Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
                     // Under the dock, but never lower than a touch target above the bottom of the window.
                     .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
-                    .onGloballyPositioned { grabberBounds = it.boundsInRoot() }
+                    .onGloballyPositioned { grabberBounds = it.boundsInRoot(); grabberTop = it.positionInWindow().y }
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures(onDragStart = { dragStartCenter = centerDp; dragged = 0f }) { change, dy ->
+                        detectVerticalDragGestures(onDragStart = { offset -> dragStartCenter = centerDp; dragged = 0f; dragStartY = grabberTop + offset.y }) { change, _ ->
                             change.consume()
-                            dragged += dy / density.density
+                            dragged = (grabberTop + change.position.y - dragStartY) / density.density
                             model.setPreset(grabScreen, currentPreset.copy(dockPosition = dockPositionForCenter(dragStartCenter + dragged, windowHeight)))
                         }
                     }.semantics {
@@ -1187,7 +1191,7 @@ fun LauncherScreen(
                     // Only when there is a page to the left of Home: with Today View and Discover both off, the
                     // button led nowhere (reported on r/GalaxyFold, 18 Sep 2026).
                     if (!drag.active && (firstHome > 0 || discoverMode)) IconButton(onClick = openDiscover, Modifier.size(FolioTouch.MIN.dp).testTag("discover-page-link")) {
-                        Icon(Icons.Rounded.Explore, stringResource(R.string.discover), tint = Color.White.copy(alpha = .65f), modifier = Modifier.size(17.dp))
+                        Icon(Icons.Rounded.Explore, stringResource(R.string.discover), tint = LocalHomeInk.current.primary.copy(alpha = .65f), modifier = Modifier.size(17.dp))
                     }
                     // iOS: a "Search" capsule where the page dots are; the dots come back while paging or editing.
                     // iOS: drag sideways along the Search pill or the dots to scrub through Home pages, a tick per page.
@@ -1197,7 +1201,7 @@ fun LauncherScreen(
                     // rest the dots always show, so there is always a way to tell where you are.
                     val atRest = !homeEdit.active && !drag.active && !scrubbing &&
                         !nativePager.isScrollInProgress && pager.currentPage in 0 until homePages
-                    val nothingOpen = remember(launcherActivity) { FeatureGate.HOME_STRIP_NOTHING.isOpen(launcherActivity) }
+                    val nothingOpen = rememberGateOpen(FeatureGate.HOME_STRIP_NOTHING)
                     val stripNow = stripView(state.homeStrip, atRest, nothingOpen)
                     androidx.compose.animation.AnimatedContent(stripNow, label = "search pill",
                         // Cover screen only: unfolded, Home already shows two pages side by side.
@@ -1238,11 +1242,11 @@ fun LauncherScreen(
                                 .padding(horizontal = if (scrubbing) FolioSpace.SNUG.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (visibleHomePages <= 6) repeat(visibleHomePages) { index ->
                                 Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                                    if (index == homePages) Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    if (index == homePages) Icon(Icons.Rounded.Add, null, tint = dotInk.primary, modifier = Modifier.size(14.dp))
                                     else if (dotWorm) Box(Modifier.size(4.dp).background(dotInk.faint, CircleShape))
                                     else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
                                 }
-                            } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                            } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = dotInk.primary, fontSize = FolioType.GROUP_LABEL.sp)
                             }
                             // The taps live here, a slice per dot, the full height of the strip. Each slice keeps its
                             // own name, so TalkBack still reads and activates one page at a time.
@@ -1258,7 +1262,7 @@ fun LauncherScreen(
                         }
                     }
                     IconButton(onClick = openLibrary, Modifier.size(FolioTouch.MIN.dp).testTag("library-page-link")) {
-                        Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, stringResource(R.string.all_apps_page), tint = Color.White.copy(alpha = if (pager.currentPage == homePages) 1f else .6f), modifier = Modifier.size(17.dp))
+                        Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, stringResource(R.string.all_apps_page), tint = LocalHomeInk.current.primary.copy(alpha = if (pager.currentPage == homePages) 1f else .6f), modifier = Modifier.size(17.dp))
                     }
                 }
             } }
@@ -1338,6 +1342,8 @@ fun LauncherScreen(
                             page = activeCustomizationPage, onPage = { customizationPage = it; sheet = host },
                             onMakeDefault = { sheet = ""; onMakeDefault() },
                             onClose = { sheet = "" }, onEditPins = { sheet = "pins" },
+                            // Settings > Control Center > Edit controls: Settings closes and Control Center opens in edit mode.
+                            onEditControlCenter = { sheet = ""; CcEditRequest.request(); launcherActivity.openSystemShade(ShadePanel.QUICK_SETTINGS) },
                             onWidget = { picker.slot = it; picker.anyApp(); sheet = "widgets" },
                             onAddWidget = { page -> picker.slot = model.nextWidgetSlot(); picker.targetIndex = page * HOME_CELLS; picker.anyApp(); sheet = "widgets" },
                             onRemoveWidget = widgets::remove,
@@ -2084,15 +2090,16 @@ internal fun libraryEdges(statusInCorner: Boolean, dockWidth: Float, leftHanded:
 
 /** Shown while Folio is open as an app, before it's the Home app: says so, and offers both ways forward. */
 @Composable
-private fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
+internal fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
     val ink = LocalHomeInk.current
     Row(Modifier.padding(bottom = FolioSpace.SNUG.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp))
         .background(Glass.copy(alpha = LocalGlassLook.current.widget)).border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.PANEL.dp))
         .padding(start = FolioSpace.LARGE.dp, end = FolioSpace.TINY.dp).testTag("home-setup"), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.preview), color = ink.secondary, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.semantics { heading() })
         Spacer(Modifier.width(12.dp))
+        // The close button is measured first (the label takes the rest, over two lines if it must), so large text never pushes it off the bar.
         Text(stringResource(R.string.use_as_home), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onUseAsHome)
+            modifier = Modifier.weight(1f, fill = false).clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onUseAsHome)
                 .heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = FolioSpace.SMALL.dp).testTag("preview-use-as-home"))
         IconButton(onClick = onExit, Modifier.size(48.dp).testTag("preview-exit")) {
             Icon(Icons.Rounded.Close, stringResource(R.string.exit_preview), tint = ink.secondary, modifier = Modifier.size(18.dp))

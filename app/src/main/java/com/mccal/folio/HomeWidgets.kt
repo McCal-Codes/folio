@@ -122,7 +122,8 @@ internal fun GlassCard(modifier: Modifier = Modifier, onClick: () -> Unit, conte
         BoxWithConstraints {
             val scale = (minOf(maxWidth, maxHeight) / 150.dp).coerceIn(.6f, 1f)
             val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, density.fontScale)) {
+            // A11Y-13: a card never grows, so its text follows the system font scale only to 130% (at 200% "LOCAL TIME" wrapped and the day line was squeezed away).
+            CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(density.density * scale, minOf(density.fontScale, GLANCE_MAX_FONT_SCALE))) {
                 Column(Modifier.fillMaxSize().padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.SpaceBetween, content = content)
             }
         }
@@ -209,7 +210,8 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
             }
             return@BoxWithConstraints
         }
-        val info = remember(id) { if (id >= 0) controller.manager.getAppWidgetInfo(id) else null }
+        // Looked up again when the app comes back (see rememberWidgetInfo), so a disabled app's widget recovers.
+        val info = rememberWidgetInfo(controller.manager, id)
         // Screenshot Mode: a swapped app's widget would show its real content, so it is a plain card instead.
         val standIn = info?.provider?.packageName?.let { LocalSwappedApps.current[it] }
         if (info == null) fallback()
@@ -274,6 +276,10 @@ internal fun builtinWidgetApp(id: Int): Intent? = when (id) {
  * holding the card is the way to its options, or in the Today View to editing. A tap while editing still does [onAdd],
  * as does one on a phone with nothing to open it with; the preview in Settings leaves [opensApp] off.
  */
+/** Tile heights, in dp, at which the unavailable-widget tile has room for its icon and for a second 48 dp button. */
+private const val RECOVERY_ICON_DP = 112
+private const val RECOVERY_TWO_BUTTONS_DP = 168
+
 @Composable
 internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, onAdd: () -> Unit) {
     val context = LocalContext.current
@@ -298,9 +304,30 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
         }
         else -> Surface(Modifier.fillMaxSize().clickable(onClick = onAdd), color = Glass.copy(alpha = .18f),
             shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .25f))) {
-            Column(Modifier.padding(FolioSpace.MEDIUM.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Rounded.Add, null, tint = Color.White)
-                Text(if (id >= 0) stringResource(R.string.widget_unavailable) else stringResource(R.string.add_widget), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+            // A widget slot can be as short as 88 dp; a 48 dp button each for Choose again and Remove, a label and the icon need
+            // 160 dp, so the extras drop out as the tile gets shorter and everything that stays is fully inside it.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val recovery = id >= 0 && slot >= 0
+                val room = maxHeight
+                val tall = room >= RECOVERY_TWO_BUTTONS_DP.dp
+                val showIcon = !recovery || room >= RECOVERY_ICON_DP.dp
+                Column(Modifier.fillMaxSize().padding(if (room < RECOVERY_ICON_DP.dp) FolioSpace.SMALL.dp else FolioSpace.MEDIUM.dp),
+                    verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (showIcon) Icon(Icons.Rounded.Add, null, tint = Color.White)
+                    Text(if (id >= 0) stringResource(R.string.widget_unavailable) else stringResource(R.string.add_widget), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                    // A widget whose app still can't be found: say what to do instead of leaving a dead tile. Remove is offered
+                    // for a lone widget on a Home slot with room for it, never for a card inside a stack (that would take the whole
+                    // stack); edit mode can always remove it.
+                    if (recovery) {
+                        TextButton(onClick = onAdd, modifier = Modifier.testTag("widget-unavailable-choose-$slot")) {
+                            Text(stringResource(R.string.choose_again), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                        }
+                        if (tall && WidgetStacks.cards(id, LocalWidgetStacks.current[slot]).size <= 1)
+                            TextButton(onClick = { edit.onRemove(DropTarget.Widget(slot)) }, modifier = Modifier.testTag("widget-unavailable-remove-$slot")) {
+                                Text(stringResource(R.string.remove), color = Color.White, fontSize = FolioType.GROUP_LABEL.sp)
+                            }
+                    }
+                }
             }
         }
     }

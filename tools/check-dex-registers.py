@@ -14,7 +14,9 @@ no device. tools/launch-check-fast.sh runs it before installing, and scripts/rel
     python3 tools/check-dex-registers.py --apk x.apk --mapping mapping.txt
 
 A method that fails: split it. In a composable, wrap a large block in `OwnMethod { }` (LauncherScreen.kt) so it
-compiles to a method of its own.
+compiles to a method of its own. Splitting does not help when the registers come from code R8 inlined: a
+LauncherState.copy(...) passes every field in one range, so a small helper that returns one can add about 150 registers
+to its caller. Keep such a helper out of line instead (app/proguard-rules.pro has the rule for MainActivity's).
 """
 import argparse
 import collections
