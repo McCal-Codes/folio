@@ -2117,6 +2117,11 @@
     <string name="action_a11y_splitscreen">화면 분할</string>
     <string name="action_a11y_mediaplaypause">재생 또는 일시 정지(시스템)</string>
     <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="private_while_recording">녹화 중 비공개</string>
+    <string name="while_folio_s_screen_is_recorded_or_shared">Folio 화면이 녹화되거나 공유되는 동안 앱 바꾸기에서 고른 앱이 다른 앱으로 바뀌고, 알림 내용, 배지 숫자, 숨긴 앱이 가려집니다. 위젯, 오늘 보기, Spotlight 추천은 가려지지 않습니다. 녹화가 끝나면 모두 원래대로 돌아옵니다. Android 15 이상이 필요합니다.</string>
+    <string name="recording_private_view_on">녹화 중: 비공개 보기 켜짐</string>
+    <string name="private_notification_word">알림</string>
     <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
     <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
     <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
