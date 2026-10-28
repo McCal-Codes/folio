@@ -54,12 +54,14 @@ class AssistPickerActivity : ComponentActivity() {
     private val searchOnlyState = androidx.compose.runtime.mutableStateOf(false)
 
     override fun onNewIntent(intent: Intent) {
+        intent.dropUnreadableExtras()
         super.onNewIntent(intent)
         setIntent(intent)
         searchOnlyState.value = intent.getBooleanExtra(EXTRA_SEARCH_ONLY, false)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        intent.dropUnreadableExtras()
         super.onCreate(savedInstanceState)
         searchOnlyState.value = intent.getBooleanExtra(EXTRA_SEARCH_ONLY, false)
         val targets = AssistTarget.entries.mapNotNull { target ->
@@ -159,6 +161,6 @@ private fun PickerPill(label: String, modifier: Modifier, onClick: () -> Unit) {
         .padding(vertical = 11.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Rounded.Public, null, tint = Color.White, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.Medium)
     }
 }

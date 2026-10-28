@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { fileURLToPath } from 'node:url'
 import { BLOCKED_TERMS, buildMessage, firstSentence, isBeta, kindOf, problemsWith, sections, shorten, splitWebhooks, stripPrivateLinks, tagline, wallOf } from './announce-release.mjs'
 
 const release = {
@@ -171,7 +172,7 @@ test('two servers each receive their own ping, and the wall is downloaded once',
   }))
 
   const code = await new Promise((resolve) => {
-    const child = spawn(process.execPath, [new URL('./announce-release.mjs', import.meta.url).pathname], {
+    const child = spawn(process.execPath, [fileURLToPath(new URL('./announce-release.mjs', import.meta.url))], {
       env: {
         ...process.env,
         GITHUB_EVENT_PATH: event,
@@ -289,7 +290,7 @@ test('a manual re-post reads the release from RELEASE_FILE, which is the release
   writeFileSync(file, JSON.stringify(release))
   const out = await new Promise((resolve) => {
     let text = ''
-    const child = spawn(process.execPath, [new URL('./announce-release.mjs', import.meta.url).pathname, '--dry-run'], {
+    const child = spawn(process.execPath, [fileURLToPath(new URL('./announce-release.mjs', import.meta.url)), '--dry-run'], {
       // GITHUB_EVENT_PATH points at an event with no release, as GitHub's own file does for a manual run.
       env: { ...process.env, RELEASE_FILE: file, GITHUB_EVENT_PATH: join(dir, 'missing.json') },
     })

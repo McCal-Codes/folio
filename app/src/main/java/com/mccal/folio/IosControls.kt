@@ -78,7 +78,7 @@ internal fun IosChip(selected: Boolean, onClick: () -> Unit, label: @Composable 
     Box(modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(background)
         .selectable(selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
         contentAlignment = Alignment.Center) {
-        androidx.compose.material3.ProvideTextStyle(TextStyle(color = if (selected) Color.Black else Color.White, fontSize = FolioType.CHIP.sp,
+        androidx.compose.material3.ProvideTextStyle(TextStyle(color = if (selected) Color.Black else Color.White, fontSize = FolioType.COMPACT.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)) { label() }
     }
 }
@@ -106,7 +106,7 @@ internal fun IosSearchField(query: String, onQuery: (String) -> Unit, placeholde
     fieldModifier: Modifier = Modifier, ink: Color = Color.White, onSearch: (() -> Unit)? = null) {
     // 40 dp at the normal text size, taller only when larger text needs it (A11Y-12). The row is as tall as its
     // content (IntrinsicSize.Min), so the clear button's fillMaxHeight fills the field, not the space around it.
-    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ink.copy(alpha = .12f))
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(ink.copy(alpha = .12f))
         .heightIn(min = 40.dp).height(IntrinsicSize.Min).padding(start = FolioSpace.COMPACT.dp, end = FolioSpace.HAIR.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null, tint = ink.copy(alpha = .55f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
@@ -336,29 +336,37 @@ internal fun FolioButton(
     }
 }
 
-/** iOS segmented control: one rounded track with a sliding thumb behind the chosen option. Use for two or three short choices. */
+/**
+ * iOS segmented control: one rounded track with a sliding thumb behind the chosen option. Use for two or three short choices.
+ * The track is 36 dp at the default text size and grows with the labels: at 200% text a label wraps between words to a second
+ * line and every segment takes the taller height (A11Y-12), instead of a fixed 36 dp cutting the second line off.
+ */
 @Composable
 internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier, tag: String? = null) {
     val haptic = LocalHapticFeedback.current
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(FolioRadius.SEGMENT.dp))
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().heightIn(min = SEGMENT_HEIGHT.dp).clip(RoundedCornerShape(FolioRadius.SEGMENT.dp))
         .background(Color.White.copy(alpha = .12f)).padding(FolioSpace.HAIR.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier)) {
         val segment = maxWidth / options.size
         val x by animateDpAsState(segment * index, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "segment")
-        Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).fillMaxHeight()
+        // matchParentSize: the thumb is as tall as the track, whatever height the labels gave it.
+        Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).matchParentSize()
             .shadow(2.dp, RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)).clip(RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)).background(FolioColors.SegmentThumb))
-        Row(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = SEGMENT_HEIGHT.dp - FolioSpace.HAIR.dp * 2).height(IntrinsicSize.Min)) {
             options.forEach { (value, label) ->
                 Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp))
                     .selectable(value == selected, role = Role.RadioButton) {
                         if (value != selected) { haptic.perform(FolioHaptic.Step); onSelect(value) }
-                    }, contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
+                    }.padding(horizontal = FolioSpace.TINY.dp, vertical = FolioSpace.TINY.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         fontWeight = if (value == selected) FontWeight.SemiBold else FontWeight.Medium)
                 }
             }
         }
     }
 }
+
+/** The segmented control's height at the default text size, in dp. */
+private const val SEGMENT_HEIGHT = 36
 
 private fun Modifier.androidxAlpha(alpha: Float) = graphicsLayer { this.alpha = alpha }

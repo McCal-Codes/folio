@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Headphones
@@ -32,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,6 +78,9 @@ internal fun AudioDeviceCard(enabled: Boolean, blocked: Boolean) {
     }
     val visible = open && !blocked
     androidx.activity.compose.BackHandler(visible) { open = false }
+    // AirPods battery from the system (root, off until the owner turns it on): one read when the card shows, never while hidden.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(visible, device) { device?.takeIf { visible && !it.speaker }?.let { AirPodsRoot.onCardShown(context, it.name) } }
     val reduceMotion = LocalReduceMotion.current
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(visible,
@@ -83,6 +88,29 @@ internal fun AudioDeviceCard(enabled: Boolean, blocked: Boolean) {
             exit = if (reduceMotion) fadeOut() else slideOutVertically { it } + fadeOut()) {
             device?.let { DeviceCard(it) { open = false } }
         }
+    }
+}
+
+/** How recent a reading must be to show on the card as current. */
+private const val AIRPODS_FRESH_MS = 60_000L
+
+/**
+ * The AirPods' left, right and case battery under "Connected", when the root read for this device came back with numbers and is
+ * fresh. Numbers change without animation and charging is a static glyph; nothing here moves (WCAG 2.3.1, Reduce Motion).
+ */
+@Composable
+private fun AirPodsCardLine(device: IslandEvent.Bluetooth, color: Color) {
+    val ui by AirPodsRoot.state.collectAsState()
+    val done = ui.last as? AirPodsRead.Done ?: return
+    if (done.forName != device.name || System.currentTimeMillis() - done.atMillis > AIRPODS_FRESH_MS) return
+    val battery = (done.reading as? AirPodsReading.Found)?.battery ?: return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val spoken = AirPodsText.line(context, battery)
+    Spacer(Modifier.height(FolioSpace.SNUG.dp))
+    Row(Modifier.semantics(mergeDescendants = true) { contentDescription = spoken }, verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+        if (AirPodsText.parts(battery).any { it.charging }) Icon(Icons.Rounded.BatteryChargingFull, null, tint = FolioColors.Green, modifier = Modifier.size(18.dp))
+        Text(spoken, color = color, fontSize = FolioType.SUBHEAD.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -99,7 +127,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally) {
         val closeLabel = stringResource(R.string.close)
         Box(Modifier.fillMaxWidth()) {
-            Text(title, Modifier.align(Alignment.Center).padding(horizontal = 44.dp), color = primary, fontSize = 20.sp,
+            Text(title, Modifier.align(Alignment.Center).padding(horizontal = 44.dp), color = primary, fontSize = FolioType.TITLE3.sp,
                 fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Box(Modifier.align(Alignment.CenterEnd).minimumInteractiveComponentSize()
                 .clickable(role = Role.Button, onClick = onDone).semantics { contentDescription = closeLabel },
@@ -119,6 +147,7 @@ private fun DeviceCard(device: IslandEvent.Bluetooth, onDone: () -> Unit) {
             Icon(Icons.Rounded.CheckCircle, null, tint = FolioColors.Green, modifier = Modifier.size(18.dp))
             Text(stringResource(R.string.connected), color = secondary, fontSize = FolioType.SUBHEAD.sp)
         }
+        AirPodsCardLine(device, secondary)
         Spacer(Modifier.height(18.dp))
         Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
             .clickable(role = Role.Button, onClick = onDone), contentAlignment = Alignment.Center) {

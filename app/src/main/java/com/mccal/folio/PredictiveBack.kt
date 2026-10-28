@@ -47,6 +47,17 @@ internal object OverlayBack {
 }
 
 /**
+ * [androidx.activity.compose.BackHandler] where there may be no Back to hear: Folio's panels over other apps draw in a service
+ * window with no activity behind it, where a plain BackHandler throws "No OnBackPressedDispatcherOwner was provided". Anything
+ * a panel can reach uses this (or [OverlayBackHandler]), never BackHandler itself.
+ */
+@androidx.compose.runtime.Composable
+internal fun SafeBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    if (androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current == null) return
+    androidx.activity.compose.BackHandler(enabled, onBack)
+}
+
+/**
  * Back on Spotlight or a top panel: with the motion pass on (and Reduce Motion off) it previews through [OverlayBack];
  * otherwise it is the plain back handler it always was.
  */

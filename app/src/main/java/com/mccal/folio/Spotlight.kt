@@ -28,11 +28,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -41,6 +39,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -271,7 +270,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                             }
                         }))
                 }
-                if (query.isNotEmpty()) Box(Modifier.size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
+                if (query.isNotEmpty()) Box(Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Cancel, stringResource(R.string.clear_text), tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 }
             }
@@ -323,18 +322,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                     }
                     if (shows(SpotlightSection.WEB)) item("web") {
                         Section(stringResource(R.string.search_the_web_ask_ai)) {
-                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                                WebSearchTarget.chips(state.searchEngine).forEach { target ->
-                                    Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
-                                        .clickable { onClose(); openWebSearch(context, target, q) }
-                                        .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
-                                            tint = Color.White, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(target.label, color = Color.White, fontSize = 14.sp)
-                                    }
-                                }
-                            }
+                            WebSearchChips(WebSearchTarget.chips(state.searchEngine)) { target -> onClose(); openWebSearch(context, target, q) }
                         }
                     }
                     if (math == null && appHits.isEmpty() && contacts.isEmpty() && settingHits.isEmpty()) item("none") {
@@ -359,6 +347,27 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
     }
 }
 
+/**
+ * The chips under a search, in as many lines as the window needs. A single scrolling line cut the last chip off at the edge with
+ * nothing to say it scrolled ("Ask ChatGPT" read "Ask ChatGF", 27 Oct sweep F07), and a scrolling row hides the other chips behind a swipe.
+ */
+@Composable
+internal fun WebSearchChips(targets: List<WebSearchTarget>, onPick: (WebSearchTarget) -> Unit) {
+    FlowRow(Modifier.fillMaxWidth().testTag("web-search-chips"), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+        targets.forEach { target ->
+            Row(Modifier.clip(RoundedCornerShape(50)).background(SpotGlass)
+                .clickable { onPick(target) }
+                .padding(horizontal = FolioSpace.COMFY.dp, vertical = 9.dp).testTag("web-chip-${target.name}"), verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (target.ai) Icons.Rounded.AutoAwesome else Icons.Rounded.Public, null,
+                    tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
+            }
+        }
+    }
+}
+
 @Composable
 private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows: Boolean = false) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -379,7 +388,7 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
                             }).padding(vertical = FolioSpace.SNUG.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             AppIcon(app, app.label, Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)))
-                            Text(app.label, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            Text(app.label, color = Color.White, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                         }
                     }
@@ -429,7 +438,7 @@ private fun TopHit(app: AppEntry, offer: HomeOffer, onAdd: () -> Unit, onClick: 
 
 @Composable
 private fun ResultRow(icon: ImageVector, title: String, subtitle: String?, trailing: (@Composable RowScope.() -> Unit)? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onClick).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))

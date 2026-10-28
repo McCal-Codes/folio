@@ -107,7 +107,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
             val gap = with(density) { 12.dp.toPx() }
             var panelH by remember { mutableIntStateOf(0) }
             val iconCenterX = icon?.let { it.exactCenterX() - origin.x } ?: screenW / 2
-            val left = (iconCenterX - panelW / 2).coerceIn(gap, screenW - panelW - gap)
+            val left = popupLeft(iconCenterX, panelW, screenW, gap)
             val iconTop = icon?.let { it.top - origin.y } ?: with(density) { maxHeight.toPx() } / 2
             // Above the icon (like Velox) unless there isn't room, then below it.
             val above = iconTop - gap - panelH > with(density) { 56.dp.toPx() }
@@ -126,7 +126,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     Spacer(Modifier.width(10.dp))
                     Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Text(stringResource(R.string.open), color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    Text(stringResource(R.string.open), color = Color.Black, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.clip(CircleShape).background(Color.White).clickable(onClick = onOpen).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
                 }
                 media?.let { m ->
@@ -135,7 +135,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         (m.art ?: m.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))) }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(m.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(m.title, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                         val t = runCatching { m.controller.transportControls }.getOrNull()
@@ -152,7 +152,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                         if (index > 0) MenuDivider()
                         Column(Modifier.fillMaxWidth().clickable { onDismiss(); IslandListenerService.openNotification(context, item) }
                             .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 9.dp)) {
-                            Text(item.title ?: item.appLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(item.title ?: item.appLabel, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             item.text?.let { Text(it, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                         }
                     }

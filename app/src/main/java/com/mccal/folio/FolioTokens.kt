@@ -1,12 +1,18 @@
 package com.mccal.folio
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 
 /**
  * Folio's shared colors: Apple's dark-appearance system colors, named once so screens, themes and Market packages all
  * point at the same values. Use these instead of writing hex colors in a screen.
  */
 internal object FolioColors {
+    /** The frosted glass behind panels over another app (see FrostedBackdrop): its dark base, and the three patches' colors when the wallpaper gives none. */
+    val FrostBase = Color(0xFF16171A)
+    val FrostPatchA = Color(0xFF3A4A5E)
+    val FrostPatchB = Color(0xFF4A3A5E)
+    val FrostPatchC = Color(0xFF3A5E52)
     /**
      * The palette as ARGB numbers, for the places that hold a color as a value rather than a `Color`: a tweak's
      * tint, a Focus mode, a saved layout's icon tint. One source of truth, so a number and a color can't drift.
@@ -119,7 +125,7 @@ internal object FolioColors {
     /** Supporting text on [LightBackground]-style cards in light appearance (iOS secondaryLabel). */
     val SecondaryLabelOnLight = Color(0xFF6C6C70)
     /** Supporting text on dark glass and sheets. */
-    val SecondaryLabel = Color.White.copy(alpha = .6f)
+    val SecondaryLabel = Color.White.copy(alpha = .62f)
 }
 
 /**
@@ -179,6 +185,14 @@ internal object FolioRadius {
     const val PANEL = 24
     /** The top corners of a bottom sheet. */
     const val SHEET_TOP = 28
+    /** List rows, search fields and small cards that sit on a sheet. */
+    const val ROW = 12
+    /** Floating menus and action sheets. */
+    const val FLOATING = 18
+    /** Notification cards and the stack behind them. */
+    const val NOTIFICATION = 22
+    /** The dock and the side rail: a capsule. */
+    const val RAIL = 30
     /** A segmented control's track. */
     const val SEGMENT = 9
     /** A segmented control's thumb: the track's radius minus its 2 dp inset, so the corners stay concentric (DES-8). */
@@ -194,11 +208,29 @@ internal object FolioType {
     const val BODY = 17
     const val SUBHEAD = 15
     const val FOOTNOTE = 13
-    /** A chip's label: SemiBold when selected. */
-    const val CHIP = 14
+    /** Dense rows, chip labels (SemiBold when selected) and secondary controls. */
+    const val COMPACT = 14
+    /** iOS Callout: list values and supporting lines a step above [SUBHEAD]. */
+    const val CALLOUT = 16
+    /** iOS Title 3: sheet and card headings. */
+    const val TITLE3 = 20
+    /** iOS Caption 2: timestamps and the smallest supporting text. Home app labels use [LabelSize] instead. */
+    const val CAPTION = 11
     /** Uppercase group labels, SemiBold with .4sp tracking. */
     const val GROUP_LABEL = 12
+    /** The big title at the top of a Settings page, and its line height (a two-line title keeps air between its lines). */
+    const val LARGE_TITLE = 32
+    const val LARGE_TITLE_LINE = 38
 }
+
+/** The largest system font scale glanceable chrome follows (A11Y-13): Home's app labels, and the text on a built-in widget card. */
+internal const val GLANCE_MAX_FONT_SCALE = 1.3f
+
+/**
+ * What to multiply an sp size by so the system's [fontScale] stops growing it at [GLANCE_MAX_FONT_SCALE]: 1 up to that scale,
+ * less beyond it. Text that cannot grow with its box (an icon's one-line label, a card of fixed size) would otherwise be cut off at 200%.
+ */
+internal fun glanceFontFactor(fontScale: Float): Float = if (fontScale <= GLANCE_MAX_FONT_SCALE) 1f else GLANCE_MAX_FONT_SCALE / fontScale
 
 /**
  * The smallest a finger's target may be, in dp (A11Y-1). What a control *draws* can be smaller: put the drawn thing
@@ -207,6 +239,24 @@ internal object FolioType {
 internal object FolioTouch {
     const val MIN = 48
 }
+
+/** How far glanceable chrome text (tab labels) follows the font size: up to 1.3 times (A11Y-13). */
+internal const val CHROME_TEXT_CAP = 1.3f
+
+/** The most a page headline grows with the font size: 200%, the largest Android's Settings offers (A11Y-12). */
+internal const val HEADLINE_TEXT_CAP = 2f
+
+/**
+ * The size in sp to give chrome text so that, drawn at [fontScale], it is no larger than [size] x [cap]. Only for a short
+ * label that cannot wrap, like a tab's; body text keeps the full scale (A11Y-12). A font scale that is not a positive
+ * number leaves the size alone.
+ */
+internal fun cappedTextSize(size: Float, fontScale: Float, cap: Float = CHROME_TEXT_CAP): Float =
+    if (!(fontScale > cap)) size else size * cap / fontScale
+
+@androidx.compose.runtime.Composable
+internal fun cappedSp(size: Int, cap: Float = CHROME_TEXT_CAP): androidx.compose.ui.unit.TextUnit =
+    cappedTextSize(size.toFloat(), androidx.compose.ui.platform.LocalDensity.current.fontScale, cap).sp
 
 /** Row heights, in dp: iOS's list metrics, and never below the 48dp touch target (A11Y-1). */
 internal object FolioRow {
@@ -284,9 +334,57 @@ internal object FolioMotion {
     /** Reduce Motion's stand-in for anything that would slide or grow in: a fade where it lands, this long. */
     const val FADE_MS = 150
 
+    // Advanced island › Animation speed (docs/mockups/lab/island-adjust.html, 2d). Multipliers on the island's own springs and
+    // fades, on top of Settings › Gestures › Animation Speed. Reduce Motion still wins; nothing loops at any step.
+    /** Slower: the island's morph and fades take about two thirds longer. */
+    const val ISLAND_SLOWER = .6f
+    /** Standard: exactly the island's motion before the option existed. */
+    const val ISLAND_STANDARD = 1f
+    /** Faster: half again as quick. */
+    const val ISLAND_FASTER = 1.5f
+    /** The most the island's step times Animation Speed may reach, so a change is never so quick it reads as a flicker (WCAG 2.3.1). */
+    const val ISLAND_FASTEST = 2.2f
+    /** The shortest an island fade may be made, in ms. */
+    const val ISLAND_MIN_FADE_MS = 60
+
+    /** A (damping, stiffness) pair with its stiffness scaled by [multiplier]; 1 gives the pair back unchanged. */
+    fun scaled(pair: Pair<Float, Float>, multiplier: Float) = if (multiplier == 1f) pair else pair.first to pair.second * multiplier
+
     /**
      * Reduce Motion keeps motion that shows a state (a switch thumb, a segment) but takes out the overshoot: the same
      * stiffness at damping 1. Under Android's Remove animations Compose ends it at once anyway.
      */
     fun calm(pair: Pair<Float, Float>, reduce: Boolean) = if (reduce) 1f to pair.second else pair
+}
+
+/**
+ * The Dynamic Island's own look options (Settings › Dynamic Island › Advanced island). Every default is what the island
+ * did before the options existed, so nothing changes for anyone who never opens the page.
+ */
+internal object FolioIsland {
+    /** The island's colors as ARGB numbers: Black is the default, and the only one drawn while the island wraps a real camera hole. */
+    const val Black = 0xFF000000L
+    const val Graphite = 0xFF1C1C1EL
+    const val Navy = 0xFF1D2B53L
+    const val Plum = 0xFF3A1D2EL
+    const val White = 0xFFFFFFFFL
+
+    /** Text on the island must reach this contrast against the island (WCAG 1.4.3), measured for the secondary text strength below. */
+    const val TEXT_MIN_CONTRAST = 4.5
+    /** How strong the island's secondary text is (subtitles, labels): the dimmest text the contrast rule is measured at. */
+    const val SECONDARY_TEXT_ALPHA = .6f
+    /** One step of lightness, 0 to 1, when a custom color is moved until its text is readable. */
+    const val NUDGE_STEP = .01f
+
+    /** Corner radius steps as a share of the fully round pill (half its height). Round is exactly today's pill. */
+    const val CORNERS_ROUND = 1f
+    const val CORNERS_SOFT = .72f
+    const val CORNERS_SQUARER = .5f
+    /** The expanded card's corner radius per step, in dp. Round is today's 34. */
+    const val CARD_ROUND = 34f
+    const val CARD_SOFT = 26f
+    const val CARD_SQUARER = 18f
+
+    /** How far a swipe up on the island must travel to count, in dp (the same as putting a card away). */
+    const val SWIPE_UP_DP = 24
 }
