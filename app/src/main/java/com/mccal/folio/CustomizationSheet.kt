@@ -1625,6 +1625,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_rootgrant_undo to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.airpods_refresh to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.airpods_on_card to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.airpods_report to CustomizationPage.SYSTEM_BRIDGE,
     R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
     R.string.storage_free_up_space to CustomizationPage.STORAGE,
@@ -3158,7 +3161,8 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
     var off by remember { mutableStateOf(SystemBridge.isOff(context)) }
     val safe = SafeMode.active
     val broker = remember { SystemBridge.broker(context) }
-    fun read() = broker.states()
+    val airPodsOpen = remember { FeatureGate.AIRPODS_ROOT.isOpen(context) }
+    fun read() = SystemBridge.visibleStates(broker.states(), airPodsOpen)
     var states by remember { mutableStateOf(read()) }
     var rootState by remember { mutableStateOf(RootHingeStore.state(context)) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -3237,6 +3241,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
             val cdRoot = stringResource(R.string.bridge_details_root_cd)
             CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdRoot }.testTag("bridge-details-root"), onClick = { dialog = "details-root" })
         }
+        if (airPodsOpen) AirPodsBridgeCard(off, safe, rootState)
         SettingsCard(stringResource(R.string.bridge_grant_title)) {
             CardNote(stringResource(R.string.bridge_grant_note))
             SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-grant-paused")) }
@@ -3345,6 +3350,56 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
             }
         }
         CardNote(stringResource(R.string.bridge_recent_note))
+    }
+}
+
+/**
+ * AirPods battery from the system (docs/airpods-root-tier.md): the current reading and when it was read, Refresh, the switch for the
+ * headphones card, and a redacted report to copy. Nothing reads until Refresh is tapped or the card shows with its switch on.
+ */
+@Composable private fun AirPodsBridgeCard(off: Boolean, safe: Boolean, rootState: RootState) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val ui by AirPodsRoot.state.collectAsState()
+    val ready = rootState == RootState.READY
+    SettingsCard(stringResource(R.string.airpods_root_title)) {
+        CardNote(stringResource(R.string.airpods_root_note))
+        SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-airpods-paused")) }
+        val read = ui.last ?: if (!ready) AirPodsRead.NotAllowed else null
+        val done = read as? AirPodsRead.Done
+        val numbers = (done?.reading as? AirPodsReading.Found)?.battery?.let { AirPodsText.line(context, it) }
+        val summary = AirPodsText.summary(read, ui.running)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-now"), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.airpods_now), Modifier.padding(end = FolioSpace.SMALL.dp), style = MaterialTheme.typography.bodyLarge)
+            Text(numbers ?: stringResource(summary ?: R.string.airpods_not_read), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
+        val at = (read as? AirPodsRead.Done)?.atMillis ?: (read as? AirPodsRead.Failed)?.atMillis
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-last"), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.airpods_last_read), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Text(at?.let { android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(it)) } ?: stringResource(R.string.airpods_never),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val canRun = ready && !off && !safe && !ui.running
+        CardAction(stringResource(R.string.airpods_refresh), Modifier.fillMaxWidth().testTag("bridge-airpods-refresh"), enabled = canRun, onClick = { AirPodsRoot.refresh(context) })
+        var onCard by remember { mutableStateOf(AirPodsRoot.showOnCard(context)) }
+        SettingsSwitch(stringResource(R.string.airpods_on_card), onCard, { on -> onCard = on; AirPodsRoot.setShowOnCard(context, on) }, "bridge-airpods-card")
+        CardNote(stringResource(R.string.airpods_on_card_note))
+        var menu by remember { mutableStateOf(false) }
+        var copied by remember { mutableStateOf(false) }
+        Box {
+            CardAction(stringResource(R.string.airpods_report), Modifier.fillMaxWidth().testTag("bridge-airpods-report"), enabled = canRun || ui.last is AirPodsRead.Done,
+                onClick = { menu = true })
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.airpods_report_hidden)) }, modifier = Modifier.testTag("bridge-airpods-copy"), onClick = {
+                    menu = false; AirPodsRoot.copyReport(context, keepNames = false) { copied = true }
+                })
+                DropdownMenuItem(text = { Text(stringResource(R.string.airpods_report_names)) }, modifier = Modifier.testTag("bridge-airpods-copy-names"), onClick = {
+                    menu = false; AirPodsRoot.copyReport(context, keepNames = true) { copied = true }
+                })
+            }
+        }
+        if (copied) Text(stringResource(R.string.airpods_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-airpods-copied"))
+        CardNote(stringResource(R.string.airpods_report_note))
     }
 }
 

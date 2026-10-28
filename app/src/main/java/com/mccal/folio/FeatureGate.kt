@@ -162,6 +162,14 @@ internal enum class FeatureGate(
     CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * AirPods battery from the system, the first root extra for AirPods (docs/airpods-root-tier.md): with root tested on the
+     * System Bridge page, Folio reads Android's own Bluetooth record of the AirPods' left, right and case battery, on demand
+     * only. Its parser was written from AOSP's dump format without a real dump from a Fold, so supporters and Folio Dev try it
+     * first and send a report when it reads wrong. Everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it.
+     */
+    AIRPODS_ROOT("airpodsRoot", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Advanced island: color, corner radius, animation speed, haptics and gestures on their own page. It is a large new
      * surface that reaches into the island's touch code and has not been tried on a device yet, so it is gated by risk
      * apart from Adjust island: supporters and Folio Dev try it in the betas and everyone gets it in 0.7.0: flip
