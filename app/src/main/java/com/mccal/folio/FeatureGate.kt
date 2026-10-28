@@ -118,6 +118,14 @@ internal enum class FeatureGate(
     MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * Settings > General > Storage: how full the phone is, any USB or SD storage that is connected, and shortcuts to
+     * Android's own cleanup screens. It only reads sizes and opens system screens, but it needs real phones with real
+     * drives before it goes to everyone, so supporters and Folio Dev try it first. Flip [OPEN_IN_0_7_1] to true in
+     * the 0.7.1 release.
+     */
+    STORAGE("storage", closedSince = "2026-10-24", opensIn = "0.7.1", { OPEN_IN_0_7_1 }),
+
+    /**
      * Home closer to the iPhone Duo's measured spacing: on the cover the rows spread out toward the Duo's pitch when the
      * window has free height, and the dock's apps grow from 72% to about 80% of Home's icons on both screens. It moves
      * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
@@ -202,6 +210,9 @@ internal enum class FeatureGate(
 
         /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
         private const val OPEN_IN_0_7_0 = false
+
+        /** The features built during 0.7.1 for supporters to try first, which open together in the 0.7.1 release. */
+        private const val OPEN_IN_0_7_1 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
