@@ -852,7 +852,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
-        val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
+        // While editing, the last Controls page also holds the gallery of controls to add back, so it counts for the page height.
+        val galleryRows = if (edit.active) ccEditGalleryRows(CcControl.entries.count { it !in chosen && available(it) }, cols) else 0
+        fun controlsRows(index: Int) = ccPlanRows(plan, index, cols, focusOn) + if (index == plan.perPage.lastIndex) galleryRows else 0
+        val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { controlsRows(it) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
@@ -923,7 +926,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             // A page scrolls only where its rows do not fit the window. A scroll container that cannot scroll still took the downward drag
             // (its edge stretch ate it), so a swipe down never reached the pager; with none, or with the stretch off, the pager gets it.
             val rowsFit = ccRowsThatFit(pageHeight.value, cell.value, gap.value)
-            val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> ccPlanRows(plan, spec.index, cols, focusOn); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
+            val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> controlsRows(spec.index); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
             @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
             CompositionLocalProvider(androidx.compose.foundation.LocalOverscrollConfiguration provides null) {
             Column(Modifier.width(gridWidth).then(if (rowsNeeded > rowsFit) Modifier.fadingVerticalScroll() else Modifier), verticalArrangement = Arrangement.spacedBy(gap)) {
