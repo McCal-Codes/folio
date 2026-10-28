@@ -159,9 +159,26 @@ internal fun ModalBottomSheet(
     }
 }
 
+/**
+ * A Compose Dialog that keeps what its content saved (rememberSaveable) when Compose builds its window again.
+ *
+ * Compose throws a Dialog's window away and makes a new one when the density changes, which is what Display size in
+ * Android's settings does, and everything remembered inside it goes with the old window. The Market and Settings live in
+ * a dialog, so they came back on the Market's Featured tab with the page gone. Their saved state is held here, above the
+ * window, and handed to the new one.
+ */
+@Composable
+internal fun FolioDialog(onDismissRequest: () -> Unit, properties: androidx.compose.ui.window.DialogProperties = androidx.compose.ui.window.DialogProperties(),
+    content: @Composable () -> Unit) {
+    val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest, properties = properties) {
+        holder.SaveableStateProvider("folio-dialog") { content() }
+    }
+}
+
 @Composable
 private fun FullScreenPage(onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
+    FolioDialog(onDismissRequest = onDismissRequest,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = false)) {
         val view = androidx.compose.ui.platform.LocalView.current
@@ -243,7 +260,7 @@ private fun PeekCapsule(peek: PeekSlider) {
 @Composable
 private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, width: androidx.compose.ui.unit.Dp, modifier: Modifier,
     content: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest,
+    FolioDialog(onDismissRequest = onDismissRequest,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
             dismissOnBackPress = dismissOnBack)) {
         FolioDialogWindow(dim = 0f)

@@ -92,7 +92,44 @@ class LayoutBackupTest {
         val odd = AppEntry("com.example.odd/com.example.odd.Main", "Odd", icon, profileLabel = "")
         val withOdd = state.copy(apps = state.apps + odd, homeSlots = state.homeSlots.toMutableList().also { it[2] = odd.id })
         val raw = encodeLayoutBackup(withOdd, emptyList(), "this-phone")
-        decodeLayoutBackup(raw, withOdd.apps, emptyList(), "this-phone")
+        val preview = decodeLayoutBackup(raw, withOdd.apps, emptyList(), "this-phone")
+        // The export wrote a name for the profile instead of a blank one (import refuses blanks), and the app is still where it was.
+        val saved = JSONObject(raw).getJSONArray("apps").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.first { it.getString("id") == odd.id } }
+        assertEquals("personal", saved.getString("profileLabel"))
+        assertEquals(odd.id, preview.layout.slots[2])
+        assertEquals(emptyList<String>(), preview.missingApps)
+    }
+
+    // The Music widget is a Folio-drawn widget like the Big Clock: the export used to drop it ("left out because its app is missing").
+    @Test fun `a Music widget is kept by the export and comes back on import`() {
+        val music = WidgetPlacement(7, MUSIC_WIDGET, 0, 0, 1, 3, 1)
+        val withMusic = state.copy(widgetPlacements = listOf(music))
+        val (portable, skipped) = withoutUnportableWidgets(withMusic, emptyList())
+        assertEquals(0, skipped)
+        assertEquals(listOf(MUSIC_WIDGET), portable.widgetPlacements.map { it.id })
+        val preview = decodeLayoutBackup(encodeLayoutBackup(portable, emptyList(), "this-phone"), state.apps, emptyList(), "this-phone")
+        assertEquals(listOf(music), preview.layout.widgetPlacements)
+        assertEquals(0, preview.skippedWidgets)
+    }
+
+    // A backup from a newer build can carry a widget this one does not know. It used to refuse the whole file; now that item is left out and the rest restored.
+    @Test fun `a widget of a kind this build does not have is skipped and the rest is restored`() {
+        val withTwo = state.copy(widgetPlacements = listOf(WidgetPlacement(7, MUSIC_WIDGET, 0, 0, 1, 3, 1), WidgetPlacement(8, CLOCK_WIDGET, 0, 2, 2, 2, 2)))
+        val root = JSONObject(encodeLayoutBackup(withTwo, emptyList(), "this-phone"))
+        val items = root.getJSONArray("widgets")
+        (0 until items.length()).map { items.getJSONObject(it) }.first { it.getInt("slot") == 7 }.put("builtinId", -4242)
+        val preview = decodeLayoutBackup(root.toString(), state.apps, emptyList(), "this-phone")
+        assertEquals(1, preview.skippedWidgets)
+        assertEquals(listOf(CLOCK_WIDGET), preview.layout.widgetPlacements.map { it.id })
+        assertEquals(1, preview.widgetCount)
+        assertEquals(home.id, preview.layout.slots[0])
+    }
+
+    @Test fun `a malformed widget is still refused, not skipped`() {
+        val root = JSONObject(encodeLayoutBackup(state.copy(widgetPlacements = listOf(WidgetPlacement(7, CLOCK_WIDGET, 0, 0, 1, 2, 2))), emptyList(), "this-phone"))
+        root.getJSONArray("widgets").getJSONObject(0).put("spanX", 99)
+        val refused = runCatching { decodeLayoutBackup(root.toString(), state.apps, emptyList(), "this-phone") }.isFailure
+        assertTrue(refused)
     }
 
     // The outside review's bug 1: one widget whose app is missing stopped the whole export.

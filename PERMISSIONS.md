@@ -40,7 +40,7 @@ turns that off). The picture behind the panels is then taken before the panel ap
 full-size picture is dropped as soon as it has been shrunk. The small blurred picture is shown behind the panels, kept only in memory, never saved, logged or sent, and
 let go of when the panels close (`EverywhereOverlay.kt`). Settings › Blur at zero, or Reduce Transparency, stops it, and without it the panels sit on Folio's frosted
 glass instead. Without the service, Home's swipe-down gestures use Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
-(`ShadeShortcutActivity`), use the same service so a button or gesture action on your phone that opens an app can pull the
+(`ShadeShortcutNotifications` and `ShadeShortcutQuickSettings`), use the same service so a button or gesture action on your phone that opens an app can pull the
 shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 
 **Folio's Smart clock ink service** (`SmartInkService`, a second accessibility service, off until you turn it on in Android Settings ›
@@ -50,6 +50,13 @@ Clock from what is really behind it, and only while Folio's Home is in front. Th
 thrown away at once, at most one every two seconds; only a few brightness numbers are kept in memory, nothing is saved or
 sent (`SmartInkService.kt`, `SmartClockInk.kt`). It is a separate switch from the gestures service above. Both hold the
 screenshot capability; the gestures service uses its own only for the panel blur described there. Without it, the clock's text color comes from Android's wallpaper colors, as before.
+
+**AirPods battery with root** (optional, System Bridge, for supporters and Folio Dev first) asks Android for no permission
+at all. On a phone where you have tested root in Settings › Advanced › System Bridge, with Advanced options on, Folio runs
+one fixed command as root, `dumpsys bluetooth_manager`, and reads the AirPods battery that Android's Bluetooth service
+already holds. It runs only when you tap Refresh there, or when the headphones card appears with "Show on the headphones
+card" turned on (off to start with), at most once every 30 seconds (`AirPodsBattery.kt`). Nothing is kept or sent; the
+report you can copy replaces Bluetooth addresses and shortens device names. Turning system access off or Safe Mode stops it.
 
 **Banking and payment apps** sometimes warn you, refuse to open, or ask you to turn off accessibility services while
 any accessibility service is on, whichever app it belongs to. That is the bank's own fraud check, and it cannot tell a

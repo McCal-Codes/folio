@@ -27,6 +27,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Market packages | Market repository | `filesDir/market` + records in layout JSON | Backup keeps records, reapplies changes |
 | Hinge posture, window size | WindowManager (`LocalHinge`) | None | Recomputed |
 | Battery, signal, ringer | `DeviceStatus` | None | Recomputed on start |
+| Control Center volume (music stream) and brightness sliders | `SystemLevels` reads the system, one `LiveLevel` per slider shows it; the system stays the source of truth | None | Read again when the panel opens; observed only while it is composed |
 | Island activity | `Island` / `IslandEvents` | None | Recomputed |
 | Crash reports | `CrashLog` | `filesDir/crashes`, last 5 | Until shared or rotated |
 

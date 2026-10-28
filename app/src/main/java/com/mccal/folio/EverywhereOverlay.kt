@@ -67,8 +67,11 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import org.json.JSONObject
 
@@ -248,7 +251,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
         val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false,
-        val look: CcLook = CcLook.CLEAR)
+        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions())
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -259,7 +262,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
             j.optBoolean("notificationSections", false),
-            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR))
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
@@ -319,7 +322,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look)
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options)
                     }
                 }
             }
@@ -594,8 +597,11 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
         islandWindowWidth = windowWidth
+        // Advanced island: the saved color only applies when the pill is not wrapping a camera hole Android reports.
+        val reportedCutout = metrics.windowInsets.displayCutout?.boundingRects?.any { !it.isEmpty } == true
+        val wraps = IslandStyle.wrapsRealCamera(custom, camera?.ltrb(), reportedCutout, windowWidth, windowHeight)
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
@@ -617,28 +623,60 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     return removed
                 }
                 val reduceMotion = settings.collectAsState().value.reduceMotion || androidRemovesAnimations()
+                // Advanced island, read again whenever it is saved so the pill over an app follows at once.
+                val styleVersion by IslandLayoutChanges.version.collectAsState()
+                val style = remember(styleVersion) { IslandStyle.active(service) }
+                val speed = IslandStyle.speedMultiplier(style.speed, MotionSpeed.current.factor)
+                val colored = IslandStyle.colorApplies(wraps)
+                val surface = if (colored) Color(style.background) else Color.Black
+                val ink = if (colored) Color(IslandStyle.inkFor(style.background)) else Color.White
+                val radius = IslandStyle.pillRadius(style.corners, g.pillH, if (wraps) minOf(g.camW, g.camH) / 2f else 0f).dp
+                val gestures = style.gestures
+                val customGestures = !IslandStyle.gesturesAreDefault(gestures)
                 val w by animateDpAsState(content?.let { g.widthFor(it).dp } ?: 0.dp,
-                    if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Appear), label = "overlay-island")
-                androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+                    if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.scaled(FolioMotion.Appear, speed)), label = "overlay-island")
+                androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion, LocalIslandStyle provides style, LocalIslandInk provides ink) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     val popUp = (content as? IslandContent.Event)?.event is IslandEvent.Message
                     // With Reduce Motion the pill fades in where it lands instead of growing from nothing.
-                    if (content != null && w > 1.dp) { val fade = rememberReducedFade().value; Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape((g.pillH / 2).dp)).background(Color.Black)
+                    if (content != null && w > 1.dp) { val fade = rememberReducedFade().value; val open = {
+                            (content as? IslandContent.Live)?.let { IslandListenerService.open(service, it.activity) }
+                            ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
+                        }
+                        // There is no card to expand over an app, so Expand opens the app, as a tap always did; Dismiss puts a pop-up away.
+                        val act: (IslandAction) -> Unit = { a ->
+                            when (IslandStyle.overlayAction(a)) {
+                                IslandAction.OPEN_APP -> open()
+                                IslandAction.DISMISS -> if (content is IslandContent.Event) IslandEvents.dismiss()
+                                else -> Unit
+                            }
+                        }
+                        val tapLabel = stringResource(if (IslandStyle.overlayAction(gestures.getValue(IslandGesture.TAP)) == IslandAction.DISMISS) R.string.island_action_dismiss else R.string.open)
+                        val dismissLabel = stringResource(R.string.island_action_dismiss)
+                        val openLabel = stringResource(R.string.open)
+                        Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape(radius)).background(surface)
                         // Swipe a message or notification up to put it away early, like an iPhone banner.
-                        .pointerInput(popUp) {
-                            if (!popUp) return@pointerInput
+                        .pointerInput(popUp, gestures.getValue(IslandGesture.SWIPE_UP)) {
+                            if (!popUp || gestures.getValue(IslandGesture.SWIPE_UP) != IslandAction.DISMISS) return@pointerInput
                             var pulled = 0f
                             detectVerticalDragGestures(
                                 onDragStart = { pulled = 0f },
                                 onDragEnd = { if (pulled < -12.dp.toPx()) IslandEvents.dismiss() },
                             ) { change, dy -> change.consume(); pulled += dy }
                         }
-                        .clickable(onClickLabel = service.getString(R.string.open)) {
-                            (content as? IslandContent.Live)?.let { IslandListenerService.open(service, it.activity) }
-                            ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
-                        }
-                        .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }) {
-                        IslandPillContent(content, g.camW.dp, g.pillH.dp)
+                        .then(if (!customGestures) Modifier.clickable(onClickLabel = service.getString(R.string.open)) { open() }
+                            else Modifier.islandGestureInput(gestures) { _, action -> act(action) })
+                        .semantics {
+                            contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                            if (customGestures) {
+                                // Every action a gesture is set to is also a plain TalkBack action (the tap is the click).
+                                if (gestures.getValue(IslandGesture.TAP) != IslandAction.NOTHING) onClick(label = tapLabel) { act(gestures.getValue(IslandGesture.TAP)); true }
+                                customActions = IslandGesture.entries.map { IslandStyle.overlayAction(gestures.getValue(it)) }.distinct()
+                                    .filter { it == IslandAction.OPEN_APP || it == IslandAction.DISMISS }
+                                    .map { a -> CustomAccessibilityAction(if (a == IslandAction.DISMISS) dismissLabel else openLabel) { act(a); true } }
+                            }
+                        }) {
+                        IslandPillContent(content, g.wrapW.dp, g.pillH.dp)
                     } }
                 }
                 }
