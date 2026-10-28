@@ -34,6 +34,9 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -173,9 +176,52 @@ private const val SUGGESTIONS_KEPT = 8
 private const val COLOR_DOTS_MAX = 5
 
 internal data class RegionStats(val mean: Float, val p15: Float, val p85: Float, val r: Float, val g: Float, val b: Float)
+/**
+ * What Home draws over the picture before the clock does: the "dark appearance dims wallpaper" black over everything and
+ * the legibility scrim at the top and bottom edges. The clock measures its picture as it really looks, not as the file is.
+ */
+@Immutable
+internal data class HomeDarkening(val dim: Float = 0f, val scrim: HomeScrim = HomeScrim.None)
+
+internal val LocalHomeDarkening = compositionLocalOf { HomeDarkening() }
+
+/** How dark Home's own layers make the picture under [box] (fractions of the window, 0..1): the average over the box, 0 to 1. */
+internal fun HomeDarkening.alphaOver(box: Rect): Float {
+    if (box.isEmpty) return dim.coerceIn(0f, 1f)
+    val steps = 5
+    var total = 0f
+    for (n in 0 until steps) {
+        val y = box.top + (box.bottom - box.top) * (n + .5f) / steps
+        val top = if (scrim.top > 0f && y < HomeScrim.BAND) HomeScrim.alphaAt(scrim.top, y / HomeScrim.BAND) else 0f
+        val bottom = if (scrim.bottom > 0f && y > 1f - HomeScrim.BAND) HomeScrim.alphaAt(scrim.bottom, (1f - y) / HomeScrim.BAND) else 0f
+        // Two blacks at a and b compose to a + b - ab.
+        val s = top + bottom - top * bottom
+        total += dim + s - dim * s
+    }
+    return (total / steps).coerceIn(0f, 1f)
+}
+
+/** The same sample with [alpha] black over it: luminance falls with the square-ish law of light, color with the black itself. */
+internal fun ClockInkSample.darkenedBy(alpha: Float): ClockInkSample {
+    if (alpha <= 0f) return this
+    val keep = (1f - alpha.coerceIn(0f, 1f))
+    val light = keep.toDouble().pow(2.2).toFloat()
+    fun RegionStats.dim() = RegionStats(mean * light, p15 * light, p85 * light, r * keep, g * keep, b * keep)
+    return copy(under = under.dim(), whole = whole.dim())
+}
+
 internal data class ClockInkSample(val under: RegionStats, val whole: RegionStats, val suggestions: List<Int>,
     /** Built from Android's wallpaper colors, not the pixels under the clock: contrast there can't be measured. */
-    val estimated: Boolean = false)
+    val estimated: Boolean = false,
+    /**
+     * What Smart clock ink measured under the clock, on an [estimated] sample. It decides only the light or dark ink and the
+     * soft shade; every color (Wallpaper, Custom, the color dots, a saved `customIndex`) stays Android's wallpaper colors.
+     */
+    val measuredUnder: RegionStats? = null)
+
+/** [estimate] (Android's wallpaper colors) with what [measured] found under the clock; without an estimate the measurement stands alone. */
+internal fun withMeasuredUnder(estimate: ClockInkSample?, measured: ClockInkSample): ClockInkSample =
+    estimate?.copy(measuredUnder = measured.under) ?: measured
 
 /**
  * A sample for Android's own wallpaper, whose pixels no app can read: the three main colors Android shares with every app
@@ -310,14 +356,33 @@ internal fun ClockInkSample.wallpaperDotSelected(style: BigClockStyle): Boolean 
 }
 
 /** What `BigClockCard` draws: an ink and whether a soft dark halo goes behind the digits to keep it readable. */
-internal data class ClockInkResult(val color: Color, val shade: Boolean, val ratio: Float)
+internal data class ClockInkResult(val color: Color, val shade: Boolean, val ratio: Float, val shadeAlpha: Float = if (shade) CLOCK_SHADE_MIN else 0f)
+
+/** The softest and strongest the black halo behind the clock gets. */
+internal const val CLOCK_SHADE_MIN = .4f
+internal const val CLOCK_SHADE_MAX = .65f
+
+/** How dark the halo is ([alpha]) and the contrast white ink then holds ([ratio]) over the brightest 15% behind it. */
+internal data class ClockShade(val alpha: Float, val ratio: Float)
+
+/**
+ * A halo only as strong as the picture needs: dim the brightest 15% behind the clock until white ink reaches 4.5:1, but
+ * never softer than [CLOCK_SHADE_MIN] or stronger than [CLOCK_SHADE_MAX] (past that it is a filter, not a halo). A fixed 40%
+ * left a pale, mixed picture, such as an overcast sky with branches in front of it, at only 3:1.
+ */
+internal fun clockShade(p85: Float): ClockShade {
+    val brightestForWhite = 1.05f / 4.5f - .05f
+    val factor = (brightestForWhite / p85.coerceAtLeast(.0001f)).coerceIn(0f, 1f)
+    val alpha = (1f - factor.toDouble().pow(1.0 / 2.2).toFloat()).coerceIn(CLOCK_SHADE_MIN, CLOCK_SHADE_MAX)
+    return ClockShade(alpha, contrastRatio(1f, p85 * (1f - alpha).toDouble().pow(2.2).toFloat()))
+}
 
 private val DarkInk = FolioColors.SecondaryBackground
 
 internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fallbackDark: Boolean): ClockInkResult {
     // No picture to read (still sampling), or Android's wallpaper with Automatic or White: the whole-wallpaper ink, or
     // White when asked for. A color from Android's wallpaper gets the soft shade, since its contrast can't be measured.
-    if (sample == null || (sample.estimated && style.mode != "WALLPAPER" && style.mode != "CUSTOM"))
+    if (sample == null || (sample.estimated && sample.measuredUnder == null && style.mode != "WALLPAPER" && style.mode != "CUSTOM"))
         return ClockInkResult(if (style.mode != "WHITE" && fallbackDark) DarkInk else Color.White, false, 21f)
     when (style.mode) {
         "WALLPAPER" -> sample.wallpaperTint()?.let { return ClockInkResult(Color(it), sample.estimated, worstCase(luminance(it), sample.under)) }
@@ -327,17 +392,19 @@ internal fun resolveClockInk(style: BigClockStyle, sample: ClockInkSample?, fall
             if (argb != null) return ClockInkResult(Color(argb), sample.estimated, worstCase(luminance(argb), sample.under))
         }
     }
-    if (sample.estimated) return ClockInkResult(if (fallbackDark) DarkInk else Color.White, false, 21f)
-    val shadedWhite = contrastRatio(1f, sample.under.p85 * .6f.toDouble().pow(2.2).toFloat())
+    if (sample.estimated && sample.measuredUnder == null) return ClockInkResult(if (fallbackDark) DarkInk else Color.White, false, 21f)
+    // Smart clock ink's measurement, when there is one, decides light or dark and the shade; colors were chosen above.
+    val under = sample.measuredUnder ?: sample.under
+    val shade = clockShade(under.p85)
     if (style.mode == "WHITE") {
-        val ratio = contrastRatio(1f, sample.under.p85)
-        return if (ratio >= 4.5f) ClockInkResult(Color.White, false, ratio) else ClockInkResult(Color.White, true, shadedWhite)
+        val ratio = contrastRatio(1f, under.p85)
+        return if (ratio >= 4.5f) ClockInkResult(Color.White, false, ratio) else ClockInkResult(Color.White, true, shade.ratio, shade.alpha)
     }
     // Automatic (and Wallpaper/Custom falling back to it): whichever ink holds more contrast under the clock.
-    val (dark, ratio) = pickInk(sample.under)
+    val (dark, ratio) = pickInk(under)
     if (ratio >= 4.5f) return ClockInkResult(if (dark) DarkInk else Color.White, false, ratio)
     // Neither ink reaches 4.5:1 over a busy picture: a soft shade goes behind the digits, white ink over it.
-    return ClockInkResult(Color.White, true, shadedWhite)
+    return ClockInkResult(Color.White, true, shade.ratio, shade.alpha)
 }
 
 /**
@@ -349,6 +416,12 @@ internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? = when (t
     WallpaperColorSource.SYSTEM_PALETTE -> tone.palette!!.let { sampleFromWallpaperColors(it.accent1, listOf(it.accent2, it.accent3)) }
     WallpaperColorSource.NONE -> null
 }
+
+/** True while one of Folio's own sheets, pages, panels or Spotlight is over Home (or still fading off it). Set by MainActivity. */
+internal val LocalHomeCovered = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** Smart clock ink looks at Home only while Folio is in front and nothing of Folio's own is drawn over it, and never in Safe Mode. */
+internal fun shouldSampleClockInk(foregroundVisible: Boolean, covered: Boolean, safeMode: Boolean): Boolean = foregroundVisible && !covered && !safeMode
 
 /**
  * Samples the picture under [box] (fractions of the whole background, 0..1) whenever the background or the box
@@ -362,7 +435,25 @@ internal fun clockSampleFromTone(tone: WallpaperTone): ClockInkSample? = when (t
 internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: Float = 0f): ClockInkSample? {
     val context = LocalContext.current
     val tone = LocalWallpaperTone.current
-    if (tone.fromAndroid) return remember(tone, enabled) { if (enabled) clockSampleFromTone(tone) else null }
+    if (tone.fromAndroid) {
+        val estimate = remember(tone, enabled) { if (enabled) clockSampleFromTone(tone) else null }
+        // Smart clock ink: with its service on, a short-lived picture of Home replaces the estimate built from Android's
+        // wallpaper colors for the light or dark pick and the shade only (SmartClockInk); every color stays Android's.
+        // Off, or while Folio is not in front, the estimate stands, as it always did.
+        val smart by SmartInkService.connected.collectAsStateWithLifecycle()
+        val foreground by FolioForeground.visible.collectAsStateWithLifecycle()
+        val inFront = shouldSampleClockInk(foreground, LocalHomeCovered.current, SafeMode.active)
+        val tick by rememberMinuteTick()
+        val displayId = context.display?.displayId ?: 0
+        var measured by remember { mutableStateOf<ClockInkSample?>(null) }
+        LaunchedEffect(enabled && smart) { if (!(enabled && smart)) measured = null }
+        LaunchedEffect(box, tone, tick, inFront, enabled, smart) {
+            if (!enabled || !smart || !inFront || box.isEmpty) return@LaunchedEffect
+            val fresh = SmartClockInk.sample(box, displayId) ?: return@LaunchedEffect
+            measured = keepOrSwap(measured, fresh)
+        }
+        return if (enabled && smart) measured?.let { withMeasuredUnder(estimate, it) } ?: estimate else estimate
+    }
     val revision = LauncherBackgroundCache.revision.intValue
     var sample by remember { mutableStateOf<ClockInkSample?>(null) }
     LaunchedEffect(box, revision, enabled, windowAspect) {
@@ -372,7 +463,9 @@ internal fun rememberClockInkSample(box: Rect, enabled: Boolean, windowAspect: F
             runCatching { sampleClockRegion(bitmap, box, windowAspect) }.getOrNull()
         }
     }
-    return sample
+    // Home's dim and scrim are drawn over the picture, so the clock is judged against the picture as it looks on screen.
+    val darkening = LocalHomeDarkening.current.alphaOver(box)
+    return remember(sample, darkening) { sample?.darkenedBy(darkening) }
 }
 
 /** A one-tap look: a color mode, a weight, a typeface and a shadow, nothing else. */

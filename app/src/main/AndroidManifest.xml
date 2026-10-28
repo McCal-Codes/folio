@@ -101,25 +101,24 @@
             android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
             android:taskAffinity="com.mccal.folio.reply" android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize|stateVisible" />
-        <activity android:name=".ShadeShortcutActivity" android:exported="false"
+        <activity android:name=".ShadeShortcutNotifications" android:exported="true"
+            android:label="@string/shade_shortcut_notifications" android:icon="@mipmap/ic_launcher"
             android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
-            android:taskAffinity="com.mccal.folio.shade" android:launchMode="singleInstance" />
-        <activity-alias android:name=".ShadeShortcutNotifications" android:targetActivity=".ShadeShortcutActivity"
-            android:exported="true" android:label="@string/shade_shortcut_notifications" android:icon="@mipmap/ic_launcher">
-            <meta-data android:name="folio.shade.panel" android:value="NOTIFICATIONS" />
+            android:taskAffinity="com.mccal.folio.shade" android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
-        <activity-alias android:name=".ShadeShortcutQuickSettings" android:targetActivity=".ShadeShortcutActivity"
-            android:exported="true" android:label="@string/shade_shortcut_quick_settings" android:icon="@mipmap/ic_launcher">
-            <meta-data android:name="folio.shade.panel" android:value="QUICK_SETTINGS" />
+        </activity>
+        <activity android:name=".ShadeShortcutQuickSettings" android:exported="true"
+            android:label="@string/shade_shortcut_quick_settings" android:icon="@mipmap/ic_launcher"
+            android:theme="@style/Theme.Folio.FoldBridge" android:excludeFromRecents="true" android:noHistory="true"
+            android:taskAffinity="com.mccal.folio.shade" android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
         <activity android:name=".FoldBridgeActivity" android:exported="false"
             android:theme="@style/Theme.Folio.FoldBridge"
             android:taskAffinity="com.mccal.folio.foldbridge" android:excludeFromRecents="true"
@@ -149,6 +148,17 @@
             <meta-data android:name="android.accessibilityservice"
                 android:resource="@xml/system_shade_accessibility_service" />
         </service>
+        <service android:name=".SmartInkService"
+            android:label="@string/smart_ink_service_label"
+            android:description="@string/smart_ink_service_description"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice"
+                android:resource="@xml/smart_ink_service" />
+        </service>
         <activity android:name=".MainActivity" android:exported="true"
             android:launchMode="singleTask" android:resizeableActivity="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density"
@@ -165,7 +175,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="folio" android:host="package" />
                 <data android:scheme="folio" android:host="source" />
-                <data android:scheme="folio" android:host="early" />
             </intent-filter>
             <!-- Settings › Apps › Default apps › Home app (gear) and App info › Additional settings open Folio's settings. -->
             <intent-filter>
@@ -244,7 +253,7 @@
         </activity>
         <service android:name=".MarketRefreshJob" android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
-        <!-- folio://redeem?c=… from a supporter email: the code is checked on the phone, so a bad link is simply refused. -->
+        <!-- folio://redeem?c=… (and the older folio://early?c=…) from a supporter email: the code is checked on the phone, so a bad link is simply refused. -->
         <activity android:name=".RedeemActivity" android:exported="true" android:excludeFromRecents="true"
             android:theme="@style/Theme.Folio.FoldBridge" android:taskAffinity="com.mccal.folio.redeem" android:noHistory="true"
             android:label="@string/label_redeem">
@@ -253,6 +262,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="folio" android:host="redeem" />
+                <data android:scheme="folio" android:host="early" />
             </intent-filter>
         </activity>
         <!-- "Add to Home Screen" for widgets an app asks to pin (only delivered to the default Home app). -->

@@ -16,6 +16,11 @@ class RedeemLinkTest {
         assertEquals(code, redeemCode(" folio://redeem?c=${code.replace("-", "%2D")} "))
     }
 
+    @Test fun `the older early link is read the same as redeem`() {
+        assertEquals(code, redeemCode("folio://early?c=$code"))
+        assertEquals(code, redeemCode("folio://early/$code"))
+    }
+
     @Test fun `anything else is ignored`() {
         assertNull(redeemCode(null))
         assertNull(redeemCode("https://ko-fi.com/mccal"))

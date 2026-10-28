@@ -107,7 +107,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
             val gap = with(density) { 12.dp.toPx() }
             var panelH by remember { mutableIntStateOf(0) }
             val iconCenterX = icon?.let { it.exactCenterX() - origin.x } ?: screenW / 2
-            val left = (iconCenterX - panelW / 2).coerceIn(gap, screenW - panelW - gap)
+            val left = popupLeft(iconCenterX, panelW, screenW, gap)
             val iconTop = icon?.let { it.top - origin.y } ?: with(density) { maxHeight.toPx() } / 2
             // Above the icon (like Velox) unless there isn't room, then below it.
             val above = iconTop - gap - panelH > with(density) { 56.dp.toPx() }

@@ -118,6 +118,18 @@ internal fun marketTabs(widthDp: Float, heightDp: Float, classScale: Float = 1f,
     }
 }
 
+/** The Market sidebar's width at the default text size, in dp. */
+internal const val MARKET_SIDEBAR_DP = 180f
+
+/**
+ * The Market sidebar's width at [fontScale]: [MARKET_SIDEBAR_DP] up to the default size, then growing with the text up to
+ * [CHROME_TEXT_CAP] (234 dp), where its labels stop growing (A11Y-13). The labels are single words that must not break
+ * inside, so the room they need grows with them; past the cap the labels stay put and so does the sidebar. A font scale that
+ * is not a number leaves it alone.
+ */
+internal fun marketSidebarWidthDp(fontScale: Float): Float =
+    MARKET_SIDEBAR_DP * (if (fontScale.isNaN()) 1f else fontScale.coerceIn(1f, CHROME_TEXT_CAP))
+
 /**
  * How many columns Settings may use where something else already takes part of the window: the Market's sidebar,
  * when Settings is its Settings tab. Settings measures only its own box, so without this it would add its list and

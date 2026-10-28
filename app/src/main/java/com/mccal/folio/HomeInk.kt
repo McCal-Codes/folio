@@ -55,6 +55,13 @@ internal data class WallpaperTone(val prefersDarkText: Boolean = false, val prim
 
 internal val LocalWallpaperTone = staticCompositionLocalOf { WallpaperTone() }
 
+/**
+ * The tone of the flat surface Home draws when there is no picture ([FLAT_BACKGROUND_LIGHT], [FLAT_BACKGROUND_DARK]): dark ink on
+ * the light one, white on the dark one. Automatic ink follows it, as it follows a picture's tone (27 Oct sweep, F03: white labels
+ * on the near-white surface of a fresh install).
+ */
+internal fun flatBackgroundTone(darkAppearance: Boolean) = WallpaperTone(prefersDarkText = !darkAppearance)
+
 internal fun WallpaperColors?.tone(fromAndroid: Boolean = false, palette: SystemPalette? = null) = WallpaperTone(prefersDarkText(),
     this?.primaryColor?.toArgb(), this?.secondaryColor?.toArgb(), this?.tertiaryColor?.toArgb(), fromAndroid, palette)
 
@@ -109,7 +116,7 @@ internal fun WallpaperManager.androidWallpaperTone(context: android.content.Cont
  * from the picture itself. No picture at all: white text, no tint.
  */
 @Composable
-internal fun rememberWallpaperTone(systemWallpaper: Boolean): WallpaperTone {
+internal fun rememberWallpaperTone(systemWallpaper: Boolean, darkAppearance: Boolean = false): WallpaperTone {
     val context = LocalContext.current
     if (systemWallpaper) {
         val manager = remember(context) { WallpaperManager.getInstance(context) }
@@ -131,9 +138,12 @@ internal fun rememberWallpaperTone(systemWallpaper: Boolean): WallpaperTone {
         return tone
     }
     val revision = LauncherBackgroundCache.revision.intValue
-    val tone by produceState(WallpaperTone(), revision) {
+    // No picture: Home draws a flat surface, light in light appearance, so the first frame already has the right ink.
+    val flat = flatBackgroundTone(darkAppearance)
+    val none = remember(revision, context) { !launcherBackgroundEnabled(context) }
+    val tone by produceState(if (none) flat else WallpaperTone(), revision, darkAppearance) {
         value = withContext(Dispatchers.Default) {
-            val photo = loadLauncherBackground(context)?.takeUnless { it.isRecycled } ?: return@withContext WallpaperTone()
+            val photo = loadLauncherBackground(context)?.takeUnless { it.isRecycled } ?: return@withContext flat
             runCatching { WallpaperColors.fromBitmap(photo).tone() }.getOrDefault(WallpaperTone())
         }
     }
