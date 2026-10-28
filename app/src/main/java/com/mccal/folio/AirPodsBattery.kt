@@ -44,6 +44,8 @@ internal data class AirPodsBattery(
         SYSTEM_METADATA,
         /** Only the single level the headset sent over the call profile (Apple's battery AT command), 10% steps. */
         HEADSET_REPORT,
+        /** The AirPods' own Bluetooth LE advertisement, read with a short scan and no root (AirPodsBle.kt), 10% steps. */
+        BLE_ADVERTISEMENT,
     }
     val hasPerBud get() = left != null || right != null || case != null
 }
