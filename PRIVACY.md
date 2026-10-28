@@ -18,6 +18,8 @@ Notification access (optional) lets the Dynamic Island and Notification Center s
 
 Contacts (optional) are searched on the device from Spotlight only. When Bluetooth headphones or a speaker connects, its name is shown on Home or in the island; the name comes from Android's list of audio devices, needs no permission and isn't stored. Folio remembers the last apps you launched on the device to suggest them in Spotlight, and learns how fast you open and close the phone to pace the fold animation; both stay in Folio’s private storage.
 
+AirPods battery with root (optional, System Bridge, off until you turn it on) reads Android's own Bluetooth record of the AirPods paired with this phone, only when you ask or the headphones card shows. It does not scan, so nothing about anyone else's devices is seen. The reading is kept in memory only and never sent; the report you can copy to the clipboard replaces Bluetooth addresses and shortens device names unless you choose to include them.
+
 Android controls widget-binding approval and Home-app selection. Providers can require separate setup or permissions.
 
 ## The Market (0.6.6, for supporters)

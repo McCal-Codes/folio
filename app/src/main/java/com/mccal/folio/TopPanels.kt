@@ -779,7 +779,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // What the header and the strip take; the rest is for the pages. Controls that do not fit go on another page, never into a scroll (PNL-1).
         val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
-        val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn) }
+        // With the Media page switched off the sliders move onto a Controls page instead of vanishing (they are never behind a preference).
+        val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn, options.mediaPage) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn, options.mediaPage) }
         // A page is shown when the first cannot hold what it holds (the automatic hiding) and its switch is on.
         val neededPages = remember(plan, pagesAvailable, cell, gap, focusOn, dedupe) { ccExtraPages(plan, pagesAvailable?.value, cell.value, gap.value, focusOn, dedupe) }
         val extraPages = remember(neededPages, options.mediaPage, options.connectivityPage) { ccShownExtraPages(neededPages, options) }
@@ -956,18 +957,23 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         // Focus: see focusModule.
                         if (first && focusOn && plan.focusOnFirst) focusModule()
                         // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
-                        if (first && cols == 4 && plan.slidersOnFirst) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
-                                pageControls.take(4).chunked(2).forEach { pair ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                        pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                        // (With the Media page off and no room on the first page, the same block leads the next Controls page; with no control to put beside them the sliders stand in the middle.)
+                        if (cols == 4 && spec.index == plan.sliderPage) {
+                            val beside = pageControls.take(4)
+                            Row(if (beside.isEmpty()) Modifier.width(gridWidth) else Modifier,
+                                horizontalArrangement = if (beside.isEmpty()) Arrangement.Center else Arrangement.spacedBy(gap)) {
+                                if (beside.isNotEmpty()) Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
+                                    beside.chunked(2).forEach { pair ->
+                                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                                        }
                                     }
                                 }
+                                sliders(span(2))
                             }
-                            sliders(span(2))
                         }
                         // The rest, one row of the grid at a time
-                        (if (cols >= 6 || !first || !plan.slidersOnFirst) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
+                        (if (cols >= 6 || spec.index != plan.sliderPage) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                                 row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
                             }

@@ -92,7 +92,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, ISLAND_ADVANCED, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP, STORAGE;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -100,9 +100,9 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         LIBRARY_TWEAK -> TWEAK_LIBRARY // a tweak opened from the Tweak Library goes back there
         FOLD_TWEAK -> FOLD // Duet opened from Fold & Displays goes back there
         FOCUS_MODE -> FOCUS
-        ISLAND_APPS -> ISLAND
+        ISLAND_APPS, ISLAND_ADVANCED -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
-        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, PERMISSIONS, SUPPORT -> GENERAL
+        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, STORAGE, PERMISSIONS, SUPPORT -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE, SCREENSHOT_SWAP -> ADVANCED
         WHAT_TO_TEST -> HELP
@@ -125,6 +125,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         GESTURES -> R.string.gestures_actions
         FOLD -> R.string.fold_displays
         BACKUP -> R.string.backup
+        STORAGE -> R.string.storage
         HELP -> R.string.help
         SIDE_KEY -> R.string.side_key
         LOCK -> R.string.lock_cover
@@ -144,6 +145,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         TODAY -> R.string.today_view
         ISLAND -> R.string.dynamic_island
         ISLAND_APPS -> R.string.other_notifications
+        ISLAND_ADVANCED -> R.string.island_advanced
         PERMISSIONS -> R.string.privacy_permissions
         COMING_SOON -> R.string.roadmap
         TWEAK_LIBRARY -> R.string.tweak_library
@@ -655,6 +657,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 CardNote(stringResource(R.string.island_adjust_note))
                                 if (adjusting) IslandAdjustDialog(onDone = { adjusting = false })
                             }
+                            // Advanced island: color, corner radius, animation speed, haptics and gestures, on their own page (IslandAdvanced.kt).
+                            // Gated apart from Adjust island (FeatureGate.ISLAND_ADVANCED, opens in 0.7.0).
+                            if (remember { FeatureGate.ISLAND_ADVANCED.isOpen(islandContext) }) {
+                                CardAction(stringResource(R.string.island_advanced), onClick = { onPage(CustomizationPage.ISLAND_ADVANCED) })
+                                CardNote(stringResource(R.string.island_advanced_note))
+                            }
                             CardAction(stringResource(R.string.put_the_island_back_at_the_camera), onClick = { IslandPosition.reset(islandContext); IslandSize.reset(islandContext); IslandNudge.reset(islandContext) })
                             CardNote(stringResource(R.string.long_press_and_drag_the_island_to_move_i))
                         }
@@ -812,6 +820,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.CREDITS -> CreditsPage()
+                CustomizationPage.STORAGE -> StoragePage()
                 CustomizationPage.SUPPORTERS -> SupportersPage()
                 CustomizationPage.GENERAL -> {
                     val generalContext = androidx.compose.ui.platform.LocalContext.current
@@ -836,6 +845,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                 runCatching { generalContext.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_LOCALE_SETTINGS,
                                     android.net.Uri.parse("package:${generalContext.packageName}")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                             }
+                            MenuDivider()
+                        }
+                        // Storage: supporters and Folio Dev first (FeatureGate.STORAGE).
+                        if (remember { FeatureGate.STORAGE.isOpen(generalContext) }) {
+                            TweakRow(Icons.Rounded.Storage, FolioColors.Value.Gray, stringResource(R.string.storage), "customization-storage") { onPage(CustomizationPage.STORAGE) }
                             MenuDivider()
                         }
                         TweakRow(Icons.Rounded.Save, FolioColors.Value.Gray, stringResource(R.string.backup), "customization-backup") { onPage(CustomizationPage.BACKUP) }
@@ -875,6 +889,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                     CardNote(stringResource(R.string.folio_is_free_and_always_will_be_if_it_m), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                 }
+                CustomizationPage.ISLAND_ADVANCED -> IslandAdvancedPage()
                 CustomizationPage.ISLAND_APPS -> IslandAlertApps(state.islandAlertAppsOff, state.messagesAvoidDouble, model::setIslandAlertApp)
                 CustomizationPage.HELP -> {
                     // Getting help lives here rather than as more rows in the main list (fewer choices there).
@@ -1413,6 +1428,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_island_and_dock_in_every_app, R.string.settings_keywords_island_and_dock_in_every_app, CustomizationPage.ISLAND),
     Triple(R.string.settings_hide_the_island_in_full_screen, R.string.settings_keywords_hide_the_island_in_full_screen, CustomizationPage.ISLAND),
     Triple(R.string.island_adjust, R.string.settings_keywords_island_adjust, CustomizationPage.ISLAND),
+    Triple(R.string.island_advanced, R.string.settings_keywords_island_advanced, CustomizationPage.ISLAND),
     Triple(R.string.notification_center, R.string.settings_keywords_notification_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.control_center, R.string.settings_keywords_control_center, CustomizationPage.NOTIFICATIONS),
     Triple(R.string.spotlight, R.string.settings_keywords_spotlight, CustomizationPage.SEARCH),
@@ -1436,6 +1452,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.screenshot_mode, R.string.settings_keywords_screenshot_mode, CustomizationPage.ADVANCED),
     Triple(R.string.system_bridge, R.string.settings_keywords_system_bridge, CustomizationPage.SYSTEM_BRIDGE),
     Triple(R.string.screenshot_swap_apps, R.string.settings_keywords_screenshot_swap, CustomizationPage.SCREENSHOT_SWAP),
+    Triple(R.string.storage, R.string.settings_keywords_storage, CustomizationPage.STORAGE),
     Triple(R.string.settings_backup_restore, R.string.settings_keywords_backup_restore, CustomizationPage.BACKUP),
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
@@ -1608,8 +1625,16 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.bridge_rootgrant_undo to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_grant_copy_revoke to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.airpods_refresh to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.airpods_on_card to CustomizationPage.SYSTEM_BRIDGE,
+    R.string.airpods_report to CustomizationPage.SYSTEM_BRIDGE,
     R.string.copy_diagnostics to CustomizationPage.ADVANCED,
     R.string.share_latest to CustomizationPage.ADVANCED,
+    R.string.storage_free_up_space to CustomizationPage.STORAGE,
+    R.string.storage_settings to CustomizationPage.STORAGE,
+    R.string.storage_files to CustomizationPage.STORAGE,
+    R.string.storage_downloads to CustomizationPage.STORAGE,
+    R.string.storage_show_app_sizes to CustomizationPage.STORAGE,
     R.string.performance_log to CustomizationPage.ADVANCED,
     R.string.performance_start to CustomizationPage.ADVANCED,
     R.string.performance_stop to CustomizationPage.ADVANCED,
@@ -1661,8 +1686,12 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
         // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
         SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // Storage is held back for supporters and Folio Dev (FeatureGate.STORAGE), so search doesn't offer it to anyone else.
+            .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
             // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
+            .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
             .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
             // The deeper Control Center rows are on the page only while their gate is open, so search only finds them then.
@@ -3132,7 +3161,8 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
     var off by remember { mutableStateOf(SystemBridge.isOff(context)) }
     val safe = SafeMode.active
     val broker = remember { SystemBridge.broker(context) }
-    fun read() = broker.states()
+    val airPodsOpen = remember { FeatureGate.AIRPODS_ROOT.isOpen(context) }
+    fun read() = SystemBridge.visibleStates(broker.states(), airPodsOpen)
     var states by remember { mutableStateOf(read()) }
     var rootState by remember { mutableStateOf(RootHingeStore.state(context)) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -3211,6 +3241,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
             val cdRoot = stringResource(R.string.bridge_details_root_cd)
             CardAction(stringResource(R.string.bridge_details), Modifier.fillMaxWidth().semantics { contentDescription = cdRoot }.testTag("bridge-details-root"), onClick = { dialog = "details-root" })
         }
+        if (airPodsOpen) AirPodsBridgeCard(off, safe, rootState)
         SettingsCard(stringResource(R.string.bridge_grant_title)) {
             CardNote(stringResource(R.string.bridge_grant_note))
             SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-grant-paused")) }
@@ -3319,6 +3350,56 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
             }
         }
         CardNote(stringResource(R.string.bridge_recent_note))
+    }
+}
+
+/**
+ * AirPods battery from the system (docs/airpods-root-tier.md): the current reading and when it was read, Refresh, the switch for the
+ * headphones card, and a redacted report to copy. Nothing reads until Refresh is tapped or the card shows with its switch on.
+ */
+@Composable private fun AirPodsBridgeCard(off: Boolean, safe: Boolean, rootState: RootState) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val ui by AirPodsRoot.state.collectAsState()
+    val ready = rootState == RootState.READY
+    SettingsCard(stringResource(R.string.airpods_root_title)) {
+        CardNote(stringResource(R.string.airpods_root_note))
+        SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-airpods-paused")) }
+        val read = ui.last ?: if (!ready) AirPodsRead.NotAllowed else null
+        val done = read as? AirPodsRead.Done
+        val numbers = (done?.reading as? AirPodsReading.Found)?.battery?.let { AirPodsText.line(context, it) }
+        val summary = AirPodsText.summary(read, ui.running)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-now"), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.airpods_now), Modifier.padding(end = FolioSpace.SMALL.dp), style = MaterialTheme.typography.bodyLarge)
+            Text(numbers ?: stringResource(summary ?: R.string.airpods_not_read), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
+        val at = (read as? AirPodsRead.Done)?.atMillis ?: (read as? AirPodsRead.Failed)?.atMillis
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-last"), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.airpods_last_read), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Text(at?.let { android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(it)) } ?: stringResource(R.string.airpods_never),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val canRun = ready && !off && !safe && !ui.running
+        CardAction(stringResource(R.string.airpods_refresh), Modifier.fillMaxWidth().testTag("bridge-airpods-refresh"), enabled = canRun, onClick = { AirPodsRoot.refresh(context) })
+        var onCard by remember { mutableStateOf(AirPodsRoot.showOnCard(context)) }
+        SettingsSwitch(stringResource(R.string.airpods_on_card), onCard, { on -> onCard = on; AirPodsRoot.setShowOnCard(context, on) }, "bridge-airpods-card")
+        CardNote(stringResource(R.string.airpods_on_card_note))
+        var menu by remember { mutableStateOf(false) }
+        var copied by remember { mutableStateOf(false) }
+        Box {
+            CardAction(stringResource(R.string.airpods_report), Modifier.fillMaxWidth().testTag("bridge-airpods-report"), enabled = canRun || ui.last is AirPodsRead.Done,
+                onClick = { menu = true })
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.airpods_report_hidden)) }, modifier = Modifier.testTag("bridge-airpods-copy"), onClick = {
+                    menu = false; AirPodsRoot.copyReport(context, keepNames = false) { copied = true }
+                })
+                DropdownMenuItem(text = { Text(stringResource(R.string.airpods_report_names)) }, modifier = Modifier.testTag("bridge-airpods-copy-names"), onClick = {
+                    menu = false; AirPodsRoot.copyReport(context, keepNames = true) { copied = true }
+                })
+            }
+        }
+        if (copied) Text(stringResource(R.string.airpods_copied), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = FolioSpace.SMALL.dp).testTag("bridge-airpods-copied"))
+        CardNote(stringResource(R.string.airpods_report_note))
     }
 }
 

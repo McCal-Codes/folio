@@ -566,10 +566,13 @@ class MainActivity : ComponentActivity() {
     private fun closeOverlays() { topPanel.value = null; spotlightVisible.value = false }
 
     /**
-     * The Home button is the way out of anything. Setup is shown again next time (or from Settings › Help › Show Welcome
-     * Again), so an overlay can never leave Home stuck behind it with no way back.
+     * The Home button is the way out of anything, so an overlay can never leave Home stuck behind it with no way back. Leaving
+     * the Welcome this way is "Skip for now": it does not come back by itself (a font size change recreates the activity), and
+     * Finish setting up still lists what is left, and Settings › Help › Show Welcome Again opens it at the page you left.
      */
-    private fun closeEverything() { closeOverlays(); showFirstRun.value = false; lockCoverVisible.value = false }
+    private fun closeEverything() {
+        closeOverlays(); setupExperience.deferByHome(showFirstRun.value); showFirstRun.value = false; lockCoverVisible.value = false
+    }
 
     internal fun openSystemShade(panel: ShadePanel) {
         if (model.state.value.folioPanels) topPanel.value = panel else openAndroidShade(panel)

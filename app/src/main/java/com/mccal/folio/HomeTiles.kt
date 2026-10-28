@@ -294,7 +294,11 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             }
             if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale)
         }
-        if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = (LocalLabelSize.current.sp * glanceFontFactor(LocalDensity.current.fontScale)).sp, maxLines = 1,
+        // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
+        // cell the larger the font, under the Search pill at 200%.
+        val labelFactor = glanceFontFactor(LocalDensity.current.fontScale)
+        if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = (LocalLabelSize.current.sp * labelFactor).sp,
+            lineHeight = (LocalLabelSize.current.lineSp * labelFactor).sp, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
