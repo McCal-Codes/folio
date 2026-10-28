@@ -431,7 +431,7 @@
           "icon": "notifications",
           "color": "#FF453A",
           "title": "Notification Center and Control Center, your way",
-          "detail": "Notification Center in sections, a card or side by side on the unfolded screen. Control Center fills the window in pages and has a look you choose. A pull from the top of any app, a one-hand shortcut or a Routine opens them over any app, with a blur behind them even where the phone will not blur windows.",
+          "detail": "Notification Center in sections, a card or side by side when unfolded. Control Center fills the window in pages and has a look you choose. A pull from the top of any app opens them over it, with a blur behind them even where the phone won't blur.",
           "status": "building",
           "beta": true,
           "inBeta": 5
