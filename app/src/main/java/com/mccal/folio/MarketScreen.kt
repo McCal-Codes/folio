@@ -869,7 +869,7 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     var rowHeight by remember { mutableIntStateOf(0) }
     val gap = with(LocalDensity.current) { FolioSpace.HAIR.dp.toPx() }
     Column(
-        Modifier.width(180.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)
+        Modifier.width(marketSidebarWidthDp(LocalDensity.current.fontScale).dp).fillMaxHeight().background(FolioColors.SecondaryBackground)
             .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp),
     ) {
@@ -900,9 +900,12 @@ private fun MarketSidebar(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    stringResource(tab.label), color = if (on) Color.White else Color.White.copy(alpha = .85f), fontSize = FolioType.SUBHEAD.sp,
+                    stringResource(tab.label), color = if (on) Color.White else Color.White.copy(alpha = .85f),
+                    // A tab's name is a short word: it follows the font to 1.3 times with the sidebar growing to hold it (A11Y-13),
+                    // and it never breaks inside a word ("Feature" / "d" at 200%); one line, ending in an ellipsis if still too long.
+                    fontSize = cappedSp(FolioType.SUBHEAD),
                     fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
         }

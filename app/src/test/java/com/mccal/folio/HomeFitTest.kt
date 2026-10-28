@@ -31,10 +31,17 @@ class HomeFitTest {
         }
     }
 
+    /**
+     * What LauncherScreen passes as the label's height at [fontScale]: the standard label's line, grown with the system font only to
+     * the Home label cap of 130% (A11Y-13, glanceFontFactor), and the 6 dp the tile keeps around it. 20 dp at the default size.
+     */
+    private fun homeLabelHeight(fontScale: Float) = LabelSize.STANDARD.lineSp * fontScale.coerceAtLeast(.1f).coerceAtMost(GLANCE_MAX_FONT_SCALE) + 6f
+
     /** Home as the launcher asks for it: the base bottom space, and the controls' real space (Home app, or the Preview bar). */
     private fun geo(w: Float, h: Float, duo: Boolean, labels: Boolean = true, rows: Int = BASE_APP_ROWS, automatic: Boolean = false, preview: Boolean = false,
-        fill: Boolean = false, preset: LayoutPreset = LayoutPreset(), real: Boolean = false): HomeGeometry {
+        fill: Boolean = false, preset: LayoutPreset = LayoutPreset(), real: Boolean = false, fontScale: Float = 1f): HomeGeometry {
         fun make(appRows: Int, fillSpace: Boolean) = homeGeometry(w, h, preset, labels, statusHeight = if (fitsRegularHomeLayout(w, h)) 180f else 160f,
+            labelHeight = homeLabelHeight(fontScale),
             homeBottomSpace = if (real) homeControlsSpace(!preview, 0f) else if (preview) 88f else 44f, controlsSpace = homeControlsSpace(!preview, 0f), appRows = appRows, fillSpace = fillSpace,
             widgetsFillRows = fill, duoSpacing = duo, shrinkIconsForRows = rows > BASE_APP_ROWS)
         return if (automatic) make(make(BASE_APP_ROWS, false).fitAppRows, true) else make(rows, false)
@@ -110,6 +117,33 @@ class HomeFitTest {
             assertTrue("edit mode, preview=$preview duo=$duo: the page ends $end, the page limit is ${limit(g, h, preview)}", end <= limit(g, h, preview) + 0.5f)
             // A bigger text size widens the bar's pills: then they reach over the grid and it keeps its room.
             assertTrue("at 200% text the bar needs its room", !editEnd(g, w, 2f, p).second)
+        }
+    }
+
+    /**
+     * 27 Oct, Fold 8 inner screen (750 x 800 dp upright, and the windows around it) at 200% font: the folder row's names sat under the
+     * Search pill. The label is counted at the Home cap of 130%, not at 200%; with it, the four rows still clear the controls where the
+     * window has the height for them, and a row is never shorter than its icon and label.
+     */
+    @Test fun `at 200 percent text the four rows still clear the controls and hold their labels`() {
+        assertEquals("the default size is the old 20 dp", 20f, homeLabelHeight(1f), 0.001f)
+        assertEquals("the label stops growing at 130%", homeLabelHeight(1.3f), homeLabelHeight(2f), 0f)
+        for (preview in listOf(false, true)) for (duo in listOf(false, true)) {
+            val g = geo(750f, 800f, duo, preview = preview, fontScale = 2f)
+            val p = place(g, 800f, preview, BASE_APP_ROWS)
+            assertEquals("750x800 preview=$preview duo=$duo: every row reachable (ends ${p.end}, limit ${limit(g, 800f, preview)})", BASE_APP_ROWS, p.reachableRows)
+            assertTrue("a row holds its icon ${g.iconSize} and the 200% label line", g.rowHeight >= g.iconSize + homeLabelHeight(2f))
+        }
+        forEachWindow { tag, w, h ->
+            for (preview in listOf(false, true)) for (duo in listOf(false, true)) {
+                val g = geo(w, h, duo, preview = preview, fontScale = 2f)
+                val p = place(g, h, preview, BASE_APP_ROWS)
+                val name = "$tag at 200% preview=$preview duo=$duo"
+                val room = h - 16f - limitShortfall(g, h, preview)
+                assertTrue("$name row ${g.rowHeight} icon ${g.iconSize}", g.rowHeight >= 48f && g.iconSize >= LAST_RESORT_ICON)
+                assertTrue("$name dock inside", g.dockTop >= 8f && g.dockTop + g.dockHeight <= h + 0.01f)
+                if (room >= floorHeight(g) + 4f * (homeLabelHeight(2f) - 20f)) assertEquals("$name reachable rows (page ends ${p.end}, limit ${limit(g, h, preview)})", BASE_APP_ROWS, p.reachableRows)
+            }
         }
     }
 
