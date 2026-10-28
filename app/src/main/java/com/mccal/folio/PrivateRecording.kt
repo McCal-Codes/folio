@@ -80,7 +80,7 @@ internal class PrivateViewState(private val scope: CoroutineScope, private val o
         if (next) startedMutable.tryEmit(Unit)
     }
 
-    companion object { const val OFF_DELAY_MS = 1_000L; const val ACTIVITY = "activity"; const val OVERLAY = "overlay" }
+    companion object { const val OFF_DELAY_MS = 1_000L; const val ACTIVITY = "activity"; const val OVERLAY = "overlay"; const val DISCOVER = "discover" }
 }
 
 /**

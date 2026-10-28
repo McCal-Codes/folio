@@ -37,6 +37,17 @@ class PrivateRecordingTest {
         assertFalse("turning the switch off ends it at once", st.on.value)
     }
 
+    @Test fun `Home stopping does not clear what the Discover window still reports`() = runTest {
+        val st = PrivateViewState(this, 1_000)
+        st.setEnabled(true)
+        st.report(true, PrivateViewState.DISCOVER)
+        st.report(true, PrivateViewState.ACTIVITY)
+        st.detach(PrivateViewState.ACTIVITY)
+        assertTrue("Home went away while Discover is still recorded", st.on.value)
+        st.detach(PrivateViewState.DISCOVER)
+        assertFalse("with no window left listening nothing says it is recorded", st.on.value)
+    }
+
     @Test fun `it goes on at once and off only after a steady second`() = runTest {
         val st = PrivateViewState(this, 1_000)
         st.setEnabled(true)
