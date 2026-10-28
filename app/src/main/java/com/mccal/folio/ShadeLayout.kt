@@ -125,6 +125,13 @@ internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeigh
 }
 
 /** The rows of cells page [index] of the plan uses, for the height the pager is given. */
+/**
+ * The rows the "Add a control" gallery takes below the last Controls page while editing: its caption (counted as one row, which is
+ * more than it needs) and a row of the grid for every [columns] controls not in Control Center yet. Without them in the page height
+ * the pager cut the gallery off and a removed control could not be added back.
+ */
+internal fun ccEditGalleryRows(unused: Int, columns: Int): Int = 1 + (unused + columns.coerceAtLeast(1) - 1) / columns.coerceAtLeast(1)
+
 internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean): Int {
     val n = plan.perPage[index]
     fun rowsOf(count: Int, per: Int) = (count + per - 1) / per
