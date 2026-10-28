@@ -210,9 +210,15 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
     val dockArray = root.getJSONArray("dock")
     require(dockArray.length() in MIN_DOCK_SLOTS..MAX_DOCK_SLOTS)
     val rawDock = List(dockArray.length()) { index -> if (dockArray.isNull(index)) null else dockArray.getString(index) }
-    val surfaceApps = (rawSlots + rawLeadingSlots).filterNotNull().filterNot(::isReservedFolderId) + rawDock.filterNotNull() +
-        importedFolders.flatMap(FolderEntry::appIds)
-    require(surfaceApps.distinct().size == surfaceApps.size) { "An app shortcut appears more than once" }
+    // The same rules Folio's own saved layout is held to (LauncherModel): an app on Home may also be in the dock, as a fresh setup puts
+    // Phone, Chrome and Messages in both, so a backup Folio wrote can always be restored. Everything else still appears once.
+    val dockApps = rawDock.filterNotNull()
+    val homeApps = (rawSlots + rawLeadingSlots).filterNotNull().filterNot(::isReservedFolderId) + importedFolders.flatMap(FolderEntry::appIds)
+    require(homeApps.distinct().size == homeApps.size && dockApps.distinct().size == dockApps.size) { "An app shortcut appears more than once" }
+    val folderApps = importedFolders.flatMap(FolderEntry::appIds).toSet()
+    require(dockApps.none { it in folderApps }) { "An app shortcut appears more than once" }
+    val leadingApps = rawLeadingSlots.filterNotNull().filterNot(::isReservedFolderId).toSet()
+    require(dockApps.none { it in leadingApps }) { "An app shortcut appears more than once" }
     val folderResults = importedFolders.associate { folder -> folder.id to folder.copy(appIds = folder.appIds.mapNotNull(::importedApp)) }
     val folders = folderResults.values.filter { it.appIds.size >= 2 }
     val slots = rawSlots.map { value -> when {

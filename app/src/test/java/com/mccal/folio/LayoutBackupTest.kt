@@ -73,6 +73,22 @@ class LayoutBackupTest {
         assertEquals(4, preview.appCount)
     }
 
+    @Test fun `an app on Home and in the dock at once is restored, as a fresh setup puts it`() {
+        val both = state.copy(homeSlots = MutableList<String?>(HOME_CELLS) { null }.apply { this[0] = home.id; this[1] = docked.id; this[2] = folder.id })
+        val preview = decodeLayoutBackup(encodeLayoutBackup(both, emptyList(), "this-phone"), both.apps, emptyList(), "this-phone")
+        assertEquals(both.dock, preview.layout.dock)
+        assertTrue(docked.id in preview.layout.slots)
+    }
+
+    @Test fun `an app twice on Home, twice in the dock, or in a folder and the dock is still refused`() {
+        fun refuses(change: LauncherState): Boolean = runCatching {
+            decodeLayoutBackup(encodeLayoutBackup(change, emptyList(), "this-phone"), change.apps, emptyList(), "this-phone")
+        }.isFailure
+        assertTrue("twice on Home", refuses(state.copy(homeSlots = MutableList<String?>(HOME_CELLS) { null }.apply { this[0] = home.id; this[1] = home.id; this[2] = folder.id })))
+        assertTrue("twice in the dock", refuses(state.copy(dock = listOf(docked.id, docked.id, null, null))))
+        assertTrue("in a folder and the dock", refuses(state.copy(dock = listOf(inFolderA.id, null, null, null))))
+    }
+
     // The outside review (20 Oct 2026, bug 2): export never checked what import requires, so a backup could save and then refuse to restore.
     @Test fun `an app whose label is blank still round-trips, named by its package`() {
         val blank = AppEntry("com.example.quiet/com.example.quiet.Main", " ", icon)
