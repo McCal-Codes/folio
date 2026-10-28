@@ -684,6 +684,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         CardNote(stringResource(R.string.reads_only_music_calls_timers_navigation))
                     }
+                    // AirPods battery from the AirPods' own broadcast, no root: beside the Headphones & speakers switch it adds to (AirPodsBleCard.kt).
+                    if (page == CustomizationPage.ISLAND && rememberGateOpen(FeatureGate.AIRPODS_BLE)) AirPodsBleSettingsCard()
                     if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.in_every_app)) {
                         SettingsSwitch(stringResource(R.string.dynamic_island), state.islandEverywhere, { on ->
                             model.setIslandEverywhere(on); if (on && !SystemShadeAccessibilityService.isConnected()) onShadeSetup()
@@ -940,6 +942,12 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.screenshot_mode), screenshot, ScreenshotMode::set, "screenshot-mode-switch")
                         CardNote(stringResource(R.string.for_sharing_your_setup_folio_shows_9_41))
                         IosNavRow(stringResource(R.string.screenshot_swap_apps), null, { onPage(CustomizationPage.SCREENSHOT_SWAP) }, "screenshot-swap-row")
+                    }
+                    // Android 15 added the recording callback this needs; on older Android the card is not offered.
+                    if (PrivateRecording.supported && remember { FeatureGate.PRIVATE_RECORDING.isOpen(sheetContext) }) SettingsCard(stringResource(R.string.private_while_recording)) {
+                        val privateWhileRecording by PrivateRecording.enabled.collectAsState()
+                        SettingsSwitch(stringResource(R.string.private_while_recording), privateWhileRecording, { PrivateRecording.setEnabled(sheetContext, it) }, "private-while-recording-switch")
+                        CardNote(stringResource(R.string.while_folio_s_screen_is_recorded_or_shared))
                     }
                     SettingsCard(stringResource(R.string.safe_mode)) {
                         CardNote(if (SafeMode.active) stringResource(R.string.folio_is_running_in_safe_mode_optional_f)
@@ -1498,6 +1506,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.dock_handle_on_the_rail_edge to CustomizationPage.ISLAND,
     R.string.dont_double_up_with_android_pop_ups to CustomizationPage.ISLAND,
     R.string.headphones_speakers to CustomizationPage.ISLAND,
+    R.string.airpods_ble_switch to CustomizationPage.ISLAND,
     R.string.live_activities_under_the_status_bar to CustomizationPage.ISLAND,
     R.string.music_and_live_progress to CustomizationPage.ISLAND,
     R.string.fade_when_idle to CustomizationPage.ACCESSIBILITY,
@@ -1571,6 +1580,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
     R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,
+    R.string.private_while_recording to CustomizationPage.ADVANCED,
     R.string.other_notifications_2 to CustomizationPage.ISLAND,
     R.string.suggestions to CustomizationPage.TODAY,
     R.string.rounded_corners to CustomizationPage.WALLPAPER,
@@ -1691,6 +1701,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
             // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Private While Recording is held back for supporters and Folio Dev (FeatureGate.PRIVATE_RECORDING).
+            .filter { it.first != R.string.private_while_recording || FeatureGate.PRIVATE_RECORDING.isOpen(context) }
             // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
             .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
@@ -1755,6 +1767,10 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         Perm(context.getString(R.string.calendar_optional), context.getString(R.string.up_next_widget), UpNext.hasCalendar(context)) { open(appSettings) },
         Perm(context.getString(R.string.contacts), context.getString(R.string.spotlight_contact_search), context.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == android.content.pm.PackageManager.PERMISSION_GRANTED) { open(appSettings) },
         Perm(context.getString(R.string.digital_assistant), context.getString(R.string.side_key_picker), AssistPickerActivity.isDefaultAssistant(context)) { open(AssistPickerActivity.settingsIntent()) },
+    ) + listOfNotNull(
+        // Nearby devices is used by nothing else, so its row shows only where the AirPods battery card can be found.
+        Perm(context.getString(R.string.nearby_devices), context.getString(R.string.airpods_root_title), AirPodsBle.hasPermission(context)) { open(appSettings) }
+            .takeIf { FeatureGate.AIRPODS_BLE.isOpen(context) },
     ) }
     CardNote(stringResource(R.string.everything_stays_on_your_phone_folio_has), Modifier.padding(horizontal = FolioSpace.TINY.dp))
     SheetGroup {
@@ -2417,7 +2433,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     val context = androidx.compose.ui.platform.LocalContext.current
     val hidden = state.apps.filter { it.id in state.hiddenApps }.sortedBy { it.label.lowercase() }
     var unlocked by remember { mutableStateOf(false) }
-    if (hidden.isEmpty()) return
+    // Private While Recording: the row and its count go, and the list relocks.
+    val recording by PrivateRecording.on.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(recording) { if (recording) unlocked = false }
+    if (hidden.isEmpty() || recording) return
     if (!unlocked) {
         IosActionRow(stringResource(R.string.hidden_apps_count, hidden.size), "hidden-apps") {
             val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or
@@ -3367,14 +3386,23 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-airpods-paused")) }
         val read = ui.last ?: if (!ready) AirPodsRead.NotAllowed else null
         val done = read as? AirPodsRead.Done
-        val numbers = (done?.reading as? AirPodsReading.Found)?.battery?.let { AirPodsText.line(context, it) }
+        // The AirPods' own broadcast (no root, AirPodsBle.kt) wins over the system record while it is not expired.
+        AirPodsBleSurface(BleSurface.BRIDGE)
+        val bleRead by AirPodsBle.state.collectAsState()
+        val now = rememberAirPodsNow()
+        val shown = AirPodsFreshness.best((bleRead as? AirPodsBleRead.Found)?.battery, (done?.reading as? AirPodsReading.Found)?.battery, now)
+        val numbers = shown?.let { AirPodsBleText.line(context, it, now) }
         val summary = AirPodsText.summary(read, ui.running)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-now"), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.airpods_now), Modifier.padding(end = FolioSpace.SMALL.dp), style = MaterialTheme.typography.bodyLarge)
-            Text(numbers ?: stringResource(summary ?: R.string.airpods_not_read), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+            Text(numbers ?: stringResource(summary ?: R.string.airpods_ble_expired), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.End)
         }
-        val at = (read as? AirPodsRead.Done)?.atMillis ?: (read as? AirPodsRead.Failed)?.atMillis
+        if (shown != null) Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-source"), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.airpods_source), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(AirPodsBleText.sourceLabel(shown.source)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val at = shown?.readAtMillis ?: (read as? AirPodsRead.Done)?.atMillis ?: (read as? AirPodsRead.Failed)?.atMillis
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) {}.testTag("bridge-airpods-last"), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.airpods_last_read), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Text(at?.let { android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(it)) } ?: stringResource(R.string.airpods_never),

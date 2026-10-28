@@ -36,7 +36,8 @@ class ReduceMotionTest {
         val sheet = source("FolioSheet.kt")
         assertEquals("the page, the form sheet and the alert", 3, Regex("= rememberReducedFade\\(\\)").findAll(sheet).count())
         assertTrue("alpha = pageFade.value" in sheet)
-        assertTrue("alpha = appear.value * fade.value; scaleX = 1.12f" in sheet)
+        assertTrue("alpha = appear.value * fade.value * OverlayExits.alpha(" in sheet)
+        assertTrue("scaleX = (1.12f - .12f * appear.value)" in sheet)
         assertTrue("= rememberReducedFade()" in source("LibraryCategories.kt"))
     }
 

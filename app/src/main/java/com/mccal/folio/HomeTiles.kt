@@ -292,7 +292,8 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
                 }
             }
             }
-            if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale)
+            val pop = rememberBadgeAppeared(total)
+            if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
         }
         // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
         // cell the larger the font, under the Search pill at 200%.
