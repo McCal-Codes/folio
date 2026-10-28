@@ -19,6 +19,11 @@ internal enum class FolioCapability(val id: String, val minTier: PrivilegeTier, 
     HINGE_ANGLE_CONTINUOUS("device.hinge.angle.continuous", PrivilegeTier.ROOT, OperationRisk.OBSERVE),
     /** Changing Android's protected settings, after the owner grants Folio WRITE_SECURE_SETTINGS once from a computer. Nothing in Folio uses it yet. */
     SETTINGS_SECURE_WRITE("system.settings.secure.write", PrivilegeTier.SHIZUKU, OperationRisk.REVERSIBLE),
+    /**
+     * AirPods battery as Android's Bluetooth service holds it, read from `dumpsys bluetooth_manager`. The shell user may run
+     * that (it holds DUMP), so the least tier is A3; the one provider built is root (A4). Read only, on demand.
+     */
+    HEADPHONES_BATTERY_SYSTEM("device.headphones.battery.system", PrivilegeTier.SHIZUKU, OperationRisk.OBSERVE),
     SYSTEM_ACTIONS("system.actions", PrivilegeTier.SHIZUKU, OperationRisk.REVERSIBLE),
     SYSTEM_STATUS_MODULES("system.status.modules", PrivilegeTier.HOOKS, OperationRisk.EXPERIMENTAL),
     SYSTEM_QUICK_SETTINGS_LAYOUT("system.quicksettings.layout", PrivilegeTier.HOOKS, OperationRisk.EXPERIMENTAL);
