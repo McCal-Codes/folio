@@ -615,6 +615,13 @@
           "title": "A dock grabber that stays under your finger",
           "detail": "Dragging the Side Bar dock in edit mode follows your finger at any speed.",
           "status": "building"
+        },
+        {
+          "icon": "tune",
+          "color": "#64D2FF",
+          "title": "Adjust the island",
+          "detail": "Make the island wider and nudge it into place on a dimmed screen, with Fit to camera and Reset. For supporters first.",
+          "status": "building"
         }
       ]
     },
@@ -676,6 +683,20 @@
           "color": "#FF9F0A",
           "title": "Music widget",
           "detail": "Now Playing as a widget in three looks: Strip, Card and Poster.",
+          "status": "planned"
+        },
+        {
+          "icon": "palette",
+          "color": "#BF5AF2",
+          "title": "Island style",
+          "detail": "Color, corner radius, animation speed, haptics and gestures for the island, each with a Reset. For supporters first.",
+          "status": "planned"
+        },
+        {
+          "icon": "sensor",
+          "color": "#FF9F0A",
+          "title": "Hinge detents",
+          "detail": "Soft ticks as the Fold opens at 45, 90 and 135 degrees, and a firmer click when it lies flat. For supporters first.",
           "status": "planned"
         },
         {
@@ -914,7 +935,7 @@
           "icon": "headphones",
           "color": "#0A84FF",
           "title": "AirPods in Folio",
-          "detail": "Battery for each AirPod and the case, and Noise Control, if it can be done without root. Tried first with a test app on a Fold 8.",
+          "detail": "Battery for each AirPod and the case, read from the AirPods' own Bluetooth signal with no root, is in the beta for supporters. Noise Control is still being explored.",
           "status": "exploring"
         }
       ]
