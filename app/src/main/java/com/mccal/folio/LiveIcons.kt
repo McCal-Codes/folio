@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
@@ -252,6 +253,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
                 Image(bitmap, null, fill, colorFilter = filter)
             }
         }
+        val pop = rememberBadgeAppeared(badgeCount)
         if (badgeCount > 0) {
             val color = when {
                 look.badgeColor == BadgeColor.RED -> BadgeRed
@@ -268,7 +270,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
                     accent?.let { Color(it) } ?: if (soft) SoftNeutral else BadgeRed
                 }
             }
-            IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale, badgePlacement)
+            IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale, badgePlacement, pop)
         }
         // Updating: the icon dims under an iOS-style progress ring until the installer finishes.
         if (app.iconFrom == null) installProgressFor(app.component.packageName)?.let { progress -> InstallRing(progress, fill) }
@@ -435,7 +437,8 @@ private val SoftNeutral = Color(0xFFE5E5EA)
 /** iOS-style badge: sits over the icon's top-right corner (or where [placement] says), a dot or a pill that widens for 2+ digits. */
 @Composable
 internal fun androidx.compose.foundation.layout.BoxScope.IconBadge(count: Int, style: BadgeStyle, color: Color,
-    badgeLook: BadgeLook = BadgeLook.IOS, scale: Float = 1f, placement: BadgePlacement = BadgePlacement.DEFAULT) {
+    badgeLook: BadgeLook = BadgeLook.IOS, scale: Float = 1f, placement: BadgePlacement = BadgePlacement.DEFAULT, pop: Boolean = false) {
+    val popScale = rememberBadgePop(pop)
     BoxWithConstraints(Modifier.matchParentSize()) {
         val density = androidx.compose.ui.platform.LocalDensity.current
         val h = (if (style == BadgeStyle.COUNT) maxWidth * .34f else maxWidth * .22f) * scale
@@ -459,6 +462,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.IconBadge(count: Int, s
             BadgeLook.GLASS -> Modifier.background(fill, pill).border(1.dp, Color.White.copy(alpha = .25f), pill)
         }
         Box(Modifier.align(placement.corner.alignment).offset(placement.offsetX(maxWidth.value, h.value).dp, placement.offsetY(h.value).dp)
+            .graphicsLayer { scaleX = popScale.value; scaleY = popScale.value }
             .heightIn(min = h).widthIn(min = h)
             .then(look)
             .padding(horizontal = if (style == BadgeStyle.COUNT && count > 9) h * .22f else 0.dp),

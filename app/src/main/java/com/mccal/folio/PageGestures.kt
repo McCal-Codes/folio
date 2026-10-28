@@ -4,6 +4,7 @@ import androidx.compose.ui.unit.dp
 
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.MutatePriority
+import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import kotlinx.coroutines.channels.Channel
@@ -23,6 +24,7 @@ import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,6 +43,15 @@ internal class PageGestureLimits(private val pager: PagerState) : NestedScrollCo
     var editing = false
     /** Lowest physical page a swipe may reach (e.g. no Today View page while it's shown beside Home). */
     var minPage = 0
+    /**
+     * New motion's rubber band: how far the pages are pulled past a true end, in pixels along the pager (positive past
+     * the last page). Drawn as a translation by whoever shows the pages, never laid out. Always 0 with New motion off.
+     */
+    var stretch by androidx.compose.runtime.mutableFloatStateOf(0f)
+    /** True while a touch has caught a settling page, so the canceled settle leaves the stretch under the finger. */
+    var holdStretch = false
+    /** Whether the first page may stretch; off while Discover owns the pull from the first page. */
+    var leadingStretch = true
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
         val start = anchor ?: return Offset.Zero
         if (!pointerDown || editing || source != NestedScrollSource.UserInput || available.x == 0f) return Offset.Zero
@@ -96,12 +107,19 @@ internal fun Modifier.onePageGestures(
     canStartGesture: (Offset) -> Boolean = { true },
     onDownwardSwipe: ((ShadePanel) -> Unit)? = null,
     onLeadingOverscroll: (() -> Unit)? = null,
+    /** New motion: whether the first page stretches past its edge (not while Discover opens from there). */
+    leadingStretch: Boolean = true,
 ) : Modifier {
     val currentEnabled by rememberUpdatedState(enabled)
     val currentCanStartDownwardSwipe by rememberUpdatedState(canStartDownwardSwipe)
     val currentCanStartGesture by rememberUpdatedState(canStartGesture)
     val currentDownwardSwipe by rememberUpdatedState(onDownwardSwipe)
     val currentLeadingOverscroll by rememberUpdatedState(onLeadingOverscroll)
+    val currentLeadingStretch by rememberUpdatedState(leadingStretch)
+    // New motion's pager feel: catching a settling page is feedback, so it stays under Reduce Motion; the rubber band
+    // and the overshoot are spatial, so Reduce Motion keeps today's hard stop.
+    val currentCatch by rememberUpdatedState(FolioMotion.v2)
+    val currentFeel by rememberUpdatedState(FolioMotion.v2 && !LocalReduceMotion.current)
     return nestedScroll(limits).pointerInput(pager, limits, motion) {
         coroutineScope {
             var motionJob: Job? = null
@@ -114,6 +132,19 @@ internal fun Modifier.onePageGestures(
                 if (!gestureEnabled) {
                     trace?.cancel("disabled", pager.currentPage + pager.currentPageOffsetFraction)
                     return@awaitEachGesture
+                }
+                val feel = currentFeel
+                limits.leadingStretch = currentLeadingStretch
+                // Like iOS, a touch on a page that is still moving stops it there, on touch-down rather than after
+                // touch slop, and that touch does not open the app under it.
+                val caught = currentCatch && PagerFeel.catches(motionJob?.isActive == true,
+                    pager.currentPage + pager.currentPageOffsetFraction, pager.targetPage, limits.stretch, 2f * density)
+                var carried = 0f
+                if (caught) {
+                    carried = limits.stretch
+                    limits.holdStretch = true
+                    motionJob?.cancel()
+                    down.consume()
                 }
                 limits.anchor = anchor
                 limits.pointerDown = true
@@ -173,6 +204,7 @@ internal fun Modifier.onePageGestures(
                                     fun stride() = (pager.layoutInfo.pageSize + pager.layoutInfo.pageSpacing).toFloat().coerceAtLeast(1f)
                                     fun position() = pager.currentPage + pager.currentPageOffsetFraction
                                     fun visualOffset() = motion?.offset(position()) ?: position() * stride()
+                                    limits.holdStretch = false
                                     try {
                                         pager.scroll(MutatePriority.UserInput) {
                                             with(pager) { updateTargetPage((anchor - sign(distance.x).toInt()).coerceIn(limits.minPage.coerceAtMost(pager.pageCount - 1), pager.pageCount - 1)) }
@@ -184,9 +216,14 @@ internal fun Modifier.onePageGestures(
                                                 scrollBy((allowed - current) * stride())
                                             }
                                             val dragStartVisualOffset = visualOffset()
+                                            // A caught stretch carries on from where it was, without a jump.
+                                            val feelStartVisualOffset = dragStartVisualOffset + PagerFeel.excessFor(carried, size.width.toFloat())
                                             for (dragPosition in channel) {
                                                 if (dragPosition != 0f) with(pager) { updateTargetPage((anchor - sign(dragPosition).toInt()).coerceIn(limits.minPage.coerceAtMost(pager.pageCount - 1), pager.pageCount - 1)) }
-                                                moveBy(dragStartVisualOffset - dragPosition - visualOffset())
+                                                if (feel) placeFeel(pager, motion, limits, feelStartVisualOffset - dragPosition, size.width.toFloat(), stretchy = true) {
+                                                    boundedPagePosition(it, anchor, pager.pageCount, limits.minPage)
+                                                }
+                                                else moveBy(dragStartVisualOffset - dragPosition - visualOffset())
                                             }
                                             val velocity = if (canceled) 0f else releaseVelocity
                                             // A relaxed thumb swipe should commit even if the finger
@@ -208,6 +245,11 @@ internal fun Modifier.onePageGestures(
                                             )
                                             trace?.release(position(), velocity, target, canceled)
                                             with(pager) { updateTargetPage(target) }
+                                            if (feel) {
+                                                settleFeel(pager, motion, limits, target, velocity, size.width.toFloat(), stretchy = true,
+                                                    spring = PagerFeel.settleSpring(velocity, 250f * density, limits.stretch != 0f, reduce = false))
+                                                return@scroll
+                                            }
                                             val startVisualOffset = visualOffset()
                                             val targetVisualOffset = motion?.offset(target.toFloat()) ?: target * stride()
                                             val distanceToPage = targetVisualOffset - startVisualOffset
@@ -224,6 +266,7 @@ internal fun Modifier.onePageGestures(
                                         trace?.motionCompleted(position(), visualOffset())
                                     } catch (failure: CancellationException) {
                                         trace?.motionCanceled(position(), visualOffset())
+                                        if (!limits.holdStretch) limits.stretch = 0f
                                         throw failure
                                     }
                                     if (!canceled && anchor == 0 && leadingDrag >= 72f * density) {
@@ -235,7 +278,7 @@ internal fun Modifier.onePageGestures(
                         } else if (dragPositions != null) {
                             dragPositions?.trySend(change.position.x - down.position.x - dragSlopOffset)
                         }
-                        if (dragPositions != null) change.consume()
+                        if (dragPositions != null || caught) change.consume()
                         if (!change.pressed) {
                             if (trace != null) trace.terminal(event.type.toString(),
                                 change.position.x - down.position.x, change.position.y - down.position.y,
@@ -249,6 +292,24 @@ internal fun Modifier.onePageGestures(
                 } finally {
                     limits.pointerDown = false
                     dragPositions?.close()
+                    if (caught && dragPositions == null) {
+                        // Caught and let go without a swipe: the pages go to the nearest page, as on iOS.
+                        motionJob = launch(start = CoroutineStart.UNDISPATCHED) {
+                            limits.holdStretch = false
+                            val target = PagerFeel.caughtPage(pager.currentPage + pager.currentPageOffsetFraction,
+                                pager.pageCount, limits.minPage)
+                            try {
+                                pager.scroll(MutatePriority.UserInput) {
+                                    with(pager) { updateTargetPage(target) }
+                                    settleFeel(pager, motion, limits, target, 0f, size.width.toFloat(), stretchy = feel,
+                                        spring = PagerFeel.settleSpring(0f, 1f, limits.stretch != 0f, reduce = !feel))
+                                }
+                            } catch (failure: CancellationException) {
+                                if (!limits.holdStretch) limits.stretch = 0f
+                                throw failure
+                            }
+                        }
+                    }
                     val finalCancelReason = cancelReason
                     if (finalCancelReason != null) {
                         trace?.cancel(finalCancelReason, pager.currentPage + pager.currentPageOffsetFraction)
@@ -260,4 +321,45 @@ internal fun Modifier.onePageGestures(
             }
         }
     }
+}
+
+/**
+ * New motion: puts the pages at the [desired] visual offset. They scroll as far as [clampTo] lets them; past a true end
+ * the rest of the finger's travel becomes [PageGestureLimits.stretch] on iOS's rubber band curve, if [stretchy].
+ */
+private fun ScrollScope.placeFeel(pager: PagerState, motion: WorkspacePageMotion?, limits: PageGestureLimits,
+    desired: Float, width: Float, stretchy: Boolean, clampTo: (Float) -> Float) {
+    val stride = (pager.layoutInfo.pageSize + pager.layoutInfo.pageSpacing).toFloat().coerceAtLeast(1f)
+    val current = pager.currentPage + pager.currentPageOffsetFraction
+    val requested = motion?.position(desired) ?: (desired / stride)
+    val clamped = clampTo(requested)
+    val side = if (stretchy) PagerFeel.stretchSide(requested, clamped, pager.pageCount, limits.minPage, limits.leadingStretch) else 0
+    limits.stretch = if (side == 0) 0f else PagerFeel.rubberBand(desired - (motion?.offset(clamped) ?: (clamped * stride)), width)
+    scrollBy((clamped - current) * stride)
+}
+
+/**
+ * New motion: settles the pages on [target] from where they are, a stretch included, on [spring] (or the spring Home
+ * settles on today when it is null). A flick passes a middle page by a little and eases back; past a true end the
+ * overshoot stretches instead, so the hard clamp never flattens it.
+ */
+private suspend fun ScrollScope.settleFeel(pager: PagerState, motion: WorkspacePageMotion?, limits: PageGestureLimits,
+    target: Int, velocity: Float, width: Float, stretchy: Boolean, spring: Pair<Float, Float>?) {
+    fun stride() = (pager.layoutInfo.pageSize + pager.layoutInfo.pageSpacing).toFloat().coerceAtLeast(1f)
+    fun visualAt(position: Float) = motion?.offset(position) ?: (position * stride())
+    fun positionAt(visual: Float) = motion?.position(visual) ?: (visual / stride())
+    val first = PagerFeel.firstPage(pager.pageCount, limits.minPage).toFloat()
+    val last = PagerFeel.lastPage(pager.pageCount).toFloat()
+    val start = visualAt(pager.currentPage + pager.currentPageOffsetFraction) + PagerFeel.excessFor(limits.stretch, width)
+    val startPosition = positionAt(start)
+    val targetVisual = visualAt(target.toFloat())
+    val initialVelocity = (-velocity).coerceIn(-stride() * 5f, stride() * 5f)
+    val frame: (Float, Float) -> Unit = { value, _ ->
+        val shown = PagerFeel.settlePosition(positionAt(start + value), startPosition, target, pager.pageCount, limits.minPage)
+        placeFeel(pager, motion, limits, visualAt(shown), width, stretchy) { it.coerceIn(first, last) }
+    }
+    if (spring == null) animate(0f, targetVisual - start, initialVelocity = initialVelocity, block = frame)
+    else animate(0f, targetVisual - start, initialVelocity = initialVelocity, animationSpec = FolioMotion.spring(spring), block = frame)
+    limits.stretch = 0f
+    placeFeel(pager, motion, limits, targetVisual, width, stretchy = false) { it.coerceIn(first, last) }
 }

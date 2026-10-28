@@ -29,7 +29,8 @@ internal object SystemBridge {
     fun broker(context: Context): CapabilityBroker {
         val app = context.applicationContext
         return CapabilityBroker(
-            providers = { listOf(HingeSensorProvider(app), NotificationAccessProvider(app), AccessibilityProvider(), RootHingeProvider { RootHingeStore.state(app) }, SecureSettingsGrantProvider { SecureSettingsGrant.isGranted(app) }) },
+            providers = { listOf(HingeSensorProvider(app), NotificationAccessProvider(app), AccessibilityProvider(), RootHingeProvider { RootHingeStore.state(app) }, SecureSettingsGrantProvider { SecureSettingsGrant.isGranted(app) },
+                AirPodsBatteryProvider({ FeatureGate.AIRPODS_ROOT.isOpen(app) }) { RootHingeStore.state(app) }) },
             integrationOff = { isOff(app) },
             safeMode = { SafeMode.active },
             audit = ::record,
@@ -46,6 +47,10 @@ internal object SystemBridge {
         s.reason == UnavailableReason.SAFE_MODE -> R.string.bridge_state_safe
         else -> R.string.bridge_state_not_yet
     }
+
+    /** The capability rows the page lists: a capability behind a closed gate is not listed at all, so nobody sees a row for it. */
+    fun visibleStates(states: List<CapabilityState>, airPodsOpen: Boolean) =
+        states.filter { airPodsOpen || it.capability != FolioCapability.HEADPHONES_BATTERY_SYSTEM }
 
     /** What a way above Standard reads: no provider exists, so the only things to say are off, Safe Mode or not yet. */
     /** Rows that read "Not available yet" are folded into one row, so the page lists only what is real or can be set up. Order is kept. */
@@ -96,6 +101,7 @@ internal object SystemBridge {
         FolioCapability.HINGE_ANGLE -> R.string.bridge_cap_hinge
         FolioCapability.HINGE_ANGLE_CONTINUOUS -> R.string.bridge_cap_hinge_continuous
         FolioCapability.SETTINGS_SECURE_WRITE -> R.string.bridge_cap_secure_settings
+        FolioCapability.HEADPHONES_BATTERY_SYSTEM -> R.string.bridge_cap_airpods_battery
         FolioCapability.SYSTEM_ACTIONS -> R.string.bridge_cap_actions
         FolioCapability.SYSTEM_STATUS_MODULES -> R.string.bridge_cap_status
         FolioCapability.SYSTEM_QUICK_SETTINGS_LAYOUT -> R.string.bridge_cap_quick_settings

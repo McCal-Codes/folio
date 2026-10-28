@@ -112,6 +112,10 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var eventVisible by remember { mutableStateOf<IslandEvent?>(null) }
     // While typing a quick reply the message stays put; nothing new replaces it.
     var replying by remember { mutableStateOf(false) }
+    // The private view starting while a message is shown (or being replied to) must not leave the real sender and text up:
+    // the card and its reply field close, and the redacted event arrives on its own (Private While Recording).
+    val privateView by PrivateRecording.on.collectAsStateWithLifecycle()
+    LaunchedEffect(privateView) { if (privateView) { replying = false; eventVisible = null } }
     LaunchedEffect(eventPair) {
         if (replying) return@LaunchedEffect
         // Every way out of here that is not "show this one" clears the island, or what was showing stays up for
