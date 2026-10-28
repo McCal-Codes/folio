@@ -118,6 +118,14 @@ internal enum class FeatureGate(
     MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * Settings > General > Storage: how full the phone is, any USB or SD storage that is connected, and shortcuts to
+     * Android's own cleanup screens. It only reads sizes and opens system screens, but it needs real phones with real
+     * drives before it goes to everyone, so supporters and Folio Dev try it first. Flip [OPEN_IN_0_7_1] to true in
+     * the 0.7.1 release.
+     */
+    STORAGE("storage", closedSince = "2026-10-24", opensIn = "0.7.1", { OPEN_IN_0_7_1 }),
+
+    /**
      * Home closer to the iPhone Duo's measured spacing: on the cover the rows spread out toward the Duo's pitch when the
      * window has free height, and the dock's apps grow from 72% to about 80% of Home's icons on both screens. It moves
      * every icon on the main Home, so supporters and Folio Dev see it in the betas and everyone gets it in 0.6.9: flip
@@ -154,6 +162,22 @@ internal enum class FeatureGate(
     CC_PAGES_DEDUPE("ccPagesDedupe", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * AirPods battery from the system, the first root extra for AirPods (docs/airpods-root-tier.md): with root tested on the
+     * System Bridge page, Folio reads Android's own Bluetooth record of the AirPods' left, right and case battery, on demand
+     * only. Its parser was written from AOSP's dump format without a real dump from a Fold, so supporters and Folio Dev try it
+     * first and send a report when it reads wrong. Everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it.
+     */
+    AIRPODS_ROOT("airpodsRoot", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * AirPods battery with no root (docs/airpods-ble.md): with the person's switch on and Nearby devices allowed, a few seconds of
+     * filtered Bluetooth scan while an AirPods battery card shows, reading the battery the AirPods broadcast. The decoder was written
+     * from published notes without real AirPods, so supporters and Folio Dev try it first. Everyone gets it in 0.7.0: flip
+     * [OPEN_IN_0_7_0] to open it.
+     */
+    AIRPODS_BLE("airpodsBle", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Advanced island: color, corner radius, animation speed, haptics and gestures on their own page. It is a large new
      * surface that reaches into the island's touch code and has not been tried on a device yet, so it is gated by risk
      * apart from Adjust island: supporters and Folio Dev try it in the betas and everyone gets it in 0.7.0: flip
@@ -161,6 +185,14 @@ internal enum class FeatureGate(
      * handled exactly as before, whatever was saved ([IslandStyle.active]).
      */
     ISLAND_ADVANCED("islandAdvanced", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * Private While Recording: Home switches to a private view while Folio's screen is recorded or shared. It reads a
+     * system callback that Folio has not seen fire on a real recording yet, and it adds a permission, so it is gated by
+     * risk: supporters and Folio Dev try it in the betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it.
+     * While shut the Settings card and its search entry are hidden and the saved switch is ignored, so nothing is hidden.
+     */
+    PRIVATE_RECORDING("privateRecording", closedSince = "2026-10-28", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
      * The deeper Control Center settings: switches for the Media and Connectivity pages, Open on, haptic ticks on the sliders,
@@ -194,6 +226,9 @@ internal enum class FeatureGate(
 
         /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
         private const val OPEN_IN_0_7_0 = false
+
+        /** The features built during 0.7.1 for supporters to try first, which open together in the 0.7.1 release. */
+        private const val OPEN_IN_0_7_1 = false
 
         /** Every gate still shut, for the check that says how long each has been waiting. */
         fun closed(): List<FeatureGate> = entries.filterNot { it.open }
