@@ -30,4 +30,15 @@ class CcPageBackTest {
         assertFalse(pages.goBack()) // on the first page the same swipe closes
         assertEquals(0, shown)
     }
+
+    @Test fun `a swipe up while editing ends the editing first, whatever page it is on`() {
+        assertEquals(CcSwipeUp.StopEditing, ccSwipeUp(editing = true, current = 0))
+        assertEquals(CcSwipeUp.StopEditing, ccSwipeUp(editing = true, current = 2))
+    }
+
+    @Test fun `not editing, a swipe up goes back a page and only the first page closes the panel`() {
+        assertEquals(CcSwipeUp.GoBack(1), ccSwipeUp(editing = false, current = 2))
+        assertEquals(CcSwipeUp.GoBack(0), ccSwipeUp(editing = false, current = 1))
+        assertEquals(CcSwipeUp.Close, ccSwipeUp(editing = false, current = 0))
+    }
 }

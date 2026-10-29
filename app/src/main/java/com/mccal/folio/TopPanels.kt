@@ -135,14 +135,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
         .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
-            .pointerInput(Unit) {
-                var total = 0f
-                var done = false // one swipe goes back one page, or closes, once
-                detectVerticalDragGestures(onDragStart = { total = 0f; done = false }) { _, drag ->
-                    total += drag
-                    if (!done && total < -48.dp.toPx()) { done = true; if (!pageBack.goBack()) onClose() }
-                }
-            } else Modifier)
+            .ccSwipeUp(pageBack, onClose) else Modifier)
         .testTag("top-panel-scrim")) {
         // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
         // under a dim. Over an app with no picture yet or none possible, Folio's frosted glass stands in.
@@ -189,6 +182,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
             // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
             .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
+            // A swipe up that starts in Control Center's margins is the same swipe as one under it (it used to count as a tap there and close the panel from any page).
+            .then(if (which == ShadePanel.QUICK_SETTINGS) Modifier.ccSwipeUp(pageBack, onClose) else Modifier)
             .graphicsLayer {
                 val p = progress()
                 if (which == ShadePanel.NOTIFICATIONS) {
@@ -517,6 +512,29 @@ private val LocalCcTone = androidx.compose.runtime.staticCompositionLocalOf { CC
 
 /** The page a swipe up goes back to from page [current] (in the order of the pages), or null on the first, where the same swipe closes the panel. */
 internal fun ccBackTarget(current: Int): Int? = if (current > 0) current - 1 else null
+
+/** What a swipe up in the empty space under the controls does: end editing, go back a page, or (on the first page, not editing) close the panel. */
+internal sealed interface CcSwipeUp {
+    object StopEditing : CcSwipeUp
+    data class GoBack(val page: Int) : CcSwipeUp
+    object Close : CcSwipeUp
+}
+
+internal fun ccSwipeUp(editing: Boolean, current: Int): CcSwipeUp =
+    if (editing) CcSwipeUp.StopEditing else ccBackTarget(current)?.let { CcSwipeUp.GoBack(it) } ?: CcSwipeUp.Close
+
+/**
+ * The swipe up on a panel's scrim, or on Control Center's margins: end editing, go back a page, or close. One swipe does one of them, once,
+ * so a long drag does not walk back through every page and then close.
+ */
+private fun Modifier.ccSwipeUp(pageBack: CcPageBack, onClose: () -> Unit): Modifier = pointerInput(pageBack) {
+    var total = 0f
+    var done = false
+    detectVerticalDragGestures(onDragStart = { total = 0f; done = false }) { _, drag ->
+        total += drag
+        if (!done && total < -48.dp.toPx()) { done = true; if (!pageBack.goBack()) onClose() }
+    }
+}
 
 /**
  * Lets the scrim behind the panels ask Control Center to go back a page before it closes the panel: a swipe up that starts in the
@@ -874,8 +892,15 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // A swipe up in the empty space under the controls reaches the scrim, which asks here first: from Media or Connectivity it goes back a page, and only the first page lets it close the panel.
-        DisposableEffect(pageBack, current) {
-            pageBack?.back = { ccBackTarget(current)?.let { goTo(it); true } ?: false }
+        // Read when the swipe lands, not when it was last drawn: a swipe made while the page is still changing counts against the page it is changing to, and one made while editing ends the editing first.
+        DisposableEffect(pageBack, pager, edit, firstIndex) {
+            pageBack?.back = {
+                when (val action = ccSwipeUp(edit.active, firstIndex - pager.targetPage)) {
+                    CcSwipeUp.StopEditing -> { edit.stop(); true }
+                    is CcSwipeUp.GoBack -> { goTo(action.page); true }
+                    CcSwipeUp.Close -> false
+                }
+            }
             onDispose { pageBack?.back = null }
         }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
