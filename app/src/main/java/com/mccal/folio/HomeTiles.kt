@@ -227,7 +227,7 @@ internal fun DockAppColumn(
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
                         } ?: 1f, FolioMotion.spring(FolioMotion.Control), label = "dock magnify $id") // english-only
                         AppIcon(app, null, Modifier.fillMaxSize().graphicsLayer {
-                            val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value
+                            val s = slotScales[renderIndex].value * magnification; scaleX = s; scaleY = s; alpha = slotAlphas[renderIndex].value * (if (app.available) 1f else UNAVAILABLE_APP_ALPHA)
                             // Grow toward the screen, away from the edge the dock sits on.
                             transformOrigin = if (horizontal) androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
                                 else androidx.compose.ui.graphics.TransformOrigin(if (leftHanded) 0f else 1f, .5f)
@@ -292,12 +292,20 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
                 }
             }
             }
-            if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale)
+            val pop = rememberBadgeAppeared(total)
+            if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
         }
-        if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = LocalLabelSize.current.sp.sp, maxLines = 1,
+        // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
+        // cell the larger the font, under the Search pill at 200%.
+        val labelFactor = glanceFontFactor(LocalDensity.current.fontScale)
+        if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = (LocalLabelSize.current.sp * labelFactor).sp,
+            lineHeight = (LocalLabelSize.current.lineSp * labelFactor).sp, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }
+
+/** How faint the icon of an app that is turned off or unavailable is drawn, the same .4 as other disabled controls. */
+private const val UNAVAILABLE_APP_ALPHA = .4f
 
 @Composable
 internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modifier = Modifier, onClick: (android.graphics.Rect) -> Unit, onLongClick: () -> Unit,
@@ -343,14 +351,20 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
             }.background(Glass.copy(alpha = .72f), RoundedCornerShape((size * .24f).dp)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp)))
             if (app.id in LocalStackedApps.current) StackPeek(iconSize)
             AppIcon(app, null, Modifier.fillMaxSize()
-                .graphicsLayer { if (plate != null && !still) { val inside = 1f - (1f - FolderOrRoom.ICON_INSIDE) * plate(); scaleX = inside; scaleY = inside } }
+                .graphicsLayer {
+                    if (plate != null && !still) { val inside = 1f - (1f - FolderOrRoom.ICON_INSIDE) * plate(); scaleX = inside; scaleY = inside }
+                    // An app that is turned off keeps its place, dimmed, until it comes back (see keptWhileDisabled).
+                    if (!app.available) alpha = UNAVAILABLE_APP_ALPHA
+                }
                 .pressFeedback(pressed || launching, lifted, size * .24f, kind = PressFeedback.Kind.APP), shape = RoundedCornerShape((size * .24f).dp))
             if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = onRemove)
         }
         val ink = LocalHomeInk.current
         if (labels) Row(Modifier.padding(top = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
             if (app.iconFrom == null) NewAppDot(app.packageName)
-            Text(app.label, color = ink.primary, fontSize = LocalLabelSize.current.sp.sp, lineHeight = LocalLabelSize.current.lineSp.sp, maxLines = 1,
+            // A11Y-13: an icon's label is glanceable chrome in a cell that cannot grow, as on iOS; it follows the font scale to 130%.
+            val labelFactor = glanceFontFactor(LocalDensity.current.fontScale)
+            Text(app.label, color = ink.primary, fontSize = (LocalLabelSize.current.sp * labelFactor).sp, lineHeight = (LocalLabelSize.current.lineSp * labelFactor).sp, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, style = TextStyle(shadow = ink.labelShadow))
         }
     }

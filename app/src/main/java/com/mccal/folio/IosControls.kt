@@ -32,6 +32,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
@@ -46,17 +47,29 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptic = LocalHapticFeedback.current
+    val reduce = LocalReduceMotion.current
     val track by animateColorAsState(if (checked) FolioColors.GreenLight else FolioColors.TrackOff, label = "switch track")
-    val offset by animateDpAsState(if (checked) 20.dp else 0.dp, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "switch thumb")
+    val target = if (checked) 20.dp else 0.dp
+    val offset by animateDpAsState(target, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "switch thumb")
+    // The thumb widens a little while a finger is on it and while it travels (motion pass), anchored to the side it came from.
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val squished = FolioMotion.v2 && !reduce && enabled && (pressed || offset != target)
+    val thumb by animateDpAsState(if (squished) 27.dp * SWITCH_SQUISH else 27.dp, FolioMotion.spring(FolioMotion.calm(FolioMotion.Quick, reduce)), label = "switch squish")
     Box(modifier.minimumInteractiveComponentSize()
-        .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = {
+        .toggleable(checked, interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current,
+            enabled = enabled, role = Role.Switch, onValueChange = {
             haptic.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff); onCheckedChange(it)
         }), contentAlignment = Alignment.Center) {
         Box(Modifier.size(51.dp, 31.dp).clip(CircleShape).background(track).padding(FolioSpace.HAIR.dp)) {
-            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.size(27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset((offset - (thumb - 27.dp) * (offset / 20.dp)).roundToPx(), 0) }
+                .size(thumb, 27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
         }
     }
 }
+
+/** How much wider the switch thumb gets while pressed or moving. */
+internal const val SWITCH_SQUISH = 1.15f
 
 /** iOS-style choice pill (a drop-in for the settings' FilterChips): white when selected, frosted when not. */
 @Composable
@@ -323,29 +336,37 @@ internal fun FolioButton(
     }
 }
 
-/** iOS segmented control: one rounded track with a sliding thumb behind the chosen option. Use for two or three short choices. */
+/**
+ * iOS segmented control: one rounded track with a sliding thumb behind the chosen option. Use for two or three short choices.
+ * The track is 36 dp at the default text size and grows with the labels: at 200% text a label wraps between words to a second
+ * line and every segment takes the taller height (A11Y-12), instead of a fixed 36 dp cutting the second line off.
+ */
 @Composable
 internal fun <T> IosSegmented(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier, tag: String? = null) {
     val haptic = LocalHapticFeedback.current
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(FolioRadius.SEGMENT.dp))
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().heightIn(min = SEGMENT_HEIGHT.dp).clip(RoundedCornerShape(FolioRadius.SEGMENT.dp))
         .background(Color.White.copy(alpha = .12f)).padding(FolioSpace.HAIR.dp).then(if (tag != null) Modifier.testTag(tag) else Modifier)) {
         val segment = maxWidth / options.size
         val x by animateDpAsState(segment * index, FolioMotion.spring(FolioMotion.calm(FolioMotion.Control, LocalReduceMotion.current)), label = "segment")
-        Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).fillMaxHeight()
+        // matchParentSize: the thumb is as tall as the track, whatever height the labels gave it.
+        Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(segment).matchParentSize()
             .shadow(2.dp, RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)).clip(RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)).background(FolioColors.SegmentThumb))
-        Row(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = SEGMENT_HEIGHT.dp - FolioSpace.HAIR.dp * 2).height(IntrinsicSize.Min)) {
             options.forEach { (value, label) ->
                 Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp))
                     .selectable(value == selected, role = Role.RadioButton) {
                         if (value != selected) { haptic.perform(FolioHaptic.Step); onSelect(value) }
-                    }, contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
+                    }.padding(horizontal = FolioSpace.TINY.dp, vertical = FolioSpace.TINY.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.Text(label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         fontWeight = if (value == selected) FontWeight.SemiBold else FontWeight.Medium)
                 }
             }
         }
     }
 }
+
+/** The segmented control's height at the default text size, in dp. */
+private const val SEGMENT_HEIGHT = 36
 
 private fun Modifier.androidxAlpha(alpha: Float) = graphicsLayer { this.alpha = alpha }

@@ -117,6 +117,14 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   Published pictures document what people can download, and the repository runs ahead of that.
 - **REL-30 MUST** take a published screenshot from the build being released, or from the Mockup Lab matching it.
   The lab follows `main`, so a lab render is only fit to publish once `main`'s behaviour is the behaviour people have.
+- **REL-32 MUST** start the optimized build on an emulator once before tagging, beta or stable, from the commit being
+  tagged: `bash tools/launch-check-fast.sh emulator-5554`. It builds `:app:assembleFast` (R8, like the release),
+  runs `tools/check-dex-registers.py` on it, installs it as Folio Dev, starts it and fails on a crash or when the
+  process is gone. Debug builds and unit tests never run R8, so a fault R8 writes only shows when the optimized build
+  starts: on 24 and 27 Oct 2026 the fast build died at launch with a `VerifyError` in Home's content lambda, which had
+  grown past 256 Dalvik registers. `scripts/release-signed.sh` runs the register check on the release APK as well and
+  stops when a Folio method crosses 256 that is not on the script's known list. A method that fails is split
+  (`OwnMethod` in `LauncherScreen.kt`), never added to that list.
 
 
 ### Dependencies

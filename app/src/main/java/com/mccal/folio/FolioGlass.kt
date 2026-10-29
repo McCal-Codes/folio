@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 
 /**
  * One glass language for every Folio overlay (Control Center, Notification Center, Spotlight,
@@ -26,10 +27,37 @@ internal object FolioGlass {
     val card = FolioColors.SurfaceCard.copy(alpha = .82f)
     /** Controls sitting on a card (inactive toggles, pills, chips). */
     val raised = Color.White.copy(alpha = .14f)
+    /** Control Center, Frosted: smoky dark tiles that carry their own contrast, with no plate behind them (McCal 25 Oct 2026: "remove that darker background"). */
+    val frostedTile = Color.Black.copy(alpha = .38f)
     /** Hairline edge that separates glass from glass. */
     val edge = BorderStroke(1.dp, Color.White.copy(alpha = .08f))
     /** Secondary text on glass. */
     val secondary = FolioColors.SecondaryLabel
+}
+
+/**
+ * What sits behind an open folder (Home's folder panel and the App Library's category folder). The folder's title is drawn on
+ * Home itself, above the card, so the dim has to be strong enough that Home's own text behind never competes with it, and the
+ * card has to be nearly opaque so icons and names do not read through it. Home is blurred behind by the same mechanism the app
+ * menu uses (a [LauncherSheets] entry); Reduce Transparency, and a missing window blur, get the stronger dim and a solid card.
+ */
+internal object FolderBackdrop {
+    /** Dim behind an open folder. */
+    const val SCRIM = .55f
+    /** Dim when there is no blur to help: Reduce Transparency, or the system has window blur off. */
+    const val SCRIM_SOLID = .78f
+    /** Opacity of the folder's glass card. */
+    const val CARD = .92f
+
+    /** Home's blur is fully in once the folder has opened this far, so it leads the card instead of arriving after it. */
+    const val BLUR_FULL_AT = .6f
+
+    fun scrimAlpha(solid: Boolean): Float = if (solid) SCRIM_SOLID else SCRIM
+    /** How much of Home's blurred picture shows for a folder that is [open] (0 to 1) of the way open; none without blur. */
+    fun blurLevel(open: Float, solid: Boolean): Float = if (solid) 0f else (open / BLUR_FULL_AT).coerceIn(0f, 1f)
+    fun cardAlpha(solid: Boolean): Float = if (solid) 1f else CARD
+    fun scrim(solid: Boolean): Color = Color.Black.copy(alpha = scrimAlpha(solid))
+    fun card(solid: Boolean): Color = FolioColors.SurfaceCard.copy(alpha = cardAlpha(solid))
 }
 
 /** Dark, iOS-like colors for Folio's sheets (settings, app options, setup). */
@@ -61,6 +89,45 @@ internal class OpenWindows {
     fun closeAllOf(owner: Any?) { entries.removeAll { it.owner === owner } }
     fun isOpen(owner: Any?): Boolean = entries.any { it.owner === owner }
     fun anyOpen(): Boolean = entries.isNotEmpty()
+}
+
+/**
+ * How much of Home's blurred picture an open folder wants (0 to 1), per activity. The folder hands over a function that reads its own
+ * open progress, and Home reads it while it draws, so the blur moves in the same frame as the folder's dim and card instead of one
+ * frame after a state change and a spring of its own (see [FolderBackdrop.blurLevel]).
+ */
+internal object FolderBlur {
+    private val sources = androidx.compose.runtime.mutableStateMapOf<Any, () -> Float>()
+    fun level(owner: Any?): Float = owner?.let { sources[it] }?.invoke()?.coerceIn(0f, 1f) ?: 0f
+    internal fun register(owner: Any, source: () -> Float): () -> Unit {
+        sources[owner] = source
+        return { if (sources[owner] === source) sources.remove(owner) }
+    }
+}
+
+/** Gives the activity showing this composition [level] as the blur an open folder wants, for as long as the caller is on screen. */
+@androidx.compose.runtime.Composable
+internal fun RegisterFolderBlur(level: () -> Float) {
+    val owner = androidx.compose.ui.platform.LocalContext.current.asActivity() ?: return
+    val latest = androidx.compose.runtime.rememberUpdatedState(level)
+    androidx.compose.runtime.DisposableEffect(owner) { onDispose(FolderBlur.register(owner) { latest.value() }) }
+}
+
+/**
+ * Draws Home's blurred picture over its sharp one by [level]: [blurred] holds a second copy of [home] with the blur on it, shown at
+ * that opacity, so the blur fades in with the folder instead of switching on. The sharp picture is skipped once the blur is complete.
+ */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFolderBlur(
+    home: androidx.compose.ui.graphics.layer.GraphicsLayer, blurred: androidx.compose.ui.graphics.layer.GraphicsLayer,
+    effect: androidx.compose.ui.graphics.RenderEffect, level: Float,
+) {
+    if (level < 1f) drawLayer(home)
+    if (level > 0f) {
+        blurred.renderEffect = effect
+        blurred.alpha = level
+        blurred.record(size = home.size) { drawLayer(home) }
+        drawLayer(blurred)
+    }
 }
 
 /** Open while any launcher sheet is up, so Home blurs behind it like the other overlays. */
@@ -103,6 +170,15 @@ internal val LocalFolderColors = androidx.compose.runtime.compositionLocalOf { e
 @androidx.compose.runtime.Immutable
 internal data class TintOptions(val notifications: Boolean = false, val media: Boolean = true, val notificationAppRow: Boolean = true, val mediaIsland: Boolean = true)
 internal val LocalTintOptions = androidx.compose.runtime.staticCompositionLocalOf { TintOptions() }
+
+/** The tint choices for the screen a window of this size is: Home and the panels drawn over other apps read them the same way. */
+internal fun tintOptionsFor(state: LauncherState, wide: Boolean): TintOptions {
+    val screen = screenFor(wide)
+    return TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
+        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
+        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
+        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
+}
 
 /** How strong Home's glass is: widget frost and the outline around widgets and Side Bar capsules (Settings › Glass). */
 internal data class GlassLook(val widget: Float = .26f, val outline: Float = .16f) {

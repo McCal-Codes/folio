@@ -119,7 +119,12 @@ class IslandEvents private constructor(private val context: Context) {
 
     companion object {
         private val mutable = MutableStateFlow<Pair<IslandEvent, Long>?>(null)
-        val latest: StateFlow<Pair<IslandEvent, Long>?> = mutable.asStateFlow()
+        // Redacted as it is read, so an event already showing when a recording starts loses its sender and text at once.
+        val latest: StateFlow<Pair<IslandEvent, Long>?> = PrivateRecording.redact(mutable.asStateFlow()) { pair, swapped ->
+            pair?.let { (event, at) ->
+                redactEvent(event, swapped, PrivateRecording.notificationWord, PrivateRecording.neutral((event as? IslandEvent.Message)?.packageName, swapped)) to at
+            }
+        }
         private val BLUETOOTH_OUTPUTS = setOf(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLE_HEADSET, AudioDeviceInfo.TYPE_BLE_SPEAKER)
         const val SHOW_MS = 2_600L
         const val MESSAGE_SHOW_MS = 6_000L
@@ -165,6 +170,7 @@ class IslandEvents private constructor(private val context: Context) {
         internal fun post(event: IslandEvent) {
             // Messages and device names are personal; Screenshot Mode keeps them off screen.
             if (ScreenshotMode.on.value && (event is IslandEvent.Message || event is IslandEvent.Bluetooth)) return
+            // While recording, [latest] shows a message as only the app and the word Notification (see PrivateRecording).
             mutable.value = event to System.currentTimeMillis()
         }
         @android.annotation.SuppressLint("StaticFieldLeak") // holds only the application context // english-only

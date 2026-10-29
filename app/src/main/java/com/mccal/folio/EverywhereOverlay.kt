@@ -67,8 +67,11 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import org.json.JSONObject
 
@@ -102,11 +105,11 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private var buttonSettings: ButtonBarSettings? = null
     private var buttonParams: WindowManager.LayoutParams? = null
     private val dockOpen = MutableStateFlow(false)
-    private companion object { const val SHADE_WAIT_MS = 45_000L; const val SHADE_CLOSE_MS = 450L }
+    private companion object { const val SHADE_WAIT_MS = 45_000L; const val PULL_ENTRY_WAIT_MS = 700L; const val SNAPSHOT_WAIT_MS = 260L; const val SHADE_CLOSE_MS = 450L }
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
-        val reduceMotion: Boolean = false)
+        val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -130,9 +133,15 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     /** What the island would show right now; the window only exists while this is non-null. */
     private val islandContent = MutableStateFlow<IslandContent?>(null)
 
+    private val recordingWatch = RecordingWatch(PrivateViewState.OVERLAY)
+
     fun start() {
         owner.start()
         IslandEvents.acquire(service)
+        // The overlay can stay on screen over another app while that app is recorded, with Folio's own window stopped.
+        PrivateRecording.load(service)
+        ScreenshotSwap.load(service) // the saved Swap Apps rules, so a swapped app is never named without Home
+        recordingWatch.start(wm, service.mainExecutor)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         // Going Home takes the user away from whatever the panels were drawn over, so they go too.
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync(); if (it) removeShade() } }
@@ -159,12 +168,13 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         scopeJob.cancel()
         fullScreenJob?.cancel(); fullScreenJob = null
-        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade()
+        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove()
         IslandEvents.release()
+        recordingWatch.stop(wm)
         owner.stop()
     }
 
-    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); sync() }
+    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); sync() }
 
     /**
      * The system bars tell us when an app has gone full screen: video players, games and readers hide them, and
@@ -215,7 +225,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 j.optBoolean(SettingKeys.BUTTON_BAR_ANDROID_ORDER, false), j.optBoolean(SettingKeys.BUTTON_BAR_LIGHT, false),
                 j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true)),
             j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
-            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false))
+            j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
+            j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -223,18 +234,24 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val home = FolioForeground.visible.value
         val content = islandContent.value
         val islandWanted = s.islandEverywhere && !home && content != null
-        watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen)))
+        val pullPossible = pullStripWanted(s.shadePull, s.shadeOverApps, s.folioPanels, SafeMode.active, home, false)
+        watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen) || pullPossible))
+        val stripJoins = pullPossible && !fullScreen && !pullStrip.showing
+        if (pullPossible && !fullScreen) pullStrip.add() else pullStrip.remove()
         if (s.dockEverywhere && !home) addHandle(s.leftHanded) else { removeHandle(); removeDock() }
         // The bar presses the same buttons the system's does, so it steps aside where the system's bar does.
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
         val stepAside = overlayStepsAside(s.islandHideFullScreen, s.islandHideLandscape, fullScreen, landscapeNow(), onUnfoldedScreen(), s.islandHideLandscapeInner)
+        // The newest window is on top: a strip added over a standing island would take its taps, so the island goes back above it.
+        if (stripJoins) removeIsland()
         if (islandWanted && !stepAside) { addIsland(); resizeIsland(content!!) } else removeIsland()
     }
 
     // ---- Folio's panels over other apps ------------------------------------------------------
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
-        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false)
+        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false,
+        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions())
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -244,7 +261,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 ?: CcControl.DEFAULTS,
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
-            j.optBoolean("notificationSections", false))
+            j.optBoolean("notificationSections", false),
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
@@ -269,37 +287,63 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         shadeTimer?.cancel(); shadeTimer = scope.launch { kotlinx.coroutines.delay(SHADE_WAIT_MS); closeShade() }
         shade?.removeCallbacks(shadeRemoval) // opened again while it was closing: keep it
         setShadeTouchable(true)
-        if (shade != null) return true // already up: the panel changes in place
-        val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
-        val view = ComposeView(service).apply {
-            setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
-            setContent {
-                val current by shadePanel.collectAsState()
-                val status by monitor.state.collectAsState()
-                val reduceMotion = settings.collectAsState().value.reduceMotion
-                // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
-                // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
-                var shown by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { shown = true }
-                val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
-                    MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
-                CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
-                    LocalReduceMotion provides reduceMotion) {
-                    TopPanels(current, { progress }, status, onClose = { closeShade() },
-                        // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
-                        onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
-                        showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                        ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout)
+        if (shade != null) { animateShadeBlur(shadeBlurPx); return true } // already up (or closing): the panel changes in place and the blur comes back
+        // The look Home gives the panels (tinted cards, glass strength, blur) comes from the same saved state, so over an app they read the same.
+        val wallpaperTone = runCatching { android.app.WallpaperManager.getInstance(service).androidWallpaperTone(service) }.getOrDefault(WallpaperTone())
+        val look = runCatching { decodeLauncherState(prefs.getString(SettingKeys.STATE, "{}") ?: "{}", null) }.getOrNull()
+        // Home blurs behind its panels by Settings › Blur; over an app the window does the same, when the phone allows blurring windows.
+        shadeBlurPx = look?.let { (it.panelBlur * 32 * density).toInt() }?.takeIf { it >= 2 && wm.isCrossWindowBlurEnabled } ?: 0
+        // Where the window cannot be blurred (One UI turns it off) and Blur is on, a screenshot is taken before the panel exists, shrunk and blurred once off
+        // the main thread, and shown behind the panels; Folio's frosted glass stands in while it is on its way or if the phone refuses it.
+        val wantSnapshot = shadeBlurPx == 0 && look != null && look.panelBlur >= .05f && !look.reduceTransparency && SystemShadeAccessibilityService.canSnapshot()
+        val request = ++shadeRequest
+        fun show(snapshot: android.graphics.Bitmap?) {
+            if (request != shadeRequest || shade != null) { snapshot?.recycle(); return }
+            shadeBackdrop.value = snapshot?.asImageBitmap()
+            val monitor = DeviceStatusMonitor(service).also { it.onStart(owner) }
+            val view = ComposeView(service).apply {
+                setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
+                setContent {
+                    val current by shadePanel.collectAsState()
+                    val status by monitor.state.collectAsState()
+                    val reduceMotion = settings.collectAsState().value.reduceMotion
+                    // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
+                    // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
+                    var shown by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { shown = true }
+                    val progress by rememberSettlingProgress(if (current != null && shown) 1f else 0f,
+                        MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+                    val wide = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
+                    CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
+                        LocalReduceMotion provides reduceMotion, LocalShadeBackdropBlur provides (shadeBlurPx > 0), LocalShadeBackdropImage provides shadeBackdrop.collectAsState().value, LocalWallpaperTone provides wallpaperTone,
+                        LocalTintOptions provides (look?.let { tintOptionsFor(it, wide) } ?: TintOptions()),
+                        LocalGlassLook provides (look?.let { GlassLook(it.widgetGlass, it.glassOutline) } ?: GlassLook())) {
+                        TopPanels(current, { progress }, status, onClose = { closeShade() },
+                            // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
+                            onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
+                            showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options)
+                    }
                 }
             }
+            val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
+            if (shadeBlurPx > 0) params.flags = params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+            if (runCatching { wm.addView(view, params) }.isFailure) { monitor.onStop(owner); shadePanel.value = null; shadeTimer?.cancel(); return }
+            shade = view; shadeMonitor = monitor
+            animateShadeBlur(shadeBlurPx)
+            if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
         }
-        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
-        if (runCatching { wm.addView(view, params) }.isFailure) { monitor.onStop(owner); shadePanel.value = null; shadeTimer?.cancel(); return false }
-        shade = view; shadeMonitor = monitor
-        if (!shadeReceiverOn) { runCatching { service.registerReceiver(shadeScreenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)); shadeReceiverOn = true } }
+        if (wantSnapshot) {
+            var arrived = false
+            val finish: (android.graphics.Bitmap?) -> Unit = { snapshot ->
+                if (!arrived) { arrived = true; show(snapshot) } else { snapshot?.recycle() }
+            }
+            SystemShadeAccessibilityService.takeBackdrop(finish)
+            scope.launch { kotlinx.coroutines.delay(SNAPSHOT_WAIT_MS); finish(null) }
+        } else show(null)
         return true
     }
 
@@ -316,11 +360,36 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     }
 
     private fun closeShade() {
+        if (shade == null) shadeRequest++ // a request still waiting for its picture is dropped
         shadePanel.value = null
         shadeTimer?.cancel()
         // The panels take about 0.4 s to settle shut; taps go through to the app underneath meanwhile, and the window goes after.
         setShadeTouchable(false)
+        animateShadeBlur(0)
         shade?.postDelayed(shadeRemoval, SHADE_CLOSE_MS)
+    }
+
+    private var shadeBlurPx = 0
+    private var shadeRequest = 0
+    internal val shadeBackdrop = MutableStateFlow<androidx.compose.ui.graphics.ImageBitmap?>(null)
+    private var shadeBlurAnimator: android.animation.ValueAnimator? = null
+
+    /**
+     * Moves the blur behind the shade to [target] over about the time the panels take, a step at a time rather than in one jump; with
+     * Reduce Motion it is set at once. A window without the blur flag (blur off, or the phone not blurring windows) is left alone.
+     */
+    private fun animateShadeBlur(target: Int) {
+        val view = shade ?: return
+        val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+        if (params.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND == 0) return
+        shadeBlurAnimator?.cancel()
+        fun apply(radius: Int) { params.blurBehindRadius = radius; runCatching { wm.updateViewLayout(view, params) } }
+        if (settings.value.reduceMotion || params.blurBehindRadius == target) { apply(target); return }
+        shadeBlurAnimator = android.animation.ValueAnimator.ofInt(params.blurBehindRadius, target).apply {
+            duration = SHADE_CLOSE_MS / 2
+            addUpdateListener { apply(it.animatedValue as Int) }
+            start()
+        }
     }
 
     /** While it closes, the shade only draws: the app underneath gets the touches. */
@@ -331,12 +400,32 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         if (flags != params.flags) { params.flags = flags; runCatching { wm.updateViewLayout(view, params) } }
     }
 
-    private fun removeShade() {
+    internal fun removeShade() {
+        shadeRequest++ // a request still waiting for its picture must not add a window after this (Home came to the front, or the configuration changed)
         shadeTimer?.cancel(); shadeTimer = null
+        shadeBlurAnimator?.cancel(); shadeBlurAnimator = null
         shade?.let { it.removeCallbacks(shadeRemoval); runCatching { wm.removeView(it) } }; shade = null
         shadePanel.value = null
+        // The blurred picture of the app behind the panel goes with the panel. Only let go of, not recycled: a frame may still be drawing it.
+        shadeBackdrop.value = null
         shadeMonitor?.onStop(owner); shadeMonitor = null
         if (shadeReceiverOn) { runCatching { service.unregisterReceiver(shadeScreenOff) }; shadeReceiverOn = false }
+    }
+
+    // ---- Pull down from the top edge: see PullStrip ------------------------------------------
+
+    private val pullStrip = PullStrip(service, wm) { panel ->
+        // Through the same transparent entry a shortcut uses: a shade opened with an activity of ours in front gets the blur behind it,
+        // and one opened from the service alone did not on the Android 17 emulator (the blur layer stayed invisible).
+        val entry = if (panel == ShadePanel.NOTIFICATIONS) ShadeShortcutNotifications::class.java else ShadeShortcutQuickSettings::class.java
+        val before = ShadeShortcutActivity.created.get()
+        val started = runCatching { service.startActivity(Intent(service, entry).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        if (!started && !openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
+        // A start the system quietly refuses throws nothing and shows nothing: if the entry never ran, open the panel directly (no blur, but it opens).
+        else if (started) scope.launch {
+            kotlinx.coroutines.delay(PULL_ENTRY_WAIT_MS)
+            if (ShadeShortcutActivity.created.get() == before && !openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
+        }
     }
 
     // ---- Dock handle -------------------------------------------------------------------------
@@ -411,7 +500,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val params = buttonParams ?: return
         val floor = navigationInset() + (10 * density).toInt()
         val ceiling = (service.resources.displayMetrics.heightPixels * .6f).toInt()
-        params.y = (params.y - deltaPx).toInt().coerceIn(floor, ceiling)
+        params.y = liftedBarOffset((params.y - deltaPx).toInt(), floor, ceiling)
         runCatching { wm.updateViewLayout(view, params) }
         if (done) ButtonBarPosition.save(service, wideScreen(), landscapeNow(), (params.y - floor) / density)
     }
@@ -508,8 +597,11 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
         islandWindowWidth = windowWidth
+        // Advanced island: the saved color only applies when the pill is not wrapping a camera hole Android reports.
+        val reportedCutout = metrics.windowInsets.displayCutout?.boundingRects?.any { !it.isEmpty } == true
+        val wraps = IslandStyle.wrapsRealCamera(custom, camera?.ltrb(), reportedCutout, windowWidth, windowHeight)
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
@@ -531,28 +623,60 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     return removed
                 }
                 val reduceMotion = settings.collectAsState().value.reduceMotion || androidRemovesAnimations()
+                // Advanced island, read again whenever it is saved so the pill over an app follows at once.
+                val styleVersion by IslandLayoutChanges.version.collectAsState()
+                val style = remember(styleVersion) { IslandStyle.active(service) }
+                val speed = IslandStyle.speedMultiplier(style.speed, MotionSpeed.current.factor)
+                val colored = IslandStyle.colorApplies(wraps)
+                val surface = if (colored) Color(style.background) else Color.Black
+                val ink = if (colored) Color(IslandStyle.inkFor(style.background)) else Color.White
+                val radius = IslandStyle.pillRadius(style.corners, g.pillH, if (wraps) minOf(g.camW, g.camH) / 2f else 0f).dp
+                val gestures = style.gestures
+                val customGestures = !IslandStyle.gesturesAreDefault(gestures)
                 val w by animateDpAsState(content?.let { g.widthFor(it).dp } ?: 0.dp,
-                    if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Appear), label = "overlay-island")
-                androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+                    if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.scaled(FolioMotion.Appear, speed)), label = "overlay-island")
+                androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion, LocalIslandStyle provides style, LocalIslandInk provides ink) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     val popUp = (content as? IslandContent.Event)?.event is IslandEvent.Message
                     // With Reduce Motion the pill fades in where it lands instead of growing from nothing.
-                    if (content != null && w > 1.dp) { val fade = rememberReducedFade().value; Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape((g.pillH / 2).dp)).background(Color.Black)
+                    if (content != null && w > 1.dp) { val fade = rememberReducedFade().value; val open = {
+                            (content as? IslandContent.Live)?.let { IslandListenerService.open(service, it.activity) }
+                            ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
+                        }
+                        // There is no card to expand over an app, so Expand opens the app, as a tap always did; Dismiss puts a pop-up away.
+                        val act: (IslandAction) -> Unit = { a ->
+                            when (IslandStyle.overlayAction(a)) {
+                                IslandAction.OPEN_APP -> open()
+                                IslandAction.DISMISS -> if (content is IslandContent.Event) IslandEvents.dismiss()
+                                else -> Unit
+                            }
+                        }
+                        val tapLabel = stringResource(if (IslandStyle.overlayAction(gestures.getValue(IslandGesture.TAP)) == IslandAction.DISMISS) R.string.island_action_dismiss else R.string.open)
+                        val dismissLabel = stringResource(R.string.island_action_dismiss)
+                        val openLabel = stringResource(R.string.open)
+                        Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape(radius)).background(surface)
                         // Swipe a message or notification up to put it away early, like an iPhone banner.
-                        .pointerInput(popUp) {
-                            if (!popUp) return@pointerInput
+                        .pointerInput(popUp, gestures.getValue(IslandGesture.SWIPE_UP)) {
+                            if (!popUp || gestures.getValue(IslandGesture.SWIPE_UP) != IslandAction.DISMISS) return@pointerInput
                             var pulled = 0f
                             detectVerticalDragGestures(
                                 onDragStart = { pulled = 0f },
                                 onDragEnd = { if (pulled < -12.dp.toPx()) IslandEvents.dismiss() },
                             ) { change, dy -> change.consume(); pulled += dy }
                         }
-                        .clickable(onClickLabel = service.getString(R.string.open)) {
-                            (content as? IslandContent.Live)?.let { IslandListenerService.open(service, it.activity) }
-                            ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
-                        }
-                        .semantics { contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }) {
-                        IslandPillContent(content, g.camW.dp, g.pillH.dp)
+                        .then(if (!customGestures) Modifier.clickable(onClickLabel = service.getString(R.string.open)) { open() }
+                            else Modifier.islandGestureInput(gestures) { _, action -> act(action) })
+                        .semantics {
+                            contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                            if (customGestures) {
+                                // Every action a gesture is set to is also a plain TalkBack action (the tap is the click).
+                                if (gestures.getValue(IslandGesture.TAP) != IslandAction.NOTHING) onClick(label = tapLabel) { act(gestures.getValue(IslandGesture.TAP)); true }
+                                customActions = IslandGesture.entries.map { IslandStyle.overlayAction(gestures.getValue(it)) }.distinct()
+                                    .filter { it == IslandAction.OPEN_APP || it == IslandAction.DISMISS }
+                                    .map { a -> CustomAccessibilityAction(if (a == IslandAction.DISMISS) dismissLabel else openLabel) { act(a); true } }
+                            }
+                        }) {
+                        IslandPillContent(content, g.wrapW.dp, g.pillH.dp)
                     } }
                 }
                 }

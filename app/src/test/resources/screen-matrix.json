@@ -13,6 +13,17 @@
       }
     },
     {
+      "name": "Standard Phone (360x800)",
+      "width": 360,
+      "height": 800,
+      "group": "phone",
+      "cutout": {
+        "x": 180.0,
+        "y": 14,
+        "r": 9
+      }
+    },
+    {
       "name": "Nexus 4",
       "width": 384,
       "height": 640,
@@ -195,6 +206,12 @@
       "group": "tablet"
     },
     {
+      "name": "Large Tablet (1067x1707)",
+      "width": 1067,
+      "height": 1707,
+      "group": "tablet"
+    },
+    {
       "name": "Small Desktop",
       "width": 1366,
       "height": 768,
@@ -211,6 +228,13 @@
       "width": 1920,
       "height": 1080,
       "group": "desktop"
+    },
+    {
+      "name": "Folio_Fold_API_37 inner (emulator, 27 Oct sweep)",
+      "width": 750,
+      "height": 800,
+      "group": "foldable",
+      "note": "The fold AVD's inner display, 1968 x 2184 px at 420 dpi, with the window about 800 dp tall under the gesture area: an upright regular window where Home keeps the bottom dock bar. The 27 Oct sweep (F01) found Chrome's row under the dock in edit mode here."
     }
   ]
 }

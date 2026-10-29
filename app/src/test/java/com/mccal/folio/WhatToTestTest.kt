@@ -18,6 +18,12 @@ class WhatToTestTest {
         assertEquals("the new setup is the optional item", 1, list.items.count { it.action == "setup" })
     }
 
+    @Test fun `the public checklist holds nothing a gated feature needs`() {
+        val list = WhatToTest.parse(File(root, "app/src/main/assets/what-to-test.json").readText())!!
+        val gated = list.items.filter { it.where.startsWith("Beta supporters and Folio Dev only") }
+        assertEquals("gated items belong in docs/dev-notes.md, not the checklist every tester sees: ${gated.map { it.id }}", emptyList<String>(), gated.map { it.id })
+    }
+
     @Test fun `a bad item is skipped and a bad file is refused`() {
         val list = WhatToTest.parse("""{"release":"0.6.9-beta.1","items":[
             {"id":"a","title":"A","steps":["one"]},

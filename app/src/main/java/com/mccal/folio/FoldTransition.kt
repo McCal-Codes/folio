@@ -75,7 +75,10 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
     // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
     // arrive after the first frame, and a 0 kept from then would square off the panel's corners until the next switch.
-    var cornerPx by remember(view, expanded) { mutableFloatStateOf(0f) }
+    // One state for the whole life of the view: the frame loop below is launched once and keeps writing to the state it first saw, so a state made per
+    // display (remember(view, expanded)) was left at 0 after the first switch and squared off the panel's corners; a new display asks again instead.
+    var cornerPx by remember(view) { mutableFloatStateOf(0f) }
+    androidx.compose.runtime.LaunchedEffect(expanded) { cornerPx = 0f }
     // Android 15+ files a layer with no motion hint as "normal", which the Fold8 runs at 60 Hz. While the fold
     // animates, ask for the display's top rate; once it settles, hand the choice back to the system (dynamic).
     val fastest = remember(view, expanded) { view.display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f }
@@ -91,6 +94,12 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val tick by androidx.compose.runtime.rememberUpdatedState(enabled && haptics)
     fold.onHalfway = { if (tick) view.performHapticFeedback(
         if (Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.SEGMENT_TICK else android.view.HapticFeedbackConstants.CLOCK_TICK) }
+    // Hinge detents replace that single tick with a stop at 45, 90 and 135 degrees, the ends and flat (see HingeDetents.kt).
+    val detentContext = LocalContext.current
+    val detentOptions by rememberHingeDetentOptions(detentContext)
+    val detentsOpen = rememberGateOpen(FeatureGate.HINGE_DETENTS)
+    fold.detentsOn = detentsOpen && detentOptions.on
+    fold.onDetent = { d -> if (tick) view.performHapticFeedback(HingeDetents.hapticFor(d.kind, detentOptions.strength, Build.VERSION.SDK_INT)) }
     // m: 0 = clean, 1 = fully half-folded look. cover = whole-screen mode on the cover display.
     var m by remember { mutableFloatStateOf(0f) }
     // Screenshot morph (fallback style): snapshots of Folio's own screen taken the moment the hinge
@@ -239,8 +248,11 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             drawRect(brush)
         }
         // Whole screen dims as it folds, like the display powering down with the hinge.
-        if (enabled && direction.allows(false) && fold.closing) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM)))
+        // It lets go with a spring as the fold reopens or stops, instead of vanishing while the fold is still easing back (a visible pop in a half fold).
+        val dimGate by androidx.compose.animation.core.animateFloatAsState(if (enabled && direction.allows(false) && fold.closing) 1f else 0f,
+            MotionSpeed.spring(.9f, androidx.compose.animation.core.Spring.StiffnessMedium), label = "fold dim")
+        if (enabled && dimGate > .002f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM) * dimGate))
         }
     }
 }
@@ -350,6 +362,10 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     var onOpeningStarted: (() -> Unit)? = null
     var onClosingStarted: (() -> Unit)? = null
     var onHalfway: (() -> Unit)? = null
+    /** Hinge detents: when on, a stop is reported instead of the single halfway tick. */
+    var detentsOn = false
+    var onDetent: ((Detent) -> Unit)? = null
+    private val detents = HingeDetents.Tracker()
     /** Uptime when the screenshot morph started on the new display, or -1. */
     var morphFrom = -1L
     /** Folding from the open screen right now. */
@@ -461,12 +477,13 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
                 else before + (1f - kotlin.math.exp(-((timestampNs - coverAngleNs) / 1e9f) / COVER_SMOOTH_S)) * (value - before)
             coverAngleNs = timestampNs
         } else coverAngle = null
+        if (detentsOn) detents.feed(value, continuous, now)?.let { onDetent?.invoke(it) } else detents.reset()
         if (previous == null) { peak = value; movedFrom = value; movedAt = now; return }
         if (previous == value) return
         // A phone held still for a while starts a fresh reference, so an old maximum can't turn a small move into a fold.
         if (now - movedAt > STALL_MS && closeStartAt < 0) peak = previous
         if (kotlin.math.abs(value - movedFrom) >= MOVE_DEG) { movedFrom = value; movedAt = now }
-        if (HingeTracker.crossedHalfway(previous, value)) onHalfway?.invoke()
+        if (!detentsOn && HingeTracker.crossedHalfway(previous, value)) onHalfway?.invoke()
         if (expanded) {
             when {
                 // Reached flat while revealing: learn how long lit → flat takes for this person.
