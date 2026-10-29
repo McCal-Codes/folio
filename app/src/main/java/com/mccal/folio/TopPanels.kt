@@ -102,6 +102,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
+    val pageBack = remember { CcPageBack() }
     var shown by remember { mutableStateOf<ShadePanel?>(null) }
     if (open) shown = panel
     val current = shown ?: return
@@ -135,7 +136,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .pointerInput(Unit) {
                 var total = 0f
-                detectVerticalDragGestures(onDragStart = { total = 0f }) { _, drag -> total += drag; if (total < -48.dp.toPx()) onClose() }
+                var done = false // one swipe goes back one page, or closes, once
+                detectVerticalDragGestures(onDragStart = { total = 0f; done = false }) { _, drag ->
+                    total += drag
+                    if (!done && total < -48.dp.toPx()) { done = true; if (!pageBack.goBack()) onClose() }
+                }
             } else Modifier)
         .testTag("top-panel-scrim")) {
         // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
@@ -207,11 +212,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
             NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
             listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
     }
     }
 }
@@ -509,6 +514,19 @@ internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.
 /** What Clear glass uses over the backdrop at hand (its dim and its tiles), worked out from how bright the backdrop is; see [ccClearTone]. */
 private val LocalCcTone = androidx.compose.runtime.staticCompositionLocalOf { CC_DEFAULT_TONE }
 
+/** The page a swipe up goes back to from page [current] (in the order of the pages), or null on the first, where the same swipe closes the panel. */
+internal fun ccBackTarget(current: Int): Int? = if (current > 0) current - 1 else null
+
+/**
+ * Lets the scrim behind the panels ask Control Center to go back a page before it closes the panel: a swipe up that starts in the
+ * empty space under the controls lands on the scrim, not on the pager, and used to close the panel from the Media and Connectivity pages.
+ */
+internal class CcPageBack {
+    var back: (() -> Boolean)? = null
+    /** True if Control Center took the swipe by going back a page. */
+    fun goBack(): Boolean = back?.invoke() == true
+}
+
 /** One page of Control Center: Controls pages are numbered from 0 when the controls need more than one. */
 internal data class CcPageSpec(val page: CcPage, val index: Int)
 
@@ -698,7 +716,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -851,6 +869,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
+        // A swipe up in the empty space under the controls reaches the scrim, which asks here first: from Media or Connectivity it goes back a page, and only the first page lets it close the panel.
+        DisposableEffect(pageBack, current) {
+            pageBack?.back = { ccBackTarget(current)?.let { goTo(it); true } ?: false }
+            onDispose { pageBack?.back = null }
+        }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         // While editing, the last Controls page also holds the gallery of controls to add back, so it counts for the page height.
         val galleryRows = if (edit.active) ccEditGalleryRows(CcControl.entries.count { it !in chosen && available(it) }, cols) else 0
