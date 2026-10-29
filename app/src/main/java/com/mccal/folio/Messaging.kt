@@ -100,6 +100,8 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
+    // White on the island and the panels; black on a light Advanced island color.
+    val ink = LocalIslandInk.current
     LaunchedEffect(Unit) { delay(80); runCatching { focus.requestFocus() }; keyboard?.show() }
     LaunchedEffect(sent) { if (sent) { keyboard?.hide(); delay(700); onDone() } }
     val submit = {
@@ -108,13 +110,13 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
             else haptic.perform(FolioHaptic.Refuse)
         }
     }
-    Row(modifier.fillMaxWidth().heightIn(min = 40.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f))
+    Row(modifier.fillMaxWidth().heightIn(min = 40.dp).clip(CircleShape).background(ink.copy(alpha = .12f))
         .padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).padding(vertical = 9.dp)) {
-            if (text.isEmpty()) Text(if (sent) stringResource(R.string.reply_sent) else to?.let { stringResource(R.string.reply_to_name, it) } ?: stringResource(R.string.reply_hint), color = Color.White.copy(alpha = .5f),
+            if (text.isEmpty()) Text(if (sent) stringResource(R.string.reply_sent) else to?.let { stringResource(R.string.reply_to_name, it) } ?: stringResource(R.string.reply_hint), color = ink.copy(alpha = .5f),
                 fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
             BasicTextField(text, { if (!sent) text = it }, Modifier.fillMaxWidth().focusRequester(focus),
-                textStyle = TextStyle(color = Color.White, fontSize = FolioType.SUBHEAD.sp), cursorBrush = SolidColor(Color.White), maxLines = 4,
+                textStyle = TextStyle(color = ink, fontSize = FolioType.SUBHEAD.sp), cursorBrush = SolidColor(ink), maxLines = 4,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { submit() }))
         }
@@ -124,9 +126,9 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
         Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape)
             .clickable(enabled = ready && !sent) { submit() }.semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center) {
-            Box(Modifier.size(32.dp).clip(CircleShape).background(if (sent) FolioColors.Green else if (ready) LocalAccent.current.fill else Color.White.copy(alpha = .18f)),
+            Box(Modifier.size(32.dp).clip(CircleShape).background(if (sent) FolioColors.Green else if (ready) LocalAccent.current.fill else ink.copy(alpha = .18f)),
                 contentAlignment = Alignment.Center) {
-                Icon(if (sent) Icons.Rounded.Check else Icons.Rounded.ArrowUpward, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(if (sent) Icons.Rounded.Check else Icons.Rounded.ArrowUpward, null, tint = if (ready) Color.White else ink, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -137,11 +139,12 @@ internal fun QuickReplyField(to: String?, modifier: Modifier = Modifier, onSend:
 @Composable
 internal fun MessageActionPill(label: String, onClick: () -> Unit) {
     // Drawn 32 dp tall; the tap is the full 48 dp.
+    val ink = LocalIslandInk.current
     Box(Modifier.heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center) {
-        Box(Modifier.heightIn(min = 32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)).padding(horizontal = FolioSpace.COMFY.dp),
+        Box(Modifier.heightIn(min = 32.dp).clip(CircleShape).background(ink.copy(alpha = .14f)).padding(horizontal = FolioSpace.COMFY.dp),
             contentAlignment = Alignment.Center) {
-            Text(label, color = Color.White, fontSize = 14.sp)
+            Text(label, color = ink, fontSize = FolioType.COMPACT.sp)
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +51,8 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
     val today = remember(tick) { LocalDate.now() }
     val apps = remember(state.apps, state.hiddenApps) { state.apps.filter { it.id !in state.hiddenApps } }
     // Off means no row and no usage query either.
-    val suggestions by produceState(emptyList<AppEntry>(), apps, state.todaySuggestions) {
+    val cleared by SuggestionsHistory.generation.collectAsStateWithLifecycle()
+    val suggestions by produceState(emptyList<AppEntry>(), apps, state.todaySuggestions, cleared) {
         value = if (!state.todaySuggestions) emptyList() else withContext(Dispatchers.IO) {
             Suggestions.forNow(context, apps)
         }
@@ -135,7 +138,7 @@ private fun TodaySuggestions(apps: List<AppEntry>, columns: Int, onLaunch: (AppE
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable { onLaunch(app) }.padding(vertical = FolioSpace.TINY.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     AppIcon(app, app.label, Modifier.size(52.dp), shape = RoundedCornerShape(13.dp), badge = false)
-                    Text(app.label, color = ink.primary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    Text(app.label, color = ink.primary, fontSize = FolioType.CAPTION.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.HAIR.dp, end = FolioSpace.HAIR.dp))
                 }
             }
@@ -156,9 +159,12 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
                     BuiltinWidgetCard(widget.id, -1, opensApp = true) { if (!edit.active) edit.start() }
                 }
             } else {
-                val info = remember(widget.id) { runCatching { widgets.manager.getAppWidgetInfo(widget.id) }.getOrNull() }
+                val info = rememberWidgetInfo(widgets.manager, widget.id)
                 if (info == null) Box(Modifier.fillMaxSize().background(Glass.copy(alpha = .2f)), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.widget_unavailable), color = Color.White.copy(alpha = .8f), fontSize = FolioType.FOOTNOTE.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(stringResource(R.string.widget_unavailable), color = Color.White.copy(alpha = .8f), fontSize = FolioType.FOOTNOTE.sp)
+                        TextButton(onClick = onRemove) { Text(stringResource(R.string.remove), color = Color.White, fontSize = FolioType.FOOTNOTE.sp) }
+                    }
                 } else key(widget.id) {
                     AndroidView(factory = { widgets.host.createView(it, widget.id, info) }, modifier = Modifier.fillMaxSize())
                 }

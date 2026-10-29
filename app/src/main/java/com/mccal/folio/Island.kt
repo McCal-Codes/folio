@@ -64,7 +64,9 @@ data class NotificationItem(val key: String, val packageName: String, val appLab
     val title: String?, val text: String?, val postTime: Long, val clearable: Boolean,
     val contentIntent: android.app.PendingIntent?,
     /** Messaging notifications: whether quick reply / mark-as-read are offered by the app. */
-    val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null)
+    val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null,
+    /** From Android's ranking, for sections: how loud the channel is ([IMPORTANCE_UNKNOWN] when not ranked), and the flags below. */
+    val importance: Int = IMPORTANCE_UNKNOWN, val conversation: Boolean = false, val ongoing: Boolean = false, val urgent: Boolean = false)
 
 /** A messaging app's notification channel and whether Android pops it up itself (importance HIGH or above). */
 data class MessageChannel(val packageName: String, val appLabel: String, val channelId: String, val channelName: String?, val importance: Int,
@@ -157,10 +159,10 @@ class IslandListenerService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         connected.value = false
         runCatching { sessions?.removeOnActiveSessionsChangedListener(sessionListener) }
+        workerHandler.removeCallbacks(publishPass) // a pass queued before access went must not publish it back
         clearControllerCallbacks()
         if (instance === this) instance = null
-        mutable.value = null
-        notificationsMutable.value = emptyList() // don't keep other apps' content after access is gone
+        clearPublished()
     }
 
     /** Set before anything is torn down, so a pass already running on the worker cannot register callbacks afterwards. */
@@ -172,6 +174,7 @@ class IslandListenerService : NotificationListenerService() {
         clearControllerCallbacks()
         worker.quitSafely()
         if (instance === this) instance = null
+        clearPublished()
         super.onDestroy()
     }
 
@@ -183,14 +186,10 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     /** Last alerting post time per notification key, so updates that don't alert don't pop up again. */
-    private val announced = object : LinkedHashMap<String, Long>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?) = size > 64
-    }
+    private val announced = RecentMap<String, Long>(64)
 
     /** What each notification last popped up with, so an app re-posting the same warning doesn't pop up again. */
-    private val shownContent = object : LinkedHashMap<String, Pair<Int, Long>>(32, .75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Long>>?) = size > 64
-    }
+    private val shownContent = RecentMap<String, Pair<Int, Long>>(64)
     private fun isRepeat(key: String, title: String?, text: String?, posted: Long): Boolean {
         // The time the app itself posted goes into the signature: an app re-posting one warning keeps its own
         // `when`, while a person sending "ok" twice in a conversation makes a new notification with a new one —
@@ -283,9 +282,14 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     private fun publishNow() {
+        if (destroyed || !connected.value) return
         val controllers = runCatching { sessions?.getActiveSessions(component(this)) }.getOrNull().orEmpty()
         watch(controllers) // every pass, so ended sessions are unregistered even during a call
-        mutable.value = runCatching { currentOngoing() ?: currentMedia(controllers) ?: currentProgress() }.getOrNull()
+        // The island shows one thing at a time (a call or timer comes before the music), but the Music widget shows the track
+        // whatever else is going on, so the media is read on its own as well.
+        val media = runCatching { currentMedia(controllers) }.getOrNull()
+        mediaMutable.value = media
+        mutable.value = runCatching { currentOngoing() ?: media ?: currentProgress() }.getOrNull()
         notificationsMutable.value = runCatching { currentNotifications() }.getOrDefault(emptyList())
         runCatching { rememberMessageChannels() }
     }
@@ -326,13 +330,22 @@ class IslandListenerService : NotificationListenerService() {
         .sortedByDescending { it.postTime }
         .map { sbn ->
             val extras = sbn.notification.extras
+            val ranking = Ranking()
+            val ranked = currentRanking?.getRanking(sbn.key, ranking) == true
             NotificationItem(sbn.key, sbn.packageName, appLabel(sbn.packageName), appIcon(sbn.packageName),
                 extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
                 (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString(),
                 sbn.postTime, sbn.isClearable, sbn.notification.contentIntent,
                 canReply = Messaging.replyAction(sbn.notification) != null, canMarkRead = Messaging.markReadAction(sbn.notification) != null,
-                channelId = sbn.notification.channelId)
+                channelId = sbn.notification.channelId, importance = if (ranked) ranking.importance else IMPORTANCE_UNKNOWN,
+                conversation = ranked && ranking.isConversation,
+                ongoing = sbn.notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
+                urgent = sbn.notification.category in URGENT_CATEGORIES || (ranked && ranking.channel?.canBypassDnd() == true))
         }
+
+    /** Calls, alarms, timers and the like: never put in Quiet, whatever the channel's importance says. */
+    private val URGENT_CATEGORIES = setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_ALARM, Notification.CATEGORY_REMINDER,
+        Notification.CATEGORY_EVENT, Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_ERROR)
 
     /** Samsung's System UI posts a "1 more notification" stand-in for its own overflow; it isn't a real notification. */
     private fun isOverflowPlaceholder(sbn: StatusBarNotification): Boolean {
@@ -484,8 +497,10 @@ class IslandListenerService : NotificationListenerService() {
         private val messageChannelsMutable = MutableStateFlow<Map<String, MessageChannel>>(emptyMap())
         /** Messaging channels seen since Folio started (kept in memory only). */
         val messageChannels: StateFlow<Map<String, MessageChannel>> = messageChannelsMutable.asStateFlow()
-        private val notificationsMutable = MutableStateFlow<List<NotificationItem>>(emptyList())
-        val notifications: StateFlow<List<NotificationItem>> = ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())
+        internal val notificationsMutable = MutableStateFlow<List<NotificationItem>>(emptyList())
+        val notifications: StateFlow<List<NotificationItem>> = PrivateRecording.redact(ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())) { list, swapped ->
+            list.map { redactNotification(it, swapped[it.packageName], PrivateRecording.notificationWord, PrivateRecording.neutral(it.packageName, swapped)) }
+        }
 
         fun dismiss(key: String) { runCatching { instance?.cancelNotification(key) } }
         private fun find(key: String) = runCatching { instance?.activeNotifications?.firstOrNull { it.key == key } }.getOrNull()
@@ -513,10 +528,24 @@ class IslandListenerService : NotificationListenerService() {
             if (!sent) context.packageManager.getLaunchIntentForPackage(item.packageName)
                 ?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
         }
-        private val mutable = MutableStateFlow<IslandActivity?>(null)
+        internal val mutable = MutableStateFlow<IslandActivity?>(null)
         /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
-        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
+        val activity: StateFlow<IslandActivity?> = PrivateRecording.redact(ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) }
+        }
+        internal val mediaMutable = MutableStateFlow<IslandActivity.Media?>(null)
+        /** The playing track whatever else the island is showing: for the Music widget, which is not the island. */
+        // Private While Recording hides the playing track on Home too, not only in the island.
+        val media: StateFlow<IslandActivity.Media?> = PrivateRecording.redact(ScreenshotMode.hide(mediaMutable.asStateFlow(), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) as? IslandActivity.Media }
+        }
         val connected = MutableStateFlow(false)
+        /** Don't keep other apps' content (the island, the Music widget's track, notifications) once access is gone or the service ends. */
+        internal fun clearPublished() {
+            mutable.value = null
+            mediaMutable.value = null
+            notificationsMutable.value = emptyList()
+        }
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)
         private val artCache = android.util.LruCache<String, Bitmap>(8)
@@ -577,5 +606,3 @@ class IslandListenerService : NotificationListenerService() {
         }
     }
 }
-
-private val IslandAccent = Color(0xFF6EE39A)

@@ -59,6 +59,17 @@ internal class HomeOverlays(
     /** The empty Home cell whose menu is open. */
     var emptyCell by mutableStateOf(emptyCell)
 
+    /** Whether any of these is open. */
+    val anyOpen: Boolean
+        get() = menu != null || rename != null || panel != null || stackFan != null || stackEditor != null || folder != null ||
+            newFolder != null || emptyCell != null || addToFolder != null || iconEditor != null || removeApp != null
+
+    /** Closes every one of them. */
+    fun closeAll() {
+        menu = null; rename = null; panel = null; stackFan = null; stackEditor = null; folder = null
+        newFolder = null; emptyCell = null; addToFolder = null; iconEditor = null; removeApp = null
+    }
+
     companion object {
         val Saver = listSaver<HomeOverlays, Any?>(
             save = { listOf(it.menu, it.rename, it.panel, it.stackFan, it.stackEditor, it.folder, it.newFolder, it.emptyCell, it.addToFolder, it.iconEditor, it.removeApp) },
