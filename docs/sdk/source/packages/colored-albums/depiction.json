@@ -21,7 +21,8 @@
       "screens": [
         "cover",
         "inner"
-      ]
+      ],
+      "fallback": "Without notification access Folio can't see what's playing, so there is no Now Playing card or island sound bars to tint, and nothing changes."
     },
     {
       "type": "changelog",
