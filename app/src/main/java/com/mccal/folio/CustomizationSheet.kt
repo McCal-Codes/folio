@@ -457,6 +457,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
                         if (!ccV2) {
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
+                        CcSizeNote()
                         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
                         CardNote(stringResource(R.string.cc_look_note))
                         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
