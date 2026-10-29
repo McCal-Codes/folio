@@ -73,4 +73,15 @@ class CcReorderTest {
         state.start("A", Offset(50f, 50f)); state.cancel()
         assertNull(state.moving)
     }
+
+    @Test fun `a control that left the layout is no longer found by a drop`() {
+        val state = CcReorderState()
+        state.bounds["A"] = Rect(0f, 0f, 100f, 100f)
+        state.bounds["B"] = Rect(120f, 0f, 220f, 100f)
+        state.bounds["C"] = Rect(120f, 0f, 220f, 100f) // C moved into the cell B was removed from, while B's old box was still there
+        state.forget("B")
+        state.start("A", Offset(50f, 50f))
+        state.drag(Offset(100f, 0f))
+        assertEquals("C", state.hover)
+    }
 }

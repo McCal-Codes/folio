@@ -3,8 +3,11 @@ package com.mccal.folio
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -84,28 +87,37 @@ internal class CcReorderState {
     }
 
     fun cancel() { moving = null; hover = null; lift = Offset.Zero }
+
+    /** A control that left the layout (removed, or edit mode ended) must not be found by a later drop. */
+    fun forget(name: String) { bounds.remove(name) }
 }
 
 /**
  * Lets a control be pressed, held and dragged onto another when [enabled]. The held one follows the finger a little larger; the one under it
  * gets a ring (still, nothing flashes). TalkBack gets the same move as two actions.
  */
+@Composable
 internal fun Modifier.ccReorderable(
     name: String, state: CcReorderState, enabled: Boolean, earlierLabel: String, laterLabel: String,
     onDrop: (moving: String, target: String) -> Unit, onNudge: (by: Int) -> Unit,
-): Modifier =
-    if (!enabled) this
-    else this
+): Modifier {
+    // The drag handler lives as long as the control stays where it is, but the list it changes does not: it reads the latest callbacks.
+    val drop by rememberUpdatedState(onDrop)
+    val nudge by rememberUpdatedState(onNudge)
+    // Where a control was is forgotten when it leaves the layout or edit mode ends, so a later drop never lands on a control that is gone.
+    DisposableEffect(name, state, enabled) { onDispose { state.forget(name) } }
+    if (!enabled) return this
+    return this
         .onGloballyPositioned { state.bounds[name] = it.boundsInRoot() }
         .pointerInput(name) {
             detectDragGesturesAfterLongPress(
                 onDragStart = { state.start(name, it) },
                 onDrag = { change, amount -> change.consume(); state.drag(amount) },
-                onDragEnd = { state.end(onDrop) },
+                onDragEnd = { state.end { moving, target -> drop(moving, target) } },
                 onDragCancel = { state.cancel() },
             )
         }
-        .semantics { customActions = listOf(CustomAccessibilityAction(earlierLabel) { onNudge(-1); true }, CustomAccessibilityAction(laterLabel) { onNudge(1); true }) }
+        .semantics { customActions = listOf(CustomAccessibilityAction(earlierLabel) { nudge(-1); true }, CustomAccessibilityAction(laterLabel) { nudge(1); true }) }
         .graphicsLayer {
             if (state.moving == name) {
                 translationX = state.lift.x
@@ -115,3 +127,4 @@ internal fun Modifier.ccReorderable(
             }
         }
         .then(if (state.hover == name) Modifier.border(2.dp, Color.White.copy(alpha = .9f), RoundedCornerShape(26.dp)) else Modifier)
+}
