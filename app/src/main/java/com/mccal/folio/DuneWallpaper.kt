@@ -70,12 +70,16 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = Hom
         .homeScrim(scrim)) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
 }
 
+/** The flat surface Home draws with no picture chosen, in dark and in light appearance. Automatic ink reads these (see [flatBackgroundTone]). */
+internal val FLAT_BACKGROUND_DARK = Color(0xFF0B0B0C)
+internal val FLAT_BACKGROUND_LIGHT = Color(0xFFE9E9EC)
+
 internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false) {
     if (photo == null || photo.width <= 0 || photo.height <= 0) {
         // No picture chosen. A flat surface rather than a scene: DES-2a says Folio does not draw backgrounds, and
         // this is the absence of one. It still has to be opaque, because Home's window is see-through and a window
         // with nothing behind it keeps showing the frame before (#12, #35).
-        drawRect(if (dark) Color(0xFF0B0B0C) else Color(0xFFE9E9EC))
+        drawRect(if (dark) FLAT_BACKGROUND_DARK else FLAT_BACKGROUND_LIGHT)
         return
     }
     val destinationWidth = size.width.toInt().coerceAtLeast(1)

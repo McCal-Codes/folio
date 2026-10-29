@@ -44,7 +44,12 @@ data class LayoutImportPreview(
     val appIconStyles: Map<String, AppIconOverride> = emptyMap(),
     /** Icon swipe and double tap actions; a backup from before has none, and the ones on the phone stay. */
     val iconActions: Map<String, IconActions> = emptyMap(),
+    /** Widgets of a kind this Folio does not have (from a newer build): left out, and the rest restored. */
+    val skippedWidgets: Int = 0,
 )
+
+/** The widgets Folio draws itself, which a backup carries by id. A kind missing here is dropped on export and skipped on import. */
+internal val BACKUP_BUILTIN_WIDGETS = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET)
 
 fun layoutBackupScope(context: Context): String {
     val prefs = context.getSharedPreferences("layout_backup_identity", Context.MODE_PRIVATE)
@@ -81,7 +86,7 @@ fun encodeLayoutBackup(
         if (placement.offsetX != 0f) item.put("offsetX", placement.offsetX.toDouble())
         if (placement.offsetY != 0f) item.put("offsetY", placement.offsetY.toDouble())
         when {
-            placement.id in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET) -> item.put("builtinId", placement.id)
+            placement.id in BACKUP_BUILTIN_WIDGETS -> item.put("builtinId", placement.id)
             saved != null -> item.put("provider", saved.providerComponent).put("userSerial", saved.userSerial)
                 .put("title", backupLabel(saved.title, widgetFallbackTitle(saved.providerComponent))).put("profileLabel", backupProfileLabel(saved.profileLabel, saved.isWork)).put("work", saved.isWork)
                 .put("sourceScope", exportedWidgetScope(saved, sourceScope))
@@ -135,8 +140,7 @@ internal fun widgetFallbackTitle(providerComponent: String?) =
 internal fun withoutUnportableWidgets(state: LauncherState, descriptors: List<BackupWidgetDescriptor>): Pair<LauncherState, Int> {
     val described = descriptors.filter { it.providerComponent != null && it.userSerial != null }.mapTo(mutableSetOf()) { it.slot }
     val restorable = state.widgetRestores.mapTo(mutableSetOf()) { it.slot }
-    val builtins = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET)
-    val kept = state.widgetPlacements.filter { it.id in builtins || it.slot in restorable || it.slot in described }
+    val kept = state.widgetPlacements.filter { it.id in BACKUP_BUILTIN_WIDGETS || it.slot in restorable || it.slot in described }
     return state.copy(widgetPlacements = kept) to (state.widgetPlacements.size - kept.size)
 }
 
@@ -206,9 +210,15 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
     val dockArray = root.getJSONArray("dock")
     require(dockArray.length() in MIN_DOCK_SLOTS..MAX_DOCK_SLOTS)
     val rawDock = List(dockArray.length()) { index -> if (dockArray.isNull(index)) null else dockArray.getString(index) }
-    val surfaceApps = (rawSlots + rawLeadingSlots).filterNotNull().filterNot(::isReservedFolderId) + rawDock.filterNotNull() +
-        importedFolders.flatMap(FolderEntry::appIds)
-    require(surfaceApps.distinct().size == surfaceApps.size) { "An app shortcut appears more than once" }
+    // The same rules Folio's own saved layout is held to (LauncherModel): an app on Home may also be in the dock, as a fresh setup puts
+    // Phone, Chrome and Messages in both, so a backup Folio wrote can always be restored. Everything else still appears once.
+    val dockApps = rawDock.filterNotNull()
+    val homeApps = (rawSlots + rawLeadingSlots).filterNotNull().filterNot(::isReservedFolderId) + importedFolders.flatMap(FolderEntry::appIds)
+    require(homeApps.distinct().size == homeApps.size && dockApps.distinct().size == dockApps.size) { "An app shortcut appears more than once" }
+    val folderApps = importedFolders.flatMap(FolderEntry::appIds).toSet()
+    require(dockApps.none { it in folderApps }) { "An app shortcut appears more than once" }
+    val leadingApps = rawLeadingSlots.filterNotNull().filterNot(::isReservedFolderId).toSet()
+    require(dockApps.none { it in leadingApps }) { "An app shortcut appears more than once" }
     val folderResults = importedFolders.associate { folder -> folder.id to folder.copy(appIds = folder.appIds.mapNotNull(::importedApp)) }
     val folders = folderResults.values.filter { it.appIds.size >= 2 }
     val slots = rawSlots.map { value -> when {
@@ -230,15 +240,17 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
     val widgetArray = root.getJSONArray("widgets")
     require(widgetArray.length() <= 500)
     val widgetSlots = mutableSetOf<Int>()
+    var skippedWidgets = 0
     repeat(widgetArray.length()) { index ->
         val item = widgetArray.getJSONObject(index)
         val slot = item.strictInt("slot")
         require(widgetSlots.add(slot)) { "Widget slots must be unique" }
         val builtin = if (item.has("builtinId")) item.strictInt("builtinId") else null
+        // A kind of widget this Folio does not have (a backup from a build with a newer one) is left out and counted, and the rest of the layout is restored.
+        // Its place stays empty: the item is not read any further, so nothing about it can refuse the whole file.
+        if (builtin != null && builtin !in BACKUP_BUILTIN_WIDGETS) { skippedWidgets++; return@repeat }
         val provider = item.optString("provider").takeIf(String::isNotBlank)
-        val id = if (builtin != null) {
-            require(builtin in setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET)); builtin
-        } else NEEDS_BINDING_WIDGET
+        val id = builtin ?: NEEDS_BINDING_WIDGET
         val placement = WidgetPlacement(slot, id, item.strictInt("page"), item.strictInt("column"), item.strictInt("row"),
             item.strictInt("spanX"), item.strictInt("spanY"),
             item.optDouble("offsetX", 0.0).toFloat().takeIf { it.isFinite() }?.coerceIn(-MAX_WIDGET_OFFSET, MAX_WIDGET_OFFSET) ?: 0f,
@@ -290,7 +302,7 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
         folderCount = folders.size, widgetCount = layout.widgetPlacements.size,
         compact = compact, expanded = expanded, portrait = portrait, labels = labels, googleSearch = googleSearch, verticalStatus = verticalStatus,
         packages = packages, appNames = appNames, appIconStyles = appIconStylesFromJson(root.optJSONObject("appIconStyles")),
-        iconActions = iconActionsFromJson(root.optJSONObject("iconActions")))
+        iconActions = iconActionsFromJson(root.optJSONObject("iconActions")), skippedWidgets = skippedWidgets)
 }
 
 internal fun validBackupPlacement(value: WidgetPlacement): Boolean {

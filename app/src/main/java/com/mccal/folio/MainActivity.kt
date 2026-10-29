@@ -20,6 +20,13 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -100,6 +107,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The wallpaper theme must be chosen before the window exists (switching to it starts the screen again).
         if (usesSystemWallpaper(this)) setTheme(R.style.Theme_Duo_Wallpaper)
+        intent.dropUnreadableExtras() // an extra from another app that Folio cannot unpack must not crash Home
         super.onCreate(savedInstanceState)
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
@@ -144,9 +152,18 @@ class MainActivity : ComponentActivity() {
         }
         status = DeviceStatusMonitor(this).also { lifecycle.addObserver(it) }
         lifecycle.addObserver(IslandEvents.Observer(this))
+        PrivateRecording.load(this)
+        // One notice when the private view goes on, none when it goes off (everything just returns).
+        lifecycleScope.launch {
+            PrivateRecording.started.collect { IslandEvents.notice(this@MainActivity, getString(R.string.recording_private_view_on), toastFallback = false) }
+        }
         updateDefaultHome()
         if (savedInstanceState == null && intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++
-        if (savedInstanceState == null && opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
+        if (savedInstanceState == null && opensSettings(intent)) {
+            SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false)
+            linkForSettingsRequest(intent.action, MarketAccess.isOpen(this))?.let { MarketLink.pending = it }
+            settingsRequests.intValue++
+        }
         if (savedInstanceState == null && takeMarketLink(intent)) settingsRequests.intValue++
         intent.removeExtra("duo_destination")
         // A recreated activity (rotation, fold, process restart) keeps the pending alert; the launch intent is used once.
@@ -161,9 +178,12 @@ class MainActivity : ComponentActivity() {
             val state = rememberDisguised(FocusPages.effective(if (safeMode.value) SafeMode.effective(savedState) else savedState)
                 .let { if (solidGlass) it.withSolidGlass() else it })
             androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(31_000); SafeMode.markStable(this@MainActivity) }
+            // The island and Notification Center show a swapped app by its stand-in while the private view is on.
+            val privateView by PrivateRecording.on.collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(state.apps) { PrivateRecording.standIns.value = swappedByPackage(state.apps) }
             // Saveable: a theme or language change recreates the activity, and the answer must not be asked again.
             val safeAcknowledged = androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
-            if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {},
+            if (safeMode.value && !safeAcknowledged.value) AlertDialog(onDismissRequest = {}, dismissible = false,
                 title = { androidx.compose.material3.Text(getString(R.string.folio_started_in_safe_mode)) },
                 text = { androidx.compose.material3.Text(stringResource(R.string.folio_closed_unexpectedly_twice_so_opt)) },
                 confirmButton = { androidx.compose.material3.TextButton(onClick = { SafeMode.exit(this@MainActivity); safeMode.value = false }) {
@@ -220,12 +240,66 @@ class MainActivity : ComponentActivity() {
             }
             val overlayProgress by rememberSettlingProgress(if (overlayOpen) 1f else 0f,
                 MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+            // Something of Folio's own is over Home, or still fading off it; the clock ink sample must not look at that.
+            val overlayOpenNow by androidx.compose.runtime.rememberUpdatedState(overlayOpen)
+            val homeCovered by androidx.compose.runtime.remember {
+                androidx.compose.runtime.derivedStateOf { overlayOpenNow || overlayProgress > .02f || LauncherPages.isOpen(this@MainActivity) }
+            }
             // A back swipe that closed Spotlight or a panel keeps its preview until the close ends; the next one starts clean (MO7).
             val overlayShowing = topPanel.value != null || spotlightVisible.value
             androidx.compose.runtime.LaunchedEffect(overlayShowing) { if (overlayShowing) OverlayBack.swipe.snapTo(0f) }
             val backdropBlurPx = with(androidx.compose.ui.platform.LocalDensity.current) { (state.panelBlur * 32).dp.toPx() }
             val backdropBlur = androidx.compose.runtime.remember(backdropBlurPx) {
                 androidx.compose.ui.graphics.BlurEffect(backdropBlurPx, backdropBlurPx, androidx.compose.ui.graphics.TileMode.Clamp)
+            }
+            // Behind Notification Center and Control Center the blur is one picture: Home is captured once when the panel opens, blurred once off
+            // the main thread and faded in, instead of blurring Home's live layer on every frame of the open and the close (PNL-8). Spotlight and
+            // the sheets keep the live blur. If the picture cannot be made, the live blur is used for that panel.
+            val homeLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+            val smallLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+            val folderBlurLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+            val pictureDensity = androidx.compose.ui.platform.LocalDensity.current
+            val pictureDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+            var panelSession by androidx.compose.runtime.remember { mutableStateOf(false) }
+            val panelBackdropHolder = androidx.compose.runtime.remember { PanelBackdropHolder() }
+            val panelBackdrop = panelBackdropHolder.image
+            var panelSnapshotFailed by androidx.compose.runtime.remember { mutableStateOf(false) }
+            val panelOpen = topPanel.value != null
+            androidx.compose.runtime.LaunchedEffect(panelOpen) {
+                if (!panelOpen) return@LaunchedEffect
+                panelSession = true; panelSnapshotFailed = false
+                // With Android's own wallpaper showing through, Home's layer is transparent around its icons and text: a picture of it would
+                // let the sharp Home show through, so that case keeps the live blur.
+                if (state.systemWallpaper && this@MainActivity.showsWallpaper) { panelSnapshotFailed = true; return@LaunchedEffect }
+                // Safe Mode takes no pictures at all: the live blur stands in, as when a picture cannot be made.
+                if (SafeMode.active) { panelSnapshotFailed = true; return@LaunchedEffect }
+                if (!panelBackdropSnapshotWanted(backdropBlurPx, LauncherPages.isOpen(this@MainActivity), SettingsPeek.value != null, SafeMode.active)) return@LaunchedEffect
+                try {
+                    // Shrunk on the GPU to a quarter first, so reading the picture back costs a sixteenth of the pixels and never holds up a frame.
+                    val full = homeLayer.size
+                    val quarter = androidx.compose.ui.unit.IntSize((full.width / 4).coerceAtLeast(1), (full.height / 4).coerceAtLeast(1))
+                    smallLayer.record(pictureDensity, pictureDirection, quarter) {
+                        scale(.25f, pivot = androidx.compose.ui.geometry.Offset.Zero) { drawLayer(homeLayer) }
+                    }
+                    val shot = smallLayer.toImageBitmap()
+                    val side = (360 - 240 * state.panelBlur.coerceIn(0f, 1f)).toInt()
+                    // The software copy the blur reads is made for it alone, so it is given back as soon as the blurred picture exists.
+                    val blurred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        PanelBackdrop.blurAndRelease(shot.asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false)) { FrostBlur.blurred(it, maxSide = side) }
+                    }
+                    panelBackdropHolder.put(blurred)
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { panelSnapshotFailed = true }
+            }
+            // Gone with the panel's close, not before: the picture stays under the dim while it settles shut.
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                snapshotFlow { overlayProgress <= .02f && topPanel.value == null }.collect { settled ->
+                    if (settled) {
+                        panelSession = false; panelBackdropHolder.drop()
+                        // The reference is gone now; the bitmap is given back after two frames, when none can still be drawing it.
+                        androidx.compose.runtime.withFrameNanos { }; androidx.compose.runtime.withFrameNanos { }
+                        panelBackdropHolder.recycleRetired()
+                    }
+                }
             }
             DuoTheme(appearance.state.dark) { val notificationItems = IslandListenerService.notifications.collectAsStateWithLifecycle().value
             // Progress ticks for every install session on the phone. Kept as a State that nothing here reads, so a tick
@@ -272,7 +346,7 @@ class MainActivity : ComponentActivity() {
             val badgeCounts = androidx.compose.runtime.remember(postedBadges, seenBadges) { BadgesWhenOpened.visible(postedBadges, seenBadges) }
             if (clearsBadgesWhenOpened) androidx.compose.runtime.LaunchedEffect(postedBadges) { model.trimBadgesSeen(postedBadges) }
             androidx.compose.runtime.SideEffect { latestNotifications = notificationItems }
-            val wallpaperTone = rememberWallpaperTone(state.systemWallpaper)
+            val wallpaperTone = rememberWallpaperTone(state.systemWallpaper, LocalDuoPalette.current.dark)
             // Re-read on every resume so turning Remove animations on/off applies without restarting.
             val reduceMotionState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(reduceMotionEnabled(this@MainActivity)) }
             androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { reduceMotionState.value = reduceMotionEnabled(this@MainActivity); onPauseOrDispose { } }
@@ -287,6 +361,7 @@ class MainActivity : ComponentActivity() {
                 LocalLabelSize provides state.labelSize,
                 LocalDeviceStatus provides deviceStatus,
                 LocalReduceMotion provides reduceMotion,
+                LocalHomeCovered provides homeCovered,
                 LocalHinge provides rememberHinge(this@MainActivity),
                 // Tablets and desktop windows draw Folio proportionally larger instead of a phone-sized layout lost in a
                 // big window; phones and foldables stay at exactly the system density (see uiScale).
@@ -295,15 +370,9 @@ class MainActivity : ComponentActivity() {
                     val scale = uiScale(config.screenWidthDp.toFloat(), config.screenHeightDp.toFloat(), config.classScale)
                     if (scale == 1f) d else androidx.compose.ui.unit.Density(d.density * scale, d.fontScale)
                 },
-                LocalTintOptions provides androidx.compose.ui.platform.LocalConfiguration.current.let { config ->
-                    val screen = screenFor(config.fitsRegularHomeLayout())
-                    TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
-                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
-                        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
-                        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
-                },
+                LocalTintOptions provides tintOptionsFor(state, androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()),
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
-                LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, state.badgeStyle, state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
+                LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, privateBadgeStyle(state.badgeStyle, privateView), state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
                 LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
                 LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
@@ -322,8 +391,16 @@ class MainActivity : ComponentActivity() {
                     // Fixed radius while any overlay is showing: a constant blur is cached by the RenderThread,
                     // whereas animating the radius re-blurred the whole Home every frame (~14ms of GPU per
                     // frame). The overlay's scrim fades in over it, which hides the switch.
-                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && !LauncherPages.isOpen(this@MainActivity) && SettingsPeek.value == null) backdropBlur else null
-                }) {
+                    renderEffect = if (p > .02f && backdropBlurPx >= 2f && !LauncherPages.isOpen(this@MainActivity) && SettingsPeek.value == null &&
+                        (!panelSession || panelSnapshotFailed)) backdropBlur else null
+                }
+                    // Home is recorded into a layer of its own so a panel can take its picture; the effect above sits outside it.
+                    .then(if (backdropBlurPx >= 2f) androidx.compose.ui.Modifier.drawWithContent {
+                        homeLayer.record { this@drawWithContent.drawContent() }
+                        // An open folder fades Home's blurred copy in over the sharp one with its own opening (FolderBlur), instead of waiting for the overlay spring.
+                        val folderBlur = if (LauncherPages.isOpen(this@MainActivity) || SettingsPeek.value != null) 0f else FolderBlur.level(this@MainActivity)
+                        if (folderBlur > 0f) drawFolderBlur(homeLayer, folderBlurLayer, backdropBlur, folderBlur) else drawLayer(homeLayer)
+                    } else androidx.compose.ui.Modifier)) {
                 LauncherScreen(state, model, widgets, homeRequests.intValue, homeFromFront = homeFromFront.value,
                     onLaunch = { launchApp(it) }, onMakeDefault = ::makeDefault, onAppInfo = ::appInfo,
                     isDefaultHome = defaultHome.value, deviceStatus = deviceStatus, onStatusMode = ::setStatusMode, onWallpaperPreview = ::previewWallpaper,
@@ -386,11 +463,13 @@ class MainActivity : ComponentActivity() {
                     ?.takeUnless { state.railActivities && state.verticalStatus && !overlayOpen }, state.islandEventsOff + "BLUETOOTH") {
                     IslandListenerService.open(this@MainActivity, it)
                 }
+                androidx.compose.runtime.CompositionLocalProvider(LocalShadeBackdropImage provides panelBackdrop) {
                 TopPanels(topPanel.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, deviceStatus, onClose = { topPanel.value = null },
                     onSystemPanel = { openAndroidShade(it) }, showClock = state.notificationClock, grouped = state.groupNotifications, sections = state.notificationSections,
                     ccControls = state.ccControls, onCcControls = model::setCcControls,
-                    ccSize = state.ccSize, ccCentered = state.ccCentered, ncLayout = state.ncLayout,
+                    ccSize = state.ccSize, ccCentered = state.ccCentered, ncLayout = state.ncLayout, ccLook = state.ccLook, ccOptions = state.ccOptions,
                     focusModes = state.focusModes, activeFocus = state.activeFocus, onFocus = model::setFocus)
+                }
                 SpotlightOverlay(spotlightVisible.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, state, onClose = { spotlightVisible.value = false },
                     onLaunch = { launchApp(it) },
                     onAddToHome = { app ->
@@ -421,8 +500,19 @@ class MainActivity : ComponentActivity() {
             timeReceiverRegistered = true
         }
         appearance.refresh(systemDark())
+        listenForRecording()
     }
+
+    private val recordingWatch = RecordingWatch(PrivateViewState.ACTIVITY)
+
+    /**
+     * Android 15+: is Folio's window in a screen recording or share? Registered while Folio is on screen. The overlay
+     * service listens on its own for as long as it runs, so a recording of another app is still seen when this stops.
+     */
+    private fun listenForRecording() = recordingWatch.start(windowManager, mainExecutor)
+
     override fun onStop() {
+        recordingWatch.stop(windowManager)
         stoppedSinceHome = true
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
@@ -495,10 +585,13 @@ class MainActivity : ComponentActivity() {
     private fun closeOverlays() { topPanel.value = null; spotlightVisible.value = false }
 
     /**
-     * The Home button is the way out of anything. Setup is shown again next time (or from Settings › Help › Show Welcome
-     * Again), so an overlay can never leave Home stuck behind it with no way back.
+     * The Home button is the way out of anything, so an overlay can never leave Home stuck behind it with no way back. Leaving
+     * the Welcome this way is "Skip for now": it does not come back by itself (a font size change recreates the activity), and
+     * Finish setting up still lists what is left, and Settings › Help › Show Welcome Again opens it at the page you left.
      */
-    private fun closeEverything() { closeOverlays(); showFirstRun.value = false; lockCoverVisible.value = false }
+    private fun closeEverything() {
+        closeOverlays(); setupExperience.deferByHome(showFirstRun.value); showFirstRun.value = false; lockCoverVisible.value = false
+    }
 
     internal fun openSystemShade(panel: ShadePanel) {
         if (model.state.value.folioPanels) topPanel.value = panel else openAndroidShade(panel)
@@ -611,6 +704,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
+        intent.dropUnreadableExtras()
         super.onNewIntent(intent)
 
         setIntent(intent)
@@ -621,7 +715,11 @@ class MainActivity : ComponentActivity() {
         // From the Notification shade shortcut when the gestures service is off: explain how to turn it on.
         if (intent.getStringExtra("duo_destination") == "shade_setup") showShadeSetup()
         // One chain: tapping Folio's icon opens Settings *or* goes Home, never both.
-        if (opensSettings(intent)) { SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false); settingsRequests.intValue++ }
+        if (opensSettings(intent)) {
+            SoftwareUpdate.openRequested = intent.getBooleanExtra(SoftwareUpdate.EXTRA_OPEN_UPDATE, false)
+            linkForSettingsRequest(intent.action, MarketAccess.isOpen(this))?.let { MarketLink.pending = it }
+            settingsRequests.intValue++
+        }
         else if (takeMarketLink(intent)) settingsRequests.intValue++
         else if (intent.hasCategory(Intent.CATEGORY_HOME) || fromAppIcon(intent) || intent.getStringExtra("duo_destination") == "home") {
             // Pressing the Home button on Home goes to the first page; from an app (stopped, so true here) it keeps the page you left.
@@ -839,3 +937,7 @@ class MainActivity : ComponentActivity() {
         const val PENDING_THEME = "folio.theme.pending"
     }
 }
+
+/** Whether a panel opening over Home takes the one-off picture it blurs behind itself: blur is on, nothing else is over Home, and Safe Mode is off. */
+internal fun panelBackdropSnapshotWanted(blurPx: Float, pagesOpen: Boolean, settingsPeeking: Boolean, safeMode: Boolean): Boolean =
+    !safeMode && blurPx >= 2f && !pagesOpen && !settingsPeeking

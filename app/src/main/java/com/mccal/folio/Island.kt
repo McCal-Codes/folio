@@ -159,10 +159,10 @@ class IslandListenerService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         connected.value = false
         runCatching { sessions?.removeOnActiveSessionsChangedListener(sessionListener) }
+        workerHandler.removeCallbacks(publishPass) // a pass queued before access went must not publish it back
         clearControllerCallbacks()
         if (instance === this) instance = null
-        mutable.value = null
-        notificationsMutable.value = emptyList() // don't keep other apps' content after access is gone
+        clearPublished()
     }
 
     /** Set before anything is torn down, so a pass already running on the worker cannot register callbacks afterwards. */
@@ -174,6 +174,7 @@ class IslandListenerService : NotificationListenerService() {
         clearControllerCallbacks()
         worker.quitSafely()
         if (instance === this) instance = null
+        clearPublished()
         super.onDestroy()
     }
 
@@ -281,9 +282,14 @@ class IslandListenerService : NotificationListenerService() {
     }
 
     private fun publishNow() {
+        if (destroyed || !connected.value) return
         val controllers = runCatching { sessions?.getActiveSessions(component(this)) }.getOrNull().orEmpty()
         watch(controllers) // every pass, so ended sessions are unregistered even during a call
-        mutable.value = runCatching { currentOngoing() ?: currentMedia(controllers) ?: currentProgress() }.getOrNull()
+        // The island shows one thing at a time (a call or timer comes before the music), but the Music widget shows the track
+        // whatever else is going on, so the media is read on its own as well.
+        val media = runCatching { currentMedia(controllers) }.getOrNull()
+        mediaMutable.value = media
+        mutable.value = runCatching { currentOngoing() ?: media ?: currentProgress() }.getOrNull()
         notificationsMutable.value = runCatching { currentNotifications() }.getOrDefault(emptyList())
         runCatching { rememberMessageChannels() }
     }
@@ -491,8 +497,10 @@ class IslandListenerService : NotificationListenerService() {
         private val messageChannelsMutable = MutableStateFlow<Map<String, MessageChannel>>(emptyMap())
         /** Messaging channels seen since Folio started (kept in memory only). */
         val messageChannels: StateFlow<Map<String, MessageChannel>> = messageChannelsMutable.asStateFlow()
-        private val notificationsMutable = MutableStateFlow<List<NotificationItem>>(emptyList())
-        val notifications: StateFlow<List<NotificationItem>> = ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())
+        internal val notificationsMutable = MutableStateFlow<List<NotificationItem>>(emptyList())
+        val notifications: StateFlow<List<NotificationItem>> = PrivateRecording.redact(ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())) { list, swapped ->
+            list.map { redactNotification(it, swapped[it.packageName], PrivateRecording.notificationWord, PrivateRecording.neutral(it.packageName, swapped)) }
+        }
 
         fun dismiss(key: String) { runCatching { instance?.cancelNotification(key) } }
         private fun find(key: String) = runCatching { instance?.activeNotifications?.firstOrNull { it.key == key } }.getOrNull()
@@ -520,10 +528,24 @@ class IslandListenerService : NotificationListenerService() {
             if (!sent) context.packageManager.getLaunchIntentForPackage(item.packageName)
                 ?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
         }
-        private val mutable = MutableStateFlow<IslandActivity?>(null)
+        internal val mutable = MutableStateFlow<IslandActivity?>(null)
         /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
-        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
+        val activity: StateFlow<IslandActivity?> = PrivateRecording.redact(ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) }
+        }
+        internal val mediaMutable = MutableStateFlow<IslandActivity.Media?>(null)
+        /** The playing track whatever else the island is showing: for the Music widget, which is not the island. */
+        // Private While Recording hides the playing track on Home too, not only in the island.
+        val media: StateFlow<IslandActivity.Media?> = PrivateRecording.redact(ScreenshotMode.hide(mediaMutable.asStateFlow(), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) as? IslandActivity.Media }
+        }
         val connected = MutableStateFlow(false)
+        /** Don't keep other apps' content (the island, the Music widget's track, notifications) once access is gone or the service ends. */
+        internal fun clearPublished() {
+            mutable.value = null
+            mediaMutable.value = null
+            notificationsMutable.value = emptyList()
+        }
         private const val PUBLISH_COALESCE_MS = 120L
         private val iconCache = android.util.LruCache<String, Bitmap>(64)
         private val artCache = android.util.LruCache<String, Bitmap>(8)

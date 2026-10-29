@@ -98,6 +98,15 @@ fun removedProfileSerials(cached: List<AppEntry>, associatedSerials: Set<Long>):
     removedAssociatedProfileSerials(cached.filter { it.kind != ProfileKind.PERSONAL }.mapTo(mutableSetOf(), AppEntry::userSerial),
         associatedSerials)
 
+/**
+ * Of the packages Android no longer lists a launcher activity for, the ones that are still installed but turned off
+ * ([isDisabled]: Settings' Disable, Samsung's sleeping apps). They keep their Home and Dock place like an app that is
+ * unavailable for a moment, and have it again when they come back; one that is not installed is not in the result and
+ * loses its place. Same name and idea as the widget recovery for a disabled app's widgets (WidgetInfoRefresh.kt).
+ */
+fun keptWhileDisabled(missing: Collection<Pair<Long, String>>, isDisabled: (Pair<Long, String>) -> Boolean): Set<Pair<Long, String>> =
+    missing.filterTo(mutableSetOf(), isDisabled)
+
 fun removedAppIds(
     savedIds: Collection<String>,
     availableIds: Set<String>,

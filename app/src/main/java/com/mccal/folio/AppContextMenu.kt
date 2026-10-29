@@ -175,7 +175,7 @@ internal fun AppContextMenu(
             val rowPx = with(density) { 49.dp.toPx() }
             // Opening More swaps the app's quick actions for Folio's extra rows, so the menu doesn't need to scroll.
             val shownActions = if (more) emptyList() else actions.take((((if (below) spaceBelow else spaceAbove) - with(density) { 8.dp.toPx() }) / rowPx - folioRows).toInt().coerceAtLeast(0))
-            val menuLeft = (iconLeft + iconSize / 2 - menuW / 2).coerceIn(gap, screenW - menuW - gap)
+            val menuLeft = popupLeft(iconLeft + iconSize / 2, menuW, screenW, gap)
             val origX = ((iconLeft + iconSize / 2 - menuLeft) / menuW).coerceIn(0f, 1f)
             // Positioned from the measured menu height: the dialog can be shorter than the screen (navigation bar),
             // so aligning to its bottom edge made the menu overlap the lifted icon.

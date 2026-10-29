@@ -41,4 +41,15 @@ class MarketLinkTest {
         assertNull(MarketLink.parse("folio://early/" + "X".repeat(40)))
         assertNull(MarketLink.parse("folio://redeem?c=" + "X".repeat(40)))
     }
+
+    @Test fun `Android's settings gear opens the Market on its Settings tab, the Folio icon does not`() {
+        val gear = android.content.Intent.ACTION_APPLICATION_PREFERENCES
+        assertEquals(MarketLink.Settings, linkForSettingsRequest(gear, marketEnabled = true))
+        // Without the Market, Settings is already the whole sheet.
+        assertNull(linkForSettingsRequest(gear, marketEnabled = false))
+        assertNull(linkForSettingsRequest(android.content.Intent.ACTION_MAIN, marketEnabled = true))
+        assertNull(linkForSettingsRequest(null, marketEnabled = true))
+        // Nothing a link can say reaches it: it is set in code only.
+        assertNull(MarketLink.parse("folio://market/settings"))
+    }
 }
