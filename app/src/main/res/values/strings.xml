@@ -705,6 +705,8 @@
     <string name="developer_options">Developer options</string>
     <string name="about_phone">About phone</string>
     <string name="remove_control">Remove %1$s</string>
+    <string name="move_control_earlier">Move %1$s earlier</string>
+    <string name="move_control_later">Move %1$s later</string>
     <string name="add_control">Add %1$s</string>
     <string name="notify_me">Notify Me</string>
     <string name="manual">Manual</string>

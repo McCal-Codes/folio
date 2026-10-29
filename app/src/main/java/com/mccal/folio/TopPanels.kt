@@ -84,6 +84,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.format.DateTimeFormatter
@@ -731,6 +732,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
     val chosen = remember(controlNames) { controlNames.mapNotNull { n -> CcControl.entries.firstOrNull { it.name == n } } }.filter(::available)
     val edit = remember { HomeEditMode() }
+    // Moving controls (FeatureGate.CC_REORDER): while it is shut, edit mode only adds and removes, as before.
+    val reorder = if (FeatureGate.CC_REORDER.isOpen(context)) remember { CcReorderState() } else null
+    val moveControl: (String, String) -> Unit = { moving, target -> onControls(ccMoveControl(controlNames, moving, target)) }
     SafeBackHandler(edit.active) { edit.stop() }
     // Pages that would repeat the first are left out, Now Playing is a slim row while nothing plays and the battery ring stands apart from the dots (FeatureGate.CC_PAGES_DEDUPE).
     val dedupe = remember { FeatureGate.CC_PAGES_DEDUPE.isOpen(context) }
@@ -990,8 +994,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 horizontalArrangement = if (beside.isEmpty()) Arrangement.Center else Arrangement.spacedBy(gap)) {
                                 if (beside.isNotEmpty()) Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
                                     beside.chunked(2).forEach { pair ->
-                                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                                        Row(Modifier.zIndex(if (reorder?.moving in pair.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }) { run(c) } }
                                         }
                                     }
                                 }
@@ -1000,8 +1004,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                         // The rest, one row of the grid at a time
                         (if (cols >= 6 || spec.index != plan.sliderPage) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                            // The row holding the control being dragged is drawn above the rows after it.
+                            Row(Modifier.zIndex(if (reorder?.moving in row.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }) { run(c) } }
                             }
                         }
                         // Edit mode: gallery of controls that aren't in Control Center yet
@@ -1172,8 +1177,11 @@ private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) 
 
 /** A 1×1 control that wiggles with a "–" while editing. */
 @Composable
-private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell: Dp, edit: HomeEditMode, onRemove: () -> Unit, onRun: () -> Unit) {
-    Box(Modifier.jiggle(control.name, .6f)) {
+private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell: Dp, edit: HomeEditMode, onRemove: () -> Unit,
+    reorder: CcReorderState? = null, onMove: (moving: String, target: String) -> Unit = { _, _ -> }, onNudge: (by: Int) -> Unit = {}, onRun: () -> Unit) {
+    Box(Modifier.jiggle(control.name, .6f).then(
+        if (reorder != null) Modifier.ccReorderable(control.name, reorder, edit.active, stringResource(R.string.move_control_earlier, stringResource(control.label)),
+            stringResource(R.string.move_control_later, stringResource(control.label)), onMove) { onNudge(it) } else Modifier)) {
         SquareToggle(control.icon(), stringResource(control.label), on, accent, cell) { if (!edit.active) onRun() }
         if (edit.active) JiggleRemoveButton(stringResource(R.string.remove_control, stringResource(control.label)), onRemove = onRemove)
     }
