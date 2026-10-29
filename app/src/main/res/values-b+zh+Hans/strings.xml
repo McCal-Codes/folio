@@ -711,6 +711,8 @@
     <string name="developer_options">开发者选项</string>
     <string name="about_phone">关于手机</string>
     <string name="remove_control">移除%1$s</string>
+    <string name="move_control_earlier">将%1$s前移</string>
+    <string name="move_control_later">将%1$s后移</string>
     <string name="add_control">添加%1$s</string>
     <string name="notify_me">通知我</string>
     <string name="manual">手动</string>

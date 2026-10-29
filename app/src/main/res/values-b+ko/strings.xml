@@ -710,6 +710,8 @@
     <string name="developer_options">개발자 옵션</string>
     <string name="about_phone">휴대전화 정보</string>
     <string name="remove_control">%1$s 제거</string>
+    <string name="move_control_earlier">%1$s 앞으로 이동</string>
+    <string name="move_control_later">%1$s 뒤로 이동</string>
     <string name="add_control">%1$s 추가</string>
     <string name="notify_me">알림 받기</string>
     <string name="manual">수동</string>
