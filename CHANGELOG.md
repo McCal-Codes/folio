@@ -116,6 +116,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Control Center size says when it will not show:** on a phone the panel already fills the width, so the five sizes look much the same and the setting read as broken. A note under it now says they show on a wider screen, like an unfolded Fold or a tablet.
 - **Storage names Folio as Folio:** the Storage list read each app's name from whichever launcher shortcut came first, so Folio appeared as "Folio Notification Shade". It now uses the app's own name. (Storage is for supporters and Folio Dev for now.)
 - **Setup carries on after you make Folio your Home:** choosing Folio as the Home app sent setup back to the first Welcome page, so you pressed Continue through the same pages twice. It now picks up at the page after, or at You're all set.
 - **Control Center goes back a page when you swipe up under the controls:** a swipe up that started in the empty space below the controls closed the whole panel from the Media and Connectivity pages (and from any page after the first). It now goes back one page, and only a swipe up on the first page closes it.
