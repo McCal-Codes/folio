@@ -90,4 +90,14 @@ class StorageInfoTest {
         assertEquals(listOf("b", "f"), topApps(apps, limit = 2).map { it.packageName })
         assertTrue(topApps(emptyList()).isEmpty())
     }
+
+    @Test fun `a Storage row is named for the app, not for the launcher activity that happened to come first`() {
+        assertEquals("Folio", storageAppLabel("Folio", "Folio Notification Shade"))
+        assertEquals("Maps", storageAppLabel("Maps", "Maps"))
+    }
+
+    @Test fun `a blank or missing application label falls back to the activity's`() {
+        assertEquals("Folio Notification Shade", storageAppLabel(null, "Folio Notification Shade"))
+        assertEquals("Camera", storageAppLabel("  ", "Camera"))
+    }
 }
