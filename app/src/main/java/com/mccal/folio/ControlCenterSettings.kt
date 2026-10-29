@@ -31,6 +31,7 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
 
     SettingsCard(stringResource(R.string.control_center)) {
         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
+        CcSizeNote()
         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
         CardNote(stringResource(R.string.cc_look_note))
         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
@@ -68,4 +69,10 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
         CardNote(stringResource(if (before == null) R.string.cc_reset_note else R.string.cc_reset_done),
             if (before == null) Modifier else Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     }
+}
+
+/** Under the size row on a narrow window: the sizes only differ where there is width to spend, and a phone's panel already fills it. */
+@Composable
+internal fun CcSizeNote() {
+    if (!androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()) CardNote(stringResource(R.string.cc_size_note))
 }

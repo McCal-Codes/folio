@@ -75,6 +75,7 @@
     <string name="show_quiet_notifications">조용한 알림 보기</string>
     <string name="unfolded_clock_beside_notifications">펼쳤을 때 알림 옆에 시계 표시</string>
     <string name="control_center_size">제어 센터 크기</string>
+    <string name="cc_size_note">휴대전화에서는 패널이 화면 너비를 채우기 때문에 크기가 거의 같아 보입니다. 펼친 폴드나 태블릿 같은 넓은 화면에서 차이가 나타납니다.</string>
     <string name="unfolded_control_center_in_the_middle">펼쳤을 때 제어 센터를 가운데 표시</string>
     <string name="tip_tap_at_the_top_of_control_center_to">팁: 제어 센터 상단의 +를 탭하여 제어 항목을 추가하거나 제거하세요.</string>
     <string name="to_restyle_samsungs_own_pull_down_colors">삼성 기본 알림창의 색상, 투명도, 레이아웃을 바꾸려면 Good Lock의 QuickStar 및 테마파크를 사용하세요.</string>

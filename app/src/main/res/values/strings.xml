@@ -70,6 +70,7 @@
     <string name="show_quiet_notifications">Show quiet notifications</string>
     <string name="unfolded_clock_beside_notifications">Unfolded: clock beside notifications</string>
     <string name="control_center_size">Control Center size</string>
+    <string name="cc_size_note">On a phone the panel fills the width, so the sizes look much the same. They show on a wider screen, like an unfolded Fold or a tablet.</string>
     <string name="unfolded_control_center_in_the_middle">Unfolded: Control Center in the middle</string>
     <string name="tip_tap_at_the_top_of_control_center_to">Tip: tap + at the top of Control Center to add or remove controls.</string>
     <string name="to_restyle_samsungs_own_pull_down_colors">To restyle Samsung’s own pull-down (colors, transparency, layout), use Good Lock › QuickStar and Theme Park.</string>
