@@ -58,6 +58,12 @@ internal fun volumeLabel(description: String?, fallback: String): String =
 /** An app and the bytes Android says it takes (code, data and cache). */
 internal data class AppSize(val packageName: String, val label: String, val bytes: Long)
 
+/**
+ * The name a Storage row shows: the app's own name. An app can have several launcher activities (Folio has shortcuts to its panels), the list keeps one
+ * per package, and that one's label is its own ("Folio Notification Shade"), so the application's label comes first.
+ */
+internal fun storageAppLabel(applicationLabel: String?, activityLabel: String): String = applicationLabel?.takeIf { it.isNotBlank() } ?: activityLabel
+
 /** The [limit] biggest apps, biggest first; apps with no size are left out. */
 internal fun topApps(apps: List<AppSize>, limit: Int = 5): List<AppSize> =
     apps.filter { it.bytes > 0L }.sortedByDescending { it.bytes }.take(limit)
@@ -111,7 +117,7 @@ internal object StorageProbe {
                 val s = runCatching { stats.queryStatsForPackage(StorageManager.UUID_DEFAULT, info.applicationInfo.packageName, user) }.getOrNull()
                     ?: return@mapNotNull null
                 // dataBytes already includes the cache, so adding cacheBytes would count it twice.
-                AppSize(info.applicationInfo.packageName, info.label.toString(), s.appBytes + s.dataBytes)
+                AppSize(info.applicationInfo.packageName, storageAppLabel(runCatching { info.applicationInfo.loadLabel(context.packageManager).toString() }.getOrNull(), info.label.toString()), s.appBytes + s.dataBytes)
             }
         return topApps(sizes)
     }
