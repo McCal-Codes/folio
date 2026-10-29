@@ -51,6 +51,11 @@ class FeatureGateTest {
             FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADJUST && FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADVANCED)
     }
 
+    @Test fun `moving controls in Control Center is held back for a later release on a gate of its own`() {
+        assertEquals("0.7.0", FeatureGate.CC_REORDER.opensIn)
+        assertTrue("it is not the deeper Control Center settings' gate", FeatureGate.CC_REORDER != FeatureGate.CC_PAGES_DEDUPE)
+    }
+
     @Test fun `the Market is the gate it used to be`() {
         // The behaviour this replaced: released, or a .dev build, or a supporter code with the beta scope.
         val market = FeatureGate.MARKET
