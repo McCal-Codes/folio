@@ -107,8 +107,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     }
     // Resume by page key: the page list changes between versions (and skips what's already allowed), so an index
     // saved by an older Folio could land on the wrong page.
-    var index by rememberSaveable { mutableIntStateOf(runCatching { prefs.getString(STEP_KEY, null) }.getOrNull()
-        ?.let { key -> all.indexOfFirst { it.key == key } }?.takeIf { it >= 0 } ?: 0) }
+    var index by rememberSaveable { mutableIntStateOf(onboardingResumeIndex(runCatching { prefs.getString(STEP_KEY, null) }.getOrNull(), all.map { it.key })) }
     fun go(to: Int) { index = to.coerceIn(0, all.lastIndex); prefs.edit().remove(STEP).putString(STEP_KEY, all[index].key).apply() }
     fun finish() { prefs.edit().remove(STEP).remove(STEP_KEY).apply(); FirstUseHints.arm(context); onFinish() }
     BackHandler(index > 0) { go(index - 1) }
@@ -257,6 +256,22 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
 
 private const val STEP = "onboardingStep"
 private const val STEP_KEY = "onboardingPage"
+
+/** The pages in the order setup shows them, so a saved page that is no longer in the list can be placed among the ones that are. */
+internal val ONBOARDING_ORDER = listOf("welcome", "feel", "apps", "nav", "home", "adv", "done")
+
+/**
+ * The page setup resumes on, from the page key saved the last time. Making Folio your Home takes the "home" page out of the list
+ * (it is done) and Android restarts Folio as the Home app, so the saved "home" is no longer there: setup carries on at the page after
+ * it, not back at Welcome. Any other page that is gone, or a key an older Folio saved, starts again at the first page as before.
+ */
+internal fun onboardingResumeIndex(savedKey: String?, keys: List<String>): Int {
+    if (savedKey == null) return 0
+    keys.indexOf(savedKey).takeIf { it >= 0 }?.let { return it }
+    if (savedKey != "home") return 0
+    val after = ONBOARDING_ORDER.indexOf(savedKey)
+    return keys.indexOfFirst { ONBOARDING_ORDER.indexOf(it) > after }.takeIf { it >= 0 } ?: keys.lastIndex.coerceAtLeast(0)
+}
 
 /**
  * Where are you coming from: iPhone or Android, each with a picture of what it sets, then how you get around. "Not sure?"
