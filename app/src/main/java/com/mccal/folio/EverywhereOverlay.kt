@@ -322,7 +322,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options)
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options,
+                            onSwitchPanel = { p -> shadePanel.value = p })
                     }
                 }
             }

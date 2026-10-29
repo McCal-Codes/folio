@@ -468,7 +468,8 @@ class MainActivity : ComponentActivity() {
                     onSystemPanel = { openAndroidShade(it) }, showClock = state.notificationClock, grouped = state.groupNotifications, sections = state.notificationSections,
                     ccControls = state.ccControls, onCcControls = model::setCcControls,
                     ccSize = state.ccSize, ccCentered = state.ccCentered, ncLayout = state.ncLayout, ccLook = state.ccLook, ccOptions = state.ccOptions,
-                    focusModes = state.focusModes, activeFocus = state.activeFocus, onFocus = model::setFocus)
+                    focusModes = state.focusModes, activeFocus = state.activeFocus, onFocus = model::setFocus,
+                    onSwitchPanel = { topPanel.value = it })
                 }
                 SpotlightOverlay(spotlightVisible.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, state, onClose = { spotlightVisible.value = false },
                     onLaunch = { launchApp(it) },

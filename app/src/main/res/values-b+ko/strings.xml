@@ -777,6 +777,8 @@
     <string name="bluetooth_headphones_or_speaker_connects">Bluetooth 헤드폰 또는 스피커 연결</string>
     <string name="headphones_plugged_in">유선 헤드폰 연결</string>
     <string name="control_center">제어 센터</string>
+    <string name="open_notification_center">알림 센터 열기</string>
+    <string name="open_control_center">제어 센터 열기</string>
     <string name="do_not_disturb_on">방해 금지 켜기</string>
     <string name="do_not_disturb_off">방해 금지 끄기</string>
     <string name="sleep_focus_on_off">수면 집중 모드 켜기/끄기</string>

@@ -778,6 +778,8 @@
     <string name="bluetooth_headphones_or_speaker_connects">蓝牙耳机或扬声器连接时</string>
     <string name="headphones_plugged_in">已插入耳机</string>
     <string name="control_center">控制中心</string>
+    <string name="open_notification_center">打开通知中心</string>
+    <string name="open_control_center">打开控制中心</string>
     <string name="do_not_disturb_on">开启勿扰模式</string>
     <string name="do_not_disturb_off">关闭勿扰模式</string>
     <string name="sleep_focus_on_off">开启/关闭睡眠专注模式</string>

@@ -83,6 +83,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.dismiss
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
@@ -100,7 +104,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
     ccOptions: CcOptions = CcOptions(),
-    focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
+    focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {},
+    onSwitchPanel: ((ShadePanel) -> Unit)? = null) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
     val pageBack = remember { CcPageBack() }
@@ -115,6 +120,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
+    // The switch between the panels is only drawn where one panel stands alone (two cards side by side already show both) and while its gate is open.
+    val switcher: ((ShadePanel) -> Unit)? = onSwitchPanel?.takeIf { shape != ShadeShape.BOTH && FeatureGate.PANEL_SWITCH.isOpen(LocalContext.current) }
     // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
     val cardListMax = (config.screenHeightDp * .62f).dp
 
@@ -210,9 +217,22 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
-        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
-            listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        else {
+            // Moving between the panels slides them sideways a little while they cross-fade (a plain cross-fade with Reduce Motion); the size does not animate.
+            val reduceSwitch = LocalReduceMotion.current
+            val slidePx = with(LocalDensity.current) { FolioSpace.XXL.dp.roundToPx() }
+            androidx.compose.animation.AnimatedContent(current, transitionSpec = {
+                val toControls = targetState == ShadePanel.QUICK_SETTINGS
+                val shift = if (reduceSwitch) 0 else if (toControls) slidePx else -slidePx
+                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) + androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(220)) { shift })
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)) + androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(220)) { -shift })
+                    .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> androidx.compose.animation.core.snap() })
+            }, contentAlignment = Alignment.TopStart, label = "panel switch") { which ->
+                if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
+                    listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+                else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, onSwitch = switcher) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            }
+        }
     }
     }
 }
@@ -221,7 +241,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -238,6 +258,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+        if (onSwitch != null) PanelSwitch(ShadePanel.NOTIFICATIONS, onSwitch, Modifier.align(Alignment.CenterHorizontally))
         if (showClock) Column(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = FolioType.BODY.sp,
                 fontWeight = FontWeight.SemiBold)
@@ -735,7 +756,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -1127,6 +1148,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
                         else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))
+                        // The switch to Notification Center stands in the middle of the header while there is room beside the edit and power buttons.
+                        if (onSwitch != null && !grid.stripInHeader && gridWidth >= CC_SWITCH_BUTTON_MIN_GRID_DP.dp) { PanelSwitch(ShadePanel.QUICK_SETTINGS, onSwitch, compact = gridWidth < CC_SWITCH_PILL_MIN_GRID_DP.dp); Spacer(Modifier.weight(1f)) }
                         if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
                         // A button for the way out, for anyone who does not know the swipe (a short, narrow window has no room for it: the swipe and a tap outside close there).
                         else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { onClose() }
@@ -1450,6 +1473,47 @@ private fun BoxScope.AutoBrightnessChip(on: Boolean, width: Dp, alpha: Float, on
             .padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp)) {
             Text(stringResource(R.string.cc_auto), color = if (on) FolioColors.MenuSurface else Color.White, fontSize = font, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
                 modifier = Modifier.clearAndSetSemantics {})
+        }
+    }
+}
+
+/** The narrowest grid that has room for the two-icon pill between the edit, close and power buttons (three 48 dp targets, the pill, and a little air). */
+private const val CC_SWITCH_PILL_MIN_GRID_DP = 280
+
+/** Narrower than that and the header holds only its three buttons and one more: the switch becomes a single round button. */
+private const val CC_SWITCH_BUTTON_MIN_GRID_DP = 200
+
+/**
+ * Moves between Notification Center and Control Center (FeatureGate.PANEL_SWITCH): two icons in a glass pill, the panel that is open filled. Each is a 48 dp
+ * target with its own name for TalkBack; the fill eases in unless Reduce Motion is on, and the icons follow the font size like the other header buttons.
+ */
+@Composable
+internal fun PanelSwitch(current: ShadePanel, onSwitch: (ShadePanel) -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
+    // Where the header has no room for the pill, one round button opens the other panel (its icon says which).
+    if (compact) {
+        val other = if (current == ShadePanel.NOTIFICATIONS) ShadePanel.QUICK_SETTINGS else ShadePanel.NOTIFICATIONS
+        Box(modifier.testTag("panel-switch")) {
+            GlassIconButton(if (other == ShadePanel.NOTIFICATIONS) Icons.Rounded.Notifications else Icons.Rounded.Tune,
+                stringResource(if (other == ShadePanel.NOTIFICATIONS) R.string.open_notification_center else R.string.open_control_center)) { onSwitch(other) }
+        }
+        return
+    }
+    val grow = ccIconScale(LocalDensity.current.fontScale)
+    val reduce = LocalReduceMotion.current
+    val segments = listOf(
+        Triple(ShadePanel.NOTIFICATIONS, Icons.Rounded.Notifications, stringResource(R.string.notification_center)),
+        Triple(ShadePanel.QUICK_SETTINGS, Icons.Rounded.Tune, stringResource(R.string.control_center)),
+    )
+    Row(modifier.clip(CircleShape).background(NotifGlass).padding(horizontal = FolioSpace.TINY.dp).selectableGroup().testTag("panel-switch"), verticalAlignment = Alignment.CenterVertically) {
+        segments.forEach { (panel, icon, label) ->
+            val on = panel == current
+            val fill by androidx.compose.animation.core.animateFloatAsState(if (on) .3f else 0f, if (reduce) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(220), label = "panel switch fill")
+            Box(Modifier.minimumInteractiveComponentSize().selectable(selected = on, role = Role.Tab, onClick = { if (!on) onSwitch(panel) }).semantics { contentDescription = label },
+                contentAlignment = Alignment.Center) {
+                Box(Modifier.size((34 * grow).dp).clip(CircleShape).background(Color.White.copy(alpha = fill)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size((18 * grow).dp))
+                }
+            }
         }
     }
 }
