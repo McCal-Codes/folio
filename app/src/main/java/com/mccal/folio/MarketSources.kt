@@ -73,10 +73,10 @@ private fun firstPartyUpdates(
     revocations: RevocationList?,
     fromSources: List<Pair<Source, SourceSnapshot>>,
     folio: FolioVersion?,
-    isFirstParty: (Source) -> Boolean,
+    isFirstParty: (Source, SourceSnapshot) -> Boolean,
 ): Map<String, Pair<Source, IndexPackage>> {
     val versions = builtIn.associate { it.id to it.version }
-    return fromSources.filter { (source, _) -> isFirstParty(source) }.flatMap { (source, snapshot) ->
+    return fromSources.filter { (source, snapshot) -> isFirstParty(source, snapshot) }.flatMap { (source, snapshot) ->
         snapshot.index.packages.filter { entry ->
             val current = versions[entry.id] ?: return@filter false
             entry.version > current &&
@@ -108,13 +108,22 @@ internal fun mergeEntries(
     fromSources: List<Pair<Source, SourceSnapshot>>,
     /** This build's release, for `incompatible` entries. Null says nothing about them, which only a test does. */
     folio: FolioVersion? = null,
-    /** Whether a source is Folio's own tweaks source with the key Folio ships ([isFirstParty]). */
-    isFirstParty: (Source) -> Boolean = { false },
+    /**
+     * Whether a source is Folio's own tweaks source: its address, pinned with the key Folio ships, and this snapshot
+     * signed with that key ([isFirstParty]).
+     */
+    isFirstParty: (Source, SourceSnapshot) -> Boolean = { _, _ -> false },
 ): List<MarketEntry> = buildList {
     val builtInIds = builtIn.map { it.id }.toSet()
+    // A source Folio's own list has pulled as a whole speaks for nothing: none of its packages can be installed, and it
+    // can never stand in for a built-in package, whatever key it was signed with.
+    fun pulledSource(source: Source) = revocations?.reasonForSource(source.url)
+    val firstParty: (Source, SourceSnapshot) -> Boolean = { source, snapshot ->
+        pulledSource(source) == null && isFirstParty(source, snapshot)
+    }
     // A source speaks only for its own packages here (ADR 0013): Folio's list for Folio's, each source's for its own.
     fun incompatible(list: RevocationList?, entry: IndexPackage) = folio?.let { list?.incompatibleReason(entry.id, entry.version, it) }
-    val updates = firstPartyUpdates(builtIn, revocations, fromSources, folio, isFirstParty)
+    val updates = firstPartyUpdates(builtIn, revocations, fromSources, folio, firstParty)
     builtIn.forEach {
         val update = updates[it.id]
         if (update != null) {
@@ -124,16 +133,19 @@ internal fun mergeEntries(
         }
     }
 
-    val seen = fromSources.flatMap { (_, snapshot) -> snapshot.index.packages.map { it.id } }
+    // A pulled source doesn't count toward a name clash: it can't make an honest listing look contested.
+    val seen = fromSources.filter { (source, _) -> pulledSource(source) == null }
+        .flatMap { (_, snapshot) -> snapshot.index.packages.map { it.id } }
         .groupingBy { it }.eachCount()
 
     for ((source, snapshot) in fromSources) {
         val unsigned = source.kind == Source.Kind.LOCAL_DEV
         // Folio's own copy of a built-in package already has its place above, as the update or not at all.
-        val firstParty = isFirstParty(source)
+        val isOwn = firstParty(source, snapshot)
+        val sourceReason = pulledSource(source)
         snapshot.index.packages.forEach { entry ->
-            if (firstParty && entry.id in builtInIds) return@forEach
-            val reason = snapshot.revokedReason(entry) ?: revocations?.reasonFor(entry.id, entry.version)
+            if (isOwn && entry.id in builtInIds) return@forEach
+            val reason = snapshot.revokedReason(entry) ?: revocations?.reasonFor(entry.id, entry.version) ?: sourceReason
             val clash = when {
                 entry.id in builtInIds -> MarketEntry.Impostor.BUILT_IN
                 (seen[entry.id] ?: 0) > 1 -> MarketEntry.Impostor.ANOTHER_SOURCE
