@@ -772,6 +772,8 @@
     <string name="bluetooth_headphones_or_speaker_connects">Bluetooth headphones or speaker connects</string>
     <string name="headphones_plugged_in">Headphones plugged in</string>
     <string name="control_center">Control Center</string>
+    <string name="open_notification_center">Open Notification Center</string>
+    <string name="open_control_center">Open Control Center</string>
     <string name="do_not_disturb_on">Do Not Disturb On</string>
     <string name="do_not_disturb_off">Do Not Disturb Off</string>
     <string name="sleep_focus_on_off">Sleep Focus On/Off</string>
