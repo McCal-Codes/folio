@@ -209,6 +209,12 @@ internal enum class FeatureGate(
     PANEL_SWITCH("panelSwitch", closedSince = "2026-10-29", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * Crackgate: a joke easter egg, a pretend Duo hinge fault drawn over the screen. Closed until it opens in 0.7.0: flip [OPEN_IN_0_7_0]
+     * to open it. While shut, nothing draws it and nothing listens for it.
+     */
+    CRACKGATE("crackgate", closedSince = "2026-10-30", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * The deeper Control Center settings: switches for the Media and Connectivity pages, Open on, haptic ticks on the sliders,
      * Close after a toggle, an Auto chip on the brightness slider, an Edit controls row and Reset Control Center (with Undo), in
      * short cards. Until it opens the page is as it was and every one of these behaves as before, so supporters and Folio Dev
