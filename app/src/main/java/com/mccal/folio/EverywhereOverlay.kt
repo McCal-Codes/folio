@@ -179,10 +179,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         owner.stop()
     }
 
-    fun onConfigurationChanged() {
-        removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); sync()
-        removeCrackgate(); showCrackgate(CrackgateOwner.shown.value) // the screen changed size (a fold): draw it again for the new one
-    }
+    // The Crackgate window is left alone here on purpose: it is MATCH_PARENT, so it follows the display, and recreating it would fade it in again and replay its changes.
+    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); sync() }
 
     /**
      * Draws the Crackgate joke over whatever is on screen, or takes it down for null. The window is click-through (not touchable, not focusable),
@@ -265,7 +263,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val s = settings.value.let { if (SafeMode.active) it.copy(dockEverywhere = false, islandEverywhere = false, buttons = ButtonBarSettings()) else it }
         val home = FolioForeground.visible.value
         // The joke goes the moment its switch is turned off or its gate is shut.
-        if (CrackgateOwner.shown.value != null && (!s.crackgate || !FeatureGate.CRACKGATE.isOpen(service))) CrackgateOwner.stop()
+        if (CrackgateOwner.shown.value != null) {
+            if (!s.crackgate || !FeatureGate.CRACKGATE.isOpen(service)) CrackgateOwner.stop() else CrackgateOwner.onFolioReduceMotion(s.reduceMotion)
+        }
         val content = islandContent.value
         val islandWanted = s.islandEverywhere && !home && content != null
         val pullPossible = pullStripWanted(s.shadePull, s.shadeOverApps, s.folioPanels, SafeMode.active, home, false)

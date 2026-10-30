@@ -7,7 +7,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -18,7 +20,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
@@ -47,23 +51,31 @@ private val HAIR_LOWER_GLOW = Color(150, 255, 220)
 @Composable
 internal fun CrackgateFault(shown: CrackgateShown) {
     val look = shown.look
-    val fade = remember(shown) { Animatable(if (shown.reduceMotion) 1f else 0f) }
+    val reduce = CrackgateOwner.reduceMotion.collectAsState()
+    val fade = remember(shown) { Animatable(if (reduce.value) 1f else 0f) }
     val barTop = remember(shown) { Animatable(look.barTopPercent) }
     val endGap = remember(shown) { Animatable(look.barEndGapPercent) }
     val brightFrom = remember(shown) { Animatable(look.brightFromPercent) }
     LaunchedEffect(shown) {
-        if (!shown.reduceMotion) launch { fade.animateTo(1f, tween(FADE_IN_MS, easing = LinearEasing)) }
-        val dice = Random(shown.startedAtMs)
-        for (glitch in shown.plan) {
-            delay(glitch.delayMs)
-            val move = tween<Float>(dice.nextInt(STEP_MOVE_MIN_MS, STEP_MOVE_MAX_MS + 1), easing = LinearEasing)
-            when (glitch.step) {
-                CrackgateStep.BAR_HEIGHT -> barTop.animateTo(dice.nextInt(42, 69).toFloat(), move)
-                CrackgateStep.BAR_LENGTH -> endGap.animateTo(dice.nextInt(0, 13).toFloat(), move)
-                CrackgateStep.HAIRLINE_BRIGHT -> brightFrom.animateTo(dice.nextInt(44, 76).toFloat(), move)
-                CrackgateStep.ICON_STRIP -> Unit // there are no icons to move over other apps
+        if (reduce.value) { fade.snapTo(1f); return@LaunchedEffect }
+        val fadeJob = launch { fade.animateTo(1f, tween(FADE_IN_MS, easing = LinearEasing)) }
+        val stepsJob = launch {
+            val dice = Random(shown.startedAtMs)
+            for (glitch in shown.plan) {
+                delay(glitch.delayMs)
+                val move = tween<Float>(dice.nextInt(STEP_MOVE_MIN_MS, STEP_MOVE_MAX_MS + 1), easing = LinearEasing)
+                when (glitch.step) {
+                    CrackgateStep.BAR_HEIGHT -> barTop.animateTo(dice.nextInt(42, 69).toFloat(), move)
+                    CrackgateStep.BAR_LENGTH -> endGap.animateTo(dice.nextInt(0, 13).toFloat(), move)
+                    CrackgateStep.HAIRLINE_BRIGHT -> brightFrom.animateTo(dice.nextInt(44, 76).toFloat(), move)
+                    CrackgateStep.ICON_STRIP -> Unit // there are no icons to move over other apps
+                }
             }
         }
+        // Reduce Motion turned on while it is up: no more fade and no more changes. Elements stay where they are; only a fade in progress ends at once.
+        snapshotFlow { reduce.value }.first { it }
+        fadeJob.cancelAndJoin(); stepsJob.cancelAndJoin()
+        fade.snapTo(1f)
     }
     Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = fade.value }) {
         drawHairline(brightFrom.value)

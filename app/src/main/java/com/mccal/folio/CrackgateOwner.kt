@@ -21,7 +21,6 @@ import kotlin.random.Random
 internal data class CrackgateShown(
     val look: CrackgateLook,
     val plan: List<CrackgateGlitch>,
-    val reduceMotion: Boolean,
     val startedAtMs: Long,
 )
 
@@ -32,9 +31,30 @@ internal data class CrackgateShown(
  * While a fault is up this listens for a shake (the accelerometer), for the screen turning off and for the ten minute limit; the
  * moment it is down it listens for nothing. [start] and [stop] can be called any number of times.
  */
+/** Reduce Motion is on when Folio's own switch is or Android's Remove animations is. */
+internal fun crackgateReduceMotion(folioSwitch: Boolean, androidRemovesAnimations: Boolean): Boolean = folioSwitch || androidRemovesAnimations
+
 internal object CrackgateOwner {
     private val state = MutableStateFlow<CrackgateShown?>(null)
     val shown: StateFlow<CrackgateShown?> = state
+
+    private var folioReduce = false
+    private var androidReduce = false
+    private val reduce = MutableStateFlow(false)
+
+    /** Whether Reduce Motion is on right now, kept live while a fault is up: when true the fault takes no more fade and makes no more changes. */
+    val reduceMotion: StateFlow<Boolean> = reduce
+
+    /** Folio's own Reduce Motion switch, passed in by the overlay whenever settings change. */
+    fun onFolioReduceMotion(on: Boolean) { folioReduce = on; reduce.value = crackgateReduceMotion(folioReduce, androidReduce) }
+
+    private val animationScaleObserver = object : android.database.ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            val app = context ?: return
+            androidReduce = reduceMotionEnabled(app)
+            reduce.value = crackgateReduceMotion(folioReduce, androidReduce)
+        }
+    }
 
     private val main = Handler(Looper.getMainLooper())
     private val shake = CrackgateShake()
@@ -70,14 +90,17 @@ internal object CrackgateOwner {
         val app = context.applicationContext
         if (!FeatureGate.CRACKGATE.isOpen(app) || SafeMode.active || !SystemShadeAccessibilityService.isConnected()) return false
         if (state.value != null) return true
-        val reduce = reduceMotionEnabled(app) || runCatching {
+        folioReduce = runCatching {
             JSONObject(app.getSharedPreferences(SettingKeys.PREFS, 0).getString(SettingKeys.STATE, "{}") ?: "{}").optBoolean("reduceMotion", false)
         }.getOrDefault(false)
+        androidReduce = reduceMotionEnabled(app)
+        val reduce = crackgateReduceMotion(folioReduce, androidReduce)
+        this.reduce.value = reduce
         this.context = app
         shake.reset()
         val now = SystemClock.elapsedRealtime()
         listen(app)
-        state.value = CrackgateShown(randomCrackgateLook(random), planCrackgateGlitches(random, reduce, glitchy), reduce, now)
+        state.value = CrackgateShown(randomCrackgateLook(random), planCrackgateGlitches(random, reduce, glitchy), now)
         main.removeCallbacks(autoClear)
         main.postDelayed(autoClear, AUTO_CLEAR_CHECK_MS)
         return true
@@ -97,12 +120,14 @@ internal object CrackgateOwner {
             manager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { manager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_GAME) }
         }
         runCatching { app.registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)) }
+        runCatching { app.contentResolver.registerContentObserver(android.provider.Settings.Global.getUriFor(android.provider.Settings.Global.ANIMATOR_DURATION_SCALE), false, animationScaleObserver) }
     }
 
     private fun unlisten() {
         val app = context ?: return
         runCatching { app.getSystemService(SensorManager::class.java)?.unregisterListener(sensorListener) }
         runCatching { app.unregisterReceiver(screenOff) }
+        runCatching { app.contentResolver.unregisterContentObserver(animationScaleObserver) }
         context = null
     }
 }
