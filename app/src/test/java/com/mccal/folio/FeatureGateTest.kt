@@ -51,14 +51,19 @@ class FeatureGateTest {
             FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADJUST && FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADVANCED)
     }
 
-    @Test fun `moving controls in Control Center is held back for a later release on a gate of its own`() {
-        assertEquals("0.7.0", FeatureGate.CC_REORDER.opensIn)
+    @Test fun `moving controls in Control Center opens with this release on a gate of its own`() {
+        assertEquals("0.6.9", FeatureGate.CC_REORDER.opensIn)
         assertTrue("it is not the deeper Control Center settings' gate", FeatureGate.CC_REORDER != FeatureGate.CC_PAGES_DEDUPE)
     }
 
-    @Test fun `the switch between the panels is held back for a later release on a gate of its own`() {
-        assertEquals("0.7.0", FeatureGate.PANEL_SWITCH.opensIn)
+    @Test fun `the switch between the panels opens with this release on a gate of its own`() {
+        assertEquals("0.6.9", FeatureGate.PANEL_SWITCH.opensIn)
         assertTrue("it is not the reorder gate", FeatureGate.PANEL_SWITCH != FeatureGate.CC_REORDER)
+    }
+
+    @Test fun `the Crackgate joke opens with this release on a gate of its own`() {
+        assertEquals("0.6.9", FeatureGate.CRACKGATE.opensIn)
+        assertTrue("it is not the reorder gate", FeatureGate.CRACKGATE != FeatureGate.CC_REORDER)
     }
 
     @Test fun `the Market is the gate it used to be`() {

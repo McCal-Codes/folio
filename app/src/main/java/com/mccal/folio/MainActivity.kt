@@ -618,11 +618,7 @@ class MainActivity : ComponentActivity() {
         if (startupSheetUp()) { shadeSetupWaiting = true; shadeSetupUp.value = true; return }
         shadeSetupDialog = android.app.AlertDialog.Builder(this)
             .setTitle(getString(R.string.turn_on_folio_gestures))
-            .setMessage("Android asks you to turn this on yourself:\n\n" +
-                "1. Tap Open Settings, find “Folio gestures & overlays” (often under Installed apps) and turn it on.\n" +
-                "2. If it's greyed out, or you see “App was denied access” or “Restricted setting”, tap App Info below, open the ⋮ menu " +
-                "(top right), choose “Allow restricted settings” and confirm, then come back and turn it on. Android does this for apps " +
-                "installed from a browser or file; it's a one-time step.\n\n" +
+            .setMessage(getString(R.string.shade_setup_steps, getString(R.string.shade_service_label)) +
                 getString(R.string.folio_uses_it_to_open_notification_cente) +
                 getString(R.string.it_can_t_read_what_s_on_your_screen))
             .setNegativeButton(getString(R.string.not_now), null)

@@ -632,6 +632,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio gestures are starting. Swipe down again.</string>
     <string name="android_couldn_t_open_the_system_panel">Android couldn’t open the system panel.</string>
     <string name="turn_on_folio_gestures">Turn On Folio Gestures</string>
+    <string name="shade_setup_steps">Android asks you to turn this on yourself:\n\n1. Tap Open Settings, find “%1$s” (often under Installed apps) and turn it on.\n2. If it\'s greyed out, or you see “App was denied access” or “Restricted setting”, tap App Info below, open the ⋮ menu (top right), choose “Allow restricted settings” and confirm, then come back and turn it on. Android does this for apps installed from a browser or file; it\'s a one-time step.\n\n</string>
     <string name="folio_uses_it_to_open_notification_cente">Folio uses it to open Notification Center and Control Center, and for the dock and island over other apps.\u0020</string>
     <string name="it_can_t_read_what_s_on_your_screen">It can\'t read what\'s on your screen.</string>
     <string name="app_info">App Info</string>
@@ -1267,7 +1268,7 @@
     <string name="uses_the_same_wallpaper_as_your_phone_s">Uses the same wallpaper as your phone’s home screen (including live wallpapers), so it matches what you had in Samsung’s or another launcher.</string>
     <string name="google_no_ai">Google (no AI)</string>
     <string name="none">None</string>
-    <string name="swipe_to_it">Swipe to It</string>
+    <string name="swipe_to_it">Swipe to Open</string>
     <string name="beside_home">Beside Home</string>
     <string name="like_ipad_today_view_stays_on_the_left_o">Like iPad: Today View stays on the left of the open screen, next to your first Home page. It takes the place of the unfolded-only page.</string>
     <string name="icon_packs_and_themes_are_made_by_indepe">Icon packs and themes are made by independent designers. If you use one, please support them by buying it from them on Google Play. Much love.</string>
@@ -2370,4 +2371,10 @@
     <string name="tile_folio_notifications">Folio Notifications</string>
     <string name="tile_folio_control_center">Folio Control Center</string>
     <string name="phone_quick_settings">Phone quick settings</string>
+    <string name="crackgate_joke">Crackgate joke</string>
+    <string name="crackgate_header">Just for fun</string>
+    <string name="crackgate_joke_summary">The famous Duo hinge fault, drawn for fun. Off by default.</string>
+    <string name="crackgate_show_me">Show me</string>
+    <string name="crackgate_glitchy">A little glitchy</string>
+    <string name="crackgate_joke_note">Just a joke. It needs Folio&#8217;s gestures turned on, and shows over other apps only; over Folio&#8217;s own Home nothing is drawn. Shake the phone to clear it. It also clears after 10 minutes or when the screen turns off, and is never saved. A little glitchy adds a few slow changes; none with Reduce Motion.</string>
 </resources>

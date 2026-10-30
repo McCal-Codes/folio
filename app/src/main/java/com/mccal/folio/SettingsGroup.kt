@@ -120,9 +120,9 @@ internal fun CardPrimaryAction(label: String, modifier: Modifier = Modifier, ena
     }
 }
 
-/** A blue action row, like a button cell in iOS Settings: the text lines up with the other rows' labels. */
+/** An action row in the accent color, like a button cell in iOS Settings: the text lines up with the other rows' labels. */
 @Composable
 internal fun CardAction(label: String, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
-    Text(label, color = Color(if (destructive) FolioColors.Value.Red else FolioColors.Value.Blue).copy(alpha = if (enabled) 1f else .4f), fontSize = FolioType.BODY.sp,
+    Text(label, color = (if (destructive) Color(FolioColors.Value.Red) else LocalAccent.current.ink).copy(alpha = if (enabled) 1f else .4f), fontSize = FolioType.BODY.sp,
         modifier = modifier.heightIn(min = FolioRow.ACTION.dp).settingsFocus(label).clickable(enabled = enabled, role = Role.Button, onClick = onClick).wrapContentHeight(Alignment.CenterVertically))
 }

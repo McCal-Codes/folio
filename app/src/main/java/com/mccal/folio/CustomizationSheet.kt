@@ -318,7 +318,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     // Like iOS Settings: the header gets out of the way while searching.
                     if (settingsQuery.isBlank()) TweakBanner()
                     SettingsSearchField(settingsQuery) { settingsQuery = it }
-                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> settingsQuery = ""; SettingsFocus.label = row; onPage(page) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
+                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> settingsQuery = ""; SettingsFocus.label = row; if (page == CustomizationPage.FOLD_TWEAK) tweakId = DUET_ID; onPage(page) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
                     else {
                         overviewActions()
                         MiniHomePreview(backgrounds.previewBitmap, state, 176.dp)
@@ -1138,7 +1138,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 .padding(horizontal = FolioSpace.LARGE.dp).padding(top = 44.dp, bottom = FolioSpace.XL.dp).testTag("settings-sidebar"), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 SettingsLargeTitle(stringResource(R.string.folio))
                 SettingsSearchField(settingsQuery) { settingsQuery = it }
-                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> SettingsFocus.label = row; onPage(page) }, onOpenTweak = { openTweak(it) })
+                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> SettingsFocus.label = row; if (page == CustomizationPage.FOLD_TWEAK) tweakId = DUET_ID; onPage(page) }, onOpenTweak = { openTweak(it) })
                 else {
                     // Like the account card at the top of iPad Settings: Folio's own page.
                     SheetGroup { SidebarAppRow(selected = page == CustomizationPage.OVERVIEW, setupLeft) { onPage(CustomizationPage.OVERVIEW) } }
@@ -1639,6 +1639,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.fold_motion_ripple to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_depth to CustomizationPage.FOLD_TWEAK,
     R.string.fold_motion_light to CustomizationPage.FOLD_TWEAK,
+    R.string.crackgate_joke to CustomizationPage.FOLD_TWEAK,
+    R.string.crackgate_show_me to CustomizationPage.FOLD_TWEAK,
+    R.string.crackgate_glitchy to CustomizationPage.FOLD_TWEAK,
     R.string.hinge_detents to CustomizationPage.FOLD_TWEAK,
     R.string.bridge_root_test to CustomizationPage.SYSTEM_BRIDGE,
     R.string.bridge_root_copy to CustomizationPage.SYSTEM_BRIDGE,
@@ -2402,11 +2405,33 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         CardNote(stringResource(R.string.fold_motion_note))
     }
     if (rememberGateOpen(FeatureGate.HINGE_DETENTS)) HingeDetentsCard(state.haptics)
+    if (rememberGateOpen(FeatureGate.CRACKGATE)) CrackgateCard(state, model)
     SettingsCard(stringResource(R.string.duet_handover)) {
         IosSegmented(listOf(false to stringResource(R.string.iphone_duo_fade), true to stringResource(R.string.screenshot_morph)),
             state.foldSnapshot, model::setFoldSnapshot, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "fold-style")
         if (state.foldSnapshot) CardNote(stringResource(R.string.takes_a_quick_in_memory_snapshot_of_foli))
         CardNote(stringResource(R.string.your_fold_reports_only_a_few_hinge_posit))
+    }
+}
+
+/**
+ * The Crackgate joke (a pretend Duo hinge fault drawn over the screen, for fun), shown only while its gate is open and Duet is on. Show me
+ * draws it now; it needs Folio's gestures service, which owns the window over other apps. Shake the phone to clear it.
+ */
+@Composable private fun CrackgateCard(state: LauncherState, model: LauncherModel) {
+    val duet = state.duet
+    val context = androidx.compose.ui.platform.LocalContext.current
+    SettingsCard(stringResource(R.string.crackgate_header)) {
+        SettingsSwitch(stringResource(R.string.crackgate_joke), duet.crackgate, {
+            if (!it) CrackgateOwner.stop()
+            model.setDuet(duet.copy(crackgate = it))
+        }, "crackgate-switch")
+        CardNote(stringResource(R.string.crackgate_joke_summary))
+        IosActionRow(stringResource(R.string.crackgate_show_me), "crackgate-show-me", enabled = duet.crackgate) {
+            CrackgateOwner.start(context, duet.crackgateGlitchy)
+        }
+        SettingsSwitch(stringResource(R.string.crackgate_glitchy), duet.crackgateGlitchy, { model.setDuet(duet.copy(crackgateGlitchy = it)) }, "crackgate-glitchy", enabled = duet.crackgate)
+        CardNote(stringResource(R.string.crackgate_joke_note))
     }
 }
 
