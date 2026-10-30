@@ -184,6 +184,19 @@ class LauncherBackgroundController(
         private set
 
     /**
+     * The staged art decoded to the screen's size, for the full-screen preview (FeatureGate.WALLPAPER_PREVIEW) only: the grid's
+     * thumbnail is 420 px wide and would be soft there. Decoded off the main thread after [pendingArtBitmap], dropped (and recycled,
+     * as nothing else holds it) on Cancel and Set so it does not stay in memory. Null until it arrives; the preview shows the
+     * thumbnail meanwhile.
+     */
+    var pendingArtPreviewBitmap by mutableStateOf<Bitmap?>(null)
+        private set
+
+    // Not recycled: the preview may still be drawing it for the frame in which it closes, and a recycled bitmap crashes the draw.
+    // Nothing else holds it, so letting go of the reference is what frees it.
+    private fun dropPreviewBitmap() { pendingArtPreviewBitmap = null }
+
+    /**
      * True for the moment after a Set, and only then: the page offers "Also set as phone wallpaper" once, behind
      * Android's own preview, because that action cannot be undone and Folio's can. Cleared by the next stage, cancel,
      * reset or offer taken.
@@ -202,6 +215,15 @@ class LauncherBackgroundController(
             val bitmap = withContext(Dispatchers.IO) { backgroundThumbnail(activity.applicationContext, id) }
             if (pendingArt == wanted) pendingArtBitmap = bitmap
         }
+        dropPreviewBitmap()
+        if (FeatureGate.WALLPAPER_PREVIEW.isOpen(activity)) {
+            val metrics = activity.resources.displayMetrics
+            activity.lifecycleScope.launch {
+                val big = withContext(Dispatchers.IO) { backgroundPreviewBitmap(activity.applicationContext, id, metrics.widthPixels, metrics.heightPixels) }
+                // A newer tap, Cancel or Set while this decoded: the picture is nobody's, so it is let go.
+                if (pendingArt == wanted) { dropPreviewBitmap(); pendingArtPreviewBitmap = big } else big?.recycle()
+            }
+        }
     }
 
     fun setPendingArt() {
@@ -213,6 +235,7 @@ class LauncherBackgroundController(
         LauncherBackgroundCache.changed(null)
         pendingArt = null
         pendingArtBitmap = null
+        dropPreviewBitmap()
         photoSelected = launcherBackgroundEnabled(activity)
         errorMessage = null; successMessage = null
         justSet = true
@@ -238,6 +261,7 @@ class LauncherBackgroundController(
     fun cancelPendingArt() {
         pendingArt = null
         pendingArtBitmap = null
+        dropPreviewBitmap()
     }
 
     fun offerTaken() { justSet = false }

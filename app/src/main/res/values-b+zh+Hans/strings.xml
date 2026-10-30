@@ -1646,6 +1646,7 @@
     <string name="your_photo">你的照片</string>
     <string name="from_folio">来自 Folio</string>
     <string name="wallpaper_by_artist">%1$s，由 %2$s 创作</string>
+    <string name="wallpaper_preview">壁纸预览</string>
     <string name="wallpapers_you_install_from_the_market">你从商店安装的壁纸会显示在这里，并附带随附的作者与许可信息。Folio 只展示能够注明来源的作品。</string>
     <string name="a_picture_you_choose_in_folio_only_behind">你在 Folio 中选择的图片，仅显示在 Folio 后面。</string>
     <string name="no_background_behind_home">主屏幕后面没有背景。</string>

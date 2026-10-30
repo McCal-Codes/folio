@@ -206,7 +206,9 @@ internal object BackgroundLibrary {
      * Art that shipped inside the app.
      *
      * Two woodblock prints, both by an artist who died in 1858, both from a library that publishes its scans with no
-     * restriction. They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
+     * restriction, and six abstract photographs from Unsplash under the Unsplash License (free to use, credit
+     * appreciated, and the reason the set is kept small: the license does not allow compiling Unsplash images into
+     * a competing service). They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
      * them and the file is the same one on every phone, and they are cropped off their paper mounts and sized to
      * 2448 px wide, which is the widest window Folio runs in. That width is the point: a center crop never has to
      * scale them up.
@@ -239,6 +241,60 @@ internal object BackgroundLibrary {
             license = "Public domain", // english-only
             detail = "1855. National Library of New Zealand.", // english-only
             source = "https://natlib.govt.nz/records/22811404",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "misty-mountain-ridge",
+            title = "Misty Ridge", // english-only
+            artist = "Sies Kranen", // english-only
+            license = "Unsplash License", // english-only
+            detail = "2024. Unsplash.", // english-only
+            source = "https://unsplash.com/photos/IVUzTbbuenU",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "pink-and-blue-hills",
+            title = "Pink Hills", // english-only
+            artist = "Aperture Vintage", // english-only
+            license = "Unsplash License", // english-only
+            detail = "2023. Unsplash.", // english-only
+            source = "https://unsplash.com/photos/NrAvSjyW3D4",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "lavender-grainy-gradient",
+            title = "Lavender Grain", // english-only
+            artist = "MagicPattern", // english-only
+            license = "Unsplash License", // english-only
+            detail = "2021. Unsplash.", // english-only
+            source = "https://unsplash.com/photos/bevXKKL7E9g",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "dark-blue-curves",
+            title = "Blue Curves", // english-only
+            artist = "Pramod Tiwari", // english-only
+            license = "Unsplash License", // english-only
+            detail = "2023. Unsplash.", // english-only
+            source = "https://unsplash.com/photos/9-PRNoVSDQk",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "dark-blue-purple",
+            title = "Dark Violet", // english-only
+            artist = "BoliviaInteligente", // english-only
+            license = "Unsplash License", // english-only
+            detail = "2022. Unsplash.", // english-only
+            source = "https://unsplash.com/photos/37WxvlfW3to",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "wavy-blue-lines",
+            title = "Blue Waves", // english-only
+            artist = "Oxana Golubets", // english-only
+            license = "Unsplash License", // english-only
+            detail = "2025. Unsplash.", // english-only
+            source = "https://unsplash.com/photos/MNsXlmQ3r1g",
             builtIn = true,
         ),
     )

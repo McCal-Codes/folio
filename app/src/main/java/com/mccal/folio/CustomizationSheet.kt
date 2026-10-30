@@ -344,6 +344,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { backgrounds.offerTaken() } }
                     val candidate = backgrounds.pendingArtBitmap ?: backgrounds.previewBitmap
                     val staging = backgrounds.pendingArt != null || backgrounds.previewPending
+                    // Gated for 0.7.0: staged art opens full screen with Cancel and Set at the bottom.
+                    backgrounds.pendingArt?.takeIf { FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { art ->
+                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
+                    }
                     if (!state.systemWallpaper) {
                         MiniHomePreview(candidate, state, 228.dp)
                         if (staging) SheetGroup {
