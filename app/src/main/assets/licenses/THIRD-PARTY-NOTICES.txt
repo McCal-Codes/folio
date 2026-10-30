@@ -19,6 +19,10 @@ The default wallpaper and launcher icon are generated locally from project drawi
 
 Private design-study images, copied reference files, device captures, and probe research are excluded from the public source package. Apple, Google, Android, Samsung, and other referenced names are trademarks of their respective owners; this project is unaffiliated with those companies.
 
+## Wallpapers
+
+Two woodblock prints by Utagawa Hiroshige (public domain). Six photographs from Unsplash, used under the Unsplash License (https://unsplash.com/license): Sies Kranen, Aperture Vintage, MagicPattern, Pramod Tiwari, BoliviaInteligente and Oxana Golubets. Each piece's title, artist, license and source page are shown under it in the wallpaper picker.
+
 ## Duet (the fold animation)
 
 Duet includes code adapted from these MIT-licensed projects. Details, commits and changes: `third_party/duet/PROVENANCE.md`.
