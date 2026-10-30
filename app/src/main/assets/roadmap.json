@@ -589,13 +589,6 @@
           "status": "building"
         },
         {
-          "icon": "lock",
-          "color": "#30D158",
-          "title": "Private While Recording",
-          "detail": "Notification content is hidden while your screen is being recorded.",
-          "status": "building"
-        },
-        {
           "icon": "tune",
           "color": "#8E8E93",
           "title": "Storage manager",
@@ -621,6 +614,20 @@
           "color": "#64D2FF",
           "title": "Adjust the island",
           "detail": "Make the island wider and nudge it into place on a dimmed screen, with Fit to camera and Reset. For supporters first.",
+          "status": "building"
+        },
+        {
+          "icon": "notifications",
+          "color": "#0A84FF",
+          "title": "Folio tiles in Quick Settings",
+          "detail": "Add Folio Notifications and Folio Control Center to the phone's Quick Settings, and a Quick Settings button sits in Notification Center.",
+          "status": "building"
+        },
+        {
+          "icon": "tap",
+          "color": "#30D158",
+          "title": "Choose which half of the top edge is Folio's",
+          "detail": "With the pull down from any app on, pick both panels, Folio notifications or Folio Control Center, and leave the other half to Android.",
           "status": "building"
         }
       ]
@@ -719,6 +726,76 @@
           "title": "Notification styles per app",
           "detail": "Give an app's notifications their own color or icon shape in Notification Center; apps you do not change follow your global style.",
           "status": "planned"
+        },
+        {
+          "icon": "lock",
+          "color": "#30D158",
+          "title": "Private While Recording",
+          "detail": "Notification content is hidden while your screen is being recorded. For supporters and Folio Dev first.",
+          "status": "planned"
+        },
+        {
+          "icon": "sensor",
+          "color": "#32ADE6",
+          "title": "AirPods battery",
+          "detail": "Left, right and case battery for your AirPods, with Bluetooth scanning or with root. For supporters and Folio Dev first.",
+          "status": "planned"
+        },
+        {
+          "icon": "tune",
+          "color": "#8E8E93",
+          "title": "Move controls in Control Center",
+          "detail": "Press and hold a control, then drop it on another to put it there. For supporters and Folio Dev first.",
+          "status": "planned"
+        },
+        {
+          "icon": "notifications",
+          "color": "#0A84FF",
+          "title": "Switch between panels",
+          "detail": "Two icons at the top of each panel open the other one, so you do not close and pull down again. For supporters and Folio Dev first.",
+          "status": "planned"
+        },
+        {
+          "icon": "notifications",
+          "color": "#5E5CE6",
+          "title": "Swipe between panels",
+          "detail": "Swipe along the header strip to move between Notification Center and Control Center.",
+          "status": "planned"
+        },
+        {
+          "icon": "notifications",
+          "color": "#FF9F0A",
+          "title": "Expand a notification",
+          "detail": "An arrow on a notification card opens it larger, or choose a handle you pull or tap instead.",
+          "status": "planned"
+        },
+        {
+          "icon": "tune",
+          "color": "#32ADE6",
+          "title": "Hold cards",
+          "detail": "Press and hold brightness, volume, Focus or Now Playing in Control Center for more controls, like iOS.",
+          "status": "planned"
+        },
+        {
+          "icon": "palette",
+          "color": "#FF375F",
+          "title": "Wallpaper preview, full screen",
+          "detail": "Set a wallpaper while seeing it as it will look on Home and the lock screen.",
+          "status": "planned"
+        },
+        {
+          "icon": "bug",
+          "color": "#FF9F0A",
+          "title": "Crackgate",
+          "detail": "A joke you switch on in Duet settings: a pretend hinge glitch drawn over your screen, never a real one. Shake to put it back.",
+          "status": "planned"
+        },
+        {
+          "icon": "apps",
+          "color": "#8E8E93",
+          "title": "Desktop, keyboard and mouse",
+          "detail": "Research on Folio in Samsung DeX with a keyboard and a mouse. Nothing is built yet.",
+          "status": "exploring"
         }
       ]
     },
