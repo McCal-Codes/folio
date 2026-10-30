@@ -243,6 +243,23 @@ internal object Diagnostics {
      * wallpaper the Big Clock's colors come from the home colors here, then from the system palette when Android shares
      * none; "none" means neither gave Folio any colors.
      */
+    /** What Discover needs and what happened the last time it was asked for: the Google app, Android's split support and the overlay's answer. */
+    fun discoverReport(context: Context): String = buildString {
+        appendLine("Discover:")
+        val google = runCatching { context.packageManager.getPackageInfo(DiscoverClient.GOOGLE_PACKAGE, 0) }.getOrNull()
+        appendLine("  Google app: ${google?.let { "${it.versionName} (${it.longVersionCode})" } ?: "not installed"}")
+        val overlay = context.packageManager.queryIntentServices(
+            android.content.Intent(DiscoverClient.OVERLAY_ACTION).setPackage(DiscoverClient.GOOGLE_PACKAGE), 0).size
+        appendLine("  overlay services offered by the Google app: $overlay")
+        appendLine("  window extensions: ${runCatching { androidx.window.WindowSdkExtensions.getInstance().extensionVersion }.getOrNull() ?: "unknown"}, " +
+            "Discover beside Home: ${if (runCatching { DiscoverEmbedding.supported(context) }.getOrDefault(false)) "supported" else "not supported on this phone"}")
+        appendLine("  overlay version asked for: ${DiscoverClient.OVERLAY_VERSION}")
+        val debuggable = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+        // The Google app logs "Only system and debuggable apps are allowed to connect" and answers anyone else with no binder.
+        appendLine("  this Folio is a debug build: ${if (debuggable) "yes" else "no"} (the Google app serves Discover only to system and debug apps)")
+        appendLine("  last attempt: ${DiscoverClient.lastResult}")
+    }
+
     fun wallpaperReport(context: Context): String {
         val manager = runCatching { android.app.WallpaperManager.getInstance(context) }.getOrNull()
         fun colors(which: Int) = manager?.let { m -> runCatching { m.getWallpaperColors(which) }.getOrNull() }
@@ -291,6 +308,8 @@ internal object Diagnostics {
         appendLine(cutoutReport(context))
         appendLine()
         appendLine(wallpaperReport(context))
+        appendLine()
+        appendLine(discoverReport(context))
         appendLine()
         appendLine("Recent events:")
         appendLine(trailText().ifBlank { "(none)" })

@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -293,6 +294,8 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
                     showMessage = message.value != null
                 }
                 val progress = DiscoverMotion.progress.floatValue
+                // Words follow the glass: dark on a light card, white on a dark one (Surface cannot work it out from Glass).
+                val discoverInk = if (Glass.luminance() > .5f) Color.Black.copy(alpha = .86f) else Color.White
                 Box(Modifier.fillMaxSize()) {
                     if (!DiscoverBounds.available) DuneWallpaper()
                     Surface(if (DiscoverBounds.available) Modifier.fillMaxSize()
@@ -305,9 +308,10 @@ class DiscoverFeedActivity : DiscoverPageActivity() {
                             translationX = -(1f - progress) * DiscoverMotion.pageWidth
                         }.padding(FolioSpace.XXL.dp).verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium)
+                            Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium, color = discoverInk)
                             Spacer(Modifier.height(16.dp))
-                            Text(message.value ?: stringResource(R.string.google_discover), style = MaterialTheme.typography.bodyLarge)
+                            Text(message.value ?: stringResource(R.string.google_discover), style = MaterialTheme.typography.bodyLarge, color = discoverInk.copy(alpha = .72f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                             Spacer(Modifier.height(20.dp))
                             FolioButton(stringResource(R.string.retry), ::connectSafely, style = FolioButtonStyle.TONAL,
                                 icon = Icons.Rounded.Refresh, tag = "discover-retry")

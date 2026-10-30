@@ -261,8 +261,13 @@ fun LauncherScreen(
     /** Where the jiggle bar's Edit button is, so its menu opens right under it. */
     var editPillBounds by remember { mutableStateOf<androidx.compose.ui.unit.IntRect?>(null) }
     // The page left of Home is Folio's Today View, Google Discover when chosen and available, or nothing at all.
-    val todayMode = state.leftPage == "TODAY"
-    val discoverMode = state.leftPage == "DISCOVER"
+    // When the Google app refuses to serve Discover (see DiscoverAvailability) the choice shows Today View instead of an error page.
+    val discoverContext = androidx.compose.ui.platform.LocalContext.current
+    remember { DiscoverAvailability.load(discoverContext) }
+    val discoverRefused by DiscoverAvailability.refused.collectAsState()
+    LaunchedEffect(state.leftPage) { if (state.leftPage == "DISCOVER") DiscoverAvailability.refresh(discoverContext) }
+    val todayMode = state.leftPage == "TODAY" || (state.leftPage == "DISCOVER" && discoverRefused)
+    val discoverMode = state.leftPage == "DISCOVER" && !discoverRefused
     // Only Discover hosted beside Home reads the recorded Home layer.
     val hostedDiscover = discoverMode && DiscoverBounds.available
     val currentTodayMode by rememberUpdatedState(todayMode)

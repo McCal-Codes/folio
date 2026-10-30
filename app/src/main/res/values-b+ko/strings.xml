@@ -355,6 +355,7 @@
     <string name="nothing">없음</string>
     <string name="background_blur">배경 흐림</string>
     <string name="google_discover">Google Discover</string>
+    <string name="discover_refused_note">Google 앱은 시스템 앱과 디버그 빌드에만 Discover를 제공하므로 이 Folio 설치본은 거부되었습니다. 대신 오늘 보기를 표시합니다.</string>
     <string name="nothing_to_the_left_of_home_swiping_righ">홈 화면 왼쪽에 아무것도 표시하지 않습니다. 첫 페이지에서 오른쪽으로 쓸어넘겨도 동작하지 않습니다.</string>
     <string name="no_today_view_while_unfolded_it_s_still">펼쳤을 때는 오늘 보기를 표시하지 않습니다. 커버 화면에서는 계속 사용할 수 있습니다.</string>
     <string name="swipe_right_from_your_first_home_page_to">접거나 펼친 상태에서 홈 화면 첫 페이지를 오른쪽으로 쓸어넘겨 여세요.</string>
