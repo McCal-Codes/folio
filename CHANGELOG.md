@@ -119,6 +119,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- Searching Settings for a Duet setting (Hinge detents, Fold motion, Crackgate) now opens the Duet page; it opened the list of tweaks.
 - The Turn On Folio Gestures steps were English only; they are now translated, and name the gestures service the way Android lists it in your language.
 - On a tablet or any screen that does not fold, the dark fold-style shading no longer sweeps across the left side while Folio opens.
 - **Island color shows on the cover screen:** a color you picked looked black over the cover camera hole and nothing said why. The resting island still stays black there so no ring shows around the lens, but the color now appears when the island opens, and a note under the color row explains it.
