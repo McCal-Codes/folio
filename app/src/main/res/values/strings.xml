@@ -631,6 +631,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio gestures are starting. Swipe down again.</string>
     <string name="android_couldn_t_open_the_system_panel">Android couldn’t open the system panel.</string>
     <string name="turn_on_folio_gestures">Turn On Folio Gestures</string>
+    <string name="shade_setup_steps">Android asks you to turn this on yourself:\n\n1. Tap Open Settings, find “%1$s” (often under Installed apps) and turn it on.\n2. If it\'s greyed out, or you see “App was denied access” or “Restricted setting”, tap App Info below, open the ⋮ menu (top right), choose “Allow restricted settings” and confirm, then come back and turn it on. Android does this for apps installed from a browser or file; it\'s a one-time step.\n\n</string>
     <string name="folio_uses_it_to_open_notification_cente">Folio uses it to open Notification Center and Control Center, and for the dock and island over other apps.\u0020</string>
     <string name="it_can_t_read_what_s_on_your_screen">It can\'t read what\'s on your screen.</string>
     <string name="app_info">App Info</string>

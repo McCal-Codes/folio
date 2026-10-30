@@ -72,7 +72,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val shader = remember { if (Build.VERSION.SDK_INT >= 33) DuetShader() else null }
     val fold = remember { FoldTimeline(context) }
     // A device that cannot fold starts on its one screen: a tablet launched wide was not just unfolded, so nothing plays on its first frames.
-    remember(fold) { fold.expanded = foldStartsExpanded(hasHinge(context), expanded) }
+    remember(fold) { foldStartsExpanded(hasHinge(context), expanded).also { fold.expanded = it } }
     fold.unfoldStart = style.startAt
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
     // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
