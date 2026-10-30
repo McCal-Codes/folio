@@ -90,6 +90,10 @@ data class DuetOptions(
     val darkening: Float = 1f,
     val perspective: Float = 1f,
     val direction: String = DuetDirection.BOTH.id,
+    /** The Crackgate joke (a pretend hinge fault drawn over the screen): off to start with, and only reachable while its feature gate is open. */
+    val crackgate: Boolean = false,
+    /** Whether the joke makes a few slow changes after it appears; on to start with. */
+    val crackgateGlitchy: Boolean = true,
 ) {
     val look: DuetStyle get() = DuetStyles.from(style)
     val plays: DuetDirection get() = DuetDirection.from(direction)
@@ -101,7 +105,7 @@ data class DuetOptions(
 
     fun toJson(): JSONObject = JSONObject().put("style", style)
         .put("frost", frost.toDouble()).put("darkening", darkening.toDouble()).put("perspective", perspective.toDouble())
-        .put("direction", direction)
+        .put("direction", direction).put("crackgate", crackgate).put("crackgateGlitchy", crackgateGlitchy)
 
     companion object {
         val FROST = 0f..2f
@@ -117,6 +121,7 @@ data class DuetOptions(
                 style = DuetStyles.from(json.optString("style")).id,
                 frost = f("frost", FROST), darkening = f("darkening", DARKENING), perspective = f("perspective", PERSPECTIVE),
                 direction = DuetDirection.from(json.optString("direction")).id,
+                crackgate = json.optBoolean("crackgate", false), crackgateGlitchy = json.optBoolean("crackgateGlitchy", true),
             )
         }
     }

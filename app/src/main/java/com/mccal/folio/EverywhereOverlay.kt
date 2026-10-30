@@ -102,6 +102,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private var dock: ComposeView? = null
     private var island: ComposeView? = null
     private var buttons: ComposeView? = null
+    private var crackgate: ComposeView? = null
     private var buttonSettings: ButtonBarSettings? = null
     private var buttonParams: WindowManager.LayoutParams? = null
     private val dockOpen = MutableStateFlow(false)
@@ -110,7 +111,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
         val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true,
-        val pullTarget: PullTarget = PullTarget.BOTH)
+        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -146,6 +147,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         // Going Home takes the user away from whatever the panels were drawn over, so they go too.
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync(); if (it) removeShade() } }
+        // The Crackgate joke: CrackgateOwner decides when it is up, this only draws it (and a window that is already up stays across a restart of the overlay).
+        scope.launch { CrackgateOwner.shown.collect { showCrackgate(it) } }
         scope.launch {
             kotlinx.coroutines.flow.combine(IslandListenerService.activity, IslandEvents.latest) { a, e ->
                 a?.takeUnless { it is IslandActivity.Call && "CALL" in settings.value.eventsOff } to e }
@@ -170,12 +173,36 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         scopeJob.cancel()
         fullScreenJob?.cancel(); fullScreenJob = null
         removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove()
+        CrackgateOwner.stop(); removeCrackgate()
         IslandEvents.release()
         recordingWatch.stop(wm)
         owner.stop()
     }
 
+    // The Crackgate window is left alone here on purpose: it is MATCH_PARENT, so it follows the display, and recreating it would fade it in again and replay its changes.
     fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); sync() }
+
+    /**
+     * Draws the Crackgate joke over whatever is on screen, or takes it down for null. The window is click-through (not touchable, not focusable),
+     * so every touch goes to the app underneath, and hidden from TalkBack, as it is only a picture.
+     */
+    private fun showCrackgate(shown: CrackgateShown?) {
+        if (shown == null) { removeCrackgate(); return }
+        if (crackgate != null) return
+        val view = ComposeView(service).apply {
+            setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+            setContent { CrackgateFault(shown) }
+        }
+        val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
+        if (runCatching { wm.addView(view, params) }.isSuccess) crackgate = view else CrackgateOwner.stop()
+    }
+
+    private fun removeCrackgate() { crackgate?.let { runCatching { wm.removeView(it) } }; crackgate = null }
 
     /**
      * The system bars tell us when an app has gone full screen: video players, games and readers hide them, and
@@ -228,12 +255,17 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
             j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
             j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
-            pullTargetFrom(j.optString("pullTarget").ifEmpty { null }))
+            pullTargetFrom(j.optString("pullTarget").ifEmpty { null }),
+            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true)
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
         val s = settings.value.let { if (SafeMode.active) it.copy(dockEverywhere = false, islandEverywhere = false, buttons = ButtonBarSettings()) else it }
         val home = FolioForeground.visible.value
+        // The joke goes the moment its switch is turned off or its gate is shut.
+        if (CrackgateOwner.shown.value != null) {
+            if (!s.crackgate || !FeatureGate.CRACKGATE.isOpen(service)) CrackgateOwner.stop() else CrackgateOwner.onFolioReduceMotion(s.reduceMotion)
+        }
         val content = islandContent.value
         val islandWanted = s.islandEverywhere && !home && content != null
         val pullPossible = pullStripWanted(s.shadePull, s.shadeOverApps, s.folioPanels, SafeMode.active, home, false)

@@ -71,6 +71,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val rotation = view.display?.rotation ?: android.view.Surface.ROTATION_0
     val shader = remember { if (Build.VERSION.SDK_INT >= 33) DuetShader() else null }
     val fold = remember { FoldTimeline(context) }
+    // A device that cannot fold starts on its one screen: a tablet launched wide was not just unfolded, so nothing plays on its first frames.
+    remember(fold) { foldStartsExpanded(hasHinge(context), expanded).also { fold.expanded = it } }
     fold.unfoldStart = style.startAt
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
     // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
@@ -256,6 +258,9 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
         }
     }
 }
+
+/** Which screen the fold effect believes it starts on: a cover until it is told otherwise on a phone that folds, the screen it is on for one that does not. */
+internal fun foldStartsExpanded(hasHinge: Boolean, expanded: Boolean): Boolean = if (hasHinge) false else expanded
 
 /**
  * iPhone Duo's trick (per hands-on reviews and chuspeeism/iphone-duo): content doesn't move. The panel with the

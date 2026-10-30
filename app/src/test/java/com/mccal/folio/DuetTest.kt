@@ -95,6 +95,17 @@ class DuetTest {
         assertEquals(com.mccal.folio.duet.DuetDirection.entries.map { it.id }, market)
     }
 
+    @Test fun `the Crackgate switches start off and on, survive a save, and an old save without the keys gets the same`() {
+        assertEquals(false, DuetOptions().crackgate)
+        assertEquals(true, DuetOptions().crackgateGlitchy)
+        val old = DuetOptions.fromJson(JSONObject("""{"style":"duo","frost":1.5}"""))
+        assertEquals(false, old.crackgate)
+        assertEquals(true, old.crackgateGlitchy)
+        val mine = DuetOptions(crackgate = true, crackgateGlitchy = false)
+        assertEquals(mine, DuetOptions.fromJson(mine.toJson()))
+        assertEquals(false, DuetOptions.fromJson(JSONObject("""{"crackgate":"yes please"}""")).crackgate)
+    }
+
     @Test fun `Classic Glass is Duo Fold Live's look, and its tilt follows the Tilt slider`() {
         val classic = DuetOptions(style = "classic", perspective = .5f).resolved()
         assertTrue(classic.classic)
