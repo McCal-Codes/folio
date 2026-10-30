@@ -388,3 +388,30 @@ internal object FolioIsland {
     /** How far a swipe up on the island must travel to count, in dp (the same as putting a card away). */
     const val SWIPE_UP_DP = 24
 }
+
+/**
+ * The colors of the Crackgate joke (a pretend hinge fault, drawn over other apps). Cyan, white and green only; there is no red here on
+ * purpose, as red flashes are a seizure risk. Copied from the Mockup Lab scene crackgate-joke.html.
+ */
+internal object CrackgateColors {
+    /** Top of the bright bar, a pale blue. */
+    val BarTop = Color(0xFF9FC8FF)
+    /** The bright core of the bar, white. */
+    val BarCore = Color.White
+    /** The lower middle of the bar, white with a hint of cyan. */
+    val BarMiddle = Color(0xFFF1FCFF)
+    /** Bottom edge of the bar, light cyan. */
+    val BarBottom = Color(0xFFB4ECFF)
+    /** The soft blue glow around the bar. */
+    val BarGlow = Color(80, 170, 255)
+    /** The thin green line fault. */
+    val GreenLine = Color(0xFF6DFFA0)
+    /** The soft green glow around the green line. */
+    val GreenGlow = Color(60, 255, 140)
+    /** The hinge hairline above the bright point. */
+    val HairUpper = Color.White
+    /** The hinge hairline below the bright point, pale mint. */
+    val HairLower = Color(0xFFE4FFF3)
+    /** The faint glow around the lower hairline. */
+    val HairLowerGlow = Color(150, 255, 220)
+}

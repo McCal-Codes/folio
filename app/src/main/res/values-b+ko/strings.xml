@@ -2331,4 +2331,10 @@
     <string name="tile_folio_notifications">Folio 알림</string>
     <string name="tile_folio_control_center">Folio 제어 센터</string>
     <string name="phone_quick_settings">휴대전화 빠른 설정</string>
+    <string name="crackgate_joke">Crackgate 농담</string>
+    <string name="crackgate_header">재미로</string>
+    <string name="crackgate_joke_summary">유명한 듀오 힌지 결함을 재미로 그려 줍니다. 기본값은 꺼짐입니다.</string>
+    <string name="crackgate_show_me">보여 주세요</string>
+    <string name="crackgate_glitchy">약간의 글리치</string>
+    <string name="crackgate_joke_note">그냥 농담입니다. Folio 제스처를 켜야 하며 다른 앱 위에서만 나타납니다. Folio 홈 화면에는 그려지지 않습니다. 폰을 흔들면 사라지고, 10분 뒤나 화면이 꺼질 때도 사라지며 저장되지 않습니다. 약간의 글리치는 천천히 몇 번 변합니다. 동작 줄이기를 켜면 변하지 않습니다.</string>
 </resources>

@@ -61,6 +61,11 @@ class FeatureGateTest {
         assertTrue("it is not the reorder gate", FeatureGate.PANEL_SWITCH != FeatureGate.CC_REORDER)
     }
 
+    @Test fun `the Crackgate joke opens with this release on a gate of its own`() {
+        assertEquals("0.6.9", FeatureGate.CRACKGATE.opensIn)
+        assertTrue("it is not the reorder gate", FeatureGate.CRACKGATE != FeatureGate.CC_REORDER)
+    }
+
     @Test fun `the Market is the gate it used to be`() {
         // The behaviour this replaced: released, or a .dev build, or a supporter code with the beta scope.
         val market = FeatureGate.MARKET

@@ -2309,4 +2309,10 @@
     <string name="tile_folio_notifications">Folio 通知</string>
     <string name="tile_folio_control_center">Folio 控制中心</string>
     <string name="phone_quick_settings">手机快捷设置</string>
+    <string name="crackgate_joke">Crackgate 玩笑</string>
+    <string name="crackgate_header">仅供娱乐</string>
+    <string name="crackgate_joke_summary">著名的 Duo 铰链故障，仅供娱乐。默认关闭。</string>
+    <string name="crackgate_show_me">演示一下</string>
+    <string name="crackgate_glitchy">带一点故障感</string>
+    <string name="crackgate_joke_note">只是个玩笑。需要开启 Folio 手势，且只显示在其他应用上方，在 Folio 自己的主屏幕上不会绘制。摇一摇手机即可清除；10 分钟后或屏幕关闭时也会清除，并且不会保存。“带一点故障感”会缓慢地变化几次；开启“减弱动态效果”时不变化。</string>
 </resources>
