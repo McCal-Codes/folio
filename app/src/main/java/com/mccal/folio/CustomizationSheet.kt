@@ -2414,7 +2414,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
 @Composable private fun CrackgateCard(state: LauncherState, model: LauncherModel) {
     val duet = state.duet
     val context = androidx.compose.ui.platform.LocalContext.current
-    SettingsCard(null) {
+    SettingsCard(stringResource(R.string.crackgate_header)) {
         SettingsSwitch(stringResource(R.string.crackgate_joke), duet.crackgate, {
             if (!it) CrackgateOwner.stop()
             model.setDuet(duet.copy(crackgate = it))

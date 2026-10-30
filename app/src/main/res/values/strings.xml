@@ -2369,6 +2369,7 @@
     <string name="tile_folio_control_center">Folio Control Center</string>
     <string name="phone_quick_settings">Phone quick settings</string>
     <string name="crackgate_joke">Crackgate joke</string>
+    <string name="crackgate_header">Just for fun</string>
     <string name="crackgate_joke_summary">The famous Duo hinge fault, drawn for fun. Off by default.</string>
     <string name="crackgate_show_me">Show me</string>
     <string name="crackgate_glitchy">A little glitchy</string>

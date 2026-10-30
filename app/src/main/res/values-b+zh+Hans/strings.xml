@@ -2308,6 +2308,7 @@
     <string name="tile_folio_control_center">Folio 控制中心</string>
     <string name="phone_quick_settings">手机快捷设置</string>
     <string name="crackgate_joke">Crackgate 玩笑</string>
+    <string name="crackgate_header">仅供娱乐</string>
     <string name="crackgate_joke_summary">著名的 Duo 铰链故障，仅供娱乐。默认关闭。</string>
     <string name="crackgate_show_me">演示一下</string>
     <string name="crackgate_glitchy">带一点故障感</string>
