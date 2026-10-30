@@ -214,7 +214,14 @@ internal enum class FeatureGate(
      * short cards. Until it opens the page is as it was and every one of these behaves as before, so supporters and Folio Dev
      * see it first. Everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it.
      */
-    CC_SETTINGS_V2("ccSettingsV2", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    CC_SETTINGS_V2("ccSettingsV2", closedSince = "2026-10-27", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * The Apple-style wallpaper flow: tapping a piece of art opens a full-screen preview on a drawn Home with Cancel and Set at the
+     * bottom, and only Set writes (McCal, 30 Oct 2026; Lab: wallpaper-apple). Supporters and Folio Dev try it in the betas and everyone
+     * gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, a tap only stages the art and Set sits under the page preview.
+     */
+    WALLPAPER_PREVIEW("wallpaperPreview", closedSince = "2026-10-30", opensIn = "0.7.0", { OPEN_IN_0_7_0 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()

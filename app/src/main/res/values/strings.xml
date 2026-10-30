@@ -1697,6 +1697,7 @@
     <string name="your_photo">Your Photo</string>
     <string name="from_folio">From Folio</string>
     <string name="wallpaper_by_artist">%1$s by %2$s</string>
+    <string name="wallpaper_preview">Wallpaper preview</string>
     <string name="wallpapers_you_install_from_the_market">Wallpapers you install from the Market appear here, with the artist and the license they came with. Folio only shows art it can name.</string>
     <string name="a_picture_you_choose_in_folio_only_behind">A picture you choose in Folio, only behind Folio.</string>
     <string name="no_background_behind_home">No background behind Home.</string>
