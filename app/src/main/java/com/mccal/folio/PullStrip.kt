@@ -31,7 +31,9 @@ internal class PullStrip(private val service: AccessibilityService, private val 
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> { downX = event.x; downY = event.y; fired = false }
                     // Fired on the way down, not on release: the system cancels a touch that goes about 25 dp, so a later trigger never fires.
-                    MotionEvent.ACTION_MOVE -> if (!fired && isPullDown(event.x - downX, event.y - downY, slop)) {
+                    // A quick swipe can jump from the edge to past that point between two events, so the first thing the strip sees
+                    // after the touch down is the cancel (or the lift) already far down: that counts as the pull too.
+                    MotionEvent.ACTION_MOVE, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> if (!fired && isPullDown(event.x - downX, event.y - downY, slop)) {
                         fired = true
                         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         onPull(pullPanel(downX, width.toFloat()))
