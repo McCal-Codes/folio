@@ -54,6 +54,11 @@
     <string name="cc_page_of">%1$s, page %2$d of %3$d</string>
     <string name="shade_pull">Pull down from the top of any app</string>
     <string name="shade_pull_note">A pull down on the left half of an app\'s top edge opens Notification Center, and on the right half Control Center, in place of the phone\'s shade. Taps on that top strip do not reach the app while this is on, and an app in full screen keeps Android\'s own. It follows Folio\'s panels over other apps, so it is off when that is off.</string>
+    <string name="pull_target_title">Swipe down opens</string>
+    <string name="pull_target_both">Folio\'s panels</string>
+    <string name="pull_target_notifications">Folio notifications</string>
+    <string name="pull_target_control_center">Folio Control Center</string>
+    <string name="pull_target_note">The left half of the top edge is notifications and the right half is quick settings, as before. With only one of Folio\'s panels chosen, the other half opens the phone\'s own.</string>
     <string name="shade_over_apps_note">When a shortcut, a Routine or One UI\'s one-hand operation opens the notification shade or Quick Settings, Folio draws its own Notification Center or Control Center over the open app instead of the phone\'s. Needs Folio\'s gestures turned on. Swiping down from the top of an app opens your phone\'s own shade unless you turn on the pull below. Over another app, Reply opens a small box to type in, and Options are on Home only. It never opens over the lock screen.</string>
     <string name="nc_layout_title">Unfolded layout</string>
     <string name="nc_layout_full">Full screen</string>

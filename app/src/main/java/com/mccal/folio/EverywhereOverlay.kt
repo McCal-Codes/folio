@@ -109,7 +109,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
-        val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true)
+        val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true,
+        val pullTarget: PullTarget = PullTarget.BOTH)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -226,7 +227,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true)),
             j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
             j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
-            j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true))
+            j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
+            pullTargetFrom(j.optString("pullTarget").ifEmpty { null }))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -416,6 +418,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     // ---- Pull down from the top edge: see PullStrip ------------------------------------------
 
     private val pullStrip = PullStrip(service, wm) { panel ->
+        // The choice is read now, at the pull, so changing it needs no restart. A panel that is not Folio's here is the phone's own.
+        if (!pullOpensFolio(panel, settings.value.pullTarget)) { SystemShadeAccessibilityService.open(service, panel); return@PullStrip }
         // Through the same transparent entry a shortcut uses: a shade opened with an activity of ours in front gets the blur behind it,
         // and one opened from the service alone did not on the Android 17 emulator (the blur layer stayed invisible).
         val entry = if (panel == ShadePanel.NOTIFICATIONS) ShadeShortcutNotifications::class.java else ShadeShortcutQuickSettings::class.java

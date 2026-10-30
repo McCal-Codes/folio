@@ -59,6 +59,11 @@
     <string name="cc_page_of">%1$s, %3$d페이지 중 %2$d페이지</string>
     <string name="shade_pull">모든 앱 상단에서 아래로 당기기</string>
     <string name="shade_pull_note">앱 상단 가장자리의 왼쪽 절반을 아래로 당기면 알림 센터가, 오른쪽 절반을 당기면 제어 센터가 휴대전화의 알림창 대신 열립니다. 이 기능을 켜면 상단 띠에서의 탭은 앱에 전달되지 않으며, 전체 화면 앱은 Android 기본 동작을 유지합니다. 다른 앱 위에 Folio 패널 표시를 끄면 함께 꺼집니다.</string>
+    <string name="pull_target_title">아래로 쓸어내리면 열리는 것</string>
+    <string name="pull_target_both">Folio 패널</string>
+    <string name="pull_target_notifications">Folio 알림</string>
+    <string name="pull_target_control_center">Folio 제어 센터</string>
+    <string name="pull_target_note">상단 가장자리의 왼쪽 절반은 알림, 오른쪽 절반은 빠른 설정이며 이전과 같습니다. Folio 패널 하나만 고르면 나머지 절반은 휴대전화 기본 패널을 엽니다.</string>
     <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 입력 상자가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
     <string name="nc_layout_title">펼쳤을 때 레이아웃</string>
     <string name="nc_layout_full">전체 화면</string>
