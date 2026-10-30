@@ -197,16 +197,16 @@ internal enum class FeatureGate(
     /**
      * Moving controls in Control Center: in edit mode, press and hold a control and drag it onto another to put it there, on the same
      * page (the first step toward the free grid in the Lab's control-center-options). Supporters and Folio Dev try it in the betas and
-     * everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, edit mode only adds and removes, as before.
+     * everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it. While shut, edit mode only adds and removes, as before.
      */
-    CC_REORDER("ccReorder", closedSince = "2026-10-29", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+    CC_REORDER("ccReorder", closedSince = "2026-10-29", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
      * A switch between Notification Center and Control Center: two icons in a pill at the top of each, so one panel opens the other without
      * closing and pulling down again (McCal, 29 Oct 2026; Lab: panel-switch-and-expand). Supporters and Folio Dev try it in the betas and
-     * everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, neither panel shows it.
+     * everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it. While shut, neither panel shows it.
      */
-    PANEL_SWITCH("panelSwitch", closedSince = "2026-10-29", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+    PANEL_SWITCH("panelSwitch", closedSince = "2026-10-29", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
      * The deeper Control Center settings: switches for the Media and Connectivity pages, Open on, haptic ticks on the sliders,
