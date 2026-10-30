@@ -2336,6 +2336,7 @@
     <string name="island_color_hex_hint">1D2B53</string>
     <string name="island_color_hex_invalid">Use six digits or letters A to F, like 1D2B53.</string>
     <string name="island_color_nudged">Adjusted slightly so its text stays easy to read.</string>
+    <string name="island_color_camera_note">Over the camera hole the resting island stays black so no ring shows; the color shows when it opens, and when you move it off the camera.</string>
     <string name="island_color_note">Always solid. Text and icons switch between white and black to stay readable. While the island wraps a real camera hole it stays black, so the lens never shows a lighter ring.</string>
     <string name="island_color_swatch">%1$s island color</string>
     <string name="island_corners">Corner radius</string>
