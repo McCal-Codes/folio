@@ -15,7 +15,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -37,12 +36,7 @@ private const val HAIRLINE_TILT_DEGREES = -0.6f
 private const val HAIRLINE_WIDTH_DP = 1.5f
 private const val HINGE_GAP_DP = 2f
 
-private val BAR_GRADIENT = arrayOf(0f to Color(0xFF9FC8FF), .3f to Color.White, .7f to Color(0xFFF1FCFF), 1f to Color(0xFFB4ECFF))
-private val BAR_GLOW = Color(80, 170, 255)
-private val GREEN_LINE = Color(0xFF6DFFA0)
-private val GREEN_GLOW = Color(60, 255, 140)
-private val HAIR_LOWER = Color(0xFFE4FFF3)
-private val HAIR_LOWER_GLOW = Color(150, 255, 220)
+private val BAR_GRADIENT = arrayOf(0f to CrackgateColors.BarTop, .3f to CrackgateColors.BarCore, .7f to CrackgateColors.BarMiddle, 1f to CrackgateColors.BarBottom)
 
 /**
  * The pretend hinge fault, drawn to fill the window it is in. Cyan and green only (never red), at most one 300 ms fade in and a few
@@ -104,11 +98,11 @@ private fun DrawScope.drawHairline(brightFromPercent: Float) {
     val split = size.height * brightFromPercent / 100f
     val thin = HAIRLINE_WIDTH_DP.dp.toPx()
     rotate(HAIRLINE_TILT_DEGREES, Offset(x, 0f)) {
-        drawRect(Color.White.copy(alpha = .9f), Offset(x - thin / 2f, 0f), Size(thin, split))
+        drawRect(CrackgateColors.HairUpper.copy(alpha = .9f), Offset(x - thin / 2f, 0f), Size(thin, split))
         val lowerWidth = 2.dp.toPx()
-        drawRect(HAIR_LOWER_GLOW.copy(alpha = .16f), Offset(x - lowerWidth * 2.5f, split), Size(lowerWidth * 5f, size.height - split))
-        drawRect(HAIR_LOWER_GLOW.copy(alpha = .3f), Offset(x - lowerWidth * 1.5f, split), Size(lowerWidth * 3f, size.height - split))
-        drawRect(HAIR_LOWER, Offset(x - lowerWidth / 2f, split), Size(lowerWidth, size.height - split))
+        drawRect(CrackgateColors.HairLowerGlow.copy(alpha = .16f), Offset(x - lowerWidth * 2.5f, split), Size(lowerWidth * 5f, size.height - split))
+        drawRect(CrackgateColors.HairLowerGlow.copy(alpha = .3f), Offset(x - lowerWidth * 1.5f, split), Size(lowerWidth * 3f, size.height - split))
+        drawRect(CrackgateColors.HairLower, Offset(x - lowerWidth / 2f, split), Size(lowerWidth, size.height - split))
     }
 }
 
@@ -117,7 +111,7 @@ private fun DrawScope.drawBar(left: Float, top: Float, width: Float, height: Flo
     if (width <= 0f || height <= 0f) return
     for (i in 4 downTo 1) {
         val grow = i * 3.5.dp.toPx()
-        drawRoundRect(BAR_GLOW.copy(alpha = .13f), Offset(left - grow, top - grow), Size(width + grow * 2f, height + grow * 2f), CornerRadius(grow + 2.dp.toPx()))
+        drawRoundRect(CrackgateColors.BarGlow.copy(alpha = .13f), Offset(left - grow, top - grow), Size(width + grow * 2f, height + grow * 2f), CornerRadius(grow + 2.dp.toPx()))
     }
     drawRoundRect(Brush.verticalGradient(colorStops = BAR_GRADIENT, startY = top, endY = top + height), Offset(left, top), Size(width, height), CornerRadius(2.dp.toPx()))
 }
@@ -127,7 +121,7 @@ private fun DrawScope.drawGreenLine(top: Float, height: Float) {
     val thick = height.coerceAtLeast(1.dp.toPx())
     for (i in 3 downTo 1) {
         val grow = i * 3.dp.toPx()
-        drawRoundRect(GREEN_GLOW.copy(alpha = .16f), Offset(0f, top - grow), Size(size.width, thick + grow * 2f), CornerRadius(grow))
+        drawRoundRect(CrackgateColors.GreenGlow.copy(alpha = .16f), Offset(0f, top - grow), Size(size.width, thick + grow * 2f), CornerRadius(grow))
     }
-    drawRect(GREEN_LINE, Offset(0f, top), Size(size.width, thick))
+    drawRect(CrackgateColors.GreenLine, Offset(0f, top), Size(size.width, thick))
 }
