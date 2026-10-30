@@ -214,7 +214,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
-            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else {
@@ -229,7 +229,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                     .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> androidx.compose.animation.core.snap() })
             }, contentAlignment = Alignment.TopStart, label = "panel switch") { which ->
                 if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
-                    listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+                    listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
                 else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, onSwitch = switcher) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
             }
         }
@@ -241,7 +241,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, onSystemQuickSettings: () -> Unit = {}, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -267,6 +267,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            GlassIconButton(Icons.Rounded.Settings, stringResource(R.string.phone_quick_settings)) { onClose(); onSystemQuickSettings() }
+            Spacer(Modifier.width(8.dp))
             GlassIconButton(Icons.Rounded.Tune, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
             if (items.any { it.clearable }) {
                 Spacer(Modifier.width(8.dp))

@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.6.9] - Unreleased
 
 ### Added
+- **Folio tiles in Quick Settings:** two tiles, Folio Notifications and Folio Control Center, can be added to the phone's Quick Settings and open Folio's panels over the open app (they need Folio's gestures turned on and Folio's panels over other apps, as the swipe down does); and Folio's Notification Center has a button for the phone's Quick Settings.
 - **Pick which panels are Folio's:** with the pull down from the top of any app turned on, Settings › Notifications › Panels now has "Swipe down opens": both of Folio's panels (the start), Folio notifications or Folio Control Center (the other half then opens the phone's own).
 - **Switch between panels:** two icons in a pill at the top of each panel open the other one, sliding across (a cross-fade with Reduce Motion), so you do not close and pull down again. TalkBack names both. For supporters and Folio Dev for now, and for everyone in 0.7.0.
 - **Move controls in Control Center:** in edit mode, press and hold a control, drag it onto another and let go to put it there. A drop on empty space puts it back, so nothing moves by itself; TalkBack gets Move earlier and Move later. For supporters and Folio Dev for now, and for everyone in 0.7.0.

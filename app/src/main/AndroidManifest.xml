@@ -291,6 +291,14 @@
             android:icon="@drawable/ic_tile_search" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>
+        <service android:name=".NotificationsTileService" android:exported="true" android:label="@string/tile_folio_notifications"
+            android:icon="@drawable/ic_tile_notifications" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service android:name=".ControlCenterTileService" android:exported="true" android:label="@string/tile_folio_control_center"
+            android:icon="@drawable/ic_tile_control_center" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
         <service android:name=".IslandTileService" android:exported="true" android:label="@string/island"
             android:icon="@drawable/ic_tile_island" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
