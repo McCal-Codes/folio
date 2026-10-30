@@ -54,6 +54,11 @@
     <string name="cc_page_of">%1$s, page %2$d of %3$d</string>
     <string name="shade_pull">Pull down from the top of any app</string>
     <string name="shade_pull_note">A pull down on the left half of an app\'s top edge opens Notification Center, and on the right half Control Center, in place of the phone\'s shade. Taps on that top strip do not reach the app while this is on, and an app in full screen keeps Android\'s own. It follows Folio\'s panels over other apps, so it is off when that is off.</string>
+    <string name="pull_target_title">Swipe down opens</string>
+    <string name="pull_target_both">Folio\'s panels</string>
+    <string name="pull_target_notifications">Folio notifications</string>
+    <string name="pull_target_control_center">Folio Control Center</string>
+    <string name="pull_target_note">The left half of the top edge is notifications and the right half is quick settings, as before. With only one of Folio\'s panels chosen, the other half opens the phone\'s own.</string>
     <string name="shade_over_apps_note">When a shortcut, a Routine or One UI\'s one-hand operation opens the notification shade or Quick Settings, Folio draws its own Notification Center or Control Center over the open app instead of the phone\'s. Needs Folio\'s gestures turned on. Swiping down from the top of an app opens your phone\'s own shade unless you turn on the pull below. Over another app, Reply opens a small box to type in, and Options are on Home only. It never opens over the lock screen.</string>
     <string name="nc_layout_title">Unfolded layout</string>
     <string name="nc_layout_full">Full screen</string>
@@ -70,6 +75,7 @@
     <string name="show_quiet_notifications">Show quiet notifications</string>
     <string name="unfolded_clock_beside_notifications">Unfolded: clock beside notifications</string>
     <string name="control_center_size">Control Center size</string>
+    <string name="cc_size_note">On a phone the panel fills the width, so the sizes look much the same. They show on a wider screen, like an unfolded Fold or a tablet.</string>
     <string name="unfolded_control_center_in_the_middle">Unfolded: Control Center in the middle</string>
     <string name="tip_tap_at_the_top_of_control_center_to">Tip: tap + at the top of Control Center to add or remove controls.</string>
     <string name="to_restyle_samsungs_own_pull_down_colors">To restyle Samsung’s own pull-down (colors, transparency, layout), use Good Lock › QuickStar and Theme Park.</string>
@@ -705,6 +711,8 @@
     <string name="developer_options">Developer options</string>
     <string name="about_phone">About phone</string>
     <string name="remove_control">Remove %1$s</string>
+    <string name="move_control_earlier">Move %1$s earlier</string>
+    <string name="move_control_later">Move %1$s later</string>
     <string name="add_control">Add %1$s</string>
     <string name="notify_me">Notify Me</string>
     <string name="manual">Manual</string>
@@ -769,6 +777,8 @@
     <string name="bluetooth_headphones_or_speaker_connects">Bluetooth headphones or speaker connects</string>
     <string name="headphones_plugged_in">Headphones plugged in</string>
     <string name="control_center">Control Center</string>
+    <string name="open_notification_center">Open Notification Center</string>
+    <string name="open_control_center">Open Control Center</string>
     <string name="do_not_disturb_on">Do Not Disturb On</string>
     <string name="do_not_disturb_off">Do Not Disturb Off</string>
     <string name="sleep_focus_on_off">Sleep Focus On/Off</string>
@@ -2270,6 +2280,10 @@
         <item quantity="other">%2$s. They stay on the phone, and you can add them back in Add Apps.</item>
     </plurals>
     <string name="screenshot_swap_apps">Swap Apps</string>
+    <string name="private_while_recording">Private While Recording</string>
+    <string name="while_folio_s_screen_is_recorded_or_shared">While Folio\'s screen is recorded or shared, the apps you chose in Swap Apps are swapped, and notification text, badge numbers and hidden apps are hidden. Widgets, Today View and Spotlight suggestions are not hidden. Everything comes back when the recording stops. Needs Android 15 or later.</string>
+    <string name="recording_private_view_on">Recording: private view on</string>
+    <string name="private_notification_word">Notification</string>
     <string name="screenshot_swap_intro">While Screenshot Mode is on, the apps you choose show as a stock app on this phone, with its icon and name. Tapping one still opens the real app; only the screen changes. Apps that came with the phone are never swapped.</string>
     <string name="screenshot_swap_all_third_party">Swap All Third-Party Apps</string>
     <string name="screenshot_swap_all_third_party_note">Every app that didn’t come with this phone, including ones you install later.</string>
@@ -2442,6 +2456,7 @@
     <string name="island_color_hex_hint">1D2B53</string>
     <string name="island_color_hex_invalid">Use six digits or letters A to F, like 1D2B53.</string>
     <string name="island_color_nudged">Adjusted slightly so its text stays easy to read.</string>
+    <string name="island_color_camera_note">Over the camera hole the resting island stays black so no ring shows; the color shows when it opens, and when you move it off the camera.</string>
     <string name="island_color_note">Always solid. Text and icons switch between white and black to stay readable. While the island wraps a real camera hole it stays black, so the lens never shows a lighter ring.</string>
     <string name="island_color_swatch">%1$s island color</string>
     <string name="island_corners">Corner radius</string>
@@ -2471,4 +2486,7 @@
     <string name="island_gesture_keep_dismiss">One gesture must always stay on Dismiss.</string>
     <string name="settings_keywords_island_advanced">island color colour corner radius round animation speed haptics vibration gestures tap hold swipe double tap dismiss power user advanced customize</string>
     <string name="island_adjust_side_note">The island stands upright around the camera in this orientation. Turn the phone to adjust its width.</string>
+    <string name="tile_folio_notifications">Folio Notifications</string>
+    <string name="tile_folio_control_center">Folio Control Center</string>
+    <string name="phone_quick_settings">Phone quick settings</string>
 </resources>

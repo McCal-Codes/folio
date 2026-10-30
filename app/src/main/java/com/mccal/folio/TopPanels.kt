@@ -83,7 +83,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.dismiss
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.format.DateTimeFormatter
@@ -99,9 +104,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
     ccOptions: CcOptions = CcOptions(),
-    focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {}) {
+    focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {},
+    onSwitchPanel: ((ShadePanel) -> Unit)? = null) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
+    val pageBack = remember { CcPageBack() }
     var shown by remember { mutableStateOf<ShadePanel?>(null) }
     if (open) shown = panel
     val current = shown ?: return
@@ -113,6 +120,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
+    // The switch between the panels is only drawn where one panel stands alone (two cards side by side already show both) and while its gate is open.
+    val switcher: ((ShadePanel) -> Unit)? = onSwitchPanel?.takeIf { shape != ShadeShape.BOTH && FeatureGate.PANEL_SWITCH.isOpen(LocalContext.current) }
     // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
     val cardListMax = (config.screenHeightDp * .62f).dp
 
@@ -133,10 +142,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
         .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
-            .pointerInput(Unit) {
-                var total = 0f
-                detectVerticalDragGestures(onDragStart = { total = 0f }) { _, drag -> total += drag; if (total < -48.dp.toPx()) onClose() }
-            } else Modifier)
+            .ccSwipeUp(pageBack, onClose) else Modifier)
         .testTag("top-panel-scrim")) {
         // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
         // under a dim. Over an app with no picture yet or none possible, Folio's frosted glass stands in.
@@ -183,6 +189,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
             // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
             .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
+            // A swipe up that starts in Control Center's margins is the same swipe as one under it (it used to count as a tap there and close the panel from any page).
+            .then(if (which == ShadePanel.QUICK_SETTINGS) Modifier.ccSwipeUp(pageBack, onClose) else Modifier)
             .graphicsLayer {
                 val p = progress()
                 if (which == ShadePanel.NOTIFICATIONS) {
@@ -206,12 +214,25 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
-            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
-        else if (current == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
-            listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-        else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+        else {
+            // Moving between the panels slides them sideways a little while they cross-fade (a plain cross-fade with Reduce Motion); the size does not animate.
+            val reduceSwitch = LocalReduceMotion.current
+            val slidePx = with(LocalDensity.current) { FolioSpace.XXL.dp.roundToPx() }
+            androidx.compose.animation.AnimatedContent(current, transitionSpec = {
+                val toControls = targetState == ShadePanel.QUICK_SETTINGS
+                val shift = if (reduceSwitch) 0 else if (toControls) slidePx else -slidePx
+                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) + androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(220)) { shift })
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)) + androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(220)) { -shift })
+                    .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> androidx.compose.animation.core.snap() })
+            }, contentAlignment = Alignment.TopStart, label = "panel switch") { which ->
+                if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
+                    listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+                else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, onSwitch = switcher) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            }
+        }
     }
     }
 }
@@ -220,7 +241,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, onSystemQuickSettings: () -> Unit = {}, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -237,6 +258,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+        if (onSwitch != null) PanelSwitch(ShadePanel.NOTIFICATIONS, onSwitch, Modifier.align(Alignment.CenterHorizontally))
         if (showClock) Column(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = FolioType.BODY.sp,
                 fontWeight = FontWeight.SemiBold)
@@ -245,7 +267,12 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            GlassIconButton(Icons.Rounded.Tune, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
+            // Three different things wear a slider ("Tune") icon elsewhere: Folio's Control Center (panel switch, tile).
+            // So the two buttons that open the phone's own panels use other icons: the gear is the phone's Quick Settings,
+            // the phone glyph is the phone's own notification shade.
+            GlassIconButton(Icons.Rounded.Settings, stringResource(R.string.phone_quick_settings)) { onClose(); onSystemQuickSettings() }
+            Spacer(Modifier.width(8.dp))
+            GlassIconButton(Icons.Rounded.PhoneAndroid, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
             if (items.any { it.clearable }) {
                 Spacer(Modifier.width(8.dp))
                 // Like iPhone: the × turns into "Clear" and a second tap clears everything.
@@ -509,6 +536,42 @@ internal val LocalCcLook = androidx.compose.runtime.compositionLocalOf { CcLook.
 /** What Clear glass uses over the backdrop at hand (its dim and its tiles), worked out from how bright the backdrop is; see [ccClearTone]. */
 private val LocalCcTone = androidx.compose.runtime.staticCompositionLocalOf { CC_DEFAULT_TONE }
 
+/** The page a swipe up goes back to from page [current] (in the order of the pages), or null on the first, where the same swipe closes the panel. */
+internal fun ccBackTarget(current: Int): Int? = if (current > 0) current - 1 else null
+
+/** What a swipe up in the empty space under the controls does: end editing, go back a page, or (on the first page, not editing) close the panel. */
+internal sealed interface CcSwipeUp {
+    object StopEditing : CcSwipeUp
+    data class GoBack(val page: Int) : CcSwipeUp
+    object Close : CcSwipeUp
+}
+
+internal fun ccSwipeUp(editing: Boolean, current: Int): CcSwipeUp =
+    if (editing) CcSwipeUp.StopEditing else ccBackTarget(current)?.let { CcSwipeUp.GoBack(it) } ?: CcSwipeUp.Close
+
+/**
+ * The swipe up on a panel's scrim, or on Control Center's margins: end editing, go back a page, or close. One swipe does one of them, once,
+ * so a long drag does not walk back through every page and then close.
+ */
+private fun Modifier.ccSwipeUp(pageBack: CcPageBack, onClose: () -> Unit): Modifier = pointerInput(pageBack) {
+    var total = 0f
+    var done = false
+    detectVerticalDragGestures(onDragStart = { total = 0f; done = false }) { _, drag ->
+        total += drag
+        if (!done && total < -48.dp.toPx()) { done = true; if (!pageBack.goBack()) onClose() }
+    }
+}
+
+/**
+ * Lets the scrim behind the panels ask Control Center to go back a page before it closes the panel: a swipe up that starts in the
+ * empty space under the controls lands on the scrim, not on the pager, and used to close the panel from the Media and Connectivity pages.
+ */
+internal class CcPageBack {
+    var back: (() -> Boolean)? = null
+    /** True if Control Center took the swipe by going back a page. */
+    fun goBack(): Boolean = back?.invoke() == true
+}
+
 /** One page of Control Center: Controls pages are numbered from 0 when the controls need more than one. */
 internal data class CcPageSpec(val page: CcPage, val index: Int)
 
@@ -698,7 +761,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -713,6 +776,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     }
     val chosen = remember(controlNames) { controlNames.mapNotNull { n -> CcControl.entries.firstOrNull { it.name == n } } }.filter(::available)
     val edit = remember { HomeEditMode() }
+    // Moving controls (FeatureGate.CC_REORDER): while it is shut, edit mode only adds and removes, as before.
+    val reorder = if (FeatureGate.CC_REORDER.isOpen(context)) remember { CcReorderState() } else null
+    val moveControl: (String, String) -> Unit = { moving, target -> onControls(ccMoveControl(controlNames, moving, target)) }
     SafeBackHandler(edit.active) { edit.stop() }
     // Pages that would repeat the first are left out, Now Playing is a slim row while nothing plays and the battery ring stands apart from the dots (FeatureGate.CC_PAGES_DEDUPE).
     val dedupe = remember { FeatureGate.CC_PAGES_DEDUPE.isOpen(context) }
@@ -851,8 +917,23 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
+        // A swipe up in the empty space under the controls reaches the scrim, which asks here first: from Media or Connectivity it goes back a page, and only the first page lets it close the panel.
+        // Read when the swipe lands, not when it was last drawn: a swipe made while the page is still changing counts against the page it is changing to, and one made while editing ends the editing first.
+        DisposableEffect(pageBack, pager, edit, firstIndex) {
+            pageBack?.back = {
+                when (val action = ccSwipeUp(edit.active, firstIndex - pager.targetPage)) {
+                    CcSwipeUp.StopEditing -> { edit.stop(); true }
+                    is CcSwipeUp.GoBack -> { goTo(action.page); true }
+                    CcSwipeUp.Close -> false
+                }
+            }
+            onDispose { pageBack?.back = null }
+        }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
-        val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { ccPlanRows(plan, it, cols, focusOn) })
+        // While editing, the last Controls page also holds the gallery of controls to add back, so it counts for the page height.
+        val galleryRows = if (edit.active) ccEditGalleryRows(CcControl.entries.count { it !in chosen && available(it) }, cols) else 0
+        fun controlsRows(index: Int) = ccPlanRows(plan, index, cols, focusOn) + if (index == plan.perPage.lastIndex) galleryRows else 0
+        val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { controlsRows(it) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
@@ -923,7 +1004,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             // A page scrolls only where its rows do not fit the window. A scroll container that cannot scroll still took the downward drag
             // (its edge stretch ate it), so a swipe down never reached the pager; with none, or with the stretch off, the pager gets it.
             val rowsFit = ccRowsThatFit(pageHeight.value, cell.value, gap.value)
-            val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> ccPlanRows(plan, spec.index, cols, focusOn); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
+            val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> controlsRows(spec.index); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
             @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
             CompositionLocalProvider(androidx.compose.foundation.LocalOverscrollConfiguration provides null) {
             Column(Modifier.width(gridWidth).then(if (rowsNeeded > rowsFit) Modifier.fadingVerticalScroll() else Modifier), verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -964,8 +1045,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 horizontalArrangement = if (beside.isEmpty()) Arrangement.Center else Arrangement.spacedBy(gap)) {
                                 if (beside.isNotEmpty()) Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
                                     beside.chunked(2).forEach { pair ->
-                                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                                        Row(Modifier.zIndex(if (reorder?.moving in pair.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }) { run(c) } }
                                         }
                                     }
                                 }
@@ -974,8 +1055,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                         // The rest, one row of the grid at a time
                         (if (cols >= 6 || spec.index != plan.sliderPage) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }) { run(c) } }
+                            // The row holding the control being dragged is drawn above the rows after it.
+                            Row(Modifier.zIndex(if (reorder?.moving in row.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }) { run(c) } }
                             }
                         }
                         // Edit mode: gallery of controls that aren't in Control Center yet
@@ -1071,6 +1153,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
                         else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))
+                        // The switch to Notification Center stands in the middle of the header while there is room beside the edit and power buttons.
+                        if (onSwitch != null && !grid.stripInHeader && gridWidth >= CC_SWITCH_BUTTON_MIN_GRID_DP.dp) { PanelSwitch(ShadePanel.QUICK_SETTINGS, onSwitch, compact = gridWidth < CC_SWITCH_PILL_MIN_GRID_DP.dp); Spacer(Modifier.weight(1f)) }
                         if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
                         // A button for the way out, for anyone who does not know the swipe (a short, narrow window has no room for it: the swipe and a tap outside close there).
                         else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { onClose() }
@@ -1146,8 +1230,11 @@ private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) 
 
 /** A 1×1 control that wiggles with a "–" while editing. */
 @Composable
-private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell: Dp, edit: HomeEditMode, onRemove: () -> Unit, onRun: () -> Unit) {
-    Box(Modifier.jiggle(control.name, .6f)) {
+private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell: Dp, edit: HomeEditMode, onRemove: () -> Unit,
+    reorder: CcReorderState? = null, onMove: (moving: String, target: String) -> Unit = { _, _ -> }, onNudge: (by: Int) -> Unit = {}, onRun: () -> Unit) {
+    Box(Modifier.jiggle(control.name, .6f).then(
+        if (reorder != null) Modifier.ccReorderable(control.name, reorder, edit.active, stringResource(R.string.move_control_earlier, stringResource(control.label)),
+            stringResource(R.string.move_control_later, stringResource(control.label)), onMove) { onNudge(it) } else Modifier)) {
         SquareToggle(control.icon(), stringResource(control.label), on, accent, cell) { if (!edit.active) onRun() }
         if (edit.active) JiggleRemoveButton(stringResource(R.string.remove_control, stringResource(control.label)), onRemove = onRemove)
     }
@@ -1391,6 +1478,47 @@ private fun BoxScope.AutoBrightnessChip(on: Boolean, width: Dp, alpha: Float, on
             .padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp)) {
             Text(stringResource(R.string.cc_auto), color = if (on) FolioColors.MenuSurface else Color.White, fontSize = font, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
                 modifier = Modifier.clearAndSetSemantics {})
+        }
+    }
+}
+
+/** The narrowest grid that has room for the two-icon pill between the edit, close and power buttons (three 48 dp targets, the pill, and a little air). */
+private const val CC_SWITCH_PILL_MIN_GRID_DP = 280
+
+/** Narrower than that and the header holds only its three buttons and one more: the switch becomes a single round button. */
+private const val CC_SWITCH_BUTTON_MIN_GRID_DP = 200
+
+/**
+ * Moves between Notification Center and Control Center (FeatureGate.PANEL_SWITCH): two icons in a glass pill, the panel that is open filled. Each is a 48 dp
+ * target with its own name for TalkBack; the fill eases in unless Reduce Motion is on, and the icons follow the font size like the other header buttons.
+ */
+@Composable
+internal fun PanelSwitch(current: ShadePanel, onSwitch: (ShadePanel) -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
+    // Where the header has no room for the pill, one round button opens the other panel (its icon says which).
+    if (compact) {
+        val other = if (current == ShadePanel.NOTIFICATIONS) ShadePanel.QUICK_SETTINGS else ShadePanel.NOTIFICATIONS
+        Box(modifier.testTag("panel-switch")) {
+            GlassIconButton(if (other == ShadePanel.NOTIFICATIONS) Icons.Rounded.Notifications else Icons.Rounded.Tune,
+                stringResource(if (other == ShadePanel.NOTIFICATIONS) R.string.open_notification_center else R.string.open_control_center)) { onSwitch(other) }
+        }
+        return
+    }
+    val grow = ccIconScale(LocalDensity.current.fontScale)
+    val reduce = LocalReduceMotion.current
+    val segments = listOf(
+        Triple(ShadePanel.NOTIFICATIONS, Icons.Rounded.Notifications, stringResource(R.string.notification_center)),
+        Triple(ShadePanel.QUICK_SETTINGS, Icons.Rounded.Tune, stringResource(R.string.control_center)),
+    )
+    Row(modifier.clip(CircleShape).background(NotifGlass).padding(horizontal = FolioSpace.TINY.dp).selectableGroup().testTag("panel-switch"), verticalAlignment = Alignment.CenterVertically) {
+        segments.forEach { (panel, icon, label) ->
+            val on = panel == current
+            val fill by androidx.compose.animation.core.animateFloatAsState(if (on) .3f else 0f, if (reduce) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(220), label = "panel switch fill")
+            Box(Modifier.minimumInteractiveComponentSize().selectable(selected = on, role = Role.Tab, onClick = { if (!on) onSwitch(panel) }).semantics { contentDescription = label },
+                contentAlignment = Alignment.Center) {
+                Box(Modifier.size((34 * grow).dp).clip(CircleShape).background(Color.White.copy(alpha = fill)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size((18 * grow).dp))
+                }
+            }
         }
     }
 }

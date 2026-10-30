@@ -109,7 +109,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
-        val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true)
+        val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true,
+        val pullTarget: PullTarget = PullTarget.BOTH)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -133,9 +134,15 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     /** What the island would show right now; the window only exists while this is non-null. */
     private val islandContent = MutableStateFlow<IslandContent?>(null)
 
+    private val recordingWatch = RecordingWatch(PrivateViewState.OVERLAY)
+
     fun start() {
         owner.start()
         IslandEvents.acquire(service)
+        // The overlay can stay on screen over another app while that app is recorded, with Folio's own window stopped.
+        PrivateRecording.load(service)
+        ScreenshotSwap.load(service) // the saved Swap Apps rules, so a swapped app is never named without Home
+        recordingWatch.start(wm, service.mainExecutor)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         // Going Home takes the user away from whatever the panels were drawn over, so they go too.
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync(); if (it) removeShade() } }
@@ -164,6 +171,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         fullScreenJob?.cancel(); fullScreenJob = null
         removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove()
         IslandEvents.release()
+        recordingWatch.stop(wm)
         owner.stop()
     }
 
@@ -219,7 +227,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true)),
             j.optBoolean(SettingKeys.ISLAND_HIDE_FULL_SCREEN, true), j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE, false),
             j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
-            j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true))
+            j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
+            pullTargetFrom(j.optString("pullTarget").ifEmpty { null }))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -315,7 +324,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options)
+                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options,
+                            onSwitchPanel = { p -> shadePanel.value = p })
                     }
                 }
             }
@@ -408,6 +418,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     // ---- Pull down from the top edge: see PullStrip ------------------------------------------
 
     private val pullStrip = PullStrip(service, wm) { panel ->
+        // The choice is read now, at the pull, so changing it needs no restart. A panel that is not Folio's here is the phone's own.
+        if (!pullOpensFolio(panel, settings.value.pullTarget)) { SystemShadeAccessibilityService.open(service, panel); return@PullStrip }
         // Through the same transparent entry a shortcut uses: a shade opened with an activity of ours in front gets the blur behind it,
         // and one opened from the service alone did not on the Android 17 emulator (the blur layer stayed invisible).
         val entry = if (panel == ShadePanel.NOTIFICATIONS) ShadeShortcutNotifications::class.java else ShadeShortcutQuickSettings::class.java

@@ -59,6 +59,11 @@
     <string name="cc_page_of">%1$s, %3$d페이지 중 %2$d페이지</string>
     <string name="shade_pull">모든 앱 상단에서 아래로 당기기</string>
     <string name="shade_pull_note">앱 상단 가장자리의 왼쪽 절반을 아래로 당기면 알림 센터가, 오른쪽 절반을 당기면 제어 센터가 휴대전화의 알림창 대신 열립니다. 이 기능을 켜면 상단 띠에서의 탭은 앱에 전달되지 않으며, 전체 화면 앱은 Android 기본 동작을 유지합니다. 다른 앱 위에 Folio 패널 표시를 끄면 함께 꺼집니다.</string>
+    <string name="pull_target_title">아래로 쓸어내리면 열리는 것</string>
+    <string name="pull_target_both">Folio 패널</string>
+    <string name="pull_target_notifications">Folio 알림</string>
+    <string name="pull_target_control_center">Folio 제어 센터</string>
+    <string name="pull_target_note">상단 가장자리의 왼쪽 절반은 알림, 오른쪽 절반은 빠른 설정이며 이전과 같습니다. Folio 패널 하나만 고르면 나머지 절반은 휴대전화 기본 패널을 엽니다.</string>
     <string name="shade_over_apps_note">바로가기, 루틴 또는 One UI의 한 손 조작이 알림창이나 빠른 설정을 열 때, 휴대전화의 패널 대신 Folio의 알림 센터나 제어 센터를 열려 있는 앱 위에 표시합니다. Folio 제스처를 켜야 합니다. 앱 위쪽에서 아래로 쓸어내리면 여전히 휴대전화의 알림창이 열립니다. 다른 앱 위에서는 답장을 누르면 입력 상자가 열리고, 옵션은 홈에서만 사용할 수 있습니다. 잠금 화면 위에는 열리지 않습니다.</string>
     <string name="nc_layout_title">펼쳤을 때 레이아웃</string>
     <string name="nc_layout_full">전체 화면</string>
@@ -75,6 +80,7 @@
     <string name="show_quiet_notifications">조용한 알림 보기</string>
     <string name="unfolded_clock_beside_notifications">펼쳤을 때 알림 옆에 시계 표시</string>
     <string name="control_center_size">제어 센터 크기</string>
+    <string name="cc_size_note">휴대전화에서는 패널이 화면 너비를 채우기 때문에 크기가 거의 같아 보입니다. 펼친 폴드나 태블릿 같은 넓은 화면에서 차이가 나타납니다.</string>
     <string name="unfolded_control_center_in_the_middle">펼쳤을 때 제어 센터를 가운데 표시</string>
     <string name="tip_tap_at_the_top_of_control_center_to">팁: 제어 센터 상단의 +를 탭하여 제어 항목을 추가하거나 제거하세요.</string>
     <string name="to_restyle_samsungs_own_pull_down_colors">삼성 기본 알림창의 색상, 투명도, 레이아웃을 바꾸려면 Good Lock의 QuickStar 및 테마파크를 사용하세요.</string>
@@ -710,6 +716,8 @@
     <string name="developer_options">개발자 옵션</string>
     <string name="about_phone">휴대전화 정보</string>
     <string name="remove_control">%1$s 제거</string>
+    <string name="move_control_earlier">%1$s 앞으로 이동</string>
+    <string name="move_control_later">%1$s 뒤로 이동</string>
     <string name="add_control">%1$s 추가</string>
     <string name="notify_me">알림 받기</string>
     <string name="manual">수동</string>
@@ -774,6 +782,8 @@
     <string name="bluetooth_headphones_or_speaker_connects">Bluetooth 헤드폰 또는 스피커 연결</string>
     <string name="headphones_plugged_in">유선 헤드폰 연결</string>
     <string name="control_center">제어 센터</string>
+    <string name="open_notification_center">알림 센터 열기</string>
+    <string name="open_control_center">제어 센터 열기</string>
     <string name="do_not_disturb_on">방해 금지 켜기</string>
     <string name="do_not_disturb_off">방해 금지 끄기</string>
     <string name="sleep_focus_on_off">수면 집중 모드 켜기/끄기</string>
@@ -2228,6 +2238,11 @@
         <item quantity="other">%2$s. 휴대전화에는 그대로 남으며 앱 추가에서 다시 추가할 수 있습니다.</item>
     </plurals>
     <string name="screenshot_swap_apps">앱 바꾸기</string>
+    <!-- Claude's draft, needs a native read. -->
+    <string name="private_while_recording">녹화 중 비공개</string>
+    <string name="while_folio_s_screen_is_recorded_or_shared">Folio 화면이 녹화되거나 공유되는 동안 앱 바꾸기에서 고른 앱이 다른 앱으로 바뀌고, 알림 내용, 배지 숫자, 숨긴 앱이 가려집니다. 위젯, 오늘 보기, Spotlight 추천은 가려지지 않습니다. 녹화가 끝나면 모두 원래대로 돌아옵니다. Android 15 이상이 필요합니다.</string>
+    <string name="recording_private_view_on">녹화 중: 비공개 보기 켜짐</string>
+    <string name="private_notification_word">알림</string>
     <string name="screenshot_swap_intro">스크린샷 모드가 켜져 있는 동안 선택한 앱은 이 휴대전화의 기본 앱 아이콘과 이름으로 표시됩니다. 눌러도 실제 앱이 열리며 화면만 바뀝니다. 휴대전화에 기본으로 들어 있던 앱은 바뀌지 않습니다.</string>
     <string name="screenshot_swap_all_third_party">모든 타사 앱 바꾸기</string>
     <string name="screenshot_swap_all_third_party_note">이 휴대전화에 기본으로 들어 있지 않은 모든 앱이며, 나중에 설치하는 앱도 포함됩니다.</string>
@@ -2393,6 +2408,7 @@
     <string name="island_color_hex_hint">1D2B53</string>
     <string name="island_color_hex_invalid">숫자 또는 A~F 문자 6자리로 입력하세요. 예: 1D2B53</string>
     <string name="island_color_nudged">글자가 잘 보이도록 색을 조금 조정했습니다.</string>
+    <string name="island_color_camera_note">카메라 구멍 위에서는 테두리가 보이지 않도록 대기 상태의 아일랜드가 검은색으로 유지됩니다. 색은 아일랜드가 열릴 때와 카메라에서 옮겼을 때 나타납니다.</string>
     <string name="island_color_note">항상 불투명합니다. 글자와 아이콘은 읽기 쉽도록 흰색과 검은색 중에서 바뀝니다. 실제 카메라 구멍을 감쌀 때는 렌즈 주변에 밝은 테두리가 보이지 않도록 검은색을 유지합니다.</string>
     <string name="island_color_swatch">%1$s Dynamic Island 색상</string>
     <string name="island_corners">모서리 반경</string>
@@ -2422,4 +2438,7 @@
     <string name="island_gesture_keep_dismiss">제스처 하나는 항상 닫기로 남아 있어야 합니다.</string>
     <string name="settings_keywords_island_advanced">아일랜드 색상 모서리 반경 둥글게 애니메이션 속도 햅틱 진동 제스처 탭 길게 누르기 위로 쓸기 두 번 탭 닫기 고급 사용자 지정</string>
     <string name="island_adjust_side_note">이 방향에서는 Dynamic Island가 카메라를 둘러싸고 세로로 서 있습니다. 너비를 조정하려면 휴대전화를 돌려 주세요.</string>
+    <string name="tile_folio_notifications">Folio 알림</string>
+    <string name="tile_folio_control_center">Folio 제어 센터</string>
+    <string name="phone_quick_settings">휴대전화 빠른 설정</string>
 </resources>

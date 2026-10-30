@@ -41,6 +41,9 @@ jobs:
       # run. The Kotlin parser and the published schemas are separate lists, and this is what keeps them agreeing.
       - name: Folio's own packages pass the SDK validator
         run: python3 tools/folio-pkg.py validate docs/sdk/source
+      # The validator's own rules (the fallback rule above Standard, ADR 0013), checked on cases built to fail.
+      - name: The SDK validator's tests
+        run: python3 -m unittest tools/test_folio_pkg.py
       # The scripts in tools/ have tests of their own, and nothing ran them: the announce guard that keeps private links
       # out of public posts, the Ko-fi worker, Mr Folio, dev-builds and test-report. None needs a network or a secret;
       # the servers, webhooks and databases are stood in for.

@@ -264,4 +264,10 @@ class ControlCenterFitTest {
         // The largest drawn circle (34 dp) and strip icon (22 dp) at the largest growth fit the 48 dp target.
         assertTrue(34 * ccIconScale(3f) <= 48f && 22 * ccIconScale(3f) <= 48f)
     }
+    @Test fun `the gallery of controls to add back counts for the page height while editing`() {
+        assertEquals("only the caption when every control is in", 1, ccEditGalleryRows(0, 4))
+        assertEquals("a caption and two rows for seven controls over four columns", 3, ccEditGalleryRows(7, 4))
+        assertEquals("a caption and one row for five controls over six columns", 2, ccEditGalleryRows(5, 6))
+        assertEquals("a caption and two rows for nine controls over eight columns", 3, ccEditGalleryRows(9, 8))
+    }
 }

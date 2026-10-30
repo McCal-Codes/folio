@@ -212,6 +212,8 @@ data class LauncherState(
     val shadeOverApps: Boolean = false,
     /** A pull down on the top edge of any app opens Folio's panels (needs [shadeOverApps]). */
     val shadePull: Boolean = false,
+    /** What that pull opens: both panels by half (the start), or only Notification Center or only Control Center. */
+    val pullTarget: PullTarget = PullTarget.BOTH,
     /** Smart Stacks: widget placement slot → extra widget ids stacked behind that placement's widget. */
     val widgetStacks: Map<Int, List<Int>> = emptyMap(),
     /** Smart Rotate: stacks move to the widget that matters now. */
@@ -347,6 +349,14 @@ data class LauncherState(
     val homePages get() = layout.pageCount
     /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
+    /**
+     * App rows for the screen Home is on now. The open screen held upright with its own layout (Layout › Inner) gets
+     * the rows that fit it, instead of the fewest rows any screen fits, so the separate layout can use its height (#13).
+     * Pages with apps in those extra rows draw taller on the other screens (see shownHomeRows), so nothing is lost.
+     */
+    fun homeAppRowsFor(screen: LayoutScreen): Int =
+        if (screen == LayoutScreen.INNER_UPRIGHT && portrait != null && homeRows <= 0 && homeFitUpright > 0)
+            homeFitUpright.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS) else homeAppRows
     /** What Automatic would give, whatever fixed Rows value is chosen, so the menu can name it honestly. */
     val automaticHomeRows: Int get() = effectiveHomeRows(0, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
@@ -1483,6 +1493,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
+    fun setPullTarget(value: PullTarget) = updateSettings(soon = false) { it.copy(pullTarget = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
     fun setFolderSize(folderId: String, size: FolderSize?) = updateSettings(soon = false) {
@@ -1724,7 +1735,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
-            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull)
+            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("pullTarget", s.pullTarget.name)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
             .put("stackRotate", s.stackRotate).put("railActivitiesUnderStatus", s.railActivities).put("addNewAppsToHome", s.addNewAppsToHome)
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
@@ -2011,6 +2022,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
         shadeOverApps = j.optBoolean("shadeOverApps", false),
         shadePull = j.optBoolean("shadePull", false),
+        pullTarget = pullTargetFrom(j.optString("pullTarget").ifEmpty { null }),
         widgetStacks = j.optJSONObject("widgetStacks")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val ids = o.optJSONArray(key) ?: return@mapNotNull null
             key.toIntOrNull()?.let { slot -> slot to (0 until ids.length()).map(ids::getInt) }

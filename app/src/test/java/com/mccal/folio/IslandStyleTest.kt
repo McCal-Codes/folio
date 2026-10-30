@@ -134,6 +134,13 @@ class IslandStyleTest {
         assertFalse(IslandStyle.colorApplies(IslandStyle.wrapsRealCamera(null, camera, true, 1080, 2400)))
     }
 
+    @Test fun `over a real camera the color shows only while the island is open`() {
+        assertFalse(IslandStyle.colorApplies(wrapsRealCamera = true, open = false))
+        assertTrue(IslandStyle.colorApplies(wrapsRealCamera = true, open = true))
+        assertTrue(IslandStyle.colorApplies(wrapsRealCamera = false, open = false))
+        assertTrue(IslandStyle.colorApplies(wrapsRealCamera = false, open = true))
+    }
+
     @Test fun `the color applies when the island is moved off the camera`() {
         assertFalse(IslandStyle.wrapsRealCamera(IslandPosition(.5f, 200f), camera, true, 1080, 2400))
         assertTrue(IslandStyle.colorApplies(IslandStyle.wrapsRealCamera(IslandPosition(.5f, 200f), camera, true, 1080, 2400)))

@@ -240,6 +240,11 @@ class DiscoverActivity : DiscoverPageActivity() {
         startActivity(Intent(this, DiscoverFeedActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION), DiscoverBounds.launchOptions())
     }
     override fun onResume() { super.onResume(); model.refresh(); configureDiscoverWindow(model.state.value.verticalStatus) }
+    // Discover is its own opaque window with its own task and shows the dock, so it listens for a recording on a source of its
+    // own: Home stopping (and detaching its source) never clears what this window still reports (Private While Recording).
+    private val recordingWatch = RecordingWatch(PrivateViewState.DISCOVER)
+    override fun onStart() { super.onStart(); PrivateRecording.load(this); recordingWatch.start(windowManager, mainExecutor) }
+    override fun onStop() { recordingWatch.stop(windowManager); super.onStop() }
     override fun onDestroy() { if (DiscoverSession.host.get() === this) DiscoverSession.host.clear(); super.onDestroy() }
     private fun launchApp(app: AppEntry) {
         try {

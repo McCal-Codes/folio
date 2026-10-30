@@ -498,7 +498,9 @@ class IslandListenerService : NotificationListenerService() {
         /** Messaging channels seen since Folio started (kept in memory only). */
         val messageChannels: StateFlow<Map<String, MessageChannel>> = messageChannelsMutable.asStateFlow()
         internal val notificationsMutable = MutableStateFlow<List<NotificationItem>>(emptyList())
-        val notifications: StateFlow<List<NotificationItem>> = ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())
+        val notifications: StateFlow<List<NotificationItem>> = PrivateRecording.redact(ScreenshotMode.hide(notificationsMutable.asStateFlow(), emptyList())) { list, swapped ->
+            list.map { redactNotification(it, swapped[it.packageName], PrivateRecording.notificationWord, PrivateRecording.neutral(it.packageName, swapped)) }
+        }
 
         fun dismiss(key: String) { runCatching { instance?.cancelNotification(key) } }
         private fun find(key: String) = runCatching { instance?.activeNotifications?.firstOrNull { it.key == key } }.getOrNull()
@@ -528,10 +530,15 @@ class IslandListenerService : NotificationListenerService() {
         }
         internal val mutable = MutableStateFlow<IslandActivity?>(null)
         /** Folio Dev's Island tester can put a made-up activity in front of the real one; in a public build it never does. */
-        val activity: StateFlow<IslandActivity?> = ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)
+        val activity: StateFlow<IslandActivity?> = PrivateRecording.redact(ScreenshotMode.hide(IslandTester.overlay(mutable.asStateFlow(), IslandTester.scope), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) }
+        }
         internal val mediaMutable = MutableStateFlow<IslandActivity.Media?>(null)
         /** The playing track whatever else the island is showing: for the Music widget, which is not the island. */
-        val media: StateFlow<IslandActivity.Media?> = ScreenshotMode.hide(mediaMutable.asStateFlow(), null)
+        // Private While Recording hides the playing track on Home too, not only in the island.
+        val media: StateFlow<IslandActivity.Media?> = PrivateRecording.redact(ScreenshotMode.hide(mediaMutable.asStateFlow(), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) as? IslandActivity.Media }
+        }
         val connected = MutableStateFlow(false)
         /** Don't keep other apps' content (the island, the Music widget's track, notifications) once access is gone or the service ends. */
         internal fun clearPublished() {

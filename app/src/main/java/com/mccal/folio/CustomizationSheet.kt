@@ -448,6 +448,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         if (state.shadeOverApps) {
                             SettingsSwitch(stringResource(R.string.shade_pull), state.shadePull, model::setShadePull, "shade-pull-switch")
                             CardNote(stringResource(R.string.shade_pull_note))
+                            if (state.shadePull) {
+                                val pullChoices = listOf(PullTarget.BOTH to stringResource(R.string.pull_target_both),
+                                    PullTarget.FOLIO_NOTIFICATIONS to stringResource(R.string.pull_target_notifications),
+                                    PullTarget.FOLIO_CONTROL_CENTER to stringResource(R.string.pull_target_control_center))
+                                IosMenuRow(stringResource(R.string.pull_target_title), pullChoices, state.pullTarget, model::setPullTarget, tag = "pull-target")
+                                CardNote(stringResource(R.string.pull_target_note))
+                            }
                         }
                         SettingsSwitch(stringResource(R.string.big_clock_in_notification_center), state.notificationClock, model::setNotificationClock, "notification-clock-switch")
                         SettingsSwitch(stringResource(R.string.stack_notifications_by_app), state.groupNotifications, model::setGroupNotifications, "notification-group-switch")
@@ -457,6 +464,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         if (state.notificationSections) CardNote(stringResource(R.string.notification_sections_note))
                         if (!ccV2) {
                         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
+                        CcSizeNote()
                         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
                         CardNote(stringResource(R.string.cc_look_note))
                         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
@@ -790,6 +798,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         SettingsSwitch(stringResource(R.string.reduce_transparency), state.reduceTransparency, model::setReduceTransparency, "reduce-transparency-switch")
                         CardNote(stringResource(R.string.reduce_transparency_note))
                     }
+                    // How Folio moves belongs with Reduce Motion: this one chooses the newer motion, that one calms it.
+                    if (FolioMotion.switchVisible(sheetContext)) SettingsCard(stringResource(R.string.motion_pass)) {
+                        SettingsSwitch(stringResource(R.string.motion_pass), FolioMotion.v2, { FolioMotion.setEnabled(sheetContext, it) }, "motion-pass-switch")
+                        CardNote(stringResource(R.string.motion_pass_note))
+                    }
                     SettingsCard(null) {
                         // For people who find the system's buttons too small, especially on the inner screen.
                         SettingsSwitch(stringResource(R.string.big_buttons), state.buttonBar, { on ->
@@ -939,9 +952,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.for_sharing_your_setup_folio_shows_9_41))
                         IosNavRow(stringResource(R.string.screenshot_swap_apps), null, { onPage(CustomizationPage.SCREENSHOT_SWAP) }, "screenshot-swap-row")
                     }
-                    if (FolioMotion.switchVisible(sheetContext)) SettingsCard(stringResource(R.string.motion_pass)) {
-                        SettingsSwitch(stringResource(R.string.motion_pass), FolioMotion.v2, { FolioMotion.setEnabled(sheetContext, it) }, "motion-pass-switch")
-                        CardNote(stringResource(R.string.motion_pass_note))
+                    // Android 15 added the recording callback this needs; on older Android the card is not offered.
+                    if (PrivateRecording.supported && remember { FeatureGate.PRIVATE_RECORDING.isOpen(sheetContext) }) SettingsCard(stringResource(R.string.private_while_recording)) {
+                        val privateWhileRecording by PrivateRecording.enabled.collectAsState()
+                        SettingsSwitch(stringResource(R.string.private_while_recording), privateWhileRecording, { PrivateRecording.setEnabled(sheetContext, it) }, "private-while-recording-switch")
+                        CardNote(stringResource(R.string.while_folio_s_screen_is_recorded_or_shared))
                     }
                     SettingsCard(stringResource(R.string.safe_mode)) {
                         CardNote(if (SafeMode.active) stringResource(R.string.folio_is_running_in_safe_mode_optional_f)
@@ -1486,6 +1501,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.nc_layout_title to CustomizationPage.NOTIFICATIONS,
     R.string.shade_over_apps to CustomizationPage.NOTIFICATIONS,
     R.string.shade_pull to CustomizationPage.NOTIFICATIONS,
+    R.string.pull_target_title to CustomizationPage.NOTIFICATIONS,
     R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
     R.string.badge_size to CustomizationPage.STATUS,
@@ -1574,6 +1590,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
     R.string.hide_in_landscape to CustomizationPage.ISLAND,
     R.string.also_on_the_unfolded_screen to CustomizationPage.ISLAND,
+    R.string.private_while_recording to CustomizationPage.ADVANCED,
     R.string.other_notifications_2 to CustomizationPage.ISLAND,
     R.string.suggestions to CustomizationPage.TODAY,
     R.string.rounded_corners to CustomizationPage.WALLPAPER,
@@ -1642,7 +1659,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.performance_log to CustomizationPage.ADVANCED,
     R.string.performance_start to CustomizationPage.ADVANCED,
     R.string.performance_stop to CustomizationPage.ADVANCED,
-    R.string.motion_pass to CustomizationPage.ADVANCED,
+    R.string.motion_pass to CustomizationPage.ACCESSIBILITY,
     R.string.performance_copy to CustomizationPage.ADVANCED,
     R.string.performance_share to CustomizationPage.ADVANCED,
     R.string.suggest_a_feature to CustomizationPage.COMING_SOON,
@@ -1694,6 +1711,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
             .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
             // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
             .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Private While Recording is held back for supporters and Folio Dev (FeatureGate.PRIVATE_RECORDING).
+            .filter { it.first != R.string.private_while_recording || FeatureGate.PRIVATE_RECORDING.isOpen(context) }
             // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
             .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
             // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
@@ -2424,7 +2443,10 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     val context = androidx.compose.ui.platform.LocalContext.current
     val hidden = state.apps.filter { it.id in state.hiddenApps }.sortedBy { it.label.lowercase() }
     var unlocked by remember { mutableStateOf(false) }
-    if (hidden.isEmpty()) return
+    // Private While Recording: the row and its count go, and the list relocks.
+    val recording by PrivateRecording.on.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(recording) { if (recording) unlocked = false }
+    if (hidden.isEmpty() || recording) return
     if (!unlocked) {
         IosActionRow(stringResource(R.string.hidden_apps_count, hidden.size), "hidden-apps") {
             val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or

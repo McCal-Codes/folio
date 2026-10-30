@@ -194,6 +194,28 @@ internal enum class FeatureGate(
     ISLAND_ADVANCED("islandAdvanced", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * Private While Recording: Home switches to a private view while Folio's screen is recorded or shared. It reads a
+     * system callback that Folio has not seen fire on a real recording yet, and it adds a permission, so it is gated by
+     * risk: supporters and Folio Dev try it in the betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it.
+     * While shut the Settings card and its search entry are hidden and the saved switch is ignored, so nothing is hidden.
+     */
+    PRIVATE_RECORDING("privateRecording", closedSince = "2026-10-28", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * Moving controls in Control Center: in edit mode, press and hold a control and drag it onto another to put it there, on the same
+     * page (the first step toward the free grid in the Lab's control-center-options). Supporters and Folio Dev try it in the betas and
+     * everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, edit mode only adds and removes, as before.
+     */
+    CC_REORDER("ccReorder", closedSince = "2026-10-29", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * A switch between Notification Center and Control Center: two icons in a pill at the top of each, so one panel opens the other without
+     * closing and pulling down again (McCal, 29 Oct 2026; Lab: panel-switch-and-expand). Supporters and Folio Dev try it in the betas and
+     * everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, neither panel shows it.
+     */
+    PANEL_SWITCH("panelSwitch", closedSince = "2026-10-29", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * The deeper Control Center settings: switches for the Media and Connectivity pages, Open on, haptic ticks on the sliders,
      * Close after a toggle, an Auto chip on the brightness slider, an Edit controls row and Reset Control Center (with Undo), in
      * short cards. Until it opens the page is as it was and every one of these behaves as before, so supporters and Folio Dev

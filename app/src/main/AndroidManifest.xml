@@ -22,6 +22,8 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <!-- Private While Recording (Android 15+): whether Folio's own windows are in a screen recording or share. A normal permission: no prompt. -->
+    <uses-permission android:name="android.permission.DETECT_SCREEN_RECORDING" />
     <!-- Optional: AirPods battery (asked for only when that switch is on). A few seconds of filtered scan while the card shows;
          never used for location, so no location permission (minSdk 31). See PERMISSIONS.md and docs/airpods-ble.md. -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
@@ -287,6 +289,14 @@
         <!-- Quick Settings tiles -->
         <service android:name=".SpotlightTileService" android:exported="true" android:label="@string/spotlight"
             android:icon="@drawable/ic_tile_search" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service android:name=".NotificationsTileService" android:exported="true" android:label="@string/tile_folio_notifications"
+            android:icon="@drawable/ic_tile_notifications" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service android:name=".ControlCenterTileService" android:exported="true" android:label="@string/tile_folio_control_center"
+            android:icon="@drawable/ic_tile_control_center" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>
         <service android:name=".IslandTileService" android:exported="true" android:label="@string/island"

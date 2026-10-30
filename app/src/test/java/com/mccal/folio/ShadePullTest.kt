@@ -21,6 +21,7 @@ class ShadePullTest {
         assertFalse("not far enough", isPullDown(0f, 12f, slop))
         assertFalse("along the edge", isPullDown(80f, 30f, slop))
         assertFalse("upward", isPullDown(0f, -60f, slop))
+        assertTrue("a quick swipe whose first event after the touch down is already 69 px down (the numbers from an emulator log, slop 21)", isPullDown(0f, 69.2f, 21f))
     }
 
     @Test fun `the strip is as tall as the status bar but between 24 and 48 dp`() {

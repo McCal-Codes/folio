@@ -521,7 +521,15 @@ fun LauncherScreen(
     }?.target as? DropTarget.Home }
     // More rows: automatic placement uses the rows every page shows; a page already drawn taller (apps placed lower
     // on the other screen) also takes drops in those rows.
-    val homeAppRows = state.homeAppRows
+    // The screen class from the current window metrics, recomputed on every configuration change (folding, unfolding
+    // and rotating), so the rows follow the screen Home is on (#13).
+    val windowConfig = androidx.compose.ui.platform.LocalConfiguration.current
+    val currentScreen = remember(windowConfig, launcherActivity) {
+        val bounds = androidx.window.layout.WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(launcherActivity).bounds
+        val d = launcherActivity.resources.displayMetrics.density
+        layoutScreenFor(bounds.width() / d, bounds.height() / d, windowConfig.classScale)
+    }
+    val homeAppRows = state.homeAppRowsFor(currentScreen)
     val visibleRows = visibleHomeRows(homeAppRows)
     fun pageRows(page: Int) = shownHomeRows(homeAppRows, state.layout.slotsForPage(page), state.widgetPlacements.filter { it.page == page })
     fun draftAt(index: Int, span: WidgetSpan, slot: Int) = widgetCandidate(state.layout, slot, index, span.width, span.height, pageRows(homeCellPage(index)))
@@ -945,6 +953,9 @@ fun LauncherScreen(
                     else launcherActivity.openSystemShade(panel)
                 },
                 onLeadingOverscroll = if (firstHome == 0 && discoverMode) onDiscover else null,
+                // Discover opens with a pull from the first page (and is a live window when it is a page), so that
+                // edge keeps today's stop.
+                leadingStretch = !discoverMode,
             )) {
             val pagerModifier = Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart)
                 .fillMaxHeight().width(pagerWidth)
@@ -972,6 +983,10 @@ fun LauncherScreen(
                 .semantics { stateDescription = if (pager.currentPage == -1) launcherActivity.getString(R.string.discover) else if (pager.currentPage == visibleHomePages) launcherActivity.getString(R.string.all_apps) else launcherActivity.getString(R.string.home_page_1_d_of_2_d, pager.currentPage + 1, visibleHomePages)
                     // Polite: TalkBack says the new page when a swipe lands, without cutting off what it was reading (A11Y-7).
                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+                // New motion's rubber band at the first and last page: the pages slide as a drawn layer, read only
+                // while drawing, so a stretch never relayouts Home. It comes after the bounds Discover's frame is measured from, so
+                // a stretch does not move that frame.
+                .then(if (FolioMotion.v2) Modifier.graphicsLayer { translationX = -pageGestures.stretch } else Modifier)
             OwnMethod { if (geometry.expanded) {
                 Box(pagerModifier) {
                     // PagerState remains the source of truth for native Discover progress,

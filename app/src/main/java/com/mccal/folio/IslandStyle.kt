@@ -177,6 +177,12 @@ internal object IslandStyle {
     fun colorApplies(wrapsRealCamera: Boolean) = !wrapsRealCamera
 
     /**
+     * Same, for the island as it is right now. An open card is much larger than the lens and covers it, so no ring can
+     * show and the saved color may be drawn even over a real camera. Only the resting pill stays black there.
+     */
+    fun colorApplies(wrapsRealCamera: Boolean, open: Boolean) = open || colorApplies(wrapsRealCamera)
+
+    /**
      * Whether the island is drawn around a camera hole that Android reports: it was not moved ([custom] null), the
      * reported cutout is on the top edge, and there is one.
      */

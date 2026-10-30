@@ -37,6 +37,19 @@ internal fun shadeOverAppsWanted(switchOn: Boolean, panelsOn: Boolean, safeMode:
 /** The panel a pull that starts at [x] on a screen [width] wide opens: the left half Notification Center, the right half Control Center (as on Home). */
 internal fun pullPanel(x: Float, width: Float): ShadePanel = if (x < width / 2f) ShadePanel.NOTIFICATIONS else ShadePanel.QUICK_SETTINGS
 
+/** Which of Folio's two panels a pull down from the top of another app draws: both (the start), or only one, the phone's own shade opening for the other half. */
+enum class PullTarget { BOTH, FOLIO_NOTIFICATIONS, FOLIO_CONTROL_CENTER }
+
+/** The saved [PullTarget] named [saved]; a missing or unknown name is [PullTarget.BOTH], so an old save behaves as it always did. */
+internal fun pullTargetFrom(saved: String?): PullTarget = PullTarget.entries.firstOrNull { it.name == saved } ?: PullTarget.BOTH
+
+/** Whether a pull that asks for [panel] opens Folio's own panel under [target]; when false the phone's own shade or Quick Settings opens instead. */
+internal fun pullOpensFolio(panel: ShadePanel, target: PullTarget): Boolean = when (target) {
+    PullTarget.BOTH -> true
+    PullTarget.FOLIO_NOTIFICATIONS -> panel == ShadePanel.NOTIFICATIONS
+    PullTarget.FOLIO_CONTROL_CENTER -> panel == ShadePanel.QUICK_SETTINGS
+}
+
 /**
  * Whether a drag of ([dx], [dy]) from the top edge is a pull down: one and a half touch slops down (early, because the system takes over a
  * pull that goes much further and cancels this window's touch), and more down than across by half, so the
@@ -125,6 +138,13 @@ internal fun ccPlanControls(columns: Int, cellDp: Float, gapDp: Float, pageHeigh
 }
 
 /** The rows of cells page [index] of the plan uses, for the height the pager is given. */
+/**
+ * The rows the "Add a control" gallery takes below the last Controls page while editing: its caption (counted as one row, which is
+ * more than it needs) and a row of the grid for every [columns] controls not in Control Center yet. Without them in the page height
+ * the pager cut the gallery off and a removed control could not be added back.
+ */
+internal fun ccEditGalleryRows(unused: Int, columns: Int): Int = 1 + (unused + columns.coerceAtLeast(1) - 1) / columns.coerceAtLeast(1)
+
 internal fun ccPlanRows(plan: CcPlan, index: Int, columns: Int, focus: Boolean): Int {
     val n = plan.perPage[index]
     fun rowsOf(count: Int, per: Int) = (count + per - 1) / per

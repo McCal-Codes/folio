@@ -61,6 +61,11 @@
     <string name="cc_page_of">%1$s，第 %2$d 页，共 %3$d 页</string>
     <string name="shade_pull">在任何应用顶部下拉</string>
     <string name="shade_pull_note">从应用顶部边缘的左半部分下拉会打开通知中心，右半部分下拉会打开控制中心，取代手机自带的通知栏。开启后，这条顶部区域内的点按不会传到应用，全屏应用仍使用 Android 自带的。它跟随“在其他应用上方显示 Folio 面板”，该选项关闭时它也会关闭。</string>
+    <string name="pull_target_title">下滑时打开</string>
+    <string name="pull_target_both">Folio 面板</string>
+    <string name="pull_target_notifications">Folio 通知</string>
+    <string name="pull_target_control_center">Folio 控制中心</string>
+    <string name="pull_target_note">顶部边缘的左半部分是通知，右半部分是快捷设置，与之前相同。只选一个 Folio 面板时，另一半会打开手机自带的面板。</string>
     <string name="shade_over_apps_note">当快捷方式、例行任务或 One UI 的单手操作打开通知栏或快捷设置时，Folio 会在当前打开的应用上方显示自己的通知中心或控制中心，而不是手机自带的面板。需要开启 Folio 手势。从应用顶部下滑仍会打开手机自带的通知栏。在其他应用上方时，点按“回复”会打开输入框，“选项”仅在主屏幕上可用。不会在锁屏上方打开。</string>
     <string name="nc_layout_title">展开时的布局</string>
     <string name="nc_layout_full">全屏</string>
@@ -77,6 +82,7 @@
     <string name="show_quiet_notifications">显示安静通知</string>
     <string name="unfolded_clock_beside_notifications">展开时：时钟在通知旁边</string>
     <string name="control_center_size">控制中心大小</string>
+    <string name="cc_size_note">在手机上，面板会占满屏幕宽度，所以各种大小看起来差不多。在展开的折叠屏或平板等较宽的屏幕上才会有明显区别。</string>
     <string name="unfolded_control_center_in_the_middle">展开时：控制中心居中</string>
     <string name="tip_tap_at_the_top_of_control_center_to">提示：轻点控制中心顶部的 + 即可添加或移除控制。</string>
     <string name="to_restyle_samsungs_own_pull_down_colors">如需更改三星自带下拉面板的样式（颜色、透明度、布局），请使用 Good Lock › QuickStar 和 Theme Park。</string>
@@ -711,6 +717,8 @@
     <string name="developer_options">开发者选项</string>
     <string name="about_phone">关于手机</string>
     <string name="remove_control">移除%1$s</string>
+    <string name="move_control_earlier">将%1$s前移</string>
+    <string name="move_control_later">将%1$s后移</string>
     <string name="add_control">添加%1$s</string>
     <string name="notify_me">通知我</string>
     <string name="manual">手动</string>
@@ -775,6 +783,8 @@
     <string name="bluetooth_headphones_or_speaker_connects">蓝牙耳机或扬声器连接时</string>
     <string name="headphones_plugged_in">已插入耳机</string>
     <string name="control_center">控制中心</string>
+    <string name="open_notification_center">打开通知中心</string>
+    <string name="open_control_center">打开控制中心</string>
     <string name="do_not_disturb_on">开启勿扰模式</string>
     <string name="do_not_disturb_off">关闭勿扰模式</string>
     <string name="sleep_focus_on_off">开启/关闭睡眠专注模式</string>
@@ -2207,6 +2217,10 @@
         <item quantity="other">%2$s。它们仍保留在手机上，你可以在“添加应用”中重新添加。</item>
     </plurals>
     <string name="screenshot_swap_apps">替换 App</string>
+    <string name="private_while_recording">录制时保持私密</string>
+    <string name="while_folio_s_screen_is_recorded_or_shared">Folio 的屏幕被录制或共享期间，你在“替换 App”中选的 App 会被替换，通知内容、标记数字和隐藏的 App 会被遮住。小组件、今日视图和 Spotlight 建议不会被遮住。录制停止后一切都会恢复。需要 Android 15 或更高版本。</string>
+    <string name="recording_private_view_on">正在录制：私密视图已开启</string>
+    <string name="private_notification_word">通知</string>
     <string name="screenshot_swap_intro">截图模式开启时，你选择的 App 会显示为这部手机上的一个系统自带 App，使用它的图标和名称。点按后仍会打开真实的 App，只有屏幕显示会改变。手机自带的 App 不会被替换。</string>
     <string name="screenshot_swap_all_third_party">替换所有第三方 App</string>
     <string name="screenshot_swap_all_third_party_note">所有不是这部手机自带的 App，包括你以后安装的 App。</string>
@@ -2372,6 +2386,7 @@
     <string name="island_color_hex_hint">1D2B53</string>
     <string name="island_color_hex_invalid">请输入六位数字或 A 到 F 的字母，例如 1D2B53。</string>
     <string name="island_color_nudged">已略作调整，让文字保持清晰易读。</string>
+    <string name="island_color_camera_note">在摄像头孔上方时，静止的灵动岛保持黑色，这样不会出现圆环；展开时以及移离摄像头后会显示所选颜色。</string>
     <string name="island_color_note">始终为实色。文字和图标会在白色与黑色之间切换以保持可读。灵动岛环绕真实的摄像头孔时保持黑色，这样镜头周围不会出现较亮的圆环。</string>
     <string name="island_color_swatch">灵动岛颜色：%1$s</string>
     <string name="island_corners">圆角</string>
@@ -2401,4 +2416,7 @@
     <string name="island_gesture_keep_dismiss">必须始终有一个手势保持为“收起”。</string>
     <string name="settings_keywords_island_advanced">灵动岛 颜色 圆角 圆形 动画 速度 触感 振动 手势 轻点 长按 上滑 双击 收起 高级 自定</string>
     <string name="island_adjust_side_note">在这个方向上，灵动岛会竖立在摄像头周围。请旋转手机再调整宽度。</string>
+    <string name="tile_folio_notifications">Folio 通知</string>
+    <string name="tile_folio_control_center">Folio 控制中心</string>
+    <string name="phone_quick_settings">手机快捷设置</string>
 </resources>

@@ -112,6 +112,10 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
     var eventVisible by remember { mutableStateOf<IslandEvent?>(null) }
     // While typing a quick reply the message stays put; nothing new replaces it.
     var replying by remember { mutableStateOf(false) }
+    // The private view starting while a message is shown (or being replied to) must not leave the real sender and text up:
+    // the card and its reply field close, and the redacted event arrives on its own (Private While Recording).
+    val privateView by PrivateRecording.on.collectAsStateWithLifecycle()
+    LaunchedEffect(privateView) { if (privateView) { replying = false; eventVisible = null } }
     LaunchedEffect(eventPair) {
         if (replying) return@LaunchedEffect
         // Every way out of here that is not "show this one" clears the island, or what was showing stays up for
@@ -202,9 +206,11 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
         // Advanced island: the color applies only off a real camera hole, and a squarer corner never goes under the hole's own curve.
         val wraps = IslandStyle.wrapsRealCamera(custom, camera, reportedCutout, windowWidth, windowHeight)
-        val colored = IslandStyle.colorApplies(wraps)
-        val surface = if (colored) Color(style.background) else Color.Black
-        val ink = if (colored) Color(IslandStyle.inkFor(style.background)) else Color.White
+        val colored = IslandStyle.colorApplies(wraps, open)
+        // The color follows the same spring as the card's width, so it grows in with the card instead of snapping on while it is still a pill.
+        val colorMorph = if (reduceMotion) snap() else FolioMotion.spring<Color>(FolioMotion.scaled(.74f to Spring.StiffnessMediumLow, speed))
+        val surface by androidx.compose.animation.animateColorAsState(if (colored) Color(style.background) else Color.Black, colorMorph, label = "island-surface")
+        val ink by androidx.compose.animation.animateColorAsState(if (colored) Color(IslandStyle.inkFor(style.background)) else Color.White, colorMorph, label = "island-ink")
         val pillRadius = IslandStyle.pillRadius(style.corners, geometry.pillH, if (wraps) minOf(geometry.camW, geometry.camH) / 2f else 0f).dp
         val corner by animateDpAsState(if (open) style.corners.card.dp else pillRadius, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
