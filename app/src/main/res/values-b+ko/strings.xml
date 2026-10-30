@@ -2321,4 +2321,7 @@
     <string name="island_gesture_keep_dismiss">제스처 하나는 항상 닫기로 남아 있어야 합니다.</string>
     <string name="settings_keywords_island_advanced">아일랜드 색상 모서리 반경 둥글게 애니메이션 속도 햅틱 진동 제스처 탭 길게 누르기 위로 쓸기 두 번 탭 닫기 고급 사용자 지정</string>
     <string name="island_adjust_side_note">이 방향에서는 Dynamic Island가 카메라를 둘러싸고 세로로 서 있습니다. 너비를 조정하려면 휴대전화를 돌려 주세요.</string>
+    <string name="tile_folio_notifications">Folio 알림</string>
+    <string name="tile_folio_control_center">Folio 제어 센터</string>
+    <string name="phone_quick_settings">휴대전화 빠른 설정</string>
 </resources>

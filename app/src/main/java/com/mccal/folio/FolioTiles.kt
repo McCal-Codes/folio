@@ -59,6 +59,30 @@ class SpotlightTileService : TileService() {
     }
 }
 
+/** Opens Folio's Notification Center panel over the open app (or the phone's own, or the gestures setup page) from the pull-down. */
+class NotificationsTileService : TileService() {
+    override fun onStartListening() {
+        qsTile?.apply { state = Tile.STATE_INACTIVE; updateTile() }
+    }
+
+    override fun onClick() {
+        val open = { openAndCollapse(Intent(this, ShadeShortcutNotifications::class.java)) }
+        if (isLocked) unlockAndRun(open) else open()
+    }
+}
+
+/** Opens Folio's Control Center panel over the open app (or the phone's own, or the gestures setup page) from the pull-down. */
+class ControlCenterTileService : TileService() {
+    override fun onStartListening() {
+        qsTile?.apply { state = Tile.STATE_INACTIVE; updateTile() }
+    }
+
+    override fun onClick() {
+        val open = { openAndCollapse(Intent(this, ShadeShortcutQuickSettings::class.java)) }
+        if (isLocked) unlockAndRun(open) else open()
+    }
+}
+
 /** A tile that switches one Folio setting. */
 abstract class FolioToggleTile(private val key: String, private val default: Boolean) : TileService() {
     abstract fun read(state: LauncherState): Boolean

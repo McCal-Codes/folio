@@ -2299,4 +2299,7 @@
     <string name="island_gesture_keep_dismiss">必须始终有一个手势保持为“收起”。</string>
     <string name="settings_keywords_island_advanced">灵动岛 颜色 圆角 圆形 动画 速度 触感 振动 手势 轻点 长按 上滑 双击 收起 高级 自定</string>
     <string name="island_adjust_side_note">在这个方向上，灵动岛会竖立在摄像头周围。请旋转手机再调整宽度。</string>
+    <string name="tile_folio_notifications">Folio 通知</string>
+    <string name="tile_folio_control_center">Folio 控制中心</string>
+    <string name="phone_quick_settings">手机快捷设置</string>
 </resources>
