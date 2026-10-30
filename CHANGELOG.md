@@ -119,6 +119,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- On a tablet or any screen that does not fold, the dark fold-style shading no longer sweeps across the left side while Folio opens.
 - **Island color shows on the cover screen:** a color you picked looked black over the cover camera hole and nothing said why. The resting island still stays black there so no ring shows around the lens, but the color now appears when the island opens, and a note under the color row explains it.
 - **Distinct header icons:** the phone's notification shade button in Notification Center now uses a phone icon, so the slider icon means only Control Center. The gear still opens the phone's Quick Settings.
 - Action links in Settings, like Add Folio Settings to Home and Refresh Icons, now use your accent color; they were always blue, next to links that followed the accent.
