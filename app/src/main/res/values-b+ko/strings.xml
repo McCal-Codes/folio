@@ -2297,6 +2297,7 @@
     <string name="island_color_hex_hint">1D2B53</string>
     <string name="island_color_hex_invalid">숫자 또는 A~F 문자 6자리로 입력하세요. 예: 1D2B53</string>
     <string name="island_color_nudged">글자가 잘 보이도록 색을 조금 조정했습니다.</string>
+    <string name="island_color_camera_note">카메라 구멍 위에서는 테두리가 보이지 않도록 대기 상태의 아일랜드가 검은색으로 유지됩니다. 색은 아일랜드가 열릴 때와 카메라에서 옮겼을 때 나타납니다.</string>
     <string name="island_color_note">항상 불투명합니다. 글자와 아이콘은 읽기 쉽도록 흰색과 검은색 중에서 바뀝니다. 실제 카메라 구멍을 감쌀 때는 렌즈 주변에 밝은 테두리가 보이지 않도록 검은색을 유지합니다.</string>
     <string name="island_color_swatch">%1$s Dynamic Island 색상</string>
     <string name="island_corners">모서리 반경</string>

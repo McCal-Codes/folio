@@ -2275,6 +2275,7 @@
     <string name="island_color_hex_hint">1D2B53</string>
     <string name="island_color_hex_invalid">请输入六位数字或 A 到 F 的字母，例如 1D2B53。</string>
     <string name="island_color_nudged">已略作调整，让文字保持清晰易读。</string>
+    <string name="island_color_camera_note">在摄像头孔上方时，静止的灵动岛保持黑色，这样不会出现圆环；展开时以及移离摄像头后会显示所选颜色。</string>
     <string name="island_color_note">始终为实色。文字和图标会在白色与黑色之间切换以保持可读。灵动岛环绕真实的摄像头孔时保持黑色，这样镜头周围不会出现较亮的圆环。</string>
     <string name="island_color_swatch">灵动岛颜色：%1$s</string>
     <string name="island_corners">圆角</string>
