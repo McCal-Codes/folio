@@ -60,6 +60,7 @@ internal fun IslandAdvancedPage() {
         ColorRow(values, onColor = { IslandStyle.saveColor(context, it); version++ })
         if (values.color == IslandColor.CUSTOM) CustomColorField(values, onColor = { IslandStyle.saveCustom(context, it); version++ })
         CardNote(stringResource(R.string.island_color_note))
+        CardNote(stringResource(R.string.island_color_camera_note))
     }
 
     SettingsCard(null) {

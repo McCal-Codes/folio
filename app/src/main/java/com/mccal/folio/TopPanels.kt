@@ -267,9 +267,12 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            // Three different things wear a slider ("Tune") icon elsewhere: Folio's Control Center (panel switch, tile).
+            // So the two buttons that open the phone's own panels use other icons: the gear is the phone's Quick Settings,
+            // the phone glyph is the phone's own notification shade.
             GlassIconButton(Icons.Rounded.Settings, stringResource(R.string.phone_quick_settings)) { onClose(); onSystemQuickSettings() }
             Spacer(Modifier.width(8.dp))
-            GlassIconButton(Icons.Rounded.Tune, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
+            GlassIconButton(Icons.Rounded.PhoneAndroid, stringResource(R.string.android_notifications)) { onClose(); onSystem() }
             if (items.any { it.clearable }) {
                 Spacer(Modifier.width(8.dp))
                 // Like iPhone: the × turns into "Clear" and a second tap clears everything.
