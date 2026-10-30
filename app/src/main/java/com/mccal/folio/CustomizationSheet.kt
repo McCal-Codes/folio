@@ -1500,6 +1500,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.nc_layout_title to CustomizationPage.NOTIFICATIONS,
     R.string.shade_over_apps to CustomizationPage.NOTIFICATIONS,
     R.string.shade_pull to CustomizationPage.NOTIFICATIONS,
+    R.string.pull_target_title to CustomizationPage.NOTIFICATIONS,
     R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
     R.string.badge_size to CustomizationPage.STATUS,
