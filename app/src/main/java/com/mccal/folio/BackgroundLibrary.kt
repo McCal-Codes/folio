@@ -245,7 +245,7 @@ internal object BackgroundLibrary {
         ),
         Artwork(
             id = "misty-mountain-ridge",
-            title = "Layered mountain silhouettes fading into a misty and pale blue sky", // english-only
+            title = "Misty Ridge", // english-only
             artist = "Sies Kranen", // english-only
             license = "Unsplash License", // english-only
             detail = "2024. Unsplash.", // english-only
@@ -254,7 +254,7 @@ internal object BackgroundLibrary {
         ),
         Artwork(
             id = "pink-and-blue-hills",
-            title = "A pink and blue abstract background with hills", // english-only
+            title = "Pink Hills", // english-only
             artist = "Aperture Vintage", // english-only
             license = "Unsplash License", // english-only
             detail = "2023. Unsplash.", // english-only
@@ -263,7 +263,7 @@ internal object BackgroundLibrary {
         ),
         Artwork(
             id = "lavender-grainy-gradient",
-            title = "Lavender and blue grainy gradient", // english-only
+            title = "Lavender Grain", // english-only
             artist = "MagicPattern", // english-only
             license = "Unsplash License", // english-only
             detail = "2021. Unsplash.", // english-only
@@ -272,7 +272,7 @@ internal object BackgroundLibrary {
         ),
         Artwork(
             id = "dark-blue-curves",
-            title = "Dark blue curves with orange circle", // english-only
+            title = "Blue Curves", // english-only
             artist = "Pramod Tiwari", // english-only
             license = "Unsplash License", // english-only
             detail = "2023. Unsplash.", // english-only
@@ -281,7 +281,7 @@ internal object BackgroundLibrary {
         ),
         Artwork(
             id = "dark-blue-purple",
-            title = "Dark blue purple abstract wallpaper", // english-only
+            title = "Dark Violet", // english-only
             artist = "BoliviaInteligente", // english-only
             license = "Unsplash License", // english-only
             detail = "2022. Unsplash.", // english-only
@@ -290,7 +290,7 @@ internal object BackgroundLibrary {
         ),
         Artwork(
             id = "wavy-blue-lines",
-            title = "Wavy blue lines against a dark background", // english-only
+            title = "Blue Waves", // english-only
             artist = "Oxana Golubets", // english-only
             license = "Unsplash License", // english-only
             detail = "2025. Unsplash.", // english-only
