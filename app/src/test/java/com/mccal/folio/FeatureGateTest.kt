@@ -61,8 +61,8 @@ class FeatureGateTest {
         assertTrue("it is not the reorder gate", FeatureGate.PANEL_SWITCH != FeatureGate.CC_REORDER)
     }
 
-    @Test fun `the Crackgate joke is held back for a later release on a gate of its own`() {
-        assertEquals("0.7.0", FeatureGate.CRACKGATE.opensIn)
+    @Test fun `the Crackgate joke opens with this release on a gate of its own`() {
+        assertEquals("0.6.9", FeatureGate.CRACKGATE.opensIn)
         assertTrue("it is not the reorder gate", FeatureGate.CRACKGATE != FeatureGate.CC_REORDER)
     }
 
