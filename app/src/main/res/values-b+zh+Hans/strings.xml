@@ -637,6 +637,7 @@
     <string name="folio_gestures_are_starting_swipe_down_a">Folio 手势正在启动。请再下滑一次。</string>
     <string name="android_couldn_t_open_the_system_panel">Android 无法打开系统面板。</string>
     <string name="turn_on_folio_gestures">开启 Folio 手势</string>
+    <string name="shade_setup_steps">Android 需要你自己手动开启：\n\n1. 点按“打开设置”，找到“%1$s”（通常在“已安装的应用”下）并开启。\n2. 如果该选项是灰色的，或提示应用被拒绝访问或受限制的设置，请点按下方的“应用信息”，打开右上角的 ⋮ 菜单，选择“允许受限制的设置”并确认，然后返回再开启。从浏览器或文件安装的应用，Android 都会这样处理，只需操作一次。\n\n</string>
     <string name="folio_uses_it_to_open_notification_cente">Folio 用它来打开通知中心和控制中心，以及在其他 App 上方显示程序坞和灵动岛。</string>
     <string name="it_can_t_read_what_s_on_your_screen">它无法读取你屏幕上的内容。</string>
     <string name="app_info">应用信息</string>

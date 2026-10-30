@@ -318,7 +318,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     // Like iOS Settings: the header gets out of the way while searching.
                     if (settingsQuery.isBlank()) TweakBanner()
                     SettingsSearchField(settingsQuery) { settingsQuery = it }
-                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> settingsQuery = ""; SettingsFocus.label = row; onPage(page) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
+                    if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> settingsQuery = ""; SettingsFocus.label = row; if (page == CustomizationPage.FOLD_TWEAK) tweakId = DUET_ID; onPage(page) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
                     else {
                         overviewActions()
                         MiniHomePreview(backgrounds.previewBitmap, state, 176.dp)
@@ -1131,7 +1131,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 .padding(horizontal = FolioSpace.LARGE.dp).padding(top = 44.dp, bottom = FolioSpace.XL.dp).testTag("settings-sidebar"), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 SettingsLargeTitle(stringResource(R.string.folio))
                 SettingsSearchField(settingsQuery) { settingsQuery = it }
-                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> SettingsFocus.label = row; onPage(page) }, onOpenTweak = { openTweak(it) })
+                if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> SettingsFocus.label = row; if (page == CustomizationPage.FOLD_TWEAK) tweakId = DUET_ID; onPage(page) }, onOpenTweak = { openTweak(it) })
                 else {
                     // Like the account card at the top of iPad Settings: Folio's own page.
                     SheetGroup { SidebarAppRow(selected = page == CustomizationPage.OVERVIEW, setupLeft) { onPage(CustomizationPage.OVERVIEW) } }
