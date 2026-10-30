@@ -279,7 +279,14 @@ fun LauncherScreen(
     }
     val pageCount = visibleHomePages + 1
     val nativePager = rememberPagerState(initialPage = savedPage.coerceIn(-firstHome, pageCount - 1) + firstHome, pageCount = { pageCount + firstHome })
-    val pager = remember(nativePager) { LauncherPager(nativePager, firstHome) }
+    val pager = remember(nativePager, firstHome) { LauncherPager(nativePager, firstHome) }
+    // firstHome can change after launch (the Google app's answer about Discover, or the Left of Home choice): keep the same logical page.
+    val previousFirstHome = remember { intArrayOf(firstHome) }
+    LaunchedEffect(firstHome) {
+        val before = previousFirstHome[0]
+        previousFirstHome[0] = firstHome
+        if (before != firstHome) nativePager.scrollToPage(nativePageAfterFirstHomeChange(nativePager.currentPage, before, firstHome, nativePager.pageCount))
+    }
     LaunchedEffect(pager) {
         var swiping = false
         try { snapshotFlow { pager.state.isScrollInProgress }.collect { now ->

@@ -12,3 +12,10 @@ internal class LauncherPager(val state: PagerState, private val firstHome: Int) 
     suspend fun scrollToPage(page: Int) = state.scrollToPage(page + firstHome)
     suspend fun animateScrollToPage(page: Int) = state.animateScrollToPage(page + firstHome)
 }
+
+/**
+ * The native pager page that keeps the same logical page when the page left of Home appears or goes away (the Google app's answer about
+ * Discover can arrive after Home has started), so the person stays on the Home page they were on instead of jumping one page.
+ */
+internal fun nativePageAfterFirstHomeChange(currentNativePage: Int, oldFirstHome: Int, newFirstHome: Int, nativePageCount: Int): Int =
+    (currentNativePage + newFirstHome - oldFirstHome).coerceIn(0, (nativePageCount - 1).coerceAtLeast(0))
