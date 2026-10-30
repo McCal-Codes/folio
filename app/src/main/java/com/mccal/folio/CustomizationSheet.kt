@@ -448,6 +448,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         if (state.shadeOverApps) {
                             SettingsSwitch(stringResource(R.string.shade_pull), state.shadePull, model::setShadePull, "shade-pull-switch")
                             CardNote(stringResource(R.string.shade_pull_note))
+                            if (state.shadePull) {
+                                val pullChoices = listOf(PullTarget.BOTH to stringResource(R.string.pull_target_both),
+                                    PullTarget.FOLIO_NOTIFICATIONS to stringResource(R.string.pull_target_notifications),
+                                    PullTarget.FOLIO_CONTROL_CENTER to stringResource(R.string.pull_target_control_center))
+                                IosMenuRow(stringResource(R.string.pull_target_title), pullChoices, state.pullTarget, model::setPullTarget, tag = "pull-target")
+                                CardNote(stringResource(R.string.pull_target_note))
+                            }
                         }
                         SettingsSwitch(stringResource(R.string.big_clock_in_notification_center), state.notificationClock, model::setNotificationClock, "notification-clock-switch")
                         SettingsSwitch(stringResource(R.string.stack_notifications_by_app), state.groupNotifications, model::setGroupNotifications, "notification-group-switch")
