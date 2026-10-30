@@ -2423,7 +2423,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         IosActionRow(stringResource(R.string.crackgate_show_me), "crackgate-show-me", enabled = duet.crackgate) {
             CrackgateOwner.start(context, duet.crackgateGlitchy)
         }
-        SettingsSwitch(stringResource(R.string.crackgate_glitchy), duet.crackgateGlitchy, { model.setDuet(duet.copy(crackgateGlitchy = it)) }, "crackgate-glitchy")
+        SettingsSwitch(stringResource(R.string.crackgate_glitchy), duet.crackgateGlitchy, { model.setDuet(duet.copy(crackgateGlitchy = it)) }, "crackgate-glitchy", enabled = duet.crackgate)
         CardNote(stringResource(R.string.crackgate_joke_note))
     }
 }
