@@ -61,8 +61,8 @@ class FeatureGateTest {
         assertTrue("it is not the reorder gate", FeatureGate.PANEL_SWITCH != FeatureGate.CC_REORDER)
     }
 
-    @Test fun `the full-screen wallpaper preview is held back for a later release on a gate of its own`() {
-        assertEquals("0.7.0", FeatureGate.WALLPAPER_PREVIEW.opensIn)
+    @Test fun `the full-screen wallpaper preview opens with this release on a gate of its own`() {
+        assertEquals("0.6.9", FeatureGate.WALLPAPER_PREVIEW.opensIn)
         assertTrue("it is not the panel switch gate", FeatureGate.WALLPAPER_PREVIEW != FeatureGate.PANEL_SWITCH)
     }
 
