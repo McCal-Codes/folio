@@ -5,7 +5,7 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
-## [0.6.9] - Unreleased
+## [0.6.9] - 2026-10-31
 
 ### Added
 - **Six more wallpapers:** Wallpaper & Appearance now has six abstract photographs from Unsplash beside the two Hiroshige prints, three light and three dark. Each tile shows the title, the photographer and "Unsplash License", and the full credits are in the app's third-party notices.
