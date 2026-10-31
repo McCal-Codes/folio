@@ -124,9 +124,12 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
     // The switch between the panels is only drawn where one panel stands alone (two cards side by side already show both) and while its gate is open.
     val switcher: ((ShadePanel) -> Unit)? = onSwitchPanel?.takeIf { shape != ShadeShape.BOTH && FeatureGate.PANEL_SWITCH.isOpen(LocalContext.current) }
-    // On a regular-size window where one panel fills the top, the switch is drawn once, at the top centre, and stays where it is while the two panels
-    // cross-fade under it. A card or a clock beside the list keeps its switch inside the panel, since the panel is not at the centre there.
-    val hoistSwitch = switcher != null && wide && shape == ShadeShape.SINGLE_TOP
+    // Where both panels stand alone at the top (any width: a phone, the open screen, a tablet), the switch is drawn once, at the top centre, and stays where it
+    // is while the two panels cross-fade under it. A card, a clock beside the list or a window too short for the extra row keeps its switch inside the panel.
+    val hingedOrOverApps = LocalHinge.current?.active == true || LocalShadeOverApps.current
+    fun shapeOf(panel: ShadePanel) = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp, hingedOrOverApps, panel, showClock)
+    val hoistSwitch = switcher != null && config.screenHeightDp >= HOIST_SWITCH_MIN_HEIGHT_DP &&
+        shapeOf(ShadePanel.NOTIFICATIONS).let { it == ShadeShape.SINGLE_TOP || it == ShadeShape.SPLIT_CLOCK } && shapeOf(ShadePanel.QUICK_SETTINGS) == ShadeShape.SINGLE_TOP
     // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
     val cardListMax = (config.screenHeightDp * .62f).dp
 
@@ -861,7 +864,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val gridWidth = span(cols)
         val focusOn = focusModes.isNotEmpty()
         // What the header and the strip take; the rest is for the pages. Controls that do not fit go on another page, never into a scroll (PNL-1).
-        val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
+        // The switch, drawn once above both panels, has a row of its own above this header (reserveSwitchRow), which the pages give up room for.
+        val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + (if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp) +
+            (if (reserveSwitchRow) PANEL_SWITCH_ROW_DP.dp + gap else 0.dp)
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
         // With the Media page switched off the sliders move onto a Controls page instead of vanishing (they are never behind a preference).
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn, options.mediaPage) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn, options.mediaPage) }
@@ -1166,6 +1171,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 // The grid takes the taps that land between its controls, so only the margins around it close the panel.
                 Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)).pointerInput(Unit) { detectTapGestures() }, verticalArrangement = Arrangement.spacedBy(gap)) {
+                    if (reserveSwitchRow) Spacer(Modifier.height(PANEL_SWITCH_ROW_DP.dp))
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
@@ -1173,8 +1179,6 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         Spacer(Modifier.weight(1f))
                         // The switch to Notification Center stands in the middle of the header while there is room beside the edit and power buttons.
                         if (onSwitch != null && !grid.stripInHeader && gridWidth >= CC_SWITCH_BUTTON_MIN_GRID_DP.dp) { PanelSwitch(ShadePanel.QUICK_SETTINGS, onSwitch, compact = gridWidth < CC_SWITCH_PILL_MIN_GRID_DP.dp); Spacer(Modifier.weight(1f)) }
-                        // The switch is drawn once above the panels, over the middle of this header: keep the buttons on either side where they are.
-                        else if (reserveSwitchRow && !grid.stripInHeader) Spacer(Modifier.weight(1f))
                         if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
                         // A button for the way out, for anyone who does not know the swipe (a short, narrow window has no room for it: the swipe and a tap outside close there).
                         else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { onClose() }
@@ -1507,6 +1511,9 @@ private const val CC_SWITCH_PILL_MIN_GRID_DP = 280
 
 /** The height of the row the switch stands in at the top of a panel (the 48 dp touch target of its buttons), kept free where the switch is drawn once above both panels. */
 private const val PANEL_SWITCH_ROW_DP = 48
+
+/** A window shorter than this keeps the switch inside each panel: the extra row would cost Control Center a page. */
+private const val HOIST_SWITCH_MIN_HEIGHT_DP = 480
 
 /** Narrower than that and the header holds only its three buttons and one more: the switch becomes a single round button. */
 private const val CC_SWITCH_BUTTON_MIN_GRID_DP = 200
