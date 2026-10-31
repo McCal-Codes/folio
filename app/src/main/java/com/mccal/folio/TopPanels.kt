@@ -73,6 +73,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -122,6 +124,12 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
     // The switch between the panels is only drawn where one panel stands alone (two cards side by side already show both) and while its gate is open.
     val switcher: ((ShadePanel) -> Unit)? = onSwitchPanel?.takeIf { shape != ShadeShape.BOTH && FeatureGate.PANEL_SWITCH.isOpen(LocalContext.current) }
+    // Where both panels stand alone at the top (any width: a phone, the open screen, a tablet), the switch is drawn once, at the top centre, and stays where it
+    // is while the two panels cross-fade under it. A card, a clock beside the list or a window too short for the extra row keeps its switch inside the panel.
+    val hingedOrOverApps = LocalHinge.current?.active == true || LocalShadeOverApps.current
+    fun shapeOf(panel: ShadePanel) = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp, hingedOrOverApps, panel, showClock)
+    val hoistSwitch = switcher != null && config.screenHeightDp >= HOIST_SWITCH_MIN_HEIGHT_DP &&
+        shapeOf(ShadePanel.NOTIFICATIONS).let { it == ShadeShape.SINGLE_TOP || it == ShadeShape.SPLIT_CLOCK } && shapeOf(ShadePanel.QUICK_SETTINGS) == ShadeShape.SINGLE_TOP
     // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
     val cardListMax = (config.screenHeightDp * .62f).dp
 
@@ -218,20 +226,31 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else {
-            // Moving between the panels slides them sideways a little while they cross-fade (a plain cross-fade with Reduce Motion); the size does not animate.
-            val reduceSwitch = LocalReduceMotion.current
-            val slidePx = with(LocalDensity.current) { FolioSpace.XXL.dp.roundToPx() }
-            androidx.compose.animation.AnimatedContent(current, transitionSpec = {
-                val toControls = targetState == ShadePanel.QUICK_SETTINGS
-                val shift = if (reduceSwitch) 0 else if (toControls) slidePx else -slidePx
-                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) + androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(220)) { shift })
-                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)) + androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(220)) { -shift })
+            // Moving between the panels is a plain cross-fade in place: the container always spans the width, and each panel sits where it sits when it
+            // is open on its own, so the outgoing panel does not jump to the incoming one's place. With the switch drawn once (hoistSwitch) it does not move.
+            fun alignFor(which: ShadePanel): Alignment = when {
+                shape == ShadeShape.CARD -> if (which == ShadePanel.NOTIFICATIONS) Alignment.TopStart else Alignment.TopEnd
+                split -> Alignment.TopEnd
+                which == ShadePanel.NOTIFICATIONS -> if (wide) Alignment.TopCenter else Alignment.TopStart
+                wide && ccCentered -> Alignment.TopCenter
+                else -> Alignment.TopEnd
+            }
+            androidx.compose.animation.AnimatedContent(current, Modifier.fillMaxWidth().then(if (split) Modifier.fillMaxHeight() else Modifier), transitionSpec = {
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200))
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140)))
                     .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> androidx.compose.animation.core.snap() })
             }, contentAlignment = Alignment.TopStart, label = "panel switch") { which ->
-                if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
-                    listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-                else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, onSwitch = switcher) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+                Box(Modifier.fillMaxWidth().then(if (split) Modifier.fillMaxHeight() else Modifier), contentAlignment = alignFor(which)) {
+                    if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
+                        listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch,
+                        onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+                    else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack,
+                        onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+                }
             }
+            if (hoistSwitch) Box(Modifier.align(Alignment.TopCenter).graphicsLayer {
+                val p = progress(); alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f); translationY = -lift * (1f - p)
+            }.semantics { isTraversalGroup = true; traversalIndex = -1f }) { PanelSwitch(current, switcher!!) }
         }
     }
     }
@@ -241,7 +260,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, onSystemQuickSettings: () -> Unit = {}, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false, onSystemQuickSettings: () -> Unit = {}, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -259,6 +278,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
         if (onSwitch != null) PanelSwitch(ShadePanel.NOTIFICATIONS, onSwitch, Modifier.align(Alignment.CenterHorizontally))
+        // The switch is drawn once above both panels: this row keeps its place so the clock does not move up under it.
+        else if (reserveSwitchRow) Spacer(Modifier.height(PANEL_SWITCH_ROW_DP.dp))
         if (showClock) Column(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = FolioType.BODY.sp,
                 fontWeight = FontWeight.SemiBold)
@@ -761,7 +782,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -843,7 +864,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val gridWidth = span(cols)
         val focusOn = focusModes.isNotEmpty()
         // What the header and the strip take; the rest is for the pages. Controls that do not fit go on another page, never into a scroll (PNL-1).
-        val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp
+        // The switch, drawn once above both panels, has a row of its own above this header (reserveSwitchRow), which the pages give up room for.
+        val chrome = FolioTouch.MIN.dp + gap + CC_PANEL_PAD_DP.dp * 2 + (if (grid.stripAtEdge || grid.stripInHeader) 0.dp else grid.stripDp.dp) +
+            (if (reserveSwitchRow) PANEL_SWITCH_ROW_DP.dp + gap else 0.dp)
         val pagesAvailable = if (maxHeight == Dp.Infinity) null else (maxHeight - chrome).coerceAtLeast(cell)
         // With the Media page switched off the sliders move onto a Controls page instead of vanishing (they are never behind a preference).
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn, options.mediaPage) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn, options.mediaPage) }
@@ -1148,6 +1171,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 // The grid takes the taps that land between its controls, so only the margins around it close the panel.
                 Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)).pointerInput(Unit) { detectTapGestures() }, verticalArrangement = Arrangement.spacedBy(gap)) {
+                    if (reserveSwitchRow) Spacer(Modifier.height(PANEL_SWITCH_ROW_DP.dp))
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
@@ -1484,6 +1508,12 @@ private fun BoxScope.AutoBrightnessChip(on: Boolean, width: Dp, alpha: Float, on
 
 /** The narrowest grid that has room for the two-icon pill between the edit, close and power buttons (three 48 dp targets, the pill, and a little air). */
 private const val CC_SWITCH_PILL_MIN_GRID_DP = 280
+
+/** The height of the row the switch stands in at the top of a panel (the 48 dp touch target of its buttons), kept free where the switch is drawn once above both panels. */
+private const val PANEL_SWITCH_ROW_DP = 48
+
+/** A window shorter than this keeps the switch inside each panel: the extra row would cost Control Center a page. */
+private const val HOIST_SWITCH_MIN_HEIGHT_DP = 480
 
 /** Narrower than that and the header holds only its three buttons and one more: the switch becomes a single round button. */
 private const val CC_SWITCH_BUTTON_MIN_GRID_DP = 200
