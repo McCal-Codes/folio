@@ -1760,9 +1760,10 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(onClick = onClick).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp),
         verticalAlignment = Alignment.CenterVertically) {
         // Both share the row: a long section name in a narrow pane (the unfolded list) used to take all of it and leave the title one letter wide.
-        Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1f))
+        // The title gets the larger share so a long word in it ("background") is never broken; the section name wraps between its own words.
+        Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.weight(1.8f))
         where?.let { Text(it, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.BODY.sp, textAlign = androidx.compose.ui.text.style.TextAlign.End,
-            modifier = Modifier.weight(1.4f, fill = false).padding(start = FolioSpace.SMALL.dp)) }
+            modifier = Modifier.weight(1f, fill = false).padding(start = FolioSpace.SMALL.dp)) }
         Icon(Icons.Rounded.ChevronRight, null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = .3f), modifier = Modifier.mirroredForRtl())
     }
 }
