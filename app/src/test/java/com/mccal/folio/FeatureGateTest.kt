@@ -39,6 +39,13 @@ class FeatureGateTest {
         }
     }
 
+    @Test fun `Simple Mode is a preview held until Simple Mode v1`() {
+        val gate = FeatureGate.SIMPLE_MODE
+        assertEquals("simpleMode", gate.key)
+        assertEquals("0.7.2", gate.opensIn)
+        assertTrue("shut for everyone but Folio Dev and beta supporters", !gate.open)
+    }
+
     @Test fun `the Advanced island opens one release after Adjust island on its own gate`() {
         assertEquals("0.7.0", FeatureGate.ISLAND_ADVANCED.opensIn)
         assertEquals("0.6.9", FeatureGate.ISLAND_ADJUST.opensIn)

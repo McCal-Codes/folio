@@ -75,11 +75,16 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     // Home, a quiet step only when Shizuku or a root manager is already on the phone, and the last page.
     val androidStart = state?.startingPoint() == StartingPoint.ANDROID
     val optionalAccess = remember { OptionalAccess.found { pkg -> runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess } }
+    // Simple Mode's branch (SimpleSetup.kt), only where its gate is open. A restart in the middle of it comes back into it.
+    val simpleOpen = remember { FeatureGate.SIMPLE_MODE.isOpen(context) }
+    var simpleBranch by rememberSaveable { mutableStateOf(simpleSetupBranch(simpleOpen,
+        runCatching { prefs.getString(STEP_KEY, null) }.getOrNull() in SimpleSetupPages.all)) }
+    val simpleChoices = remember { SimpleSetupChoices(prefs) }
     // First setup's Home apps page: this phone's own apps, ticked by what is on Home already or by the starter apps (StarterApps.kt).
     val homeApps = remember(state?.apps, state?.hiddenApps) { state?.let(::onboardingApps) ?: emptyList() }
     var pickedIds by rememberSaveable { mutableStateOf<List<String>?>(null) }
     val picked = remember(pickedIds, homeApps) { (pickedIds ?: state?.let { initialHomePicks(it, homeApps, firstRun = !SetupReplay.active).toList() } ?: emptyList()).toSet() }
-    val all = remember(androidStart, optionalAccess, homeApps.isNotEmpty()) {
+    val all = remember(androidStart, optionalAccess, simpleBranch, homeApps.isNotEmpty()) {
         listOf(
             OnboardingPage("welcome", Icons.Rounded.WavingHand, 0xFF2E5E66, context.getString(R.string.welcome_to_folio),
                 context.getString(R.string.onboarding_welcome_detail),
@@ -96,21 +101,38 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
             OnboardingPage("adv", Icons.Rounded.Tune, FolioColors.Value.Indigo, context.getString(R.string.onboarding_adv_title), "", optional = false),
             OnboardingPage("done", Icons.Rounded.CheckCircle, FolioColors.Value.Green, context.getString(R.string.youre_all_set),
                 context.getString(R.string.a_few_things_to_try), action = context.getString(R.string.get_started), optional = false),
-        ).filter { page ->
-            when (page.key) {
-                "nav" -> androidStart
-                "apps" -> homeApps.isNotEmpty()
-                "adv" -> optionalAccess.isNotEmpty()
-                else -> page.key in setOf("welcome", "feel", "done") || !page.done()
-            }
+            OnboardingPage(SimpleSetupPages.STYLE, Icons.Rounded.VolunteerActivism, FolioColors.Value.Blue, context.getString(R.string.simple_setup_style_title),
+                context.getString(R.string.simple_setup_style_body), optional = false),
+            OnboardingPage(SimpleSetupPages.APPS, Icons.Rounded.VolunteerActivism, FolioColors.Value.Blue, context.getString(R.string.simple_setup_apps_title),
+                context.getString(R.string.simple_setup_apps_body), optional = false),
+            OnboardingPage(SimpleSetupPages.READY, Icons.Rounded.VolunteerActivism, FolioColors.Value.Blue, context.getString(R.string.simple_setup_ready_title),
+                "", optional = false),
+        ).associateBy { it.key }.let { pages ->
+            setupPageKeys(androidStart, optionalAccess.isNotEmpty(), homeDone = pages.getValue("home").done(), simpleBranch = simpleBranch,
+                homeApps = homeApps.isNotEmpty()).map(pages::getValue)
         }
     }
     // Resume by page key: the page list changes between versions (and skips what's already allowed), so an index
     // saved by an older Folio could land on the wrong page.
     var index by rememberSaveable { mutableIntStateOf(onboardingResumeIndex(runCatching { prefs.getString(STEP_KEY, null) }.getOrNull(), all.map { it.key })) }
     fun go(to: Int) { index = to.coerceIn(0, all.lastIndex); prefs.edit().remove(STEP).putString(STEP_KEY, all[index].key).apply() }
-    fun finish() { prefs.edit().remove(STEP).remove(STEP_KEY).apply(); FirstUseHints.arm(context); onFinish() }
-    BackHandler(index > 0) { go(index - 1) }
+    fun finish() { prefs.edit().remove(STEP).remove(STEP_KEY).apply(); simpleChoices.clear(); FirstUseHints.arm(context); onFinish() }
+    // The branch: into it from the starting point page, out of it by going back there, and its end turns Simple on
+    // the same way Settings does, then arms Simple Home's one first-open line instead of Folio's hints.
+    fun startSimple() { simpleBranch = true; index = all.indexOfFirst { it.key == "feel" } + 1; prefs.edit().remove(STEP).putString(STEP_KEY, SimpleSetupPages.STYLE).apply() }
+    fun back() { if (all[index].key == SimpleSetupPages.STYLE) simpleBranch = false; go(index - 1) }
+    fun finishSimple() {
+        val style = simpleChoices.style
+        val apps = state?.apps.orEmpty()
+        val appContext = context.applicationContext
+        val choices = simpleChoices
+        prefs.edit().remove(STEP).remove(STEP_KEY).apply()
+        model?.turnOnSimple(style) { choices.apps(simpleRoleApps(appContext, apps).inOrder()) }
+        choices.clear()
+        SimpleFirstOpen.arm(context)
+        onFinish()
+    }
+    BackHandler(index > 0) { back() }
     var navChoice by rememberSaveable { mutableStateOf(NavChoice.KEEP) }
     // The navigation page's choice takes effect when it is confirmed. Folio never changes how Android navigates.
     fun applyNavigation() {
@@ -139,14 +161,14 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 560.dp).fillMaxSize().padding(horizontal = FolioSpace.XXL.dp)) {
             // Top bar: back and skip
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (index > 0) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { go(index - 1) }.padding(FolioSpace.SMALL.dp),
+                if (index > 0) Row(Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { back() }.padding(FolioSpace.SMALL.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.ChevronLeft, null, tint = LocalAccent.current.ink, modifier = Modifier.size(26.dp).mirroredForRtl())
                     Text(stringResource(R.string.back), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp)
                 }
                 Spacer(Modifier.weight(1f))
                 // Setup is optional: Home works without it, and everything is in Settings.
-                if (page.key != "done") Text(stringResource(R.string.skip), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
+                if (page.key != "done" && page.key !in SimpleSetupPages.all) Text(stringResource(R.string.skip), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
                     modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { finish() }.padding(FolioSpace.COMPACT.dp).testTag("onboarding-skip"))
             }
             AnimatedContent(index, Modifier.weight(1f), label = "onboarding page",
@@ -162,16 +184,18 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                 Column(Modifier.fillMaxSize().fadingVerticalScroll().padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.HUGE.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     val appIcon = if (p.appIcon) remember { folioIconBitmap(context) } else null
+                    // The Simple branch's pages are one question each, with no symbol on top (the Lab's journey 0).
+                    val simplePage = p.key in SimpleSetupPages.all
                     val headSize = if (compactHead) 56.dp else 96.dp
                     if (appIcon != null) androidx.compose.foundation.Image(appIcon, null, Modifier.size(headSize).clip(RoundedCornerShape(22.dp)))
-                    else Box(Modifier.size(headSize).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
+                    else if (!simplePage) Box(Modifier.size(headSize).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(p.color)), contentAlignment = Alignment.Center) {
                         Icon(p.icon, null, tint = Color.White, modifier = Modifier.size(if (compactHead) 32.dp else 56.dp))
                     }
                     // 200% is the largest size Android's own Settings offers; past it (adb can set 300%) a word like "Welcome"
                     // is wider than the screen and broke in the middle, so the headline stops growing there (the body keeps scaling).
                     Text(p.title, color = Color.White, fontSize = cappedSp(34, HEADLINE_TEXT_CAP), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                        lineHeight = cappedSp(40, HEADLINE_TEXT_CAP), modifier = Modifier.padding(top = if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.XXL.dp))
-                    Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
+                        lineHeight = cappedSp(40, HEADLINE_TEXT_CAP), modifier = Modifier.padding(top = if (simplePage) 0.dp else if (compactHead) FolioSpace.MEDIUM.dp else FolioSpace.XXL.dp))
+                    if (!simplePage || p.body.isNotEmpty()) Text(p.body, color = Color.White.copy(alpha = .7f), fontSize = FolioType.BODY.sp, textAlign = TextAlign.Center, lineHeight = 23.sp,
                         modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                     if (p.uses.isNotEmpty()) SheetGroup(Modifier.padding(top = FolioSpace.XXL.dp)) {
                         p.uses.forEachIndexed { n, use ->
@@ -204,7 +228,10 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                         }
                     }
                     if (p.key == "feel" && state != null && model != null) StartingPointPage(state, model, tick, onShadeSetup,
-                        replay = SetupReplay.active, onKeep = { finish() })
+                        replay = SetupReplay.active, onKeep = { finish() }, onSimple = if (simpleOpen) ({ startSimple() }) else null)
+                    if (p.key == SimpleSetupPages.STYLE && state != null) SimpleSetupStyle(state, simpleChoices)
+                    if (p.key == SimpleSetupPages.APPS && state != null) SimpleSetupApps(state, simpleChoices)
+                    if (p.key == SimpleSetupPages.READY && state != null) SimpleSetupReady(state, simpleChoices, tick)
                     if (p.key == "apps") HomeAppsPage(homeApps, picked) { id -> pickedIds = (if (id in picked) picked - id else picked + id).toList() }
                     if (p.key == "nav") NavigationPage(navChoice, { navChoice = it }, tick)
                     if (p.key == "adv") AdvancedStep(optionalAccess, onOpenBridge = { finish(); onOpenBridge() })
@@ -223,12 +250,14 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
                     ?: context.getString(R.string.onboarding_keep_things_as_they_are)
                 page.onAction != null && !done -> page.action ?: context.getString(R.string.continue_button)
                 page.key == "done" -> page.action ?: context.getString(R.string.get_started)
+                page.key == SimpleSetupPages.READY -> context.getString(R.string.get_started)
                 else -> context.getString(R.string.continue_button)
             }
             Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(LocalAccent.current.fill)
                 .clickable {
                     when {
                         page.key == "done" -> finish()
+                        page.key == SimpleSetupPages.READY -> finishSimple()
                         page.key == "nav" -> { applyNavigation(); go(index + 1) }
                         page.key == "apps" -> { if (state != null && model != null) applyHomePicks(model, homeApps, picked, firstRun = !SetupReplay.active); go(index + 1) }
                         page.onAction != null && !done -> page.onAction.invoke()
@@ -278,7 +307,8 @@ internal fun onboardingResumeIndex(savedKey: String?, keys: List<String>): Int {
  * shows both pictures side by side. Nothing here is locked in: it is a first set of ordinary settings, changed later in Settings.
  */
 @Composable
-private fun StartingPointPage(state: LauncherState, model: LauncherModel, tick: Int, onShadeSetup: () -> Unit, replay: Boolean, onKeep: () -> Unit) {
+private fun StartingPointPage(state: LauncherState, model: LauncherModel, tick: Int, onShadeSetup: () -> Unit, replay: Boolean, onKeep: () -> Unit,
+    onSimple: (() -> Unit)? = null) {
     val context = LocalContext.current
     // Null on a phone set up some other way: nothing is selected until the person taps one, so setup can't pretend it knows.
     val chosen = state.startingPoint()
@@ -340,6 +370,8 @@ private fun StartingPointPage(state: LauncherState, model: LauncherModel, tick: 
     }
     Text(stringResource(if (both) R.string.starting_back else R.string.starting_show_both), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
         modifier = Modifier.padding(top = FolioSpace.LARGE.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable { both = !both }.padding(FolioSpace.COMPACT.dp).testTag("starting-both"))
+    // Simple Mode, quietly, for whoever is setting the phone up for someone else (only where its gate is open).
+    onSimple?.let { SimpleSetupRow(it) }
     if (replay) Text(stringResource(R.string.onboarding_keep_things_as_they_are), color = LocalAccent.current.ink, fontSize = FolioType.BODY.sp,
         modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).clickable(onClick = onKeep).padding(FolioSpace.COMPACT.dp).testTag("starting-keep"))
 }

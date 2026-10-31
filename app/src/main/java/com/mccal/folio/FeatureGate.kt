@@ -118,6 +118,13 @@ internal enum class FeatureGate(
     MOTION_V2("motionV2", closedSince = "2026-10-08", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
 
     /**
+     * Simple Mode (SimpleMode.kt): a calm Home of a few big labeled apps that a helper sets up. A preview of roadmap
+     * 0.7.2 for beta testers who help an older relative. The gate is at the entry point, Settings › Accessibility ›
+     * Experience: a phone already in Simple keeps its Simple Home, and its way out, whatever the gate says.
+     */
+    SIMPLE_MODE("simpleMode", closedSince = "2026-10-12", opensIn = "0.7.2", { OPEN_IN_0_7_2 }),
+
+    /**
      * Settings > General > Storage: how full the phone is, any USB or SD storage that is connected, and shortcuts to
      * Android's own cleanup screens. It only reads sizes and opens system screens, but it needs real phones with real
      * drives before it goes to everyone, so supporters and Folio Dev try it first. Flip [OPEN_IN_0_7_1] to true in
@@ -253,6 +260,9 @@ internal enum class FeatureGate(
 
         /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
         private const val OPEN_IN_0_7_0 = false
+
+        /** The features previewed for supporters ahead of 0.7.2, which open together in the 0.7.2 release. */
+        private const val OPEN_IN_0_7_2 = false
 
         /** The features built during 0.7.1 for supporters to try first, which open together in the 0.7.1 release. */
         private const val OPEN_IN_0_7_1 = false
