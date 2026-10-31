@@ -150,4 +150,63 @@ object PackageCompatibility {
 
     /** The first check that stops an install, or null when none does. */
     fun blocking(checks: List<CompatCheck>): CompatCheck? = checks.firstOrNull { it.state == CompatState.BLOCKED }
+
+    /**
+     * The one answer: works, works with a limit, or cannot be installed and why. The package page, the install sheet
+     * and the installer all read this, so none of them can say yes while another says no.
+     */
+    fun verdict(checks: List<CompatCheck>): CompatVerdict {
+        blocking(checks)?.let { return CompatVerdict.CannotInstall(it.reason(), it) }
+        val limits = checks.filter { it.state == CompatState.NOTE }
+        return if (limits.isEmpty()) CompatVerdict.Works else CompatVerdict.WorksWithLimit(limits)
+    }
+
+    fun verdict(
+        manifest: PackageManifest,
+        context: CompatContext,
+        changes: List<PackageChange> = emptyList(),
+        builtIn: Boolean = false,
+    ): CompatVerdict = verdict(check(manifest, context, changes, builtIn))
+}
+
+/** Why a package cannot be installed here. [key] is stable, so a string table can be keyed on it. */
+enum class CompatReason(val key: String, val offersFix: Boolean = false) {
+    ANDROID_VERSION("android_version"),
+    BREAKS_INSTALLED("breaks_installed"),
+    UNSUPPORTED_KIND("unsupported_kind"),
+    MISSING_CAPABILITY("missing_capability"),
+    NEEDS_NEWER_FOLIO("needs_newer_folio"),
+
+    /** Get the tweak it adds to first; the page and sheet offer it, so this is not a dead end. */
+    NEEDS_HOST_TWEAK("needs_host_tweak", offersFix = true),
+    REPLACES_INSTALLED("replaces_installed"),
+    NEEDS_PACKAGE("needs_package"),
+}
+
+/** What [PackageCompatibility.verdict] decides. */
+sealed interface CompatVerdict {
+    /** Nothing in the way and nothing to say. */
+    data object Works : CompatVerdict
+
+    /** It installs, with something worth knowing first (a screen it doesn't cover, a Folio newer than it was tried on). */
+    data class WorksWithLimit(val limits: List<CompatCheck>) : CompatVerdict
+
+    /** It does not install. [cause] is the first blocking check, the one the installer refuses on. */
+    data class CannotInstall(val reason: CompatReason, val cause: CompatCheck) : CompatVerdict
+}
+
+/** True when Get must be off: it cannot install and nothing on the page fixes that in place. */
+val CompatVerdict.stopsGet: Boolean get() = this is CompatVerdict.CannotInstall && !reason.offersFix
+
+private fun CompatCheck.reason(): CompatReason = when (this) {
+    is CompatCheck.Android -> CompatReason.ANDROID_VERSION
+    is CompatCheck.Breaks -> CompatReason.BREAKS_INSTALLED
+    is CompatCheck.Kinds -> CompatReason.UNSUPPORTED_KIND
+    is CompatCheck.Features -> CompatReason.MISSING_CAPABILITY
+    is CompatCheck.Release -> CompatReason.NEEDS_NEWER_FOLIO
+    is CompatCheck.Hosts -> CompatReason.NEEDS_HOST_TWEAK
+    is CompatCheck.Replaces -> CompatReason.REPLACES_INSTALLED
+    is CompatCheck.Needs -> CompatReason.NEEDS_PACKAGE
+    // These only ever note. If one is made to block, name its reason here.
+    is CompatCheck.Screens, is CompatCheck.FolioRange -> error("${this::class.simpleName} never blocks")
 }
