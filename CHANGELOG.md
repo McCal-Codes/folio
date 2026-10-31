@@ -124,6 +124,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Fixed
 - **Market tab highlight:** tapping a tab in the Market's bar or side rail lit a square over the whole tab, behind the rounded pill. The highlight now has the pill's shape.
 - **Long words in Settings search results:** on the open screen a result such as "Folder background" broke in the middle of a word. The title now gets the wider share of the row and only the section name wraps.
+- **Folder app menus on light icons:** the three dots at the corner of each app in an open folder were white and disappeared on white icons like Drive and Contacts. They now sit on a small dark round plate.
 - **Settings search results on the open screen:** with a long section name beside it ("Notifications & Control Center"), a result's title was squeezed to one letter per line in the narrow list; the title and the section now share the row.
 - **StandBy tent title in What's New:** the title was missing its colon, so the sentence under it ran on from the title; it now reads as a heading.
 - **Crackgate "Show me" says when it needs gestures:** with Folio's gestures turned off it did nothing; it now tells you to turn them on.

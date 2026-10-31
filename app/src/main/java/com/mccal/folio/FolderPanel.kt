@@ -459,7 +459,12 @@ private fun FolderChild(
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick = { menu = true }, Modifier.align(Alignment.TopEnd).size(FolderBadge.BUTTON.dp)
-                .testTag("folder-options-${app.id}")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.move_1_s, app.label)) }
+                .testTag("folder-options-${app.id}")) {
+                // White dots on a white app icon (Drive, Contacts, Photos) vanished, so they sit on a dark round plate that works over any icon.
+                Box(Modifier.size(24.dp).background(Color.Black.copy(alpha = .5f), androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.MoreVert, stringResource(R.string.move_1_s, app.label), Modifier.size(18.dp), tint = Color.White)
+                }
+            }
             // Folio's menu: anchored under this button, growing from the corner it was opened at, and scrolling
             // when a layout has more pages than the window can show.
             FolioMenuPopup(menu, onDismiss = { menu = false }, tag = "folder-options-${app.id}") {
