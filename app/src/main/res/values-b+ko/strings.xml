@@ -58,7 +58,9 @@
     <string name="cc_page_connectivity">연결</string>
     <string name="cc_page_of">%1$s, %3$d페이지 중 %2$d페이지</string>
     <string name="shade_pull">모든 앱 상단에서 아래로 당기기</string>
-    <string name="shade_pull_note">앱 상단 가장자리의 왼쪽 절반을 아래로 당기면 알림 센터가, 오른쪽 절반을 당기면 제어 센터가 휴대전화의 알림창 대신 열립니다. 이 기능을 켜면 상단 띠에서의 탭은 앱에 전달되지 않으며, 전체 화면 앱은 Android 기본 동작을 유지합니다. 다른 앱 위에 Folio 패널 표시를 끄면 함께 꺼집니다.</string>
+    <string name="pull_tab">전체 화면 앱의 당김 탭</string>
+    <string name="pull_tab_note">상태 표시줄을 숨기는 앱(동영상, 게임 등)에서는 상단 가장자리에 작은 탭 두 개가 나타납니다. 왼쪽은 알림 센터, 오른쪽은 제어 센터입니다. 탭을 아래로 당기면 해당 패널이 열립니다.</string>
+    <string name="shade_pull_note">앱 상단 가장자리의 왼쪽 절반을 아래로 당기면 알림 센터가, 오른쪽 절반을 당기면 제어 센터가 휴대전화의 알림창 대신 열립니다. 이 기능을 켜면 상단 띠에서의 탭은 앱에 전달되지 않으며, 전체 화면 앱은 Android 기본 동작을 유지하므로 아래의 작은 탭을 대신 사용합니다. 다른 앱 위에 Folio 패널 표시를 끄면 함께 꺼집니다.</string>
     <string name="pull_target_title">아래로 쓸어내리면 열리는 것</string>
     <string name="pull_target_both">Folio 패널</string>
     <string name="pull_target_notifications">Folio 알림</string>

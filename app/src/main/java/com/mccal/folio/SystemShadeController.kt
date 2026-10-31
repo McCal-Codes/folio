@@ -52,7 +52,7 @@ class SystemShadeAccessibilityService : AccessibilityService() {
                     runCatching { result.hardwareBuffer.close() }
                     deliver(blurred)
                 }
-                override fun onFailure(errorCode: Int) { deliver(null) }
+                override fun onFailure(errorCode: Int) { android.util.Log.w("FolioShade", "screenshot for the backdrop refused, code $errorCode"); deliver(null) }
             })
         }.onFailure { deliver(null) }
     }

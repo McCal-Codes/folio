@@ -111,7 +111,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
         val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true,
-        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false)
+        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false, val shadePullTab: Boolean = true)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -172,7 +172,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         scopeJob.cancel()
         fullScreenJob?.cancel(); fullScreenJob = null
-        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove()
+        removeHandle(); removeDock(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); pullTabs.remove()
         CrackgateOwner.stop(); removeCrackgate()
         IslandEvents.release()
         recordingWatch.stop(wm)
@@ -180,7 +180,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     }
 
     // The Crackgate window is left alone here on purpose: it is MATCH_PARENT, so it follows the display, and recreating it would fade it in again and replay its changes.
-    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); sync() }
+    fun onConfigurationChanged() { removeHandle(); removeIsland(); removeButtons(); removeShade(); pullStrip.remove(); pullTabs.remove(); sync() }
 
     /**
      * Draws the Crackgate joke over whatever is on screen, or takes it down for null. The window is click-through (not touchable, not focusable),
@@ -257,7 +257,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
             j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
             pullTargetFrom(j.optString("pullTarget").ifEmpty { null }),
-            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true)
+            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true, shadePullTab = j.optBoolean("shadePullTab", true))
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -275,6 +275,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         watchFullScreen(!home && (s.buttons.on || (islandWanted && s.islandHideFullScreen) || pullPossible))
         val stripJoins = pullPossible && !fullScreen && !pullStrip.showing
         if (pullPossible && !fullScreen) pullStrip.add() else pullStrip.remove()
+        // Where the app is full screen the system keeps the swipe from the top, so two small tabs stand in for the strip.
+        if (pullTabWanted(pullPossible, s.shadePullTab, fullScreen)) pullTabs.add() else pullTabs.remove()
         if (s.dockEverywhere && !home) addHandle(s.leftHanded) else { removeHandle(); removeDock() }
         // The bar presses the same buttons the system's does, so it steps aside where the system's bar does.
         if (s.buttons.on && !home && !fullScreen) addButtons(s.buttons) else removeButtons()
@@ -376,13 +378,25 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         }
         if (wantSnapshot) {
             var arrived = false
+            val asked = android.os.SystemClock.elapsedRealtime()
             val finish: (android.graphics.Bitmap?) -> Unit = { snapshot ->
-                if (!arrived) { arrived = true; show(snapshot) } else { snapshot?.recycle() }
+                if (!arrived) { arrived = true; show(snapshot) }
+                // A phone that is slow to hand over the picture (a big screen, One UI) used to lose it: the panel was already up on the frosted
+                // glass and the late picture was thrown away, so the blur never showed. It fades in under the panel when it comes.
+                else if (snapshot != null) lateBackdrop(request, snapshot, android.os.SystemClock.elapsedRealtime() - asked)
             }
             SystemShadeAccessibilityService.takeBackdrop(finish)
             scope.launch { kotlinx.coroutines.delay(SNAPSHOT_WAIT_MS); finish(null) }
         } else show(null)
         return true
+    }
+
+    /** The blurred picture of the app, arrived after the panel was drawn: shown if that panel is still up and has no picture, otherwise dropped. */
+    private fun lateBackdrop(request: Int, snapshot: android.graphics.Bitmap, tookMs: Long) {
+        if (request == shadeRequest && shade != null && shadePanel.value != null && shadeBackdrop.value == null) {
+            android.util.Log.i("FolioShade", "backdrop arrived late, after $tookMs ms")
+            shadeBackdrop.value = snapshot.asImageBitmap()
+        } else snapshot.recycle()
     }
 
     /** Reply over another app: close the panels and start the small box to type in; if Android does not let it start, open the conversation instead. */
@@ -452,9 +466,12 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     // ---- Pull down from the top edge: see PullStrip ------------------------------------------
 
-    private val pullStrip = PullStrip(service, wm) { panel ->
+    private val pullStrip = PullStrip(service, wm) { panel -> pullFromEdge(panel) }
+
+    /** A pull on the strip or on one of the tabs: Folio's panel, or the phone's own, by the choice made in Settings. */
+    private fun pullFromEdge(panel: ShadePanel) {
         // The choice is read now, at the pull, so changing it needs no restart. A panel that is not Folio's here is the phone's own.
-        if (!pullOpensFolio(panel, settings.value.pullTarget)) { SystemShadeAccessibilityService.open(service, panel); return@PullStrip }
+        if (!pullOpensFolio(panel, settings.value.pullTarget)) { SystemShadeAccessibilityService.open(service, panel); return }
         // Through the same transparent entry a shortcut uses: a shade opened with an activity of ours in front gets the blur behind it,
         // and one opened from the service alone did not on the Android 17 emulator (the blur layer stayed invisible).
         val entry = if (panel == ShadePanel.NOTIFICATIONS) ShadeShortcutNotifications::class.java else ShadeShortcutQuickSettings::class.java
@@ -467,6 +484,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             if (ShadeShortcutActivity.created.get() == before && !openShade(panel)) SystemShadeAccessibilityService.open(service, panel)
         }
     }
+
+    private val pullTabs = PullTabs(service, wm) { panel -> pullFromEdge(panel) }
 
     // ---- Dock handle -------------------------------------------------------------------------
 
