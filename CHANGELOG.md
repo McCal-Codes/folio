@@ -122,6 +122,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Market tab highlight:** tapping a tab in the Market's bar or side rail lit a square over the whole tab, behind the rounded pill. The highlight now has the pill's shape.
+- **Long words in Settings search results:** on the open screen a result such as "Folder background" broke in the middle of a word. The title now gets the wider share of the row and only the section name wraps.
 - **Settings search results on the open screen:** with a long section name beside it ("Notifications & Control Center"), a result's title was squeezed to one letter per line in the narrow list; the title and the section now share the row.
 - **StandBy tent title in What's New:** the title was missing its colon, so the sentence under it ran on from the title; it now reads as a heading.
 - **Crackgate "Show me" says when it needs gestures:** with Folio's gestures turned off it did nothing; it now tells you to turn them on.

@@ -817,7 +817,9 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
         Row(Modifier.fillMaxWidth()) {
             for (tab in MarketTab.entries) {
                 Column(
-                    Modifier.weight(1f).marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
+                    // The tap highlight takes the shape of the selected pill (inset the same way) instead of a square over the whole cell.
+                    Modifier.weight(1f).padding(horizontal = 6.dp, vertical = 2.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+                        .marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
@@ -850,6 +852,7 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
                 for ((index, tab) in MarketTab.entries.withIndex()) {
                     Column(
                         Modifier.fillMaxWidth().then(if (index == 0) Modifier.onSizeChanged { itemHeight = it.height } else Modifier)
+                            .padding(horizontal = 6.dp, vertical = 2.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
                             .marketTab(tab, onSelect).padding(vertical = FolioSpace.COMPACT.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
