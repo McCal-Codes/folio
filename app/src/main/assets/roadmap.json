@@ -681,6 +681,41 @@
           "title": "Storage manager",
           "detail": "A Storage page in Settings under General: what is using your space, with shortcuts to Android's own tools. Beta testers first.",
           "status": "planned"
+        },
+        {
+          "icon": "sensor",
+          "color": "#32ADE6",
+          "title": "AirPods battery",
+          "detail": "Left, right and case battery for your AirPods, with Bluetooth scanning or with root. For supporters and Folio Dev first.",
+          "status": "planned"
+        },
+        {
+          "icon": "notifications",
+          "color": "#5E5CE6",
+          "title": "Swipe between panels",
+          "detail": "Swipe along the header strip to move between Notification Center and Control Center.",
+          "status": "planned"
+        },
+        {
+          "icon": "notifications",
+          "color": "#FF9F0A",
+          "title": "Expand a notification",
+          "detail": "An arrow on a notification card opens it larger, or choose a handle you pull or tap instead.",
+          "status": "planned"
+        },
+        {
+          "icon": "tune",
+          "color": "#32ADE6",
+          "title": "Hold cards",
+          "detail": "Press and hold brightness, volume, Focus or Now Playing in Control Center for more controls, like iOS.",
+          "status": "planned"
+        },
+        {
+          "icon": "apps",
+          "color": "#8E8E93",
+          "title": "Desktop, keyboard and mouse",
+          "detail": "Research on Folio in Samsung DeX with a keyboard and a mouse. Nothing is built yet.",
+          "status": "exploring"
         }
       ]
     },
