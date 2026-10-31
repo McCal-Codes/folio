@@ -2376,6 +2376,7 @@
     <string name="crackgate_header">Just for fun</string>
     <string name="crackgate_joke_summary">The famous Duo hinge fault, drawn for fun. Off by default.</string>
     <string name="crackgate_show_me">Show me</string>
+    <string name="crackgate_show_me_needs_gestures">Show me needs Folio&#8217;s gestures turned on first.</string>
     <string name="crackgate_glitchy">A little glitchy</string>
     <string name="crackgate_joke_note">Just a joke. It needs Folio&#8217;s gestures turned on, and shows over other apps only; over Folio&#8217;s own Home nothing is drawn. Shake the phone to clear it. It also clears after 10 minutes or when the screen turns off, and is never saved. A little glitchy adds a few slow changes; none with Reduce Motion.</string>
 </resources>

@@ -213,5 +213,8 @@ internal fun crackgateMaySurprise(
     return roll % oneInN.coerceAtLeast(1) == 0
 }
 
+/** The fault is drawn over other apps only: while any Folio screen is in front (Home, Settings) its window stays hidden, and it shows again when you leave. */
+internal fun crackgateVisible(folioInFront: Boolean): Boolean = !folioInFront
+
 /** True once a press has been held [HOLD_TO_START_MS]. A plain tap does not start it. */
 internal fun crackgateHoldStarts(heldMs: Long): Boolean = heldMs >= HOLD_TO_START_MS

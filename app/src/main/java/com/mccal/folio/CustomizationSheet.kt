@@ -2432,7 +2432,9 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
         }, "crackgate-switch")
         CardNote(stringResource(R.string.crackgate_joke_summary))
         IosActionRow(stringResource(R.string.crackgate_show_me), "crackgate-show-me", enabled = duet.crackgate) {
-            CrackgateOwner.start(context, duet.crackgateGlitchy)
+            if (!CrackgateOwner.start(context, duet.crackgateGlitchy)) {
+                android.widget.Toast.makeText(context, R.string.crackgate_show_me_needs_gestures, android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
         SettingsSwitch(stringResource(R.string.crackgate_glitchy), duet.crackgateGlitchy, { model.setDuet(duet.copy(crackgateGlitchy = it)) }, "crackgate-glitchy", enabled = duet.crackgate)
         CardNote(stringResource(R.string.crackgate_joke_note))
