@@ -54,6 +54,13 @@ class FolioMotionTest {
         assertEquals("or on, where the gate is shut", true, FolioMotion.resolve(override = true, gateOpen = false))
     }
 
+    @Test fun `a saved off from a beta is ignored once the gate is open for everyone`() {
+        assertEquals("the switch is gone then, so the old motion would have no way back", null, FolioMotion.overrideInEffect(saved = false, gateOpenForEveryone = true))
+        assertEquals(false, FolioMotion.overrideInEffect(saved = false, gateOpenForEveryone = false))
+        assertEquals(true, FolioMotion.overrideInEffect(saved = true, gateOpenForEveryone = false))
+        assertEquals(null, FolioMotion.overrideInEffect(saved = null, gateOpenForEveryone = false))
+    }
+
     @Test fun `the motion pass is a gate that opens in 0_6_9`() {
         assertEquals("0.6.9", FeatureGate.MOTION_V2.opensIn)
     }
