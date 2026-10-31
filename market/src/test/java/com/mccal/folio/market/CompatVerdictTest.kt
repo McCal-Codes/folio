@@ -118,6 +118,17 @@ class CompatVerdictTest {
         assertEquals(CompatVerdict.Works, with.verdict)
     }
 
+    @Test fun `a missing host tweak does not hide a missing dependency from Get`() {
+        val dir = File(root, "docs/sdk/examples/page-effect-tilt")
+        val manifest = File(dir, "manifest.json").readText().replace("\r\n", "\n")
+            .replace("\"minFolio\"", "\"depends\": [\"dev.example.absent\"], \"minFolio\"")
+        val bytes = zip(mapOf("manifest.json" to manifest.toByteArray(), "effect.json" to File(dir, "effect.json").readBytes()))
+        val o = run(bytes to manifest)
+        refused(o, CompatReason.NEEDS_HOST_TWEAK)
+        assertTrue("the first cause is still the host, as the installer reports it", (o.verdict as CompatVerdict.CannotInstall).blockers.size == 2)
+        assertTrue("Get stays off: the dependency is not something the host fix solves", o.verdict.stopsGet)
+    }
+
     @Test fun `replacing an installed package cannot install`() {
         val rival = cabinetWith(other("\"conflicts\": [\"com.mccal.folio.cabinet\"]"))
         refused(run(rival, beforehand = listOf(cabinetWith().first)), CompatReason.REPLACES_INSTALLED)

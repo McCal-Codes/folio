@@ -156,7 +156,8 @@ object PackageCompatibility {
      * and the installer all read this, so none of them can say yes while another says no.
      */
     fun verdict(checks: List<CompatCheck>): CompatVerdict {
-        blocking(checks)?.let { return CompatVerdict.CannotInstall(it.reason(), it) }
+        val blockers = checks.filter { it.state == CompatState.BLOCKED }
+        blockers.firstOrNull()?.let { return CompatVerdict.CannotInstall(it.reason(), it, blockers) }
         val limits = checks.filter { it.state == CompatState.NOTE }
         return if (limits.isEmpty()) CompatVerdict.Works else CompatVerdict.WorksWithLimit(limits)
     }
@@ -191,12 +192,15 @@ sealed interface CompatVerdict {
     /** It installs, with something worth knowing first (a screen it doesn't cover, a Folio newer than it was tried on). */
     data class WorksWithLimit(val limits: List<CompatCheck>) : CompatVerdict
 
-    /** It does not install. [cause] is the first blocking check, the one the installer refuses on. */
-    data class CannotInstall(val reason: CompatReason, val cause: CompatCheck) : CompatVerdict
+    /**
+     * It does not install. [cause] is the first blocking check, the one the installer refuses on; [blockers] is every
+     * blocking check, so an action is decided on all of them and a fixable cause cannot hide an unfixable one.
+     */
+    data class CannotInstall(val reason: CompatReason, val cause: CompatCheck, val blockers: List<CompatCheck> = listOf(cause)) : CompatVerdict
 }
 
-/** True when Get must be off: it cannot install and nothing on the page fixes that in place. */
-val CompatVerdict.stopsGet: Boolean get() = this is CompatVerdict.CannotInstall && !reason.offersFix
+/** True when Get must be off: it cannot install and something blocking it is not fixed in place by the page. */
+val CompatVerdict.stopsGet: Boolean get() = this is CompatVerdict.CannotInstall && blockers.any { !it.reason().offersFix }
 
 private fun CompatCheck.reason(): CompatReason = when (this) {
     is CompatCheck.Android -> CompatReason.ANDROID_VERSION
