@@ -80,6 +80,7 @@ import com.mccal.folio.market.Capability
 import com.mccal.folio.market.DepictionBlock
 import com.mccal.folio.market.IndexPackage
 import com.mccal.folio.market.InstallResult
+import com.mccal.folio.market.stopsGet
 import com.mccal.folio.market.InstalledPackage
 import com.mccal.folio.market.FeaturedStyle
 import com.mccal.folio.market.PackageManifest
@@ -681,6 +682,7 @@ internal fun MarketScreen(
                         onCancel = { MarketImport.pending = null },
                         host = importHost,
                         onGetHost = { MarketImport.pending = null; importHost?.let { getHost(it.id, it.name) } },
+                        checks = session.compatibility(pkg.manifest, pkg.changes),
                     )
                 }
             }
@@ -787,6 +789,7 @@ internal fun MarketScreen(
                             onCancel = { confirming = null },
                             host = sheetHost,
                             onGetHost = { confirming = null; sheetHost?.let { getHost(it.id, it.name) } },
+                            checks = entry.entry.manifest?.let { session.compatibility(it) }.orEmpty(),
                         )
                     }
                 }
@@ -1162,9 +1165,12 @@ private fun MarketRow(
     val appUpdate = if (external) appUpdateFor(entry) else null
     // Whether it can be had here, before the person taps. A package already on the phone has been through that, unless
     // this row offers a newer version of it: that version can need more than the one installed did.
-    val compat = remember(entry, installed, installedAll, update, MarketWork.busyId) {
-        if (installed == null || update) compatLines(entry.entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    val checks = remember(entry, installed, installedAll, update, MarketWork.busyId) {
+        if (installed == null || update) entry.entry.manifest?.let { session.compatibility(it) }.orEmpty() else emptyList()
     }
+    val compat = remember(checks) { compatLines(checks) }
+    // The same verdict the installer refuses on, and the install sheet and package page read.
+    val verdict = remember(checks) { com.mccal.folio.market.PackageCompatibility.verdict(checks) }
     Row(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
@@ -1223,7 +1229,7 @@ private fun MarketRow(
             entry.entry.needs.isNotEmpty() -> Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
             // The line under its name says why; there is nothing to install until that changes. What is already on the
             // phone can still be removed.
-            compatBlocked(compat) != null -> if (installed != null) MarketActionButton(R.string.remove, name, onRemove)
+            verdict.stopsGet -> if (installed != null) MarketActionButton(R.string.remove, name, onRemove)
             update || appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
             // An app of its own is Get until Android has it, then Open, and Update when its source lists a newer one.
             external ->
@@ -1383,9 +1389,12 @@ private fun MarketPackagePage(
     val onPhone = if (external) externalAppId(entry.manifest) else null
     // A newer listing of what is installed offers Update, and has to be checked like anything else being got.
     val updateAvailable = installed != null && entry.version > installed.version
-    val compat = remember(entry, installed, installedAll, updateAvailable, MarketWork.busyId) {
-        if (installed == null || updateAvailable) compatLines(entry.manifest?.let(session::compatibility).orEmpty()) else emptyList()
+    val checks = remember(entry, installed, installedAll, updateAvailable, MarketWork.busyId) {
+        if (installed == null || updateAvailable) entry.manifest?.let { session.compatibility(it) }.orEmpty() else emptyList()
     }
+    val compat = remember(checks) { compatLines(checks) }
+    // The same verdict the installer refuses on, and the install sheet and package row read.
+    val verdict = remember(checks) { com.mccal.folio.market.PackageCompatibility.verdict(checks) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1446,11 +1455,11 @@ private fun MarketPackagePage(
                 // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
                 entry.needs.isNotEmpty() && installed == null ->
                     Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
-                updateAvailable && entry.needs.isEmpty() && compatBlocked(compat) == null && revoked == null && incompatible == null ->
+                updateAvailable && entry.needs.isEmpty() && !verdict.stopsGet && revoked == null && incompatible == null ->
                     MarketActionButton(R.string.update, name, onGet)
                 installed != null -> MarketActionButton(R.string.remove, name, onRemove)
                 // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
-                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && compatBlocked(compat) == null)
+                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && !verdict.stopsGet)
             }
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source

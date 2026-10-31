@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mccal.folio.market.CompatCheck
+import com.mccal.folio.market.CompatState
 import com.mccal.folio.market.IndexPackage
+import com.mccal.folio.market.PackageCompatibility
+import com.mccal.folio.market.stopsGet
 import com.mccal.folio.market.PackageSafety
 
 /**
@@ -45,7 +50,7 @@ import com.mccal.folio.market.PackageSafety
 @Composable
 internal fun MarketInstallSheet(
     entry: IndexPackage, builtIn: Boolean, onGet: () -> Unit, onCancel: () -> Unit,
-    host: HostTweak? = null, onGetHost: () -> Unit = {},
+    host: HostTweak? = null, onGetHost: () -> Unit = {}, checks: List<CompatCheck> = emptyList(),
 ) {
     val manifest = entry.manifest ?: return
     MarketInstallSheet(
@@ -59,6 +64,7 @@ internal fun MarketInstallSheet(
         onCancel = onCancel,
         host = host,
         onGetHost = onGetHost,
+        checks = checks,
     )
 }
 
@@ -118,10 +124,15 @@ internal fun MarketInstallSheet(
     onCancel: () -> Unit,
     host: HostTweak? = null,
     onGetHost: () -> Unit = {},
+    /** What [com.mccal.folio.market.PackageCompatibility] made of this package here: the sheet and the installer read one answer. */
+    checks: List<CompatCheck> = emptyList(),
 ) {
     val safety = PackageSafety.of(manifest)
     val name = manifest.name.english
+    val verdict = remember(checks) { PackageCompatibility.verdict(checks) }
     val hostMissing = host != null && !host.onPhone
+    // Off while something is in the way, whatever it is; a missing host tweak is off too, and has its own note.
+    val getOff = hostMissing || verdict.stopsGet
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.XL.dp).testTag("market-install-sheet")) {
         Text(stringResource(R.string.get_1_s, name), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
         Text(
@@ -130,6 +141,9 @@ internal fun MarketInstallSheet(
         )
         host?.let { WorksWithChip(it, Modifier.padding(bottom = FolioSpace.SMALL.dp)) }
         if (hostMissing) NeedsHostNote(host!!, name, onGetHost, Modifier.padding(bottom = FolioSpace.MEDIUM.dp))
+        // Why it can't be had, or what to know first. Lines that are simply fine are left to the package page.
+        val said = compatLines(checks).filter { it.state != CompatState.OK }
+        if (said.isNotEmpty()) CompatibilityCard(said, Modifier.padding(bottom = FolioSpace.MEDIUM.dp).testTag("install-compat"))
         // Said before Get, because it's part of deciding: the author declared AI helped make this.
         manifest.aiAssisted?.let { ai ->
             Row(Modifier.padding(bottom = FolioSpace.MEDIUM.dp).testTag("install-ai-assisted"), verticalAlignment = Alignment.Top) {
@@ -190,10 +204,10 @@ internal fun MarketInstallSheet(
             // Off while the tweak it adds to is missing: the note above says why, and offers the tweak.
             Text(
                 stringResource(R.string.get),
-                color = Color.White.copy(alpha = if (hostMissing) .4f else 1f), fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = if (getOff) .4f else 1f), fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(FolioRadius.CARD.dp))
-                    .background(if (hostMissing) Color.White.copy(alpha = .12f) else LocalAccent.current.fill)
-                    .clickable(enabled = !hostMissing, onClickLabel = getName, onClick = onGet)
+                    .background(if (getOff) Color.White.copy(alpha = .12f) else LocalAccent.current.fill)
+                    .clickable(enabled = !getOff, onClickLabel = getName, onClick = onGet)
                     .heightIn(min = FolioRow.ACTION.dp).wrapContentHeight().padding(horizontal = 22.dp, vertical = FolioSpace.MEDIUM.dp)
                     .testTag("market-install-confirm"),
             )

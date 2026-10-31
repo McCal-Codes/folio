@@ -5,6 +5,11 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.7.0] - Unreleased
+
+### Added
+- **Compatibility before Get:** the Market's install sheet now says up front whether a package works on your phone, works with a limit (for example it covers only one of your screens) or cannot be installed, and why, using the same answer the package page shows and the installer acts on. Get is off, with the reason beside it, whenever the installer would refuse.
+
 ## [0.6.9] - 2026-10-31
 
 ### Added
