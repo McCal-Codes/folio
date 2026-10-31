@@ -248,8 +248,8 @@ internal enum class FeatureGate(
          */
         private const val OPEN_IN_0_6_8 = true
 
-        /** The features built during 0.6.9 for supporters to try first, which open together in the 0.6.9 release. */
-        private const val OPEN_IN_0_6_9 = false
+        /** The features built during 0.6.9 for supporters to try first, which open together in the 0.6.9 release. They are open for the last beta and the stable. */
+        private const val OPEN_IN_0_6_9 = true
 
         /** The features built during 0.7.0 for supporters to try first, which open together in the 0.7.0 release. */
         private const val OPEN_IN_0_7_0 = false
