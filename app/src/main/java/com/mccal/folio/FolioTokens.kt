@@ -305,6 +305,12 @@ internal object FolioMotion {
     /** What the switch says, if it was ever used: on, off, or null for "follow the gate". */
     fun resolve(override: Boolean?, gateOpen: Boolean) = override ?: gateOpen
 
+    /**
+     * The saved switch counts only while the pass is still on trial. Once the gate is open for everyone the switch is gone from Settings,
+     * so a "off" saved during a beta would leave that tester on the old motion with no way back; it is ignored then.
+     */
+    fun overrideInEffect(saved: Boolean?, gateOpenForEveryone: Boolean): Boolean? = saved.takeUnless { gateOpenForEveryone }
+
     private const val PREFS = "folio_motion"
     private const val OVERRIDE = "motionPassOverride"
 
@@ -312,7 +318,7 @@ internal object FolioMotion {
     fun initialize(context: android.content.Context) {
         val saved = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
         val override = if (saved.contains(OVERRIDE)) saved.getBoolean(OVERRIDE, false) else null
-        use(resolve(override, FeatureGate.MOTION_V2.isOpen(context)))
+        use(resolve(overrideInEffect(override, FeatureGate.MOTION_V2.open), FeatureGate.MOTION_V2.isOpen(context)))
     }
 
     /** The switch in Settings › Advanced. Takes effect at once for what is on screen and for everything opened after. */
