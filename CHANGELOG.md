@@ -121,6 +121,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Setup progress and quiet confirmations:** Finish setting up shows how many steps are done (1 of 2) with a tick on the finished ones, which stay where they were, and a short confirmation such as a saved layout backup is an island notice instead of a dialog you have to dismiss.
 
 ### Fixed
+- **Swiping right always lands somewhere:** when the Google app refuses to serve Discover to Folio (it only serves system apps and debug builds), Home now shows Today View in that spot instead of an error page, and Settings › Today View says why. Folio asks the Google app again at every launch, so Discover returns by itself if that changes. The failure page, where it still shows, is readable on light and dark glass, and Copy Diagnostics has a Discover section.
 - Searching Settings for a Duet setting (Hinge detents, Fold motion, Crackgate) now opens the Duet page; it opened the list of tweaks.
 - The Turn On Folio Gestures steps were English only; they are now translated, and name the gestures service the way Android lists it in your language.
 - On a tablet or any screen that does not fold, the dark fold-style shading no longer sweeps across the left side while Folio opens.

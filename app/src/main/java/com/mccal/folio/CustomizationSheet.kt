@@ -524,6 +524,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             { model.setLeftPage(it) }, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "left-page")
                         CardNote(if (state.leftPage == "NONE") stringResource(R.string.nothing_to_the_left_of_home_swiping_righ)
                             else stringResource(R.string.today_view_is_iphone_s_widget_page_searc))
+                        if (state.leftPage == "DISCOVER") {
+                            // Asked when the choice is made or the page opens, so the answer is here before anyone swipes right and meets an error.
+                            val probeContext = androidx.compose.ui.platform.LocalContext.current
+                            val discoverRefused by DiscoverAvailability.refused.collectAsState()
+                            LaunchedEffect(Unit) { DiscoverAvailability.refresh(probeContext) }
+                            if (discoverRefused) CardNote(stringResource(R.string.discover_refused_note), modifier = Modifier.testTag("discover-refused-note"))
+                        }
                         if (state.leftPage == "TODAY") {
                             IosMenuRow(stringResource(R.string.when_unfolded), listOf("PAGE" to stringResource(R.string.swipe_to_it), "BESIDE" to stringResource(R.string.beside_home), "OFF" to stringResource(R.string.none)),
                                 state.todayUnfolded, model::setTodayUnfolded, tag = "today-unfolded")

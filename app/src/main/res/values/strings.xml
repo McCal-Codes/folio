@@ -350,6 +350,7 @@
     <string name="nothing">Nothing</string>
     <string name="background_blur">Background blur</string>
     <string name="google_discover">Google Discover</string>
+    <string name="discover_refused_note">The Google app only serves Discover to system apps and debug builds, so it refused this copy of Folio. Folio shows Today View in its place.</string>
     <string name="nothing_to_the_left_of_home_swiping_righ">Nothing to the left of Home: swiping right on your first page does nothing.</string>
     <string name="no_today_view_while_unfolded_it_s_still">No Today View while unfolded; it\'s still there on the cover screen.</string>
     <string name="swipe_right_from_your_first_home_page_to">Swipe right from your first Home page to open it, folded or unfolded.</string>

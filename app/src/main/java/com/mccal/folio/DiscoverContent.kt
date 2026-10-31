@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -21,6 +22,8 @@ internal fun DiscoverContent(modifier: Modifier = Modifier) {
         context.packageManager.getLaunchIntentForPackage(DiscoverClient.GOOGLE_PACKAGE)
     }
     var showMessage by remember { mutableStateOf(false) }
+    // The glass is light over a light wallpaper and dark over a dark one, so the words follow it (Surface cannot: Glass is not a theme color).
+    val ink = if (Glass.luminance() > .5f) Color.Black.copy(alpha = .86f) else Color.White
     LaunchedEffect(message) {
         showMessage = false
         if (message != null) { delay(650); showMessage = true }
@@ -33,9 +36,9 @@ internal fun DiscoverContent(modifier: Modifier = Modifier) {
             border = BorderStroke(1.dp, Color.White.copy(alpha = .5f))) {
             Column(Modifier.fillMaxSize().padding(FolioSpace.HUGE.dp),
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.discover), style = MaterialTheme.typography.headlineMedium, color = ink)
                 Spacer(Modifier.height(16.dp))
-                Text(message ?: "", style = MaterialTheme.typography.bodyMedium)
+                Text(message ?: "", style = MaterialTheme.typography.bodyMedium, color = ink.copy(alpha = .72f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(20.dp))
                 FolioButton(stringResource(R.string.retry), LiveDiscover::retry, style = FolioButtonStyle.TONAL, tag = "discover-retry")
                 if (googleIntent != null) TextButton(onClick = {

@@ -356,6 +356,7 @@
     <string name="nothing">无</string>
     <string name="background_blur">背景模糊</string>
     <string name="google_discover">Google Discover</string>
+    <string name="discover_refused_note">Google App 只向系统应用和调试版应用提供 Discover，因此拒绝了这个 Folio 安装版。Folio 改为显示“今天”视图。</string>
     <string name="nothing_to_the_left_of_home_swiping_righ">主屏幕左侧不显示任何内容：在第一页向右轻扫不会有任何反应。</string>
     <string name="no_today_view_while_unfolded_it_s_still">展开时不显示“今天”视图；在外屏上它仍然存在。</string>
     <string name="swipe_right_from_your_first_home_page_to">在第一个主屏幕页面向右轻扫即可打开，无论折叠还是展开。</string>
