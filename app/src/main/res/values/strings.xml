@@ -53,7 +53,9 @@
     <string name="cc_page_connectivity">Connectivity</string>
     <string name="cc_page_of">%1$s, page %2$d of %3$d</string>
     <string name="shade_pull">Pull down from the top of any app</string>
-    <string name="shade_pull_note">A pull down on the left half of an app\'s top edge opens Notification Center, and on the right half Control Center, in place of the phone\'s shade. Taps on that top strip do not reach the app while this is on, and an app in full screen keeps Android\'s own. It follows Folio\'s panels over other apps, so it is off when that is off.</string>
+    <string name="pull_tab">Pull tabs in full-screen apps</string>
+    <string name="pull_tab_note">In an app that hides the status bar, like a video or a game, two small tabs sit on the top edge: the left one opens Notification Center and the right one Control Center. Pull a tab down to open its panel.</string>
+    <string name="shade_pull_note">A pull down on the left half of an app\'s top edge opens Notification Center, and on the right half Control Center, in place of the phone\'s shade. Taps on that top strip do not reach the app while this is on, and a full-screen app keeps Android\'s own swipe, so it gets the small tabs below instead. It follows Folio\'s panels over other apps, so it is off when that is off.</string>
     <string name="pull_target_title">Swipe down opens</string>
     <string name="pull_target_both">Folio\'s panels</string>
     <string name="pull_target_notifications">Folio notifications</string>

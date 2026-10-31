@@ -453,6 +453,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             SettingsSwitch(stringResource(R.string.shade_pull), state.shadePull, model::setShadePull, "shade-pull-switch")
                             CardNote(stringResource(R.string.shade_pull_note))
                             if (state.shadePull) {
+                                SettingsSwitch(stringResource(R.string.pull_tab), state.shadePullTab, model::setShadePullTab, "pull-tab-switch")
+                                CardNote(stringResource(R.string.pull_tab_note))
                                 val pullChoices = listOf(PullTarget.BOTH to stringResource(R.string.pull_target_both),
                                     PullTarget.FOLIO_NOTIFICATIONS to stringResource(R.string.pull_target_notifications),
                                     PullTarget.FOLIO_CONTROL_CENTER to stringResource(R.string.pull_target_control_center))
@@ -1511,6 +1513,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.nc_layout_title to CustomizationPage.NOTIFICATIONS,
     R.string.shade_over_apps to CustomizationPage.NOTIFICATIONS,
     R.string.shade_pull to CustomizationPage.NOTIFICATIONS,
+    R.string.pull_tab to CustomizationPage.NOTIFICATIONS,
     R.string.pull_target_title to CustomizationPage.NOTIFICATIONS,
     R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,

@@ -5,6 +5,17 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.7.0] - Unreleased
+
+### Added
+- **Pull tabs in full-screen apps:** in a video, a game or a reader that hides the status bar, two small tabs sit on the top edge, the left for Notification Center and the right for Control Center. Pull one down to open its panel. A switch under "Pull down from the top of any app" turns them off.
+
+### Changed
+- **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
+
+### Fixed
+- **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
+
 ## [0.6.9] - 2026-10-31
 
 ### Added
