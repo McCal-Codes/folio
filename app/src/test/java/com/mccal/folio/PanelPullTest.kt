@@ -1,6 +1,10 @@
 package com.mccal.folio
 
+import androidx.compose.runtime.BroadcastFrameClock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,6 +25,22 @@ class PanelPullTest {
         val pull = PanelPull()
         pull.drag(-300f)
         pull.reset()
+        assertEquals(0f, pull.offset, 0f)
+    }
+
+    @Test fun `a new touch ends the spring back, so it never fights the finger for the offset`() {
+        val pull = PanelPull()
+        val scope = CoroutineScope(Dispatchers.Unconfined + BroadcastFrameClock())
+        pull.drag(-200f)
+        pull.release(scope, velocityY = 0f, thresholdPx = 1000f, flickPx = Float.MAX_VALUE, goBack = { false }, close = { error("a short pull must not close") })
+        assertTrue(pull.springing)
+        pull.drag(-10f)
+        assertFalse(pull.springing)
+        assertEquals(-210f, pull.offset, 0f)
+        pull.release(scope, velocityY = 0f, thresholdPx = 1000f, flickPx = Float.MAX_VALUE, goBack = { false }, close = { error("a short pull must not close") })
+        assertTrue(pull.springing)
+        pull.reset()
+        assertFalse(pull.springing)
         assertEquals(0f, pull.offset, 0f)
     }
 

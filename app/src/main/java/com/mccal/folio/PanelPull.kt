@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -32,10 +33,16 @@ internal class PanelPull {
     var offset by mutableFloatStateOf(0f)
         private set
 
-    fun reset() { offset = 0f }
+    /** The spring-back in flight, if any. A new touch ends it, so it never fights a finger for [offset]. */
+    private var springBack: Job? = null
+
+    /** True while a spring-back is still running. */
+    val springing: Boolean get() = springBack?.isActive == true
+
+    fun reset() { springBack?.cancel(); offset = 0f }
 
     /** A finger move of [dy] pixels: up pulls the panel, down gives back what was pulled but never pushes it below its place. */
-    fun drag(dy: Float) { offset = (offset + dy).coerceAtMost(0f) }
+    fun drag(dy: Float) { springBack?.cancel(); offset = (offset + dy).coerceAtMost(0f) }
 
     /**
      * The finger lifted with [velocityY] (negative going up). Closes with [close] when the pull or the flick is enough, unless [goBack] says the swipe
@@ -44,7 +51,8 @@ internal class PanelPull {
     fun release(scope: CoroutineScope, velocityY: Float, thresholdPx: Float, flickPx: Float, goBack: () -> Boolean, close: () -> Unit) {
         if (offset >= 0f) return
         if (ccSwipeAwayCloses(offset, velocityY, thresholdPx, flickPx) && !goBack()) { close(); return }
-        scope.launch {
+        springBack?.cancel()
+        springBack = scope.launch {
             androidx.compose.animation.core.animate(offset, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> offset = v }
         }
     }
