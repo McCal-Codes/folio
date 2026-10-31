@@ -9,6 +9,11 @@ import org.junit.Test
 
 /** Crackgate rules: pure, and built so the joke can never flicker. */
 class CrackgateLogicTest {
+    @Test fun `the fault is hidden while Folio is in front and shows over other apps`() {
+        assertFalse(crackgateVisible(folioInFront = true))
+        assertTrue(crackgateVisible(folioInFront = false))
+    }
+
     // Shake
 
     @Test fun `two hard samples inside the window and the gap make a shake`() {

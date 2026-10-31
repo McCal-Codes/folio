@@ -199,6 +199,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
+        view.visibility = if (crackgateVisible(FolioForeground.visible.value)) View.VISIBLE else View.INVISIBLE
         if (runCatching { wm.addView(view, params) }.isSuccess) crackgate = view else CrackgateOwner.stop()
     }
 
@@ -262,6 +263,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun sync() {
         val s = settings.value.let { if (SafeMode.active) it.copy(dockEverywhere = false, islandEverywhere = false, buttons = ButtonBarSettings()) else it }
         val home = FolioForeground.visible.value
+        // Over Folio itself the fault stays hidden (it keeps its timer and its shake and screen-off listeners); it shows again over other apps.
+        crackgate?.visibility = if (crackgateVisible(home)) View.VISIBLE else View.INVISIBLE
         // The joke goes the moment its switch is turned off or its gate is shut.
         if (CrackgateOwner.shown.value != null) {
             if (!s.crackgate || !FeatureGate.CRACKGATE.isOpen(service)) CrackgateOwner.stop() else CrackgateOwner.onFolioReduceMotion(s.reduceMotion)
