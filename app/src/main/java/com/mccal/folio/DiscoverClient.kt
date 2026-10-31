@@ -99,6 +99,7 @@ internal class DiscoverClient(
                     return
                 }
                 remote = service
+                lastResult = "bound to the Google app's overlay"
                 trace { "bound to ${name.flattenToShortString()}" }
                 handler.post {
                     if (generation != attempt || activity.isDestroyed) return@post
@@ -135,6 +136,7 @@ internal class DiscoverClient(
                 }
             }
             override fun onNullBinding(name: ComponentName) {
+                lastResult = "the Google app gave no binder"
                 failed("The Google app did not provide a feed. Update the Google app, or use Today View instead " +
                     "(Settings \u203a Today View).", attempt)
             }
@@ -291,7 +293,10 @@ internal class DiscoverClient(
         }
 
         /** The overlay protocol version Launcher3's own client asks for; the Google app refuses versions it doesn't know. */
-        private const val OVERLAY_VERSION = 9
+        internal const val OVERLAY_VERSION = 9
+
+        /** What the last attempt to reach Google's overlay did, for Copy Diagnostics ("not tried yet" until Discover is first opened). */
+        @Volatile internal var lastResult = "not tried yet"
         const val TAG = "FolioDiscover"
         private const val OVERLAY = "com.google.android.libraries.launcherclient.ILauncherOverlay"
         private const val CALLBACK = "com.google.android.libraries.launcherclient.ILauncherOverlayCallback"
