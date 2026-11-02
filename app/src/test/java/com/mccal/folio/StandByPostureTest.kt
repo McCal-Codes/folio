@@ -464,6 +464,21 @@ class StandByPostureTest {
         assertEquals(1f, m[18], 0f)
     }
 
+    @Test fun `nightArtColorMatrix amber maps to red and green channels without blue`() {
+        val m = nightArtColorMatrix("amber")
+        assertEquals(20, m.size)
+        assertTrue(m[0] > 0f)
+        assertTrue(m[5] > 0f)
+        for (i in 10..14) assertEquals("index $i must be 0f", 0f, m[i], 0f)
+    }
+
+    @Test fun `nightArtColorMatrix blue maps to blue and soft green channels without red`() {
+        val m = nightArtColorMatrix("blue")
+        assertEquals(20, m.size)
+        for (i in 0..4) assertEquals("index $i must be 0f", 0f, m[i], 0f)
+        assertTrue(m[10] > 0f)
+    }
+
     // --- 7. Phase 6: Notification dots, count, contrast nudging, lock-screen privacy, and glow rate-limiter ---
 
     @Test fun `nudgeStandByColorOnBlack lifts dark colors to at least 3 to 1 non-text contrast on black`() {

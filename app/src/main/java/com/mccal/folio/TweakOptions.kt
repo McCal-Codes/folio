@@ -77,7 +77,7 @@ internal object TweakOptions {
             TweakOption.Choice("nightBrightness", R.string.standby2_night_brightness, listOf(
                 "0" to R.string.off, "20" to R.string.standby2_bright_20, "40" to R.string.standby2_bright_40,
                 "60" to R.string.standby2_bright_60, "80" to R.string.standby2_bright_80, "100" to R.string.standby2_bright_100), "60", section = R.string.standby2_night_mode),
-            TweakOption.Toggle("offCharger", R.string.standby2_off_charger, on = false, section = R.string.standby2_night_mode),
+            TweakOption.Toggle("offCharger", R.string.standby2_off_charger, on = false, section = R.string.battery),
         ),
     )
 

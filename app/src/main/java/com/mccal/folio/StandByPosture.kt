@@ -335,15 +335,34 @@ internal fun formatStandByChargeLine(
 }
 
 /**
- * 4x5 ColorMatrix mapping RGB luminance into StandBy's night red channel only (Green = 0, Blue = 0),
- * so album art on the StandBy 2 player card never emits white or blue light in a dark bedroom.
+ * 4x5 ColorMatrix mapping RGB luminance into StandBy's night hue (Red, Amber, or Blue),
+ * so album art on the StandBy 2 player card matches the selected night hue in a dark room.
  */
-internal fun nightArtColorMatrix(): FloatArray = floatArrayOf(
-    0.165f, 0.558f, 0.056f, 0f, 0f,
-    0f,     0f,     0f,     0f, 0f,
-    0f,     0f,     0f,     0f, 0f,
-    0f,     0f,     0f,     1f, 0f,
-)
+internal fun nightArtColorMatrix(nightColor: String = "red"): FloatArray {
+    val lumR = 0.165f
+    val lumG = 0.558f
+    val lumB = 0.056f
+    return when (nightColor) {
+        "amber" -> floatArrayOf(
+            lumR,         lumG,         lumB,         0f, 0f,
+            lumR * 0.58f, lumG * 0.58f, lumB * 0.58f, 0f, 0f,
+            0f,           0f,           0f,           0f, 0f,
+            0f,           0f,           0f,           1f, 0f,
+        )
+        "blue" -> floatArrayOf(
+            0f,           0f,           0f,           0f, 0f,
+            lumR * 0.35f, lumG * 0.35f, lumB * 0.35f, 0f, 0f,
+            lumR,         lumG,         lumB,         0f, 0f,
+            0f,           0f,           0f,           1f, 0f,
+        )
+        else -> floatArrayOf(
+            lumR, lumG, lumB, 0f, 0f,
+            0f,   0f,   0f,   0f, 0f,
+            0f,   0f,   0f,   0f, 0f,
+            0f,   0f,   0f,   1f, 0f,
+        )
+    }
+}
 
 /**
  * Relative luminance of an sRGB color in `0.0..1.0` per WCAG 2.x.

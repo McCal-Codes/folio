@@ -100,11 +100,14 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
     }
 
     override fun onStart(owner: LifecycleOwner) {
-        context.registerReceiver(receiver, IntentFilter().apply {
+        val sticky = context.registerReceiver(receiver, IntentFilter().apply {
             addAction(Intent.ACTION_BATTERY_CHANGED); addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
             addAction(WifiManager.RSSI_CHANGED_ACTION); addAction(android.media.AudioManager.RINGER_MODE_CHANGED_ACTION)
         })
         receiverRegistered = true
+        if (sticky != null) {
+            receiver.onReceive(context, sticky)
+        }
         networkRegistered = runCatching { connection.registerDefaultNetworkCallback(networkCallback); true }.getOrDefault(false)
         phoneRegistered = runCatching { phone.registerTelephonyCallback(context.mainExecutor, phoneCallback); true }.getOrDefault(false)
         mutable.update { it.copy(cellularLevel = runCatching { phone.signalStrength?.level }.getOrNull()) }
