@@ -90,7 +90,7 @@ internal fun resolveStandByPosture(s: StandByPostureSignals): StandByPosture {
     return if (s.widthDp >= s.heightDp) StandByPosture.LANDSCAPE else StandByPosture.PORTRAIT
 }
 
-internal enum class StandByClockLook { THIN, BOLD, ANALOG, FLIP, WORLD }
+internal enum class StandByClockLook { THIN, BOLD, ANALOG, NUMERALS, FLIP, WORLD, SOLAR, WORDS, STACK, NEON }
 internal enum class StandByPlayerStyle { LEGACY_SLAB, CARD, COMPACT, OFF }
 internal enum class StandByNotifMode { OFF, COUNT_ONLY, COLORS }
 internal enum class StandByNightMode { SCHEDULE, ROOM_LIGHT, NEVER }
@@ -113,6 +113,7 @@ internal data class StandByEffectiveConfig(
     val tapEmptySpaceCloses: Boolean = true,
     val nightColor: String = "red",
     val offCharger: Boolean = false,
+    val sunriseBeforeAlarm: Boolean = true,
 ) {
     companion object {
         val LEGACY_0_6_9 = StandByEffectiveConfig()
@@ -132,6 +133,7 @@ internal fun resolveStandByConfig(
     nightBrightnessPercent: Int = 60,
     nightColor: String = "red",
     offCharger: Boolean = false,
+    sunriseBeforeAlarm: Boolean = true,
 ): StandByEffectiveConfig {
     if (!gateOpen || !packageInstalled || !packageEnabled) return StandByEffectiveConfig.LEGACY_0_6_9
     return StandByEffectiveConfig(
@@ -147,6 +149,7 @@ internal fun resolveStandByConfig(
         tapEmptySpaceCloses = false,
         nightColor = nightColor,
         offCharger = offCharger,
+        sunriseBeforeAlarm = sunriseBeforeAlarm,
     )
 }
 
@@ -164,8 +167,13 @@ internal fun resolveStandByConfig(
     val clockLook = when (TweakOptions.value(opts, STANDBY2_ID, "clock")) {
         "bold" -> StandByClockLook.BOLD
         "analog" -> StandByClockLook.ANALOG
+        "numerals" -> StandByClockLook.NUMERALS
         "flip" -> StandByClockLook.FLIP
         "world" -> StandByClockLook.WORLD
+        "solar" -> StandByClockLook.SOLAR
+        "words" -> StandByClockLook.WORDS
+        "stack" -> StandByClockLook.STACK
+        "neon" -> StandByClockLook.NEON
         else -> StandByClockLook.THIN
     }
     val playerStyle = when (TweakOptions.value(opts, STANDBY2_ID, "player")) {
@@ -192,6 +200,7 @@ internal fun resolveStandByConfig(
         else -> "red"
     }
     val offCharger = TweakOptions.on(opts, STANDBY2_ID, "offCharger")
+    val sunrise = TweakOptions.on(opts, STANDBY2_ID, "sunrise")
     return resolveStandByConfig(
         gateOpen = gateOpen,
         packageInstalled = installed,
@@ -205,15 +214,16 @@ internal fun resolveStandByConfig(
         nightBrightnessPercent = nightBrightness,
         nightColor = nightColor,
         offCharger = offCharger,
+        sunriseBeforeAlarm = sunrise,
     )
 }
 
 /**
  * Pure ambient-light hysteresis tracker for [StandByNightMode.ROOM_LIGHT] (`docs/plan-standby-2.md` §5 Phase 5).
  *
- * Enters night when ambient light stays at or below [ENTER_DARK_LUX] (`0.4f` lux) for at least
+ * Enters night when ambient light stays at or below [ENTER_DARK_LUX] (`2.0f` lux) for at least
  * [ENTER_DARK_DELAY_MS] (`2_000L` ms), and exits night when ambient light stays at or above
- * [EXIT_DARK_LUX] (`0.8f` lux) for at least [EXIT_DARK_DELAY_MS] (`10_000L` ms).
+ * [EXIT_DARK_LUX] (`10.0f` lux) for at least [EXIT_DARK_DELAY_MS] (`3_000L` ms).
  * Readings in the deadband or brief spikes/shadows shorter than the delay keep the current state so a passing hand
  * or brief lamp does not flip Night mode.
  */
@@ -255,10 +265,10 @@ internal class RoomLightTracker(
     }
 
     companion object {
-        const val ENTER_DARK_LUX = 0.4f
-        const val EXIT_DARK_LUX = 0.8f
+        const val ENTER_DARK_LUX = 2.0f
+        const val EXIT_DARK_LUX = 10.0f
         const val ENTER_DARK_DELAY_MS = 2_000L
-        const val EXIT_DARK_DELAY_MS = 10_000L
+        const val EXIT_DARK_DELAY_MS = 3_000L
     }
 }
 

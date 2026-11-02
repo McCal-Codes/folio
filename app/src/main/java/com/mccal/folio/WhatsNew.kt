@@ -159,6 +159,14 @@ internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> 
                         onWhatToTest?.let { open ->
                             FolioButton(stringResource(R.string.what_to_test), open, modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.MEDIUM.dp).testTag("whats-new-what-to-test"))
                         }
+                        if (DevBuild.isDevApp(context) && DevBuild.load(context) != null) {
+                            val devInfo = DevBuild.load(context)
+                            FolioButton(
+                                DevBuild.THIS_BUILD_LABEL + " (" + (devInfo?.sha ?: "") + ")",
+                                { onDismiss(); DevBuild.reopen.intValue++ },
+                                modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.SMALL.dp)
+                            )
+                        }
                     }
                 }
                 // Like a tweak's depiction in Sileo: new features first, each with a soft icon, a title and a line about it;

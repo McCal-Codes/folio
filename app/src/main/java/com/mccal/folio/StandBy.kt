@@ -43,15 +43,20 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.border
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.window.layout.FoldingFeature
@@ -450,6 +455,15 @@ internal fun StandByFace(
     val soft = if (night) palette.soft else Color.White.copy(alpha = .6f)
     val creasePadding = if (posture.hasCrease) FolioSpace.LARGE.dp else 0.dp
 
+    val alarm = remember(tick) { UpNext.nextAlarm(context) }
+    val nowMs = System.currentTimeMillis()
+    val sunriseProgress = if (config.sunriseBeforeAlarm && alarm != null) {
+        val diffMs = alarm - nowMs
+        if (diffMs in 0..(15 * 60 * 1000L)) {
+            1f - (diffMs.toFloat() / (15 * 60 * 1000f))
+        } else 0f
+    } else 0f
+
     // Night brightness 0 means "black until you touch it" (docs/plan-standby-2.md §3 & §7).
     var touchWakeTrigger by remember { mutableIntStateOf(0) }
     var touchAwake by remember { mutableStateOf(false) }
@@ -462,7 +476,11 @@ internal fun StandByFace(
             touchAwake = false
         }
     }
-    val effectiveNightPct = if (night && config.activePackage && config.nightBrightnessPercent == 0 && touchAwake) 60 else config.nightBrightnessPercent
+    val effectiveNightPct = when {
+        night && config.activePackage && config.nightBrightnessPercent == 0 && touchAwake -> 60
+        night && config.activePackage && sunriseProgress > 0f -> maxOf(config.nightBrightnessPercent, (sunriseProgress * 70).toInt())
+        else -> config.nightBrightnessPercent
+    }
     val nightDimAlpha = if (night && config.activePackage) (effectiveNightPct / 100f).coerceIn(0f, 1f) else 1f
     val touchWakeModifier = if (night && config.activePackage && config.nightBrightnessPercent == 0) {
         Modifier.pointerInput(Unit) {
@@ -535,6 +553,9 @@ internal fun StandByFace(
     val cardBg = if (night) palette.card else FolioColors.SecondaryBackground
 
     Box(Modifier.fillMaxSize()) {
+        if (sunriseProgress > 0f) {
+            StandBySunriseOverlay(sunriseProgress)
+        }
         when (posture) {
             StandByPosture.TABLETOP -> Column(dimmedModifier) {
                 Column(
@@ -588,8 +609,13 @@ private fun BigClock(
 ) {
     when (clockLook) {
         StandByClockLook.ANALOG -> AnalogClock(now, ink, soft, night, modifier)
+        StandByClockLook.NUMERALS -> NumeralsClock(now, ink, soft, night, modifier)
         StandByClockLook.FLIP -> FlipClock(now, ink, soft, night, cardBg, modifier)
         StandByClockLook.WORLD -> WorldClock(now, ink, soft, night, modifier)
+        StandByClockLook.STACK -> StackClock(now, ink, soft, modifier)
+        StandByClockLook.WORDS -> WordsClock(now, ink, soft, modifier)
+        StandByClockLook.NEON -> NeonClock(now, ink, soft, night, cardBg, modifier)
+        StandByClockLook.SOLAR -> SolarClock(now, ink, soft, night, modifier)
         StandByClockLook.BOLD, StandByClockLook.THIN -> {
             val context = LocalContext.current
             val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
@@ -782,6 +808,377 @@ private fun WorldClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
                 Text(tokyoTime.format(DateTimeFormatter.ofPattern("HH:mm")), color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, style = TextStyle(fontFeatureSettings = "tnum"))
             }
         }
+    }
+}
+
+@Composable
+private fun StandBySunriseOverlay(progress: Float) {
+    val clamped = progress.coerceIn(0f, 1f)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .drawBehind {
+                val glowAlpha = (clamped * 0.45f).coerceIn(0f, 0.45f)
+                val centerOffset = Offset(size.width / 2f, size.height * 0.85f)
+                val maxDim = maxOf(size.width, size.height)
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFFFB74D).copy(alpha = glowAlpha),
+                            Color(0xFFFF6F00).copy(alpha = glowAlpha * 0.7f),
+                            Color(0xFF8B2500).copy(alpha = glowAlpha * 0.35f),
+                            Color.Transparent,
+                        ),
+                        center = centerOffset,
+                        radius = maxDim * 0.85f,
+                    )
+                )
+            }
+    )
+}
+
+@Composable
+private fun NumeralsClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolean, modifier: Modifier) {
+    val reduceMotion = LocalReduceMotion.current
+    val tick = if (!night && !reduceMotion) rememberSecondTick().value else null
+    val sec = if (tick != null) LocalDateTime.ofInstant(Instant.ofEpochMilli(tick), ZoneId.systemDefault()).second else 0
+    val min = now.minute
+    val hour = now.hour % 12
+    val hourAngle = (hour + min / 60f) * 30f
+    val minAngle = (min + sec / 60f) * 6f
+    val secAngle = sec * 6f
+    val textMeasurer = rememberTextMeasurer()
+
+    Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(Modifier.size(190.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val radius = size.minDimension / 2f - 6.dp.toPx()
+
+            // Outer dial ring
+            drawCircle(
+                color = soft.copy(alpha = 0.25f),
+                radius = radius,
+                center = center,
+                style = Stroke(width = 3.dp.toPx())
+            )
+
+            // Hour ticks and numerals
+            val numeralRadius = radius - 18.dp.toPx()
+            val cardinals = mapOf(0 to "12", 3 to "3", 6 to "6", 9 to "9")
+
+            for (i in 0 until 12) {
+                val angleRad = Math.toRadians((i * 30.0) - 90.0)
+                val isCardinal = cardinals.containsKey(i)
+                if (isCardinal) {
+                    val numStr = cardinals[i]!!
+                    val textLayout = textMeasurer.measure(
+                        text = numStr,
+                        style = TextStyle(
+                            color = ink,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    val numX = (center.x + numeralRadius * Math.cos(angleRad)).toFloat() - (textLayout.size.width / 2f)
+                    val numY = (center.y + numeralRadius * Math.sin(angleRad)).toFloat() - (textLayout.size.height / 2f)
+                    drawText(textLayout, topLeft = Offset(numX, numY))
+                } else {
+                    val tickLen = 6.dp.toPx()
+                    val startX = (center.x + (radius - tickLen) * Math.cos(angleRad)).toFloat()
+                    val startY = (center.y + (radius - tickLen) * Math.sin(angleRad)).toFloat()
+                    val endX = (center.x + (radius - 2.dp.toPx()) * Math.cos(angleRad)).toFloat()
+                    val endY = (center.y + (radius - 2.dp.toPx()) * Math.sin(angleRad)).toFloat()
+                    drawLine(
+                        color = soft.copy(alpha = 0.5f),
+                        start = Offset(startX, startY),
+                        end = Offset(endX, endY),
+                        strokeWidth = 2.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
+            }
+
+            // Hour hand
+            val hrRad = Math.toRadians(hourAngle.toDouble() - 90.0)
+            val hrLen = radius * 0.48f
+            drawLine(
+                color = ink,
+                start = center - Offset((10.dp.toPx() * Math.cos(hrRad)).toFloat(), (10.dp.toPx() * Math.sin(hrRad)).toFloat()),
+                end = center + Offset((hrLen * Math.cos(hrRad)).toFloat(), (hrLen * Math.sin(hrRad)).toFloat()),
+                strokeWidth = 5.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // Minute hand
+            val minRad = Math.toRadians(minAngle.toDouble() - 90.0)
+            val minLen = radius * 0.72f
+            drawLine(
+                color = ink,
+                start = center - Offset((12.dp.toPx() * Math.cos(minRad)).toFloat(), (12.dp.toPx() * Math.sin(minRad)).toFloat()),
+                end = center + Offset((minLen * Math.cos(minRad)).toFloat(), (minLen * Math.sin(minRad)).toFloat()),
+                strokeWidth = 3.5.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // Second hand (daytime only)
+            if (!night && !reduceMotion) {
+                val secRad = Math.toRadians(secAngle.toDouble() - 90.0)
+                val secLen = radius * 0.80f
+                drawLine(
+                    color = soft,
+                    start = center - Offset((14.dp.toPx() * Math.cos(secRad)).toFloat(), (14.dp.toPx() * Math.sin(secRad)).toFloat()),
+                    end = center + Offset((secLen * Math.cos(secRad)).toFloat(), (secLen * Math.sin(secRad)).toFloat()),
+                    strokeWidth = 1.5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            // Center pivot
+            drawCircle(color = ink, radius = 5.dp.toPx(), center = center)
+            drawCircle(color = soft, radius = 2.5.dp.toPx(), center = center)
+        }
+        Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
+        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun StackClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Modifier) {
+    val context = LocalContext.current
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val hourVal = if (is24) now.hour else (if (now.hour % 12 == 0) 12 else now.hour % 12)
+    val hr = String.format("%02d", hourVal)
+    val mn = String.format("%02d", now.minute)
+
+    Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            hr,
+            color = ink,
+            fontSize = 92.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 84.sp,
+            style = TextStyle(fontFeatureSettings = "tnum")
+        )
+        Text(
+            mn,
+            color = ink,
+            fontSize = 92.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 84.sp,
+            style = TextStyle(fontFeatureSettings = "tnum")
+        )
+        Spacer(Modifier.height(FolioSpace.SMALL.dp))
+        Text(
+            now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+            color = soft,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+internal fun formatTimeWords(hour: Int, minute: Int): Pair<String, String> {
+    val hourWords = arrayOf(
+        "TWELVE", "ONE", "TWO", "THREE", "FOUR", "FIVE",
+        "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"
+    )
+    val h = if (hour % 12 == 0) 12 else hour % 12
+    val nextH = if ((hour + 1) % 12 == 0) 12 else (hour + 1) % 12
+    val currentHourName = hourWords[h]
+    val nextHourName = hourWords[nextH]
+
+    return when (minute) {
+        0 -> Pair(currentHourName, "O'CLOCK")
+        15 -> Pair("QUARTER PAST", currentHourName)
+        30 -> Pair("HALF PAST", currentHourName)
+        45 -> Pair("QUARTER TO", nextHourName)
+        in 1..29 -> Pair("${minuteToWords(minute)} PAST", currentHourName)
+        else -> Pair("${minuteToWords(60 - minute)} TO", nextHourName)
+    }
+}
+
+private fun minuteToWords(min: Int): String = when (min) {
+    1 -> "ONE"
+    2 -> "TWO"
+    3 -> "THREE"
+    4 -> "FOUR"
+    5 -> "FIVE"
+    6 -> "SIX"
+    7 -> "SEVEN"
+    8 -> "EIGHT"
+    9 -> "NINE"
+    10 -> "TEN"
+    11 -> "ELEVEN"
+    12 -> "TWELVE"
+    13 -> "THIRTEEN"
+    14 -> "FOURTEEN"
+    20 -> "TWENTY"
+    in 21..29 -> "TWENTY-${minuteToWords(min - 20)}"
+    else -> "$min"
+}
+
+@Composable
+private fun WordsClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Modifier) {
+    val (line1, line2) = remember(now.hour, now.minute) {
+        formatTimeWords(now.hour, now.minute)
+    }
+    Column(
+        modifier,
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "IT IS",
+            color = soft,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 4.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            line1,
+            color = ink,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            line2,
+            color = ink,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
+        Text(
+            now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+            color = soft,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun NeonClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolean, cardBg: Color, modifier: Modifier) {
+    val context = LocalContext.current
+    val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
+    val glowColor = if (night) ink else Color(0xFF00E5FF)
+    val textGlow = glowColor.copy(alpha = if (night) 0.8f else 0.95f)
+
+    Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(if (night) cardBg else Color(0xFF0D1117))
+                .border(
+                    width = 2.dp,
+                    color = textGlow.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = now.format(DateTimeFormatter.ofPattern(pattern)),
+                color = if (night) ink else Color(0xFFE0F7FA),
+                fontSize = 86.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(
+                    fontFeatureSettings = "tnum",
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = textGlow,
+                        blurRadius = 36f,
+                        offset = Offset.Zero
+                    )
+                )
+            )
+        }
+        Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
+        Text(
+            now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+            color = soft,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SolarClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolean, modifier: Modifier) {
+    val context = LocalContext.current
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val timePattern = if (is24) "HH:mm" else "h:mm"
+    val totalMinutes = now.hour * 60 + now.minute
+    val isDay = totalMinutes in 360..1080
+    val sunProgress = if (isDay) {
+        (totalMinutes - 360) / 720f
+    } else {
+        val nightMin = if (totalMinutes > 1080) totalMinutes - 1080 else totalMinutes + 360
+        nightMin / 720f
+    }
+
+    Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(Modifier.size(width = 240.dp, height = 90.dp)) {
+            val w = size.width
+            val h = size.height
+            val horizonY = h - 16.dp.toPx()
+            val arcTopY = 16.dp.toPx()
+
+            drawLine(
+                color = soft.copy(alpha = 0.3f),
+                start = Offset(16.dp.toPx(), horizonY),
+                end = Offset(w - 16.dp.toPx(), horizonY),
+                strokeWidth = 1.5.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(24.dp.toPx(), horizonY)
+                quadraticTo(w / 2f, arcTopY - 10.dp.toPx(), w - 24.dp.toPx(), horizonY)
+            }
+            drawPath(
+                path = path,
+                color = if (isDay) (if (night) ink else Color(0xFFFFB74D)).copy(alpha = 0.6f) else soft.copy(alpha = 0.25f),
+                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            val t = sunProgress.coerceIn(0f, 1f)
+            val p0 = Offset(24.dp.toPx(), horizonY)
+            val p1 = Offset(w / 2f, arcTopY - 10.dp.toPx())
+            val p2 = Offset(w - 24.dp.toPx(), horizonY)
+            val bx = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x
+            val by = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y
+
+            val sunColor = if (night) ink else (if (isDay) Color(0xFFFFB74D) else Color(0xFF90CAF9))
+            drawCircle(
+                color = sunColor.copy(alpha = 0.25f),
+                radius = 12.dp.toPx(),
+                center = Offset(bx, by)
+            )
+            drawCircle(
+                color = sunColor,
+                radius = 6.dp.toPx(),
+                center = Offset(bx, by)
+            )
+        }
+
+        Spacer(Modifier.height(FolioSpace.SMALL.dp))
+        Text(
+            text = now.format(DateTimeFormatter.ofPattern(timePattern)),
+            color = ink,
+            fontSize = 72.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(fontFeatureSettings = "tnum")
+        )
+        Text(
+            now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+            color = soft,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

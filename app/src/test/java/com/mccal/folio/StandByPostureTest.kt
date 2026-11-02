@@ -310,6 +310,35 @@ class StandByPostureTest {
 
         val worldConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "world"))), gateOpen = true)
         assertEquals(StandByClockLook.WORLD, worldConfig.clockLook)
+
+        val numeralsConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "numerals"))), gateOpen = true)
+        assertEquals(StandByClockLook.NUMERALS, numeralsConfig.clockLook)
+
+        val solarConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "solar"))), gateOpen = true)
+        assertEquals(StandByClockLook.SOLAR, solarConfig.clockLook)
+
+        val wordsConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "words"))), gateOpen = true)
+        assertEquals(StandByClockLook.WORDS, wordsConfig.clockLook)
+
+        val stackConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "stack"))), gateOpen = true)
+        assertEquals(StandByClockLook.STACK, stackConfig.clockLook)
+
+        val neonConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "neon"))), gateOpen = true)
+        assertEquals(StandByClockLook.NEON, neonConfig.clockLook)
+
+        // Sunrise before alarm toggle defaults to true and respects off
+        assertTrue(v25Config.sunriseBeforeAlarm)
+        val sunriseOffConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("sunrise" to "off"))), gateOpen = true)
+        assertFalse(sunriseOffConfig.sunriseBeforeAlarm)
+    }
+
+    @Test fun `formatTimeWords formats conversational time properly`() {
+        assertEquals("NINE" to "O'CLOCK", formatTimeWords(9, 0))
+        assertEquals("QUARTER PAST" to "NINE", formatTimeWords(9, 15))
+        assertEquals("HALF PAST" to "NINE", formatTimeWords(9, 30))
+        assertEquals("QUARTER TO" to "TEN", formatTimeWords(9, 45))
+        assertEquals("TWENTY PAST" to "NINE", formatTimeWords(9, 20))
+        assertEquals("TEN TO" to "TEN", formatTimeWords(9, 50))
     }
 
     // --- 5. Epilepsy / photosensitivity safety invariants (WCAG 2.3.1 / A11Y-15) ---
@@ -633,36 +662,36 @@ class StandByPostureTest {
 
     // --- 8. Phase 5: Room light hysteresis tracker & resolveStandByNight ---
 
-    @Test fun `RoomLightTracker enters night after 2s below 0_4 lux and ignores brief passing shadows`() {
+    @Test fun `RoomLightTracker enters night after 2s below 2_0 lux and ignores brief passing shadows`() {
         val tracker = RoomLightTracker(initialNight = false)
-        assertFalse(tracker.onReading(lux = 5.0f, timeMs = 0L))
+        assertFalse(tracker.onReading(lux = 15.0f, timeMs = 0L))
 
-        // Brief shadow (1.5s at 0.2 lux, then back to 2.0 lux) does NOT flip to night
-        assertFalse(tracker.onReading(lux = 0.2f, timeMs = 1_000L))
-        assertFalse(tracker.onReading(lux = 0.2f, timeMs = 2_500L))
-        assertFalse(tracker.onReading(lux = 2.0f, timeMs = 2_800L))
+        // Brief shadow (1.5s at 1.0 lux, then back to 15.0 lux) does NOT flip to night
+        assertFalse(tracker.onReading(lux = 1.0f, timeMs = 1_000L))
+        assertFalse(tracker.onReading(lux = 1.0f, timeMs = 2_500L))
+        assertFalse(tracker.onReading(lux = 15.0f, timeMs = 2_800L))
 
-        // Sustained dark room (<= 0.4 lux for >= 2,000 ms) flips to night
-        assertFalse(tracker.onReading(lux = 0.3f, timeMs = 5_000L))
-        assertFalse(tracker.onReading(lux = 0.3f, timeMs = 6_999L))
-        assertTrue(tracker.onReading(lux = 0.3f, timeMs = 7_000L))
+        // Sustained dark room (<= 2.0 lux for >= 2,000 ms) flips to night
+        assertFalse(tracker.onReading(lux = 1.5f, timeMs = 5_000L))
+        assertFalse(tracker.onReading(lux = 1.5f, timeMs = 6_999L))
+        assertTrue(tracker.onReading(lux = 1.5f, timeMs = 7_000L))
     }
 
-    @Test fun `RoomLightTracker exits night after 10s above 0_8 lux and ignores brief lamp flashes or deadband`() {
+    @Test fun `RoomLightTracker exits night after 3s above 10_0 lux and ignores brief lamp flashes or deadband`() {
         val tracker = RoomLightTracker(initialNight = true)
-        // Deadband (0.6 lux is between 0.4 and 0.8) keeps night
-        assertTrue(tracker.onReading(lux = 0.6f, timeMs = 1_000L))
-        assertTrue(tracker.onReading(lux = 0.6f, timeMs = 20_000L))
+        // Deadband (5.0 lux is between 2.0 and 10.0) keeps night
+        assertTrue(tracker.onReading(lux = 5.0f, timeMs = 1_000L))
+        assertTrue(tracker.onReading(lux = 5.0f, timeMs = 20_000L))
 
-        // Brief lamp flash (5s at 15 lux, then back to 0.5 lux) does NOT exit night
-        assertTrue(tracker.onReading(lux = 15.0f, timeMs = 30_000L))
-        assertTrue(tracker.onReading(lux = 15.0f, timeMs = 35_000L))
-        assertTrue(tracker.onReading(lux = 0.5f, timeMs = 36_000L))
+        // Brief lamp flash (2s at 25 lux, then back to 1.0 lux) does NOT exit night
+        assertTrue(tracker.onReading(lux = 25.0f, timeMs = 30_000L))
+        assertTrue(tracker.onReading(lux = 25.0f, timeMs = 31_500L))
+        assertTrue(tracker.onReading(lux = 1.0f, timeMs = 32_500L))
 
-        // Sustained room light (>= 0.8 lux for >= 10,000 ms) exits night
-        assertTrue(tracker.onReading(lux = 1.2f, timeMs = 40_000L))
-        assertTrue(tracker.onReading(lux = 1.2f, timeMs = 49_999L))
-        assertFalse(tracker.onReading(lux = 1.2f, timeMs = 50_000L))
+        // Sustained room light (>= 10.0 lux for >= 3,000 ms) exits night
+        assertTrue(tracker.onReading(lux = 15.0f, timeMs = 40_000L))
+        assertTrue(tracker.onReading(lux = 15.0f, timeMs = 42_999L))
+        assertFalse(tracker.onReading(lux = 15.0f, timeMs = 43_000L))
     }
 
     @Test fun `resolveStandByNight honors SCHEDULE, ROOM_LIGHT with sensor fallback, and NEVER`() {

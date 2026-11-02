@@ -61,8 +61,13 @@ internal object TweakOptions {
                 "thin" to R.string.standby2_clock_thin,
                 "bold" to R.string.standby2_clock_bold,
                 "analog" to R.string.standby2_clock_analog,
+                "numerals" to R.string.standby2_clock_numerals,
                 "flip" to R.string.standby2_clock_flip,
                 "world" to R.string.standby2_clock_world,
+                "solar" to R.string.standby2_clock_solar,
+                "words" to R.string.standby2_clock_words,
+                "stack" to R.string.standby2_clock_stack,
+                "neon" to R.string.standby2_clock_neon,
             ), "thin", section = R.string.look),
             TweakOption.Choice("player", R.string.standby2_now_playing, listOf(
                 "card" to R.string.standby2_card, "compact" to R.string.standby2_compact, "off" to R.string.off), "card", section = R.string.look),
@@ -77,6 +82,7 @@ internal object TweakOptions {
             TweakOption.Choice("nightBrightness", R.string.standby2_night_brightness, listOf(
                 "0" to R.string.off, "20" to R.string.standby2_bright_20, "40" to R.string.standby2_bright_40,
                 "60" to R.string.standby2_bright_60, "80" to R.string.standby2_bright_80, "100" to R.string.standby2_bright_100), "60", section = R.string.standby2_night_mode),
+            TweakOption.Toggle("sunrise", R.string.standby2_sunrise, on = true, section = R.string.standby2_night_mode),
             TweakOption.Toggle("offCharger", R.string.standby2_off_charger, on = false, section = R.string.battery),
         ),
     )

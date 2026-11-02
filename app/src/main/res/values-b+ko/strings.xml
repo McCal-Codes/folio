@@ -2345,8 +2345,13 @@
     <string name="standby2_clock_thin">얇게</string>
     <string name="standby2_clock_bold">굵게</string>
     <string name="standby2_clock_analog">아날로그</string>
+    <string name="standby2_clock_numerals">숫자 아날로그</string>
     <string name="standby2_clock_flip">플립</string>
     <string name="standby2_clock_world">세계 시계</string>
+    <string name="standby2_clock_solar">솔라</string>
+    <string name="standby2_clock_words">문장 시계</string>
+    <string name="standby2_clock_stack">스택</string>
+    <string name="standby2_clock_neon">네온</string>
     <string name="standby2_now_playing">지금 재생 중</string>
     <string name="standby2_card">카드</string>
     <string name="standby2_compact">작게</string>
@@ -2364,6 +2369,7 @@
     <string name="standby2_color_amber">호박색</string>
     <string name="standby2_color_blue">파랑</string>
     <string name="standby2_off_charger">충전기 없이 사용</string>
+    <string name="standby2_sunrise">알람 전 일출 효과</string>
     <string name="standby2_night_brightness">야간 밝기</string>
     <string name="standby2_close">StandBy 닫기</string>
     <string name="standby2_charge_full_in">%1$s 후 충전 완료</string>
