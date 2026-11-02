@@ -905,7 +905,9 @@ fun LauncherScreen(
             val targetLeftOrigin = expandedLeftPaneOrigin(maxWidth.value, geometry.homeWidth, geometry.gridWidth, duoPaneGap, bookFolded).dp
             val leftColumnOrigin by animateDpAsState(targetLeftOrigin,
                 if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Settle), label = "duo pane origin")
-            val homeStride = panelWidth - leftColumnOrigin
+            // Decouple the gesture motion stride from the animated visual origin so the coordinate space
+            // does not shift or reallocate during swipe gestures or settling springs.
+            val homeStride = panelWidth - targetLeftOrigin
             // The same space the geometry was laid out for (the measured controls, never below the strip's own 54dp), so the
             // page box and the rows in it agree; the Preview bar gets a clear gap above it.
             val controlsSpace = homeControlsSpace(isDefaultHome, bottomControlsHeight.value).dp

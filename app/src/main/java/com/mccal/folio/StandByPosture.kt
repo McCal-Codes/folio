@@ -90,7 +90,7 @@ internal fun resolveStandByPosture(s: StandByPostureSignals): StandByPosture {
     return if (s.widthDp >= s.heightDp) StandByPosture.LANDSCAPE else StandByPosture.PORTRAIT
 }
 
-internal enum class StandByClockLook { THIN, BOLD }
+internal enum class StandByClockLook { THIN, BOLD, ANALOG, FLIP, WORLD }
 internal enum class StandByPlayerStyle { LEGACY_SLAB, CARD, COMPACT, OFF }
 internal enum class StandByNotifMode { OFF, COUNT_ONLY, COLORS }
 internal enum class StandByNightMode { SCHEDULE, ROOM_LIGHT, NEVER }
@@ -111,6 +111,8 @@ internal data class StandByEffectiveConfig(
     val nightBrightnessPercent: Int = 100,
     val showChargingLine: Boolean = false,
     val tapEmptySpaceCloses: Boolean = true,
+    val nightColor: String = "red",
+    val offCharger: Boolean = false,
 ) {
     companion object {
         val LEGACY_0_6_9 = StandByEffectiveConfig()
@@ -128,6 +130,8 @@ internal fun resolveStandByConfig(
     notifMode: StandByNotifMode = StandByNotifMode.COLORS,
     nightMode: StandByNightMode = StandByNightMode.SCHEDULE,
     nightBrightnessPercent: Int = 60,
+    nightColor: String = "red",
+    offCharger: Boolean = false,
 ): StandByEffectiveConfig {
     if (!gateOpen || !packageInstalled || !packageEnabled) return StandByEffectiveConfig.LEGACY_0_6_9
     return StandByEffectiveConfig(
@@ -141,6 +145,8 @@ internal fun resolveStandByConfig(
         nightBrightnessPercent = nightBrightnessPercent.coerceIn(0, 100),
         showChargingLine = true,
         tapEmptySpaceCloses = false,
+        nightColor = nightColor,
+        offCharger = offCharger,
     )
 }
 
@@ -157,6 +163,9 @@ internal fun resolveStandByConfig(
     val opts = state.tweakOptions
     val clockLook = when (TweakOptions.value(opts, STANDBY2_ID, "clock")) {
         "bold" -> StandByClockLook.BOLD
+        "analog" -> StandByClockLook.ANALOG
+        "flip" -> StandByClockLook.FLIP
+        "world" -> StandByClockLook.WORLD
         else -> StandByClockLook.THIN
     }
     val playerStyle = when (TweakOptions.value(opts, STANDBY2_ID, "player")) {
@@ -177,6 +186,12 @@ internal fun resolveStandByConfig(
         else -> StandByNightMode.SCHEDULE
     }
     val nightBrightness = TweakOptions.value(opts, STANDBY2_ID, "nightBrightness").toIntOrNull() ?: 60
+    val nightColor = when (TweakOptions.value(opts, STANDBY2_ID, "nightColor")) {
+        "amber" -> "amber"
+        "blue" -> "blue"
+        else -> "red"
+    }
+    val offCharger = TweakOptions.on(opts, STANDBY2_ID, "offCharger")
     return resolveStandByConfig(
         gateOpen = gateOpen,
         packageInstalled = installed,
@@ -188,6 +203,8 @@ internal fun resolveStandByConfig(
         notifMode = notifMode,
         nightMode = nightMode,
         nightBrightnessPercent = nightBrightness,
+        nightColor = nightColor,
+        offCharger = offCharger,
     )
 }
 

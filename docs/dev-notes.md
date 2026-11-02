@@ -2,6 +2,10 @@
 
 Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > What's New > This build).
 
+- StandBy 2.5 off-charger invocation: prop phone sideways on desk/stand without plugging in (guarded at >=20% battery)
+- StandBy 2.5 clock personalities: Thin, Bold, Analog, Flip, and Dual World Time in Settings > Tweaks > StandBy 2
+- StandBy 2.5 multi-hue night vision: red, amber, and blue night modes with OLED blackout support
+- Swiping fluidity: decoupled gesture stride from left pane spring animation to eliminate visual jitter on unfolded screen
 - StandBy 2 postures (Fold): set down while charging on its side, half-open (tabletop), or propped as a tent
 - StandBy 2 settings: Settings > Tweaks > StandBy 2 grouped into Look, Cards, and Night mode & Battery
 - StandBy 2 Now Playing: clean card without slab, compact row, and skip buttons visible only when offered by player

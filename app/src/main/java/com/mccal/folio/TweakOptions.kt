@@ -58,7 +58,12 @@ internal object TweakOptions {
         // StandBy 2: clock weight, player card style, Up Next, timers, notification colors, night mode, and night brightness.
         STANDBY2_ID to listOf(
             TweakOption.Choice("clock", R.string.standby2_clock, listOf(
-                "thin" to R.string.standby2_clock_thin, "bold" to R.string.standby2_clock_bold), "thin", section = R.string.look),
+                "thin" to R.string.standby2_clock_thin,
+                "bold" to R.string.standby2_clock_bold,
+                "analog" to R.string.standby2_clock_analog,
+                "flip" to R.string.standby2_clock_flip,
+                "world" to R.string.standby2_clock_world,
+            ), "thin", section = R.string.look),
             TweakOption.Choice("player", R.string.standby2_now_playing, listOf(
                 "card" to R.string.standby2_card, "compact" to R.string.standby2_compact, "off" to R.string.off), "card", section = R.string.look),
             TweakOption.Toggle("upNext", R.string.standby2_up_next, on = true, section = R.string.standby2_cards),
@@ -67,9 +72,12 @@ internal object TweakOptions {
                 "colors" to R.string.standby2_colors, "count" to R.string.standby2_count_only, "off" to R.string.off), "colors", section = R.string.standby2_cards),
             TweakOption.Choice("nightMode", R.string.standby2_night_mode, listOf(
                 "schedule" to R.string.standby2_night_schedule, "room" to R.string.standby2_night_room, "never" to R.string.standby2_night_never), "schedule", section = R.string.standby2_night_mode),
+            TweakOption.Choice("nightColor", R.string.standby2_night_color, listOf(
+                "red" to R.string.standby2_color_red, "amber" to R.string.standby2_color_amber, "blue" to R.string.standby2_color_blue), "red", section = R.string.standby2_night_mode),
             TweakOption.Choice("nightBrightness", R.string.standby2_night_brightness, listOf(
                 "0" to R.string.off, "20" to R.string.standby2_bright_20, "40" to R.string.standby2_bright_40,
                 "60" to R.string.standby2_bright_60, "80" to R.string.standby2_bright_80, "100" to R.string.standby2_bright_100), "60", section = R.string.standby2_night_mode),
+            TweakOption.Toggle("offCharger", R.string.standby2_off_charger, on = false, section = R.string.standby2_night_mode),
         ),
     )
 

@@ -2383,6 +2383,9 @@
     <string name="standby2_clock">Clock</string>
     <string name="standby2_clock_thin">Thin</string>
     <string name="standby2_clock_bold">Bold</string>
+    <string name="standby2_clock_analog">Analog</string>
+    <string name="standby2_clock_flip">Flip</string>
+    <string name="standby2_clock_world">World</string>
     <string name="standby2_now_playing">Now Playing</string>
     <string name="standby2_card">Card</string>
     <string name="standby2_compact">Compact</string>
@@ -2395,6 +2398,11 @@
     <string name="standby2_night_schedule">Schedule</string>
     <string name="standby2_night_room">Room light</string>
     <string name="standby2_night_never">Never</string>
+    <string name="standby2_night_color">Night color</string>
+    <string name="standby2_color_red">Red</string>
+    <string name="standby2_color_amber">Amber</string>
+    <string name="standby2_color_blue">Blue</string>
+    <string name="standby2_off_charger">Off charger</string>
     <string name="standby2_night_brightness">Night brightness</string>
     <string name="standby2_bright_20" translatable="false">20%</string>
     <string name="standby2_bright_40" translatable="false">40%</string>

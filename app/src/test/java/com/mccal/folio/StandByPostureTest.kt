@@ -288,6 +288,28 @@ class StandByPostureTest {
         val innerOnly = installed.copy(featureScopes = FeatureScopes.set(emptyMap(), STANDBY2_ID, FolioScreen.COVER, ScopeValue.OFF))
         assertEquals(StandByEffectiveConfig.LEGACY_0_6_9, resolveStandByConfig(innerOnly, gateOpen = true, onCover = true))
         assertTrue(resolveStandByConfig(innerOnly, gateOpen = true, onCover = false).activePackage)
+
+        // StandBy 2.5 options: analog, flip, world, nightColor, offCharger
+        val v25 = installed.copy(
+            tweakOptions = mapOf(
+                STANDBY2_ID to mapOf(
+                    "clock" to "analog",
+                    "nightColor" to "amber",
+                    "offCharger" to "on",
+                )
+            )
+        )
+        val v25Config = resolveStandByConfig(v25, gateOpen = true, onCover = false)
+        assertEquals(StandByClockLook.ANALOG, v25Config.clockLook)
+        assertEquals("amber", v25Config.nightColor)
+        assertTrue(v25Config.offCharger)
+
+        val flipConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "flip", "nightColor" to "blue"))), gateOpen = true)
+        assertEquals(StandByClockLook.FLIP, flipConfig.clockLook)
+        assertEquals("blue", flipConfig.nightColor)
+
+        val worldConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clock" to "world"))), gateOpen = true)
+        assertEquals(StandByClockLook.WORLD, worldConfig.clockLook)
     }
 
     // --- 5. Epilepsy / photosensitivity safety invariants (WCAG 2.3.1 / A11Y-15) ---

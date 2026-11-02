@@ -428,8 +428,13 @@ class MainActivity : ComponentActivity() {
                 val standByShowing = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                 val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
                 val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
-                val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
-                val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
+                val standByWays = StandByWays(
+                    halfOpen = state.standBy && hinge,
+                    charging = standByMore && state.standByCharging,
+                    tent = standByMore && state.standByTent && hinge,
+                    offCharger = standByConfig.activePackage && standByConfig.offCharger,
+                )
+                val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null, batteryLevel = deviceStatus.battery)
                 StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
                     halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it }, config = standByConfig)
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }

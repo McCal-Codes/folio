@@ -2322,6 +2322,9 @@
     <string name="standby2_clock">时钟</string>
     <string name="standby2_clock_thin">纤细</string>
     <string name="standby2_clock_bold">粗体</string>
+    <string name="standby2_clock_analog">指针时钟</string>
+    <string name="standby2_clock_flip">翻页时钟</string>
+    <string name="standby2_clock_world">世界时钟</string>
     <string name="standby2_now_playing">正在播放</string>
     <string name="standby2_card">卡片</string>
     <string name="standby2_compact">紧凑</string>
@@ -2334,6 +2337,11 @@
     <string name="standby2_night_schedule">定时</string>
     <string name="standby2_night_room">环境光</string>
     <string name="standby2_night_never">从不</string>
+    <string name="standby2_night_color">夜间色彩</string>
+    <string name="standby2_color_red">经典红</string>
+    <string name="standby2_color_amber">琥珀暖色</string>
+    <string name="standby2_color_blue">深蓝静谧</string>
+    <string name="standby2_off_charger">未充电时启用</string>
     <string name="standby2_night_brightness">夜间亮度</string>
     <string name="standby2_close">关闭待机显示</string>
     <string name="standby2_charge_full_in">还需 %1$s 充满</string>

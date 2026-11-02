@@ -206,8 +206,11 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
                         color = white.copy(alpha = .8f), fontSize = FolioType.SUBHEAD.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.padding(top = FolioSpace.COMPACT.dp))
                 }
-                if (kind == DevBuild.Kind.FIRST) DevText.first.forEach { (title, detail) -> DevRow(androidx.compose.material.icons.Icons.Rounded.AutoAwesome, amber, title, detail) }
-                else {
+                if (kind == DevBuild.Kind.FIRST) {
+                    DevText.first.forEach { (title, detail) -> DevRow(androidx.compose.material.icons.Icons.Rounded.AutoAwesome, amber, title, detail) }
+                }
+                if (changes.isNotEmpty()) {
+                    if (kind == DevBuild.Kind.FIRST) SheetGroupLabel(DevBuild.THIS_BUILD_LABEL)
                     changes.take(DevBuild.LEAD_ROWS).forEach { c -> WhatsNew.symbol(c.subject).let { (icon, color) -> DevRow(icon, androidx.compose.ui.graphics.Color(color), c.subject, c.sha) } }
                     val rest = changes.drop(DevBuild.LEAD_ROWS)
                     if (rest.isNotEmpty() && !moreOpen) SheetGroup(Modifier.padding(top = FolioSpace.MEDIUM.dp)) {
@@ -218,7 +221,7 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
                     }
                     if (moreOpen) rest.forEach { c -> WhatsNew.symbol(c.subject).let { (icon, color) -> DevRow(icon, androidx.compose.ui.graphics.Color(color), c.subject, c.sha) } }
                 }
-                if (kind != DevBuild.Kind.FIRST && info.notes.isNotEmpty()) {
+                if (info.notes.isNotEmpty()) {
                     SheetGroupLabel(DevText.TRY + " · " + DevText.tried(ticks.size, info.notes.size))
                     SheetGroup {
                         info.notes.forEachIndexed { i, step ->
