@@ -419,13 +419,19 @@ class MainActivity : ComponentActivity() {
                 // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
                 // charging on its side and a tent on the cover.
                 val standByMore = androidx.compose.runtime.remember { FeatureGate.STANDBY_CHARGING.isOpen(this@MainActivity) }
+                val standBy2Open = rememberGateOpen(FeatureGate.STANDBY_2)
+                val standByConfig = resolveStandByConfig(
+                    state = state,
+                    gateOpen = standBy2Open,
+                    onCover = !androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout(),
+                )
                 val standByShowing = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                 val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
                 val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
                 val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
                 val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
                 StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
-                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it })
+                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it }, config = standByConfig)
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
                 // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
                 AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)

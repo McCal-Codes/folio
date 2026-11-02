@@ -24,6 +24,10 @@ import kotlinx.coroutines.flow.update
 data class DeviceStatus(
     val battery: Int? = null,
     val charging: Boolean = false,
+    /** Remaining charge time in milliseconds from [BatteryManager.computeChargeTimeRemaining], or null when unknown/-1. */
+    val chargeFullInMs: Long? = null,
+    /** Plugged in at a battery-protection limit (e.g. holding at 80% without actively charging). */
+    val chargeOnHold: Boolean = false,
     val wifiConnected: Boolean = false,
     val wifiLevel: Int? = null,
     val cellularLevel: Int? = null,
@@ -40,11 +44,20 @@ data class DeviceStatus(
 internal fun isCharging(status: Int, plugged: Int): Boolean =
     plugged != 0 || status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
 
+/** Plugged in, below 100%, and Android says not charging: battery protection holding at a limit (e.g. 80%). */
+internal fun isChargeOnHold(status: Int, plugged: Int, batteryPercent: Int?): Boolean =
+    plugged != 0 &&
+        status != BatteryManager.BATTERY_STATUS_CHARGING &&
+        status != BatteryManager.BATTERY_STATUS_FULL &&
+        batteryPercent != null &&
+        batteryPercent in 1..99
+
 /** Observe only while visible. No location, phone-state, or notification access required. */
 class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserver {
     private val connection = context.getSystemService(ConnectivityManager::class.java)
     private val wifi = context.applicationContext.getSystemService(WifiManager::class.java)
     private val phone = context.getSystemService(TelephonyManager::class.java)
+    private val batteryManager = context.getSystemService(BatteryManager::class.java)
     private val mutable = MutableStateFlow(DeviceStatus())
     val state = mutable.asStateFlow()
     private var networkRegistered = false
@@ -67,8 +80,20 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
                 val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
                 val charge = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                 val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
-                mutable.update { it.copy(battery = if (level >= 0 && scale > 0) (level * 100 / scale).coerceIn(0, 100) else null,
-                    charging = isCharging(charge, plugged)) }
+                val pct = if (level >= 0 && scale > 0) (level * 100 / scale).coerceIn(0, 100) else null
+                val chargingNow = isCharging(charge, plugged)
+                val onHold = isChargeOnHold(charge, plugged, pct)
+                val remainingMs = if (chargingNow && !onHold) {
+                    runCatching { batteryManager?.computeChargeTimeRemaining() }.getOrNull()?.takeIf { it > 0L }
+                } else null
+                mutable.update {
+                    it.copy(
+                        battery = pct,
+                        charging = chargingNow,
+                        chargeFullInMs = remainingMs,
+                        chargeOnHold = onHold,
+                    )
+                }
             }
             updateConnection()
         }

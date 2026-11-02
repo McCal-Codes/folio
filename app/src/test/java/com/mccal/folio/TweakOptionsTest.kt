@@ -53,7 +53,7 @@ class TweakOptionsTest {
     }
 
     @Test fun `every option has a default that is one of its own choices`() {
-        listOf("dockMagnify", "tintMedia").flatMap { TweakOptions.of(it) }.forEach { option ->
+        listOf("dockMagnify", "tintMedia", STANDBY2_ID).flatMap { TweakOptions.of(it) }.forEach { option ->
             if (option is TweakOption.Choice) assertTrue("${option.id} default", option.choices.any { it.first == option.default })
             if (option is TweakOption.Toggle) assertTrue(option.default == TweakOptions.ON || option.default == TweakOptions.OFF)
         }

@@ -1858,18 +1858,41 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 @Composable private fun TweakOptionsCard(tweak: TweakFeature, state: LauncherState, model: LauncherModel, on: Boolean) {
     val options = TweakOptions.of(tweak.id)
     if (options.isEmpty()) return
-    SettingsCard(stringResource(R.string.options)) {
-        Column(Modifier.alpha(if (on) 1f else .4f)) {
-            options.forEach { option ->
-                val label = stringResource(option.label)
-                val tag = "tweak-option-${tweak.id}-${option.id}"
-                val value = TweakOptions.value(state.tweakOptions, tweak.id, option.id)
-                when (option) {
-                    is TweakOption.Toggle -> SettingsSwitch(label, value == TweakOptions.ON,
-                        { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag, enabled = on)
-                    is TweakOption.Choice -> IosMenuRow(label, option.choices.map { (stored, text) -> stored to stringResource(text) }, value,
-                        { model.setTweakOption(tweak.id, option.id, it) }, tag = tag, enabled = on)
+    val groups = remember(options) {
+        val list = mutableListOf<Pair<Int?, List<TweakOption>>>()
+        var currentSection: Int? = null
+        var currentItems = mutableListOf<TweakOption>()
+        for (opt in options) {
+            if (opt.section != currentSection && currentItems.isNotEmpty()) {
+                list.add(currentSection to currentItems)
+                currentItems = mutableListOf()
+            }
+            currentSection = opt.section
+            currentItems.add(opt)
+        }
+        if (currentItems.isNotEmpty()) {
+            list.add(currentSection to currentItems)
+        }
+        list
+    }
+    for ((sectionRes, items) in groups) {
+        val cardTitle = sectionRes?.let { stringResource(it) } ?: stringResource(R.string.options)
+        SettingsCard(cardTitle) {
+            Column(Modifier.alpha(if (on) 1f else .4f)) {
+                items.forEach { option ->
+                    val label = stringResource(option.label)
+                    val tag = "tweak-option-${tweak.id}-${option.id}"
+                    val value = TweakOptions.value(state.tweakOptions, tweak.id, option.id)
+                    when (option) {
+                        is TweakOption.Toggle -> SettingsSwitch(label, value == TweakOptions.ON,
+                            { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag, enabled = on)
+                        is TweakOption.Choice -> IosMenuRow(label, option.choices.map { (stored, text) -> stored to stringResource(text) }, value,
+                            { model.setTweakOption(tweak.id, option.id, it) }, tag = tag, enabled = on)
+                    }
                 }
+            }
+            if (tweak.id == STANDBY2_ID && sectionRes == R.string.standby2_night_mode) {
+                CardNote(stringResource(R.string.standby2_night_brightness_note))
             }
         }
     }

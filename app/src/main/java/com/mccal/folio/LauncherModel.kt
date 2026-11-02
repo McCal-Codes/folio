@@ -164,6 +164,8 @@ data class LauncherState(
     val standByCharging: Boolean = true,
     /** StandBy in a tent on the cover screen, off the charger too; the Fold only shows a tent past halfway. */
     val standByTent: Boolean = false,
+    /** StandBy 2 tweak switch (looks, cards and night options on top of StandBy; see [STANDBY2_ID]). */
+    val standBy2: Boolean = false,
     /** Spotlight sections the user turned off (names of [SpotlightSection]). */
     val spotlightHidden: Set<String> = emptySet(),
     /** Engine for Enter in search: a [WebSearchTarget] name. */
@@ -1414,6 +1416,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setStandBy(value: Boolean) = updateSettings(soon = false) { it.copy(standBy = value) }
     fun setStandByCharging(value: Boolean) = updateSettings(soon = false) { it.copy(standByCharging = value) }
     fun setStandByTent(value: Boolean) = updateSettings(soon = false) { it.copy(standByTent = value) }
+    fun setStandBy2(value: Boolean) = updateSettings(soon = false) { it.copy(standBy2 = value) }
     fun setIconStyle(style: IconStyle, tint: Long) = updateSettings(soon = false) { it.copy(iconStyle = style, iconTint = tint) }
     fun setIconShape(shape: IconShape) = updateSettings(soon = false) { it.copy(iconShape = shape) }
     fun setIconPack(pack: String?) = updateSettings(soon = false) { it.copy(iconPack = pack) }
@@ -1687,7 +1690,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications).put("notificationSections", s.notificationSections)
-            .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
+            .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("standBy2", s.standBy2).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
@@ -1948,6 +1951,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         standBy = j.optBoolean("standBy", true),
         standByCharging = j.optBoolean("standByCharging", true),
         standByTent = j.optBoolean("standByTent", false),
+        standBy2 = j.optBoolean("standBy2", false),
         spotlightHidden = j.optJSONArray("spotlightHidden")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         searchEngine = j.optString("searchEngine", "GOOGLE").takeIf { it == CUSTOM_SEARCH || runCatching { WebSearchTarget.valueOf(it) }.isSuccess } ?: "GOOGLE",
         searchCustomUrl = j.optString("searchCustomUrl", "").take(500),

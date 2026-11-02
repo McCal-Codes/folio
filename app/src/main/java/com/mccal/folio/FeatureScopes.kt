@@ -87,6 +87,12 @@ internal val TweakFeatures = listOf(
         androidx.compose.material.icons.Icons.Rounded.MenuBook, FolioColors.Value.Indigo,
         { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit,
         keywords = R.string.settings_keywords_fold_animation),
+    TweakFeature(STANDBY2_ID, "StandBy 2", "StandBy by Apple", // english-only
+        R.string.tweak_standby2_detail,
+        androidx.compose.material.icons.Icons.Rounded.Bedtime, FolioColors.Value.RedLight,
+        { it.standBy2 }, { m, v -> m.setStandBy2(v) }, true, FeatureGate.STANDBY_2,
+        keywords = R.string.settings_keywords_standby),
 )
 
 internal const val DUET_ID = "duet"
+internal const val STANDBY2_ID = "standby2"

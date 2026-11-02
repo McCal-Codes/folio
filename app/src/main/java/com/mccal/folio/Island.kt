@@ -66,7 +66,9 @@ data class NotificationItem(val key: String, val packageName: String, val appLab
     /** Messaging notifications: whether quick reply / mark-as-read are offered by the app. */
     val canReply: Boolean = false, val canMarkRead: Boolean = false, val channelId: String? = null,
     /** From Android's ranking, for sections: how loud the channel is ([IMPORTANCE_UNKNOWN] when not ranked), and the flags below. */
-    val importance: Int = IMPORTANCE_UNKNOWN, val conversation: Boolean = false, val ongoing: Boolean = false, val urgent: Boolean = false)
+    val importance: Int = IMPORTANCE_UNKNOWN, val conversation: Boolean = false, val ongoing: Boolean = false, val urgent: Boolean = false,
+    /** For StandBy 2 notification dots and glow: accent color, lock-screen visibility, badge allowance, and DND/visual suppression. */
+    val color: Int? = null, val visibility: Int = Notification.VISIBILITY_PUBLIC, val canShowBadge: Boolean = true, val silenced: Boolean = false)
 
 /** A messaging app's notification channel and whether Android pops it up itself (importance HIGH or above). */
 data class MessageChannel(val packageName: String, val appLabel: String, val channelId: String, val channelName: String?, val importance: Int,
@@ -87,7 +89,11 @@ sealed interface IslandActivity {
     data class Media(override val packageName: String, override val title: String, val subtitle: String?,
         override val icon: Bitmap?, val playing: Boolean, val token: android.media.session.MediaSession.Token,
         /** Album art (scaled down), when the app provides it. */
-        val art: Bitmap? = null) : IslandActivity {
+        val art: Bitmap? = null,
+        val canSkipPrevious: Boolean = true,
+        val canSkipNext: Boolean = true,
+        val durationMs: Long = 0L,
+        val positionMs: Long = 0L) : IslandActivity {
         /** Excluded from equality: a fresh controller object per query must not look like a change. */
         lateinit var controller: MediaController; internal set
     }
@@ -289,7 +295,9 @@ class IslandListenerService : NotificationListenerService() {
         // whatever else is going on, so the media is read on its own as well.
         val media = runCatching { currentMedia(controllers) }.getOrNull()
         mediaMutable.value = media
-        mutable.value = runCatching { currentOngoing() ?: media ?: currentProgress() }.getOrNull()
+        val ongoing = runCatching { currentOngoing() }.getOrNull()
+        timerMutable.value = (ongoing as? IslandActivity.Timer) ?: runCatching { currentTimer() }.getOrNull()
+        mutable.value = ongoing ?: media ?: runCatching { currentProgress() }.getOrNull()
         notificationsMutable.value = runCatching { currentNotifications() }.getOrDefault(emptyList())
         runCatching { rememberMessageChannels() }
     }
@@ -329,18 +337,31 @@ class IslandListenerService : NotificationListenerService() {
         }
         .sortedByDescending { it.postTime }
         .map { sbn ->
-            val extras = sbn.notification.extras
+            val n = sbn.notification
+            val extras = n.extras
             val ranking = Ranking()
             val ranked = currentRanking?.getRanking(sbn.key, ranking) == true
+            val lockOverride = if (ranked) ranking.lockscreenVisibilityOverride else Ranking.VISIBILITY_NO_OVERRIDE
+            val effectiveVisibility = if (lockOverride != Ranking.VISIBILITY_NO_OVERRIDE && lockOverride < n.visibility) lockOverride else n.visibility
+            val suppressedVisual = ranked && (ranking.suppressedVisualEffects and (
+                android.app.NotificationManager.Policy.SUPPRESSED_EFFECT_LIGHTS or
+                    android.app.NotificationManager.Policy.SUPPRESSED_EFFECT_PEEK or
+                    android.app.NotificationManager.Policy.SUPPRESSED_EFFECT_AMBIENT
+                )) != 0
+            val silenced = ranked && (!ranking.matchesInterruptionFilter() || ranking.isSuspended || suppressedVisual)
             NotificationItem(sbn.key, sbn.packageName, appLabel(sbn.packageName), appIcon(sbn.packageName),
                 extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
                 (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString(),
-                sbn.postTime, sbn.isClearable, sbn.notification.contentIntent,
-                canReply = Messaging.replyAction(sbn.notification) != null, canMarkRead = Messaging.markReadAction(sbn.notification) != null,
-                channelId = sbn.notification.channelId, importance = if (ranked) ranking.importance else IMPORTANCE_UNKNOWN,
+                sbn.postTime, sbn.isClearable, n.contentIntent,
+                canReply = Messaging.replyAction(n) != null, canMarkRead = Messaging.markReadAction(n) != null,
+                channelId = n.channelId, importance = if (ranked) ranking.importance else IMPORTANCE_UNKNOWN,
                 conversation = ranked && ranking.isConversation,
-                ongoing = sbn.notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
-                urgent = sbn.notification.category in URGENT_CATEGORIES || (ranked && ranking.channel?.canBypassDnd() == true))
+                ongoing = n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
+                urgent = n.category in URGENT_CATEGORIES || (ranked && ranking.channel?.canBypassDnd() == true),
+                color = n.color.takeIf { it != Notification.COLOR_DEFAULT },
+                visibility = effectiveVisibility,
+                canShowBadge = !ranked || ranking.canShowBadge(),
+                silenced = silenced)
         }
 
     /** Calls, alarms, timers and the like: never put in Quiet, whatever the channel's importance says. */
@@ -390,6 +411,16 @@ class IslandListenerService : NotificationListenerService() {
         return null
     }
 
+    private fun currentTimer(): IslandActivity.Timer? {
+        val sbn = runCatching { activeNotifications }.getOrNull().orEmpty()
+            .filter { it.isOngoing && it.packageName != packageName && it.notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) && !CallControls.isCall(it.notification) }
+            .maxByOrNull { it.postTime } ?: return null
+        val n = sbn.notification
+        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: appLabel(sbn.packageName)
+        return IslandActivity.Timer(sbn.packageName, title, appIcon(sbn.packageName),
+            n.`when`, n.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN), sbn.key)
+    }
+
     /**
      * A paused session that nobody comes back to: some players (Spotify among them) keep their session alive long
      * after the app is gone, and the island was left showing a track whose buttons did nothing. Playing music is
@@ -415,9 +446,16 @@ class IslandListenerService : NotificationListenerService() {
             val meta = active.metadata ?: continue
             val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE) ?: continue
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
+            val actions = active.playbackState?.actions ?: 0L
+            val durationMs = meta.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0L)
+            val positionMs = (active.playbackState?.position ?: 0L).coerceAtLeast(0L)
             return IslandActivity.Media(active.packageName, title, artist,
                 appIcon(active.packageName), playbackIsLive(active.playbackState?.state), active.sessionToken,
-                art = albumArt(active.packageName, title, artist, meta))
+                art = albumArt(active.packageName, title, artist, meta),
+                canSkipPrevious = mediaSkipOffered(actions, PlaybackState.ACTION_SKIP_TO_PREVIOUS),
+                canSkipNext = mediaSkipOffered(actions, PlaybackState.ACTION_SKIP_TO_NEXT),
+                durationMs = durationMs,
+                positionMs = positionMs)
                 .also { it.controller = active }
         }
         return null
@@ -539,11 +577,17 @@ class IslandListenerService : NotificationListenerService() {
         val media: StateFlow<IslandActivity.Media?> = PrivateRecording.redact(ScreenshotMode.hide(mediaMutable.asStateFlow(), null)) { current, swapped ->
             current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) as? IslandActivity.Media }
         }
+        internal val timerMutable = MutableStateFlow<IslandActivity.Timer?>(null)
+        /** The running timer whatever else the island is showing: for StandBy 2's timer row beside Now Playing. */
+        val timer: StateFlow<IslandActivity.Timer?> = PrivateRecording.redact(ScreenshotMode.hide(timerMutable.asStateFlow(), null)) { current, swapped ->
+            current?.let { redactActivity(it, swapped[it.packageName], PrivateRecording.neutral(it.packageName, swapped)) as? IslandActivity.Timer }
+        }
         val connected = MutableStateFlow(false)
         /** Don't keep other apps' content (the island, the Music widget's track, notifications) once access is gone or the service ends. */
         internal fun clearPublished() {
             mutable.value = null
             mediaMutable.value = null
+            timerMutable.value = null
             notificationsMutable.value = emptyList()
         }
         private const val PUBLISH_COALESCE_MS = 120L

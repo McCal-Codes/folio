@@ -257,7 +257,8 @@ fun LauncherScreen(
     val homePages = state.homePages
     val pendingNewPage = widgets.pendingPlacement?.page == homePages
     val visibleHomePages = homePages + if (drag.active || widgetSession != null || pendingNewPage) 1 else 0
-    var expandedWorkspace by remember { mutableStateOf(false) }
+    val screenConfig = androidx.compose.ui.platform.LocalConfiguration.current
+    var expandedWorkspace by remember(screenConfig) { mutableStateOf(screenConfig.fitsRegularHomeLayout()) }
     /** Where the jiggle bar's Edit button is, so its menu opens right under it. */
     var editPillBounds by remember { mutableStateOf<androidx.compose.ui.unit.IntRect?>(null) }
     // The page left of Home is Folio's Today View, Google Discover when chosen and available, or nothing at all.
@@ -897,7 +898,13 @@ fun LauncherScreen(
             val panelWidth = maxWidth - geometry.homeWidth.dp
             // A phone-sized screen keeps the status Side Bar beside Home even with the dock at the bottom.
             val pagerWidth = if (geometry.horizontalDock && !geometry.dockBesideRail) maxWidth else maxWidth - preset.dockWidth.dp - 28.dp
-            val leftColumnOrigin = (maxWidth / 2f - geometry.gridWidth.dp) / 2f - 16.dp
+            // DUO_PANE_GAP: flat, the left page sits closer to the right one so the two halves read as one Home; partly folded
+            // (a vertical book hinge that is active), it springs back to the middle of the left half to clear the crease.
+            val duoPaneGap = rememberGateOpen(FeatureGate.DUO_PANE_GAP)
+            val bookFolded = hinge?.let { it.active && it.vertical } == true
+            val targetLeftOrigin = expandedLeftPaneOrigin(maxWidth.value, geometry.homeWidth, geometry.gridWidth, duoPaneGap, bookFolded).dp
+            val leftColumnOrigin by animateDpAsState(targetLeftOrigin,
+                if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Settle), label = "duo pane origin")
             val homeStride = panelWidth - leftColumnOrigin
             // The same space the geometry was laid out for (the measured controls, never below the strip's own 54dp), so the
             // page box and the rows in it agree; the Preview bar gets a clear gap above it.
@@ -2121,6 +2128,7 @@ internal fun PreviewBar(onUseAsHome: () -> Unit, onExit: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         // The close button is measured first (the label takes the rest, over two lines if it must), so large text never pushes it off the bar.
         Text(stringResource(R.string.use_as_home), color = LocalAccent.current.ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false).clip(RoundedCornerShape(FolioRadius.ROW.dp)).clickable(onClick = onUseAsHome)
                 .heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = FolioSpace.SMALL.dp).testTag("preview-use-as-home"))
         IconButton(onClick = onExit, Modifier.size(48.dp).testTag("preview-exit")) {

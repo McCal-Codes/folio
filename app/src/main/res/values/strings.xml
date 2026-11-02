@@ -2379,4 +2379,34 @@
     <string name="crackgate_show_me_needs_gestures">Show me needs Folio&#8217;s gestures turned on first.</string>
     <string name="crackgate_glitchy">A little glitchy</string>
     <string name="crackgate_joke_note">Just a joke. It needs Folio&#8217;s gestures turned on, and shows over other apps only; over Folio&#8217;s own Home nothing is drawn. Shake the phone to clear it. It also clears after 10 minutes or when the screen turns off, and is never saved. A little glitchy adds a few slow changes; none with Reduce Motion.</string>
+    <string name="tweak_standby2_detail">Looks, views, cards and notification colors on top of StandBy.</string>
+    <string name="standby2_clock">Clock</string>
+    <string name="standby2_clock_thin">Thin</string>
+    <string name="standby2_clock_bold">Bold</string>
+    <string name="standby2_now_playing">Now Playing</string>
+    <string name="standby2_card">Card</string>
+    <string name="standby2_compact">Compact</string>
+    <string name="standby2_up_next">Up Next</string>
+    <string name="standby2_timers">Timers</string>
+    <string name="standby2_glow_dots">Glow and dots</string>
+    <string name="standby2_colors">Colors</string>
+    <string name="standby2_count_only">Count only</string>
+    <string name="standby2_night_mode">Night mode</string>
+    <string name="standby2_night_schedule">Schedule</string>
+    <string name="standby2_night_room">Room light</string>
+    <string name="standby2_night_never">Never</string>
+    <string name="standby2_night_brightness">Night brightness</string>
+    <string name="standby2_bright_20" translatable="false">20%</string>
+    <string name="standby2_bright_40" translatable="false">40%</string>
+    <string name="standby2_bright_60" translatable="false">60%</string>
+    <string name="standby2_bright_80" translatable="false">80%</string>
+    <string name="standby2_bright_100" translatable="false">100%</string>
+    <string name="standby2_close">Close StandBy</string>
+    <string name="standby2_charge_full_in">Full in %1$s</string>
+    <string name="standby2_charge_on_hold">On hold at %1$d%%</string>
+    <string name="standby2_timer">Timer</string>
+    <string name="standby2_new_count">%1$d new</string>
+    <string name="standby2_more_apps">+%1$d</string>
+    <string name="standby2_cards">Cards</string>
+    <string name="standby2_night_brightness_note">Zero keeps the screen black until you touch it, drawing no power on OLED displays.</string>
 </resources>
