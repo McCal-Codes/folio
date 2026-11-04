@@ -75,10 +75,11 @@ internal fun AppLibrary(
     val listState = rememberLazyListState()
     val selectedProfile = if (showWork) state.profiles.firstOrNull { it.isWork } else state.profiles.firstOrNull { it.isPersonal }
     LaunchedEffect(showWork, selectedProfile?.available, selectedProfile?.quiet) {
-        listState.scrollToItem(0)
+        listState.requestScrollToItem(0)
     }
     // The list keeps its place by item, so typing replaced the tiles and left the results scrolled past the web search row.
-    LaunchedEffect(query) { listState.scrollToItem(0) }
+    // A page resize can compose this during measurement; defer the reset to the next layout pass.
+    LaunchedEffect(query) { listState.requestScrollToItem(0) }
     // Leaving the library, for an app or the Home button, clears the search like iOS does; it used to wait there for the next visit.
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     val latestQuery by rememberUpdatedState(query)
