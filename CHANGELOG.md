@@ -10,6 +10,9 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Added
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
 
+### Fixed
+- **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size.
+
 ## [0.6.9] - 2026-10-31
 
 ### Added
