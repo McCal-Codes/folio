@@ -1619,6 +1619,7 @@
     <string name="remove_from_dock">Remove %1$s from dock</string>
     <string name="used_recently">Used recently</string>
     <string name="app_options">App options</string>
+    <string name="show_app_panel">Show App Panel</string>
     <string name="remove_from_home_2">Remove %1$s from Home</string>
     <string name="android_notifications">Android notifications</string>
     <string name="clear_all">Clear all</string>
