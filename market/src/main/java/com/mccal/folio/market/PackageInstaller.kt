@@ -852,9 +852,11 @@ class PackageInstaller(
                 PackageKind.PAGE_EFFECT -> {
                     val text = files["effect.json"]?.decodeToString()
                         ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST, "that package says it has a page effect but has no effect.json")
-                    PackageChange.PageEffect.parse(manifest.id, manifest.name.english, text)
-                        ?: return ReadResult.Failed(InstallResult.Reason.MANIFEST,
-                            "effect.json needs maxRotation, shrink and cameraWidths as numbers and a pivot of seam or center")
+                    when (val parsed = PackageChange.PageEffect.read(manifest.id, manifest.name.english, text)) {
+                        is ParseResult.Ok -> parsed.value
+                        is ParseResult.Unsupported -> return ReadResult.NeedsNewerFolio(parsed.needs)
+                        is ParseResult.Invalid -> return ReadResult.Failed(InstallResult.Reason.MANIFEST, "effect.json: ${parsed.errors.first()}")
+                    }
                 }
                 // Refused above: never reaches here.
                 PackageKind.SETTINGS_SCHEMA, PackageKind.SCRIPT, PackageKind.EXTERNAL_APP -> null
@@ -1163,6 +1165,7 @@ class InstalledStore(internal val keyValue: KeyValueStore) {
                 is PackageChange.PageEffect -> json.put("kind", "pageEffect").put("id", change.id).put("name", change.name)
                     .put("maxRotation", change.maxRotation.toDouble()).put("pivot", change.pivot)
                     .put("shrink", change.shrink.toDouble()).put("cameraWidths", change.cameraWidths.toDouble())
+                    .apply { change.channels?.let { put("channels", JSONObject(it)) } }
                 is PackageChange.Tweaks -> json.put("kind", "tweaks").put(
                     "tweaks",
                     JSONArray().apply {
