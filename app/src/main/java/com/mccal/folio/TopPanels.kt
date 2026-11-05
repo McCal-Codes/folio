@@ -111,6 +111,10 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
     OverlayBackHandler(open, onClose)
     val pageBack = remember { CcPageBack() }
+    // The swipe up that closes a panel pulls it with the finger; a panel opened again starts from rest.
+    val pull = remember { PanelPull() }
+    LaunchedEffect(open) { if (open) pull.reset() }
+    val pullGesture = rememberPanelPull(pull, pageBack, onClose)
     var shown by remember { mutableStateOf<ShadePanel?>(null) }
     if (open) shown = panel
     val current = shown ?: return
@@ -147,10 +151,10 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val tone = androidx.compose.runtime.remember(dimNow, blackNow, whiteNow) { CcGlassTone(dimNow, blackNow, whiteNow) }
 
     // Scrim: tap or swipe up anywhere to close.
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim }
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim * PanelPull.fade(pull.offset, size.height) }
         .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
-            .ccSwipeUp(pageBack, onClose) else Modifier)
+            .then(pullGesture) else Modifier)
         .testTag("top-panel-scrim")) {
         // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
         // under a dim. Over an app with no picture yet or none possible, Folio's frosted glass stands in.
@@ -171,7 +175,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
-    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone) {
+    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone, LocalPanelPull provides pull) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
             shape == ShadeShape.BOTH -> Alignment.TopCenter
@@ -198,18 +202,19 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
             .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
             // A swipe up that starts in Control Center's margins is the same swipe as one under it (it used to count as a tap there and close the panel from any page).
-            .then(if (which == ShadePanel.QUICK_SETTINGS) Modifier.ccSwipeUp(pageBack, onClose) else Modifier)
+            .then(if (open) pullGesture else Modifier)
             .graphicsLayer {
                 val p = progress()
+                val pulled = pull.offset
                 if (which == ShadePanel.NOTIFICATIONS) {
                     // iOS: Notification Center slides down from the top edge and doesn't zoom; it's fully opaque
                     // early so the list reads as one sheet moving, not a fade.
-                    alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f)
-                    translationY = -lift * 3f * (1f - p)
+                    alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f) * PanelPull.fade(pulled, size.height)
+                    translationY = -lift * 3f * (1f - p) + pulled
                 } else {
                     // Control Center grows out of the corner it was pulled from; it fades only as it closes, not in a back preview.
-                    alpha = OverlayBack.unpreviewed(p)
-                    translationY = -lift * (1f - p)
+                    alpha = OverlayBack.unpreviewed(p) * PanelPull.fade(pulled, size.height)
+                    translationY = -lift * (1f - p) + pulled
                     scaleX = .92f + .08f * p; scaleY = scaleX
                     transformOrigin = TransformOrigin(1f, 0f)
                 }
@@ -217,7 +222,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (split) {
             val clockLift = lift
             SplitClock(Modifier.align(Alignment.CenterStart).fillMaxWidth(.4f).graphicsLayer {
-                val p = progress(); alpha = OverlayBack.unpreviewed(p); translationY = -clockLift * (1f - p)
+                val p = progress(); alpha = OverlayBack.unpreviewed(p) * PanelPull.fade(pull.offset, size.height); translationY = -clockLift * (1f - p) + pull.offset
             })
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
@@ -249,7 +254,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 }
             }
             if (hoistSwitch) Box(Modifier.align(Alignment.TopCenter).graphicsLayer {
-                val p = progress(); alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f); translationY = -lift * (1f - p)
+                val p = progress(); alpha = (OverlayBack.unpreviewed(p) * 1.6f).coerceAtMost(1f) * PanelPull.fade(pull.offset, size.height); translationY = -lift * (1f - p) + pull.offset
             }.semantics { isTraversalGroup = true; traversalIndex = -1f }) { PanelSwitch(current, switcher!!) }
         }
     }
@@ -332,7 +337,10 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
             }
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
             // The list takes what the column has left after the header and the app row, so it follows the window, not a fixed height.
-            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMax).edgeFade(listState), state = listState,
+            // What the list cannot scroll any further up pulls the panel away, so a swipe up on the notifications closes the panel the way one beside them does.
+            val pullConnection = rememberPanelPullConnection(LocalPanelPull.current, onClose)
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMax).edgeFade(listState)
+                .then(if (pullConnection != null) Modifier.nestedScroll(pullConnection) else Modifier), state = listState,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
                 sectioned.forEach { (bucket, bucketGroups) ->
                   if (bucket == NotificationBucket.QUIET && !quietOpen) item("section-quiet") {
@@ -569,19 +577,6 @@ internal sealed interface CcSwipeUp {
 
 internal fun ccSwipeUp(editing: Boolean, current: Int): CcSwipeUp =
     if (editing) CcSwipeUp.StopEditing else ccBackTarget(current)?.let { CcSwipeUp.GoBack(it) } ?: CcSwipeUp.Close
-
-/**
- * The swipe up on a panel's scrim, or on Control Center's margins: end editing, go back a page, or close. One swipe does one of them, once,
- * so a long drag does not walk back through every page and then close.
- */
-private fun Modifier.ccSwipeUp(pageBack: CcPageBack, onClose: () -> Unit): Modifier = pointerInput(pageBack) {
-    var total = 0f
-    var done = false
-    detectVerticalDragGestures(onDragStart = { total = 0f; done = false }) { _, drag ->
-        total += drag
-        if (!done && total < -48.dp.toPx()) { done = true; if (!pageBack.goBack()) onClose() }
-    }
-}
 
 /**
  * Lets the scrim behind the panels ask Control Center to go back a page before it closes the panel: a swipe up that starts in the
@@ -898,46 +893,19 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
         val closeLabel = stringResource(R.string.close)
-        var swipeAway by remember { mutableFloatStateOf(0f) }
+        val pull = remember { PanelPull() }
         // Closing leaves the pull where it was while the panel fades out. Pulled open again in that time, this same panel is reused, so it starts from rest.
-        LaunchedEffect(panelOpen) { swipeAway = ccSwipeAwayOnOpenChange(panelOpen, swipeAway) }
+        LaunchedEffect(panelOpen) { if (ccSwipeAwayOnOpenChange(panelOpen, pull.offset) == 0f) pull.reset() }
         val swipeDensity = androidx.compose.ui.platform.LocalDensity.current
         // The connection below is made once, so it reads these through State: a new density (a fold, a display-size change) or a new onClose is seen at the next gesture.
         val swipeAwayPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_DP.dp.toPx() })
         val flickPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_FLICK_DP.dp.toPx() })
         val closePanel by rememberUpdatedState(onClose)
         val tick by rememberUpdatedState(androidx.compose.ui.platform.LocalHapticFeedback.current)
-        val swipeConnection = remember(pager, edit) {
-            // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
-            var startedOnFirst = false
-            var gestureActive = false
-            // One light tick as the pull passes the point where letting go closes the panel (and again if it goes back), so the finger knows.
-            var pastClose = false
-            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-                override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                    // Only a finger starts a gesture: the pager's own settling after a release also scrolls (as a side effect) and must not pick the next gesture's page.
-                    if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) return androidx.compose.ui.geometry.Offset.Zero
-                    if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == pager.pageCount - 1 }
-                    if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
-                    return androidx.compose.ui.geometry.Offset.Zero
-                }
-                override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                    if (!edit.active && startedOnFirst && pager.currentPage == pager.pageCount - 1 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
-                        swipeAway += available.y
-                        val past = swipeAway < -swipeAwayPx
-                        if (past != pastClose) { pastClose = past; tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) }
-                        return androidx.compose.ui.geometry.Offset(0f, available.y)
-                    }
-                    return androidx.compose.ui.geometry.Offset.Zero
-                }
-                override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
-                    gestureActive = false; pastClose = false
-                    if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
-                    if (ccSwipeAwayCloses(swipeAway, available.y, swipeAwayPx, flickPx)) closePanel()
-                    else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
-                    return available
-                }
-            }
+        val swipeConnection = remember(pager, edit, pull) {
+            CcSwipeAwayConnection(pull, pageScope, onFirstPage = { pager.currentPage == pager.pageCount - 1 }, editing = { edit.active },
+                thresholdPx = { swipeAwayPx }, flickPx = { flickPx }, close = { closePanel() },
+                tick = { tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) })
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // A swipe up in the empty space under the controls reaches the scrim, which asks here first: from Media or Connectivity it goes back a page, and only the first page lets it close the panel.
@@ -1166,7 +1134,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
 
         ProvideJiggle(edit) {
-        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = pull.offset; alpha = PanelPull.fade(pull.offset, this.size.height) }
             .semantics { dismiss(closeLabel) { onClose(); true } }, contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 // The grid takes the taps that land between its controls, so only the margins around it close the panel.
@@ -1410,9 +1378,9 @@ private const val CC_PRESS_SCALE = .94f
 private const val CC_PAGE_FADE = .55f
 
 /** How far up the panel has to be pulled to close, and how fast a flick (px per second) closes it from less. */
-private const val CC_SWIPE_AWAY_DP = 96f
+internal const val CC_SWIPE_AWAY_DP = 96f
 /** A flick up faster than this closes Control Center, in dp per second (about what 1400 px per second was on the Fold's 2.6 density), so a dense screen needs no lighter a flick. */
-private const val CC_SWIPE_AWAY_FLICK_DP = 530f
+internal const val CC_SWIPE_AWAY_FLICK_DP = 530f
 private const val CC_PAGE_SHRINK = .05f
 
 @Composable

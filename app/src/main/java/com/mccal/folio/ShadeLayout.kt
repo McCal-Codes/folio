@@ -61,6 +61,12 @@ internal fun isPullDown(dx: Float, dy: Float, slop: Float): Boolean = dy > slop 
 internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarPx.coerceIn((24 * density).toInt(), (48 * density).toInt())
 
 /**
+ * Whether the two small pull tabs should exist: where the strip cannot be (the app is full screen and keeps the system's swipe from the top) but
+ * every other condition for it holds ([stripOtherwise], the strip's own rule with the full-screen part left out) and the switch for tabs is on.
+ */
+internal fun pullTabWanted(stripOtherwise: Boolean, tabsOn: Boolean, fullScreen: Boolean): Boolean = stripOtherwise && tabsOn && fullScreen
+
+/**
  * Whether the strip over the top edge of other apps should exist: the switch is on and so are the panels over apps, Safe Mode is off,
  * Folio's own Home is not in front (it has its own pulls) and the app is not full screen (Android keeps its swipe down from the top there).
  */

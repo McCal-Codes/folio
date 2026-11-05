@@ -212,6 +212,8 @@ data class LauncherState(
     val shadeOverApps: Boolean = false,
     /** A pull down on the top edge of any app opens Folio's panels (needs [shadeOverApps]). */
     val shadePull: Boolean = false,
+    /** In an app that hides the status bar, two small tabs at the top edge take over from the pull (needs [shadePull]). */
+    val shadePullTab: Boolean = true,
     /** What that pull opens: both panels by half (the start), or only Notification Center or only Control Center. */
     val pullTarget: PullTarget = PullTarget.BOTH,
     /** Smart Stacks: widget placement slot → extra widget ids stacked behind that placement's widget. */
@@ -1452,6 +1454,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
+    fun setShadePullTab(value: Boolean) = updateSettings(soon = false) { it.copy(shadePullTab = value) }
     fun setPullTarget(value: PullTarget) = updateSettings(soon = false) { it.copy(pullTarget = value) }
     fun setFolderColor(folderId: String, color: Long?) = updateSettings(soon = false) {
         it.copy(folderColors = if (color == null) it.folderColors - folderId else it.folderColors + (folderId to color)) }
@@ -1694,7 +1697,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
-            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("pullTarget", s.pullTarget.name)
+            .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("shadePullTab", s.shadePullTab).put("pullTarget", s.pullTarget.name)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
             .put("stackRotate", s.stackRotate).put("railActivitiesUnderStatus", s.railActivities).put("addNewAppsToHome", s.addNewAppsToHome)
             .put("layoutHistory", s.layoutHistory).put("dockRecentDots", s.dockRecentDots)
@@ -1980,6 +1983,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
         shadeOverApps = j.optBoolean("shadeOverApps", false),
         shadePull = j.optBoolean("shadePull", false),
+        shadePullTab = j.optBoolean("shadePullTab", true),
         pullTarget = pullTargetFrom(j.optString("pullTarget").ifEmpty { null }),
         widgetStacks = j.optJSONObject("widgetStacks")?.let { o -> o.keys().asSequence().mapNotNull { key ->
             val ids = o.optJSONArray(key) ?: return@mapNotNull null
