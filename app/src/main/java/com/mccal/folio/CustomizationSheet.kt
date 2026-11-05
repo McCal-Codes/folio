@@ -1831,7 +1831,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 
 /** Icon, name and what it is inspired by: the top of every tweak page, whether or not it is installed. */
 @Composable private fun TweakPageHeader(tweak: TweakFeature) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
         TweakIconTile(tweak)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
