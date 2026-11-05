@@ -1562,6 +1562,7 @@
     <string name="used_recently">最近使用过</string>
     <string name="app_options">App 选项</string>
     <string name="show_app_panel">显示 App 面板</string>
+    <string name="app_panel">App 面板</string>
     <string name="remove_from_home_2">从主屏幕移除 %1$s</string>
     <string name="android_notifications">Android 通知</string>
     <string name="clear_all">全部清除</string>

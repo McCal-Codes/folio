@@ -8,7 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
-- **Cabinet without the flick:** the long-press menu has a Show App Panel row, and TalkBack lists the same action on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
+- **Cabinet without the flick:** the long-press menu has an App Panel row, and TalkBack lists the same action as Show App Panel on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
 
 ## [0.6.9] - 2026-10-31

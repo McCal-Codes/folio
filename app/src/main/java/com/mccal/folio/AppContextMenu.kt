@@ -209,7 +209,7 @@ internal fun AppContextMenu(
                     else MenuDivider()
                 }
                 openPanel?.let { open ->
-                    MenuRow(stringResource(R.string.show_app_panel), Icons.Rounded.ViewAgenda, tag = "menu-app-panel") { onDismiss(); open(app) }
+                    MenuRow(stringResource(R.string.app_panel), Icons.Rounded.ViewAgenda, tag = "menu-app-panel") { onDismiss(); open(app) }
                     MenuDivider()
                 }
                 if (lockedBy != null) {
