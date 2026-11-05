@@ -10,7 +10,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
-import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,7 +73,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 /** Spotlight sections that can be turned off in settings. */
-internal enum class SpotlightSection(@androidx.annotation.StringRes val title: Int) { SUGGESTIONS(R.string.suggestions), CONTACTS(R.string.contacts), SETTINGS(R.string.settings), CALCULATOR(R.string.calculator), WEB(R.string.search_the_web_ask_ai) }
+internal enum class SpotlightSection(@androidx.annotation.StringRes val title: Int) { SUGGESTIONS(R.string.suggestions), CONTACTS(R.string.contacts), SETTINGS(R.string.phone_settings), CALCULATOR(R.string.calculator), WEB(R.string.search_the_web_ask_ai) }
 
 /** Remembers the last apps launched from Folio, for Spotlight suggestions. Stays on the device. */
 internal object RecentApps {
@@ -223,8 +222,13 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     val q = query.trim()
     fun shows(section: SpotlightSection) = section.name !in state.spotlightHidden
     val appHits = remember(q, apps, frecency) { if (q.isEmpty()) emptyList() else rankApps(apps, q, frecency) }
-    val shortcuts = remember(context) { settingShortcuts(context) }
-    val settingHits = remember(q, shortcuts) { if (q.length < 2) emptyList() else shortcuts.filter { it.matches(q) }.take(4) }
+    val configuration = LocalConfiguration.current
+    val shortcuts = remember(context, configuration) { systemSettingShortcuts(context) }
+    val settingsLabel = stringResource(R.string.settings)
+    val settingsVisible = shows(SpotlightSection.SETTINGS)
+    val settingHits = remember(q, shortcuts, settingsLabel, settingsVisible) {
+        if (settingsVisible) searchSystemSettings(shortcuts, q, settingsLabel) else emptyList()
+    }
     val math = remember(q) { evaluateMath(q) }
     var contactsGranted by remember { mutableStateOf(context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) }
     val contactsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { contactsGranted = it }
@@ -234,6 +238,10 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     }
     val launch = { app: AppEntry -> onClose(); onLaunch(app) }
     val start = { intent: Intent -> onClose(); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
+    fun openSetting(setting: SystemSettingShortcut) {
+        if (openSystemSetting(context, setting.action)) onClose()
+        else android.widget.Toast.makeText(context, R.string.phone_settings_unavailable, android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     // imeAnimationTarget changes once per keyboard show/hide (not every animation frame), so results
     // re-layout a single time instead of on each frame of the keyboard sliding in.
@@ -266,6 +274,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         keyboardActions = KeyboardActions(onSearch = {
                             when {
                                 appHits.isNotEmpty() -> launch(appHits.first())
+                                settingHits.isNotEmpty() -> openSetting(settingHits.first())
                                 q.isNotEmpty() -> { onClose(); openEnterSearch(context, state, q) }
                             }
                         }))
@@ -300,6 +309,11 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         Section(stringResource(R.string.top_hit)) { TopHit(top, homeOffer(state.layout, top.id), onAdd = { onAddToHome(top) }) { launch(top) } }
                     } }
                     if (appHits.size > 1) item("apps") { Section(stringResource(R.string.apps)) { AppGrid(appHits.drop(1).take(8), launch) } }
+                    if (settingHits.isNotEmpty()) item("settings") {
+                        Section(stringResource(R.string.phone_settings)) { settingHits.forEach { setting ->
+                            ResultRow(Icons.Rounded.Settings, setting.title, stringResource(R.string.phone_settings)) { openSetting(setting) }
+                        } }
+                    }
                     if (shows(SpotlightSection.CONTACTS) && contacts.isNotEmpty()) item("contacts") {
                         Section(stringResource(R.string.contacts)) { contacts.forEach { c ->
                             ResultRow(Icons.Rounded.Person, c.name, c.address, trailing = c.address?.let { address -> {
@@ -316,9 +330,6 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         Section(stringResource(R.string.contacts)) { ResultRow(Icons.Rounded.PersonSearch, stringResource(R.string.search_your_contacts), stringResource(R.string.allow_contacts_access)) {
                             contactsPermission.launch(Manifest.permission.READ_CONTACTS)
                         } }
-                    }
-                    if (shows(SpotlightSection.SETTINGS) && settingHits.isNotEmpty()) item("settings") {
-                        Section(stringResource(R.string.settings)) { settingHits.forEach { s -> ResultRow(Icons.Rounded.Settings, s.title, stringResource(R.string.settings)) { start(Intent(s.action)) } } }
                     }
                     if (shows(SpotlightSection.WEB)) item("web") {
                         Section(stringResource(R.string.search_the_web_ask_ai)) {
@@ -583,34 +594,6 @@ private fun contactAddress(context: Context, contactId: Long): String? {
         ?: first(ContactsContract.CommonDataKinds.Email.CONTENT_URI, ContactsContract.CommonDataKinds.Email.ADDRESS,
             ContactsContract.CommonDataKinds.Email.CONTACT_ID, ContactsContract.CommonDataKinds.Email.IS_PRIMARY)
 }
-
-private data class SettingShortcut(val title: String, val action: String, val keywords: List<String>) {
-    fun matches(q: String) = title.contains(q, true) || keywords.any { it.startsWith(q, true) }
-}
-
-private fun settingShortcuts(context: android.content.Context) = listOf(
-    SettingShortcut(context.getString(R.string.wi_fi), Settings.ACTION_WIFI_SETTINGS, listOf("wifi", "wireless", "internet", "network")),
-    SettingShortcut(context.getString(R.string.bluetooth), Settings.ACTION_BLUETOOTH_SETTINGS, listOf("bluetooth", "pair", "headphones")),
-    SettingShortcut(context.getString(R.string.mobile_network), Settings.ACTION_NETWORK_OPERATOR_SETTINGS, listOf("cellular", "mobile", "data", "sim")),
-    SettingShortcut(context.getString(R.string.airplane_mode), Settings.ACTION_AIRPLANE_MODE_SETTINGS, listOf("airplane", "flight")),
-    SettingShortcut(context.getString(R.string.display_brightness), Settings.ACTION_DISPLAY_SETTINGS, listOf("display", "brightness", "screen", "dark")),
-    SettingShortcut(context.getString(R.string.sounds_vibration), Settings.ACTION_SOUND_SETTINGS, listOf("sound", "volume", "ringtone", "vibration")),
-    SettingShortcut(context.getString(R.string.notifications_title), if (android.os.Build.VERSION.SDK_INT >= 33) Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS else Settings.ACTION_SETTINGS, listOf("notification", "alerts")),
-    SettingShortcut(context.getString(R.string.battery), Intent.ACTION_POWER_USAGE_SUMMARY, listOf("battery", "power", "charging")),
-    SettingShortcut(context.getString(R.string.apps), Settings.ACTION_APPLICATION_SETTINGS, listOf("apps", "applications", "uninstall")),
-    SettingShortcut(context.getString(R.string.default_apps), Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, listOf("default", "home app", "browser", "assistant")),
-    SettingShortcut(context.getString(R.string.storage), Settings.ACTION_INTERNAL_STORAGE_SETTINGS, listOf("storage", "space")),
-    SettingShortcut(context.getString(R.string.location), Settings.ACTION_LOCATION_SOURCE_SETTINGS, listOf("location", "gps")),
-    SettingShortcut(context.getString(R.string.security_privacy), Settings.ACTION_SECURITY_SETTINGS, listOf("security", "privacy", "lock", "password", "fingerprint")),
-    SettingShortcut(context.getString(R.string.accessibility), Settings.ACTION_ACCESSIBILITY_SETTINGS, listOf("accessibility")),
-    SettingShortcut(context.getString(R.string.date_time), Settings.ACTION_DATE_SETTINGS, listOf("date", "time", "clock")),
-    SettingShortcut(context.getString(R.string.language_keyboard), Settings.ACTION_LOCALE_SETTINGS, listOf("language", "keyboard")),
-    SettingShortcut(context.getString(R.string.do_not_disturb), Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS, listOf("dnd", "do not disturb", "focus")),
-    SettingShortcut(context.getString(R.string.nfc_payments), Settings.ACTION_NFC_SETTINGS, listOf("nfc", "pay", "wallet", "contactless")),
-    SettingShortcut(context.getString(R.string.developer_options), Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS, listOf("developer", "usb debugging")),
-    SettingShortcut(context.getString(R.string.about_phone), Settings.ACTION_DEVICE_INFO_SETTINGS, listOf("about", "phone", "software", "version")),
-    SettingShortcut(context.getString(R.string.settings), Settings.ACTION_SETTINGS, listOf("settings", "preferences")),
-)
 
 private val SpotGlass = FolioGlass.card
 
