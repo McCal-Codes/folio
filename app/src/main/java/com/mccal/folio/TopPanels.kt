@@ -893,46 +893,19 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
         val closeLabel = stringResource(R.string.close)
-        var swipeAway by remember { mutableFloatStateOf(0f) }
+        val pull = remember { PanelPull() }
         // Closing leaves the pull where it was while the panel fades out. Pulled open again in that time, this same panel is reused, so it starts from rest.
-        LaunchedEffect(panelOpen) { swipeAway = ccSwipeAwayOnOpenChange(panelOpen, swipeAway) }
+        LaunchedEffect(panelOpen) { if (ccSwipeAwayOnOpenChange(panelOpen, pull.offset) == 0f) pull.reset() }
         val swipeDensity = androidx.compose.ui.platform.LocalDensity.current
         // The connection below is made once, so it reads these through State: a new density (a fold, a display-size change) or a new onClose is seen at the next gesture.
         val swipeAwayPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_DP.dp.toPx() })
         val flickPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_FLICK_DP.dp.toPx() })
         val closePanel by rememberUpdatedState(onClose)
         val tick by rememberUpdatedState(androidx.compose.ui.platform.LocalHapticFeedback.current)
-        val swipeConnection = remember(pager, edit) {
-            // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
-            var startedOnFirst = false
-            var gestureActive = false
-            // One light tick as the pull passes the point where letting go closes the panel (and again if it goes back), so the finger knows.
-            var pastClose = false
-            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-                override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                    // Only a finger starts a gesture: the pager's own settling after a release also scrolls (as a side effect) and must not pick the next gesture's page.
-                    if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) return androidx.compose.ui.geometry.Offset.Zero
-                    if (!gestureActive) { gestureActive = true; startedOnFirst = pager.currentPage == pager.pageCount - 1 }
-                    if (swipeAway < 0f && available.y > 0f) { val used = minOf(available.y, -swipeAway); swipeAway += used; return androidx.compose.ui.geometry.Offset(0f, used) }
-                    return androidx.compose.ui.geometry.Offset.Zero
-                }
-                override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                    if (!edit.active && startedOnFirst && pager.currentPage == pager.pageCount - 1 && available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) {
-                        swipeAway += available.y
-                        val past = swipeAway < -swipeAwayPx
-                        if (past != pastClose) { pastClose = past; tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) }
-                        return androidx.compose.ui.geometry.Offset(0f, available.y)
-                    }
-                    return androidx.compose.ui.geometry.Offset.Zero
-                }
-                override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
-                    gestureActive = false; pastClose = false
-                    if (swipeAway >= 0f) return androidx.compose.ui.unit.Velocity.Zero
-                    if (ccSwipeAwayCloses(swipeAway, available.y, swipeAwayPx, flickPx)) closePanel()
-                    else androidx.compose.animation.core.animate(swipeAway, 0f, animationSpec = FolioMotion.spring(FolioMotion.Quick)) { v, _ -> swipeAway = v }
-                    return available
-                }
-            }
+        val swipeConnection = remember(pager, edit, pull) {
+            CcSwipeAwayConnection(pull, pageScope, onFirstPage = { pager.currentPage == pager.pageCount - 1 }, editing = { edit.active },
+                thresholdPx = { swipeAwayPx }, flickPx = { flickPx }, close = { closePanel() },
+                tick = { tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) })
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
         // A swipe up in the empty space under the controls reaches the scrim, which asks here first: from Media or Connectivity it goes back a page, and only the first page lets it close the panel.
@@ -1161,7 +1134,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
 
         ProvideJiggle(edit) {
-        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = swipeAway; alpha = (1f + swipeAway / (this.size.height * .9f)).coerceIn(.15f, 1f) }
+        Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = pull.offset; alpha = PanelPull.fade(pull.offset, this.size.height) }
             .semantics { dismiss(closeLabel) { onClose(); true } }, contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 // The grid takes the taps that land between its controls, so only the margins around it close the panel.

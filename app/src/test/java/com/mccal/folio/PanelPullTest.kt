@@ -52,6 +52,25 @@ class PanelPullTest {
     }
 }
 
+/** Control Center's own swipe away: a second swipe that starts while the spring-back of the first is running takes over the offset. */
+class CcSwipeAwayConnectionTest {
+    private val up = androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput
+
+    @Test fun `a second swipe during the spring back ends it and adds to the offset`() {
+        val pull = PanelPull()
+        val scope = CoroutineScope(Dispatchers.Unconfined + BroadcastFrameClock())
+        val conn = CcSwipeAwayConnection(pull, scope, { true }, { false }, { 1000f }, { Float.MAX_VALUE }, { error("a short pull must not close") }, {})
+        conn.onPreScroll(androidx.compose.ui.geometry.Offset(0f, -5f), up)
+        conn.onPostScroll(androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, -200f), up)
+        kotlinx.coroutines.runBlocking { conn.onPreFling(androidx.compose.ui.unit.Velocity.Zero) }
+        assertTrue(pull.springing)
+        conn.onPreScroll(androidx.compose.ui.geometry.Offset(0f, -10f), up)
+        conn.onPostScroll(androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, -10f), up)
+        assertFalse(pull.springing)
+        assertEquals(-210f, pull.offset, 0f)
+    }
+}
+
 /** The two small pull tabs stand in for the strip only where the strip cannot be: a full-screen app, with every other condition for the strip met. */
 class PullTabRuleTest {
     @Test fun `tabs show only in a full-screen app with the strip's other conditions met and their switch on`() {

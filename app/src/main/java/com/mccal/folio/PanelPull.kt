@@ -64,6 +64,48 @@ internal class PanelPull {
     }
 }
 
+/**
+ * Control Center's swipe away: an upward drag the first page cannot use pulls the panel through [pull], and the lift closes it or springs it back.
+ * Goes through [PanelPull] so a new touch ends a spring-back still running, as it does for Notification Center.
+ */
+internal class CcSwipeAwayConnection(
+    private val pull: PanelPull, private val scope: CoroutineScope,
+    private val onFirstPage: () -> Boolean, private val editing: () -> Boolean,
+    private val thresholdPx: () -> Float, private val flickPx: () -> Float,
+    private val close: () -> Unit, private val tick: () -> Unit,
+) : NestedScrollConnection {
+    // A drag counts only if it started on the first page, so paging back from Media and going on past the first page does not close it by accident.
+    private var startedOnFirst = false
+    private var gestureActive = false
+    private var pastClose = false
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        // Only a finger starts a gesture: the pager's own settling after a release also scrolls and must not pick the next gesture's page.
+        if (source != NestedScrollSource.UserInput) return Offset.Zero
+        if (!gestureActive) { gestureActive = true; startedOnFirst = onFirstPage() }
+        if (pull.offset < 0f && available.y > 0f) { val used = minOf(available.y, -pull.offset); pull.drag(used); return Offset(0f, used) }
+        return Offset.Zero
+    }
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        if (!editing() && startedOnFirst && onFirstPage() && available.y < 0f && source == NestedScrollSource.UserInput) {
+            pull.drag(available.y)
+            // One light tick as the pull passes the point where letting go closes the panel (and again if it goes back).
+            val past = pull.offset < -thresholdPx()
+            if (past != pastClose) { pastClose = past; tick() }
+            return Offset(0f, available.y)
+        }
+        return Offset.Zero
+    }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        gestureActive = false; pastClose = false
+        if (pull.offset >= 0f) return Velocity.Zero
+        pull.release(scope, available.y, thresholdPx(), flickPx(), goBack = { false }, close = close)
+        return available
+    }
+}
+
 /** The pull the panels share, for a list inside a panel to hand its leftover upward scroll to. Null outside the panels. */
 internal val LocalPanelPull = staticCompositionLocalOf<PanelPull?> { null }
 
