@@ -25,6 +25,12 @@ internal object FeatureScopes {
 
 internal fun screenFor(wide: Boolean) = if (wide) FolioScreen.INNER else FolioScreen.COVER
 
+/** How faint a tweak page's dependent rows (its options, the screens it runs on) are while the tweak is off. */
+internal const val TWEAK_DIMMED_ALPHA = .4f
+
+/** One answer for every tweak page: the rows that depend on the main switch are full strength on, dimmed off. */
+internal fun tweakDependentAlpha(on: Boolean) = if (on) 1f else TWEAK_DIMMED_ALPHA
+
 /** "Barrel by Aaron Ash, Cylinder by Reed Weichler" without the authors: the short credit on a Tweak Library row. */
 internal val TweakFeature.inspiredNames: String get() = inspiredBy.replace(AUTHOR, "")
 private val AUTHOR = Regex(" by [^,]+")

@@ -1820,6 +1820,7 @@
     <string name="tweak_opt_subtle">轻微</string>
     <string name="tweak_opt_strong">强烈</string>
     <string name="tweak_opt_tick">滑动时轻触反馈</string>
+    <string name="tweak_options_after_get">获取后，选项会显示在这里。</string>
     <string name="tweak_opt_music_card">音乐卡片</string>
     <string name="tweak_opt_island_bars">灵动岛声波条</string>
     <string name="compatibility">兼容性</string>
