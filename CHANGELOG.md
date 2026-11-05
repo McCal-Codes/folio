@@ -8,7 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
-- **One look for every tweak page:** Cabinet, Harborline, Roll Call, Palette, Afterglow, Flipbook and Duet now open on the same layout. The icon, name and what each is inspired by sit at the top, Reset is a blue action row like Get and Remove, and a tweak you have not got yet shows an About card, Get, and a line saying its options appear once you get it. Nothing about how a tweak behaves changes.
+- **One look for every tweak page:** Cabinet, Harborline, Roll Call, Palette, Afterglow, Flipbook and Duet now open on the same layout. The icon and what each is inspired by sit at the top, Reset is a blue action row like Get and Remove, and a tweak you have not got yet shows an About card, Get, and a line saying its options appear once you get it. Nothing about how a tweak behaves changes.
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
 
 ## [0.6.9] - 2026-10-31

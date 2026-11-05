@@ -1829,13 +1829,13 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 @Composable private fun tweakCredit(tweak: TweakFeature) =
     tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy)
 
-/** Icon, name and what it is inspired by: the top of every tweak page, whether or not it is installed. */
+/** Icon and what it is inspired by: the top of every tweak page, whether or not it is installed. The name is the page title above it. */
 @Composable private fun TweakPageHeader(tweak: TweakFeature) {
     Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
         TweakIconTile(tweak)
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(tweak.name, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
+        // As tall as the tile at least, so one line sits beside it and a wrapped one at large text still starts at its top.
+        Box(Modifier.weight(1f).heightIn(min = 40.dp), contentAlignment = Alignment.CenterStart) {
             Text(stringResource(R.string.inspired_by_1, tweak.inspiredBy), fontSize = FolioType.FOOTNOTE.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f))
         }
     }
