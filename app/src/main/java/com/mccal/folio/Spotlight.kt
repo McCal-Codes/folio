@@ -129,12 +129,16 @@ internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: La
     }
     if (!composed) return
     val lift = with(androidx.compose.ui.platform.LocalDensity.current) { 24.dp.toPx() }
+    // Reduce Motion: the card only fades (the Lab's "Spotlight summon"), no lift and no scale; the back swipe does not preview either.
+    val still = LocalReduceMotion.current
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() }.background(FolioGlass.scrim)
         .then(if (visible) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose) else Modifier))
     Box(Modifier.fillMaxSize().graphicsLayer {
         val p = progress()
         // Moves with the back swipe's preview, fades only as it closes (OverlayBack).
-        alpha = OverlayBack.unpreviewed(p); translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
+        alpha = OverlayBack.unpreviewed(p)
+        if (still) return@graphicsLayer
+        translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f)
     }) { SpotlightContent(state, active = visible, onClose, onLaunch, onAddToHome) }
 }

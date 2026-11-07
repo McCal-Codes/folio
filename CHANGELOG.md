@@ -41,6 +41,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Control Center controls settle in:** when Control Center opens, the controls on its first page fade in and rise a few points one after another, 20 ms apart, instead of arriving all at once. It does not run while you are editing controls or with Reduce Motion on.
 
 ### Fixed
+- **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
 
