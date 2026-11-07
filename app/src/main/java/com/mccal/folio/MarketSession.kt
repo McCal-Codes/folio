@@ -72,11 +72,15 @@ internal class MarketSession(
             setOf(com.mccal.folio.market.Screen.COVER, com.mccal.folio.market.Screen.INNER) else null
 
     /** Whether [manifest] works here: the answer the installer refuses on, asked before anything is downloaded. */
-    fun compatibility(manifest: com.mccal.folio.market.PackageManifest): List<com.mccal.folio.market.CompatCheck> =
+    fun compatibility(
+        manifest: com.mccal.folio.market.PackageManifest,
+        changes: List<com.mccal.folio.market.PackageChange> = emptyList(),
+    ): List<com.mccal.folio.market.CompatCheck> =
         com.mccal.folio.market.PackageCompatibility.check(
             manifest, com.mccal.folio.market.CompatContext(
                 host.capabilities, folioVersion, store.installed(), host::hasTweak, deviceScreens, androidSdk = android.os.Build.VERSION.SDK_INT,
             ),
+            changes,
         )
 
     /** Whether this build can read an unsigned source served from the phone: Folio Dev only. */

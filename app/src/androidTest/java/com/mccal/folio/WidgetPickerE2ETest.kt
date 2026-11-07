@@ -70,23 +70,33 @@ class WidgetPickerE2ETest {
     private fun prepareEmptySecondPage() {
         val layout = model().state.value.layout
         val app = model().state.value.apps.first { it.id !in layout.dock }
-        compose.runOnIdle { model().applyDrop(app.id, DropTarget.Home(47)) }
-        compose.onNodeWithContentDescription("Home page 2").performClick()
+        val lastVisibleCell = HOME_CELLS + visibleHomeRows(model().state.value.homeAppRows) * GRID_COLUMNS - 1
+        compose.runOnIdle { assertTrue(model().applyDrop(app.id, DropTarget.Home(lastVisibleCell))) }
         compose.waitForIdle()
-        assertNull(model().state.value.homeSlots[24])
+        // The resting strip can show Search instead of page dots. Use the ordinary paging gesture.
+        compose.onNodeWithTag("app-pager").performTouchInput { swipeLeft() }
+        compose.waitUntil(5_000) {
+            compose.onNodeWithTag("app-pager").fetchSemanticsNode()
+                .config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] == "Home page 2 of 2"
+        }
+        compose.waitForIdle()
+        assertNull(model().state.value.homeSlots[HOME_CELLS])
     }
 
-    private fun openCatalogAt(index: Int = 24) {
-        compose.onNodeWithTag("home-cell-$index").performTouchInput { longClick() }
-        compose.onNodeWithText("Add widget").performClick()
+    private fun openCatalogAt(index: Int = HOME_CELLS) {
+        if (compose.onAllNodesWithTag("jiggle-bar").fetchSemanticsNodes().isEmpty()) {
+            compose.onNodeWithTag("home-cell-$index").performTouchInput { longClick() }
+        }
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.add_widget)).performClick()
         compose.onNodeWithTag("visual-widget-picker").assertIsDisplayed()
+        compose.onNodeWithTag("widget-catalog-search").performTextClearance()
     }
 
     private fun placeByTap(simpleName: String) {
         compose.onNodeWithTag("widget-catalog-search").performTextClearance()
         compose.onNodeWithTag("widget-catalog-search").performTextInput(
             provider(simpleName).loadLabel(compose.activity.packageManager).toString())
-        compose.onNodeWithTag(providerTag(simpleName)).performScrollTo().performClick()
+        compose.onNodeWithTag(providerTag(simpleName), useUnmergedTree = true).performScrollTo().performClick()
         compose.onNodeWithTag("widget-placement-preview")
             .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Ready to place"))
         compose.onNodeWithTag("widget-placement-apply").assertIsEnabled().performClick()
@@ -113,14 +123,15 @@ class WidgetPickerE2ETest {
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Widget Fixture Application")
             compose.onNodeWithTag("widget-catalog-list")
                 .performScrollToNode(hasTestTag(providerTag("ModernTargetWidgetProvider")))
-            compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider"))
+            compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider"), useUnmergedTree = true)
                 .assertIsDisplayed()
             assertEquals("Rendering catalog previews must not allocate a host ID",
                 idsBefore, controller().host.appWidgetIds.toSet())
 
             compose.onNodeWithTag("widget-catalog-search").performTextClearance()
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Forecast Canvas")
-            compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider"))
+            closeSoftKeyboard()
+            compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider"), useUnmergedTree = true)
                 .performScrollTo().assertIsDisplayed().assertIsEnabled()
             compose.waitUntil(10_000) {
                 runCatching { compose.onNodeWithTag(previewTag("ModernTargetWidgetProvider"), useUnmergedTree = true).fetchSemanticsNode() }.isSuccess
@@ -137,11 +148,13 @@ class WidgetPickerE2ETest {
             assertEquals("A 4 × 2 provider preview must retain its footprint aspect ratio",
                 2f, (previewBounds.right - previewBounds.left).value / previewHeight.value, .08f)
             compose.onNodeWithText("Forecast Canvas 4 by 2").assertIsDisplayed()
-            compose.onNodeWithText("4 × 2").assertIsDisplayed()
-            compose.onNodeWithTag(providerTag("LegacyResizableWidgetProvider"))
+            compose.onNodeWithText("${compose.activity.getString(R.string.medium)} · 4 × 2")
+                .performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag(providerTag("LegacyResizableWidgetProvider"), useUnmergedTree = true)
                 .assertDoesNotExist()
 
-            compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider")).performClick()
+            compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider"), useUnmergedTree = true)
+                .performScrollTo().performClick()
             compose.onNodeWithTag("widget-placement-preview").assertIsDisplayed()
             compose.onNodeWithTag("widget-placement-cancel").performClick()
             assertEquals("Canceling before drop must not bind or allocate",
@@ -218,7 +231,7 @@ class WidgetPickerE2ETest {
             placeByTap("OptionalConfigWidgetProvider")
             compose.waitUntil(10_000) { model().placement(slot)?.id?.let { it >= 0 } == true }
             val placed = requireNotNull(model().placement(slot))
-            assertEquals(24, placed.page * HOME_CELLS + placed.row * GRID_COLUMNS + placed.column)
+            assertEquals(HOME_CELLS, placed.page * HOME_CELLS + placed.row * GRID_COLUMNS + placed.column)
             assertNull("Optional + reconfigurable must not leave a configuration transaction", controller().pendingPlacement)
             assertEquals(provider("OptionalConfigWidgetProvider").provider,
                 controller().manager.getAppWidgetInfo(placed.id)?.provider)
@@ -247,7 +260,7 @@ class WidgetPickerE2ETest {
             val fixture = model().state.value.layout
             openCatalogAt()
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Instant Conditions")
-            compose.onNodeWithTag(providerTag("OptionalConfigWidgetProvider"))
+            compose.onNodeWithTag(providerTag("OptionalConfigWidgetProvider"), useUnmergedTree = true)
                 .performScrollTo().performClick()
             compose.onNodeWithContentDescription("Next home page").performClick()
             compose.waitUntil(5_000) {
@@ -275,7 +288,7 @@ class WidgetPickerE2ETest {
             openCatalogAt()
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Instant Conditions")
             val slot = model().nextWidgetSlot()
-            val card = compose.onNodeWithTag(providerTag("OptionalConfigWidgetProvider"))
+            val card = compose.onNodeWithTag(providerTag("OptionalConfigWidgetProvider"), useUnmergedTree = true)
             card.performScrollTo()
             closeSoftKeyboard()
             compose.waitForIdle()
@@ -288,7 +301,7 @@ class WidgetPickerE2ETest {
                 cardBounds.top + 40f * compose.activity.resources.displayMetrics.density) + screenOffset
             val root = compose.onNodeWithTag("launcher-root")
             val right = root.fetchSemanticsNode().boundsInRoot.right + screenOffset.x - 3f
-            val destination = compose.onNodeWithTag("home-cell-24").fetchSemanticsNode().boundsInRoot.center + screenOffset
+            val destination = compose.onNodeWithTag("home-cell-$HOME_CELLS").fetchSemanticsNode().boundsInRoot.center + screenOffset
             val edge = Offset(right, start.y)
             val outcome = java.util.concurrent.atomic.AtomicReference<Result<Unit>>()
             val stage = java.util.concurrent.atomic.AtomicInteger(0)
@@ -393,7 +406,7 @@ class WidgetPickerE2ETest {
                 "Home page 3 of 3")).assertExists("Held provider must turn to the new blank page before release")
             compose.waitUntil(10_000) { model().placement(slot)?.id?.let { it >= 0 } == true }
             val placed = requireNotNull(model().placement(slot))
-            assertEquals("The held provider must use the selected blank-page anchor", 48,
+            assertEquals("The held provider must use the selected blank-page anchor", 2 * HOME_CELLS,
                 placed.page * HOME_CELLS + placed.row * GRID_COLUMNS + placed.column)
         } finally { cleanup(before, idsBefore) }
     }

@@ -12,6 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.AirplanemodeActive
 import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -229,7 +232,17 @@ fun StatusRail(
     // and the ripple lit that as a faint second pill behind it.
     val press = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by press.collectIsPressedAsState()
-    val pressShade by animateFloatAsState(if (pressed && onOpen != null) .14f else 0f, androidx.compose.animation.core.tween(120), label = "rail press")
+    val pressShade by animateFloatAsState(if (pressed && onOpen != null) .14f else 0f, androidx.compose.animation.core.tween(120), label = "rail press") // english-only
+    val still = LocalReduceMotion.current
+    val chargingSurge = remember { Animatable(0f) }
+    LaunchedEffect(status.charging) {
+        if (status.charging && !still) {
+            chargingSurge.snapTo(0f)
+            chargingSurge.animateTo(1f, tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+            chargingSurge.animateTo(0f, tween(600, easing = androidx.compose.animation.core.LinearOutSlowInEasing))
+        }
+    }
+    val surgeVal = chargingSurge.value
     BoxWithConstraints(modifier.testTag("status-rail")
         .then(if (onOpen != null) Modifier.clip(capsule).clickable(interactionSource = press, indication = null, onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
         .semantics(mergeDescendants = true) { contentDescription = description }) {
@@ -263,6 +276,7 @@ fun StatusRail(
                     tint = if (style.colorfulBattery) (if (onLight) SilentOnLight else Silent) else ink,
                     modifier = Modifier.size(if (compact) 14.dp else 16.dp).testTag("status-silent"))
                 if (style.showTime) Text(now.format(timeFormatter), color = ink, fontSize = timeSize, fontWeight = FontWeight.SemiBold,
+                    style = TextStyle(fontFeatureSettings = "tnum"),
                     lineHeight = if (tight) timeSize * 1.05f else androidx.compose.ui.unit.TextUnit.Unspecified,
                     maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
                 if (!compact && style.showDate) Text(now.format(dateFormatter), color = ink.copy(alpha = if (onLight) .85f else .7f), fontSize = detailSize,
@@ -303,8 +317,14 @@ fun StatusRail(
                                     Size(radius * 2, radius * 2), style = Stroke(width = w * .07f * look.strokeScale, cap = StrokeCap.Round))
                             }
                         }
-                        Text(status.battery?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
-                            fontSize = (visualSize.value * .34f / fontScale).sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            if (status.charging) {
+                                Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .26f / fontScale).dp))
+                            }
+                            Text(status.battery?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
+                                fontSize = (visualSize.value * (if (status.charging) .28f else .34f) / fontScale).sp, fontWeight = FontWeight.SemiBold,
+                                style = TextStyle(fontFeatureSettings = "tnum"), maxLines = 1, softWrap = false)
+                        }
                     }
                     StatusGlyph.RING, StatusGlyph.MINIMAL -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         // Inside the battery ring, like iPhone's status bar: Wi-Fi when joined; otherwise cellular bars,
@@ -359,15 +379,16 @@ fun StatusRail(
                         contentAlignment = Alignment.TopCenter) {
                         // The mark McCal asked for: a ring broken at top and bottom, the reading overlapping the top
                         // break, the connection filling the ring, and the cellular dots in a row underneath it.
-                        val still = LocalReduceMotion.current
-                        val level by animateFloatAsState(((status.battery ?: 0).coerceIn(0, 100)) / 100f,
+                        val rawLevel = ((status.battery ?: 0).coerceIn(0, 100)) / 100f
+                        val effectiveTarget = if (surgeVal > 0f) maxOf(rawLevel, rawLevel + (1f - rawLevel) * .45f * surgeVal) else rawLevel
+                        val level by animateFloatAsState(effectiveTarget,
                             if (still) snap() else tween(FolioMotion.GAUGE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                            label = "gauge level")
+                            label = "gauge level") // english-only
                         val arcColor by animateColorAsState(batteryColor,
-                            if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "gauge color")
+                            if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "gauge color") // english-only
                         val searching = !status.wifiConnected && cellularVisual !is CellularSignalVisual.Available && !status.airplane
-                        val sweep = if (searching && !still) rememberInfiniteTransition(label = "no connection")
-                            .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep") else null
+                        val sweep = if (searching && !still) rememberInfiniteTransition(label = "no connection") // english-only
+                            .animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "sweep") else null // english-only
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val center = Offset(w / 2, w * ringCenter)
@@ -382,6 +403,12 @@ fun StatusRail(
                             } else drawArc(track, ring.leftStart, ring.side * 2f, false, corner, box, style = stroke)
                             if (status.battery != null) {
                                 val (left, right) = gaugeSweeps(level, ring.side)
+                                if (surgeVal > 0f) {
+                                    val glowStroke = Stroke(width = stroke.width * (1f + .45f * surgeVal), cap = StrokeCap.Round)
+                                    val glowColor = arcColor.copy(alpha = .35f * surgeVal)
+                                    if (left > 0f) drawArc(glowColor, ring.leftStart + ring.side, -left, false, corner, box, style = glowStroke)
+                                    if (right > 0f) drawArc(glowColor, ring.rightStart + ring.side, -right, false, corner, box, style = glowStroke)
+                                }
                                 // Both halves fill towards the top: the left from the top down, the right from the
                                 // bottom up, so the ring closes as the battery fills.
                                 if (left > 0f) drawArc(arcColor, ring.leftStart + ring.side, -left, false, corner, box, style = stroke)
@@ -403,12 +430,21 @@ fun StatusRail(
                                 ink.copy(alpha = if (i < activeDots) 1f else faint(.28f)), w * GAUGE_DOT_RADIUS,
                                 Offset(center.x + (i - 2) * w * GAUGE_DOT_PITCH, w * dotsY))
                         }
-                        if (showsReading) Text(reading, color = if (status.charging && style.colorfulBattery) charging else ink,
-                            fontSize = (visualSize.value * readingSize / fontScale).sp,
-                            fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
-                            // It rests on the ring's top break, like the mark it copies.
+                        if (showsReading) Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
                             modifier = Modifier.padding(top = visualSize *
-                                ((ringCenter - GAUGE_RADIUS) - readingSize * .97f).coerceAtLeast(0f)))
+                                ((ringCenter - GAUGE_RADIUS) - readingSize * .97f).coerceAtLeast(0f))
+                        ) {
+                            if (status.charging) {
+                                Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * readingSize * .85f / fontScale).dp))
+                            }
+                            Text(reading, color = if (status.charging && style.colorfulBattery) charging else ink,
+                                fontSize = (visualSize.value * readingSize / fontScale).sp,
+                                fontWeight = FontWeight.Bold,
+                                style = TextStyle(fontFeatureSettings = "tnum"),
+                                maxLines = 1, softWrap = false)
+                        }
                         if (status.airplane && !status.wifiConnected)
                             Icon(Icons.Rounded.AirplanemodeActive, null, tint = ink,
                                 modifier = Modifier.padding(top = visualSize * (ringCenter - .15f)).size(visualSize * .3f))
@@ -437,6 +473,11 @@ fun StatusRail(
                                 Size(size.width * .08f, size.height * .4f), androidx.compose.ui.geometry.CornerRadius(size.height * .1f))
                             status.battery?.let { level ->
                                 val inset = size.height * .18f
+                                if (surgeVal > 0f) {
+                                    drawRoundRect(batteryColor.copy(alpha = .35f * surgeVal), Offset(inset - 1.5f, inset - 1.5f),
+                                        Size((body.width - inset * 2) * maxOf(level / 100f, surgeVal) + 3f, size.height - inset * 2 + 3f),
+                                        androidx.compose.ui.geometry.CornerRadius(size.height * .15f))
+                                }
                                 drawRoundRect(batteryColor, Offset(inset, inset), Size((body.width - inset * 2) * level / 100, size.height - inset * 2),
                                     androidx.compose.ui.geometry.CornerRadius(size.height * .15f))
                             }
@@ -446,10 +487,18 @@ fun StatusRail(
                 }
                 // The percentage is already inside the ring in that style.
                 // Glyphs that carry the number themselves don't need it repeated underneath.
-                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) Text(if (status.airplane) stringResource(R.string.status_airplane) else status.battery?.let { "$it%" } ?: "—",
-                    color = if (status.charging && style.colorfulBattery) charging else ink,
-                    fontSize = detailSize, fontWeight = FontWeight.Medium,
-                    maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        if (status.charging) {
+                            Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size(10.dp))
+                        }
+                        Text(if (status.airplane) stringResource(R.string.status_airplane) else status.battery?.let { "$it%" } ?: "—",
+                            color = if (status.charging && style.colorfulBattery) charging else ink,
+                            fontSize = detailSize, fontWeight = FontWeight.Medium,
+                            style = TextStyle(fontFeatureSettings = "tnum"),
+                            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                    }
+                }
             }
             if (island != null) { Spacer(Modifier.height(8.dp)); island() }
         }

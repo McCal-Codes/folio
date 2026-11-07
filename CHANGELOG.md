@@ -8,8 +8,44 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
-- **Cabinet without the flick:** the long-press menu has an App Panel row, and TalkBack lists the same action as Show App Panel on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
+- **Island tint & rolling ticker:** Notification popup backgrounds in the dynamic island now subtly adapt to the app's icon color palette, and an optional rolling ticker mode scrolls message content along the island pill instead of expanding into a card.
+- **App shortcut menu palette tint:** The home screen app shortcut menu (on hold or Cabinet swipe) adopts a frosted glass background tinted with the app icon's color palette.
+- **Seamless unfolded two-page spacing:** When unfolded flat, the left and right pages sit closer together for a continuous two-page layout, and smoothly separate away from the hinge crease when partly folded.
+- **New StandBy clock personalities:** Vintage warm orange Nixie Tube filaments with realistic glass tube reflections, and Minimalist typography with hairline divider and date capsule.
+- **StandBy interactive widget stack:** Tap or swipe/flick the widget card in StandBy vertically to cycle between Up Next Calendar, Month Calendar Grid, and Device Vitals with directional slide transitions, animated dots, and haptic feedback.
+- **Dual-screen ambient lamp:** Bedside lamp mode softly illuminates the secondary outer screen with a warm steady glow matching your clock color while folded or propped in StandBy.
+- **StandBy live preview in Settings:** Responsive, scalable preview card in Settings showing the active clock face, color accents, and interactive widget cycling.
+- **Page-edge resistance & elasticity:** Pulling past the first Home page or past App Library provides smooth physics resistance that springs back upon release.
+- **Temporary widget expansion:** Long-press any built-in widget (Clock, Calendar, Vitals) to inspect an expanded interactive preview card and launch related actions without altering your saved layout.
+- **Contextual rail editing & undo:** Editing Home surfaces contextual Add Widget, Undo, and Done buttons directly in the sidebar rail, paired with a floating immediate undo chip.
+- **Fold displacement for folder panels:** Open folders on dual-screen or foldable displays cleanly settle onto a single display half rather than straddling the hinge crease.
+- **Quiet charging response & case fit:** Connecting power triggers a gentle pulse and soft glow on the battery indicator. A new case-fit clearance setting adds adjustable edge insets for thick phone cases.
+- **Duo status rail & charging bolt:** Tabular numerals prevent time jitter as minutes advance, and a compact lightning bolt indicator sits beside the battery percentage/gauge when on power.
+- **Control Center toggle refinements:** Active color accents on Battery Saver, in-place system sheet support for the Bluetooth tile, and fallback package launching for calculators and timers.
+- **Polished What's New & build sheets:** Changelog and dev build welcome sheets render entries in frosted glass cards with contextual feature icons and clean commit hashes instead of wrapping raw text.
+- **Island flashlight indicator:** An active Torch indicator glows in the Dynamic Island pill when the flashlight is on; a single tap turns it off.
+- **Widget placement blueprint preview:** Dragging or resizing widgets displays a translucent frosted blueprint and border glow over the target grid cells.
+- **Horizontal dock edge-fade:** Scrolling docks feature smooth horizontal edge fading to prevent harsh icon clipping.
+- **Tabletop control separation:** Extra hinge clearance spaces lower desk deck apps cleanly below the bend in tabletop pose.
+- **StandBy notifications:** a soft edge glow shines in the app's color when a notification arrives, with unread dots for each app.
+- **Notification Center preview pane:** on screens 700 dp and wider (such as the unfolded Fold), Notification Center displays a two-pane list and detail view with full message preview and inline quick actions.
+- **Homescreen swipe to Discover:** swiping to Google Discover stays smooth with your Android wallpaper without flashing the drawn background.
+- **Tweak options:** tweaks in Settings have expanded options and live interactive previews.
+- **Keep the clock steady:** StandBy's colons, Neon glow, Nixie tubes and the outer-screen glow hold still by default. A "Keep the clock steady" switch in the StandBy options lets them move again, in daytime only and never with Reduce Motion.
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
+- **Compatibility before Get:** the Market's install sheet now says up front whether a package works on your phone, works with a limit (for example it covers only one of your screens) or cannot be installed, and why, using the same answer the package page shows and the installer acts on. Get is off, with the reason beside it, whenever the installer would refuse.
+- **Pull tabs in full-screen apps:** in a video, a game or a reader that hides the status bar, two small tabs sit on the top edge, the left for Notification Center and the right for Control Center. Pull one down to open its panel. A switch under "Pull down from the top of any app" turns them off.
+- **Cabinet without the flick:** the long-press menu has an App Panel row, and TalkBack lists the same action as Show App Panel on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
+
+### Changed
+- **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
+
+### Fixed
+- **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
+- **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
+
+### Fixed
+- **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size.
 
 ## [0.6.9] - 2026-10-31
 

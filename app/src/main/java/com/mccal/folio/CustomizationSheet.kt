@@ -17,12 +17,23 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -453,6 +464,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             SettingsSwitch(stringResource(R.string.shade_pull), state.shadePull, model::setShadePull, "shade-pull-switch")
                             CardNote(stringResource(R.string.shade_pull_note))
                             if (state.shadePull) {
+                                SettingsSwitch(stringResource(R.string.pull_tab), state.shadePullTab, model::setShadePullTab, "pull-tab-switch")
+                                CardNote(stringResource(R.string.pull_tab_note))
                                 val pullChoices = listOf(PullTarget.BOTH to stringResource(R.string.pull_target_both),
                                     PullTarget.FOLIO_NOTIFICATIONS to stringResource(R.string.pull_target_notifications),
                                     PullTarget.FOLIO_CONTROL_CENTER to stringResource(R.string.pull_target_control_center))
@@ -687,12 +700,20 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                     }
                     if (page == CustomizationPage.ISLAND) SettingsCard(stringResource(R.string.brief_pop_ups)) {
+                        val islandContext = androidx.compose.ui.platform.LocalContext.current
                         if (state.island) {
                             listOf("CHARGING" to stringResource(R.string.charging), "SILENT" to stringResource(R.string.silent_mode), "FOCUS" to stringResource(R.string.do_not_disturb), "BLUETOOTH" to stringResource(R.string.headphones_speakers), "MESSAGE" to stringResource(R.string.new_messages_with_quick_reply), "CALL" to stringResource(R.string.calls_answer_decline_end)).forEach { (kind, label) ->
                                 SettingsSwitch(label, kind !in state.islandEventsOff, { model.setIslandEvent(kind, it) }, "island-event-${kind.lowercase()}")
                             }
                             if ("MESSAGE" !in state.islandEventsOff) MessageBannerSettings(state.messagesAvoidDouble, model::setMessagesAvoidDouble)
                             IslandAlertSettings(state.islandAlerts, state.islandAlertAppsOff, model::setIslandAlerts) { onPage(CustomizationPage.ISLAND_APPS) }
+                            val islandStyle = remember { IslandStyle.load(islandContext) }
+                            var notifRolling by remember { mutableStateOf(islandStyle.notificationRolling) }
+                            SettingsSwitch(stringResource(R.string.island_notif_rolling), notifRolling, { on ->
+                                notifRolling = on
+                                IslandStyle.saveNotificationRolling(islandContext, on)
+                            }, "island-notif-rolling-main-switch")
+                            CardNote(stringResource(R.string.island_notif_rolling_detail))
                         } else {
                             SettingsSwitch(stringResource(R.string.headphones_speakers), "BLUETOOTH" !in state.islandEventsOff, { model.setIslandEvent("BLUETOOTH", it) }, "island-event-bluetooth")
                             if (state.messagesAvoidDouble) {
@@ -755,6 +776,13 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             SettingsSwitch(stringResource(R.string.standby_while_charging_on_its_side), state.standByCharging, model::setStandByCharging, "standby-charging-switch")
                         if (StandByWay.TENT in standByOffered)
                             SettingsSwitch(stringResource(R.string.standby_standing_as_a_tent), state.standByTent, model::setStandByTent, "standby-tent-switch")
+                        val standBy2Gate = rememberGateOpen(FeatureGate.STANDBY_2)
+                        if (standBy2Gate) {
+                            val standBy2On = STANDBY2_ID in state.installedTweaks && state.standBy2
+                            IosNavRow(stringResource(R.string.standby2_customize),
+                                if (standBy2On) stringResource(R.string.on) else stringResource(R.string.off),
+                                { tweakId = STANDBY2_ID; onPage(CustomizationPage.FOLD_TWEAK) }, "fold-standby2")
+                        }
                         CardNote(stringResource(R.string.big_clock_date_next_alarm_battery_and_mu))
                         if (StandByWay.TENT in standByOffered) CardNote(stringResource(R.string.standby_ways_note))
                     }
@@ -1500,6 +1528,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.dock_height to CustomizationPage.HOME,
     R.string.full_width_home to CustomizationPage.HOME,
     R.string.separate_upright_layout to CustomizationPage.HOME,
+    R.string.unfolded_seamless_spacing to CustomizationPage.HOME,
     R.string.space_between_rows to CustomizationPage.HOME,
     R.string.status_height to CustomizationPage.HOME,
     R.string.automatic_updates to CustomizationPage.SOFTWARE_UPDATE,
@@ -1511,6 +1540,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.nc_layout_title to CustomizationPage.NOTIFICATIONS,
     R.string.shade_over_apps to CustomizationPage.NOTIFICATIONS,
     R.string.shade_pull to CustomizationPage.NOTIFICATIONS,
+    R.string.pull_tab to CustomizationPage.NOTIFICATIONS,
     R.string.pull_target_title to CustomizationPage.NOTIFICATIONS,
     R.string.notification_sections to CustomizationPage.NOTIFICATIONS,
     R.string.unfolded_control_center_in_the_middle to CustomizationPage.NOTIFICATIONS,
@@ -1527,6 +1557,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.dont_double_up_with_android_pop_ups to CustomizationPage.ISLAND,
     R.string.headphones_speakers to CustomizationPage.ISLAND,
     R.string.airpods_ble_switch to CustomizationPage.ISLAND,
+    R.string.island_notif_rolling to CustomizationPage.ISLAND,
     R.string.live_activities_under_the_status_bar to CustomizationPage.ISLAND,
     R.string.music_and_live_progress to CustomizationPage.ISLAND,
     R.string.fade_when_idle to CustomizationPage.ACCESSIBILITY,
@@ -1545,6 +1576,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.standby_half_open_like_a_laptop to CustomizationPage.FOLD,
     R.string.standby_standing_as_a_tent to CustomizationPage.FOLD,
     R.string.standby_while_charging_on_its_side to CustomizationPage.FOLD,
+    R.string.standby2_customize to CustomizationPage.FOLD,
     R.string.stay_awake_on_the_cover_screen to CustomizationPage.FOLD,
     R.string.text_color to CustomizationPage.WALLPAPER,
     R.string.wallpaper_moves_with_pages to CustomizationPage.WALLPAPER,
@@ -1837,6 +1869,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     if (tweak.id == "pageEffects") FlipbookEffects(state, model::setPageEffect, model::setPackagedEffect)
     // Duet's look, only while it's on, like the fold settings always were.
     if (tweak.id == DUET_ID && on) DuetSettings(state, model, previewBitmap)
+    if (tweak.id == STANDBY2_ID && on) StandByVisualSettings(state, model)
     TweakOptionsCard(tweak, state, model, on)
     SettingsCard(stringResource(R.string.use_on)) {
         Column(Modifier.alpha(if (on) 1f else .4f)) {
@@ -1858,18 +1891,45 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
 @Composable private fun TweakOptionsCard(tweak: TweakFeature, state: LauncherState, model: LauncherModel, on: Boolean) {
     val options = TweakOptions.of(tweak.id)
     if (options.isEmpty()) return
-    SettingsCard(stringResource(R.string.options)) {
-        Column(Modifier.alpha(if (on) 1f else .4f)) {
-            options.forEach { option ->
-                val label = stringResource(option.label)
-                val tag = "tweak-option-${tweak.id}-${option.id}"
-                val value = TweakOptions.value(state.tweakOptions, tweak.id, option.id)
-                when (option) {
-                    is TweakOption.Toggle -> SettingsSwitch(label, value == TweakOptions.ON,
-                        { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag, enabled = on)
-                    is TweakOption.Choice -> IosMenuRow(label, option.choices.map { (stored, text) -> stored to stringResource(text) }, value,
-                        { model.setTweakOption(tweak.id, option.id, it) }, tag = tag, enabled = on)
+    val groups = remember(options) {
+        val list = mutableListOf<Pair<Int?, List<TweakOption>>>()
+        var currentSection: Int? = null
+        var currentItems = mutableListOf<TweakOption>()
+        for (opt in options) {
+            if (opt.section != currentSection && currentItems.isNotEmpty()) {
+                list.add(currentSection to currentItems)
+                currentItems = mutableListOf()
+            }
+            currentSection = opt.section
+            currentItems.add(opt)
+        }
+        if (currentItems.isNotEmpty()) {
+            list.add(currentSection to currentItems)
+        }
+        list
+    }
+    for ((sectionRes, items) in groups) {
+        if (tweak.id == STANDBY2_ID && sectionRes == R.string.look) continue
+        val cardTitle = sectionRes?.let { stringResource(it) } ?: stringResource(R.string.options)
+        SettingsCard(cardTitle) {
+            Column(Modifier.alpha(if (on) 1f else .4f)) {
+                items.forEach { option ->
+                    val label = stringResource(option.label)
+                    val tag = "tweak-option-${tweak.id}-${option.id}"
+                    val value = TweakOptions.value(state.tweakOptions, tweak.id, option.id)
+                    when (option) {
+                        is TweakOption.Toggle -> SettingsSwitch(label, value == TweakOptions.ON,
+                            { model.setTweakOption(tweak.id, option.id, if (it) TweakOptions.ON else TweakOptions.OFF) }, tag, enabled = on)
+                        is TweakOption.Choice -> IosMenuRow(label, option.choices.map { (stored, text) -> stored to stringResource(text) }, value,
+                            { model.setTweakOption(tweak.id, option.id, it) }, tag = tag, enabled = on)
+                    }
                 }
+            }
+            if (tweak.id == STANDBY2_ID && sectionRes == R.string.standby2_night_mode) {
+                CardNote(stringResource(R.string.standby2_night_brightness_note))
+            }
+            if (tweak.id == STANDBY2_ID && sectionRes == R.string.battery) {
+                CardNote(stringResource(R.string.standby2_off_charger_note))
             }
         }
     }
@@ -2421,6 +2481,409 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     }
 }
 
+@Composable
+private fun StandByVisualSettings(state: LauncherState, model: LauncherModel) {
+    val haptic = LocalHapticFeedback.current
+    val currentLookStr = TweakOptions.value(state.tweakOptions, STANDBY2_ID, "clock").ifEmpty { "thin" }
+    val currentColorStr = TweakOptions.value(state.tweakOptions, STANDBY2_ID, "clockColor").ifEmpty { "white" }
+    val clockColor = standByClockColor(currentColorStr)
+
+    // 1. Live StandBy Preview Card
+    SettingsCard(stringResource(R.string.standby2_preview)) {
+        var previewWidget by remember { mutableIntStateOf(0) }
+        val previewOuterShape = RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)
+        val previewMiniShape = RoundedCornerShape(FolioRadius.ROW.dp)
+        val previewFlipShape = RoundedCornerShape(FolioRadius.SEGMENT_THUMB.dp)
+        val previewNeonShape = RoundedCornerShape(FolioRadius.CONTROL.dp)
+        val previewNixieShape = RoundedCornerShape(FolioRadius.SEGMENT.dp)
+        val thumbCardShape = RoundedCornerShape(FolioRadius.CARD.dp)
+
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(previewOuterShape)
+                .background(FolioColors.StandByBg)
+                .border(
+                    androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.05f))
+                        )
+                    ),
+                    previewOuterShape
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            val scale = (maxWidth.value / 340f).coerceIn(0.72f, 1.15f)
+            val previewH = (124.dp * scale).coerceIn(105.dp, 140.dp)
+            val fs7 = (7 * scale).sp
+            val fs8 = (8 * scale).sp
+            val fs9 = (9 * scale).sp
+            val fs10 = (10 * scale).sp
+            val fs12 = (12 * scale).sp
+            val fs14 = (14 * scale).sp
+            val fs16 = (16 * scale).sp
+            val fs17 = (17 * scale).sp
+            val fs18 = (18 * scale).sp
+            val fs20 = (20 * scale).sp
+            val fs22 = (22 * scale).sp
+            val fs26 = (26 * scale).sp
+            val fs28 = (28 * scale).sp
+            val fs30 = (30 * scale).sp
+
+            Row(
+                modifier = Modifier.fillMaxWidth().height(previewH),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left half: Clock Face
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (currentLookStr) {
+                        "bold" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("10:09", color = clockColor, fontSize = fs28, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            Text("Mon, Oct 24", color = Color.White.copy(alpha = 0.6f), fontSize = fs10, fontWeight = FontWeight.Medium, maxLines = 1) // english-only
+                        }
+                        "analog" -> Box(Modifier.size((58 * scale).dp), contentAlignment = Alignment.Center) {
+                            Canvas(Modifier.fillMaxSize()) {
+                                val c = Offset(size.width / 2f, size.height / 2f)
+                                val r = size.minDimension / 2f - 2.dp.toPx()
+                                drawCircle(color = Color.White.copy(alpha = 0.2f), radius = r, center = c, style = Stroke(width = 2.dp.toPx()))
+                                for (i in 0 until 12) {
+                                    val rad = Math.toRadians((i * 30.0) - 90.0)
+                                    val len = if (i % 3 == 0) 5.dp.toPx() else 2.5.dp.toPx()
+                                    val startX = (c.x + (r - len) * Math.cos(rad)).toFloat()
+                                    val startY = (c.y + (r - len) * Math.sin(rad)).toFloat()
+                                    val endX = (c.x + (r - 1.dp.toPx()) * Math.cos(rad)).toFloat()
+                                    val endY = (c.y + (r - 1.dp.toPx()) * Math.sin(rad)).toFloat()
+                                    drawLine(color = clockColor, start = Offset(startX, startY), end = Offset(endX, endY), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                                }
+                                val hrRad = Math.toRadians((10 + 9 / 60.0) * 30.0 - 90.0)
+                                val minRad = Math.toRadians((9 + 0 / 60.0) * 6.0 - 90.0)
+                                drawLine(color = clockColor, start = c, end = c + Offset((r * 0.5f * Math.cos(hrRad)).toFloat(), (r * 0.5f * Math.sin(hrRad)).toFloat()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                                drawLine(color = clockColor, start = c, end = c + Offset((r * 0.75f * Math.cos(minRad)).toFloat(), (r * 0.75f * Math.sin(minRad)).toFloat()), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                                drawCircle(color = clockColor, radius = 2.dp.toPx(), center = c)
+                            }
+                        }
+                        "numerals" -> Box(Modifier.size((58 * scale).dp), contentAlignment = Alignment.Center) {
+                            Canvas(Modifier.fillMaxSize()) {
+                                val c = Offset(size.width / 2f, size.height / 2f)
+                                val r = size.minDimension / 2f - 2.dp.toPx()
+                                drawCircle(color = Color.White.copy(alpha = 0.2f), radius = r, center = c, style = Stroke(width = 2.dp.toPx()))
+                                val hrRad = Math.toRadians((10 + 9 / 60.0) * 30.0 - 90.0)
+                                val minRad = Math.toRadians((9 + 0 / 60.0) * 6.0 - 90.0)
+                                drawLine(color = clockColor, start = c, end = c + Offset((r * 0.5f * Math.cos(hrRad)).toFloat(), (r * 0.5f * Math.sin(hrRad)).toFloat()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                                drawLine(color = clockColor, start = c, end = c + Offset((r * 0.75f * Math.cos(minRad)).toFloat(), (r * 0.75f * Math.sin(minRad)).toFloat()), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                                drawCircle(color = clockColor, radius = 2.dp.toPx(), center = c)
+                            }
+                            Text("12", color = clockColor, fontSize = fs7, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopCenter).padding(top = 2.dp))
+                            Text("6", color = clockColor, fontSize = fs7, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
+                        }
+                        "flip" -> Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size((30 * scale).dp, (36 * scale).dp).clip(previewFlipShape).background(FolioColors.StandByCardDark), contentAlignment = Alignment.Center) {
+                                Text("10", color = clockColor, fontSize = fs17, fontWeight = FontWeight.Bold)
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(Color.Black.copy(alpha = 0.8f)))
+                            }
+                            Text(":", color = Color.White.copy(alpha = 0.6f), fontSize = fs14, fontWeight = FontWeight.Bold)
+                            Box(Modifier.size((30 * scale).dp, (36 * scale).dp).clip(previewFlipShape).background(FolioColors.StandByCardDark), contentAlignment = Alignment.Center) {
+                                Text("09", color = clockColor, fontSize = fs17, fontWeight = FontWeight.Bold)
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(Color.Black.copy(alpha = 0.8f)))
+                            }
+                        }
+                        "world" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("10:09", color = clockColor, fontSize = fs22, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
+                            Text(stringResource(R.string.standby2_utc), color = Color.White.copy(alpha = 0.5f), fontSize = fs8, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        }
+                        "stack" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("10", color = clockColor, fontSize = fs20, fontWeight = FontWeight.Black, lineHeight = fs20)
+                            Text("09", color = clockColor.copy(alpha = 0.8f), fontSize = fs20, fontWeight = FontWeight.Black, lineHeight = fs20)
+                        }
+                        "words" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("TEN", color = clockColor, fontSize = fs14, fontWeight = FontWeight.Bold)
+                            Text("PAST TEN", color = Color.White.copy(alpha = 0.6f), fontSize = fs10, fontWeight = FontWeight.Medium)
+                        }
+                        "neon" -> Box(
+                            Modifier.clip(previewNeonShape).background(FolioColors.StandByNeonBg)
+                                .border(1.dp, clockColor.copy(alpha = 0.6f), previewNeonShape)
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("10:09", color = clockColor, fontSize = fs20, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        }
+                        "solar" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Canvas(Modifier.size((42 * scale).dp, (20 * scale).dp)) {
+                                drawArc(color = clockColor, startAngle = 180f, sweepAngle = 180f, useCenter = false, style = Stroke(width = 2.dp.toPx()))
+                                drawCircle(color = FolioColors.StandBySolarYellow, radius = 3.dp.toPx(), center = Offset(size.width * 0.65f, size.height * 0.4f))
+                            }
+                            Text("10:09", color = clockColor, fontSize = fs14, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                        }
+                        "nixie" -> Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size((22 * scale).dp, (38 * scale).dp).clip(previewNixieShape).background(FolioColors.StandByNixieGlass).border(0.5.dp, FolioColors.StandByNixieGlow.copy(alpha = 0.6f), previewNixieShape), contentAlignment = Alignment.Center) {
+                                Text("10", color = FolioColors.StandBySolarSun, fontSize = fs14, fontWeight = FontWeight.Bold)
+                            }
+                            Text(":", color = FolioColors.StandByNixieGlow, fontSize = fs12, fontWeight = FontWeight.Bold)
+                            Box(Modifier.size((22 * scale).dp, (38 * scale).dp).clip(previewNixieShape).background(FolioColors.StandByNixieGlass).border(0.5.dp, FolioColors.StandByNixieGlow.copy(alpha = 0.6f), previewNixieShape), contentAlignment = Alignment.Center) {
+                                Text("09", color = FolioColors.StandBySolarSun, fontSize = fs14, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        "minimal" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("10", color = clockColor, fontSize = fs26, fontWeight = FontWeight.ExtraLight)
+                            Box(Modifier.width(1.dp).height((20 * scale).dp).background(Color.White.copy(alpha = 0.35f)))
+                            Text("09", color = clockColor.copy(alpha = 0.75f), fontSize = fs26, fontWeight = FontWeight.ExtraLight)
+                        }
+                        else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("10:09", color = clockColor, fontSize = fs30, fontWeight = FontWeight.Thin, maxLines = 1, softWrap = false)
+                            Text("Mon, Oct 24", color = Color.White.copy(alpha = 0.6f), fontSize = fs10, fontWeight = FontWeight.Medium, maxLines = 1)
+                        }
+                    }
+                }
+
+                Box(Modifier.width(1.dp).height((65 * scale).dp).background(Color.White.copy(alpha = 0.12f)))
+
+                // Right half: Interactive Mini Widget Preview (tap to cycle)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(remember { MutableInteractionSource() }, null) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            previewWidget = (previewWidget + 1) % 3
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(0.94f)
+                            .clip(previewMiniShape)
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .padding((7 * scale).dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        when (previewWidget) {
+                            1 -> {
+                                // Mini Month Grid
+                                Text("OCT 2026", color = clockColor, fontSize = fs9, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                                    listOf("S", "M", "T", "W", "T", "F", "S").forEach {
+                                        Text(it, color = Color.White.copy(alpha = 0.4f), fontSize = fs7)
+                                    }
+                                }
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                                    listOf("21", "22", "23", "24", "25", "26", "27").forEach { d ->
+                                        val isToday = d == "24"
+                                        Box(Modifier.size((14 * scale).dp).then(if (isToday) Modifier.background(clockColor, CircleShape) else Modifier), contentAlignment = Alignment.Center) {
+                                            Text(d, color = if (isToday) Color.Black else Color.White, fontSize = fs7, fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal)
+                                        }
+                                    }
+                                }
+                            }
+                            2 -> {
+                                // Battery & Vitals
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(stringResource(R.string.battery), color = clockColor, fontSize = fs9, fontWeight = FontWeight.Bold)
+                                    Text("⚡", fontSize = fs10)
+                                }
+                                Text("94%", color = FolioColors.GreenLight, fontSize = fs18, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.standby2_ram_avail, "4.2 GB"), color = Color.White.copy(alpha = 0.5f), fontSize = fs8)
+                            }
+                            else -> {
+                                // Up Next
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(Modifier.size((5 * scale).dp).background(FolioColors.RedLight, CircleShape))
+                                    Text("10:30 AM", color = FolioColors.RedLight, fontSize = fs8, fontWeight = FontWeight.Bold) // english-only
+                                }
+                                Text(stringResource(R.string.standby2_sample_event), color = Color.White, fontSize = fs10, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Text(stringResource(R.string.standby2_sample_location), color = Color.White.copy(alpha = 0.5f), fontSize = fs8)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Visual Clock Styles Carousel
+    val styles = listOf(
+        "thin" to R.string.standby2_clock_thin,
+        "bold" to R.string.standby2_clock_bold,
+        "analog" to R.string.standby2_clock_analog,
+        "numerals" to R.string.standby2_clock_numerals,
+        "flip" to R.string.standby2_clock_flip,
+        "world" to R.string.standby2_clock_world,
+        "stack" to R.string.standby2_clock_stack,
+        "words" to R.string.standby2_clock_words,
+        "neon" to R.string.standby2_clock_neon,
+        "solar" to R.string.standby2_clock_solar,
+        "nixie" to R.string.standby2_clock_nixie,
+        "minimal" to R.string.standby2_clock_minimal,
+    )
+    val thumbBoxShape = RoundedCornerShape(FolioRadius.CARD.dp)
+    val thumbNixieShape = RoundedCornerShape(FolioRadius.CONTROL.dp)
+
+    val thumbFs8 = 8.sp
+    val thumbFs9 = 9.sp
+    val thumbFs10 = 10.sp
+    val thumbFs12 = 12.sp
+    val thumbFs13 = 13.sp
+    val thumbFs14 = 14.sp
+    val thumbFs16 = 16.sp
+
+    SettingsCard(stringResource(R.string.standby2_clock_style)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = FolioSpace.TINY.dp),
+            horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)
+        ) {
+            styles.forEach { (styleKey, nameRes) ->
+                val isSelected = styleKey.equals(currentLookStr, ignoreCase = true)
+                Box(
+                    modifier = Modifier
+                        .width(86.dp)
+                        .height(80.dp)
+                        .clip(thumbBoxShape)
+                        .background(if (isSelected) FolioColors.SecondaryBackground else Color.White.copy(alpha = 0.05f))
+                        .border(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.1f),
+                            shape = thumbBoxShape
+                        )
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            model.setTweakOption(STANDBY2_ID, "clock", styleKey)
+                        }
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            when (styleKey) {
+                                "bold" -> Text("10:09", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs16, fontWeight = FontWeight.Bold)
+                                "analog" -> Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    Canvas(Modifier.fillMaxSize()) {
+                                        val c = Offset(size.width / 2f, size.height / 2f)
+                                        drawCircle(color = if (isSelected) clockColor else Color.White, radius = size.minDimension / 2f - 1.dp.toPx(), center = c, style = Stroke(width = 1.5.dp.toPx()))
+                                        drawLine(color = if (isSelected) clockColor else Color.White, start = c, end = Offset(c.x, c.y - 6.dp.toPx()), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                                        drawLine(color = if (isSelected) clockColor else Color.White, start = c, end = Offset(c.x + 5.dp.toPx(), c.y), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                                    }
+                                }
+                                "numerals" -> Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    Text("12", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs9, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopCenter))
+                                    Text("6", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs9, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomCenter))
+                                }
+                                "flip" -> Text("10|09", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs14, fontWeight = FontWeight.Bold)
+                                "world" -> Text(stringResource(R.string.standby2_utc), color = if (isSelected) clockColor else Color.White, fontSize = thumbFs13, fontWeight = FontWeight.Bold)
+                                "stack" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("10", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs10, fontWeight = FontWeight.Black, lineHeight = thumbFs10)
+                                    Text("09", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs10, fontWeight = FontWeight.Black, lineHeight = thumbFs10)
+                                }
+                                "words" -> Text("TEN", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs12, fontWeight = FontWeight.Bold)
+                                "neon" -> Text(stringResource(R.string.standby2_clock_neon), color = if (isSelected) clockColor else FolioColors.StandByNeonBlue, fontSize = thumbFs12, fontWeight = FontWeight.Bold)
+                                "solar" -> Text("☀️", fontSize = thumbFs14)
+                                "nixie" -> Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(14.dp, 22.dp).clip(thumbNixieShape).background(FolioColors.StandByNixieGlass).border(0.5.dp, FolioColors.StandByNixieGlow.copy(alpha = 0.6f), thumbNixieShape), contentAlignment = Alignment.Center) {
+                                        Text("10", color = FolioColors.StandBySolarSun, fontSize = thumbFs8, fontWeight = FontWeight.Bold)
+                                    }
+                                    Text(":", color = FolioColors.StandByNixieGlow, fontSize = thumbFs8, fontWeight = FontWeight.Bold)
+                                    Box(Modifier.size(14.dp, 22.dp).clip(thumbNixieShape).background(FolioColors.StandByNixieGlass).border(0.5.dp, FolioColors.StandByNixieGlow.copy(alpha = 0.6f), thumbNixieShape), contentAlignment = Alignment.Center) {
+                                        Text("09", color = FolioColors.StandBySolarSun, fontSize = thumbFs8, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                "minimal" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text("10", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs14, fontWeight = FontWeight.ExtraLight)
+                                    Box(Modifier.width(1.dp).height(12.dp).background(Color.White.copy(alpha = 0.4f)))
+                                    Text("09", color = if (isSelected) clockColor.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f), fontSize = thumbFs14, fontWeight = FontWeight.ExtraLight)
+                                }
+                                else -> Text("10:09", color = if (isSelected) clockColor else Color.White, fontSize = thumbFs16, fontWeight = FontWeight.Thin)
+                            }
+                        }
+                        Text(
+                            stringResource(nameRes),
+                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
+                            fontSize = FolioType.CAPTION.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Signature 6-Color Swatch Row
+    SettingsCard(stringResource(R.string.standby2_clock_color)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = FolioSpace.TINY.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            STANDBY_CLOCK_COLORS.forEach { swatch ->
+                val isSelected = swatch.id.equals(currentColorStr, ignoreCase = true)
+                val dotScale by animateFloatAsState(if (isSelected) 1.25f else 1.0f, label = "swatchScale")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        model.setTweakOption(STANDBY2_ID, "clockColor", swatch.id)
+                    }
+                ) {
+                    Box(
+                        modifier = Modifier.size(36.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Box(
+                                Modifier
+                                    .size(34.dp)
+                                    .border(2.dp, Color.White, CircleShape)
+                            )
+                        }
+                        Box(
+                            Modifier
+                                .size(24.dp)
+                                .graphicsLayer { scaleX = dotScale; scaleY = dotScale }
+                                .background(swatch.color, CircleShape)
+                        )
+                    }
+                    Text(
+                        stringResource(swatch.nameRes),
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
+                        fontSize = FolioType.CAPTION.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+        val playerValue = TweakOptions.value(state.tweakOptions, STANDBY2_ID, "player").ifEmpty { "card" }
+        IosMenuRow(
+            stringResource(R.string.standby2_now_playing),
+            listOf(
+                "card" to stringResource(R.string.standby2_card),
+                "compact" to stringResource(R.string.standby2_compact),
+                "off" to stringResource(R.string.off)
+            ),
+            playerValue,
+            { model.setTweakOption(STANDBY2_ID, "player", it) },
+            tag = "tweak-option-standby2-player",
+            enabled = true
+        )
+        SettingsSwitch(stringResource(R.string.standby2_steady), TweakOptions.on(state.tweakOptions, STANDBY2_ID, "steady"),
+            { model.setTweakOption(STANDBY2_ID, "steady", if (it) TweakOptions.ON else TweakOptions.OFF) }, "tweak-option-standby2-steady")
+    }
+}
+
 /**
  * The Crackgate joke (a pretend Duo hinge fault drawn over the screen, for fun), shown only while its gate is open and Duet is on. Show me
  * draws it now; it needs Folio's gestures service, which owns the window over other apps. Shake the phone to clear it.
@@ -2545,6 +3008,8 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         SettingsCard(stringResource(R.string.inner)) {
             SettingsSwitch(stringResource(R.string.separate_upright_layout), state.portrait != null, { on -> model.setSeparatePortrait(on); onUpright(on) }, "separate-portrait-switch")
             CardNote(stringResource(R.string.separate_upright_layout_note))
+            SettingsSwitch(stringResource(R.string.unfolded_seamless_spacing), state.unfoldedSeamlessGap, model::setUnfoldedSeamlessGap, "unfolded-seamless-gap-switch")
+            CardNote(stringResource(R.string.unfolded_seamless_spacing_detail))
         }
     }
     var confirmIPhone by remember { mutableStateOf(false) }

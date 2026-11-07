@@ -24,6 +24,14 @@ private class ZeroPaddingWidgetHostView(context: Context) : AppWidgetHostView(co
         publishExactWidgetSize(this, width / density, height / density)
     }
 
+    init {
+        addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            if (right - left > 0 && bottom - top > 0 && (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop)) {
+                scheduleSizePublication()
+            }
+        }
+    }
+
     override fun setAppWidget(appWidgetId: Int, info: AppWidgetProviderInfo?) {
         super.setAppWidget(appWidgetId, info)
         setPadding(0, 0, 0, 0)
@@ -88,8 +96,9 @@ internal fun exactWidgetSizeOptions(widthDp: Float, heightDp: Float) = Bundle().
 }
 
 private fun publishExactWidgetSize(view: AppWidgetHostView, widthDp: Float, heightDp: Float) {
+    if (view.appWidgetId < 0) return
     val options = exactWidgetSizeOptions(widthDp, heightDp)
-    val current = AppWidgetManager.getInstance(view.context).getAppWidgetOptions(view.appWidgetId)
+    val current = runCatching { AppWidgetManager.getInstance(view.context).getAppWidgetOptions(view.appWidgetId) }.getOrNull() ?: return
     val sameBounds = listOf(
         AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,
         AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,
@@ -98,5 +107,5 @@ private fun publishExactWidgetSize(view: AppWidgetHostView, widthDp: Float, heig
     ).all { current.getInt(it) == options.getInt(it) }
     val currentSizes = current.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
     val nextSizes = options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
-    if (!sameBounds || currentSizes != nextSizes) view.updateAppWidgetOptions(options)
+    if (!sameBounds || currentSizes != nextSizes) runCatching { view.updateAppWidgetOptions(options) }
 }

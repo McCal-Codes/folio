@@ -18,6 +18,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -254,7 +255,9 @@ internal fun <T> List<T>.slicePage(range: IntRange): List<T> =
 
 @Composable
 internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: Float, labels: Boolean,
-    drag: HomeDragState, page: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    drag: HomeDragState, page: Int, modifier: Modifier = Modifier,
+    onLaunchApp: ((AppEntry) -> Unit)? = null,
+    onClick: () -> Unit) {
     val counts0 = LocalBadgeCounts.current
     val unread = folder.appIds.mapNotNull { apps[it]?.packageName }.distinct().sumOf { counts0[it] ?: 0 }
     val folderApps = pluralStringResource(R.plurals.folder_apps, folder.appIds.size, folder.title, folder.appIds.size)
@@ -265,7 +268,32 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     var opening by remember { mutableStateOf(false) }
     LaunchedEffect(opening) { if (opening) { delay(PressFeedback.HOLD_MS / 2); opening = false } }
     val lifted = LocalOpenMenuId.current == folder.id
-    Column(modifier.clickable(interactionSource = interaction, indication = null, onClick = { if (FolioMotion.v2) opening = true; onClick() }).dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val editActive = LocalHomeEdit.current.active
+    var swipeDistY by remember { mutableFloatStateOf(0f) }
+    val swipeModifier = if (onLaunchApp != null && !editActive && !drag.active) {
+        Modifier.pointerInput(folder.id) {
+            detectVerticalDragGestures(
+                onDragStart = { swipeDistY = 0f },
+                onDragEnd = {
+                    if (swipeDistY < -32f) {
+                        val first = folder.appIds.firstOrNull()?.let { apps[it] }
+                        if (first != null) {
+                            haptic.perform(FolioHaptic.Open)
+                            onLaunchApp(first)
+                        }
+                    }
+                    swipeDistY = 0f
+                },
+                onDragCancel = { swipeDistY = 0f }
+            ) { change, dragAmount ->
+                if (dragAmount < 0) change.consume()
+                swipeDistY += dragAmount
+            }
+        }
+    } else Modifier
+
+    Column(modifier.then(swipeModifier).clickable(interactionSource = interaction, indication = null, onClick = { if (FolioMotion.v2) opening = true; onClick() }).dropRegion(drag, DropTarget.Folder(folder.id), page = page, folderId = folder.id)
         .semantics(mergeDescendants = true) {
         contentDescription = folderLabel
     }, horizontalAlignment = Alignment.CenterHorizontally) {

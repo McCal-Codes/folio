@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -129,6 +130,10 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
             val above = iconTop - gap - panelH > safeTop
             val top = (if (above) iconTop - gap - panelH else (icon?.let { it.bottom - origin.y } ?: iconTop) + gap)
                 .coerceIn(safeTop, (with(density) { maxHeight.toPx() } - panelH - safeBottom).coerceAtLeast(safeTop))
+            val appAccent = rememberAccent(app.icon)
+            val tintPanel = LocalTintOptions.current.appMenu && appAccent != null
+            val panelBg = if (tintPanel) mixColor(FolioColors.PopoverSurface, appAccent, 0.45f).copy(alpha = .88f) else FolioColors.PopoverSurface.copy(alpha = .97f)
+            val panelBorder: BorderStroke = if (tintPanel) BorderStroke(1.2.dp, appAccent.copy(alpha = 0.45f)) else FolioGlass.edge
             // Taller than the screen allows (large text): the panel stops here and its list scrolls, with the header and Open pinned.
             Column(Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }.width(with(density) { panelW.toDp() })
                 .heightIn(max = maxHeight - with(density) { (safeTop + safeBottom).toDp() })
@@ -137,7 +142,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     if (!still) { val s = .85f + .15f * appear.value; scaleX = s; scaleY = s }
                     transformOrigin = TransformOrigin(((iconCenterX - left) / panelW).coerceIn(0f, 1f), if (above) 1f else 0f)
                 }
-                .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color(0xFF232326).copy(alpha = .97f)).border(FolioGlass.edge, RoundedCornerShape(FolioRadius.PANEL.dp))
+                .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(panelBg).border(panelBorder, RoundedCornerShape(FolioRadius.PANEL.dp))
                 .clickable(remember { MutableInteractionSource() }, null) {}.padding(FolioSpace.COMFY.dp),
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
