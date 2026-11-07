@@ -177,8 +177,8 @@ internal fun ExpandedWorkspace(
         derivedStateOf(structuralEqualityPolicy()) {
             val physicalPosition = nativePager.currentPage + nativePager.currentPageOffsetFraction
             val scroll = motion.offset(physicalPosition)
-            panelWidth.value > 0f && physicalPosition - firstHome < 1f &&
-                leadingX - scroll + homePaneWidth > 0f
+            panelWidth.value > 0f && physicalPosition - firstHome < 2.25f &&
+                leadingX - scroll + homePaneWidth > -24f
         }
     }
     val libraryPhysicalPage = firstHome + visibleHomePages
@@ -197,15 +197,17 @@ internal fun ExpandedWorkspace(
 
         if (showLeading) {
             key("expanded-leading-home") {
-                Box(Modifier.place(leadingX).width((geometry.gridWidth + 16f).dp).fillMaxHeight()
-                    .testTag("expanded-leading-home")) {
-                    if (besideContent != null) besideContent(Modifier.fillMaxSize()) else HomePagePane(
-                        -1, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,
-                        widgets, drag, target, insertionTarget, showLargeWidget = true,
-                        onLaunch = onLaunchFrom, onActions = onActions, onWidget = onWidget,
-                        onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove, onProblem = onProblem,
-                        modifier = Modifier,
-                    )
+                stateHolder.SaveableStateProvider("expanded-leading-home") {
+                    Box(Modifier.place(leadingX).width((geometry.gridWidth + 16f).dp).fillMaxHeight()
+                        .testTag("expanded-leading-home")) {
+                        if (besideContent != null) besideContent(Modifier.fillMaxSize()) else HomePagePane(
+                            -1, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,
+                            widgets, drag, target, insertionTarget, showLargeWidget = true,
+                            onLaunch = onLaunchFrom, onActions = onActions, onWidget = onWidget,
+                            onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove, onProblem = onProblem,
+                            modifier = Modifier,
+                        )
+                    }
                 }
             }
         }
@@ -341,7 +343,8 @@ internal fun HomePagePane(
                 appsById, geometry.copy(iconSize = pageIcon), pageLabels, widgets, drag, target,
                 folders = state.folders, onLaunch = onLaunch, onActions = onActions, onWidget = onWidget,
                 onFolder = onFolder, onEmptyWidget = onEmptyWidget, onMove = onMove,
-                onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }))
+                onEmptyDoubleTap = if (doubleTapAction == FolioAction.NONE) null else ({ FolioActions.run(context, doubleTapAction) }),
+                tabletop = TweakOptions.on(state.tweakOptions, DUET_ID, "tabletop"))
             if (!state.homeReady) LinearProgressIndicator(Modifier.fillMaxWidth().padding(FolioSpace.LARGE.dp))
             if (state.error != null) Text(state.error, color = Color.White,
                 modifier = Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = stringResource(R.string.fix_saved_layout), onClick = onProblem)
@@ -384,6 +387,7 @@ internal fun SharedHomeGrid(
     onMove: (String, Int) -> Unit = { _, _ -> },
     /** The Double Tap action, for empty cells: each cell takes its own taps, so the page behind never sees them. */
     onEmptyDoubleTap: (() -> Unit)? = null,
+    tabletop: Boolean = false,
 ) {
     val rowHeight = geometry.rowHeight
     val edit = LocalHomeEdit.current
@@ -428,14 +432,16 @@ internal fun SharedHomeGrid(
     // still places icons at once.
     // A new Rows setting does the same: with Settings open beside Home (the unfolded screens), the rows and icons settle to the new size
     // instead of jumping. Both screens use the same row count, so folding never starts this.
+    val currentSlots = if (page == -1) savedLeadingSlots else savedSlots
+    val currentPreview = if (page == -1) previewLeadingSlots else previewSlots
     var layoutSettling by remember { mutableStateOf(false) }
-    var seenSlots by remember { mutableStateOf(savedSlots) }
-    var seenPreview by remember { mutableStateOf(previewSlots) }
+    var seenSlots by remember { mutableStateOf(currentSlots) }
+    var seenPreview by remember { mutableStateOf(currentPreview) }
     var seenRows by remember { mutableIntStateOf(geometry.appRows) }
     // The preview counts too: apps that slide along while a widget is resized slide back if it is cancelled, instead of snapping.
-    LaunchedEffect(savedSlots, previewSlots, geometry.appRows) {
-        if (savedSlots != seenSlots || previewSlots != seenPreview || geometry.appRows != seenRows) {
-            seenSlots = savedSlots; seenPreview = previewSlots; seenRows = geometry.appRows
+    LaunchedEffect(currentSlots, currentPreview, geometry.appRows) {
+        if (currentSlots != seenSlots || currentPreview != seenPreview || geometry.appRows != seenRows) {
+            seenSlots = currentSlots; seenPreview = currentPreview; seenRows = geometry.appRows
             layoutSettling = true; kotlinx.coroutines.delay(700); layoutSettling = false
         }
     }
@@ -445,7 +451,9 @@ internal fun SharedHomeGrid(
     val fold = hinge?.let { h -> with(density) {
         foldDisplacement(cells, renderedRows, gridTopDp, h.startPx.toDp().value, h.endPx.toDp().value, widgetRows)
     } }
-    val foldShift by animateFloatAsState(fold?.second ?: 0f, FolioMotion.spring(.85f to 380f), label = "fold shift")
+    val tabletopOn = hinge != null && !hinge.vertical && tabletop
+    val tabletopExtra = if (tabletopOn && fold != null) 24f else 0f
+    val foldShift by animateFloatAsState((fold?.second ?: 0f) + tabletopExtra, FolioMotion.spring(.85f to 380f), label = "fold shift")
     val foldRow = fold?.first ?: Int.MAX_VALUE
     fun rowTop(row: Int) = cells.y(row) + if (row >= foldRow) foldShift else 0f
     CompositionLocalProvider(LocalHomeIconSize provides geometry.iconSize) {
@@ -537,7 +545,9 @@ internal fun SharedHomeGrid(
                     label = "folderSlide ${folder.id}")
                 FolderTile(folder, appsById, iconSize, labels, drag, page,
                     Modifier.offset { placed }.width(cellWidth).height(rowHeight.dp)
-                        .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"), onClick = { onFolder(folder.id) })
+                        .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"),
+                    onLaunchApp = { onLaunch(it, null) },
+                    onClick = { onFolder(folder.id) })
             }
         }
         pageWidgets.forEach { placement ->

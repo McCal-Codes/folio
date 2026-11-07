@@ -120,7 +120,8 @@ internal fun Modifier.onePageGestures(
     // and the overshoot are spatial, so Reduce Motion keeps today's hard stop.
     val currentCatch by rememberUpdatedState(FolioMotion.v2)
     val currentFeel by rememberUpdatedState(FolioMotion.v2 && !LocalReduceMotion.current)
-    return nestedScroll(limits).pointerInput(pager, limits, motion) {
+    val currentMotion by rememberUpdatedState(motion)
+    return nestedScroll(limits).pointerInput(pager, limits) {
         coroutineScope {
             var motionJob: Job? = null
             awaitEachGesture {
@@ -203,14 +204,14 @@ internal fun Modifier.onePageGestures(
                                 motionJob = launch(start = CoroutineStart.UNDISPATCHED) {
                                     fun stride() = (pager.layoutInfo.pageSize + pager.layoutInfo.pageSpacing).toFloat().coerceAtLeast(1f)
                                     fun position() = pager.currentPage + pager.currentPageOffsetFraction
-                                    fun visualOffset() = motion?.offset(position()) ?: position() * stride()
+                                    fun visualOffset() = currentMotion?.offset(position()) ?: position() * stride()
                                     limits.holdStretch = false
                                     try {
                                         pager.scroll(MutatePriority.UserInput) {
                                             with(pager) { updateTargetPage((anchor - sign(distance.x).toInt()).coerceIn(limits.minPage.coerceAtMost(pager.pageCount - 1), pager.pageCount - 1)) }
                                             fun moveBy(pixels: Float) {
                                                 val current = position()
-                                                val requested = motion?.positionAfterVisualDelta(current, pixels)
+                                                val requested = currentMotion?.positionAfterVisualDelta(current, pixels)
                                                     ?: (current + pixels / stride())
                                                 val allowed = boundedPagePosition(requested, anchor, pager.pageCount, limits.minPage)
                                                 scrollBy((allowed - current) * stride())
@@ -220,7 +221,7 @@ internal fun Modifier.onePageGestures(
                                             val feelStartVisualOffset = dragStartVisualOffset + PagerFeel.excessFor(carried, size.width.toFloat())
                                             for (dragPosition in channel) {
                                                 if (dragPosition != 0f) with(pager) { updateTargetPage((anchor - sign(dragPosition).toInt()).coerceIn(limits.minPage.coerceAtMost(pager.pageCount - 1), pager.pageCount - 1)) }
-                                                if (feel) placeFeel(pager, motion, limits, feelStartVisualOffset - dragPosition, size.width.toFloat(), stretchy = true) {
+                                                if (feel) placeFeel(pager, currentMotion, limits, feelStartVisualOffset - dragPosition, size.width.toFloat(), stretchy = true) {
                                                     boundedPagePosition(it, anchor, pager.pageCount, limits.minPage)
                                                 }
                                                 else moveBy(dragStartVisualOffset - dragPosition - visualOffset())
@@ -237,7 +238,7 @@ internal fun Modifier.onePageGestures(
                                                 else -> 0
                                             }
                                             val adjacent = (anchor + releaseDirection).coerceIn(limits.minPage.coerceAtMost(pager.pageCount - 1), pager.pageCount - 1)
-                                            val releaseStride = motion?.stride(anchor, adjacent)
+                                            val releaseStride = currentMotion?.stride(anchor, adjacent)
                                                 ?.takeIf { it > 0f } ?: stride()
                                             val target = if (canceled) position().roundToInt() else releasePage(
                                                 position(), anchor, pager.pageCount, velocity, 250f * density,
@@ -246,12 +247,12 @@ internal fun Modifier.onePageGestures(
                                             trace?.release(position(), velocity, target, canceled)
                                             with(pager) { updateTargetPage(target) }
                                             if (feel) {
-                                                settleFeel(pager, motion, limits, target, velocity, size.width.toFloat(), stretchy = true,
+                                                settleFeel(pager, currentMotion, limits, target, velocity, size.width.toFloat(), stretchy = true,
                                                     spring = PagerFeel.settleSpring(velocity, 250f * density, limits.stretch != 0f, reduce = false))
                                                 return@scroll
                                             }
                                             val startVisualOffset = visualOffset()
-                                            val targetVisualOffset = motion?.offset(target.toFloat()) ?: target * stride()
+                                            val targetVisualOffset = currentMotion?.offset(target.toFloat()) ?: target * stride()
                                             val distanceToPage = targetVisualOffset - startVisualOffset
                                             animate(0f, distanceToPage, initialVelocity = (-velocity).coerceIn(-stride() * 5f, stride() * 5f)) { value, _ ->
                                                 // Springs can overshoot the one-page bound. Base every

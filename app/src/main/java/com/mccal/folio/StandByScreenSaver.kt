@@ -67,9 +67,21 @@ class StandByScreenSaver : DreamService(), LifecycleOwner, SavedStateRegistryOwn
     private var sensors: SensorManager? = null
     private var dreaming = false
     private val pickUp = PickUpDetector()
+    private val hingeHalfway = androidx.compose.runtime.mutableStateOf(false)
+    private val sidewaysGravity = androidx.compose.runtime.mutableStateOf(false)
     private val motion = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
-            if (pickUp.add(event.values[0], event.values[1], event.values[2], event.timestamp / 1_000_000)) leave()
+            when (event.sensor.type) {
+                Sensor.TYPE_ACCELEROMETER -> {
+                    val x = event.values[0]
+                    val y = event.values[1]
+                    sidewaysGravity.value = kotlin.math.abs(x) >= 5f && kotlin.math.abs(x) > 2 * kotlin.math.abs(y)
+                    if (pickUp.add(x, y, event.values[2], event.timestamp / 1_000_000)) leave()
+                }
+                Sensor.TYPE_HINGE_ANGLE -> {
+                    hingeHalfway.value = event.values[0] in 30f..150f
+                }
+            }
         }
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
     }
@@ -93,7 +105,23 @@ class StandByScreenSaver : DreamService(), LifecycleOwner, SavedStateRegistryOwn
             it.setViewTreeSavedStateRegistryOwner(this)
             it.setViewTreeViewModelStoreOwner(this)
         }
-        content.setContent { DuoTheme(dark = true) { ScreenSaverFace(status, onNight = { isScreenBright = !it }, onLeave = ::leave) } }
+        val sysReduce = reduceMotionEnabled(this)
+        content.setContent {
+            val liveModel = FolioSettingsBridge.liveModel?.get()
+            val liveState = liveModel?.state?.collectAsState()?.value
+            val reduce = sysReduce || (liveState?.reduceMotion == true)
+            androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduce) {
+                DuoTheme(dark = true) {
+                    ScreenSaverFace(
+                        monitor = status,
+                        hingeHalfway = hingeHalfway.value,
+                        sidewaysGravity = sidewaysGravity.value,
+                        onNight = { isScreenBright = !it },
+                        onLeave = ::leave,
+                    )
+                }
+            }
+        }
         setContentView(content)
     }
 
@@ -103,12 +131,17 @@ class StandByScreenSaver : DreamService(), LifecycleOwner, SavedStateRegistryOwn
         registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         sensors = getSystemService(SensorManager::class.java)
-        sensors?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sensors?.registerListener(motion, it, SensorManager.SENSOR_DELAY_UI) }
+        sensors?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sensors?.registerListener(motion, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        if (hasHinge(this)) {
+            sensors?.getDefaultSensor(Sensor.TYPE_HINGE_ANGLE)?.let { sensors?.registerListener(motion, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        }
     }
 
     override fun onDreamingStopped() {
         dreaming = false
         sensors?.unregisterListener(motion)
+        hingeHalfway.value = false
+        sidewaysGravity.value = false
         registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onDreamingStopped()
@@ -130,14 +163,60 @@ class StandByScreenSaver : DreamService(), LifecycleOwner, SavedStateRegistryOwn
 }
 
 @Composable
-private fun ScreenSaverFace(monitor: DeviceStatusMonitor, onNight: (Boolean) -> Unit, onLeave: () -> Unit) {
+private fun ScreenSaverFace(
+    monitor: DeviceStatusMonitor,
+    hingeHalfway: Boolean = false,
+    sidewaysGravity: Boolean = false,
+    onNight: (Boolean) -> Unit,
+    onLeave: () -> Unit,
+) {
+    val context = LocalContext.current
     val status by monitor.state.collectAsState()
     val tick by rememberMinuteTick()
-    val night = isStandByNight(displayNow(tick))
+    val gateOpen = rememberGateOpen(FeatureGate.STANDBY_2)
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val liveModel = FolioSettingsBridge.liveModel?.get()
+    val liveState = liveModel?.state?.collectAsState()?.value
+    // Android can start the screen saver after Home's process was reclaimed or its model cleared. Then the saved
+    // settings are the truth, the same file Home writes; only if they can't be read does StandBy look like 0.6.9.
+    val savedState = remember(liveModel == null) {
+        if (liveModel != null) null
+        else runCatching {
+            decodeLauncherState(context.getSharedPreferences(SettingKeys.PREFS, 0).getString(SettingKeys.STATE, "{}") ?: "{}", null)
+        }.getOrNull()
+    }
+    val state = liveState ?: savedState
+    val config = if (state != null) {
+        resolveStandByConfig(state, gateOpen, onCover = !cfg.fitsRegularHomeLayout())
+    } else {
+        StandByEffectiveConfig.LEGACY_0_6_9
+    }
+    val scheduleNight = isStandByNight(displayNow(tick))
+    val roomDark = rememberRoomLightNight(
+        enabled = config.activePackage && config.nightMode == StandByNightMode.ROOM_LIGHT,
+        initialNight = scheduleNight,
+    )
+    val night = resolveStandByNight(config.nightMode, scheduleNight = scheduleNight, roomDark = roomDark)
     LaunchedEffect(night) { onNight(night) }
-    val (dx, dy) = burnInShift(tick)
+    val (dx, dy) = rememberBurnInOffset(tick)
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).swipeUpToLeave(onLeave)) {
-        StandByFace(status, stacked = maxHeight > maxWidth, Modifier.fillMaxSize().safeDrawingPadding().offset(dx.dp, dy.dp))
+        val posture = resolveStandByPosture(
+            StandByPostureSignals(
+                widthDp = maxWidth.value,
+                heightDp = maxHeight.value,
+                classScale = cfg.classScale,
+                hingeHalfway = hingeHalfway,
+                sidewaysGravity = sidewaysGravity,
+            )
+        )
+        StandByFace(
+            status = status,
+            posture = posture,
+            modifier = Modifier.fillMaxSize().safeDrawingPadding().offset(dx, dy),
+            config = config,
+            locked = true,
+            onDismiss = null,
+        )
     }
 }
 

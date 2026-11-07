@@ -56,6 +56,23 @@ class StandByWaysTest {
         assertNull(standByWay(all, moving))
         assertEquals(StandByWay.CHARGING, standByWay(all, moving.copy(still = true)))
     }
+
+    @Test fun `off-charger invocation allows StandBy sideways and still when battery is at or above 20 percent`() {
+        val offWays = all.copy(offCharger = true)
+        val unplugged = onStand.copy(plugged = false, batteryLevel = 85)
+        assertEquals(StandByWay.CHARGING, standByWay(offWays, unplugged))
+        // Null battery defaults to allowed
+        assertEquals(StandByWay.CHARGING, standByWay(offWays, unplugged.copy(batteryLevel = null)))
+        // Exactly 20% is allowed
+        assertEquals(StandByWay.CHARGING, standByWay(offWays, unplugged.copy(batteryLevel = 20)))
+        // Below 20% (19%) battery guard blocks automatic StandBy
+        assertNull("below 20% battery cutoff", standByWay(offWays.copy(tent = false), unplugged.copy(batteryLevel = 19)))
+        // Moving phone or upright phone does not trigger
+        assertNull("moving", standByWay(offWays, unplugged.copy(still = false)))
+        assertNull("upright", standByWay(offWays, unplugged.copy(sideways = false)))
+        // Off-charger disabled blocks unplugged StandBy
+        assertNull("offCharger false", standByWay(all.copy(tent = false), unplugged))
+    }
 }
 
 class StillnessTrackerTest {

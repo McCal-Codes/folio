@@ -75,7 +75,7 @@ internal val TweakFeatures = listOf(
         androidx.compose.material.icons.Icons.Rounded.Notifications, FolioColors.Value.RedLight, { it.notificationAppRow }, { m, v -> m.setNotificationAppRow(v) }, true),
     TweakFeature("tintNotifications", "Palette", "Velvet by NoisyFlake & HiMyNameisUbik", // english-only
         R.string.tweak_palette_detail,
-        androidx.compose.material.icons.Icons.Rounded.Star, FolioColors.Value.Orange, { it.tintNotifications }, { m, v -> m.setTintNotifications(v) }, false),
+        androidx.compose.material.icons.Icons.Rounded.Star, FolioColors.Value.Orange, { it.tintNotifications }, { m, v -> m.setTintNotifications(v) }, true),
     TweakFeature("tintMedia", "Afterglow", "ColorFlow by David Goldman", // english-only
         R.string.tweak_colored_albums_detail,
         androidx.compose.material.icons.Icons.Rounded.MusicNote, FolioColors.Value.Pink, { it.tintMedia }, { m, v -> m.setTintMedia(v) }, true, keywords = R.string.settings_keywords_afterglow),
@@ -93,6 +93,12 @@ internal val TweakFeatures = listOf(
         androidx.compose.material.icons.Icons.Rounded.MenuBook, FolioColors.Value.Indigo,
         { it.foldEffect }, { m, v -> m.setFoldEffect(v) }, true, credit = R.string.tweak_duet_credit,
         keywords = R.string.settings_keywords_fold_animation),
+    TweakFeature(STANDBY2_ID, "StandBy 2", "StandBy by Apple", // english-only
+        R.string.tweak_standby2_detail,
+        androidx.compose.material.icons.Icons.Rounded.Bedtime, FolioColors.Value.RedLight,
+        { it.standBy2 }, { m, v -> m.setStandBy2(v) }, true, FeatureGate.STANDBY_2,
+        keywords = R.string.settings_keywords_standby),
 )
 
 internal const val DUET_ID = "duet"
+internal const val STANDBY2_ID = "standby2"

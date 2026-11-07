@@ -230,7 +230,7 @@ class PackageInstaller(
         val context = CompatContext(host.capabilities, folioVersion, already, host::hasTweak, androidSdk = androidSdk)
         // No `else`: a new kind of check that can block must be given its result here, or this stops compiling. One
         // that fell through to `else -> null` would install.
-        return when (val stop = PackageCompatibility.blocking(PackageCompatibility.check(manifest, context, changes, builtIn))) {
+        return when (val stop = (PackageCompatibility.verdict(manifest, context, changes, builtIn) as? CompatVerdict.CannotInstall)?.cause) {
             // Nothing on the phone can change its Android version, so this is said plainly and never offered as a fix.
             is CompatCheck.Android -> InstallResult.Failed(InstallResult.Reason.ANDROID, "that package is made for ${AndroidRelease.range(stop.min, stop.max)}")
             is CompatCheck.Breaks -> InstallResult.Failed(

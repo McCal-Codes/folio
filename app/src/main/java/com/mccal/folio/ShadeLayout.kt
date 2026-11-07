@@ -5,24 +5,34 @@ package com.mccal.folio
  * a full-height list ([SPLIT_CLOCK], how it has been), a card under the corner that was pulled ([CARD]), or Notification Center and
  * Control Center together ([BOTH]).
  */
-internal enum class ShadeShape { SINGLE_TOP, SPLIT_CLOCK, CARD, BOTH }
+internal enum class ShadeShape { SINGLE_TOP, SPLIT_CLOCK, CARD, BOTH, LIST_DETAIL }
 
 /** The narrowest window that has room for the clock beside the list when it is not a regular-size window (a phone on its side). */
 internal const val SPLIT_CLOCK_MIN_DP = 600
+
+/**
+ * The narrowest window that puts the open notification beside the list ([ShadeShape.LIST_DETAIL]): the width Settings already puts its
+ * list beside the page at (settingsColumns), so the two agree on where a window counts as two panes.
+ */
+internal const val LIST_DETAIL_MIN_DP = 700
 
 /** The narrowest window that has room for two panels side by side; a narrower one opens a card instead. */
 internal const val SIDE_BY_SIDE_MIN_DP = 640
 
 /**
  * The shape for [choice] on a window [widthDp] wide. [wide] is Folio's "regular" layout class, [landscape] whether it is wider than
- * tall, and [hinged] whether a fold is in the way (the panels stay on the side the fold leaves, so two do not fit).
+ * tall, and [hinged] whether a fold is in the way (the panels stay on the side the fold leaves, so two do not fit). [previewPane] is
+ * whether the preview pane's gate is open: with it, Full screen on a window [LIST_DETAIL_MIN_DP] wide or more, upright or on its side,
+ * puts the open notification beside the list instead of the big clock.
  */
-internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel, clockOn: Boolean = true): ShadeShape = when {
+internal fun shadeShape(choice: NcLayout, wide: Boolean, landscape: Boolean, widthDp: Int, hinged: Boolean, panel: ShadePanel, clockOn: Boolean = true,
+    previewPane: Boolean = false): ShadeShape = when {
     // A phone on its side is wide but short: the big clock above the list left room for a card and a half, so the clock goes beside it.
     // [hinged] is not asked here: over another app it is always true (no fold information), and on Home a fold already confines the panel to its own side.
     !wide -> if (panel == ShadePanel.NOTIFICATIONS && landscape && widthDp >= SPLIT_CLOCK_MIN_DP && clockOn) ShadeShape.SPLIT_CLOCK else ShadeShape.SINGLE_TOP
     choice == NcLayout.CARD -> ShadeShape.CARD
     choice == NcLayout.SIDE_BY_SIDE -> if (widthDp >= SIDE_BY_SIDE_MIN_DP && !hinged) ShadeShape.BOTH else ShadeShape.CARD
+    previewPane && panel == ShadePanel.NOTIFICATIONS && widthDp >= LIST_DETAIL_MIN_DP -> ShadeShape.LIST_DETAIL
     panel == ShadePanel.NOTIFICATIONS && landscape -> ShadeShape.SPLIT_CLOCK
     else -> ShadeShape.SINGLE_TOP
 }
@@ -59,6 +69,12 @@ internal fun isPullDown(dx: Float, dy: Float, slop: Float): Boolean = dy > slop 
 
 /** The pull strip's height: the status bar's own, but never so thin a finger misses it or so deep it covers the app's top bar. */
 internal fun pullStripHeight(statusBarPx: Int, density: Float): Int = statusBarPx.coerceIn((24 * density).toInt(), (48 * density).toInt())
+
+/**
+ * Whether the two small pull tabs should exist: where the strip cannot be (the app is full screen and keeps the system's swipe from the top) but
+ * every other condition for it holds ([stripOtherwise], the strip's own rule with the full-screen part left out) and the switch for tabs is on.
+ */
+internal fun pullTabWanted(stripOtherwise: Boolean, tabsOn: Boolean, fullScreen: Boolean): Boolean = stripOtherwise && tabsOn && fullScreen
 
 /**
  * Whether the strip over the top edge of other apps should exist: the switch is on and so are the panels over apps, Safe Mode is off,
