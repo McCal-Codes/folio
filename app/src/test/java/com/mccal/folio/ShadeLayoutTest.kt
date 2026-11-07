@@ -35,6 +35,34 @@ class ShadeLayoutTest {
         assertEquals(ShadeShape.SINGLE_TOP, shape(NcLayout.FULL_SCREEN, panel = cc))
     }
 
+    private fun pane(choice: NcLayout = NcLayout.FULL_SCREEN, wide: Boolean = true, landscape: Boolean = true, width: Int = 932, hinged: Boolean = false, panel: ShadePanel = nc) =
+        shadeShape(choice, wide, landscape, width, hinged, panel, previewPane = true)
+
+    @Test fun `with the preview pane gate open, full screen from 700 dp puts the notification beside the list, upright or on its side`() {
+        assertEquals(ShadeShape.LIST_DETAIL, pane())
+        assertEquals(ShadeShape.LIST_DETAIL, pane(landscape = false, width = 800)) // a tablet upright
+        assertEquals(ShadeShape.LIST_DETAIL, pane(width = LIST_DETAIL_MIN_DP))
+        assertEquals(ShadeShape.SPLIT_CLOCK, pane(width = LIST_DETAIL_MIN_DP - 1)) // narrower: the clock beside the list, as before
+        assertEquals(ShadeShape.LIST_DETAIL, pane(hinged = true)) // over an app hinged is always true; on Home the fold already confines the panel
+    }
+
+    @Test fun `the preview pane is Notification Center's alone and leaves the other layouts and phones as they are`() {
+        assertEquals(ShadeShape.SINGLE_TOP, pane(panel = cc))
+        assertEquals(ShadeShape.CARD, pane(NcLayout.CARD))
+        assertEquals(ShadeShape.BOTH, pane(NcLayout.SIDE_BY_SIDE))
+        assertEquals(ShadeShape.SPLIT_CLOCK, pane(wide = false, width = 923)) // a phone on its side is too short for a pane
+        assertEquals(ShadeShape.SPLIT_CLOCK, shape(NcLayout.FULL_SCREEN)) // gate shut: unchanged
+    }
+
+    @Test fun `the pane shows the picked notification while it is there and the first one otherwise`() {
+        fun item(key: String) = NotificationItem(key, "pkg", "App", null, key, null, 0L, true, null)
+        val shown = listOf(item("a"), item("b"), item("c"))
+        assertEquals("b", previewPick(shown, "b")?.key)
+        assertEquals("a", previewPick(shown, null)?.key)
+        assertEquals("a", previewPick(shown, "gone")?.key) // cleared or filtered out: the newest one left
+        assertEquals(null, previewPick(emptyList(), "b"))
+    }
+
     @Test fun `card is a card for either panel, on any wide screen`() {
         listOf(nc, cc).forEach { assertEquals(ShadeShape.CARD, shape(NcLayout.CARD, panel = it)) }
         assertEquals(ShadeShape.CARD, shape(NcLayout.CARD, landscape = false, width = 704))

@@ -66,4 +66,20 @@ class FoldSafeSpanTest {
         assertEquals(homeGeometry(932f, 704f, LayoutPreset(), true, statusHeight = 160f),
             homeGeometry(932f, 704f, LayoutPreset(), true, statusHeight = 160f, foldAtCenter = true))
     }
+
+    @Test fun `DUO_PANE_GAP brings the left pane closer when flat and separates the halves when partly folded`() {
+        val g = homeGeometry(932f, 704f, LayoutPreset(), true, statusHeight = 160f, foldAtCenter = true)
+        val rightGridStart = 932f - g.homeWidth + 16f
+        val oldLeftOrigin = expandedLeftPaneOrigin(932f, g.homeWidth, g.gridWidth, duoPaneGap = false, bookFolded = false)
+        val flatLeftOrigin = expandedLeftPaneOrigin(932f, g.homeWidth, g.gridWidth, duoPaneGap = true, bookFolded = false)
+        val foldedLeftOrigin = expandedLeftPaneOrigin(932f, g.homeWidth, g.gridWidth, duoPaneGap = true, bookFolded = true)
+        // Flat with the gate open: the left grid ends DUO_FLAT_PANE_GAP_DP before the right grid starts, and still left of the middle crease.
+        val flatLeftGridEnd = flatLeftOrigin + 16f + g.gridWidth
+        assertEquals(DUO_FLAT_PANE_GAP_DP, rightGridStart - flatLeftGridEnd, 0.01f)
+        assertTrue(flatLeftGridEnd <= 932f / 2f)
+        assertTrue(flatLeftOrigin > oldLeftOrigin)
+        // Partly folded: the left pane springs back to the middle of the left half, separating the two halves across the crease.
+        assertEquals(oldLeftOrigin, foldedLeftOrigin, 0.001f)
+        assertTrue(rightGridStart - (foldedLeftOrigin + 16f + g.gridWidth) > DUO_FLAT_PANE_GAP_DP + 30f)
+    }
 }

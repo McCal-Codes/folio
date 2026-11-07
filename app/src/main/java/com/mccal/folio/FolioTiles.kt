@@ -32,6 +32,25 @@ internal object FolioSettingsBridge {
         val raw = prefs.getString(SettingKeys.STATE, null) ?: return // nothing saved yet: Folio hasn't run, keep defaults
         runCatching { prefs.edit().putString(SettingKeys.STATE, JSONObject(raw).put(key, value).toString()).apply() }
     }
+
+    fun setTweakOption(context: Context, tweakId: String, optionId: String, value: String) {
+        val live = model()
+        if (live != null) {
+            live.setTweakOption(tweakId, optionId, value)
+            return
+        }
+        val prefs = context.getSharedPreferences(SettingKeys.PREFS, 0)
+        val raw = prefs.getString(SettingKeys.STATE, null) ?: return
+        runCatching {
+            val root = JSONObject(raw)
+            val opts = root.optJSONObject("tweakOptions") ?: JSONObject()
+            val twk = opts.optJSONObject(tweakId) ?: JSONObject()
+            twk.put(optionId, value)
+            opts.put(tweakId, twk)
+            root.put("tweakOptions", opts)
+            prefs.edit().putString(SettingKeys.STATE, root.toString()).apply()
+        }
+    }
 }
 
 /** Opens an activity from a tile and closes the pull-down (Android 14+ requires a PendingIntent). */

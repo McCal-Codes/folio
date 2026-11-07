@@ -33,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.togetherWith
@@ -222,7 +223,7 @@ internal fun WidgetSlot(id: Int, slot: Int, controller: WidgetController, modifi
         else {
             key(id) {
                 AndroidView(factory = { context -> controller.host.createView(context, id, info) },
-                    modifier = Modifier.fillMaxSize())
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)))
             }
         }
     }
@@ -249,11 +250,17 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
     // Built-in cards wiggle; provider widgets (Android views) only get the remove button, since moving
     // a hosted view every frame would re-lay it out constantly.
     val cards = WidgetStacks.cards(id, LocalWidgetStacks.current[slot])
-    Box(modifier.dropRegion(drag, cell, page = page, widgetId = id)) {
+    val isTarget = drag.active && target == cell
+    val targetScale by androidx.compose.animation.core.animateFloatAsState(
+        if (isTarget) 1.02f else 1f, FolioMotion.spring(FolioMotion.Control), label = "widgetTargetScale"
+    )
+    Box(modifier.dropRegion(drag, cell, page = page, widgetId = id)
+        .graphicsLayer { scaleX = targetScale; scaleY = targetScale }) {
         val chrome = Modifier.fillMaxSize().then(if (id < 0) Modifier.jiggle("widget-$slot", .35f) else Modifier)
             .alpha(if (drag.source?.target == cell) .3f else 1f)
-            .border(if (drag.active && target == cell) 2.dp else 0.dp,
-                if (drag.active && target == cell) Color.White else Color.Transparent, RoundedCornerShape(FolioRadius.PANEL.dp))
+            .then(if (isTarget) Modifier.background(Color.White.copy(alpha = .12f), RoundedCornerShape(FolioRadius.PANEL.dp)) else Modifier)
+            .border(if (isTarget) 1.5.dp else 0.dp,
+                if (isTarget) Color.White.copy(alpha = .85f) else Color.Transparent, RoundedCornerShape(FolioRadius.PANEL.dp))
             .semantics { onLongClick(context.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
         if (cards.size > 1) SmartStack(cards, slot, controller, chrome, onAdd)
         else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, opensApp = true, onAdd = onAdd) }
@@ -428,6 +435,7 @@ internal fun WidgetActions(
      * built-in widget's negative id never has, so this is a separate entry rather than folded into it. */
     onCustomize: (() -> Unit)? = null,
     onPlace: (() -> Unit)? = null,
+    onExpand: (() -> Unit)? = null,
     stackCards: List<Int> = emptyList(),
     stackLabel: (Int) -> String? = { null },
     stackRotate: Boolean = true,
@@ -524,6 +532,7 @@ internal fun WidgetActions(
             if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
             if (onCustomize != null) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette) { onCustomize() }; MenuDivider() }
             if (onPlace != null) { MenuRow(stringResource(R.string.place_freely), Icons.Rounded.OpenWith) { onPlace() }; MenuDivider() }
+            if (onExpand != null) { MenuRow(stringResource(R.string.expand_widget_temporarily), Icons.Rounded.OpenInFull) { onExpand() }; MenuDivider() }
             MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
             if (homePages > 1) {
                 MenuDivider()
@@ -568,5 +577,201 @@ internal fun WidgetActions(
             MenuRow(if (stackCards.size > 1) stringResource(R.string.remove_stack) else stringResource(R.string.remove_widget_2), Icons.Rounded.RemoveCircleOutline, destructive = true) { onRemove() }
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+internal fun ExpandedWidgetPreview(
+    placement: WidgetPlacement,
+    status: DeviceStatus,
+    onClose: () -> Unit,
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
+    val maxH = with(density) { (windowInfo.containerSize.height * 0.85f).toDp() }
+    val time = currentTime()
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val timeFormat = if (is24) "HH:mm" else "h:mm a" // english-only
+    val clockHeroSize = 44.sp
+    val vitalsHeroSize = 28.sp
+    val timeSize = 20.sp
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(max = maxH)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = FolioSpace.XL.dp, vertical = FolioSpace.MEDIUM.dp),
+        verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = when (placement.id) {
+                        CLOCK_WIDGET, BIG_CLOCK_WIDGET -> stringResource(R.string.clock)
+                        DATE_WIDGET -> stringResource(R.string.date)
+                        UP_NEXT_WIDGET -> stringResource(R.string.up_next)
+                        INFO_WIDGET -> stringResource(R.string.widget_panel)
+                        else -> stringResource(R.string.widget)
+                    },
+                    color = Color.White,
+                    fontSize = FolioType.TITLE.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = stringResource(R.string.expand_widget_detail),
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = FolioType.CAPTION.sp
+                )
+            }
+            IconButton(onClick = onClose) {
+                Icon(Icons.Rounded.Close, stringResource(R.string.close), tint = Color.White)
+            }
+        }
+
+        when (placement.id) {
+            CLOCK_WIDGET, BIG_CLOCK_WIDGET -> {
+                Surface(
+                    color = FolioColors.SurfaceLowest.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(FolioRadius.PANEL.dp),
+                    border = FolioGlass.edge,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                        Text(
+                            text = time.format(DateTimeFormatter.ofPattern(timeFormat)),
+                            color = Color.White,
+                            fontSize = clockHeroSize,
+                            fontWeight = FontWeight.Bold,
+                            style = TextStyle(fontFeatureSettings = "tnum")
+                        )
+                        Text(
+                            text = time.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+                            color = LocalAccent.current.ink,
+                            fontSize = FolioType.CALLOUT.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        MenuDivider()
+                        Text(
+                            text = stringResource(R.string.local_time),
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = FolioType.CAPTION.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                            listOf("UTC" to java.time.ZoneOffset.UTC, "NYC" to java.time.ZoneId.of("America/New_York"), "LON" to java.time.ZoneId.of("Europe/London"), "TYO" to java.time.ZoneId.of("Asia/Tokyo")).forEach { (label, zone) -> // english-only
+                                val zTime = java.time.ZonedDateTime.now(zone)
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(FolioRadius.CONTROL.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(Modifier.padding(FolioSpace.SNUG.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(label, color = Color.White.copy(alpha = 0.7f), fontSize = FolioType.GROUP_LABEL.sp)
+                                        Text(zTime.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm")), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        FolioButton(
+                            text = stringResource(R.string.open_clock_app),
+                            onClick = {
+                                runCatching { context.startActivity(Intent(AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                                onClose()
+                            },
+                            style = FolioButtonStyle.TONAL,
+                            icon = Icons.Rounded.Schedule,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+            DATE_WIDGET, UP_NEXT_WIDGET -> {
+                Surface(
+                    color = FolioColors.SurfaceLowest.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(FolioRadius.PANEL.dp),
+                    border = FolioGlass.edge,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text(time.format(DateTimeFormatter.ofPattern(stringResource(R.string.standby2_month_year_pattern))), color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
+                                Text(time.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp)
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            val today = time.toLocalDate()
+                            val startDay = today.minusDays(3)
+                            for (i in 0 until 7) {
+                                val d = startDay.plusDays(i.toLong())
+                                val isToday = d == today
+                                Surface(
+                                    color = if (isToday) LocalAccent.current.fill else Color.White.copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(FolioRadius.CONTROL.dp),
+                                    modifier = Modifier.width(38.dp)
+                                ) {
+                                    Column(Modifier.padding(vertical = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(d.dayOfWeek.name.take(3), color = if (isToday) Color.White else Color.White.copy(alpha = 0.6f), fontSize = FolioType.GROUP_LABEL.sp) // english-only
+                                        Text(d.dayOfMonth.toString(), color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal)
+                                    }
+                                }
+                            }
+                        }
+                        FolioButton(
+                            text = stringResource(R.string.open_calendar_app),
+                            onClick = {
+                                val calIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                runCatching { context.startActivity(calIntent) }
+                                onClose()
+                            },
+                            style = FolioButtonStyle.TONAL,
+                            icon = Icons.AutoMirrored.Rounded.EventNote,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+            else -> {
+                Surface(
+                    color = FolioColors.SurfaceLowest.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(FolioRadius.PANEL.dp),
+                    border = FolioGlass.edge,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                        Text(stringResource(R.string.standby2_widget_vitals), color = Color.White, fontSize = FolioType.TITLE.sp, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                            Surface(color = Color.White.copy(alpha = 0.08f), shape = RoundedCornerShape(FolioRadius.CONTROL.dp), modifier = Modifier.weight(1f)) {
+                                Column(Modifier.padding(FolioSpace.MEDIUM.dp)) {
+                                    Text(stringResource(R.string.battery), color = Color.White.copy(alpha = 0.6f), fontSize = FolioType.CAPTION.sp)
+                                    Text("${status.battery ?: 100}%", color = if (status.charging) FolioColors.Green else Color.White, fontSize = vitalsHeroSize, fontWeight = FontWeight.Bold)
+                                    Text(if (status.charging) stringResource(R.string.charging) else stringResource(R.string.battery_saver), color = Color.White.copy(alpha = 0.5f), fontSize = FolioType.GROUP_LABEL.sp)
+                                }
+                            }
+                            Surface(color = Color.White.copy(alpha = 0.08f), shape = RoundedCornerShape(FolioRadius.CONTROL.dp), modifier = Modifier.weight(1f)) {
+                                Column(Modifier.padding(FolioSpace.MEDIUM.dp)) {
+                                    Text(stringResource(R.string.wi_fi), color = Color.White.copy(alpha = 0.6f), fontSize = FolioType.CAPTION.sp)
+                                    Text(if (status.wifiConnected) "Wi-Fi" else if (status.airplane) stringResource(R.string.status_airplane) else "Cellular", color = Color.White, fontSize = timeSize, fontWeight = FontWeight.Bold) // english-only
+                                    Text(if (status.wifiConnected) stringResource(R.string.connected) else stringResource(R.string.connected), color = Color.White.copy(alpha = 0.5f), fontSize = FolioType.GROUP_LABEL.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        FolioButton(
+            text = stringResource(R.string.done),
+            onClick = onClose,
+            style = FolioButtonStyle.FILLED,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

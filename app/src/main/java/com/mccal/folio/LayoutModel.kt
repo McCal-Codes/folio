@@ -25,6 +25,22 @@ const val DUO_ROW_PITCH_MAX_DP = 108.5f
 const val DUO_PORTRAIT_ROW_PITCH_MAX_DP = 125.4f
 const val DUO_PORTRAIT_ROW_GAIN_CAP = 0.30f
 
+/**
+ * DUO_PANE_GAP (see FeatureGate): on the unfolded screen, how close the left page's grid sits to the right one's when the phone is
+ * flat (32 dp between the two grids, matching iPhone Duo's ~1.5x of an icon column gap), and the closest either grid may come to the
+ * window's left edge. Partly folded ([bookFolded] true), the left page returns to the middle of the left half, so the two halves
+ * separate across the crease. Returns the left pane box's origin in dp (the grid inside it starts 16 dp further in).
+ */
+const val DUO_FLAT_PANE_GAP_DP = 32f
+
+fun expandedLeftPaneOrigin(windowWidthDp: Float, homeWidthDp: Float, gridWidthDp: Float, duoPaneGap: Boolean = false, bookFolded: Boolean = false): Float {
+    val centeredInLeftHalf = (windowWidthDp / 2f - gridWidthDp) / 2f - 16f
+    if (!duoPaneGap || bookFolded) return centeredInLeftHalf
+    val rightGridStart = windowWidthDp - homeWidthDp + 16f
+    val duoGridStart = (rightGridStart - DUO_FLAT_PANE_GAP_DP - gridWidthDp).coerceAtLeast(16f)
+    return maxOf(centeredInLeftHalf, duoGridStart - 16f)
+}
+
 data class LayoutPreset(
     val iconSize: Float = 66f,
     val rowGap: Float = 8f,

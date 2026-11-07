@@ -118,8 +118,10 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     val lift = with(LocalDensity.current) { 28.dp.toPx() }
     val config = LocalConfiguration.current
     val wide = config.fitsRegularHomeLayout()
+    // The preview pane (0.7.0 gate): Full screen on a window 700 dp wide or more puts the open notification beside the list.
+    val previewPane = rememberGateOpen(FeatureGate.NC_PREVIEW_PANE)
     val shape = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp,
-        LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock)
+        LocalHinge.current?.active == true || LocalShadeOverApps.current, current, showClock, previewPane)
     // A card or two cards leave Home visible, so the dim is lighter than for a panel that fills the screen.
     val dim = if (shape == ShadeShape.CARD || shape == ShadeShape.BOTH) .6f else 1f
     // The switch between the panels is only drawn where one panel stands alone (two cards side by side already show both) and while its gate is open.
@@ -127,9 +129,9 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Where both panels stand alone at the top (any width: a phone, the open screen, a tablet), the switch is drawn once, at the top centre, and stays where it
     // is while the two panels cross-fade under it. A card, a clock beside the list or a window too short for the extra row keeps its switch inside the panel.
     val hingedOrOverApps = LocalHinge.current?.active == true || LocalShadeOverApps.current
-    fun shapeOf(panel: ShadePanel) = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp, hingedOrOverApps, panel, showClock)
+    fun shapeOf(panel: ShadePanel) = shadeShape(ncLayout, wide, config.screenWidthDp > config.screenHeightDp, config.screenWidthDp, hingedOrOverApps, panel, showClock, previewPane)
     val hoistSwitch = switcher != null && config.screenHeightDp >= HOIST_SWITCH_MIN_HEIGHT_DP &&
-        shapeOf(ShadePanel.NOTIFICATIONS).let { it == ShadeShape.SINGLE_TOP || it == ShadeShape.SPLIT_CLOCK } && shapeOf(ShadePanel.QUICK_SETTINGS) == ShadeShape.SINGLE_TOP
+        shapeOf(ShadePanel.NOTIFICATIONS).let { it == ShadeShape.SINGLE_TOP || it == ShadeShape.SPLIT_CLOCK || it == ShadeShape.LIST_DETAIL } && shapeOf(ShadePanel.QUICK_SETTINGS) == ShadeShape.SINGLE_TOP
     // A card is as tall as its list, at most two thirds of the window; a panel that fills the window has no ceiling but the room it has.
     val cardListMax = (config.screenHeightDp * .62f).dp
 
@@ -168,6 +170,9 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Unfolded, Notification Center can be iPad-style: big clock on the left, notifications on the right (Full screen), a card under the
     // corner it was pulled from (Card), or beside Control Center (Side by side); see shadeShape.
     val split = shape == ShadeShape.SPLIT_CLOCK
+    // The preview pane: the list on the left and the open notification beside it, filling the window's height like the split does.
+    val detail = shape == ShadeShape.LIST_DETAIL
+    val tall = split || detail
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
@@ -186,6 +191,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         // Beside the clock the list takes at most 60 percent of the width, so the clock (40 percent) is never drawn under it.
         fun panelModifier(which: ShadePanel) = (if (split) Modifier.fillMaxWidth(.6f) else Modifier).widthIn(max = when {
                 split -> 540.dp
+                detail && which == ShadePanel.NOTIFICATIONS -> LIST_DETAIL_MAX_DP.dp
                 shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
                 shape == ShadeShape.BOTH -> 440.dp
                 which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP -> Dp.Infinity // Control Center fills the window; its grid sets its own width
@@ -193,7 +199,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 else -> 560.dp
             })
             .then(if ((which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) || (which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP)) Modifier.fillMaxWidth() else Modifier)
-            .then(if (split) Modifier.fillMaxHeight() else Modifier)
+            .then(if (tall) Modifier.fillMaxHeight() else Modifier)
             // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
             // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
             .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
@@ -235,15 +241,15 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 wide && ccCentered -> Alignment.TopCenter
                 else -> Alignment.TopEnd
             }
-            androidx.compose.animation.AnimatedContent(current, Modifier.fillMaxWidth().then(if (split) Modifier.fillMaxHeight() else Modifier), transitionSpec = {
+            androidx.compose.animation.AnimatedContent(current, Modifier.fillMaxWidth().then(if (tall) Modifier.fillMaxHeight() else Modifier), transitionSpec = {
                 androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200))
                     .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140)))
                     .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> androidx.compose.animation.core.snap() })
             }, contentAlignment = Alignment.TopStart, label = "panel switch") { which ->
-                Box(Modifier.fillMaxWidth().then(if (split) Modifier.fillMaxHeight() else Modifier), contentAlignment = alignFor(which)) {
+                Box(Modifier.fillMaxWidth().then(if (tall) Modifier.fillMaxHeight() else Modifier), contentAlignment = alignFor(which)) {
                     if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
                         listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch,
-                        onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+                        detail = detail, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
                     else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack,
                         onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
                 }
@@ -260,7 +266,8 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 // Notification Center
 
 @Composable
-private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false, onSystemQuickSettings: () -> Unit = {}, onSystem: () -> Unit) {
+private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: Boolean, sections: Boolean = false, listMax: Dp = Dp.Infinity, onClose: () -> Unit, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false,
+    detail: Boolean = false, onSystemQuickSettings: () -> Unit = {}, onSystem: () -> Unit) {
     val context = LocalContext.current
     val items by IslandListenerService.notifications.collectAsStateWithLifecycle()
     val hasAccess = remember { IslandListenerService.hasAccess(context) }
@@ -274,20 +281,32 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
     LaunchedEffect(allGroups) { if (filterApp != null && allGroups.none { it.first().packageName == filterApp }) filterApp = null }
     var quietOpen by remember { mutableStateOf(false) }
     val sectioned = remember(items, filterApp, sections) { sectionNotifications(items.filter { filterApp == null || it.packageName == filterApp }, sections) }
+    // With the preview pane, a tap picks the notification the pane shows; the newest one shown is picked until then, and when the picked one
+    // goes (cleared, or filtered out by the app row) the pane moves to the newest one left rather than going blank.
+    var pickedKey by remember { mutableStateOf<String?>(null) }
+    val picked = if (!detail) null else sectioned.filter { (bucket, _) -> bucket != NotificationBucket.QUIET || quietOpen }
+        .flatMap { (_, groups) -> groups.flatten() }.let { shown -> previewPick(shown, pickedKey) }
 
     // Keyboard for quick reply pushes the list up instead of covering it.
     Column(modifier.windowInsetsPadding(WindowInsets.imeAnimationTarget).testTag("notification-center"), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
         if (onSwitch != null) PanelSwitch(ShadePanel.NOTIFICATIONS, onSwitch, Modifier.align(Alignment.CenterHorizontally))
         // The switch is drawn once above both panels: this row keeps its place so the clock does not move up under it.
         else if (reserveSwitchRow) Spacer(Modifier.height(PANEL_SWITCH_ROW_DP.dp))
-        if (showClock) Column(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showClock && !detail) Column(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = FolioType.BODY.sp,
                 fontWeight = FontWeight.SemiBold)
             Text(now.format(DateTimeFormatter.ofPattern(clock)), color = Color.White, fontSize = 76.sp, fontWeight = FontWeight.Bold,
                 lineHeight = 80.sp)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            // Beside a preview pane the window is wide, and the small clock leads the header in place of the 76 sp one above; when the
+            // hoisted switch already sits in the top middle, keep the date under the time so it never crowds the switch pill.
+            if (showClock && detail) Column(Modifier.weight(1f)) {
+                Text(now.format(DateTimeFormatter.ofPattern(clock)), color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.Bold, lineHeight = 42.sp)
+                Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = Color.White.copy(alpha = .9f), fontSize = FolioType.FOOTNOTE.sp,
+                    fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            else Text(stringResource(R.string.notification_center), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             // Three different things wear a slider ("Tune") icon elsewhere: Folio's Control Center (panel switch, tile).
             // So the two buttons that open the phone's own panels use other icons: the gear is the phone's Quick Settings,
             // the phone glyph is the phone's own notification shade.
@@ -312,6 +331,7 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
             items.isEmpty() -> Text(stringResource(R.string.no_notifications), color = Color.White.copy(alpha = .6f), fontSize = FolioType.SUBHEAD.sp,
                 modifier = Modifier.fillMaxWidth().padding(vertical = FolioSpace.XXL.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             else -> {
+            val appRow: @Composable () -> Unit = {
             if (allGroups.size > 1 && LocalTintOptions.current.notificationAppRow) androidx.compose.foundation.lazy.LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp)) {
                 items(allGroups, key = { it.first().packageName }) { group ->
@@ -330,6 +350,8 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                     }
                 }
             }
+            }
+            val list: @Composable ColumnScope.() -> Unit = {
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
             // The list takes what the column has left after the header and the app row, so it follows the window, not a fixed height.
             LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMax).edgeFade(listState), state = listState,
@@ -359,18 +381,77 @@ private fun NotificationCenter(modifier: Modifier, showClock: Boolean, grouped: 
                             }
                         }
                         items(group, key = { it.key }) { item -> NotificationCard(item, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
-                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections) {
-                            onClose(); IslandListenerService.openNotification(context, item)
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections, picked = picked?.key == item.key, besidePane = detail) {
+                            // Beside the pane a tap shows the notification there; Open in the pane is what opens the app, as on iPad Mail.
+                            if (detail) pickedKey = item.key
+                            else { onClose(); IslandListenerService.openNotification(context, item) }
                         } }
                     } else item(group.first().key) {
                         // Same key as the first card when expanded, so the stack slides apart instead of swapping.
                         StackedNotification(group, Modifier.animateItem(fadeInSpec = FolioMotion.spring(FolioMotion.Settle),
-                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections) { expandedGroup = pkg }
+                            placementSpec = FolioMotion.spring(FolioMotion.Settle)), showMore = sections,
+                            picked = picked != null && group.any { it.key == picked.key }, besidePane = detail) { expandedGroup = pkg }
                     }
                 }
                   }
                 }
             }
+            }
+            if (detail) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                Column(Modifier.weight(LIST_DETAIL_LIST_SHARE).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) { appRow(); list() }
+                NotificationPreviewPane(picked, Modifier.weight(1f - LIST_DETAIL_LIST_SHARE).fillMaxHeight().padding(bottom = 12.dp), onClose)
+            } else { appRow(); list() }
+            }
+        }
+    }
+}
+
+/**
+ * The notification the preview pane shows, out of [shown] (in the order the list draws them): the one [pickedKey] names while it is still
+ * there, otherwise the first, and null when there is none. Pure, so the fallback when the picked one is cleared can be tested.
+ */
+internal fun previewPick(shown: List<NotificationItem>, pickedKey: String?): NotificationItem? =
+    shown.firstOrNull { it.key == pickedKey } ?: shown.firstOrNull()
+
+/**
+ * The open notification beside the list (the preview pane): its app, title, whole text and its actions, which the cards beside it leave
+ * out. Moving to another notification cross-fades the pane's content (160 ms; with Reduce Motion a plain 120 ms fade; nothing slides).
+ */
+@Composable
+private fun NotificationPreviewPane(item: NotificationItem?, modifier: Modifier, onClose: () -> Unit) {
+    val context = LocalContext.current
+    val reduce = LocalReduceMotion.current
+    val overApps = LocalShadeOverApps.current
+    val replyOverApp = LocalShadeReply.current
+    val shape = RoundedCornerShape((FolioRadius.NOTIFICATION + 6).dp)
+    Box(modifier.clip(shape).background(NotifGlass).border(FolioGlass.edge, shape).testTag("notification-preview")) {
+        androidx.compose.animation.AnimatedContent(item, Modifier.fillMaxSize(), contentKey = { it?.key }, transitionSpec = {
+            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduce) 120 else 160))
+                .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduce) 120 else 150)))
+                .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> androidx.compose.animation.core.snap() })
+        }, label = "notification preview") { shown ->
+            if (shown == null) return@AnimatedContent
+            Column(Modifier.fillMaxSize().padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    shown.icon?.let { Image(it.asImageBitmap(), null, Modifier.size(28.dp).clip(RoundedCornerShape(7.dp))); Spacer(Modifier.width(FolioSpace.SMALL.dp)) }
+                    Text(shown.appLabel, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text(relativeTime(shown.postTime), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                }
+                Text(shown.title ?: shown.appLabel, color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { heading() })
+                // The whole text, line breaks kept: the card beside it shows at most four lines.
+                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    shown.text?.let { Text(it.trim(), color = Color.White.copy(alpha = .9f), fontSize = FolioType.BODY.sp, lineHeight = 22.sp) }
+                }
+                var replying by remember(shown.key) { mutableStateOf(false) }
+                if (replying) QuickReplyField(shown.title, onSend = { IslandListenerService.reply(context, shown.key, it) }, onDone = { replying = false })
+                else FlowRow(horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                    MessageActionPill(stringResource(R.string.open)) { onClose(); IslandListenerService.openNotification(context, shown) }
+                    // Typing needs a focusable window, so over another app Reply starts a small box to type in, as the card's does.
+                    if (shown.canReply) MessageActionPill(stringResource(R.string.reply)) { if (overApps) (replyOverApp?.invoke(shown) ?: run { onClose(); IslandListenerService.openNotification(context, shown) }) else replying = true }
+                    if (shown.canMarkRead) MessageActionPill(stringResource(R.string.mark_as_read)) { IslandListenerService.markRead(shown.key) }
+                    if (shown.clearable) MessageActionPill(stringResource(R.string.clear)) { IslandListenerService.dismiss(shown.key) }
+                }
             }
         }
     }
@@ -416,18 +497,18 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: 
 }
 
 @Composable
-private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, onExpand: () -> Unit) {
+private fun StackedNotification(group: List<NotificationItem>, modifier: Modifier, showMore: Boolean = false, picked: Boolean = false, besidePane: Boolean = false, onExpand: () -> Unit) {
     Box(modifier.fillMaxWidth().padding(bottom = FolioSpace.MEDIUM.dp)) {
         // Two receding cards behind, like an iPhone notification stack.
         Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.XXL.dp).offset(y = 14.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SurfaceCard.copy(alpha = .45f)))
         Box(Modifier.matchParentSize().padding(horizontal = FolioSpace.MEDIUM.dp).offset(y = 7.dp).clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(FolioColors.SurfaceCard.copy(alpha = .66f)))
-        key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, onOpen = onExpand) }
+        key(group.first().key) { NotificationCard(group.first(), Modifier, extraCount = group.size - 1, showMore = showMore, picked = picked, besidePane = besidePane, onOpen = onExpand) }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCount: Int = 0, showMore: Boolean = false, onOpen: () -> Unit) {
+private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCount: Int = 0, showMore: Boolean = false, picked: Boolean = false, besidePane: Boolean = false, onOpen: () -> Unit) {
     // iOS: swipe left to reveal Options and Clear; a long swipe clears; tapping the card closes the buttons.
     val scope = rememberCoroutineScope()
     val swipe = remember(item.key) { androidx.compose.animation.core.Animatable(0f) }
@@ -473,7 +554,10 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
             FolioMotion.spring(FolioMotion.Control), label = "notification press")
         Row(Modifier.fillMaxWidth().graphicsLayer { scaleX = pressScale; scaleY = pressScale }
             .clip(RoundedCornerShape(FolioRadius.NOTIFICATION.dp)).background(mixColor(NotifGlass, cardAccent, .32f))
-            .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.NOTIFICATION.dp))
+            // The one the preview pane shows is lifted a step, as a selected row in iPad Mail is; TalkBack hears it as selected.
+            .then(if (picked) Modifier.background(Color.White.copy(alpha = .12f)) else Modifier)
+            .border(if (picked) androidx.compose.foundation.BorderStroke(1.5.dp, Color.White.copy(alpha = .45f)) else FolioGlass.edge, RoundedCornerShape(FolioRadius.NOTIFICATION.dp))
+            .then(if (besidePane) Modifier.semantics { selected = picked } else Modifier)
             .combinedClickable(interactionSource = press, indication = null, onClick = { if (swipe.value < -1f) settle(0f) else onOpen() }, onLongClick = {
                 if (!overApps) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); options = true }
             }, onLongClickLabel = stringResource(R.string.notification_options))
@@ -488,10 +572,11 @@ private fun NotificationCard(item: NotificationItem, modifier: Modifier, extraCo
                     Text(relativeTime(item.postTime), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
                 }
                 item.text?.let { Text(it.lines().filter(String::isNotBlank).joinToString(" "), color = Color.White.copy(alpha = .88f),
-                    fontSize = FolioType.COMPACT.sp, maxLines = if (extraCount > 0) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
+                    fontSize = FolioType.COMPACT.sp, maxLines = if (extraCount > 0 || besidePane) 2 else 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp) }
                 if (extraCount > 0) Text(pluralStringResource(R.plurals.more_from_app, extraCount, extraCount, item.appLabel),
                     color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
-                if (extraCount == 0 && (item.canReply || item.canMarkRead)) {
+                // Beside the preview pane, Reply and Mark as Read are in the pane, so the row stays a preview.
+                if (extraCount == 0 && !besidePane && (item.canReply || item.canMarkRead)) {
                     var replying by remember(item.key) { mutableStateOf(false) }
                     if (replying) QuickReplyField(item.title, Modifier.padding(top = FolioSpace.SMALL.dp),
                         onSend = { IslandListenerService.reply(context, item.key, it) }, onDone = { replying = false })
@@ -814,11 +899,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         CcControl.ROTATION -> controls.rotationLocked
         CcControl.DND -> controls.dndOn
         CcControl.FLASHLIGHT -> controls.torchOn
+        CcControl.BATTERY_SAVER -> controls.powerSaveOn
         else -> false
     }
     fun accent(control: CcControl) = when (control) {
         CcControl.ROTATION -> AccentRed
         CcControl.DND -> AccentPurple
+        CcControl.BATTERY_SAVER -> AccentOrange
         else -> Color.White
     }
     fun runNow(control: CcControl) {
@@ -827,9 +914,20 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             CcControl.DND -> if (!controls.toggleDnd()) open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             CcControl.FLASHLIGHT -> controls.toggleTorch()
             CcControl.CAMERA -> open(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
-            CcControl.TIMER -> open(Intent(AlarmClock.ACTION_SHOW_TIMERS))
+            CcControl.TIMER -> {
+                val timer = Intent(AlarmClock.ACTION_SHOW_TIMERS)
+                val target = if (timer.resolveActivity(context.packageManager) != null) timer else Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                open(target)
+            }
             CcControl.ALARM -> open(Intent(AlarmClock.ACTION_SHOW_ALARMS))
-            CcControl.CALCULATOR -> open(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR))
+            CcControl.CALCULATOR -> {
+                val calc = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR)
+                val target = if (calc.resolveActivity(context.packageManager) != null) calc else {
+                    listOf("com.google.android.calculator", "com.sec.android.app.popupcalculator", "com.android.calculator2")
+                        .firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) } ?: calc
+                }
+                open(target)
+            }
             // Close first so the panel isn't in the screenshot.
             // (A main-thread post, not a composition scope: the panel leaves composition as it closes.)
             CcControl.SCREENSHOT -> { onClose(); android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -984,7 +1082,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
             ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
             ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
-            ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
+            ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) {
+                val panel = Intent("android.settings.panel.action.BLUETOOTH")
+                val target = if (panel.resolveActivity(context.packageManager) != null) panel else Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                open(target)
+            },
         )
         val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
 
@@ -1512,6 +1614,12 @@ private const val CC_SWITCH_PILL_MIN_GRID_DP = 280
 /** The height of the row the switch stands in at the top of a panel (the 48 dp touch target of its buttons), kept free where the switch is drawn once above both panels. */
 private const val PANEL_SWITCH_ROW_DP = 48
 
+/** The widest the preview pane's Notification Center grows: past it, on a big tablet or a monitor, the list and the pane stop stretching. */
+private const val LIST_DETAIL_MAX_DP = 1100
+
+/** The list's share of the width beside the preview pane; the pane takes the rest (the Lab's wide-panels-live split). */
+private const val LIST_DETAIL_LIST_SHARE = .42f
+
 /** A window shorter than this keeps the switch inside each panel: the extra row would cost Control Center a page. */
 private const val HOIST_SWITCH_MIN_HEIGHT_DP = 480
 
@@ -1616,9 +1724,16 @@ private class DeviceControls(private val context: Context) {
     var rotationLocked by mutableStateOf(false); private set
     var dndOn by mutableStateOf(false); private set
     var bluetoothOn by mutableStateOf(false); private set
+    var powerSaveOn by mutableStateOf(false); private set
 
     private val torchCallback = object : CameraManager.TorchCallback() {
-        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) { if (cameraId == torchId) torchOn = enabled }
+        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+            if (cameraId == torchId) {
+                val was = torchOn
+                torchOn = enabled
+                if (enabled != was) IslandEvents.post(IslandEvent.Torch(enabled))
+            }
+        }
     }
 
     private val levels = SystemLevels(context) { reading ->
@@ -1634,6 +1749,7 @@ private class DeviceControls(private val context: Context) {
         rotationLocked = runCatching { Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) == 0 }.getOrDefault(false)
         dndOn = notifications.currentInterruptionFilter > NotificationManager.INTERRUPTION_FILTER_ALL
         bluetoothOn = runCatching { context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true }.getOrDefault(false)
+        powerSaveOn = runCatching { context.getSystemService(android.os.PowerManager::class.java)?.isPowerSaveMode == true }.getOrDefault(false)
     }
 
     /** Unregisters everything start() registered: the torch callback and the volume, brightness and screen observers. */

@@ -73,6 +73,9 @@ internal fun IslandAdvancedPage() {
         IosMenuRow(stringResource(R.string.island_haptics), IslandHaptics.entries.map { it to stringResource(it.label) }, values.haptics,
             { IslandStyle.saveHaptics(context, it); version++ }, tag = "island-haptics")
         CardNote(stringResource(R.string.island_haptics_note))
+        SettingsSwitch(stringResource(R.string.island_notif_rolling), values.notificationRolling,
+            { IslandStyle.saveNotificationRolling(context, it); version++ }, "island-notif-rolling-switch")
+        CardNote(stringResource(R.string.island_notif_rolling_detail))
     }
 
     SettingsCard(stringResource(R.string.island_gestures)) {

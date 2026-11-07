@@ -178,8 +178,8 @@ class MarketHostTest {
             ),
             host.capabilities,
         )
-        // Every built-in tweak has a capability, and every tweak capability has a built-in tweak.
-        assertEquals(TweakFeatures.map { it.id }.toSet(), TweakId.entries.map { it.id }.toSet())
+        // Every built-in tweak that has shipped in the Market schema has a capability, and every tweak capability has a built-in tweak.
+        assertEquals(TweakFeatures.filter { it.gate != FeatureGate.STANDBY_2 }.map { it.id }.toSet(), TweakId.entries.map { it.id }.toSet())
         assertTrue(TweakId.entries.all { it.capability in host.capabilities })
     }
 
