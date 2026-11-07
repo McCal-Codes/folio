@@ -899,11 +899,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         CcControl.ROTATION -> controls.rotationLocked
         CcControl.DND -> controls.dndOn
         CcControl.FLASHLIGHT -> controls.torchOn
+        CcControl.BATTERY_SAVER -> controls.powerSaveOn
         else -> false
     }
     fun accent(control: CcControl) = when (control) {
         CcControl.ROTATION -> AccentRed
         CcControl.DND -> AccentPurple
+        CcControl.BATTERY_SAVER -> AccentOrange
         else -> Color.White
     }
     fun runNow(control: CcControl) {
@@ -912,9 +914,20 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             CcControl.DND -> if (!controls.toggleDnd()) open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             CcControl.FLASHLIGHT -> controls.toggleTorch()
             CcControl.CAMERA -> open(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
-            CcControl.TIMER -> open(Intent(AlarmClock.ACTION_SHOW_TIMERS))
+            CcControl.TIMER -> {
+                val timer = Intent(AlarmClock.ACTION_SHOW_TIMERS)
+                val target = if (timer.resolveActivity(context.packageManager) != null) timer else Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                open(target)
+            }
             CcControl.ALARM -> open(Intent(AlarmClock.ACTION_SHOW_ALARMS))
-            CcControl.CALCULATOR -> open(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR))
+            CcControl.CALCULATOR -> {
+                val calc = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR)
+                val target = if (calc.resolveActivity(context.packageManager) != null) calc else {
+                    listOf("com.google.android.calculator", "com.sec.android.app.popupcalculator", "com.android.calculator2")
+                        .firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) } ?: calc
+                }
+                open(target)
+            }
             // Close first so the panel isn't in the screenshot.
             // (A main-thread post, not a composition scope: the panel leaves composition as it closes.)
             CcControl.SCREENSHOT -> { onClose(); android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -1069,7 +1082,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
             ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
             ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
-            ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) { open(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
+            ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) {
+                val panel = Intent("android.settings.panel.action.BLUETOOTH")
+                val target = if (panel.resolveActivity(context.packageManager) != null) panel else Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                open(target)
+            },
         )
         val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
 
@@ -1707,9 +1724,16 @@ private class DeviceControls(private val context: Context) {
     var rotationLocked by mutableStateOf(false); private set
     var dndOn by mutableStateOf(false); private set
     var bluetoothOn by mutableStateOf(false); private set
+    var powerSaveOn by mutableStateOf(false); private set
 
     private val torchCallback = object : CameraManager.TorchCallback() {
-        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) { if (cameraId == torchId) torchOn = enabled }
+        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+            if (cameraId == torchId) {
+                val was = torchOn
+                torchOn = enabled
+                if (enabled != was) IslandEvents.post(IslandEvent.Torch(enabled))
+            }
+        }
     }
 
     private val levels = SystemLevels(context) { reading ->
@@ -1725,6 +1749,7 @@ private class DeviceControls(private val context: Context) {
         rotationLocked = runCatching { Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) == 0 }.getOrDefault(false)
         dndOn = notifications.currentInterruptionFilter > NotificationManager.INTERRUPTION_FILTER_ALL
         bluetoothOn = runCatching { context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true }.getOrDefault(false)
+        powerSaveOn = runCatching { context.getSystemService(android.os.PowerManager::class.java)?.isPowerSaveMode == true }.getOrDefault(false)
     }
 
     /** Unregisters everything start() registered: the torch callback and the volume, brightness and screen observers. */

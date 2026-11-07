@@ -7,6 +7,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,19 +43,23 @@ internal object WhatsNew {
         val t = title.lowercase(java.util.Locale.ROOT)
         return when {
             "row" in t || "grid" in t -> Icons.Rounded.GridView to FolioColors.Value.Blue
-            "slider" in t || "spacing" in t -> Icons.Rounded.Tune to FolioColors.Value.Indigo
+            "slider" in t || "spacing" in t || "gap" in t -> Icons.Rounded.Tune to FolioColors.Value.Indigo
             "position" in t || "dock" in t -> Icons.Rounded.Dock to FolioColors.Value.Green
             "update" in t -> Icons.Rounded.SystemUpdate to FolioColors.Value.Orange
-            "clock" in t -> Icons.Rounded.Schedule to FolioColors.Value.Pink
+            "clock" in t || "standby" in t -> Icons.Rounded.Schedule to FolioColors.Value.Pink
             "try" in t || "preview" in t -> Icons.Rounded.Home to FolioColors.Value.Cyan
             "icon" in t -> Icons.Rounded.Apps to FolioColors.Value.Purple
-            "cover" in t || "fold" in t -> Icons.Rounded.Devices to FolioColors.Value.Teal
-            "pull" in t || "library" in t || "notification" in t -> Icons.Rounded.SwipeDown to FolioColors.Value.CyanLight
+            "cover" in t || "fold" in t || "duo" in t -> Icons.Rounded.Devices to FolioColors.Value.Teal
+            "pull" in t || "library" in t || "notification" in t || "shade" in t -> Icons.Rounded.SwipeDown to FolioColors.Value.CyanLight
             "badge" in t || "folder" in t -> Icons.Rounded.Folder to FolioColors.Value.Red
-            "bug" in t || "report" in t -> Icons.Rounded.BugReport to FolioColors.Value.Orange
+            "gesture" in t || "resistance" in t || "motion" in t || "overscroll" in t -> Icons.Rounded.TouchApp to FolioColors.Value.Indigo
+            "widget" in t || "blueprint" in t -> Icons.Rounded.Widgets to FolioColors.Value.Blue
+            "lamp" in t || "ambient" in t || "glow" in t || "charging" in t || "flashlight" in t || "torch" in t -> Icons.Rounded.LightMode to FolioColors.Value.Orange
+            "tabletop" in t -> Icons.Rounded.Devices to FolioColors.Value.Teal
+            "bug" in t || "report" in t || "fix" in t || "stabiliz" in t -> Icons.Rounded.BugReport to FolioColors.Value.Orange
             "roadmap" in t -> Icons.Rounded.Map to FolioColors.Value.Indigo
-            "island" in t -> Icons.Rounded.Circle to FolioColors.Value.Gray
-            "theme" in t || "look" in t -> Icons.Rounded.Palette to FolioColors.Value.Pink
+            "island" in t || "ticker" in t -> Icons.Rounded.Circle to FolioColors.Value.Gray
+            "theme" in t || "look" in t || "color" in t || "palette" in t || "tint" in t -> Icons.Rounded.Palette to FolioColors.Value.Pink
             else -> Icons.Rounded.AutoAwesome to FolioColors.Value.Yellow
         }
     }
@@ -113,7 +118,8 @@ internal object WhatsNew {
         if (firstRun || seen == null && !context.getSharedPreferences(SettingKeys.PREFS, 0).contains(SettingKeys.STATE)) {
             markSeen(context); return false
         }
-        return notes(context).any { it.version == releaseVersion(context) }
+        val base = releaseVersion(context)
+        return notes(context).any { it.version == current || it.version == base || it.version.startsWith(base) }
     }
 
     fun markSeen(context: Context) = context.getSharedPreferences(PREFS, 0).edit().putString(SEEN, currentVersion(context)).apply()
@@ -124,9 +130,13 @@ internal object WhatsNew {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val current = androidx.compose.runtime.remember { WhatsNew.currentVersion(context) }
     val version = androidx.compose.runtime.remember { WhatsNew.releaseVersion(context) }
     val notes = androidx.compose.runtime.remember { WhatsNew.notes(context) }
-    val release = notes.firstOrNull { it.version == version } ?: notes.firstOrNull()
+    val release = notes.firstOrNull { it.version == current }
+        ?: notes.firstOrNull { it.version == version }
+        ?: notes.firstOrNull { it.version.startsWith(version) }
+        ?: notes.firstOrNull()
     val older = notes.filter { it != release }
     var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(setOf<String>()) }
     var showAllFeatures by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
@@ -237,17 +247,40 @@ private const val FEATURES_SHOWN = 6
 private fun FeatureRow(note: NoteItem) {
     val (symbol, color) = WhatsNew.symbol(note.title ?: note.detail)
     val tint = androidx.compose.ui.graphics.Color(color)
-    androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp)
-        .semantics(mergeDescendants = true) {}, verticalAlignment = androidx.compose.ui.Alignment.Top) {
-        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-            .background(tint.copy(alpha = .18f)), contentAlignment = androidx.compose.ui.Alignment.Center) {
+    androidx.compose.foundation.layout.Row(
+        androidx.compose.ui.Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .04f))
+            .border(FolioGlass.edge, androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
+            .padding(FolioSpace.MEDIUM.dp)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = androidx.compose.ui.Alignment.Top
+    ) {
+        androidx.compose.foundation.layout.Box(
+            androidx.compose.ui.Modifier
+                .size(42.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
+                .background(tint.copy(alpha = .18f)),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
             androidx.compose.material3.Icon(symbol, null, tint = tint, modifier = androidx.compose.ui.Modifier.size(24.dp))
         }
         androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(start = FolioSpace.COMFY.dp).weight(1f)) {
-            note.title?.let { androidx.compose.material3.Text(it, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
-            androidx.compose.material3.Text(MarketText.inline(note.detail, LocalAccent.current.ink), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = FolioType.SUBHEAD.sp,
-                modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.HAIR.dp))
+            note.title?.let {
+                androidx.compose.material3.Text(
+                    it,
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = FolioType.BODY.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                )
+            }
+            androidx.compose.material3.Text(
+                MarketText.inline(note.detail, LocalAccent.current.ink),
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = .78f),
+                fontSize = FolioType.SUBHEAD.sp,
+                modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.HAIR.dp)
+            )
         }
     }
 }

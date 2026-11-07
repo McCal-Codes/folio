@@ -5,6 +5,44 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.7.0] - 2026-11-04
+
+### Added
+- **Island tint & rolling ticker:** Notification popup backgrounds in the dynamic island now subtly adapt to the app's icon color palette, and an optional rolling ticker mode scrolls message content along the island pill instead of expanding into a card.
+- **App shortcut menu palette tint:** The home screen app shortcut menu (on hold or Cabinet swipe) adopts a frosted glass background tinted with the app icon's color palette.
+- **Seamless unfolded two-page spacing:** When unfolded flat, the left and right pages sit closer together for a continuous two-page layout, and smoothly separate away from the hinge crease when partly folded.
+- **New StandBy clock personalities:** Vintage warm orange Nixie Tube filaments with realistic glass tube reflections, and Minimalist typography with hairline divider and date capsule.
+- **StandBy interactive widget stack:** Tap or swipe/flick the widget card in StandBy vertically to cycle between Up Next Calendar, Month Calendar Grid, Weather Outlook, and Device Vitals with directional slide transitions, animated dots, and haptic feedback.
+- **Dual-screen ambient lamp:** Bedside lamp mode softly illuminates the secondary outer screen with a warm breathing glow matching your clock color while folded or propped in StandBy.
+- **StandBy live preview in Settings:** Responsive, scalable preview card in Settings showing the active clock face, color accents, and interactive widget cycling.
+- **Page-edge resistance & elasticity:** Pulling past the first Home page or past App Library provides smooth physics resistance that springs back upon release.
+- **Temporary widget expansion:** Long-press any built-in widget (Clock, Calendar, Vitals) to inspect an expanded interactive preview card and launch related actions without altering your saved layout.
+- **Contextual rail editing & undo:** Editing Home surfaces contextual Add Widget, Undo, and Done buttons directly in the sidebar rail, paired with a floating immediate undo chip.
+- **Fold displacement for folder panels:** Open folders on dual-screen or foldable displays cleanly settle onto a single display half rather than straddling the hinge crease.
+- **Quiet charging response & case fit:** Connecting power triggers a gentle pulse and soft glow on the battery indicator. A new case-fit clearance setting adds adjustable edge insets for thick phone cases.
+- **Duo status rail & charging bolt:** Tabular numerals prevent time jitter as minutes advance, and a compact lightning bolt indicator sits beside the battery percentage/gauge when on power.
+- **Control Center toggle refinements:** Active color accents on Battery Saver, in-place system sheet support for the Bluetooth tile, and fallback package launching for calculators and timers.
+- **Polished What's New & build sheets:** Changelog and dev build welcome sheets render entries in frosted glass cards with contextual feature icons and clean commit hashes instead of wrapping raw text.
+- **Island flashlight indicator:** An active Torch indicator glows in the Dynamic Island pill when the flashlight is on; a single tap turns it off.
+- **Widget placement blueprint preview:** Dragging or resizing widgets displays a translucent frosted blueprint and border glow over the target grid cells.
+- **Horizontal dock edge-fade:** Scrolling docks feature smooth horizontal edge fading to prevent harsh icon clipping.
+- **Tabletop control separation:** Extra hinge clearance spaces lower desk deck apps cleanly below the bend in tabletop pose.
+
+### Fixed
+- **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
+
+## [0.7.0-beta.1] - 2026-11-04
+
+### Added
+- **StandBy clock styles:** Settings › Fold & Displays adds Split-Flap mechanical plates, Neon Glow, Analog dial and Solar Arc, with rolling digit transitions.
+- **StandBy interactive widgets:** tap the card in StandBy to cycle between Up Next Calendar events, Weather & Ambient Outlook, and Device Vitals & Battery Details.
+- **StandBy notifications:** a soft edge glow shines in the app's color when a notification arrives, with unread dots for each app.
+- **Dual-screen ambient glow:** in tent mode or half open, the outer screen illuminates with a soft breathing ambient lamp matching your clock color.
+- **StandBy preview in Settings:** an interactive preview shows your selected clock style, widgets, music card and Day or Night mode.
+- **Notification Center preview pane:** on screens 700 dp and wider (such as the unfolded Fold), Notification Center displays a two-pane list and detail view with full message preview and inline quick actions.
+- **Homescreen swipe to Discover:** swiping to Google Discover stays smooth with your Android wallpaper without flashing the drawn background.
+- **Tweak options:** tweaks in Settings have expanded options and live interactive previews.
+
 ## [0.6.9] - 2026-10-31
 
 ### Added

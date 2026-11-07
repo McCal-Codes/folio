@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
         if (usesSystemWallpaper(this)) setTheme(R.style.Theme_Duo_Wallpaper)
         intent.dropUnreadableExtras() // an extra from another app that Folio cannot unpack must not crash Home
         super.onCreate(savedInstanceState)
+        FolioMotion.initialize(this)
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)

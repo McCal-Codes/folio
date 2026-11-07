@@ -168,16 +168,28 @@ internal val LocalFolderColors = androidx.compose.runtime.compositionLocalOf { e
 
 /** Velvet/ColorFlow tint options, provided from settings. */
 @androidx.compose.runtime.Immutable
-internal data class TintOptions(val notifications: Boolean = false, val media: Boolean = true, val notificationAppRow: Boolean = true, val mediaIsland: Boolean = true)
+internal data class TintOptions(
+    val notifications: Boolean = false,
+    val media: Boolean = true,
+    val notificationAppRow: Boolean = true,
+    val mediaIsland: Boolean = true,
+    val appMenu: Boolean = true,
+    val islandNotifications: Boolean = true,
+)
 internal val LocalTintOptions = androidx.compose.runtime.staticCompositionLocalOf { TintOptions() }
 
 /** The tint choices for the screen a window of this size is: Home and the panels drawn over other apps read them the same way. */
 internal fun tintOptionsFor(state: LauncherState, wide: Boolean): TintOptions {
     val screen = screenFor(wide)
-    return TintOptions(FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen),
-        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
-        FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
-        FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"))
+    val paletteOn = FeatureScopes.on(state.featureScopes, "tintNotifications", state.tintNotifications, screen)
+    return TintOptions(
+        notifications = paletteOn,
+        media = FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "card"),
+        notificationAppRow = FeatureScopes.on(state.featureScopes, "notificationAppRow", state.notificationAppRow, screen),
+        mediaIsland = FeatureScopes.on(state.featureScopes, "tintMedia", state.tintMedia, screen) && TweakOptions.on(state.tweakOptions, "tintMedia", "island"),
+        appMenu = paletteOn && TweakOptions.on(state.tweakOptions, "tintNotifications", "appMenu"),
+        islandNotifications = paletteOn && TweakOptions.on(state.tweakOptions, "tintNotifications", "island"),
+    )
 }
 
 /** How strong Home's glass is: widget frost and the outline around widgets and Side Bar capsules (Settings › Glass). */
@@ -262,6 +274,30 @@ internal fun androidx.compose.ui.Modifier.edgeFade(state: androidx.compose.found
         if (last.index < info.totalItemsCount - 1) 1f
         else (last.offset.y + last.size.height + info.afterContentPadding - info.viewportEndOffset) / px
     })
+
+/** Horizontal edge fade for scrollable rows or docks. */
+internal fun androidx.compose.ui.Modifier.horizontalEdgeFade(
+    state: androidx.compose.foundation.ScrollState,
+    size: androidx.compose.ui.unit.Dp = 20.dp,
+): androidx.compose.ui.Modifier =
+    graphicsLayer {
+        val px = size.toPx()
+        val left = if (state.value > 0) (state.value / px).coerceIn(0f, 1f) else 0f
+        val right = if (state.maxValue > state.value) ((state.maxValue - state.value) / px).coerceIn(0f, 1f) else 0f
+        compositingStrategy = if (left > 0f || right > 0f) androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+            else androidx.compose.ui.graphics.CompositingStrategy.Auto
+    }.drawWithContent {
+        drawContent()
+        val px = size.toPx().coerceAtMost(this.size.width / 4f)
+        val l = (state.value / px).coerceIn(0f, 1f)
+        val r = (if (state.maxValue == Int.MAX_VALUE) 0f else (state.maxValue - state.value) / px).coerceIn(0f, 1f)
+        if (l > 0f) drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(*fadeStops(l, towardEnd = false), startX = 0f, endX = px),
+            size = androidx.compose.ui.geometry.Size(px, this.size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
+        if (r > 0f) drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(*fadeStops(r, towardEnd = true),
+            startX = this.size.width - px, endX = this.size.width),
+            topLeft = androidx.compose.ui.geometry.Offset(this.size.width - px, 0f),
+            size = androidx.compose.ui.geometry.Size(px, this.size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
+    }
 
 /** verticalScroll with soft edges (see edgeFade). */
 internal fun androidx.compose.ui.Modifier.fadingVerticalScroll() = composed {

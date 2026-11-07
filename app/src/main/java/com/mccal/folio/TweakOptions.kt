@@ -55,6 +55,11 @@ internal object TweakOptions {
             TweakOption.Toggle("card", R.string.tweak_opt_music_card, on = true),
             TweakOption.Toggle("island", R.string.tweak_opt_island_bars, on = true),
         ),
+        // Palette: notification card colors, app shortcut menu, and dynamic island tinting.
+        "tintNotifications" to listOf(
+            TweakOption.Toggle("appMenu", R.string.tweak_opt_app_menu, on = true),
+            TweakOption.Toggle("island", R.string.tweak_opt_island_tint, on = true),
+        ),
         // StandBy 2: clock weight, player card style, Up Next, timers, notification colors, night mode, and night brightness.
         STANDBY2_ID to listOf(
             TweakOption.Choice("clock", R.string.standby2_clock, listOf(
@@ -68,7 +73,18 @@ internal object TweakOptions {
                 "words" to R.string.standby2_clock_words,
                 "stack" to R.string.standby2_clock_stack,
                 "neon" to R.string.standby2_clock_neon,
+                "nixie" to R.string.standby2_clock_nixie,
+                "minimal" to R.string.standby2_clock_minimal,
             ), "thin", section = R.string.look),
+            TweakOption.Choice("clockColor", R.string.standby2_clock_color, listOf(
+                "white" to R.string.standby2_color_white,
+                "amber" to R.string.standby2_color_amber,
+                "cyan" to R.string.standby2_color_blue,
+                "coral" to R.string.standby2_color_coral,
+                "mint" to R.string.standby2_color_mint,
+                "purple" to R.string.standby2_color_purple,
+            ), "white", section = R.string.look),
+            TweakOption.Toggle("ambientLamp", R.string.standby2_ambient_lamp, on = true, section = R.string.look),
             TweakOption.Choice("player", R.string.standby2_now_playing, listOf(
                 "card" to R.string.standby2_card, "compact" to R.string.standby2_compact, "off" to R.string.off), "card", section = R.string.look),
             TweakOption.Toggle("upNext", R.string.standby2_up_next, on = true, section = R.string.standby2_cards),
@@ -84,6 +100,11 @@ internal object TweakOptions {
                 "60" to R.string.standby2_bright_60, "80" to R.string.standby2_bright_80, "100" to R.string.standby2_bright_100), "60", section = R.string.standby2_night_mode),
             TweakOption.Toggle("sunrise", R.string.standby2_sunrise, on = true, section = R.string.standby2_night_mode),
             TweakOption.Toggle("offCharger", R.string.standby2_off_charger, on = false, section = R.string.battery),
+        ),
+        DUET_ID to listOf(
+            TweakOption.Choice("caseFit", R.string.case_fit_edge_clearance, listOf(
+                "none" to R.string.case_fit_none, "compact" to R.string.case_fit_compact, "generous" to R.string.case_fit_generous), "none", section = R.string.case_fit_section),
+            TweakOption.Toggle("tabletop", R.string.tabletop_controls, on = false, section = R.string.tabletop_controls),
         ),
     )
 

@@ -330,6 +330,17 @@ class StandByPostureTest {
         assertTrue(v25Config.sunriseBeforeAlarm)
         val sunriseOffConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("sunrise" to "off"))), gateOpen = true)
         assertFalse(sunriseOffConfig.sunriseBeforeAlarm)
+
+        // Clock color resolution defaults to white and respects signature colors
+        assertEquals("white", v25Config.clockColor)
+        val coralConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clockColor" to "coral"))), gateOpen = true)
+        assertEquals("coral", coralConfig.clockColor)
+        val mintConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clockColor" to "mint"))), gateOpen = true)
+        assertEquals("mint", mintConfig.clockColor)
+        val amberConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clockColor" to "amber"))), gateOpen = true)
+        assertEquals("amber", amberConfig.clockColor)
+        val purpleConfig = resolveStandByConfig(v25.copy(tweakOptions = mapOf(STANDBY2_ID to mapOf("clockColor" to "purple"))), gateOpen = true)
+        assertEquals("purple", purpleConfig.clockColor)
     }
 
     @Test fun `formatTimeWords formats conversational time properly`() {

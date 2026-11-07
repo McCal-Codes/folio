@@ -1,6 +1,167 @@
 {
-  "release": "0.6.9-beta.6",
+  "release": "0.7.0-beta.2",
   "items": [
+    {
+      "id": "island-tint-rolling",
+      "title": "Island notification tint & ticker",
+      "where": "Settings > Dynamic Island > Notification Style",
+      "steps": [
+        "Receive a notification: notice the island popup background subtly matches the app's icon color palette.",
+        "Enable 'Rolling notification ticker' to see long notification messages roll smoothly across the pill rather than expanding into a card."
+      ]
+    },
+    {
+      "id": "island-flashlight",
+      "title": "Island flashlight pill indicator",
+      "where": "Dynamic Island (any screen)",
+      "steps": [
+        "Turn on the flashlight from Control Center or quick settings.",
+        "Notice the glowing amber Flashlight indicator in the Island; tap it to turn the flashlight off."
+      ]
+    },
+    {
+      "id": "widget-drop-blueprint",
+      "title": "Widget placement blueprint preview",
+      "where": "Home screen grid",
+      "steps": [
+        "Pick up or move a widget across Home grid cells.",
+        "Observe the glowing frosted blueprint outline and subtle scale response as it hovers over valid targets."
+      ]
+    },
+    {
+      "id": "app-menu-palette-tint",
+      "title": "App shortcut menu palette tint",
+      "where": "Home screen / Cabinet swipe",
+      "steps": [
+        "Long press or swipe up on an app (e.g. Google Play Store): the context shortcut menu background adopts a frosted glass tint sampled from the app icon color."
+      ]
+    },
+    {
+      "id": "unfolded-seamless-spacing",
+      "title": "Seamless unfolded two-page spacing",
+      "where": "Foldables unfolded Home screen (Settings > Grid, icon size & dock)",
+      "steps": [
+        "Unfold flat: notice the left and right pages sit closer together for a uniform layout.",
+        "Partly fold into book posture: notice the halves smoothly separate away from the hinge crease."
+      ]
+    },
+    {
+      "id": "standby-nixie-minimal",
+      "title": "Nixie & Minimalist StandBy clocks",
+      "where": "Settings > Fold & Displays > StandBy > Clock Style",
+      "steps": [
+        "Select Nixie for warm orange vacuum filament numerals with glass tube reflections.",
+        "Select Minimal for hairline divider with clean date capsule and high-contrast numerals."
+      ]
+    },
+    {
+      "id": "standby-widget-carousel",
+      "title": "StandBy interactive widget stack",
+      "where": "StandBy face",
+      "steps": [
+        "Tap or swipe vertically on the widget card in StandBy to cycle between Up Next Calendar, Month Grid, Weather Outlook, and Device Vitals with animated dot indicator and directional transitions."
+      ]
+    },
+    {
+      "id": "page-edge-resistance",
+      "title": "Page-edge resistance elasticity",
+      "where": "Home screen & App Library",
+      "steps": [
+        "Swipe past the first Home page or past App Library: notice the smooth elastic resistance that pulls back smoothly rather than hitting a hard stop."
+      ]
+    },
+    {
+      "id": "widget-expand-temporarily",
+      "title": "Expand widget temporarily preview",
+      "where": "Home widgets (Clock, Calendar, Vitals)",
+      "steps": [
+        "Long press any built-in widget and select 'Expand temporarily': an interactive card opens with detailed info and app shortcuts without modifying the saved Home layout."
+      ]
+    },
+    {
+      "id": "status-rail-duo",
+      "title": "Duo status rail & charging bolt",
+      "where": "Home screen side status rail",
+      "steps": [
+        "Plug in your device: notice the compact charging bolt indicator beside the battery percentage/ring and the gentle pulse response.",
+        "Observe tabular numerals keeping the clock and reading steady as minutes advance."
+      ]
+    },
+    {
+      "id": "cc-toggles-refined",
+      "title": "Control Center toggles & sheets",
+      "where": "Control Center",
+      "steps": [
+        "Open Control Center: toggle Battery Saver, Flashlight, and Rotation Lock; observe active state accents.",
+        "Tap Wi-Fi or Bluetooth: observe the quick system panel sheet without leaving the launcher."
+      ]
+    },
+    {
+      "id": "standby-ambient-lamp",
+      "title": "Dual-screen ambient lamp",
+      "where": "Settings > Fold & Displays > StandBy > Dual-Screen Ambient Light",
+      "steps": [
+        "Enable Dual-Screen Ambient Light, prop phone in tent or bedside posture with StandBy active.",
+        "The outer cover screen softly illuminates as a warm bedside night lamp."
+      ]
+    },
+    {
+      "id": "nc-preview-pane",
+      "title": "Notification Center preview pane",
+      "where": "Notification Center on wide screens (>= 700 dp, such as unfolded Fold)",
+      "steps": [
+        "Unfold the phone and pull down Notification Center.",
+        "Notifications appear in a list on the left with full preview and actions on the right.",
+        "Tap a notification to select it and preview full body, inline replies, and action buttons."
+      ]
+    },
+    {
+      "id": "standby-styles",
+      "title": "StandBy clock styles",
+      "where": "Settings > Fold & Displays > StandBy",
+      "steps": [
+        "Try Split-Flap, Neon Glow, Analog, and Solar Arc clock styles.",
+        "Verify rolling digit transitions and dial animations.",
+        "Preview in Settings should scale cleanly without cutting off."
+      ]
+    },
+    {
+      "id": "standby-widgets",
+      "title": "StandBy interactive widgets",
+      "where": "StandBy face",
+      "steps": [
+        "Tap the widget card in StandBy to cycle between Up Next Calendar, Weather Outlook, and Device Vitals.",
+        "Verify the vertical 3-dot stack indicator updates."
+      ]
+    },
+    {
+      "id": "standby-notifications",
+      "title": "StandBy notifications",
+      "where": "Settings > Fold & Displays > StandBy",
+      "steps": [
+        "Choose Colors or Count Only under Notifications in StandBy.",
+        "Send a notification: the screen edge should glow softly in the app's accent color.",
+        "Verify unread dots appear with the app count."
+      ]
+    },
+    {
+      "id": "standby-ambient",
+      "title": "Dual-screen ambient glow",
+      "where": "Fold tent or half-open pose",
+      "steps": [
+        "Place your Fold in tent mode or slightly open with StandBy on.",
+        "The secondary screen should illuminate with a breathing ambient glow matching your clock color."
+      ]
+    },
+    {
+      "id": "discover-swipe",
+      "title": "Swipe to Google Discover",
+      "where": "Home screen",
+      "steps": [
+        "Swipe left to Google Discover with an Android system wallpaper set.",
+        "No drawn Dunes background should flash or appear behind the feed."
+      ]
+    },
     {
       "id": "cc-swipes",
       "title": "Control Center pages and swipe away",

@@ -125,6 +125,7 @@ sealed interface IslandEvent {
     data class Charging(val level: Int?) : IslandEvent
     data class Silent(val on: Boolean) : IslandEvent
     data class Focus(val on: Boolean) : IslandEvent
+    data class Torch(val on: Boolean) : IslandEvent
     /** Bluetooth headphones or a speaker connected; [name] is the device's own name. */
     data class Bluetooth(val name: String?, val speaker: Boolean = false) : IslandEvent
     /**

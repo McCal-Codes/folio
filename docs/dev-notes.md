@@ -2,14 +2,13 @@
 
 Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > What's New > This build).
 
-- StandBy 2.5 off-charger invocation: prop phone sideways on desk/stand without plugging in (guarded at >=20% battery)
-- StandBy 2.5 clock personalities: Thin, Bold, Analog, Flip, and Dual World Time in Settings > Tweaks > StandBy 2
-- StandBy 2.5 multi-hue night vision: red, amber, and blue night modes with OLED blackout support
-- Swiping fluidity: decoupled gesture stride from left pane spring animation to eliminate visual jitter on unfolded screen
-- StandBy 2 postures (Fold): set down while charging on its side, half-open (tabletop), or propped as a tent
-- StandBy 2 settings: Settings > Tweaks > StandBy 2 grouped into Look, Cards, and Night mode & Battery
-- StandBy 2 Now Playing: clean card without slab, compact row, and skip buttons visible only when offered by player
-- StandBy 2 Timers: active timer row renders beside music in tabular numerals
-- StandBy 2 Night mode: Room light ambient light hysteresis (0.4 lux dark / 0.8 lux light), and 0% brightness touch-to-wake
-- StandBy 2 Burn-in: minute walk shifts up to 6 dp with gentle 1.5 s glide (instant cut on Reduce Motion)
-- Notification Center preview pane (inner screen, Fold): pull down shade on unfolded screen and tap a notification to open the preview pane beside the list with Reply and Mark as Read
+- Dynamic Island notification tint & rolling ticker: popup background tinted to app icon, optional ticker scrolls along the island
+- App shortcut menu palette tint: home context menus tinted with frosted liquid glass sampled from the app icon
+- Seamless unfolded two-page spacing: narrower unified spacing flat, separates away from the hinge when partly folded
+- StandBy 2.5 clock personalities: Nixie Tube vacuum filament numerals and Minimalist typography
+- StandBy 2.5 interactive widgets: tap or vertically flick cards to cycle with directional slide animations and haptics
+- Dual-screen ambient lamp: cover display illuminates with warm breathing glow matching clock face
+- Page-edge resistance & overscroll elasticity: smooth spring physics when pulling past outer edges
+- Expand widget temporarily: interactive preview card for Clock, Calendar, and Vitals
+- Duo-styled status rail: tabular numerals, quiet charging response with compact bolt indicator
+- Control Center toggles: active accent on Battery Saver, in-place Bluetooth panel sheet, robust calculator/timer resolution

@@ -27,12 +27,15 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
@@ -824,6 +827,12 @@ fun LauncherScreen(
             val shownDock = if (dockOpenPlace) state.dock + null else state.dock
             val fillRows = rememberGateOpen(FeatureGate.WIDGETS_FILL_ROWS)
             val duoSpacing = rememberGateOpen(FeatureGate.DUO_SPACING)
+            val caseFit = TweakOptions.value(state.tweakOptions, DUET_ID, "caseFit")
+            val caseFitInset = when (caseFit) {
+                "compact" -> 4.dp
+                "generous" -> 8.dp
+                else -> 0.dp
+            }
             // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
             // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
             var bottomControlsHeight by remember { mutableStateOf(0.dp) }
@@ -900,7 +909,7 @@ fun LauncherScreen(
             val pagerWidth = if (geometry.horizontalDock && !geometry.dockBesideRail) maxWidth else maxWidth - preset.dockWidth.dp - 28.dp
             // DUO_PANE_GAP: flat, the left page sits closer to the right one so the two halves read as one Home; partly folded
             // (a vertical book hinge that is active), it springs back to the middle of the left half to clear the crease.
-            val duoPaneGap = rememberGateOpen(FeatureGate.DUO_PANE_GAP)
+            val duoPaneGap = state.unfoldedSeamlessGap
             val bookFolded = hinge?.let { it.active && it.vertical } == true
             val targetLeftOrigin = expandedLeftPaneOrigin(maxWidth.value, geometry.homeWidth, geometry.gridWidth, duoPaneGap, bookFolded).dp
             val leftColumnOrigin by animateDpAsState(targetLeftOrigin,
@@ -975,7 +984,7 @@ fun LauncherScreen(
                 onLeadingOverscroll = if (firstHome == 0 && discoverMode) onDiscover else null,
                 // Discover opens with a pull from the first page (and is a live window when it is a page), so that
                 // edge keeps today's stop.
-                leadingStretch = !discoverMode,
+                leadingStretch = !(firstHome == 0 && discoverMode),
             )) {
             val pagerModifier = Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart)
                 .fillMaxHeight().width(pagerWidth)
@@ -1089,7 +1098,7 @@ fun LauncherScreen(
                 }
             } }
             if (state.verticalStatus) StatusRail(deviceStatus,
-                Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp).offset(y = statusTopShown.dp)
+                Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset).offset(y = statusTopShown.dp)
                     .width(preset.dockWidth.dp).onSizeChanged {
                         // The whole rail, location slot included: the dock goes below all of it.
                         statusHeight = with(density) { it.height.toDp().value }
@@ -1151,7 +1160,7 @@ fun LauncherScreen(
                 val moveLabel = stringResource(R.string.move_dock)
                 val upLabel = stringResource(R.string.move_dock_up)
                 val downLabel = stringResource(R.string.move_dock_down)
-                Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp)
+                Box(Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset)
                     // Under the dock, but never lower than a touch target above the bottom of the window.
                     .offset(y = minOf(dockTopShown + dockHeightShown + 4f, boxHeightDp - FolioTouch.MIN - 8f).dp).width(preset.dockWidth.dp).height(FolioTouch.MIN.dp)
                     .onGloballyPositioned { grabberBounds = it.boundsInRoot(); grabberTop = it.positionInWindow().y }
@@ -1181,9 +1190,9 @@ fun LauncherScreen(
                         .padding(start = if (state.leftHanded) 0.dp else ((pagerWidth + FolioSpace.LARGE.dp - dockBarWidthShown) / 2).coerceAtLeast(0.dp),
                             end = if (state.leftHanded) ((pagerWidth + FolioSpace.LARGE.dp - dockBarWidthShown) / 2).coerceAtLeast(0.dp) else 0.dp)
                     else Modifier.align(Alignment.BottomCenter))
-                    .padding(bottom = controlsSpace + FolioSpace.SMALL.dp)
+                    .padding(bottom = controlsSpace + FolioSpace.SMALL.dp + caseFitInset)
                     .width(dockBarWidthShown).height(geometry.dockBarHeight.dp)
-                else Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp).offset(y = dockTopShown.dp)
+                else Modifier.align(railTop(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset).offset(y = dockTopShown.dp)
                     .width(preset.dockWidth.dp).height(dockRailHeightShown.dp)).graphicsLayer {
                     translationX = dockShake.value * this.density
                     if (dockStepsAsideForToday) {
@@ -1197,7 +1206,7 @@ fun LauncherScreen(
                         else androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                 }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(FolioRadius.RAIL.dp))
                 .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).testTag("dock")) {
-                Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
+                Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalEdgeFade(dockBarScroll).horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
                     DockAppColumn(shownDock, previewLayout.dock, appsById, dockPitchShown,
                         geometry.dockIcon, drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },
@@ -1284,7 +1293,22 @@ fun LauncherScreen(
                                 repeat(visibleHomePages) { index ->
                                     val dotLabel = if (index == homePages) stringResource(R.string.new_home_page) else stringResource(R.string.home_page, index + 1)
                                     Box(Modifier.width(28.dp).fillMaxHeight()
-                                        .clickable(role = Role.Button, onClickLabel = dotLabel) { scope.launch { pager.animateScrollToPage(index) } }
+                                        .combinedClickable(
+                                            role = Role.Button,
+                                            onClickLabel = dotLabel,
+                                            onClick = {
+                                                if (index == pager.currentPage && index > 0) {
+                                                    haptic.perform(FolioHaptic.Step)
+                                                    scope.launch { pager.animateScrollToPage(0) }
+                                                } else {
+                                                    scope.launch { pager.animateScrollToPage(index) }
+                                                }
+                                            },
+                                            onLongClick = {
+                                                haptic.perform(FolioHaptic.PickedUp)
+                                                homeEdit.start()
+                                            }
+                                        )
                                         .semantics { contentDescription = dotLabel }.testTag("home-page-dot-$index"))
                                 }
                             }
@@ -1295,6 +1319,32 @@ fun LauncherScreen(
                     }
                 }
             } }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.canUndoEdit && sheet.isEmpty() && !drag.active,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp),
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
+            ) {
+                androidx.compose.material3.Surface(
+                    onClick = {
+                        haptic.perform(FolioHaptic.Commit)
+                        model.undoEdit()
+                    },
+                    shape = CircleShape,
+                    color = FolioColors.PopoverSurface.copy(alpha = .95f),
+                    border = FolioGlass.edge,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.size(16.dp))
+                        Text(stringResource(R.string.undo), color = Color.White, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
                 // Unfolded, the bar sits in the free strip at the bottom of the Home half beside the page dots, so it neither
                 // covers the widget row nor pushes the grid; folded, it's at the top, clear of the Dynamic Island.
@@ -1321,15 +1371,36 @@ fun LauncherScreen(
                     JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
                 }
             }
-            if (!inLibrary && !drag.active) OwnMethod { Column(Modifier.align(railBottom(state.leftHanded)).railEdge(state.leftHanded, 12.dp).padding(bottom = FolioSpace.SNUG.dp)
+            if (!inLibrary && !drag.active) OwnMethod { Column(Modifier.align(railBottom(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset).padding(bottom = FolioSpace.SNUG.dp)
                 .width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 val controlSize = dockIconSize(geometry.iconSize).dp
-                if (pager.currentPage == -1) CircleControl(Icons.Rounded.ArrowForward, stringResource(R.string.back_to_home), "discover-home", controlSize) { scope.launch { pager.animateScrollToPage(0) } }
-                val searchBounds = remember { android.graphics.Rect() }
-                if (!state.searchPill || pager.currentPage !in 0 until homePages) Box(Modifier.onGloballyPositioned { searchBounds.set(it.boundsInWindow().toAndroidBounds()) }) {
-                    CircleControl(Icons.Rounded.Search, if (state.googleSearch) stringResource(R.string.search_google) else stringResource(R.string.search_apps), "search", controlSize) {
-                        if (!state.googleSearch || !onGoogleSearch(searchBounds)) launcherActivity.openSpotlight()
+                if (homeEdit.active && state.verticalStatus) {
+                    CircleControl(Icons.Rounded.Add, stringResource(R.string.add_widget), "rail-add-widget", controlSize) {
+                        val editPage = pager.currentPage.coerceIn(0, homePages - 1)
+                        picker.slot = model.nextWidgetSlot()
+                        picker.targetIndex = homeCellIndex(editPage, 0)
+                        picker.anyApp()
+                        picker.profileSerial = null
+                        sheet = "widgets"
+                    }
+                    if (state.canUndoEdit) {
+                        CircleControl(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.undo), "rail-undo", controlSize) {
+                            haptic.perform(FolioHaptic.Commit)
+                            model.undoEdit()
+                        }
+                    }
+                    CircleControl(Icons.Rounded.Check, stringResource(R.string.done), "rail-done", controlSize) {
+                        haptic.perform(FolioHaptic.Commit)
+                        homeEdit.stop()
+                    }
+                } else {
+                    if (pager.currentPage == -1) CircleControl(Icons.Rounded.ArrowForward, stringResource(R.string.back_to_home), "discover-home", controlSize) { scope.launch { pager.animateScrollToPage(0) } }
+                    val searchBounds = remember { android.graphics.Rect() }
+                    if (!state.searchPill || pager.currentPage !in 0 until homePages) Box(Modifier.onGloballyPositioned { searchBounds.set(it.boundsInWindow().toAndroidBounds()) }) {
+                        CircleControl(Icons.Rounded.Search, if (state.googleSearch) stringResource(R.string.search_google) else stringResource(R.string.search_apps), "search", controlSize) {
+                            if (!state.googleSearch || !onGoogleSearch(searchBounds)) launcherActivity.openSpotlight()
+                        }
                     }
                 }
             } }
@@ -1439,7 +1510,11 @@ fun LauncherScreen(
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
                                 onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
-                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null)
+                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null,
+                                onExpand = if (placement.id in BACKUP_BUILTIN_WIDGETS || placement.id < 0) {{ sheet = "expandedWidget" }} else null)
+                        }
+                        "expandedWidget" -> model.placement(picker.slot)?.let { placement ->
+                            ExpandedWidgetPreview(placement, deviceStatus, onClose = { sheet = "" })
                         }
                     }
                 }
@@ -1808,7 +1883,7 @@ fun LauncherScreen(
                 drag.source?.appId?.let(::isFolderId) != true) Surface(
                 // Keep removal in the right-side control area that is vacated during a drag.
                 // A centered target overlaps the expanded workspace's right-hand first cell.
-                Modifier.align(railBottom(state.leftHanded)).navigationBarsPadding().railEdge(state.leftHanded, 12.dp).padding(bottom = FolioSpace.MEDIUM.dp)
+                Modifier.align(railBottom(state.leftHanded)).navigationBarsPadding().railEdge(state.leftHanded, 12.dp + caseFitInset).padding(bottom = FolioSpace.MEDIUM.dp)
                     .width((if (expandedWorkspace) state.expanded else state.compact).dockWidth.dp).height(64.dp)
                     .dropRegion(drag, DropTarget.Remove).testTag("remove-drop-target"),
                 color = if (target == DropTarget.Remove) Color(0xFFB33B3B) else Glass.copy(alpha = .96f), shape = RoundedCornerShape(FolioRadius.PANEL.dp)) {

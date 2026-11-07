@@ -2404,9 +2404,16 @@
     <string name="standby2_night_room">Room light</string>
     <string name="standby2_night_never">Never</string>
     <string name="standby2_night_color">Night color</string>
+    <string name="standby2_clock_color">Clock color</string>
+    <string name="standby2_color_white">White</string>
     <string name="standby2_color_red">Red</string>
     <string name="standby2_color_amber">Amber</string>
     <string name="standby2_color_blue">Blue</string>
+    <string name="standby2_color_coral">Coral</string>
+    <string name="standby2_color_mint">Mint</string>
+    <string name="standby2_color_purple">Purple</string>
+    <string name="standby2_swipe_to_change">Swipe to change style</string>
+    <string name="standby2_done">Done</string>
     <string name="standby2_off_charger">Off charger</string>
     <string name="standby2_sunrise">Sunrise before alarm</string>
     <string name="standby2_night_brightness">Night brightness</string>
@@ -2416,6 +2423,11 @@
     <string name="standby2_bright_80" translatable="false">80%</string>
     <string name="standby2_bright_100" translatable="false">100%</string>
     <string name="standby2_close">Close StandBy</string>
+    <string name="standby2_customize">Customize StandBy</string>
+    <string name="standby2_customize_subtitle">Clock styles, colors, and night vision</string>
+    <string name="standby2_preview">Preview</string>
+    <string name="standby2_clock_style">Clock Style</string>
+    <string name="standby2_off_charger_note">Enables StandBy when propped sideways without a charger. Pauses when battery is below 20%.</string>
     <string name="standby2_charge_full_in">Full in %1$s</string>
     <string name="standby2_charge_on_hold">On hold at %1$d%%</string>
     <string name="standby2_timer">Timer</string>
@@ -2423,4 +2435,46 @@
     <string name="standby2_more_apps">+%1$d</string>
     <string name="standby2_cards">Cards</string>
     <string name="standby2_night_brightness_note">Zero keeps the screen black until you touch it, drawing no power on OLED displays.</string>
+    <string name="tweak_opt_app_menu">App shortcut menu</string>
+    <string name="tweak_opt_island_tint">Island notification tint</string>
+    <string name="island_notif_rolling">Rolling notification ticker</string>
+    <string name="island_notif_rolling_detail">Rolls message content smoothly across the island pill instead of expanding into a card.</string>
+    <string name="unfolded_seamless_spacing">Seamless unfolded spacing</string>
+    <string name="unfolded_seamless_spacing_detail">Brings the left and right pages closer together when unfolded flat for a uniform two-page layout, and separates them when partly folded.</string>
+    <string name="standby2_clock_nixie">Nixie</string>
+    <string name="standby2_clock_minimal">Minimal</string>
+    <string name="standby2_widget_calendar">Up Next</string>
+    <string name="standby2_widget_month">Month</string>
+    <string name="standby2_widget_weather">Weather</string>
+    <string name="standby2_widget_vitals">Vitals</string>
+    <string name="standby2_ambient_lamp">Dual-Screen Ambient Light</string>
+    <string name="standby2_ambient_lamp_detail">Glows softly on the outer screen while folded in StandBy, turning your device into a warm bedside lamp.</string>
+    <string name="standby2_no_events">No upcoming events</string>
+    <string name="standby2_utc" translatable="false">UTC</string>
+    <string name="standby2_tokyo" translatable="false">TOKYO</string>
+    <string name="standby2_weather_local">Local Forecast</string>
+    <string name="standby2_weather_condition">Partly Cloudy</string>
+    <string name="standby2_ram_avail">RAM Avail: %1$s</string>
+    <string name="standby2_vitals_charging">Charging</string>
+    <string name="standby2_vitals_battery">On Battery</string>
+    <string name="standby2_vitals_free">Free</string>
+    <string name="standby2_previous_style">Previous style</string>
+    <string name="standby2_next_style">Next style</string>
+    <string name="standby2_sample_event">Team Standup</string>
+    <string name="standby2_sample_location">Room 4B · 30m</string>
+    <string name="standby2_month_year_pattern">MMMM yyyy</string>
+    <string name="standby2_it_is">IT IS</string>
+    <string name="folder_swipe_shortcut">Swipe up on folder</string>
+    <string name="case_fit_edge_clearance">Case-fit edge clearance</string>
+    <string name="case_fit_none">None</string>
+    <string name="case_fit_compact">Compact (4 dp)</string>
+    <string name="case_fit_generous">Generous (8 dp)</string>
+    <string name="case_fit_section">Display &amp; Protection</string>
+    <string name="case_fit_detail">Insets sidebar and dock touch targets to clear bulky or raised protective phone cases.</string>
+    <string name="tabletop_controls">Tabletop control surface</string>
+    <string name="tabletop_controls_detail">When partially folded on a surface, arranges content on the top half and contextual controls on the bottom.</string>
+    <string name="expand_widget_temporarily">Expand temporarily</string>
+    <string name="expand_widget_detail">Interactive details without changing layout</string>
+    <string name="open_clock_app">Open Clock</string>
+    <string name="open_calendar_app">Open Calendar</string>
 </resources>

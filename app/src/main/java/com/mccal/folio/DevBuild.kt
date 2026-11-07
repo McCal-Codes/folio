@@ -3,7 +3,9 @@ package com.mccal.folio
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -191,7 +193,7 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
         Column(Modifier.fillMaxWidth().fillMaxHeight(.9f).padding(horizontal = FolioSpace.XXL.dp).testTag("dev-build")) {
             // The row under the pinned button fades out like Settings does, instead of looking cut off.
             val scroll = rememberScrollState()
-            Column(Modifier.weight(1f).edgeFade(scroll).verticalScroll(scroll)) {
+            Column(Modifier.weight(1f).edgeFade(scroll).verticalScroll(scroll).animateContentSize(FolioMotion.spring(FolioMotion.Settle))) {
                 Column(Modifier.fillMaxWidth().padding(top = FolioSpace.MEDIUM.dp, bottom = FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.foundation.layout.Box(Modifier.size(72.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(amber), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Build, null, tint = white, modifier = Modifier.size(36.dp))
@@ -246,14 +248,60 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
 }
 
 /** One row like What's New's: a soft icon, a bold line and a smaller one under it. */
-@Composable private fun DevRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: androidx.compose.ui.graphics.Color, title: String, detail: String) {
-    Row(Modifier.fillMaxWidth().padding(top = FolioSpace.COMFY.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
-        androidx.compose.foundation.layout.Box(Modifier.size(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp)).background(tint.copy(alpha = .18f)), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+@Composable
+private fun DevRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: androidx.compose.ui.graphics.Color,
+    subject: String,
+    sha: String,
+) {
+    val colonIdx = subject.indexOf(':')
+    val title = if (colonIdx in 1..40) subject.substring(0, colonIdx).trim() else subject
+    val detail = if (colonIdx in 1..40) subject.substring(colonIdx + 1).trim() else null
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = FolioSpace.SNUG.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .04f))
+            .border(FolioGlass.edge, androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
+            .padding(FolioSpace.MEDIUM.dp)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.Top
+    ) {
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .size(40.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
+                .background(tint.copy(alpha = .18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
         }
         Column(Modifier.padding(start = FolioSpace.COMFY.dp).weight(1f)) {
-            Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-            Text(detail, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .68f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(title, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (sha.isNotEmpty()) {
+                    Text(
+                        sha,
+                        color = FolioColors.Cyan,
+                        fontSize = FolioType.CAPTION.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                        modifier = Modifier
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
+                            .background(FolioColors.Cyan.copy(alpha = .12f))
+                            .padding(horizontal = FolioSpace.SNUG.dp, vertical = FolioSpace.HAIR.dp)
+                    )
+                }
+            }
+            if (detail != null) {
+                Text(detail, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .78f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+            }
         }
     }
 }

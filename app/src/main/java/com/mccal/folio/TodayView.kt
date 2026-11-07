@@ -166,7 +166,8 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
                         TextButton(onClick = onRemove) { Text(stringResource(R.string.remove), color = Color.White, fontSize = FolioType.FOOTNOTE.sp) }
                     }
                 } else key(widget.id) {
-                    AndroidView(factory = { widgets.host.createView(it, widget.id, info) }, modifier = Modifier.fillMaxSize())
+                    AndroidView(factory = { widgets.host.createView(it, widget.id, info) },
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(FolioRadius.PANEL.dp)))
                 }
             }
         }

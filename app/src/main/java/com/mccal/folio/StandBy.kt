@@ -1,6 +1,13 @@
 package com.mccal.folio
 
 import android.app.Activity
+import android.app.Presentation
+import android.os.Bundle
+import android.hardware.display.DisplayManager
+import android.view.Display
+import android.view.WindowManager
+import android.graphics.drawable.ColorDrawable
+import androidx.compose.ui.platform.ComposeView
 import android.content.pm.ActivityInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -13,17 +20,27 @@ import androidx.lifecycle.compose.currentStateAsState
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseInQuad
+import androidx.compose.animation.core.EaseOutQuad
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -46,10 +63,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.border
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -64,10 +86,12 @@ import androidx.window.layout.WindowInfoTracker
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -202,6 +226,7 @@ internal fun rememberStandBySignals(activity: Activity, ways: StandByWays, plugg
  * iPhone-style StandBy for a phone set down half-open: a big clock, date, next alarm, battery and
  * now playing. Dim red at night. Tap anywhere or open the phone flat to leave.
  */
+@OptIn(androidx.window.core.ExperimentalWindowApi::class)
 @Composable
 internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeature.Orientation?, blocked: Boolean, status: DeviceStatus,
     onShowing: (Boolean) -> Unit = {}, config: StandByEffectiveConfig = StandByEffectiveConfig.LEGACY_0_6_9) {
@@ -239,6 +264,75 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
     // Home keeps everything else off StandBy while it's up (MainActivity: the island, the headphones card, the setup reminder).
     DisposableEffect(active) { onShowing(active); onDispose { if (active) onShowing(false) } }
 
+    val displayManager = remember(activity) { activity?.getSystemService(android.content.Context.DISPLAY_SERVICE) as? DisplayManager }
+    val currentDisplayId = activity?.display?.displayId ?: Display.DEFAULT_DISPLAY
+    val otherDisplay = remember(displayManager, currentDisplayId, active) {
+        if (active) {
+            displayManager?.displays?.firstOrNull { it.displayId != currentDisplayId && it.isValid }
+        } else null
+    }
+
+    val tick by rememberMinuteTick()
+    val scheduleNight = isStandByNight(displayNow(tick))
+    val roomDark = rememberRoomLightNight(
+        enabled = config.activePackage && config.nightMode == StandByNightMode.ROOM_LIGHT,
+        initialNight = scheduleNight,
+    )
+    val ambientNight = resolveStandByNight(config.nightMode, scheduleNight = scheduleNight, roomDark = roomDark)
+    val ambientClockInk = if (ambientNight) standByNightPalette(config.nightColor).clock else standByClockColor(config.clockColor)
+    val wantAmbient = config.activePackage && config.ambientLamp
+
+    DisposableEffect(otherDisplay, active, ambientClockInk, ambientNight, wantAmbient) {
+        var presentation: StandByAmbientPresentation? = null
+        if (active && wantAmbient && otherDisplay != null && activity != null) {
+            try {
+                presentation = StandByAmbientPresentation(activity, otherDisplay, ambientClockInk, ambientNight).apply { show() }
+            } catch (_: Exception) {
+                presentation = null
+            }
+        }
+        onDispose {
+            try { presentation?.dismiss() } catch (_: Exception) {}
+            presentation = null
+        }
+    }
+
+    val ambientController = remember(activity) {
+        if (activity != null) {
+            runCatching { androidx.window.area.WindowAreaController.getOrCreate() }.getOrNull()
+        } else null
+    }
+
+    LaunchedEffect(active, wantAmbient, ambientClockInk, ambientNight, activity, ambientController) {
+        if (!active || !wantAmbient || activity == null || ambientController == null) return@LaunchedEffect
+        try {
+            ambientController.windowAreaInfos.collect { infos ->
+                val rearInfo = infos.firstOrNull { it.type == androidx.window.area.WindowAreaInfo.Type.TYPE_REAR_FACING }
+                val capability = rearInfo?.getCapability(androidx.window.area.WindowAreaCapability.Operation.OPERATION_PRESENT_ON_AREA)
+                if (capability != null && capability.status == androidx.window.area.WindowAreaCapability.Status.WINDOW_AREA_STATUS_AVAILABLE) {
+                    val executor = androidx.core.content.ContextCompat.getMainExecutor(activity)
+                    ambientController.presentContentOnWindowArea(
+                        rearInfo.token,
+                        activity,
+                        executor,
+                        object : androidx.window.area.WindowAreaPresentationSessionCallback {
+                            override fun onSessionStarted(session: androidx.window.area.WindowAreaSessionPresenter) {
+                                val composeView = ComposeView(session.context).apply {
+                                    setContent {
+                                        AmbientScreenGlow(ambientClockInk, ambientNight)
+                                    }
+                                }
+                                session.setContentView(composeView)
+                            }
+                            override fun onSessionEnded(t: Throwable?) {}
+                            override fun onContainerVisibilityChanged(isVisible: Boolean) {}
+                        }
+                    )
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
     val reduceMotion = LocalReduceMotion.current
     val cfg = LocalConfiguration.current
     val hinge = LocalHinge.current
@@ -252,7 +346,6 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
             hingeSpansPx = hinge?.spans.orEmpty(),
         )
     )
-    val tick by rememberMinuteTick()
     val (dx, dy) = rememberBurnInOffset(tick)
     val enterTransition = if (reduceMotion) androidx.compose.animation.EnterTransition.None else fadeIn(tween(StandBySafetyCaps.ENTER_FADE_MS))
     val exitTransition = if (reduceMotion) androidx.compose.animation.ExitTransition.None else fadeOut(tween(StandBySafetyCaps.EXIT_FADE_MS))
@@ -349,6 +442,93 @@ internal fun standByNightPalette(nightColor: String): StandByNightPalette = when
     )
 }
 
+internal data class StandByColorSwatch(val id: String, val color: Color, val nameRes: Int)
+
+internal val STANDBY_CLOCK_COLORS = listOf(
+    StandByColorSwatch("white", FolioColors.StandByWhite, R.string.standby2_color_white),
+    StandByColorSwatch("amber", FolioColors.StandByAmber, R.string.standby2_color_amber),
+    StandByColorSwatch("cyan", FolioColors.StandByBlue, R.string.standby2_color_blue),
+    StandByColorSwatch("coral", FolioColors.StandByCoral, R.string.standby2_color_coral),
+    StandByColorSwatch("mint", FolioColors.StandByMint, R.string.standby2_color_mint),
+    StandByColorSwatch("purple", FolioColors.StandByPurple, R.string.standby2_color_purple),
+)
+
+internal fun standByClockColor(name: String): Color = when (name.lowercase()) {
+    "amber" -> FolioColors.StandByAmber
+    "cyan" -> FolioColors.StandByBlue
+    "coral" -> FolioColors.StandByCoral
+    "mint" -> FolioColors.StandByMint
+    "purple" -> FolioColors.StandByPurple
+    else -> FolioColors.StandByWhite
+}
+
+internal val STANDBY_CLOCK_STYLES = listOf(
+    StandByClockLook.THIN to R.string.standby2_clock_thin,
+    StandByClockLook.BOLD to R.string.standby2_clock_bold,
+    StandByClockLook.ANALOG to R.string.standby2_clock_analog,
+    StandByClockLook.NUMERALS to R.string.standby2_clock_numerals,
+    StandByClockLook.FLIP to R.string.standby2_clock_flip,
+    StandByClockLook.WORLD to R.string.standby2_clock_world,
+    StandByClockLook.STACK to R.string.standby2_clock_stack,
+    StandByClockLook.WORDS to R.string.standby2_clock_words,
+    StandByClockLook.NEON to R.string.standby2_clock_neon,
+    StandByClockLook.SOLAR to R.string.standby2_clock_solar,
+    StandByClockLook.NIXIE to R.string.standby2_clock_nixie,
+    StandByClockLook.MINIMAL to R.string.standby2_clock_minimal,
+)
+
+/**
+ * 120Hz continuous sweeping second hand angle for analog clocks during daytime.
+ * Automatically halts when night mode or reduce motion is active to eliminate GPU wakeups.
+ */
+@Composable
+internal fun rememberContinuousSecondAngle(night: Boolean): Float {
+    val reduceMotion = LocalReduceMotion.current
+    if (night || reduceMotion) return 0f
+    var timeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            withFrameMillis {
+                timeMillis = System.currentTimeMillis()
+            }
+        }
+    }
+    val sec = (timeMillis / 1000) % 60
+    val millis = timeMillis % 1000
+    return (sec + millis / 1000f) * 6f
+}
+
+/**
+ * Soft 6-second radial greeting glow on docking / activation (SetDown inspired).
+ * Smoothly rises over 1.8s and gently fades away over 4.2s.
+ */
+@Composable
+internal fun StandByStartGlow(color: Color, enabled: Boolean) {
+    if (!enabled) return
+    val reduceMotion = LocalReduceMotion.current
+    if (reduceMotion) return
+    val glowAlpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        glowAlpha.animateTo(0.25f, tween(1800, easing = EaseOutQuad))
+        glowAlpha.animateTo(0f, tween(4200, easing = EaseInQuad))
+    }
+    if (glowAlpha.value > 0.001f) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(color.copy(alpha = glowAlpha.value), Color.Transparent),
+                            center = center,
+                            radius = size.maxDimension * 0.7f,
+                        )
+                    )
+                }
+        )
+    }
+}
+
 /**
  * Burn-in protection offset (`docs/plan-standby-2.md` §0 & §7): a slow 1.5 s glide between minute steps
  * ([StandBySafetyCaps.BURN_IN_GLIDE_MS]), or an instant cut when [LocalReduceMotion] is enabled.
@@ -419,6 +599,84 @@ internal fun StandByFace(
     )
 }
 
+internal class StandByAmbientPresentation(
+    context: android.content.Context,
+    display: Display,
+    private val clockColor: Color,
+    private val night: Boolean,
+) : Presentation(context, display) {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window?.apply {
+            addFlags(
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+            )
+            setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+        }
+        val composeView = ComposeView(context).apply {
+            setContent {
+                AmbientScreenGlow(clockColor, night)
+            }
+        }
+        setContentView(composeView)
+    }
+}
+
+@Composable
+private fun AmbientScreenGlow(accentColor: Color, night: Boolean) {
+    // Steady on purpose: the glow used to breathe over the whole screen. It now holds one level.
+    val breath = 0.65f
+
+    val glowColor = if (night) FolioColors.StandByCrimson else accentColor
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val maxRadius = maxOf(size.width, size.height) * 0.75f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        glowColor.copy(alpha = if (night) 0.35f * breath else 0.45f * breath),
+                        glowColor.copy(alpha = if (night) 0.12f * breath else 0.18f * breath),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = maxRadius
+                ),
+                center = center,
+                radius = maxRadius
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.NightsStay,
+                contentDescription = null,
+                tint = (if (night) FolioColors.StandByNightSoft else accentColor).copy(alpha = 0.4f * breath),
+                modifier = Modifier.size(36.dp)
+            )
+            Text(
+                text = stringResource(R.string.standby2_ambient_lamp),
+                color = (if (night) FolioColors.StandByNightSoft else Color.White).copy(alpha = 0.3f * breath),
+                fontSize = FolioType.GROUP_LABEL.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 2.sp
+            )
+        }
+    }
+}
+
 /**
  * The 5-posture StandBy face (`BOOK`, `TABLETOP`, `TENT`, `LANDSCAPE`, `PORTRAIT`), shared between Home's
  * [StandByOverlay] and Android's [StandByScreenSaver].
@@ -448,9 +706,14 @@ internal fun StandByFace(
     )
     val night = resolveStandByNight(config.nightMode, scheduleNight = scheduleNight, roomDark = roomDark)
     val palette = standByNightPalette(config.nightColor)
+
+    var editingClock by remember { mutableStateOf(false) }
+    var activeLook by remember(config.clockLook) { mutableStateOf(config.clockLook) }
+    var activeColorName by remember(config.clockColor) { mutableStateOf(config.clockColor) }
+
     // At night the big clock stays a dim color, which is enough at its size; the smaller text uses brighter hues that
     // reach the 4.5:1 small text needs (it was 2.2:1), so the date, chips and cards stay readable in the dark.
-    val clockInk = if (night) palette.clock else Color.White
+    val baseClockColor = if (night) palette.clock else standByClockColor(activeColorName)
     val ink = if (night) palette.text else Color.White
     val soft = if (night) palette.soft else Color.White.copy(alpha = .6f)
     val creasePadding = if (posture.hasCrease) FolioSpace.LARGE.dp else 0.dp
@@ -463,6 +726,12 @@ internal fun StandByFace(
             1f - (diffMs.toFloat() / (15 * 60 * 1000f))
         } else 0f
     } else 0f
+
+    val clockInk = if (sunriseProgress > 0f) androidx.compose.ui.graphics.lerp(baseClockColor, FolioColors.StandBySunrise, sunriseProgress) else baseClockColor
+
+    if (editingClock) {
+        BackHandler { editingClock = false }
+    }
 
     // Night brightness 0 means "black until you touch it" (docs/plan-standby-2.md §3 & §7).
     var touchWakeTrigger by remember { mutableIntStateOf(0) }
@@ -556,6 +825,9 @@ internal fun StandByFace(
         if (sunriseProgress > 0f) {
             StandBySunriseOverlay(sunriseProgress)
         }
+        if (!night) {
+            StandByStartGlow(color = clockInk, enabled = config.activePackage)
+        }
         when (posture) {
             StandByPosture.TABLETOP -> Column(dimmedModifier) {
                 Column(
@@ -563,9 +835,35 @@ internal fun StandByFace(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    BigClock(now, clockInk, soft, config.clockLook, night, cardBg, Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
-                    StandByStatusChips(status, ink, soft, config.showChargingLine)
+                    BigClock(
+                        now = now,
+                        ink = clockInk,
+                        soft = soft,
+                        clockLook = activeLook,
+                        night = night,
+                        cardBg = cardBg,
+                        modifier = Modifier.fillMaxWidth(),
+                        isEditing = editingClock,
+                        onEnterEdit = {
+                            if (!night && config.activePackage) {
+                                editingClock = true
+                            }
+                        },
+                        onLookChanged = { newLook ->
+                            activeLook = newLook
+                            FolioSettingsBridge.setTweakOption(context, STANDBY2_ID, "clock", newLook.name.lowercase())
+                        },
+                        onColorChanged = { newColor ->
+                            activeColorName = newColor
+                            FolioSettingsBridge.setTweakOption(context, STANDBY2_ID, "clockColor", newColor)
+                        },
+                        activeColorName = activeColorName,
+                        onDone = { editingClock = false },
+                    )
+                    if (!editingClock) {
+                        Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
+                        StandByStatusChips(status, ink, soft, config.showChargingLine)
+                    }
                 }
                 Column(
                     Modifier
@@ -577,16 +875,64 @@ internal fun StandByFace(
                     verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    StandByCards(ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss)
+                    StandByCards(now, status, ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss)
                 }
             }
             StandByPosture.BOOK, StandByPosture.TENT, StandByPosture.LANDSCAPE -> Row(dimmedModifier) {
-                BigClock(now, clockInk, soft, config.clockLook, night, cardBg, Modifier.weight(1f).fillMaxHeight().padding(end = creasePadding))
-                StandByInfo(status, ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss, Modifier.weight(1f).fillMaxHeight().padding(start = creasePadding))
+                BigClock(
+                    now = now,
+                    ink = clockInk,
+                    soft = soft,
+                    clockLook = activeLook,
+                    night = night,
+                    cardBg = cardBg,
+                    modifier = Modifier.weight(1f).fillMaxHeight().padding(end = creasePadding),
+                    isEditing = editingClock,
+                    onEnterEdit = {
+                        if (!night && config.activePackage) {
+                            editingClock = true
+                        }
+                    },
+                    onLookChanged = { newLook ->
+                        activeLook = newLook
+                        FolioSettingsBridge.setTweakOption(context, STANDBY2_ID, "clock", newLook.name.lowercase())
+                    },
+                    onColorChanged = { newColor ->
+                        activeColorName = newColor
+                        FolioSettingsBridge.setTweakOption(context, STANDBY2_ID, "clockColor", newColor)
+                    },
+                    activeColorName = activeColorName,
+                    onDone = { editingClock = false },
+                )
+                StandByInfo(now, status, ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss, Modifier.weight(1f).fillMaxHeight().padding(start = creasePadding))
             }
             StandByPosture.PORTRAIT -> Column(dimmedModifier) {
-                BigClock(now, clockInk, soft, config.clockLook, night, cardBg, Modifier.weight(1f).fillMaxWidth())
-                StandByInfo(status, ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss, Modifier.weight(1f).fillMaxWidth())
+                BigClock(
+                    now = now,
+                    ink = clockInk,
+                    soft = soft,
+                    clockLook = activeLook,
+                    night = night,
+                    cardBg = cardBg,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    isEditing = editingClock,
+                    onEnterEdit = {
+                        if (!night && config.activePackage) {
+                            editingClock = true
+                        }
+                    },
+                    onLookChanged = { newLook ->
+                        activeLook = newLook
+                        FolioSettingsBridge.setTweakOption(context, STANDBY2_ID, "clock", newLook.name.lowercase())
+                    },
+                    onColorChanged = { newColor ->
+                        activeColorName = newColor
+                        FolioSettingsBridge.setTweakOption(context, STANDBY2_ID, "clockColor", newColor)
+                    },
+                    activeColorName = activeColorName,
+                    onDone = { editingClock = false },
+                )
+                StandByInfo(now, status, ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss, Modifier.weight(1f).fillMaxWidth())
             }
         }
         StandByEdgeGlow(
@@ -606,25 +952,284 @@ private fun BigClock(
     night: Boolean,
     cardBg: Color,
     modifier: Modifier,
+    isEditing: Boolean = false,
+    onEnterEdit: (() -> Unit)? = null,
+    onLookChanged: ((StandByClockLook) -> Unit)? = null,
+    onColorChanged: ((String) -> Unit)? = null,
+    activeColorName: String = "white",
+    onDone: (() -> Unit)? = null,
 ) {
-    when (clockLook) {
-        StandByClockLook.ANALOG -> AnalogClock(now, ink, soft, night, modifier)
-        StandByClockLook.NUMERALS -> NumeralsClock(now, ink, soft, night, modifier)
-        StandByClockLook.FLIP -> FlipClock(now, ink, soft, night, cardBg, modifier)
-        StandByClockLook.WORLD -> WorldClock(now, ink, soft, night, modifier)
-        StandByClockLook.STACK -> StackClock(now, ink, soft, modifier)
-        StandByClockLook.WORDS -> WordsClock(now, ink, soft, modifier)
-        StandByClockLook.NEON -> NeonClock(now, ink, soft, night, cardBg, modifier)
-        StandByClockLook.SOLAR -> SolarClock(now, ink, soft, night, modifier)
-        StandByClockLook.BOLD, StandByClockLook.THIN -> {
-            val context = LocalContext.current
-            val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
-            val weight = if (clockLook == StandByClockLook.BOLD) FontWeight.Bold else FontWeight.Thin
-            val clockSp = (if (clockLook == StandByClockLook.BOLD) 108 else 120).sp
-            Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = ink, fontSize = clockSp, fontWeight = weight,
-                    lineHeight = 124.sp, style = TextStyle(fontFeatureSettings = "tnum"))
-                Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+    val haptic = LocalHapticFeedback.current
+    val scale by animateFloatAsState(
+        targetValue = if (isEditing) 0.88f else 1f,
+        animationSpec = FolioMotion.spring(FolioMotion.Bounce),
+        label = "editScale"
+    )
+
+    val editGestureModifier = if (!isEditing && onEnterEdit != null && !night) {
+        Modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onLongPress = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onEnterEdit()
+                }
+            )
+        }
+    } else if (isEditing && onLookChanged != null) {
+        Modifier.pointerInput(Unit) {
+            var totalDrag = 0f
+            detectVerticalDragGestures(
+                onDragStart = { totalDrag = 0f },
+                onDragEnd = {},
+                onDragCancel = {},
+                onVerticalDrag = { change, dragAmount ->
+                    change.consume()
+                    totalDrag += dragAmount
+                    if (totalDrag < -60f) {
+                        totalDrag = 0f
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        val idx = STANDBY_CLOCK_STYLES.indexOfFirst { it.first == clockLook }
+                        val nextIdx = if (idx >= 0) (idx + 1) % STANDBY_CLOCK_STYLES.size else 0
+                        onLookChanged(STANDBY_CLOCK_STYLES[nextIdx].first)
+                    } else if (totalDrag > 60f) {
+                        totalDrag = 0f
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        val idx = STANDBY_CLOCK_STYLES.indexOfFirst { it.first == clockLook }
+                        val prevIdx = if (idx >= 0) (idx - 1 + STANDBY_CLOCK_STYLES.size) % STANDBY_CLOCK_STYLES.size else 0
+                        onLookChanged(STANDBY_CLOCK_STYLES[prevIdx].first)
+                    }
+                }
+            )
+        }
+    } else {
+        Modifier
+    }
+
+    Box(
+        modifier = modifier.then(editGestureModifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            AnimatedVisibility(
+                visible = isEditing,
+                enter = fadeIn(tween(250)),
+                exit = fadeOut(tween(200)),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp))
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                val idx = STANDBY_CLOCK_STYLES.indexOfFirst { it.first == clockLook }
+                                val prevIdx = if (idx >= 0) (idx - 1 + STANDBY_CLOCK_STYLES.size) % STANDBY_CLOCK_STYLES.size else 0
+                                onLookChanged?.invoke(STANDBY_CLOCK_STYLES[prevIdx].first)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.ChevronLeft,
+                            contentDescription = stringResource(R.string.standby2_previous_style),
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    val styleLabelRes = STANDBY_CLOCK_STYLES.firstOrNull { it.first == clockLook }?.second ?: R.string.standby2_clock_thin
+                    Text(
+                        stringResource(styleLabelRes),
+                        color = Color.White,
+                        fontSize = FolioType.COMPACT.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Box(
+                        Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                val idx = STANDBY_CLOCK_STYLES.indexOfFirst { it.first == clockLook }
+                                val nextIdx = if (idx >= 0) (idx + 1) % STANDBY_CLOCK_STYLES.size else 0
+                                onLookChanged?.invoke(STANDBY_CLOCK_STYLES[nextIdx].first)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.ChevronRight,
+                            contentDescription = stringResource(R.string.standby2_next_style),
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .then(
+                        if (isEditing) {
+                            Modifier
+                                .clip(RoundedCornerShape(FolioRadius.PANEL.dp))
+                                .border(1.5.dp, ink.copy(alpha = 0.4f), RoundedCornerShape(FolioRadius.PANEL.dp))
+                                .background(cardBg.copy(alpha = 0.5f))
+                                .padding(16.dp)
+                        } else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                when (clockLook) {
+                    StandByClockLook.ANALOG -> AnalogClock(now, ink, soft, night, Modifier)
+                    StandByClockLook.NUMERALS -> NumeralsClock(now, ink, soft, night, Modifier)
+                    StandByClockLook.FLIP -> FlipClock(now, ink, soft, night, cardBg, Modifier)
+                    StandByClockLook.WORLD -> WorldClock(now, ink, soft, night, Modifier)
+                    StandByClockLook.STACK -> StackClock(now, ink, soft, Modifier)
+                    StandByClockLook.WORDS -> WordsClock(now, ink, soft, Modifier)
+                    StandByClockLook.NEON -> NeonClock(now, ink, soft, night, cardBg, Modifier)
+                    StandByClockLook.SOLAR -> SolarClock(now, ink, soft, night, Modifier)
+                    StandByClockLook.NIXIE -> NixieClock(now, ink, soft, night, cardBg, Modifier)
+                    StandByClockLook.MINIMAL -> MinimalClock(now, ink, soft, night, Modifier)
+                    StandByClockLook.BOLD, StandByClockLook.THIN -> {
+                        val context = LocalContext.current
+                        val is24 = android.text.format.DateFormat.is24HourFormat(context)
+                        val hourVal = if (is24) now.hour else (if (now.hour % 12 == 0) 12 else now.hour % 12)
+                        val hrStr = if (is24) String.format("%02d", hourVal) else hourVal.toString()
+                        val mnStr = String.format("%02d", now.minute)
+                        val weight = if (clockLook == StandByClockLook.BOLD) FontWeight.Bold else FontWeight.Thin
+                        val clockSp = (if (clockLook == StandByClockLook.BOLD) 104 else 116).sp
+
+                        // Steady on purpose: the colon used to blink.
+                        val colonAlpha = 1f
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    hrStr,
+                                    color = ink,
+                                    fontSize = clockSp,
+                                    fontWeight = weight,
+                                    lineHeight = 120.sp,
+                                    style = TextStyle(fontFeatureSettings = "tnum")
+                                )
+                                Text(
+                                    ":",
+                                    color = ink.copy(alpha = colonAlpha),
+                                    fontSize = clockSp,
+                                    fontWeight = weight,
+                                    lineHeight = 120.sp,
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                )
+                                Text(
+                                    mnStr,
+                                    color = ink,
+                                    fontSize = clockSp,
+                                    fontWeight = weight,
+                                    lineHeight = 120.sp,
+                                    style = TextStyle(fontFeatureSettings = "tnum")
+                                )
+                            }
+                            Text(
+                                now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+                                color = soft,
+                                fontSize = FolioType.TITLE3.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isEditing,
+                enter = fadeIn(tween(250)),
+                exit = fadeOut(tween(200)),
+            ) {
+                Column(
+                    modifier = Modifier.padding(top = 14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        STANDBY_CLOCK_COLORS.forEach { swatch ->
+                            val isSelected = swatch.id.equals(activeColorName, ignoreCase = true)
+                            val dotScale by animateFloatAsState(
+                                targetValue = if (isSelected) 1.25f else 1.0f,
+                                label = "swatchScale"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onColorChanged?.invoke(swatch.id)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        Modifier
+                                            .size(34.dp)
+                                            .border(2.dp, Color.White, CircleShape)
+                                    )
+                                }
+                                Box(
+                                    Modifier
+                                        .size(24.dp)
+                                        .graphicsLayer { scaleX = dotScale; scaleY = dotScale }
+                                        .background(swatch.color, CircleShape)
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        stringResource(R.string.standby2_swipe_to_change),
+                        color = soft.copy(alpha = 0.7f),
+                        fontSize = FolioType.GROUP_LABEL.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp))
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDone?.invoke()
+                            }
+                            .padding(horizontal = 24.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.standby2_done),
+                            color = Color.White,
+                            fontSize = FolioType.COMPACT.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }
@@ -633,13 +1238,11 @@ private fun BigClock(
 @Composable
 private fun AnalogClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolean, modifier: Modifier) {
     val reduceMotion = LocalReduceMotion.current
-    val tick = if (!night && !reduceMotion) rememberSecondTick().value else null
-    val sec = if (tick != null) LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(tick), java.time.ZoneId.systemDefault()).second else 0
+    val secAngle = if (!night && !reduceMotion) rememberContinuousSecondAngle(night) else 0f
     val min = now.minute
     val hour = now.hour % 12
-    val hourAngle = (hour + min / 60f) * 30f
-    val minAngle = (min + sec / 60f) * 6f
-    val secAngle = sec * 6f
+    val minAngle = (min + secAngle / 360f) * 6f
+    val hourAngle = (hour + minAngle / 360f) * 30f
 
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(Modifier.size(180.dp)) {
@@ -713,32 +1316,151 @@ private fun AnalogClock(now: LocalDateTime, ink: Color, soft: Color, night: Bool
             drawCircle(color = soft, radius = 2.5.dp.toPx(), center = center)
         }
         Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
-        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
 private fun FlipCard(text: String, ink: Color, night: Boolean, cardBg: Color) {
+    val reduceMotion = LocalReduceMotion.current
+    var prevText by remember { mutableStateOf(text) }
+    var currentText by remember { mutableStateOf(text) }
+    val flipProgress = remember { Animatable(1f) }
+
+    LaunchedEffect(text) {
+        if (text != currentText) {
+            prevText = currentText
+            currentText = text
+            if (!reduceMotion && !night) {
+                flipProgress.snapTo(0f)
+                flipProgress.animateTo(1f, tween(450, easing = FastOutSlowInEasing))
+            } else {
+                flipProgress.snapTo(1f)
+            }
+        }
+    }
+
+    val progress = flipProgress.value
+    val isFlipping = progress < 1f
+    val angle = progress * 180f
+    val bgColor = if (night) cardBg else FolioColors.StandByCardDark
+    val cardWidth = 100.dp
+    val cardHeight = 110.dp
+    val halfHeight = 53.dp
+    val flipDigitSize = 68.sp
+    val flipCorner = FolioRadius.GROUP.dp
+
     Box(
-        Modifier
-            .size(width = 100.dp, height = 110.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (night) cardBg else Color(0xFF1E1E22)),
+        Modifier.size(cardWidth, cardHeight),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text,
-            color = ink,
-            fontSize = 68.sp,
-            fontWeight = FontWeight.Bold,
-            style = TextStyle(fontFeatureSettings = "tnum")
-        )
-        // Crease / split line
+        // Upper background half: displays the NEW text top half
         Box(
             Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(Color.Black.copy(alpha = 0.65f))
+                .size(cardWidth, halfHeight)
+                .align(Alignment.TopCenter)
+                .clip(RoundedCornerShape(topStart = flipCorner, topEnd = flipCorner))
+                .background(bgColor),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Text(
+                currentText,
+                color = ink,
+                fontSize = flipDigitSize,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(fontFeatureSettings = "tnum"),
+                modifier = Modifier.offset(y = 27.dp)
+            )
+        }
+
+        // Lower background half: displays the OLD text bottom half (while flipping) or NEW (when finished)
+        Box(
+            Modifier
+                .size(cardWidth, halfHeight)
+                .align(Alignment.BottomCenter)
+                .clip(RoundedCornerShape(bottomStart = flipCorner, bottomEnd = flipCorner))
+                .background(bgColor),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Text(
+                if (isFlipping) prevText else currentText,
+                color = ink,
+                fontSize = flipDigitSize,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(fontFeatureSettings = "tnum"),
+                modifier = Modifier.offset(y = (-27).dp)
+            )
+        }
+
+        // The flipping flap
+        if (isFlipping) {
+            if (angle < 90f) {
+                // Top flap folding forward/down showing OLD text top half
+                Box(
+                    Modifier
+                        .size(cardWidth, halfHeight)
+                        .align(Alignment.TopCenter)
+                        .graphicsLayer {
+                            rotationX = -angle
+                            cameraDistance = 16f * density
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        }
+                        .clip(RoundedCornerShape(topStart = flipCorner, topEnd = flipCorner))
+                        .background(bgColor),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Text(
+                        prevText,
+                        color = ink,
+                        fontSize = flipDigitSize,
+                        fontWeight = FontWeight.Bold,
+                        style = TextStyle(fontFeatureSettings = "tnum"),
+                        modifier = Modifier.offset(y = 27.dp)
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = (angle / 90f) * 0.4f))
+                    )
+                }
+            } else {
+                // Bottom flap falling into place showing NEW text bottom half
+                Box(
+                    Modifier
+                        .size(cardWidth, halfHeight)
+                        .align(Alignment.BottomCenter)
+                        .graphicsLayer {
+                            rotationX = 180f - angle
+                            cameraDistance = 16f * density
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+                        }
+                        .clip(RoundedCornerShape(bottomStart = flipCorner, bottomEnd = flipCorner))
+                        .background(bgColor),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        currentText,
+                        color = ink,
+                        fontSize = flipDigitSize,
+                        fontWeight = FontWeight.Bold,
+                        style = TextStyle(fontFeatureSettings = "tnum"),
+                        modifier = Modifier.offset(y = (-27).dp)
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = ((180f - angle) / 90f) * 0.4f))
+                    )
+                }
+            }
+        }
+
+        // Center split crease line
+        Box(
+            Modifier
+                .size(cardWidth, 2.dp)
+                .align(Alignment.Center)
+                .background(Color.Black.copy(alpha = 0.75f))
         )
     }
 }
@@ -751,14 +1473,19 @@ private fun FlipClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolea
     val hr = String.format("%02d", hourVal)
     val mn = String.format("%02d", now.minute)
 
+    // Steady on purpose: the colon used to blink.
+    val colonAlpha = 1f
+
+    val flipColonSize = 44.sp
+
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             FlipCard(hr, ink, night, cardBg)
-            Text(":", color = soft.copy(alpha = 0.7f), fontSize = 44.sp, fontWeight = FontWeight.Bold)
+            Text(":", color = soft.copy(alpha = colonAlpha * 0.7f), fontSize = flipColonSize, fontWeight = FontWeight.Bold)
             FlipCard(mn, ink, night, cardBg)
         }
         Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
-        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -771,12 +1498,13 @@ private fun WorldClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
     val localInstant = now.atZone(localZone).toInstant()
     val utcTime = localInstant.atZone(ZoneId.of("UTC")).toLocalDateTime()
     val tokyoTime = localInstant.atZone(ZoneId.of("Asia/Tokyo")).toLocalDateTime()
+    val worldDigitSize = 76.sp
 
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             now.format(DateTimeFormatter.ofPattern(pattern)),
             color = ink,
-            fontSize = 76.sp,
+            fontSize = worldDigitSize,
             fontWeight = FontWeight.Medium,
             style = TextStyle(fontFeatureSettings = "tnum")
         )
@@ -784,7 +1512,7 @@ private fun WorldClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
         Text(
             amPmPrefix + "${localZone.id.substringAfterLast('/')} · " + now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
             color = soft,
-            fontSize = 17.sp,
+            fontSize = FolioType.BODY.sp,
             fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -792,20 +1520,20 @@ private fun WorldClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
         Spacer(Modifier.height(FolioSpace.COMFY.dp))
         Row(
             Modifier
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(FolioRadius.GROUP.dp))
                 .background(if (night) soft.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.08f))
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("UTC", color = soft, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(utcTime.format(DateTimeFormatter.ofPattern("HH:mm")), color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, style = TextStyle(fontFeatureSettings = "tnum"))
+                Text(stringResource(R.string.standby2_utc), color = soft, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold)
+                Text(utcTime.format(DateTimeFormatter.ofPattern("HH:mm")), color = ink, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.Bold, style = TextStyle(fontFeatureSettings = "tnum"))
             }
             Box(Modifier.width(1.dp).height(24.dp).background(soft.copy(alpha = 0.3f)))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("TOKYO", color = soft, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(tokyoTime.format(DateTimeFormatter.ofPattern("HH:mm")), color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, style = TextStyle(fontFeatureSettings = "tnum"))
+                Text(stringResource(R.string.standby2_tokyo), color = soft, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold)
+                Text(tokyoTime.format(DateTimeFormatter.ofPattern("HH:mm")), color = ink, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.Bold, style = TextStyle(fontFeatureSettings = "tnum"))
             }
         }
     }
@@ -824,9 +1552,9 @@ private fun StandBySunriseOverlay(progress: Float) {
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFFFFB74D).copy(alpha = glowAlpha),
-                            Color(0xFFFF6F00).copy(alpha = glowAlpha * 0.7f),
-                            Color(0xFF8B2500).copy(alpha = glowAlpha * 0.35f),
+                            FolioColors.StandBySolarSun.copy(alpha = glowAlpha),
+                            FolioColors.StandBySolarArc.copy(alpha = glowAlpha * 0.7f),
+                            FolioColors.StandBySolarGlow.copy(alpha = glowAlpha * 0.35f),
                             Color.Transparent,
                         ),
                         center = centerOffset,
@@ -840,13 +1568,11 @@ private fun StandBySunriseOverlay(progress: Float) {
 @Composable
 private fun NumeralsClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolean, modifier: Modifier) {
     val reduceMotion = LocalReduceMotion.current
-    val tick = if (!night && !reduceMotion) rememberSecondTick().value else null
-    val sec = if (tick != null) LocalDateTime.ofInstant(Instant.ofEpochMilli(tick), ZoneId.systemDefault()).second else 0
+    val secAngle = if (!night && !reduceMotion) rememberContinuousSecondAngle(night) else 0f
     val min = now.minute
     val hour = now.hour % 12
-    val hourAngle = (hour + min / 60f) * 30f
-    val minAngle = (min + sec / 60f) * 6f
-    val secAngle = sec * 6f
+    val minAngle = (min + secAngle / 360f) * 6f
+    val hourAngle = (hour + minAngle / 360f) * 30f
     val textMeasurer = rememberTextMeasurer()
 
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -875,7 +1601,7 @@ private fun NumeralsClock(now: LocalDateTime, ink: Color, soft: Color, night: Bo
                         text = numStr,
                         style = TextStyle(
                             color = ink,
-                            fontSize = 15.sp,
+                            fontSize = FolioType.SUBHEAD.sp,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -938,7 +1664,7 @@ private fun NumeralsClock(now: LocalDateTime, ink: Color, soft: Color, night: Bo
             drawCircle(color = soft, radius = 2.5.dp.toPx(), center = center)
         }
         Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
-        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -950,11 +1676,14 @@ private fun StackClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
     val hr = String.format("%02d", hourVal)
     val mn = String.format("%02d", now.minute)
 
+    val numFs = 92.sp
+    val dateFs = 18.sp
+
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             hr,
             color = ink,
-            fontSize = 92.sp,
+            fontSize = numFs,
             fontWeight = FontWeight.Bold,
             lineHeight = 84.sp,
             style = TextStyle(fontFeatureSettings = "tnum")
@@ -962,7 +1691,7 @@ private fun StackClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
         Text(
             mn,
             color = ink,
-            fontSize = 92.sp,
+            fontSize = numFs,
             fontWeight = FontWeight.Bold,
             lineHeight = 84.sp,
             style = TextStyle(fontFeatureSettings = "tnum")
@@ -971,7 +1700,7 @@ private fun StackClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
         Text(
             now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
             color = soft,
-            fontSize = 18.sp,
+            fontSize = dateFs,
             fontWeight = FontWeight.Medium
         )
     }
@@ -1022,15 +1751,18 @@ private fun WordsClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
     val (line1, line2) = remember(now.hour, now.minute) {
         formatTimeWords(now.hour, now.minute)
     }
+    val wordsFs = 30.sp
+    val wordsDateFs = 18.sp
+
     Column(
         modifier,
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "IT IS",
+            stringResource(R.string.standby2_it_is),
             color = soft,
-            fontSize = 15.sp,
+            fontSize = FolioType.SUBHEAD.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 4.sp,
         )
@@ -1038,7 +1770,7 @@ private fun WordsClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
         Text(
             line1,
             color = ink,
-            fontSize = 30.sp,
+            fontSize = wordsFs,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
             textAlign = TextAlign.Center,
@@ -1046,7 +1778,7 @@ private fun WordsClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
         Text(
             line2,
             color = ink,
-            fontSize = 30.sp,
+            fontSize = wordsFs,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
             textAlign = TextAlign.Center,
@@ -1055,7 +1787,7 @@ private fun WordsClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
         Text(
             now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
             color = soft,
-            fontSize = 18.sp,
+            fontSize = wordsDateFs,
             fontWeight = FontWeight.Medium
         )
     }
@@ -1065,26 +1797,29 @@ private fun WordsClock(now: LocalDateTime, ink: Color, soft: Color, modifier: Mo
 private fun NeonClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolean, cardBg: Color, modifier: Modifier) {
     val context = LocalContext.current
     val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
-    val glowColor = if (night) ink else Color(0xFF00E5FF)
-    val textGlow = glowColor.copy(alpha = if (night) 0.8f else 0.95f)
+    val glowColor = if (night) ink else (if (ink == FolioColors.StandByWhite || ink == Color.White) FolioColors.StandByNeonBlue else ink)
+    // Steady on purpose: the neon glow used to pulse.
+    val pulseAlpha = 1f
+    val textGlow = glowColor.copy(alpha = if (night) 0.8f else (0.95f * pulseAlpha))
+    val neonDigitSize = 86.sp
 
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(if (night) cardBg else Color(0xFF0D1117))
+                .clip(RoundedCornerShape(FolioRadius.PANEL.dp))
+                .background(if (night) cardBg else FolioColors.StandByNeonBg)
                 .border(
                     width = 2.dp,
                     color = textGlow.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(FolioRadius.PANEL.dp)
                 )
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = now.format(DateTimeFormatter.ofPattern(pattern)),
-                color = if (night) ink else Color(0xFFE0F7FA),
-                fontSize = 86.sp,
+                color = if (night) ink else FolioColors.StandByNeonCyan,
+                fontSize = neonDigitSize,
                 fontWeight = FontWeight.Bold,
                 style = TextStyle(
                     fontFeatureSettings = "tnum",
@@ -1100,7 +1835,7 @@ private fun NeonClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolea
         Text(
             now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
             color = soft,
-            fontSize = 20.sp,
+            fontSize = FolioType.TITLE3.sp,
             fontWeight = FontWeight.Medium
         )
     }
@@ -1141,7 +1876,7 @@ private fun SolarClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
             }
             drawPath(
                 path = path,
-                color = if (isDay) (if (night) ink else Color(0xFFFFB74D)).copy(alpha = 0.6f) else soft.copy(alpha = 0.25f),
+                color = if (isDay) (if (night) ink else FolioColors.StandBySolarSun).copy(alpha = 0.6f) else soft.copy(alpha = 0.25f),
                 style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
             )
 
@@ -1152,7 +1887,7 @@ private fun SolarClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
             val bx = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x
             val by = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y
 
-            val sunColor = if (night) ink else (if (isDay) Color(0xFFFFB74D) else Color(0xFF90CAF9))
+            val sunColor = if (night) ink else (if (isDay) FolioColors.StandBySolarSun else FolioColors.StandBySolarNight)
             drawCircle(
                 color = sunColor.copy(alpha = 0.25f),
                 radius = 12.dp.toPx(),
@@ -1165,25 +1900,153 @@ private fun SolarClock(now: LocalDateTime, ink: Color, soft: Color, night: Boole
             )
         }
 
+        val solarTimeFs = 72.sp
+        val solarDateFs = 18.sp
+
         Spacer(Modifier.height(FolioSpace.SMALL.dp))
         Text(
             text = now.format(DateTimeFormatter.ofPattern(timePattern)),
             color = ink,
-            fontSize = 72.sp,
+            fontSize = solarTimeFs,
             fontWeight = FontWeight.Bold,
             style = TextStyle(fontFeatureSettings = "tnum")
         )
         Text(
             now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
             color = soft,
-            fontSize = 18.sp,
+            fontSize = solarDateFs,
             fontWeight = FontWeight.Medium
         )
     }
 }
 
 @Composable
+private fun NixieClock(
+    now: LocalDateTime,
+    ink: Color,
+    soft: Color,
+    night: Boolean,
+    cardBg: Color,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val hourVal = if (is24) now.hour else (if (now.hour % 12 == 0) 12 else now.hour % 12)
+    val hrStr = String.format("%02d", hourVal)
+    val mnStr = String.format("%02d", now.minute)
+    val glowColor = if (night) ink else (if (ink == FolioColors.StandByWhite || ink == Color.White) FolioColors.StandByNixieGlow else ink)
+    val filamentColor = if (night) ink.copy(alpha = 0.9f) else FolioColors.StandByNixieFilament
+
+    // Steady on purpose: the tubes used to flicker.
+    val flicker = 1f
+
+    Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            NixieTube(hrStr[0].toString(), glowColor, filamentColor, flicker)
+            NixieTube(hrStr[1].toString(), glowColor, filamentColor, flicker)
+            Column(
+                modifier = Modifier.padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(glowColor.copy(alpha = 0.85f * flicker)))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(glowColor.copy(alpha = 0.85f * flicker)))
+            }
+            NixieTube(mnStr[0].toString(), glowColor, filamentColor, flicker)
+            NixieTube(mnStr[1].toString(), glowColor, filamentColor, flicker)
+        }
+        Spacer(Modifier.height(FolioSpace.MEDIUM.dp))
+        Text(now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))), color = soft, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun NixieTube(
+    digit: String,
+    glowColor: Color,
+    filamentColor: Color,
+    flicker: Float,
+) {
+    val tubeShape = RoundedCornerShape(FolioRadius.FLOATING.dp)
+    val glowDigitSize = 62.sp
+    val filamentDigitSize = 60.sp
+
+    Box(
+        modifier = Modifier
+            .size(width = 62.dp, height = 110.dp)
+            .clip(tubeShape)
+            .background(FolioColors.StandByNixieGlass)
+            .border(1.5.dp, glowColor.copy(alpha = 0.25f), tubeShape)
+            .drawBehind {
+                val meshColor = Color.White.copy(alpha = 0.04f)
+                var y = 8.dp.toPx()
+                while (y < size.height - 8.dp.toPx()) {
+                    drawLine(meshColor, Offset(8.dp.toPx(), y), Offset(size.width - 8.dp.toPx(), y), strokeWidth = 1f)
+                    y += 8.dp.toPx()
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = digit,
+            color = glowColor.copy(alpha = 0.75f * flicker),
+            fontSize = glowDigitSize,
+            fontWeight = FontWeight.Black,
+            style = TextStyle(fontFeatureSettings = "tnum")
+        )
+        Text(
+            text = digit,
+            color = filamentColor.copy(alpha = 0.95f * flicker),
+            fontSize = filamentDigitSize,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(fontFeatureSettings = "tnum")
+        )
+    }
+}
+
+@Composable
+private fun MinimalClock(
+    now: LocalDateTime,
+    ink: Color,
+    soft: Color,
+    night: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val hourVal = if (is24) now.hour else (if (now.hour % 12 == 0) 12 else now.hour % 12)
+    val hrStr = if (is24) String.format("%02d", hourVal) else hourVal.toString()
+    val mnStr = String.format("%02d", now.minute)
+    val minimalDigitSize = 88.sp
+
+    Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(hrStr, color = ink, fontSize = minimalDigitSize, fontWeight = FontWeight.ExtraLight, style = TextStyle(fontFeatureSettings = "tnum"))
+            Box(Modifier.width(2.dp).height(56.dp).background(soft.copy(alpha = 0.35f)))
+            Text(mnStr, color = ink.copy(alpha = 0.75f), fontSize = minimalDigitSize, fontWeight = FontWeight.ExtraLight, style = TextStyle(fontFeatureSettings = "tnum"))
+        }
+        Spacer(Modifier.height(FolioSpace.TINY.dp))
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(FolioRadius.ROW.dp))
+                .background(Color.White.copy(alpha = if (night) 0.06f else 0.1f))
+                .padding(horizontal = 14.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                now.format(DateTimeFormatter.ofPattern(stringResource(R.string.eeee_mmmm_d))),
+                color = soft,
+                fontSize = FolioType.FOOTNOTE.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
 private fun StandByInfo(
+    now: LocalDateTime,
     status: DeviceStatus,
     ink: Color,
     soft: Color,
@@ -1202,7 +2065,7 @@ private fun StandByInfo(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         StandByStatusChips(status, ink, soft, config.showChargingLine)
-        StandByCards(ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss)
+        StandByCards(now, status, ink, soft, cardBg, night, config, notifSummary, locked, lockScreenShowNotifs, onDismiss)
     }
 }
 
@@ -1243,6 +2106,8 @@ private fun StandByStatusChips(status: DeviceStatus, ink: Color, soft: Color, sh
 
 @Composable
 private fun StandByCards(
+    now: LocalDateTime,
+    status: DeviceStatus,
     ink: Color,
     soft: Color,
     cardBg: Color,
@@ -1265,22 +2130,21 @@ private fun StandByCards(
         StandByTimerCard(timer, ink, soft, cardBg)
     }
 
-    // Up Next while nothing is playing: the next event, in the calendar's color (not tinted red at night).
+    // Up Next / Interactive Widget Carousel while nothing is playing
     val next by produceState<UpNextEvent?>(null, tick, lockHide) {
         value = if (lockHide) null else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { UpNext.events(context, limit = 1).firstOrNull() }
     }
-    if (!showMedia && config.upNext && !lockHide) next?.let { e ->
-        Row(Modifier.widthIn(max = 420.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(cardBg)
-            .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(if (night) soft else e.color?.let { Color(it) } ?: LocalAccent.current.fill))
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(e.title, color = ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val begin = LocalDateTime.ofInstant(Instant.ofEpochMilli(e.begin), ZoneId.systemDefault())
-                val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "EEE HH:mm" else "EEE h:mm a" // english-only
-                Text(if (e.allDay) stringResource(R.string.all_day) else begin.format(DateTimeFormatter.ofPattern(pattern)), color = soft, fontSize = FolioType.COMPACT.sp)
-            }
-        }
+    if (!showMedia && config.upNext && !lockHide) {
+        StandByWidgetCarousel(
+            now = now,
+            status = status,
+            next = next,
+            ink = ink,
+            soft = soft,
+            cardBg = cardBg,
+            accentColor = if (night) soft else standByClockColor(config.clockColor),
+            night = night,
+        )
     }
 
     if (showMedia && media != null) {
@@ -1300,6 +2164,381 @@ private fun StandByCards(
 
     if (notifSummary.totalCount > 0) {
         StandByNotifRow(notifSummary, soft, night)
+    }
+}
+
+@Composable
+private fun StandByWidgetCarousel(
+    now: LocalDateTime,
+    status: DeviceStatus,
+    next: UpNextEvent?,
+    ink: Color,
+    soft: Color,
+    cardBg: Color,
+    accentColor: Color,
+    night: Boolean,
+) {
+    val haptic = LocalHapticFeedback.current
+    var widgetIndex by remember { mutableIntStateOf(0) }
+    var swipeDirection by remember { mutableIntStateOf(1) }
+    var dragAccumulator by remember { mutableFloatStateOf(0f) }
+    val threshold = with(LocalDensity.current) { 24.dp.toPx() }
+
+    Row(
+        modifier = Modifier
+            .widthIn(max = 420.dp)
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragStart = { dragAccumulator = 0f },
+                    onDragEnd = {
+                        if (dragAccumulator < -threshold) {
+                            // Swiped up -> advance to next card
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            swipeDirection = 1
+                            widgetIndex = (widgetIndex + 1) % 4
+                        } else if (dragAccumulator > threshold) {
+                            // Swiped down -> previous card
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            swipeDirection = -1
+                            widgetIndex = (widgetIndex - 1 + 4) % 4
+                        }
+                        dragAccumulator = 0f
+                    },
+                    onDragCancel = { dragAccumulator = 0f }
+                ) { change, dragAmount ->
+                    change.consume()
+                    dragAccumulator += dragAmount
+                }
+            }
+            .clickable(remember { MutableInteractionSource() }, null) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                swipeDirection = 1
+                widgetIndex = (widgetIndex + 1) % 4
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = widgetIndex,
+                transitionSpec = {
+                    if (swipeDirection > 0) {
+                        (androidx.compose.animation.slideInVertically(animationSpec = FolioMotion.spring(FolioMotion.Quick)) { it / 2 } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)))
+                            .togetherWith(androidx.compose.animation.slideOutVertically(animationSpec = FolioMotion.spring(FolioMotion.Quick)) { -it / 2 } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)))
+                    } else {
+                        (androidx.compose.animation.slideInVertically(animationSpec = FolioMotion.spring(FolioMotion.Quick)) { -it / 2 } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)))
+                            .togetherWith(androidx.compose.animation.slideOutVertically(animationSpec = FolioMotion.spring(FolioMotion.Quick)) { it / 2 } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)))
+                    }
+                },
+                label = "standby carousel card" // english-only
+            ) { index ->
+                when (index) {
+                    1 -> StandByMonthWidget(now, ink, soft, cardBg, accentColor, night)
+                    2 -> StandByWeatherWidget(ink, soft, cardBg, accentColor, night)
+                    3 -> StandByVitalsWidget(status, ink, soft, cardBg, accentColor, night)
+                    else -> StandByUpNextCard(next, ink, soft, cardBg, accentColor, night)
+                }
+            }
+        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            for (i in 0 until 4) {
+                val isSelected = i == widgetIndex
+                Box(
+                    modifier = Modifier
+                        .size(4.dp, if (isSelected) 12.dp else 4.dp)
+                        .clip(CircleShape)
+                        .background(if (isSelected) (if (night) soft else accentColor) else soft.copy(alpha = 0.25f))
+                        .clickable {
+                            if (widgetIndex != i) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                swipeDirection = if (i > widgetIndex) 1 else -1
+                                widgetIndex = i
+                            }
+                        }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandByUpNextCard(
+    next: UpNextEvent?,
+    ink: Color,
+    soft: Color,
+    cardBg: Color,
+    accentColor: Color,
+    night: Boolean,
+) {
+    val context = LocalContext.current
+    val cardRadius = RoundedCornerShape(FolioRadius.SHEET_TOP.dp)
+    val barRadius = RoundedCornerShape(FolioSpace.HAIR.dp)
+
+    if (next != null) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardRadius)
+                .background(cardBg)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .width(4.dp)
+                    .height(40.dp)
+                    .clip(barRadius)
+                    .background(if (night) soft else next.color?.let { Color(it) } ?: accentColor)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(next.title, color = ink, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val begin = LocalDateTime.ofInstant(Instant.ofEpochMilli(next.begin), ZoneId.systemDefault())
+                val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "EEE HH:mm" else "EEE h:mm a" // english-only
+                Text(if (next.allDay) stringResource(R.string.all_day) else begin.format(DateTimeFormatter.ofPattern(pattern)), color = soft, fontSize = FolioType.COMPACT.sp)
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardRadius)
+                .background(cardBg)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = if (night) soft else accentColor, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.standby2_no_events), color = ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(stringResource(R.string.standby2_widget_calendar), color = soft, fontSize = FolioType.COMPACT.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandByMonthWidget(
+    now: LocalDateTime,
+    ink: Color,
+    soft: Color,
+    cardBg: Color,
+    accentColor: Color,
+    night: Boolean,
+) {
+    val yearMonth = YearMonth.of(now.year, now.month)
+    val firstDayOfWeek = yearMonth.atDay(1).dayOfWeek.value % 7
+    val lengthOfMonth = yearMonth.lengthOfMonth()
+    val currentDay = now.dayOfMonth
+    val dayNames = listOf("S", "M", "T", "W", "T", "F", "S")
+    val monthWidgetShape = RoundedCornerShape(FolioRadius.SHEET_TOP.dp)
+    val dayHeaderSize = 10.sp
+    val dayGridSize = 9.sp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(monthWidgetShape)
+            .background(cardBg)
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                now.format(DateTimeFormatter.ofPattern(stringResource(R.string.standby2_month_year_pattern))).uppercase(),
+                color = if (night) soft else accentColor,
+                fontSize = FolioType.CAPTION.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = soft, modifier = Modifier.size(15.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+            dayNames.forEach { name ->
+                Text(name, color = soft.copy(alpha = 0.6f), fontSize = dayHeaderSize, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(20.dp), textAlign = TextAlign.Center)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        val totalCells = ((firstDayOfWeek + lengthOfMonth + 6) / 7) * 7
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            for (row in 0 until (totalCells / 7)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                    for (col in 0 until 7) {
+                        val cellIdx = row * 7 + col
+                        val dayNum = cellIdx - firstDayOfWeek + 1
+                        val isValid = dayNum in 1..lengthOfMonth
+                        val isToday = isValid && dayNum == currentDay
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .then(if (isToday) Modifier.background(if (night) ink else accentColor, CircleShape) else Modifier),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isValid) {
+                                Text(
+                                    dayNum.toString(),
+                                    color = if (isToday) (if (night) Color.Black else Color.White) else (if (col == 0 || col == 6) soft.copy(alpha = 0.5f) else ink),
+                                    fontSize = dayGridSize,
+                                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandByWeatherWidget(
+    ink: Color,
+    soft: Color,
+    cardBg: Color,
+    accentColor: Color,
+    night: Boolean,
+) {
+    val weatherShape = RoundedCornerShape(FolioRadius.SHEET_TOP.dp)
+    val tempSize = 38.sp
+    val degreeSize = 22.sp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(weatherShape)
+            .background(cardBg)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(stringResource(R.string.standby2_widget_weather), color = if (night) soft else accentColor, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(stringResource(R.string.standby2_weather_local), color = ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Icon(
+                imageVector = if (night) Icons.Rounded.NightsStay else Icons.Rounded.WbSunny,
+                contentDescription = null,
+                tint = if (night) soft else FolioColors.StandByWeatherSun,
+                modifier = Modifier.size(30.dp)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text("72", color = ink, fontSize = tempSize, fontWeight = FontWeight.Light, lineHeight = tempSize)
+                Text("°", color = soft, fontSize = degreeSize, fontWeight = FontWeight.Light)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(stringResource(R.string.standby2_weather_condition), color = ink, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
+                Text("H: 76°  L: 58°", color = soft, fontSize = FolioType.CAPTION.sp) // english-only
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandByVitalsWidget(
+    status: DeviceStatus,
+    ink: Color,
+    soft: Color,
+    cardBg: Color,
+    accentColor: Color,
+    night: Boolean,
+) {
+    val context = LocalContext.current
+    val batteryPct = status.battery ?: 100
+    val memoryInfo = remember {
+        val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val mi = android.app.ActivityManager.MemoryInfo()
+        am?.getMemoryInfo(mi)
+        mi
+    }
+    val availGb = remember(memoryInfo) {
+        memoryInfo?.availMem?.let { String.format("%.1f GB", it / (1024.0 * 1024.0 * 1024.0)) } ?: context.getString(R.string.standby2_vitals_free)
+    }
+    val vitalsShape = RoundedCornerShape(FolioRadius.SHEET_TOP.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(vitalsShape)
+            .background(cardBg)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.standby2_widget_vitals), color = if (night) soft else accentColor, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Icon(
+                imageVector = if (status.charging) Icons.Rounded.Bolt else Icons.Rounded.Favorite,
+                contentDescription = null,
+                tint = if (status.charging) FolioColors.GreenLight else FolioColors.RedLight,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(50.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val strokeWidth = 5.dp.toPx()
+                    val pad = strokeWidth / 2f
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.15f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(strokeWidth, cap = StrokeCap.Round),
+                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                        topLeft = Offset(pad, pad)
+                    )
+                    drawArc(
+                        color = if (status.charging) FolioColors.GreenLight else accentColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f * (batteryPct / 100f),
+                        useCenter = false,
+                        style = Stroke(strokeWidth, cap = StrokeCap.Round),
+                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                        topLeft = Offset(pad, pad)
+                    )
+                }
+                Text("$batteryPct%", color = ink, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(stringResource(if (status.charging) R.string.standby2_vitals_charging else R.string.standby2_vitals_battery), color = ink, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.standby2_ram_avail, availGb), color = soft, fontSize = FolioType.CAPTION.sp)
+            }
+        }
     }
 }
 

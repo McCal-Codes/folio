@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -188,7 +189,30 @@ internal fun FolderPanel(
         LaunchedEffect(minFolderW, maxFolderW, minFolderH, effectiveMaxFolderH) {
             folderW = folderW.coerceIn(minFolderW, maxFolderW); folderH = folderH.coerceIn(minFolderH, effectiveMaxFolderH)
         }
+        val hinge = LocalHinge.current?.takeIf { it.active && it.vertical }
+        val targetDisplacementPx = remember(hinge, regular, tile, config.screenWidthDp, density) {
+            val screenWidthPx = config.screenWidthDp * density
+            if (hinge != null && hinge.vertical) {
+                val leftHalfCenter = hinge.startPx / 2f
+                val rightHalfCenter = (hinge.endPx + screenWidthPx) / 2f
+                val isLeft = (tile?.exactCenterX() ?: (screenWidthPx / 2f)) < (hinge.startPx + hinge.endPx) / 2f
+                val center = if (isLeft) leftHalfCenter else rightHalfCenter
+                center - (screenWidthPx / 2f)
+            } else if (regular && config.screenWidthDp >= 600 && tile != null) {
+                val isLeft = tile.exactCenterX() < screenWidthPx / 2f
+                val center = if (isLeft) screenWidthPx / 4f else screenWidthPx * 3f / 4f
+                center - (screenWidthPx / 2f)
+            } else {
+                0f
+            }
+        }
+        val animatedDisplacementDp by animateDpAsState(
+            targetValue = (targetDisplacementPx / density).dp,
+            animationSpec = FolioMotion.spring(FolioMotion.Settle),
+            label = "folder fold displacement" // english-only
+        )
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
+            .offset(x = animatedDisplacementDp)
             .onGloballyPositioned { panelBounds = it.boundsInWindow() }
             .graphicsLayer {
                 val p = appear.value
