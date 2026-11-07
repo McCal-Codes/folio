@@ -33,6 +33,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Tweak options:** tweaks in Settings have expanded options and live interactive previews.
 - **Keep the clock steady:** StandBy's colons, Neon glow, Nixie tubes and the outer-screen glow hold still by default. A "Keep the clock steady" switch in the StandBy options lets them move again, in daytime only and never with Reduce Motion.
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
+- **Compatibility before Get:** the Market's install sheet now says up front whether a package works on your phone, works with a limit (for example it covers only one of your screens) or cannot be installed, and why, using the same answer the package page shows and the installer acts on. Get is off, with the reason beside it, whenever the installer would refuse.
 - **Pull tabs in full-screen apps:** in a video, a game or a reader that hides the status bar, two small tabs sit on the top edge, the left for Notification Center and the right for Control Center. Pull one down to open its panel. A switch under "Pull down from the top of any app" turns them off.
 
 ### Changed
