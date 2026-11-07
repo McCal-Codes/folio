@@ -530,7 +530,8 @@ internal fun softBadgeColor(pixels: IntArray): Int? {
         val bucket = (hue * 2f).toInt().coerceIn(0, 11)
         weight[bucket] += 1f; rs[bucket] += r; gs[bucket] += g; bs[bucket] += b
     }
-    val top = weight.indices.sortedByDescending { weight[it] }.take(3).filter { weight[it] >= maxOf(1f, opaque * .04f) }
+    val totalWeight = weight.sum()
+    val top = weight.indices.sortedByDescending { weight[it] }.take(3).filter { weight[it] >= maxOf(1f, totalWeight * .15f) }
     if (top.isEmpty()) return null
     val total = top.sumOf { weight[it].toDouble() }.toFloat()
     val r = top.sumOf { rs[it].toDouble() }.toFloat() / total
@@ -582,7 +583,8 @@ internal fun dominantAccent(pixels: IntArray): Int? {
         weight[bucket] += w; rs[bucket] += r * w; gs[bucket] += g * w; bs[bucket] += b * w
     }
     val best = weight.indices.maxBy { weight[it] }
-    if (opaque == 0 || weight[best] < opaque * .06f) return null
+    val totalColorWeight = weight.sum()
+    if (totalColorWeight < 1.0f || weight[best] < 1.2f) return null
     fun channel(sum: Float) = kotlin.math.round(sum / weight[best] * 255f).toInt().coerceIn(0, 255)
     return (0xFF shl 24) or (channel(rs[best]) shl 16) or (channel(gs[best]) shl 8) or channel(bs[best])
 }

@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
         if (usesSystemWallpaper(this)) setTheme(R.style.Theme_Duo_Wallpaper)
         intent.dropUnreadableExtras() // an extra from another app that Folio cannot unpack must not crash Home
         super.onCreate(savedInstanceState)
+        FolioMotion.initialize(this)
         setupExperience = SetupExperience(this)
         Installs.start(this); NewApps.load(this)
         badgesGateOpen = FeatureGate.BADGES_WHEN_OPENED.isOpen(this)
@@ -419,13 +420,24 @@ class MainActivity : ComponentActivity() {
                 // StandBy's ways in (Settings › Fold & Displays): half-open as before, and behind the 0.6.8 gate,
                 // charging on its side and a tent on the cover.
                 val standByMore = androidx.compose.runtime.remember { FeatureGate.STANDBY_CHARGING.isOpen(this@MainActivity) }
+                val standBy2Open = rememberGateOpen(FeatureGate.STANDBY_2)
+                val standByConfig = resolveStandByConfig(
+                    state = state,
+                    gateOpen = standBy2Open,
+                    onCover = !androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout(),
+                )
                 val standByShowing = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                 val halfOpenPose = rememberHalfOpenPose(this@MainActivity)
                 val hinge = androidx.compose.runtime.remember { hasHinge(this@MainActivity) }
-                val standByWays = StandByWays(state.standBy && hinge, standByMore && state.standByCharging, standByMore && state.standByTent && hinge)
-                val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null)
+                val standByWays = StandByWays(
+                    halfOpen = state.standBy && hinge,
+                    charging = standByMore && state.standByCharging,
+                    tent = standByMore && state.standByTent && hinge,
+                    offCharger = standByConfig.activePackage && standByConfig.offCharger,
+                )
+                val standBySignals = rememberStandBySignals(this@MainActivity, standByWays, deviceStatus.charging, halfOpenPose != null, batteryLevel = deviceStatus.battery)
                 StandByOverlay(standByWay(standByWays, standBySignals), standByWay(standByWays, standBySignals.copy(still = true)) != null,
-                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it })
+                    halfOpenPose, blocked = overlayOpen, status = deviceStatus, onShowing = { standByShowing.value = it }, config = standByConfig)
                 LockCover(lockCoverVisible.value && state.lockCover) { lockCoverVisible.value = false }
                 // Nothing draws over StandBy while it's up: the headphones card, the setup reminder and the island wait.
                 AudioDeviceCard("BLUETOOTH" !in state.islandEventsOff, blocked = overlayOpen || standByShowing.value)

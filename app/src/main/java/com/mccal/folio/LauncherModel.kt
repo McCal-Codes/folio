@@ -164,6 +164,8 @@ data class LauncherState(
     val standByCharging: Boolean = true,
     /** StandBy in a tent on the cover screen, off the charger too; the Fold only shows a tent past halfway. */
     val standByTent: Boolean = false,
+    /** StandBy 2 tweak switch (looks, cards and night options on top of StandBy; see [STANDBY2_ID]). */
+    val standBy2: Boolean = false,
     /** Spotlight sections the user turned off (names of [SpotlightSection]). */
     val spotlightHidden: Set<String> = emptySet(),
     /** Engine for Enter in search: a [WebSearchTarget] name. */
@@ -234,6 +236,8 @@ data class LauncherState(
     val todayWidgets: List<TodayWidget> = DEFAULT_TODAY_WIDGETS,
     /** Unfolded: "PAGE" (swipe left of Home), "BESIDE" (always next to Home, iPad-style) or "OFF". */
     val todayUnfolded: String = "PAGE",
+    /** Unfolded: brings left and right pages closer together when flat for a uniform two-page layout. */
+    val unfoldedSeamlessGap: Boolean = true,
     /** The row of suggested apps at the top of Today View. The Suggestions widget and Spotlight have their own switches. */
     val todaySuggestions: Boolean = true,
     /** Show Android's own home-screen wallpaper behind Folio (live wallpapers included) instead of Folio's background. */
@@ -281,7 +285,7 @@ data class LauncherState(
     /** Tinted icons use the wallpaper's color instead of [iconTint]. */
     val iconTintFromWallpaper: Boolean = false,
     /** Velvet-style: notification cards take on their app icon's color. */
-    val tintNotifications: Boolean = false,
+    val tintNotifications: Boolean = true,
     /** ColorFlow-style: music cards and the island's sound bars take on the album art's color. */
     val tintMedia: Boolean = true,
     /** Harbor-style: dock icons magnify under your finger. */
@@ -1268,6 +1272,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setLeftPage(value: String) = updateSettings(soon = false) { it.copy(leftPage = value) }
     fun setTodaySuggestions(value: Boolean) = updateSettings(soon = false) { it.copy(todaySuggestions = value) }
     fun setTodayUnfolded(value: String) = updateSettings(soon = false) { it.copy(todayUnfolded = value) }
+    fun setUnfoldedSeamlessGap(value: Boolean) = updateSettings(soon = false) { it.copy(unfoldedSeamlessGap = value) }
     fun setSystemWallpaper(value: Boolean) = updateSettings(soon = false) { it.copy(systemWallpaper = value) }
     fun setHomeInk(value: String) = updateSettings(soon = false) { it.copy(homeInk = value) }
     fun setTintedGlass(value: Boolean) = updateSettings(soon = false) { it.copy(tintedGlass = value) }
@@ -1414,6 +1419,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setStandBy(value: Boolean) = updateSettings(soon = false) { it.copy(standBy = value) }
     fun setStandByCharging(value: Boolean) = updateSettings(soon = false) { it.copy(standByCharging = value) }
     fun setStandByTent(value: Boolean) = updateSettings(soon = false) { it.copy(standByTent = value) }
+    fun setStandBy2(value: Boolean) = updateSettings(soon = false) { it.copy(standBy2 = value) }
     fun setIconStyle(style: IconStyle, tint: Long) = updateSettings(soon = false) { it.copy(iconStyle = style, iconTint = tint) }
     fun setIconShape(shape: IconShape) = updateSettings(soon = false) { it.copy(iconShape = shape) }
     fun setIconPack(pack: String?) = updateSettings(soon = false) { it.copy(iconPack = pack) }
@@ -1687,7 +1693,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications).put("notificationSections", s.notificationSections)
-            .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
+            .put("searchCustomUrl", s.searchCustomUrl).put("standBy", s.standBy).put("standByCharging", s.standByCharging).put("standByTent", s.standByTent).put("standBy2", s.standBy2).put("spotlightHidden", JSONArray(s.spotlightHidden.toList())).put("searchEngine", s.searchEngine)
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
@@ -1706,7 +1712,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("packagedEffectId", s.packagedEffectId ?: JSONObject.NULL)
             .put("widgetGlass", s.widgetGlass.toDouble()).put("glassOutline", s.glassOutline.toDouble())
             .put("focusModes", focusModesToJson(s.focusModes))
-            .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("todaySuggestions", s.todaySuggestions).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
+            .put("activeFocus", s.activeFocus ?: "").put("leftPage", s.leftPage).put("todayUnfolded", s.todayUnfolded).put("unfoldedSeamlessGap", s.unfoldedSeamlessGap).put("todaySuggestions", s.todaySuggestions).put("systemWallpaper", s.systemWallpaper).put("homeInk", s.homeInk).put("tintedGlass", s.tintedGlass).put("glassTint", s.glassTint.toDouble()).put("reduceTransparency", s.reduceTransparency)
             .put("roundedCorners", s.roundedCorners).put("cornerRadius", s.cornerRadius.toDouble())
             .put("dimWallpaperDark", s.dimWallpaperDark).put("homeScrim", s.homeScrim).put("iconTintFromWallpaper", s.iconTintFromWallpaper)
             .put("tintNotifications", s.tintNotifications).put("tintMedia", s.tintMedia).put("dockMagnify", s.dockMagnify).put("appPanels", s.appPanels).put("haptics", s.haptics).put("lockCover", s.lockCover)
@@ -1948,6 +1954,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         standBy = j.optBoolean("standBy", true),
         standByCharging = j.optBoolean("standByCharging", true),
         standByTent = j.optBoolean("standByTent", false),
+        standBy2 = j.optBoolean("standBy2", false),
         spotlightHidden = j.optJSONArray("spotlightHidden")?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         searchEngine = j.optString("searchEngine", "GOOGLE").takeIf { it == CUSTOM_SEARCH || runCatching { WebSearchTarget.valueOf(it) }.isSuccess } ?: "GOOGLE",
         searchCustomUrl = j.optString("searchCustomUrl", "").take(500),
@@ -2006,6 +2013,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         leftPage = j.optString("leftPage", "TODAY").takeIf { it in setOf("TODAY", "DISCOVER", "NONE") } ?: "TODAY",
         todaySuggestions = j.optBoolean("todaySuggestions", true),
         todayUnfolded = j.optString("todayUnfolded", "PAGE").takeIf { it in setOf("PAGE", "BESIDE", "OFF") } ?: "PAGE",
+        unfoldedSeamlessGap = j.optBoolean("unfoldedSeamlessGap", true),
         systemWallpaper = j.optBoolean("systemWallpaper", false),
         homeInk = j.optString("homeInk", "AUTO").takeIf { it in setOf("AUTO", "LIGHT", "DARK") } ?: "AUTO",
         tintedGlass = j.optBoolean("tintedGlass", true),
@@ -2014,7 +2022,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         roundedCorners = j.optBoolean("roundedCorners", false), cornerRadius = j.optDouble("cornerRadius", 40.0).toFloat().coerceIn(16f, 72f), dimWallpaperDark = j.optBoolean("dimWallpaperDark", true),
         homeScrim = j.optBoolean("homeScrim", true),
         iconTintFromWallpaper = j.optBoolean("iconTintFromWallpaper", false),
-        tintNotifications = j.optBoolean("tintNotifications", false), tintMedia = j.optBoolean("tintMedia", true),
+        tintNotifications = j.optBoolean("tintNotifications", true), tintMedia = j.optBoolean("tintMedia", true),
         dockMagnify = j.optBoolean("dockMagnify", false), appPanels = j.optBoolean("appPanels", true), haptics = j.optBoolean("haptics", true), lockCover = j.optBoolean("lockCover", true),
         featureScopes = j.optJSONObject("featureScopes")?.let { o -> o.keys().asSequence().associateWith { id ->
             o.optJSONObject(id)?.let { inner -> inner.keys().asSequence().associateWith { inner.getString(it) } }.orEmpty()
