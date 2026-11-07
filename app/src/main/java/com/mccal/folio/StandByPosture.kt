@@ -116,6 +116,8 @@ internal data class StandByEffectiveConfig(
     val offCharger: Boolean = false,
     val sunriseBeforeAlarm: Boolean = true,
     val ambientLamp: Boolean = true,
+    /** Keep the clock and glow still. On by default; off lets the colon, neon, nixie and glow loops run (day only, never under Reduce Motion). */
+    val steadyClock: Boolean = true,
 ) {
     companion object {
         val LEGACY_0_6_9 = StandByEffectiveConfig()
@@ -138,6 +140,7 @@ internal fun resolveStandByConfig(
     offCharger: Boolean = false,
     sunriseBeforeAlarm: Boolean = true,
     ambientLamp: Boolean = true,
+    steadyClock: Boolean = true,
 ): StandByEffectiveConfig {
     if (!gateOpen || !packageInstalled || !packageEnabled) return StandByEffectiveConfig.LEGACY_0_6_9
     return StandByEffectiveConfig(
@@ -156,6 +159,7 @@ internal fun resolveStandByConfig(
         offCharger = offCharger,
         sunriseBeforeAlarm = sunriseBeforeAlarm,
         ambientLamp = ambientLamp,
+        steadyClock = steadyClock,
     )
 }
 
@@ -211,6 +215,7 @@ internal fun resolveStandByConfig(
     val offCharger = TweakOptions.on(opts, STANDBY2_ID, "offCharger")
     val sunrise = TweakOptions.on(opts, STANDBY2_ID, "sunrise")
     val ambientLamp = TweakOptions.on(opts, STANDBY2_ID, "ambientLamp")
+    val steadyClock = TweakOptions.on(opts, STANDBY2_ID, "steady")
     return resolveStandByConfig(
         gateOpen = gateOpen,
         packageInstalled = installed,
@@ -227,6 +232,7 @@ internal fun resolveStandByConfig(
         offCharger = offCharger,
         sunriseBeforeAlarm = sunrise,
         ambientLamp = ambientLamp,
+        steadyClock = steadyClock,
     )
 }
 

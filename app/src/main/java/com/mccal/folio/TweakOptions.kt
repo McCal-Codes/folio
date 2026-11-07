@@ -85,6 +85,7 @@ internal object TweakOptions {
                 "purple" to R.string.standby2_color_purple,
             ), "white", section = R.string.look),
             TweakOption.Toggle("ambientLamp", R.string.standby2_ambient_lamp, on = true, section = R.string.look),
+            TweakOption.Toggle("steady", R.string.standby2_steady, on = true, section = R.string.look),
             TweakOption.Choice("player", R.string.standby2_now_playing, listOf(
                 "card" to R.string.standby2_card, "compact" to R.string.standby2_compact, "off" to R.string.off), "card", section = R.string.look),
             TweakOption.Toggle("upNext", R.string.standby2_up_next, on = true, section = R.string.standby2_cards),

@@ -27,6 +27,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -282,11 +287,11 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
     val ambientClockInk = if (ambientNight) standByNightPalette(config.nightColor).clock else standByClockColor(config.clockColor)
     val wantAmbient = config.activePackage && config.ambientLamp
 
-    DisposableEffect(otherDisplay, active, ambientClockInk, ambientNight, wantAmbient) {
+    DisposableEffect(otherDisplay, active, ambientClockInk, ambientNight, wantAmbient, config.steadyClock) {
         var presentation: StandByAmbientPresentation? = null
         if (active && wantAmbient && otherDisplay != null && activity != null) {
             try {
-                presentation = StandByAmbientPresentation(activity, otherDisplay, ambientClockInk, ambientNight).apply { show() }
+                presentation = StandByAmbientPresentation(activity, otherDisplay, ambientClockInk, ambientNight, config.steadyClock).apply { show() }
             } catch (_: Exception) {
                 presentation = null
             }
@@ -303,7 +308,7 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
         } else null
     }
 
-    LaunchedEffect(active, wantAmbient, ambientClockInk, ambientNight, activity, ambientController) {
+    LaunchedEffect(active, wantAmbient, ambientClockInk, ambientNight, activity, ambientController, config.steadyClock) {
         if (!active || !wantAmbient || activity == null || ambientController == null) return@LaunchedEffect
         try {
             ambientController.windowAreaInfos.collect { infos ->
@@ -319,7 +324,7 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
                             override fun onSessionStarted(session: androidx.window.area.WindowAreaSessionPresenter) {
                                 val composeView = ComposeView(session.context).apply {
                                     setContent {
-                                        AmbientScreenGlow(ambientClockInk, ambientNight)
+                                        AmbientScreenGlow(ambientClockInk, ambientNight, config.steadyClock, reduceMotionEnabled(session.context))
                                     }
                                 }
                                 session.setContentView(composeView)
@@ -604,6 +609,7 @@ internal class StandByAmbientPresentation(
     display: Display,
     private val clockColor: Color,
     private val night: Boolean,
+    private val steady: Boolean = true,
 ) : Presentation(context, display) {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -618,17 +624,41 @@ internal class StandByAmbientPresentation(
         }
         val composeView = ComposeView(context).apply {
             setContent {
-                AmbientScreenGlow(clockColor, night)
+                AmbientScreenGlow(clockColor, night, steady, reduceMotionEnabled(context))
             }
         }
         setContentView(composeView)
     }
 }
 
+/** True when StandBy keeps its clock and glow still (the default). Set from [StandByEffectiveConfig.steadyClock]. */
+internal val LocalStandBySteady = staticCompositionLocalOf { true }
+
+/**
+ * The only place a StandBy loop may run (StandBySteadyGuardTest fails on any other `rememberInfiniteTransition`).
+ * It returns the still value [rest] unless the "Keep the clock steady" switch is off, it is daytime and Reduce Motion
+ * is off; only then does it ease between [from] and [to].
+ */
 @Composable
-private fun AmbientScreenGlow(accentColor: Color, night: Boolean) {
-    // Steady on purpose: the glow used to breathe over the whole screen. It now holds one level.
-    val breath = 0.65f
+internal fun standByPulse(
+    from: Float, to: Float, rest: Float, durationMs: Int, night: Boolean, label: String,
+    easing: Easing = LinearEasing,
+    steady: Boolean = LocalStandBySteady.current,
+    reduceMotion: Boolean = LocalReduceMotion.current,
+): State<Float> {
+    if (steady || night || reduceMotion) return remember(rest) { mutableFloatStateOf(rest) }
+    return rememberInfiniteTransition(label = label).animateFloat(
+        initialValue = from,
+        targetValue = to,
+        animationSpec = infiniteRepeatable(animation = tween(durationMs, easing = easing), repeatMode = RepeatMode.Reverse),
+        label = label,
+    )
+}
+
+@Composable
+private fun AmbientScreenGlow(accentColor: Color, night: Boolean, steady: Boolean = true, reduceMotion: Boolean = false) {
+    val breath by standByPulse(0.45f, 0.85f, rest = 0.65f, durationMs = 4000, night = night, label = "glow_intensity",
+        easing = FastOutSlowInEasing, steady = steady, reduceMotion = reduceMotion)
 
     val glowColor = if (night) FolioColors.StandByCrimson else accentColor
 
@@ -695,6 +725,20 @@ internal fun StandByFace(
     config: StandByEffectiveConfig = StandByEffectiveConfig.LEGACY_0_6_9,
     locked: Boolean = false,
     onDismiss: (() -> Unit)? = null,
+) {
+    CompositionLocalProvider(LocalStandBySteady provides config.steadyClock) {
+        StandByFaceContent(status, posture, modifier, config, locked, onDismiss)
+    }
+}
+
+@Composable
+private fun StandByFaceContent(
+    status: DeviceStatus,
+    posture: StandByPosture,
+    modifier: Modifier,
+    config: StandByEffectiveConfig,
+    locked: Boolean,
+    onDismiss: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     val tick by rememberMinuteTick()
@@ -1113,8 +1157,7 @@ private fun BigClock(
                         val weight = if (clockLook == StandByClockLook.BOLD) FontWeight.Bold else FontWeight.Thin
                         val clockSp = (if (clockLook == StandByClockLook.BOLD) 104 else 116).sp
 
-                        // Steady on purpose: the colon used to blink.
-                        val colonAlpha = 1f
+                        val colonAlpha by standByPulse(0.35f, 1f, rest = 1f, durationMs = 1000, night = night, label = "colonAlpha")
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1473,8 +1516,7 @@ private fun FlipClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolea
     val hr = String.format("%02d", hourVal)
     val mn = String.format("%02d", now.minute)
 
-    // Steady on purpose: the colon used to blink.
-    val colonAlpha = 1f
+    val colonAlpha by standByPulse(0.35f, 1f, rest = 1f, durationMs = 1000, night = night, label = "flipColonAlpha")
 
     val flipColonSize = 44.sp
 
@@ -1798,8 +1840,7 @@ private fun NeonClock(now: LocalDateTime, ink: Color, soft: Color, night: Boolea
     val context = LocalContext.current
     val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
     val glowColor = if (night) ink else (if (ink == FolioColors.StandByWhite || ink == Color.White) FolioColors.StandByNeonBlue else ink)
-    // Steady on purpose: the neon glow used to pulse.
-    val pulseAlpha = 1f
+    val pulseAlpha by standByPulse(0.85f, 1f, rest = 1f, durationMs = 1200, night = night, label = "neonAlpha")
     val textGlow = glowColor.copy(alpha = if (night) 0.8f else (0.95f * pulseAlpha))
     val neonDigitSize = 86.sp
 
@@ -1937,8 +1978,7 @@ private fun NixieClock(
     val glowColor = if (night) ink else (if (ink == FolioColors.StandByWhite || ink == Color.White) FolioColors.StandByNixieGlow else ink)
     val filamentColor = if (night) ink.copy(alpha = 0.9f) else FolioColors.StandByNixieFilament
 
-    // Steady on purpose: the tubes used to flicker.
-    val flicker = 1f
+    val flicker by standByPulse(0.94f, 1f, rest = 1f, durationMs = 260, night = night, label = "nixieFlickerAlpha")
 
     Column(modifier, verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

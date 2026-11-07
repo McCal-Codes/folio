@@ -2449,6 +2449,7 @@
     <string name="standby2_widget_vitals">Vitals</string>
     <string name="standby2_ambient_lamp">Dual-Screen Ambient Light</string>
     <string name="standby2_ambient_lamp_detail">Glows softly on the outer screen while folded in StandBy, turning your device into a warm bedside lamp.</string>
+    <string name="standby2_steady">Keep the clock steady</string>
     <string name="standby2_no_events">No upcoming events</string>
     <string name="standby2_utc" translatable="false">UTC</string>
     <string name="standby2_tokyo" translatable="false">TOKYO</string>

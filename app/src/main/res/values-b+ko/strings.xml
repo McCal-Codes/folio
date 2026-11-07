@@ -2405,6 +2405,7 @@
     <string name="standby2_widget_vitals">배터리 및 상태</string>
     <string name="standby2_ambient_lamp">듀얼 화면 무드등</string>
     <string name="standby2_ambient_lamp_detail">스탠바이 중 반대쪽 커버 화면에 은은한 조명을 비추어 침대 옆 무드등으로 활용합니다.</string>
+    <string name="standby2_steady">시계를 고정해 두기</string>
     <string name="standby2_no_events">예정된 일정 없음</string>
     <string name="standby2_utc" translatable="false">UTC</string>
     <string name="standby2_tokyo" translatable="false">TOKYO</string>

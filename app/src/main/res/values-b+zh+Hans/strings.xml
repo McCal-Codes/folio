@@ -2383,6 +2383,7 @@
     <string name="standby2_widget_vitals">电池与状态</string>
     <string name="standby2_ambient_lamp">双屏氛围灯</string>
     <string name="standby2_ambient_lamp_detail">折叠待机时在外屏呈现柔和光晕，化身为温馨的床头夜灯。</string>
+    <string name="standby2_steady">保持时钟稳定</string>
     <string name="standby2_no_events">暂无即将开始的日程</string>
     <string name="standby2_utc" translatable="false">UTC</string>
     <string name="standby2_tokyo" translatable="false">TOKYO</string>
