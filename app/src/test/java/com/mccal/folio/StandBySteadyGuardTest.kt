@@ -56,6 +56,15 @@ class StandBySteadyGuardTest {
         assertTrue("the steady switch is not drawn on the StandBy 2 page", """STANDBY2_ID, "steady"""" in sheet)
     }
 
+    /** The same trap caught the ambient light switch: declared and read by StandBy, but never put on the page. */
+    @Test
+    fun everyLookOptionIsDrawnOnTheStandBy2Page() {
+        val sheet = java.io.File(root, "app/src/main/java/com/mccal/folio/CustomizationSheet.kt").readText()
+        val undrawn = TweakOptions.of(STANDBY2_ID).filter { it.section == R.string.look }
+            .map { it.id }.filter { "STANDBY2_ID, \"$it\"" !in sheet }
+        assertTrue("Look options declared but not drawn on the StandBy 2 page: $undrawn", undrawn.isEmpty())
+    }
+
     @Test
     fun theSwitchIsOnByDefaultAndTurnsOff() {
         val option = TweakOptions.of(STANDBY2_ID).firstOrNull { it.id == "steady" }
