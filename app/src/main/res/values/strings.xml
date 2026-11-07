@@ -2478,4 +2478,7 @@
     <string name="expand_widget_detail">Interactive details without changing layout</string>
     <string name="open_clock_app">Open Clock</string>
     <string name="open_calendar_app">Open Calendar</string>
+    <string name="phone_settings">Phone settings</string>
+    <string name="phone_settings_unavailable">Could not open phone settings.</string>
+    <string name="search_phone_settings">Search phone settings</string>
 </resources>

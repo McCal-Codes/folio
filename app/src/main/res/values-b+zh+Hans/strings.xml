@@ -2412,4 +2412,7 @@
     <string name="expand_widget_detail">在不更改布局的情况下查看交互式详细信息</string>
     <string name="open_clock_app">打开时钟应用</string>
     <string name="open_calendar_app">打开日历应用</string>
+    <string name="phone_settings">手机设置</string>
+    <string name="phone_settings_unavailable">无法打开手机设置。</string>
+    <string name="search_phone_settings">搜索手机设置</string>
 </resources>

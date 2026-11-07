@@ -2434,4 +2434,7 @@
     <string name="expand_widget_detail">홈 화면 배치를 변경하지 않고 대화형 상세 정보 확인</string>
     <string name="open_clock_app">시계 앱 열기</string>
     <string name="open_calendar_app">캘린더 앱 열기</string>
+    <string name="phone_settings">휴대전화 설정</string>
+    <string name="phone_settings_unavailable">휴대전화 설정을 열 수 없습니다.</string>
+    <string name="search_phone_settings">휴대전화 설정 검색</string>
 </resources>
