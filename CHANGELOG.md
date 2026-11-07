@@ -33,9 +33,14 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Tweak options:** tweaks in Settings have expanded options and live interactive previews.
 - **Keep the clock steady:** StandBy's colons, Neon glow, Nixie tubes and the outer-screen glow hold still by default. A "Keep the clock steady" switch in the StandBy options lets them move again, in daytime only and never with Reduce Motion.
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
+- **Pull tabs in full-screen apps:** in a video, a game or a reader that hides the status bar, two small tabs sit on the top edge, the left for Notification Center and the right for Control Center. Pull one down to open its panel. A switch under "Pull down from the top of any app" turns them off.
+
+### Changed
+- **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
 
 ### Fixed
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
+- **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
 
 ## [0.6.9] - 2026-10-31
 

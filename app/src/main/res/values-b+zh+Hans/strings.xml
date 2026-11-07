@@ -60,7 +60,9 @@
     <string name="cc_page_connectivity">连接</string>
     <string name="cc_page_of">%1$s，第 %2$d 页，共 %3$d 页</string>
     <string name="shade_pull">在任何应用顶部下拉</string>
-    <string name="shade_pull_note">从应用顶部边缘的左半部分下拉会打开通知中心，右半部分下拉会打开控制中心，取代手机自带的通知栏。开启后，这条顶部区域内的点按不会传到应用，全屏应用仍使用 Android 自带的。它跟随“在其他应用上方显示 Folio 面板”，该选项关闭时它也会关闭。</string>
+    <string name="pull_tab">全屏应用中的下拉标签</string>
+    <string name="pull_tab_note">在隐藏状态栏的应用（如视频或游戏）里，顶部边缘会出现两个小标签：左边打开通知中心，右边打开控制中心。向下拉某个标签即可打开对应面板。</string>
+    <string name="shade_pull_note">从应用顶部边缘的左半部分下拉会打开通知中心，右半部分下拉会打开控制中心，取代手机自带的通知栏。开启后，这条顶部区域内的点按不会传到应用，全屏应用仍使用 Android 自带的，改用下面的小标签。它跟随“在其他应用上方显示 Folio 面板”，该选项关闭时它也会关闭。</string>
     <string name="pull_target_title">下滑时打开</string>
     <string name="pull_target_both">Folio 面板</string>
     <string name="pull_target_notifications">Folio 通知</string>
