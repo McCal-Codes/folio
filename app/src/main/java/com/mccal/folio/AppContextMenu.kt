@@ -7,6 +7,7 @@ import android.graphics.Rect
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -181,6 +182,11 @@ internal fun AppContextMenu(
             // so aligning to its bottom edge made the menu overlap the lifted icon.
             var menuH by remember { mutableIntStateOf(0) }
             val lift = iconSize * .05f
+            val appAccent = rememberAccent(app.icon)
+            val tintMenu = LocalTintOptions.current.appMenu && appAccent != null
+            val menuBg = if (tintMenu) mixColor(FolioColors.PopoverSurface, appAccent, 0.45f).copy(alpha = .88f) else FolioColors.PopoverSurface.copy(alpha = .96f)
+            val menuBorder: BorderStroke = if (tintMenu) BorderStroke(1.2.dp, appAccent.copy(alpha = 0.45f)) else FolioGlass.edge
+
             Column(Modifier.offset {
                     IntOffset(menuLeft.roundToInt(),
                         if (below) (iconTop + iconSize + lift + gap).roundToInt() else (iconTop - lift - gap - menuH).roundToInt())
@@ -194,8 +200,8 @@ internal fun AppContextMenu(
                     // With the pass the menu fades as it grows and shrinks, so closing reads as going back into the icon.
                     if (pass) alpha = (appear.value * 1.4f).coerceIn(0f, 1f)
                 }
-                .clip(RoundedCornerShape(FolioRadius.FLOATING.dp)).background(FolioColors.PopoverSurface.copy(alpha = .96f))
-                .border(FolioGlass.edge, RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(FolioRadius.FLOATING.dp)).background(menuBg)
+                .border(menuBorder, RoundedCornerShape(18.dp))
                 .clickable(remember { MutableInteractionSource() }, null) {}
                 .fadingVerticalScroll()) {
                 shownActions.forEachIndexed { i, action ->
@@ -203,7 +209,7 @@ internal fun AppContextMenu(
                         onDismiss()
                         startQuickAction(context, app, action)
                     }
-                    if (i == shownActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
+                    if (i == shownActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = if (tintMenu) .35f else .25f)))
                     else MenuDivider()
                 }
                 if (lockedBy != null) {

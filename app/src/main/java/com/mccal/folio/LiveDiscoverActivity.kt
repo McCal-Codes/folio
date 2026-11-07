@@ -233,6 +233,10 @@ class LiveDiscoverActivity : ComponentActivity() {
         if (!LiveDiscover.attached(this) || isFinishing) { finish(); return }
         enableEdgeToEdge()
         window.setWindowAnimations(0)
+        if (usesSystemWallpaper(this)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
         vertical = org.json.JSONObject(getSharedPreferences("launcher", 0).getString("state", "{}") ?: "{}").optBoolean("verticalStatus", true)
         if (vertical) WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.statusBars())

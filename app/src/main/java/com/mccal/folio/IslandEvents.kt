@@ -24,6 +24,7 @@ internal val IslandEvent.kind: String get() = when (this) {
     is IslandEvent.Charging -> "CHARGING"
     is IslandEvent.Silent -> "SILENT"
     is IslandEvent.Focus -> "FOCUS"
+    is IslandEvent.Torch -> "TORCH"
     is IslandEvent.Bluetooth -> "BLUETOOTH"
     is IslandEvent.Message -> if (alert) "ALERT" else "MESSAGE"
     is IslandEvent.Notice -> "NOTICE"

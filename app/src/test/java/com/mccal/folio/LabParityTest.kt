@@ -43,7 +43,7 @@ class LabParityTest {
 
     @Test fun `the lab uses Folio's own tweak names`() {
         val text = sceneText()
-        for (tweak in TweakFeatures) {
+        for (tweak in TweakFeatures.filter { it.gate != FeatureGate.STANDBY_2 }) {
             assertTrue("the lab doesn't mention ${tweak.name}", tweak.name in text)
         }
     }

@@ -104,7 +104,9 @@ internal class DiscoverFrame(private val activity: Activity, private val vertica
                         canvas.translate(-LiveDiscover.viewport.left.toFloat(), -LiveDiscover.viewport.top.toFloat())
                         painter.draw(Density(d), LayoutDirection.Ltr, androidx.compose.ui.graphics.Canvas(canvas),
                             LiveDiscover.fullSize) {
-                            drawLauncherBackground(LauncherBackgroundCache.bitmap?.asImageBitmap(), DuoAppearanceRuntime.dark)
+                            if (!usesSystemWallpaper(activity)) {
+                                drawLauncherBackground(LauncherBackgroundCache.bitmap?.asImageBitmap(), DuoAppearanceRuntime.dark)
+                            }
                             translate(LiveDiscover.pagerOrigin.x, LiveDiscover.pagerOrigin.y) { drawLayer(layer) }
                         }
                     }
@@ -124,7 +126,9 @@ internal class DiscoverFrame(private val activity: Activity, private val vertica
                 canvas.translate(-origin.x, -origin.y)
                 painter.draw(Density(d), LayoutDirection.Ltr, androidx.compose.ui.graphics.Canvas(canvas),
                     if (fullSize == Size.Zero) Size(width.toFloat(), height.toFloat()) else fullSize) {
-                        drawLauncherBackground(LauncherBackgroundCache.bitmap?.asImageBitmap(), DuoAppearanceRuntime.dark)
+                        if (!usesSystemWallpaper(activity)) {
+                            drawLauncherBackground(LauncherBackgroundCache.bitmap?.asImageBitmap(), DuoAppearanceRuntime.dark)
+                        }
                     }
                 if (DiscoverBounds.available) canvas.drawColor(
                     if (DuoAppearanceRuntime.dark) 0xeb263a43.toInt() else 0xebe8eff2.toInt())
@@ -138,8 +142,10 @@ internal class DiscoverFrame(private val activity: Activity, private val vertica
                 DiscoverMotion.drawHome(canvas, origin.x, origin.y, fullSize.width, fullSize.height)
             }
         }
+        val useSysWallpaper = usesSystemWallpaper(activity)
+        val wallpaperFlag = if (useSysWallpaper) WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER else 0
         val attrs = WindowManager.LayoutParams(-1, -1, WindowManager.LayoutParams.TYPE_DRAWN_APPLICATION,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            wallpaperFlag or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
             PixelFormat.TRANSLUCENT).apply {
             token = activity.window.attributes.token

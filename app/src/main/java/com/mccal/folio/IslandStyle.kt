@@ -90,6 +90,7 @@ internal object IslandStyle {
     private const val CORNERS = "island_style_corners"
     private const val SPEED = "island_style_speed"
     private const val HAPTICS = "island_style_haptics"
+    private const val NOTIF_ROLLING = "island_style_notif_rolling"
     private fun gestureKey(gesture: IslandGesture) = "island_style_gesture_${gesture.key}"
 
     /** What the island did before the options: black, round, standard speed and haptics, tap expands, hold picks up, swipe up puts a card away. */
@@ -98,7 +99,7 @@ internal object IslandStyle {
         IslandGesture.SWIPE_UP to IslandAction.DISMISS, IslandGesture.DOUBLE_TAP to IslandAction.NOTHING,
     )
 
-    /** All five options. [custom] is the opaque color the person typed, kept as typed; [background] is what is drawn. */
+    /** All options. [custom] is the opaque color the person typed, kept as typed; [background] is what is drawn. */
     data class Values(
         val color: IslandColor = IslandColor.BLACK,
         val custom: Int? = null,
@@ -106,6 +107,7 @@ internal object IslandStyle {
         val speed: IslandSpeed = IslandSpeed.STANDARD,
         val haptics: IslandHaptics = IslandHaptics.STANDARD,
         val gestures: IslandGestureMap = defaultGestures,
+        val notificationRolling: Boolean = false,
     ) {
         /** The island's solid color: the preset, or the typed color moved until its text is readable. */
         val background: Int get() = backgroundOf(color, custom)
@@ -131,6 +133,7 @@ internal object IslandStyle {
             speed = IslandSpeed.of(prefs.getString(SPEED, null)),
             haptics = IslandHaptics.of(prefs.getString(HAPTICS, null)),
             gestures = resolveGestures(IslandGesture.entries.mapNotNull { g -> IslandAction.of(prefs.getString(gestureKey(g), null))?.let { g to it } }.toMap()),
+            notificationRolling = prefs.getBoolean(NOTIF_ROLLING, false),
         )
     }
 
@@ -145,6 +148,7 @@ internal object IslandStyle {
     fun saveCorners(context: android.content.Context, corners: IslandCorners) = edit(context) { if (corners == IslandCorners.ROUND) remove(CORNERS) else putString(CORNERS, corners.key) }
     fun saveSpeed(context: android.content.Context, speed: IslandSpeed) = edit(context) { if (speed == IslandSpeed.STANDARD) remove(SPEED) else putString(SPEED, speed.key) }
     fun saveHaptics(context: android.content.Context, haptics: IslandHaptics) = edit(context) { if (haptics == IslandHaptics.STANDARD) remove(HAPTICS) else putString(HAPTICS, haptics.key) }
+    fun saveNotificationRolling(context: android.content.Context, rolling: Boolean) = edit(context) { if (!rolling) remove(NOTIF_ROLLING) else putBoolean(NOTIF_ROLLING, true) }
     /** Refused (returns false, nothing saved) when it would leave no gesture on Dismiss ([canSet]). */
     fun saveGesture(context: android.content.Context, current: IslandGestureMap, gesture: IslandGesture, action: IslandAction): Boolean {
         if (!canSet(current, gesture, action)) return false
@@ -154,7 +158,7 @@ internal object IslandStyle {
 
     /** Clears every option, so the island goes back to how it was. */
     fun reset(context: android.content.Context) = edit(context) {
-        remove(COLOR); remove(CUSTOM); remove(CORNERS); remove(SPEED); remove(HAPTICS)
+        remove(COLOR); remove(CUSTOM); remove(CORNERS); remove(SPEED); remove(HAPTICS); remove(NOTIF_ROLLING)
         IslandGesture.entries.forEach { remove(gestureKey(it)) }
     }
 
