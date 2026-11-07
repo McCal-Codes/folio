@@ -38,6 +38,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Changed
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
+- **What to Test for the 0.7.0 betas:** the list in Folio Dev and the betas now puts the new StandBy, panel, pull tab, Market and Spotlight checks first, and the StandBy styles steps match the twelve clock looks.
 
 ### Fixed
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
