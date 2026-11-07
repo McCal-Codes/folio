@@ -27,23 +27,15 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Widget placement blueprint preview:** Dragging or resizing widgets displays a translucent frosted blueprint and border glow over the target grid cells.
 - **Horizontal dock edge-fade:** Scrolling docks feature smooth horizontal edge fading to prevent harsh icon clipping.
 - **Tabletop control separation:** Extra hinge clearance spaces lower desk deck apps cleanly below the bend in tabletop pose.
+- **StandBy notifications:** a soft edge glow shines in the app's color when a notification arrives, with unread dots for each app.
+- **Notification Center preview pane:** on screens 700 dp and wider (such as the unfolded Fold), Notification Center displays a two-pane list and detail view with full message preview and inline quick actions.
+- **Homescreen swipe to Discover:** swiping to Google Discover stays smooth with your Android wallpaper without flashing the drawn background.
+- **Tweak options:** tweaks in Settings have expanded options and live interactive previews.
 - **Keep the clock steady:** StandBy's colons, Neon glow, Nixie tubes and the outer-screen glow hold still by default. A "Keep the clock steady" switch in the StandBy options lets them move again, in daytime only and never with Reduce Motion.
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
 
 ### Fixed
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
-
-## [0.7.0-beta.1] - 2026-11-04
-
-### Added
-- **StandBy clock styles:** Settings › Fold & Displays adds Split-Flap mechanical plates, Neon Glow, Analog dial and Solar Arc, with rolling digit transitions.
-- **StandBy interactive widgets:** tap the card in StandBy to cycle between Up Next Calendar events, Weather & Ambient Outlook, and Device Vitals & Battery Details.
-- **StandBy notifications:** a soft edge glow shines in the app's color when a notification arrives, with unread dots for each app.
-- **Dual-screen ambient glow:** in tent mode or half open, the outer screen illuminates with a soft steady ambient lamp matching your clock color.
-- **StandBy preview in Settings:** an interactive preview shows your selected clock style, widgets, music card and Day or Night mode.
-- **Notification Center preview pane:** on screens 700 dp and wider (such as the unfolded Fold), Notification Center displays a two-pane list and detail view with full message preview and inline quick actions.
-- **Homescreen swipe to Discover:** swiping to Google Discover stays smooth with your Android wallpaper without flashing the drawn background.
-- **Tweak options:** tweaks in Settings have expanded options and live interactive previews.
 
 ## [0.6.9] - 2026-10-31
 
