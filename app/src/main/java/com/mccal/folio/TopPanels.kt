@@ -1139,7 +1139,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 if (beside.isNotEmpty()) Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
                                     beside.chunked(2).forEach { pair ->
                                         Row(Modifier.zIndex(if (reorder?.moving in pair.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }) { run(c) } }
+                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) },
+                                                settleIndex = if (first) beside.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
                                         }
                                     }
                                 }
@@ -1150,7 +1151,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         (if (cols >= 6 || spec.index != plan.sliderPage) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
                             // The row holding the control being dragged is drawn above the rows after it.
                             Row(Modifier.zIndex(if (reorder?.moving in row.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }) { run(c) } }
+                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) },
+                                    settleIndex = if (first) pageControls.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
                             }
                         }
                         // Edit mode: gallery of controls that aren't in Control Center yet
@@ -1322,11 +1324,35 @@ private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) 
     }
 }
 
+/** How long after the control before it a control starts to settle in, and how many controls count (the rest start with the last). */
+private const val CC_SETTLE_STAGGER_MS = 20
+private const val CC_SETTLE_COUNT = 8
+
+/**
+ * The arrival of Control Center, one shot and never a loop: once the panel is open each control fades in and rises 4 dp, [CC_SETTLE_STAGGER_MS] after
+ * the one before it. The panel's own fade and lift already say "opening"; this says the controls landed. Nothing moves in edit mode (the controls
+ * are being arranged), under Reduce Motion, or when [index] is negative. It starts from nothing on each open, so a closing panel is not cut short.
+ */
+@Composable
+private fun Modifier.ccSettleIn(index: Int, open: Boolean, edit: Boolean): Modifier {
+    if (index < 0 || edit || LocalReduceMotion.current) return this
+    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(open) {
+        if (!open) return@LaunchedEffect
+        progress.snapTo(0f)
+        delay(index.coerceAtMost(CC_SETTLE_COUNT - 1) * CC_SETTLE_STAGGER_MS.toLong())
+        progress.animateTo(1f, FolioMotion.spring(FolioMotion.Settle))
+    }
+    val rise = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
+    return graphicsLayer { val p = progress.value.coerceIn(0f, 1f); alpha = p; translationY = rise * (1f - p) }
+}
+
 /** A 1×1 control that wiggles with a "–" while editing. */
 @Composable
 private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell: Dp, edit: HomeEditMode, onRemove: () -> Unit,
-    reorder: CcReorderState? = null, onMove: (moving: String, target: String) -> Unit = { _, _ -> }, onNudge: (by: Int) -> Unit = {}, onRun: () -> Unit) {
-    Box(Modifier.jiggle(control.name, .6f).then(
+    reorder: CcReorderState? = null, onMove: (moving: String, target: String) -> Unit = { _, _ -> }, onNudge: (by: Int) -> Unit = {},
+    settleIndex: Int = -1, panelOpen: Boolean = true, onRun: () -> Unit) {
+    Box(Modifier.ccSettleIn(settleIndex, panelOpen, edit.active).jiggle(control.name, .6f).then(
         if (reorder != null) Modifier.ccReorderable(control.name, reorder, edit.active, stringResource(R.string.move_control_earlier, stringResource(control.label)),
             stringResource(R.string.move_control_later, stringResource(control.label)), onMove) { onNudge(it) } else Modifier)) {
         SquareToggle(control.icon(), stringResource(control.label), on, accent, cell) { if (!edit.active) onRun() }

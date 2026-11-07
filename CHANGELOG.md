@@ -38,6 +38,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Changed
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
+- **Control Center controls settle in:** when Control Center opens, the controls on its first page fade in and rise a few points one after another, 20 ms apart, instead of arriving all at once. It does not run while you are editing controls or with Reduce Motion on.
 
 ### Fixed
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
