@@ -257,6 +257,14 @@ internal class RoomLightTracker(
     private var pendingSinceMs: Long = -1L
     private var pendingTargetNight: Boolean? = null
 
+    /** Milliseconds until a pending day/night change can commit, or null when none is pending. */
+    fun pendingRemainingMs(timeMs: Long): Long? {
+        val target = pendingTargetNight ?: return null
+        if (pendingSinceMs < 0L) return null
+        val required = if (target) enterDelayMs else exitDelayMs
+        return (required - (timeMs - pendingSinceMs)).coerceAtLeast(0L)
+    }
+
     fun onReading(lux: Float, timeMs: Long): Boolean {
         val wantNight = when {
             !isNight && lux <= enterDarkLux -> true

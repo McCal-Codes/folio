@@ -570,11 +570,25 @@ internal fun rememberRoomLightNight(enabled: Boolean, initialNight: Boolean): Bo
         }
         val tracker = RoomLightTracker(initialNight = initialNight)
         roomDark = tracker.isNight
+        // A steady room sends no new reading, so the change that is waiting out its delay is asked again when the delay ends.
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var lastLux = Float.NaN
+        val recheck = object : Runnable {
+            override fun run() {
+                if (lastLux.isNaN()) return
+                val now = android.os.SystemClock.elapsedRealtime()
+                roomDark = tracker.onReading(lastLux, now)
+                tracker.pendingRemainingMs(now)?.let { handler.postDelayed(this, it + 50L) }
+            }
+        }
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 if (event.sensor.type == Sensor.TYPE_LIGHT && event.values.isNotEmpty()) {
                     val nowElapsedMs = android.os.SystemClock.elapsedRealtime()
-                    roomDark = tracker.onReading(event.values[0], nowElapsedMs)
+                    lastLux = event.values[0]
+                    roomDark = tracker.onReading(lastLux, nowElapsedMs)
+                    handler.removeCallbacks(recheck)
+                    tracker.pendingRemainingMs(nowElapsedMs)?.let { handler.postDelayed(recheck, it + 50L) }
                 }
             }
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
@@ -582,6 +596,7 @@ internal fun rememberRoomLightNight(enabled: Boolean, initialNight: Boolean): Bo
         sensors.registerListener(listener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
         onDispose {
             sensors.unregisterListener(listener)
+            handler.removeCallbacks(recheck)
             roomDark = null
         }
     }
@@ -2236,12 +2251,12 @@ private fun StandByWidgetCarousel(
                             // Swiped up -> advance to next card
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             swipeDirection = 1
-                            widgetIndex = (widgetIndex + 1) % 4
+                            widgetIndex = (widgetIndex + 1) % 3
                         } else if (dragAccumulator > threshold) {
                             // Swiped down -> previous card
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             swipeDirection = -1
-                            widgetIndex = (widgetIndex - 1 + 4) % 4
+                            widgetIndex = (widgetIndex - 1 + 3) % 3
                         }
                         dragAccumulator = 0f
                     },
@@ -2254,7 +2269,7 @@ private fun StandByWidgetCarousel(
             .clickable(remember { MutableInteractionSource() }, null) {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 swipeDirection = 1
-                widgetIndex = (widgetIndex + 1) % 4
+                widgetIndex = (widgetIndex + 1) % 3
             },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2275,8 +2290,7 @@ private fun StandByWidgetCarousel(
             ) { index ->
                 when (index) {
                     1 -> StandByMonthWidget(now, ink, soft, cardBg, accentColor, night)
-                    2 -> StandByWeatherWidget(ink, soft, cardBg, accentColor, night)
-                    3 -> StandByVitalsWidget(status, ink, soft, cardBg, accentColor, night)
+                    2 -> StandByVitalsWidget(status, ink, soft, cardBg, accentColor, night)
                     else -> StandByUpNextCard(next, ink, soft, cardBg, accentColor, night)
                 }
             }
@@ -2285,7 +2299,7 @@ private fun StandByWidgetCarousel(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            for (i in 0 until 4) {
+            for (i in 0 until 3) {
                 val isSelected = i == widgetIndex
                 Box(
                     modifier = Modifier
@@ -2443,59 +2457,6 @@ private fun StandByMonthWidget(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StandByWeatherWidget(
-    ink: Color,
-    soft: Color,
-    cardBg: Color,
-    accentColor: Color,
-    night: Boolean,
-) {
-    val weatherShape = RoundedCornerShape(FolioRadius.SHEET_TOP.dp)
-    val tempSize = 38.sp
-    val degreeSize = 22.sp
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(weatherShape)
-            .background(cardBg)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(stringResource(R.string.standby2_widget_weather), color = if (night) soft else accentColor, fontSize = FolioType.CAPTION.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text(stringResource(R.string.standby2_weather_local), color = ink, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Icon(
-                imageVector = if (night) Icons.Rounded.NightsStay else Icons.Rounded.WbSunny,
-                contentDescription = null,
-                tint = if (night) soft else FolioColors.StandByWeatherSun,
-                modifier = Modifier.size(30.dp)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Row(verticalAlignment = Alignment.Top) {
-                Text("72", color = ink, fontSize = tempSize, fontWeight = FontWeight.Light, lineHeight = tempSize)
-                Text("°", color = soft, fontSize = degreeSize, fontWeight = FontWeight.Light)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(stringResource(R.string.standby2_weather_condition), color = ink, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.Medium)
-                Text("H: 76°  L: 58°", color = soft, fontSize = FolioType.CAPTION.sp) // english-only
             }
         }
     }

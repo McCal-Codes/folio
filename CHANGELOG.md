@@ -12,7 +12,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **App shortcut menu palette tint:** The home screen app shortcut menu (on hold or Cabinet swipe) adopts a frosted glass background tinted with the app icon's color palette.
 - **Seamless unfolded two-page spacing:** When unfolded flat, the left and right pages sit closer together for a continuous two-page layout, and smoothly separate away from the hinge crease when partly folded.
 - **New StandBy clock personalities:** Vintage warm orange Nixie Tube filaments with realistic glass tube reflections, and Minimalist typography with hairline divider and date capsule.
-- **StandBy interactive widget stack:** Tap or swipe/flick the widget card in StandBy vertically to cycle between Up Next Calendar, Month Calendar Grid, Weather Outlook, and Device Vitals with directional slide transitions, animated dots, and haptic feedback.
+- **StandBy interactive widget stack:** Tap or swipe/flick the widget card in StandBy vertically to cycle between Up Next Calendar, Month Calendar Grid, and Device Vitals with directional slide transitions, animated dots, and haptic feedback.
 - **Dual-screen ambient lamp:** Bedside lamp mode softly illuminates the secondary outer screen with a warm steady glow matching your clock color while folded or propped in StandBy.
 - **StandBy live preview in Settings:** Responsive, scalable preview card in Settings showing the active clock face, color accents, and interactive widget cycling.
 - **Page-edge resistance & elasticity:** Pulling past the first Home page or past App Library provides smooth physics resistance that springs back upon release.

@@ -177,8 +177,17 @@ private fun ScreenSaverFace(
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
     val liveModel = FolioSettingsBridge.liveModel?.get()
     val liveState = liveModel?.state?.collectAsState()?.value
-    val config = if (liveState != null) {
-        resolveStandByConfig(liveState, gateOpen, onCover = !cfg.fitsRegularHomeLayout())
+    // Android can start the screen saver after Home's process was reclaimed or its model cleared. Then the saved
+    // settings are the truth, the same file Home writes; only if they can't be read does StandBy look like 0.6.9.
+    val savedState = remember(liveModel == null) {
+        if (liveModel != null) null
+        else runCatching {
+            decodeLauncherState(context.getSharedPreferences(SettingKeys.PREFS, 0).getString(SettingKeys.STATE, "{}") ?: "{}", null)
+        }.getOrNull()
+    }
+    val state = liveState ?: savedState
+    val config = if (state != null) {
+        resolveStandByConfig(state, gateOpen, onCover = !cfg.fitsRegularHomeLayout())
     } else {
         StandByEffectiveConfig.LEGACY_0_6_9
     }

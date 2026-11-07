@@ -59,7 +59,7 @@
       "title": "StandBy interactive widget stack",
       "where": "StandBy face",
       "steps": [
-        "Tap or swipe vertically on the widget card in StandBy to cycle between Up Next Calendar, Month Grid, Weather Outlook, and Device Vitals with animated dot indicator and directional transitions."
+        "Tap or swipe vertically on the widget card in StandBy to cycle between Up Next Calendar, Month Grid, and Device Vitals with animated dot indicator and directional transitions."
       ]
     },
     {
@@ -130,7 +130,7 @@
       "title": "StandBy interactive widgets",
       "where": "StandBy face",
       "steps": [
-        "Tap the widget card in StandBy to cycle between Up Next Calendar, Weather Outlook, and Device Vitals.",
+        "Tap the widget card in StandBy to cycle between Up Next Calendar and Device Vitals.",
         "Verify the vertical 3-dot stack indicator updates."
       ]
     },

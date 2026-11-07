@@ -2646,7 +2646,7 @@ private fun StandByVisualSettings(state: LauncherState, model: LauncherModel) {
                         .fillMaxHeight()
                         .clickable(remember { MutableInteractionSource() }, null) {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            previewWidget = (previewWidget + 1) % 4
+                            previewWidget = (previewWidget + 1) % 3
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -2677,15 +2677,6 @@ private fun StandByVisualSettings(state: LauncherState, model: LauncherModel) {
                                 }
                             }
                             2 -> {
-                                // Weather Outlook
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Text("72°", color = Color.White, fontSize = fs22, fontWeight = FontWeight.Light)
-                                    Text("☀️", fontSize = fs16)
-                                }
-                                Text(stringResource(R.string.standby2_weather_condition), color = Color.White.copy(alpha = 0.8f), fontSize = fs9, fontWeight = FontWeight.SemiBold)
-                                Text("H: 76°  L: 58°", color = Color.White.copy(alpha = 0.5f), fontSize = fs8) // english-only
-                            }
-                            3 -> {
                                 // Battery & Vitals
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Text(stringResource(R.string.battery), color = clockColor, fontSize = fs9, fontWeight = FontWeight.Bold)
