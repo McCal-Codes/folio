@@ -2876,6 +2876,8 @@ private fun StandByVisualSettings(state: LauncherState, model: LauncherModel) {
             tag = "tweak-option-standby2-player",
             enabled = true
         )
+        SettingsSwitch(stringResource(R.string.standby2_steady), TweakOptions.on(state.tweakOptions, STANDBY2_ID, "steady"),
+            { model.setTweakOption(STANDBY2_ID, "steady", if (it) TweakOptions.ON else TweakOptions.OFF) }, "tweak-option-standby2-steady")
     }
 }
 

@@ -49,6 +49,13 @@ class StandBySteadyGuardTest {
         assertTrue("LocalStandBySteady must default to steady", Regex("""LocalStandBySteady = staticCompositionLocalOf \{ true \}""").containsMatchIn(text))
     }
 
+    /** The page draws its Look section by hand (TweakOptionsCard skips it), so an option added there alone is never shown. */
+    @Test
+    fun theSwitchIsDrawnOnTheStandBy2Page() {
+        val sheet = java.io.File(root, "app/src/main/java/com/mccal/folio/CustomizationSheet.kt").readText()
+        assertTrue("the steady switch is not drawn on the StandBy 2 page", """STANDBY2_ID, "steady"""" in sheet)
+    }
+
     @Test
     fun theSwitchIsOnByDefaultAndTurnsOff() {
         val option = TweakOptions.of(STANDBY2_ID).firstOrNull { it.id == "steady" }
