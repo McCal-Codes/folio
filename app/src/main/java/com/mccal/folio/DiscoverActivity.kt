@@ -11,6 +11,7 @@ import android.content.pm.LauncherApps
 import android.os.Bundle
 import android.os.UserManager
 import android.widget.Toast
+import android.view.WindowManager
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.animation.ValueAnimator
@@ -158,6 +159,10 @@ private fun ComponentActivity.configureDiscoverWindow(vertical: Boolean) {
     // The page coordinates its own motion. Also clear the window-level style that Google
     // inherits from LayoutParams; NO_ANIMATION alone only governs the activity handoff.
     window.setWindowAnimations(0)
+    if (usesSystemWallpaper(this)) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+    }
     enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
     WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -393,14 +398,16 @@ private fun DiscoverDock(state: LauncherState, status: DeviceStatus, fullSize: S
     }
     DiscoverMotion.pageWidth = (fullWidth - preset.dockWidth - 28f) * density.density
     Box(Modifier.fillMaxSize().testTag("discover-chrome").semantics { testTagsAsResourceId = true }) {
-        Canvas(Modifier.fillMaxSize()) {
-            val offset = fullSize.width - size.width
-            translate(left = -offset) {
-                // Draw the same full-screen wallpaper coordinates in this narrow viewport.
-                val native = drawContext.canvas
-                val painter = androidx.compose.ui.graphics.drawscope.CanvasDrawScope()
-                painter.draw(density, layoutDirection, native, fullSize) {
-                    drawLauncherBackground(backgroundPhoto, DuoAppearanceRuntime.dark)
+        if (!usesSystemWallpaper(context)) {
+            Canvas(Modifier.fillMaxSize()) {
+                val offset = fullSize.width - size.width
+                translate(left = -offset) {
+                    // Draw the same full-screen wallpaper coordinates in this narrow viewport.
+                    val native = drawContext.canvas
+                    val painter = androidx.compose.ui.graphics.drawscope.CanvasDrawScope()
+                    painter.draw(density, layoutDirection, native, fullSize) {
+                        drawLauncherBackground(backgroundPhoto, DuoAppearanceRuntime.dark)
+                    }
                 }
             }
         }

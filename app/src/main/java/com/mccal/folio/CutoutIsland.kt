@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.compose.foundation.basicMarquee
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.res.stringResource
@@ -189,9 +190,13 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
         val live = (content as? IslandContent.Live)?.activity
-        // A new message opens straight into a small card (like an iPhone banner coming out of the island).
+        // A new message opens straight into a small card (like an iPhone banner coming out of the island),
+        // or rolls inside the pill if rolling notification ticker is enabled.
         val ringing = (live as? IslandActivity.Call)?.takeIf { it.incoming && it.key != ringPutAway }
-        val open = (expanded && live != null) || message != null || notice != null || ringing != null
+        val isRollingMessage = message != null && style.notificationRolling
+        val open = (expanded && live != null) || (message != null && !style.notificationRolling) || notice != null || ringing != null
+        val eventAccent = rememberAccent(message?.appIcon ?: notice?.appIcon)
+        val tintIsland = LocalTintOptions.current.islandNotifications && eventAccent != null && (message != null || notice != null)
         // A notice fits its text and keeps clear of the screen edges and a bent hinge; other cards keep their width.
         val hinge = LocalHinge.current?.takeIf { it.active }
         val placement = notice?.let { n ->
@@ -203,14 +208,26 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         // One shape morphs between pill and card: width, corner radius and height all spring together,
         // anchored to the camera like the real Dynamic Island.
         val morph = if (reduceMotion) snap() else FolioMotion.spring<Dp>(FolioMotion.scaled(.74f to Spring.StiffnessMediumLow, speed))
-        val width by animateDpAsState(if (open) cardW else geometry.widthFor(content).dp, morph, label = "island-width")
+        val rollingWidth = (geometry.camW + 240f).coerceAtMost(windowWidth.toDp().value - 24f).dp
+        val pillWidth = if (isRollingMessage) rollingWidth else geometry.widthFor(content).dp
+        val width by animateDpAsState(if (open) cardW else pillWidth, morph, label = "island-width")
         // Advanced island: the color applies only off a real camera hole, and a squarer corner never goes under the hole's own curve.
         val wraps = IslandStyle.wrapsRealCamera(custom, camera, reportedCutout, windowWidth, windowHeight)
         val colored = IslandStyle.colorApplies(wraps, open)
         // The color follows the same spring as the card's width, so it grows in with the card instead of snapping on while it is still a pill.
         val colorMorph = if (reduceMotion) snap() else FolioMotion.spring<Color>(FolioMotion.scaled(.74f to Spring.StiffnessMediumLow, speed))
-        val surface by androidx.compose.animation.animateColorAsState(if (colored) Color(style.background) else Color.Black, colorMorph, label = "island-surface")
-        val ink by androidx.compose.animation.animateColorAsState(if (colored) Color(IslandStyle.inkFor(style.background)) else Color.White, colorMorph, label = "island-ink")
+        val targetSurface = when {
+            tintIsland -> mixColor(FolioColors.SurfaceLowest, eventAccent, 0.45f)
+            colored -> Color(style.background)
+            else -> Color.Black
+        }
+        val targetInk = when {
+            tintIsland -> Color.White
+            colored -> Color(IslandStyle.inkFor(style.background))
+            else -> Color.White
+        }
+        val surface by androidx.compose.animation.animateColorAsState(targetSurface, colorMorph, label = "island-surface")
+        val ink by androidx.compose.animation.animateColorAsState(targetInk, colorMorph, label = "island-ink")
         val pillRadius = IslandStyle.pillRadius(style.corners, geometry.pillH, if (wraps) minOf(geometry.camW, geometry.camH) / 2f else 0f).dp
         val corner by animateDpAsState(if (open) style.corners.card.dp else pillRadius, morph, label = "island-corner")
         // Always a clear margin from the screen edges, like the gap around iPhone's island.
@@ -242,7 +259,15 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                 IslandAction.MOVE, IslandAction.NOTHING -> Unit
             }
         }
-        val tapAction = { if (customGestures) runAction(gestures.getValue(IslandGesture.TAP)) else toggle() }
+        val tapAction = {
+            if (eventVisible is IslandEvent.Torch) {
+                val cm = context.getSystemService(android.hardware.camera2.CameraManager::class.java)
+                val id = cm?.cameraIdList?.firstOrNull { cm.getCameraCharacteristics(it).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
+                if (id != null) runCatching { cm.setTorchMode(id, false) }
+                eventVisible = null
+                IslandEvents.dismiss()
+            } else if (customGestures) runAction(gestures.getValue(IslandGesture.TAP)) else toggle()
+        }
         val actionLabels = if (customGestures) IslandGesture.entries.map { gestures.getValue(it) }.distinct().filter { it == IslandAction.EXPAND || it == IslandAction.OPEN_APP || it == IslandAction.DISMISS }
             .associateWith { stringResource(when (it) {
                 IslandAction.EXPAND -> if (open) R.string.island_collapse else R.string.island_expand
@@ -308,6 +333,12 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
                     val ringingNow = live is IslandActivity.Call && live.incoming
                     Box(Modifier.swipeUpToHide(ringingNow) { expanded = false; ringPutAway = (live as IslandActivity.Call).key }) {
                         ExpandedCardContent(live, onOpen = { expanded = false; onOpen(live) })
+                    }
+                }
+                else if (isRollingMessage && message != null) {
+                    IslandRollingTicker(message, pillH) {
+                        eventVisible = null
+                        IslandListenerService.openKey(context, message.key, message.packageName)
                     }
                 }
                 else Box(Modifier.width(geometry.widthFor(content).dp).height(pillH)) { IslandPillContent(content, geometry.wrapW.dp, pillH) }
@@ -661,6 +692,7 @@ internal fun describe(content: IslandContent, strings: Strings): String = when (
         is IslandEvent.Charging -> e.level?.let { strings.plural(R.plurals.island_charging_percent, it, it) } ?: strings.get(R.string.charging)
         is IslandEvent.Silent -> strings.get(if (e.on) R.string.silent_mode_on else R.string.silent_mode_off)
         is IslandEvent.Focus -> strings.get(if (e.on) R.string.do_not_disturb_on_2 else R.string.do_not_disturb_off_2)
+        is IslandEvent.Torch -> strings.get(if (e.on) R.string.state_on else R.string.state_off)
         is IslandEvent.Bluetooth -> e.name?.let { strings.get(R.string.island_connected_to, it) } ?: strings.get(R.string.connected)
         is IslandEvent.Notice -> e.text
         is IslandEvent.Message -> when {
@@ -692,6 +724,12 @@ internal fun LeadingGlyph(content: IslandContent, size: Dp) {
                 Spacer(Modifier.width(4.dp))
                 Text(stringResource(R.string.focus), color = IslandInk, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             }
+            is IslandEvent.Torch -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (e.on) Icons.Rounded.FlashlightOn else Icons.Rounded.FlashlightOff, null,
+                    tint = if (e.on) IslandOrange else IslandInk, modifier = Modifier.size(size * .75f))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.flashlight), color = IslandInk, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            }
             is IslandEvent.Bluetooth -> Icon(if (e.speaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones, null, tint = IslandBlue, modifier = Modifier.size(size * .8f))
             is IslandEvent.Message -> MessageAvatar(e, size)
             is IslandEvent.Notice -> e.appIcon?.let { Image(it.asImageBitmap(), null, Modifier.size(size).clip(RoundedCornerShape(size * .24f))) }
@@ -718,6 +756,7 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
             is IslandEvent.Charging -> Text("${e.level ?: ""}%", color = IslandGreen, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             is IslandEvent.Silent -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Red else IslandInk.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             is IslandEvent.Focus -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) Purple else IslandInk.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
+            is IslandEvent.Torch -> Text(stringResource(if (e.on) R.string.state_on else R.string.state_off), color = if (e.on) IslandOrange else IslandInk.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold)
             is IslandEvent.Bluetooth -> Text(e.name ?: stringResource(R.string.connected), color = IslandInk, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The app's icon beside the sender's photo; without a photo the icon is already on the left.
             is IslandEvent.Message -> e.appIcon?.takeIf { e.avatar != null }?.let { Image(it.asImageBitmap(), null, Modifier.size(size * .8f).clip(RoundedCornerShape(size * .22f))) }
@@ -730,6 +769,59 @@ internal fun TrailingGlyph(content: IslandContent, size: Dp) {
             is IslandActivity.Timer -> Chronometer(a.base, a.countDown, IslandOrange)
             is IslandActivity.Navigation -> Text(a.subtitle ?: a.title, color = IslandInk, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun IslandRollingTicker(
+    message: IslandEvent.Message,
+    pillH: Dp,
+    onClick: () -> Unit,
+) {
+    val reduceMotion = LocalReduceMotion.current
+    val inset = (pillH * .17f).coerceIn(5.dp, 8.dp)
+    val avatarSize = (pillH - inset * 2).coerceAtLeast(20.dp)
+    val text = remember(message.sender, message.text) {
+        if (!message.text.isNullOrBlank()) "${message.sender}: ${message.text}" else message.sender
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
+            .padding(horizontal = inset + 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        MessageAvatar(message, avatarSize)
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = text,
+                color = LocalIslandInk.current,
+                fontSize = FolioType.FOOTNOTE.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = if (reduceMotion) TextOverflow.Ellipsis else TextOverflow.Clip,
+                modifier = if (reduceMotion) Modifier else Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    initialDelayMillis = 600,
+                    velocity = 45.dp,
+                ),
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = LocalIslandInk.current.copy(alpha = 0.6f),
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 

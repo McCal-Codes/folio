@@ -26,7 +26,10 @@ class AppRenamingTest {
         val thumb = "N".repeat(MAX_APP_NAME - 1) + "\uD83D\uDC4D"
         assertEquals("N".repeat(MAX_APP_NAME - 1), thumb.takeAppName())
         val family = "N".repeat(MAX_APP_NAME - 4) + "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67"
-        assertEquals("N".repeat(MAX_APP_NAME - 4) + "\uD83D\uDC68", family.takeAppName())
+        // Modern JDKs (Java 20+) with full emoji ZWJ support treat the sequence as one cluster and cut before it;
+        // older JDKs cut between the people and drop the dangling joiner. Both keep the name within the cap.
+        val cut = family.takeAppName()
+        assertTrue(cut == "N".repeat(MAX_APP_NAME - 4) || cut == "N".repeat(MAX_APP_NAME - 4) + "\uD83D\uDC68")
         // Nothing to cut: a name inside the cap comes back whole, emoji and all.
         assertEquals("Mail \uD83D\uDC4D", "Mail \uD83D\uDC4D".takeAppName())
     }

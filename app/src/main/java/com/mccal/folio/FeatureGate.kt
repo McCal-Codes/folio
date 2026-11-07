@@ -227,7 +227,31 @@ internal enum class FeatureGate(
      * bottom, and only Set writes (McCal, 30 Oct 2026; Lab: wallpaper-apple). Supporters and Folio Dev try it in the betas and everyone
      * gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it. While shut, a tap only stages the art and Set sits under the page preview.
      */
-    WALLPAPER_PREVIEW("wallpaperPreview", closedSince = "2026-10-30", opensIn = "0.6.9", { OPEN_IN_0_6_9 });
+    WALLPAPER_PREVIEW("wallpaperPreview", closedSince = "2026-10-30", opensIn = "0.6.9", { OPEN_IN_0_6_9 }),
+
+    /**
+     * Notification Center's preview pane: on a window 700 dp wide or more with the Full screen layout, the list sits on the left and the
+     * notification you tap opens beside it with its whole text and its actions, like iPad Mail (McCal, 29 Oct 2026, option 1; Lab:
+     * wide-panels-live). Supporters and Folio Dev try it in the 0.7.0 betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open
+     * it. While shut, a wide window keeps the big clock beside the list, as before.
+     */
+    NC_PREVIEW_PANE("ncPreviewPane", closedSince = "2026-11-02", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * iPhone Duo's unfolded pane spacing: on the open screen the left page sits closer to the right one when the phone is flat, so the
+     * two halves read as one Home rather than two islands with a wide gap down the middle, and when the hinge is partly folded it
+     * springs back to the middle of its own half to clear the crease (McCal, 2 Nov 2026). Supporters and Folio Dev try it in the 0.7.0
+     * betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, the left page stays centered in its half.
+     */
+    DUO_PANE_GAP("duoPaneGap", closedSince = "2026-11-02", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * StandBy 2: posture-aware layouts (book, tabletop, tent, landscape, portrait) and the StandBy 2 tweak options
+     * (clock look, player card, Up Next, timers, notification colors, night mode). Supporters and Folio Dev try it in
+     * the betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut the tweak is hidden from
+     * the Tweak Library and [resolveStandByConfig] returns 0.6.9's exact defaults.
+     */
+    STANDBY_2("standby2", closedSince = "2026-11-02", opensIn = "0.7.0", { OPEN_IN_0_7_0 });
 
     /** True once the feature ships to everyone and the gate stops mattering. */
     val open: Boolean get() = openToEveryone()
