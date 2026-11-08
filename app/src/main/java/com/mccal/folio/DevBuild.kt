@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 
@@ -116,6 +117,15 @@ internal object DevBuild {
 
     /** Rows shown up front; the rest sit behind "N more changes". */
     const val LEAD_ROWS = 3
+
+    /** Steps shown on the New build page before "See all". */
+    const val TRY_LEAD = 4
+
+    /** A note "Title: what to do" as its two parts; a note with no short title before a colon is all title. */
+    fun split(note: String): Pair<String, String?> {
+        val colon = note.indexOf(':')
+        return if (colon in 1..40) note.substring(0, colon).trim() to note.substring(colon + 1).trim().ifEmpty { null } else note to null
+    }
     const val RECENT_SHOWN = 5
 
     /** The commits to list: what is newer than the last build, or the latest few when the same build is opened again. */
@@ -149,6 +159,9 @@ private object DevText {
     const val REOPENED_BODY = "You are on this build now." // english-only
     const val NEW_BODY = "Folio Dev was just replaced. Here is what is new on this phone." // english-only
     const val TRY = "What to try" // english-only
+    const val TRIED = "Tried" // english-only
+    const val NOT_TRIED = "Not tried yet" // english-only
+    fun seeAll(n: Int) = "See all $n" // english-only
     const val CONTINUE = "Continue" // english-only
     const val ALL_DONE = "All done" // english-only
     const val DONE = "Done" // english-only
@@ -171,6 +184,7 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
     val kind = DevBuild.kind(info, seen)
     var ticks by remember { mutableStateOf(DevBuild.ticks(context, info.sha)) }
     var moreOpen by remember { mutableStateOf(false) }
+    var allSteps by remember { mutableStateOf(false) }
     val changes = remember { DevBuild.listed(info, seen) }
     // On a short window the two buttons would take the whole sheet and leave the list a sliver, so they scroll with it (INT/ADP: size class, not a device).
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480
@@ -210,17 +224,25 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
                 }
                 if (info.notes.isNotEmpty()) {
                     SheetGroupLabel(DevText.TRY + " · " + DevText.tried(ticks.size, info.notes.size))
-                    SheetGroup {
-                        info.notes.forEachIndexed { i, step ->
-                            if (i > 0) MenuDivider()
-                            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = i in ticks, onCheckedChange = { on ->
-                                    ticks = if (on) ticks + i else ticks - i
-                                    DevBuild.setTicks(context, info.sha, ticks)
-                                }, modifier = Modifier.semantics { contentDescription = step }.testTag("dev-build-step-$i"))
-                                Text(step, color = white, fontSize = FolioType.BODY.sp)
+                    // Apple's What's New shows three or four things and keeps the rest one tap away.
+                    val shown = if (allSteps) info.notes.size else minOf(info.notes.size, DevBuild.TRY_LEAD)
+                    info.notes.take(shown).forEachIndexed { i, step ->
+                        val (title, detail) = DevBuild.split(step)
+                        val on = i in ticks
+                        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
+                            .clickable { ticks = if (on) ticks - i else ticks + i; DevBuild.setTicks(context, info.sha, ticks) }
+                            .semantics(mergeDescendants = true) { stateDescription = if (on) DevText.TRIED else DevText.NOT_TRIED }.testTag("dev-build-step-$i"),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            EntryTile(title)
+                            Column(Modifier.padding(start = FolioSpace.LARGE.dp, end = FolioSpace.MEDIUM.dp).weight(1f)) {
+                                Text(title, color = white, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                                if (detail != null) Text(detail, color = white.copy(alpha = .75f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp))
                             }
+                            TestStatus(if (on) WhatToTest.Result.OK else null)
                         }
+                    }
+                    if (!allSteps && info.notes.size > shown) Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { allSteps = true }.testTag("dev-build-see-all"), contentAlignment = Alignment.Center) {
+                        Text(DevText.seeAll(info.notes.size), color = FolioColors.Cyan, fontSize = FolioType.BODY.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     }
                 }
                 if (changes.isNotEmpty()) {

@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,43 +77,10 @@ internal fun WhatToTestPage(onOpenSetup: () -> Unit) {
                 .background(LocalAccent.current.fill, CircleShape))
         }
     }
-    SheetGroup {
-        list.items.forEachIndexed { index, item ->
-            if (index > 0) MenuDivider()
-            val result = answers[item.id]
-            val isOpen = open == item.id
-            val stateText = when (result) {
-                WhatToTest.Result.OK -> stringResource(R.string.it_worked)
-                WhatToTest.Result.BAD -> stringResource(R.string.something_is_wrong)
-                WhatToTest.Result.SKIP -> stringResource(R.string.skip)
-                null -> stringResource(R.string.what_to_test_not_tried)
-            }
-            Column(Modifier.fillMaxWidth().testTag("what-to-test-${item.id}")) {
-                Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clickable { open = if (isOpen) null else item.id }
-                    .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp)
-                    .semantics(mergeDescendants = true) { stateDescription = stateText },
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Text(when (result) { WhatToTest.Result.OK -> "✓"; WhatToTest.Result.BAD -> "!"; WhatToTest.Result.SKIP -> "–"; null -> "○" },
-                        color = if (result == WhatToTest.Result.BAD) Color(0xFFFF6B63) else Color.White, fontSize = FolioType.BODY.sp, modifier = Modifier.width(28.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(item.title, color = Color.White, fontSize = FolioType.BODY.sp)
-                        if (item.where.isNotBlank()) Text(item.where, color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
-                    }
-                }
-                if (isOpen) {
-                    Column(Modifier.padding(start = FolioSpace.LARGE.dp + 28.dp, end = FolioSpace.LARGE.dp, bottom = FolioSpace.SMALL.dp)) {
-                        item.steps.forEachIndexed { i, step ->
-                            Text("${i + 1}. $step", color = Color.White.copy(alpha = .9f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(bottom = FolioSpace.TINY.dp))
-                        }
-                    }
-                    if (item.action == "setup") IosActionRow(stringResource(R.string.open_the_new_setup), "what-to-test-open-setup", onClick = onOpenSetup)
-                    IosActionRow(stringResource(R.string.it_worked), "what-to-test-worked", onClick = { answer(item, WhatToTest.Result.OK) })
-                    IosActionRow(stringResource(R.string.something_is_wrong), "what-to-test-wrong", destructive = true, onClick = { answer(item, WhatToTest.Result.BAD) })
-                    IosActionRow(stringResource(R.string.skip), "what-to-test-skip", onClick = { answer(item, WhatToTest.Result.SKIP) })
-                }
-            }
-        }
-    }
+    val todo = list.items.filter { it.id !in answers }
+    val finished = list.items.filter { it.id in answers }
+    TestSection(stringResource(R.string.what_to_test_to_try, todo.size), todo, answers, open, { open = if (open == it.id) null else it.id }, ::answer, onOpenSetup)
+    TestSection(stringResource(R.string.what_to_test_done_label, finished.size), finished, answers, open, { open = if (open == it.id) null else it.id }, ::answer, onOpenSetup)
     reporting?.let { item ->
         val note = item.title
         AlertDialog(onDismissRequest = { reporting = null },
@@ -121,5 +95,76 @@ internal fun WhatToTestPage(onOpenSetup: () -> Unit) {
                     runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.url(context, note)))) }
                 } },
                 modifier = Modifier.testTag("what-to-test-report-github")) { Text(stringResource(R.string.use_github_instead)) } })
+    }
+}
+
+/** A heading and its entries; nothing at all when the list is empty, so a finished list shows only Done. */
+@Composable
+private fun TestSection(label: String, items: List<TestItem>, answers: Map<String, WhatToTest.Result>, open: String?,
+    onToggle: (TestItem) -> Unit, onAnswer: (TestItem, WhatToTest.Result) -> Unit, onOpenSetup: () -> Unit) {
+    if (items.isEmpty()) return
+    SheetGroupLabel(label)
+    items.forEach { item -> TestEntry(item, answers[item.id], open == item.id, { onToggle(item) }, { onAnswer(item, it) }, onOpenSetup) }
+}
+
+/** One entry the way Apple's What's New writes one: a colored tile, a bold title, a gray line, and how it went on the right. */
+@Composable
+internal fun TestEntry(item: TestItem, result: WhatToTest.Result?, isOpen: Boolean, onToggle: () -> Unit, onAnswer: (WhatToTest.Result) -> Unit, onOpenSetup: () -> Unit) {
+    val stateText = when (result) {
+        WhatToTest.Result.OK -> stringResource(R.string.it_worked)
+        WhatToTest.Result.BAD -> stringResource(R.string.something_is_wrong)
+        WhatToTest.Result.SKIP -> stringResource(R.string.skip)
+        null -> stringResource(R.string.what_to_test_not_tried)
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).testTag("what-to-test-${item.id}")) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(onClick = onToggle).padding(vertical = FolioSpace.SMALL.dp)
+            .semantics(mergeDescendants = true) { stateDescription = stateText }, verticalAlignment = Alignment.CenterVertically) {
+            EntryTile(item.title)
+            Column(Modifier.padding(start = FolioSpace.LARGE.dp, end = FolioSpace.MEDIUM.dp).weight(1f)) {
+                Text(item.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)
+                item.steps.firstOrNull()?.let { Text(it, color = Color.White.copy(alpha = .75f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.HAIR.dp)) }
+            }
+            TestStatus(result)
+        }
+        if (isOpen) {
+            Column(Modifier.padding(start = 38.dp + FolioSpace.LARGE.dp)) {
+                if (item.where.isNotBlank()) Text(item.where, color = Color.White.copy(alpha = .75f), fontSize = FolioType.FOOTNOTE.sp)
+                item.steps.drop(1).forEach { Text(it, color = Color.White.copy(alpha = .9f), fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.padding(top = FolioSpace.TINY.dp)) }
+            }
+            if (item.action == "setup") IosActionRow(stringResource(R.string.open_the_new_setup), "what-to-test-open-setup", onClick = onOpenSetup)
+            Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp, bottom = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                AnswerButton(stringResource(R.string.it_worked), LocalAccent.current.fill, Color.White, "what-to-test-worked", Modifier.weight(1f)) { onAnswer(WhatToTest.Result.OK) }
+                AnswerButton(stringResource(R.string.something_is_wrong), Color.White.copy(alpha = .14f), Color(0xFFFF9D94), "what-to-test-wrong", Modifier.weight(1f)) { onAnswer(WhatToTest.Result.BAD) }
+                AnswerButton(stringResource(R.string.skip), Color.White.copy(alpha = .14f), Color.White, "what-to-test-skip", Modifier.weight(1f)) { onAnswer(WhatToTest.Result.SKIP) }
+            }
+        }
+    }
+}
+
+/** Folio's own icon tile (as in Settings): a solid color, a white glyph, picked from the words in the title. */
+@Composable
+internal fun EntryTile(title: String, size: Dp = 38.dp) {
+    val (icon, color) = remember(title) { WhatsNew.symbol(title) }
+    Box(Modifier.size(size).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(Color(color)), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * .6f))
+    }
+}
+
+/** How it went, as a symbol and not only a color: a check, an exclamation mark, a dash, or an empty ring. */
+@Composable
+internal fun TestStatus(result: WhatToTest.Result?, filled: Boolean = true) {
+    val fill = when (result) { WhatToTest.Result.OK -> LocalAccent.current.fill; WhatToTest.Result.BAD -> Color(0xFFC4001A); else -> Color.Transparent }
+    val ring = if (result == WhatToTest.Result.OK || result == WhatToTest.Result.BAD) fill else Color.White.copy(alpha = .7f)
+    Box(Modifier.size(28.dp).clip(CircleShape).background(if (filled) fill else Color.Transparent).border(2.dp, ring, CircleShape), contentAlignment = Alignment.Center) {
+        Text(when (result) { WhatToTest.Result.OK -> "✓"; WhatToTest.Result.BAD -> "!"; WhatToTest.Result.SKIP -> "–"; null -> "" },
+            color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun AnswerButton(text: String, background: Color, color: Color, tag: String, modifier: Modifier, onClick: () -> Unit) {
+    Box(modifier.heightIn(min = 52.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(background).clickable(onClick = onClick)
+        .padding(horizontal = FolioSpace.SMALL.dp).testTag(tag), contentAlignment = Alignment.Center) {
+        Text(text, color = color, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
     }
 }
