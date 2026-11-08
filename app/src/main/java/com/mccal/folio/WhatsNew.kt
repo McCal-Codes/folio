@@ -38,6 +38,12 @@ internal object WhatsNew {
         return NoteItem(m.groupValues[1].trim().removeSuffix(":"), detail)
     }
 
+    /** The first sentence of a changelog detail, so a feature on the sheet stays one short gray line; the rest stays in the changelog. */
+    fun firstSentence(detail: String): String {
+        val end = Regex("""[.!?](?=\s+[A-Z"])""").find(detail)?.range?.last ?: return detail
+        return detail.substring(0, end + 1)
+    }
+
     /** A symbol and color for a feature, chosen from words in its title (a star when nothing matches). */
     fun symbol(title: String): Pair<androidx.compose.ui.graphics.vector.ImageVector, Long> {
         val t = title.lowercase(java.util.Locale.ROOT)
@@ -74,7 +80,7 @@ internal object WhatsNew {
             "tabletop" in t -> Icons.Rounded.Devices to FolioColors.Value.Teal
             "bug" in t || "report" in t || "fix" in t || "stabiliz" in t -> Icons.Rounded.BugReport to FolioColors.Value.Orange
             "roadmap" in t -> Icons.Rounded.Map to FolioColors.Value.Indigo
-            "island" in t || "ticker" in t -> Icons.Rounded.Circle to FolioColors.Value.Gray
+            "island" in t || "ticker" in t -> Icons.Rounded.Sensors to FolioColors.Value.Indigo
             "theme" in t || "look" in t || "color" in t || "palette" in t || "tint" in t -> Icons.Rounded.Palette to FolioColors.Value.Pink
             else -> Icons.Rounded.AutoAwesome to FolioColors.Value.Yellow
         }
@@ -280,9 +286,11 @@ private fun FeatureRow(note: NoteItem) {
                 )
             }
             androidx.compose.material3.Text(
-                MarketText.inline(note.detail, LocalAccent.current.ink),
+                MarketText.inline(WhatsNew.firstSentence(note.detail), LocalAccent.current.ink),
                 color = androidx.compose.ui.graphics.Color.White.copy(alpha = .78f),
                 fontSize = FolioType.SUBHEAD.sp,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.HAIR.dp)
             )
         }
