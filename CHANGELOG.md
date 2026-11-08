@@ -45,6 +45,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What to Test for the 0.7.0 betas:** the list in Folio Dev and the betas now puts the new StandBy, panel, pull tab, Market and Spotlight checks first, and the StandBy styles steps match the twelve clock looks.
 - **What to Test is shorter:** every item is now a title, where to look and one short line, so the list reads at a glance. The list is labeled for 0.7.0-beta.1.
 - **What to Test looks like What's New:** each item has a colored icon, a bold title, one gray line and a status circle, and tapping it opens the steps with It Worked, Something's Wrong and Skip. Done items move to their own section. The New build sheet in Folio Dev uses the same layout and shows the first four checks, with See all for the rest. What's New after an update looks the same: four new features with a colored icon, a bold title and gray text, then "more new features" for the rest. Each item has its own icon instead of a star, and the page note is one line. The Korean and Chinese text is machine translated.
+- **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
 - **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.
