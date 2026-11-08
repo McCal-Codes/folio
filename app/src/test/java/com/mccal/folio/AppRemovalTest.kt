@@ -152,6 +152,23 @@ class AppRemovalTest {
         compose.onNodeWithText(text(R.string.add_to_home)).assertExists()
     }
 
+    @Test fun `with the app panel on the menu has a row that opens it`() {
+        val panels = mutableListOf<String>()
+        compose.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(LocalAppPanel provides { app: AppEntry -> panels += app.label }) {
+                AppContextMenu(spotify, onHome = true, hidden = false, onDismiss = {}, onMove = {}, onAddOrRemove = {},
+                    onCreateFolder = {}, onWidgets = null, onToggleHidden = {}, onInfo = {}, onRename = {})
+            }
+        }
+        compose.onNodeWithTag("menu-app-panel").performClick()
+        assertEquals(listOf("Spotify"), panels)
+    }
+
+    @Test fun `without the app panel the menu has no panel row`() {
+        menu(onHome = true)
+        compose.onNodeWithTag("menu-app-panel").assertDoesNotExist()
+    }
+
     @Test fun `a shortcut is still deleted as a shortcut`() {
         val shortcut = AppEntry("com.android.chrome/${SHORTCUT_CLASS_PREFIX}abc", "Docs", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
         var removed = 0; var opened = 0

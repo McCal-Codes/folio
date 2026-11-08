@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,6 +41,8 @@ import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -75,13 +78,24 @@ internal fun Modifier.swipeUpForPanel(onSwipeUp: (() -> Unit)?): Modifier = if (
     }
 }
 
+/** The panel as a TalkBack action on its icon (A11Y-2), so reaching it never depends on the flick. Empty where the panel is off. */
+@Composable
+internal fun rememberPanelActions(app: AppEntry?, openPanel: ((AppEntry) -> Unit)?): List<CustomAccessibilityAction> {
+    val label = stringResource(R.string.show_app_panel)
+    return remember(app, openPanel, label) {
+        if (app == null || openPanel == null) emptyList() else listOf(CustomAccessibilityAction(label) { openPanel(app); true })
+    }
+}
+
 /** iOS-style app panel above the icon: shortcuts, the app's latest notifications and its music controls. */
 @Composable
 internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val appear = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Appear)) }
+    // Reduce Motion (DYN-11): the panel only fades in, once and briefly, instead of growing out of the icon.
+    val still = LocalReduceMotion.current
+    LaunchedEffect(Unit) { appear.animateTo(1f, if (still) tween(FolioMotion.FADE_MS) else FolioMotion.spring(FolioMotion.Appear)) }
     RegisterOpenWindow(LauncherSheets)
     val actions by produceState(emptyList<QuickAction>(), app.id, app.iconFrom) { value = withContext(Dispatchers.IO) { loadQuickActions(context, app, 4) } }
     val notifications = IslandListenerService.notifications.collectAsStateWithLifecycle().value.filter { it.packageName == app.component.packageName }.take(3)
@@ -111,17 +125,21 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
             val left = popupLeft(iconCenterX, panelW, screenW, gap)
             val iconTop = icon?.let { it.top - origin.y } ?: with(density) { maxHeight.toPx() } / 2
             // Above the icon (like Velox) unless there isn't room, then below it.
-            val above = iconTop - gap - panelH > with(density) { 56.dp.toPx() }
-            val top = if (above) iconTop - gap - panelH else (icon?.let { it.bottom - origin.y } ?: iconTop) + gap
+            val safeTop = with(density) { 56.dp.toPx() }      // clear of the camera and island
+            val safeBottom = with(density) { 32.dp.toPx() }
+            val above = iconTop - gap - panelH > safeTop
+            val top = (if (above) iconTop - gap - panelH else (icon?.let { it.bottom - origin.y } ?: iconTop) + gap)
+                .coerceIn(safeTop, (with(density) { maxHeight.toPx() } - panelH - safeBottom).coerceAtLeast(safeTop))
             val appAccent = rememberAccent(app.icon)
             val tintPanel = LocalTintOptions.current.appMenu && appAccent != null
             val panelBg = if (tintPanel) mixColor(FolioColors.PopoverSurface, appAccent, 0.45f).copy(alpha = .88f) else FolioColors.PopoverSurface.copy(alpha = .97f)
             val panelBorder: BorderStroke = if (tintPanel) BorderStroke(1.2.dp, appAccent.copy(alpha = 0.45f)) else FolioGlass.edge
-
+            // Taller than the screen allows (large text): the panel stops here and its list scrolls, with the header and Open pinned.
             Column(Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }.width(with(density) { panelW.toDp() })
+                .heightIn(max = maxHeight - with(density) { (safeTop + safeBottom).toDp() })
                 .onSizeChanged { panelH = it.height }
                 .graphicsLayer {
-                    val s = .85f + .15f * appear.value; scaleX = s; scaleY = s
+                    if (!still) { val s = .85f + .15f * appear.value; scaleX = s; scaleY = s }
                     transformOrigin = TransformOrigin(((iconCenterX - left) / panelW).coerceIn(0f, 1f), if (above) 1f else 0f)
                 }
                 .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(panelBg).border(panelBorder, RoundedCornerShape(FolioRadius.PANEL.dp))
@@ -132,48 +150,53 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
                     Spacer(Modifier.width(10.dp))
                     Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Text(stringResource(R.string.open), color = Color.Black, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clip(CircleShape).background(Color.White).clickable(onClick = onOpen).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
-                }
-                media?.let { m ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f)).padding(FolioSpace.COMPACT.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        (m.art ?: m.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))) }
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(m.title, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                        }
-                        val t = runCatching { m.controller.transportControls }.getOrNull()
-                        TransportButton(Icons.Rounded.FastRewind, stringResource(R.string.media_previous), 30.dp) { t?.skipToPrevious() }
-                        TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            stringResource(if (m.playing) R.string.pause else R.string.play), 34.dp) {
-                            if (m.playing) t?.pause() else t?.play()
-                        }
-                        TransportButton(Icons.Rounded.FastForward, stringResource(R.string.media_next), 30.dp) { t?.skipToNext() }
+                    // The pill is drawn as before; its tap is FolioTouch.MIN tall (A11Y-1).
+                    Box(Modifier.heightIn(min = FolioTouch.MIN.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onOpen), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.open), color = Color.Black, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clip(CircleShape).background(Color.White).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SNUG.dp))
                     }
                 }
-                if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
-                    notifications.forEachIndexed { index, item ->
-                        if (index > 0) MenuDivider()
-                        Column(Modifier.fillMaxWidth().clickable { onDismiss(); IslandListenerService.openNotification(context, item) }
-                            .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = 9.dp)) {
-                            Text(item.title ?: item.appLabel, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            item.text?.let { Text(it, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                Column(Modifier.weight(1f, fill = false).fadingVerticalScroll(), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
+                    media?.let { m ->
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f)).padding(FolioSpace.COMPACT.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            (m.art ?: m.icon)?.let { Image(it.asImageBitmap(), null, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))) }
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(m.title, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                m.subtitle?.let { Text(it, color = Color.White.copy(alpha = .6f), fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            }
+                            val t = runCatching { m.controller.transportControls }.getOrNull()
+                            TransportButton(Icons.Rounded.FastRewind, stringResource(R.string.media_previous), 30.dp) { t?.skipToPrevious() }
+                            TransportButton(if (m.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                stringResource(if (m.playing) R.string.pause else R.string.play), 34.dp) {
+                                if (m.playing) t?.pause() else t?.play()
+                            }
+                            TransportButton(Icons.Rounded.FastForward, stringResource(R.string.media_next), 30.dp) { t?.skipToNext() }
                         }
                     }
-                }
-                if (actions.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
-                    actions.forEachIndexed { index, action ->
-                        if (index > 0) MenuDivider()
-                        MenuRow(action.label, bitmap = action.icon) {
-                            onDismiss()
-                            startQuickAction(context, app, action)
+                    if (notifications.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
+                        notifications.forEachIndexed { index, item ->
+                            if (index > 0) MenuDivider()
+                            Column(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clickable { onDismiss(); IslandListenerService.openNotification(context, item) }
+                                .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMPACT.dp), verticalArrangement = Arrangement.Center) {
+                                Text(item.title ?: item.appLabel, color = Color.White, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                item.text?.let { Text(it, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                            }
                         }
                     }
+                    if (actions.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .08f))) {
+                        actions.forEachIndexed { index, action ->
+                            if (index > 0) MenuDivider()
+                            MenuRow(action.label, bitmap = action.icon) {
+                                onDismiss()
+                                startQuickAction(context, app, action)
+                            }
+                        }
+                    }
+                    if (media == null && notifications.isEmpty() && actions.isEmpty())
+                        Text(stringResource(R.string.no_shortcuts_or_notifications_for_1, app.label), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
                 }
-                if (media == null && notifications.isEmpty() && actions.isEmpty())
-                    Text(stringResource(R.string.no_shortcuts_or_notifications_for_1, app.label), color = Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp)
             }
         }
     }

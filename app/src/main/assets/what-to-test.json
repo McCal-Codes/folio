@@ -2,6 +2,53 @@
   "release": "0.7.0-beta.2",
   "items": [
     {
+      "id": "pull-tabs",
+      "title": "Pull tabs in full-screen apps",
+      "where": "A video, game or reader that hides the status bar",
+      "steps": [
+        "Pull the left tab down: Notification Center should open. Pull the right tab: Control Center.",
+        "Turn off the switch under 'Pull down from the top of any app' in Settings: the tabs should go.",
+        "Check a normal app with a status bar: no tabs should show."
+      ]
+    },
+    {
+      "id": "panel-swipe-away",
+      "title": "Panels follow your finger",
+      "where": "Notification Center and Control Center",
+      "steps": [
+        "Open a panel and swipe up slowly, then let go early: it should spring back.",
+        "Swipe up past halfway, or flick: it should close from where your finger left it, not in one jump."
+      ]
+    },
+    {
+      "id": "standby-steady",
+      "title": "StandBy clocks hold still",
+      "where": "Settings > Fold & Displays > StandBy 2",
+      "steps": [
+        "Try Thin, Bold, Flip, Neon and Nixie in StandBy: the colons and glow should not pulse.",
+        "Turn off 'Keep the clock steady' in daytime: the colons and glow should move again.",
+        "With Reduce Motion on, they should stay still either way."
+      ]
+    },
+    {
+      "id": "market-compat",
+      "title": "Compatibility before Get",
+      "where": "Market > any package",
+      "steps": [
+        "Open a package and check the sheet says whether it works on your phone before you tap Get.",
+        "For a package that cannot be installed, Get should be off with the reason beside it."
+      ]
+    },
+    {
+      "id": "spotlight-phone-settings",
+      "title": "Phone settings in Spotlight",
+      "where": "Home > Search",
+      "steps": [
+        "Type 'display' or 'notifications' in Spotlight: a matching setting should show.",
+        "Open it: it should open that page in Android Settings."
+      ]
+    },
+    {
       "id": "island-tint-rolling",
       "title": "Island notification tint & ticker",
       "where": "Settings > Dynamic Island > Notification Style",
@@ -120,9 +167,9 @@
       "title": "StandBy clock styles",
       "where": "Settings > Fold & Displays > StandBy",
       "steps": [
-        "Try Split-Flap, Neon Glow, Analog, and Solar Arc clock styles.",
-        "Verify rolling digit transitions and dial animations.",
-        "Preview in Settings should scale cleanly without cutting off."
+        "Try the twelve looks: Thin, Bold, Analog, Numerals, Flip, World, Solar, Words, Stack, Neon, Nixie and Minimal.",
+        "Each look should show in its own style in the Settings preview, in day and night.",
+        "The preview should scale cleanly without cutting off."
       ]
     },
     {

@@ -36,16 +36,17 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Phone settings in Spotlight:** find settings such as Display and Notifications from multiword queries. Search opens a matching setting, and unfamiliar settings queries can continue in Android Settings.
 - **Compatibility before Get:** the Market's install sheet now says up front whether a package works on your phone, works with a limit (for example it covers only one of your screens) or cannot be installed, and why, using the same answer the package page shows and the installer acts on. Get is off, with the reason beside it, whenever the installer would refuse.
 - **Pull tabs in full-screen apps:** in a video, a game or a reader that hides the status bar, two small tabs sit on the top edge, the left for Notification Center and the right for Control Center. Pull one down to open its panel. A switch under "Pull down from the top of any app" turns them off.
+- **Cabinet without the flick:** the long-press menu has an App Panel row, and TalkBack lists the same action as Show App Panel on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
 
 ### Changed
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
+- **What to Test for the 0.7.0 betas:** the list in Folio Dev and the betas now puts the new StandBy, panel, pull tab, Market and Spotlight checks first, and the StandBy styles steps match the twelve clock looks.
 
 ### Fixed
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
-
-### Fixed
 - **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size.
+- **Dual-Screen Ambient Light switch:** StandBy 2's options now show the switch for the outer-screen glow. It was in the code but missing from the page, so the glow could not be turned off.
 
 ## [0.6.9] - 2026-10-31
 

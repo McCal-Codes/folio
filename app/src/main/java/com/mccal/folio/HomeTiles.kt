@@ -190,15 +190,19 @@ internal fun DockAppColumn(
             }
             val dockClick = { if (savedApp != null) { if (!edit.active) { if (FolioMotion.v2) launchingSlot = index; onLaunch(savedApp, launchBounds[index]) } } else onChoose(index) }
             val indication = LocalIndication.current
-            val dockGestures = rememberIconGestures(savedApp, interactions[index], indication, null, null, dockClick,
-                plain = Modifier.combinedClickable(interactionSource = interactions[index], indication = indication, role = Role.Button, onClick = dockClick, onLongClick = null))
+            // A dock icon opens the app panel like a Home icon: a flick up, or the TalkBack action.
+            val openPanel = LocalAppPanel.current
+            val dockGestures = rememberIconGestures(savedApp, interactions[index], indication, openPanel, null, dockClick,
+                plain = Modifier.iconSwipes(savedApp?.let { app -> openPanel?.let { { it(app) } } }, null)
+                    .combinedClickable(interactionSource = interactions[index], indication = indication, role = Role.Button, onClick = dockClick, onLongClick = null))
+            val dockActions = dockGestures.customActions + rememberPanelActions(savedApp, openPanel)
             Box(Modifier.slot(index)
                 .testTag("dock-slot-$index").dropRegion(drag, cell, savedApp?.id)
                 .semantics(mergeDescendants = true) { contentDescription = savedApp?.label ?: "Choose dock app ${index + 1}" }
                 .then(dockGestures.modifier)
                 .semantics {
                     onLongClick(chooseDockLabel) { onChoose(index); true }
-                    if (dockGestures.customActions.isNotEmpty()) customActions = dockGestures.customActions
+                    if (dockActions.isNotEmpty()) customActions = dockActions
                 })
         }
 
@@ -359,12 +363,13 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     val gestures = rememberIconGestures(app, interaction, null, openPanel, stack, tap,
         plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = tap))
+    val a11yActions = gestures.customActions + rememberPanelActions(app, openPanel)
     Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
         .then(gestures.modifier)
         .semantics {
             onLongClick(appOptionsLabel) { onLongClick(); true }
             // Every action is also here, so nothing depends on a gesture (TalkBack's Actions list).
-            if (gestures.customActions.isNotEmpty()) customActions = gestures.customActions
+            if (a11yActions.isNotEmpty()) customActions = a11yActions
         }.padding(horizontal = FolioSpace.HAIR.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // Bounds are read outside the wiggle layer so jiggling doesn't report a new position every frame.

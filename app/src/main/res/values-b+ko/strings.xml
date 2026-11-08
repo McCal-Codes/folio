@@ -1584,6 +1584,8 @@
     <string name="remove_from_dock">Dock에서 %1$s 제거</string>
     <string name="used_recently">최근 사용함</string>
     <string name="app_options">앱 옵션</string>
+    <string name="show_app_panel">앱 패널 보기</string>
+    <string name="app_panel">앱 패널</string>
     <string name="remove_from_home_2">홈 화면에서 %1$s 제거</string>
     <string name="android_notifications">Android 알림</string>
     <string name="clear_all">모두 지우기</string>
