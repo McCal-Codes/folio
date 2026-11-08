@@ -289,7 +289,7 @@ private fun FeatureRow(note: NoteItem) {
                 MarketText.inline(WhatsNew.firstSentence(note.detail), LocalAccent.current.ink),
                 color = androidx.compose.ui.graphics.Color.White.copy(alpha = .78f),
                 fontSize = FolioType.SUBHEAD.sp,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = androidx.compose.ui.Modifier.padding(top = FolioSpace.HAIR.dp)
             )
