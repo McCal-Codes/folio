@@ -2,13 +2,13 @@
 
 Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > What's New > This build).
 
-- Dynamic Island notification tint & rolling ticker: popup background tinted to app icon, optional ticker scrolls along the island
-- App shortcut menu palette tint: home context menus tinted with frosted liquid glass sampled from the app icon
-- Seamless unfolded two-page spacing: narrower unified spacing flat, separates away from the hinge when partly folded
-- StandBy 2.5 clock personalities: Nixie Tube vacuum filament numerals and Minimalist typography
-- StandBy 2.5 interactive widgets: tap or vertically flick cards to cycle with directional slide animations and haptics
-- Dual-screen ambient lamp: cover display illuminates with warm breathing glow matching clock face
-- Page-edge resistance & overscroll elasticity: smooth spring physics when pulling past outer edges
-- Expand widget temporarily: interactive preview card for Clock, Calendar, and Vitals
-- Duo-styled status rail: tabular numerals, quiet charging response with compact bolt indicator
-- Control Center toggles: active accent on Battery Saver, in-place Bluetooth panel sheet, robust calculator/timer resolution
+- Island tint and ticker: get a notification. The pill should match the app's color.
+- App menu color: hold an app. The menu should take the icon's color.
+- Unfolded spacing: unfold flat, then part way. The pages should ease apart.
+- Nixie and Minimal clocks: pick each in StandBy.
+- StandBy widgets: tap or flick the card to switch.
+- Ambient lamp: prop the Fold in tent pose. The cover screen should glow.
+- Page edge: swipe past the first page. It should pull back softly.
+- Expand a widget: hold Clock, Calendar or Vitals and choose Expand temporarily.
+- Status rail: plug in. A small bolt should show.
+- Control Center: flip Battery Saver. Tap Bluetooth for its panel.
