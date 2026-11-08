@@ -43,9 +43,8 @@ Folio shows the newest section on the phone after an update, and every version u
 ### Fixed
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
-
-### Fixed
 - **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size.
+- **Dual-Screen Ambient Light switch:** StandBy 2's options now show the switch for the outer-screen glow. It was in the code but missing from the page, so the glow could not be turned off.
 
 ## [0.6.9] - 2026-10-31
 
