@@ -75,6 +75,9 @@ import kotlinx.coroutines.launch
 /** Spotlight sections that can be turned off in settings. */
 internal enum class SpotlightSection(@androidx.annotation.StringRes val title: Int) { SUGGESTIONS(R.string.suggestions), CONTACTS(R.string.contacts), SETTINGS(R.string.phone_settings), CALCULATOR(R.string.calculator), WEB(R.string.search_the_web_ask_ai) }
 
+/** How many of Folio's own settings Spotlight lists; the rest are counted, not listed. */
+private const val FOLIO_SETTING_ROWS = 3
+
 /** Remembers the last apps launched from Folio, for Spotlight suggestions. Stays on the device. */
 internal object RecentApps {
     private const val KEY = "recent_apps"
@@ -116,7 +119,7 @@ internal object RecentApps {
 /** iOS-style Spotlight over Home: suggestions, apps, contacts, settings, calculator, web and AI. */
 @Composable
 internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: LauncherState, onClose: () -> Unit,
-    onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit) {
+    onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit, onOpenFolioSetting: (CustomizationPage, String?) -> Unit = { _, _ -> }) {
     OverlayBackHandler(visible, onClose)
     // Composed while visible or still animating out; every layer follows the one shared spring,
     // so scrim, content and the blurred Home behind always move together.
@@ -140,11 +143,12 @@ internal fun SpotlightOverlay(visible: Boolean, progress: () -> Float, state: La
         if (still) return@graphicsLayer
         translationY = -lift * (1f - p); scaleX = .96f + .04f * p; scaleY = scaleX
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f)
-    }) { SpotlightContent(state, active = visible, onClose, onLaunch, onAddToHome) }
+    }) { SpotlightContent(state, active = visible, onClose, onLaunch, onAddToHome, onOpenFolioSetting) }
 }
 
 @Composable
-private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () -> Unit, onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit) {
+private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () -> Unit, onLaunch: (AppEntry) -> Unit, onAddToHome: (AppEntry) -> Unit,
+    onOpenFolioSetting: (CustomizationPage, String?) -> Unit) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
@@ -233,6 +237,8 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     val settingHits = remember(q, shortcuts, settingsLabel, settingsVisible) {
         if (settingsVisible) searchSystemSettings(shortcuts, q, settingsLabel) else emptyList()
     }
+    // Folio's own settings and pages, found the way Settings search finds them (the same index and gates), under the same Settings switch as the phone's.
+    val folioHits = remember(q, settingsVisible, configuration) { if (settingsVisible && q.isNotEmpty()) folioSettingHits(context, q) else emptyList() }
     val math = remember(q) { evaluateMath(q) }
     var contactsGranted by remember { mutableStateOf(context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) }
     val contactsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { contactsGranted = it }
@@ -278,6 +284,8 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         keyboardActions = KeyboardActions(onSearch = {
                             when {
                                 appHits.isNotEmpty() -> launch(appHits.first())
+                                // The order the results are drawn in: Folio's own settings, then the phone's.
+                                folioHits.isNotEmpty() -> folioHits.first().let { hit -> onClose(); onOpenFolioSetting(hit.page, hit.focus) }
                                 settingHits.isNotEmpty() -> openSetting(settingHits.first())
                                 q.isNotEmpty() -> { onClose(); openEnterSearch(context, state, q) }
                             }
@@ -313,6 +321,15 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         Section(stringResource(R.string.top_hit)) { TopHit(top, homeOffer(state.layout, top.id), onAdd = { onAddToHome(top) }) { launch(top) } }
                     } }
                     if (appHits.size > 1) item("apps") { Section(stringResource(R.string.apps)) { AppGrid(appHits.drop(1).take(8), launch) } }
+                    if (folioHits.isNotEmpty()) item("folio-settings") {
+                        Section(stringResource(R.string.folio_settings)) {
+                            folioHits.take(FOLIO_SETTING_ROWS).forEach { hit ->
+                                ResultRow(Icons.Rounded.Tune, hit.title, hit.where ?: stringResource(R.string.settings)) { onClose(); onOpenFolioSetting(hit.page, hit.focus) }
+                            }
+                            if (folioHits.size > FOLIO_SETTING_ROWS) Text(stringResource(R.string.more_in_settings, folioHits.size - FOLIO_SETTING_ROWS),
+                                color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.TINY.dp))
+                        }
+                    }
                     if (settingHits.isNotEmpty()) item("settings") {
                         Section(stringResource(R.string.phone_settings)) { settingHits.forEach { setting ->
                             ResultRow(Icons.Rounded.Settings, setting.title, stringResource(R.string.phone_settings)) { openSetting(setting) }

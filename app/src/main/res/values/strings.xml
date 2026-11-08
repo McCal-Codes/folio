@@ -670,6 +670,7 @@
     <string name="hotspot">Hotspot</string>
     <string name="battery_saver">Battery Saver</string>
     <string name="settings">Settings</string>
+    <string name="more_in_settings">%1$d more in Settings</string>
     <string name="android_quick_settings">Android Quick Settings</string>
     <string name="show_connectivity_details">Show connectivity details</string>
     <string name="volume">Volume</string>

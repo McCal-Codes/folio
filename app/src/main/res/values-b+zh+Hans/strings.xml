@@ -676,6 +676,7 @@
     <string name="hotspot">个人热点</string>
     <string name="battery_saver">省电模式</string>
     <string name="settings">设置</string>
+    <string name="more_in_settings">设置中还有 %1$d 项</string>
     <string name="android_quick_settings">Android 快捷设置</string>
     <string name="show_connectivity_details">显示连接详细信息</string>
     <string name="volume">音量</string>

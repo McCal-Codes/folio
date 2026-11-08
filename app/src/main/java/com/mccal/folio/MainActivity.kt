@@ -485,6 +485,8 @@ class MainActivity : ComponentActivity() {
                 }
                 SpotlightOverlay(spotlightVisible.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, state, onClose = { spotlightVisible.value = false },
                     onLaunch = { launchApp(it) },
+                    // A Folio setting found in Spotlight: Settings opens on its page and scrolls to the row, as a result in Settings search does.
+                    onOpenFolioSetting = { page, row -> SettingsFocus.label = row; SettingsLink.page = page; settingsRequests.intValue++ },
                     onAddToHome = { app ->
                         // Stays open, so more can be added; the row turns into "On Home" by itself.
                         model.setPinned(app.id, true)
