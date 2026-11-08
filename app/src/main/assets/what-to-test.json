@@ -1,42 +1,36 @@
 {
-  "release": "0.7.0-beta.2",
+  "release": "0.7.0-beta.1",
   "items": [
     {
       "id": "pull-tabs",
-      "title": "Pull tabs in full-screen apps",
-      "where": "A video, game or reader that hides the status bar",
+      "title": "Pull tabs",
+      "where": "Full-screen apps",
       "steps": [
-        "Pull the left tab down: Notification Center should open. Pull the right tab: Control Center.",
-        "Turn off the switch under 'Pull down from the top of any app' in Settings: the tabs should go.",
-        "Check a normal app with a status bar: no tabs should show."
+        "Pull the left tab for Notification Center, the right for Control Center."
       ]
     },
     {
       "id": "panel-swipe-away",
       "title": "Panels follow your finger",
-      "where": "Notification Center and Control Center",
+      "where": "Notification Center",
       "steps": [
-        "Open a panel and swipe up slowly, then let go early: it should spring back.",
-        "Swipe up past halfway, or flick: it should close from where your finger left it, not in one jump."
+        "Swipe up slowly and let go early. It should spring back."
       ]
     },
     {
       "id": "standby-steady",
-      "title": "StandBy clocks hold still",
+      "title": "Steady StandBy clocks",
       "where": "Settings > Fold & Displays > StandBy 2",
       "steps": [
-        "Try Thin, Bold, Flip, Neon and Nixie in StandBy: the colons and glow should not pulse.",
-        "Turn off 'Keep the clock steady' in daytime: the colons and glow should move again.",
-        "With Reduce Motion on, they should stay still either way."
+        "Try each clock. The colons should hold still."
       ]
     },
     {
       "id": "market-compat",
       "title": "Compatibility before Get",
-      "where": "Market > any package",
+      "where": "Market",
       "steps": [
-        "Open a package and check the sheet says whether it works on your phone before you tap Get.",
-        "For a package that cannot be installed, Get should be off with the reason beside it."
+        "Open a package. Get should say if it works on your phone."
       ]
     },
     {
@@ -44,141 +38,127 @@
       "title": "Phone settings in Spotlight",
       "where": "Home > Search",
       "steps": [
-        "Type 'display' or 'notifications' in Spotlight: a matching setting should show.",
-        "Open it: it should open that page in Android Settings."
+        "Type \"display\". Open the match."
       ]
     },
     {
       "id": "island-tint-rolling",
-      "title": "Island notification tint & ticker",
-      "where": "Settings > Dynamic Island > Notification Style",
+      "title": "Island tint and ticker",
+      "where": "Settings > Dynamic Island",
       "steps": [
-        "Receive a notification: notice the island popup background subtly matches the app's icon color palette.",
-        "Enable 'Rolling notification ticker' to see long notification messages roll smoothly across the pill rather than expanding into a card."
+        "Get a notification. The pill should match the app's color."
       ]
     },
     {
       "id": "island-flashlight",
-      "title": "Island flashlight pill indicator",
-      "where": "Dynamic Island (any screen)",
+      "title": "Island flashlight",
+      "where": "Dynamic Island",
       "steps": [
-        "Turn on the flashlight from Control Center or quick settings.",
-        "Notice the glowing amber Flashlight indicator in the Island; tap it to turn the flashlight off."
+        "Turn the flashlight on. An amber light should show. Tap it to turn off."
       ]
     },
     {
       "id": "widget-drop-blueprint",
-      "title": "Widget placement blueprint preview",
-      "where": "Home screen grid",
+      "title": "Widget drop preview",
+      "where": "Home",
       "steps": [
-        "Pick up or move a widget across Home grid cells.",
-        "Observe the glowing frosted blueprint outline and subtle scale response as it hovers over valid targets."
+        "Move a widget around. An outline should show where it fits."
       ]
     },
     {
       "id": "app-menu-palette-tint",
-      "title": "App shortcut menu palette tint",
-      "where": "Home screen / Cabinet swipe",
+      "title": "App menu color",
+      "where": "Home",
       "steps": [
-        "Long press or swipe up on an app (e.g. Google Play Store): the context shortcut menu background adopts a frosted glass tint sampled from the app icon color."
+        "Hold an app. The menu should take the icon's color."
       ]
     },
     {
       "id": "unfolded-seamless-spacing",
-      "title": "Seamless unfolded two-page spacing",
-      "where": "Foldables unfolded Home screen (Settings > Grid, icon size & dock)",
+      "title": "Unfolded page spacing",
+      "where": "Fold, inner screen",
       "steps": [
-        "Unfold flat: notice the left and right pages sit closer together for a uniform layout.",
-        "Partly fold into book posture: notice the halves smoothly separate away from the hinge crease."
+        "Unfold flat: pages sit closer. Part way: they ease apart."
       ]
     },
     {
       "id": "standby-nixie-minimal",
-      "title": "Nixie & Minimalist StandBy clocks",
-      "where": "Settings > Fold & Displays > StandBy > Clock Style",
+      "title": "Nixie and Minimal clocks",
+      "where": "Settings > Fold & Displays > StandBy",
       "steps": [
-        "Select Nixie for warm orange vacuum filament numerals with glass tube reflections.",
-        "Select Minimal for hairline divider with clean date capsule and high-contrast numerals."
+        "Pick each one and look at how it reads."
       ]
     },
     {
       "id": "standby-widget-carousel",
-      "title": "StandBy interactive widget stack",
-      "where": "StandBy face",
+      "title": "StandBy widget stack",
+      "where": "StandBy",
       "steps": [
-        "Tap or swipe vertically on the widget card in StandBy to cycle between Up Next Calendar, Month Grid, and Device Vitals with animated dot indicator and directional transitions."
+        "Tap or swipe the card to switch widgets."
       ]
     },
     {
       "id": "page-edge-resistance",
-      "title": "Page-edge resistance elasticity",
-      "where": "Home screen & App Library",
+      "title": "Page edge resistance",
+      "where": "Home and App Library",
       "steps": [
-        "Swipe past the first Home page or past App Library: notice the smooth elastic resistance that pulls back smoothly rather than hitting a hard stop."
+        "Swipe past the first page. It should pull back softly."
       ]
     },
     {
       "id": "widget-expand-temporarily",
-      "title": "Expand widget temporarily preview",
-      "where": "Home widgets (Clock, Calendar, Vitals)",
+      "title": "Expand a widget",
+      "where": "Home",
       "steps": [
-        "Long press any built-in widget and select 'Expand temporarily': an interactive card opens with detailed info and app shortcuts without modifying the saved Home layout."
+        "Hold a widget, then choose Expand temporarily."
       ]
     },
     {
       "id": "status-rail-duo",
-      "title": "Duo status rail & charging bolt",
-      "where": "Home screen side status rail",
+      "title": "Status rail and charging bolt",
+      "where": "Home, Side Bar",
       "steps": [
-        "Plug in your device: notice the compact charging bolt indicator beside the battery percentage/ring and the gentle pulse response.",
-        "Observe tabular numerals keeping the clock and reading steady as minutes advance."
+        "Plug in. A small bolt should show by the battery."
       ]
     },
     {
       "id": "cc-toggles-refined",
-      "title": "Control Center toggles & sheets",
+      "title": "Control Center toggles",
       "where": "Control Center",
       "steps": [
-        "Open Control Center: toggle Battery Saver, Flashlight, and Rotation Lock; observe active state accents.",
-        "Tap Wi-Fi or Bluetooth: observe the quick system panel sheet without leaving the launcher."
+        "Flip a few toggles. Tap Wi-Fi for its panel."
       ]
     },
     {
       "id": "standby-ambient-lamp",
-      "title": "Dual-screen ambient lamp",
-      "where": "Settings > Fold & Displays > StandBy > Dual-Screen Ambient Light",
+      "title": "Ambient lamp",
+      "where": "Settings > Fold & Displays > StandBy",
       "steps": [
-        "Enable Dual-Screen Ambient Light, prop phone in tent or bedside posture with StandBy active.",
-        "The outer cover screen softly illuminates as a warm bedside night lamp."
+        "Turn on Dual-Screen Ambient Light. The cover screen should glow."
       ]
     },
     {
       "id": "nc-preview-pane",
-      "title": "Notification Center preview pane",
-      "where": "Notification Center on wide screens (>= 700 dp, such as unfolded Fold)",
+      "title": "Notification preview pane",
+      "where": "Notification Center, unfolded",
       "steps": [
-        "Unfold the phone and pull down Notification Center.",
-        "Notifications appear in a list on the left with full preview and actions on the right.",
-        "Tap a notification to select it and preview full body, inline replies, and action buttons."
+        "Tap a notification. Its preview should open on the right."
       ]
     },
     {
       "id": "standby-styles",
-      "title": "StandBy clock styles",
+      "title": "StandBy clock looks",
       "where": "Settings > Fold & Displays > StandBy",
       "steps": [
-        "Try the twelve looks: Thin, Bold, Analog, Numerals, Flip, World, Solar, Words, Stack, Neon, Nixie and Minimal.",
-        "Each look should show in its own style in the Settings preview, in day and night.",
-        "The preview should scale cleanly without cutting off."
+        "Try all twelve. The preview should fit in day and night."
       ]
     },
     {
       "id": "standby-widgets",
-      "title": "StandBy interactive widgets",
-      "where": "StandBy face",
+      "title": "StandBy widgets",
+      "where": "StandBy",
       "steps": [
-        "Tap the widget card in StandBy to cycle between Up Next Calendar and Device Vitals.",
-        "Verify the vertical 3-dot stack indicator updates."
+        "Tap the card to switch between Calendar and Vitals."
       ]
     },
     {
@@ -186,114 +166,95 @@
       "title": "StandBy notifications",
       "where": "Settings > Fold & Displays > StandBy",
       "steps": [
-        "Choose Colors or Count Only under Notifications in StandBy.",
-        "Send a notification: the screen edge should glow softly in the app's accent color.",
-        "Verify unread dots appear with the app count."
+        "Send a notification. The edge should glow softly."
       ]
     },
     {
       "id": "standby-ambient",
-      "title": "Dual-screen ambient glow",
-      "where": "Fold tent or half-open pose",
+      "title": "Ambient glow",
+      "where": "Fold in tent or half open",
       "steps": [
-        "Place your Fold in tent mode or slightly open with StandBy on.",
-        "The secondary screen should illuminate with a steady ambient glow matching your clock color."
+        "Turn StandBy on. The outer screen should glow."
       ]
     },
     {
       "id": "discover-swipe",
-      "title": "Swipe to Google Discover",
-      "where": "Home screen",
+      "title": "Swipe to Discover",
+      "where": "Home",
       "steps": [
-        "Swipe left to Google Discover with an Android system wallpaper set.",
-        "No drawn Dunes background should flash or appear behind the feed."
+        "Swipe left. No background should flash."
       ]
     },
     {
       "id": "cc-swipes",
-      "title": "Control Center pages and swipe away",
-      "where": "Home, status rail. Fold: try the cover and the inner screen",
+      "title": "Control Center pages",
+      "where": "Home, Side Bar",
       "steps": [
-        "Tap the status rail on Home to open Control Center. Swipe down from a gap between tiles: the next page should follow your finger and settle, and a short drag should spring back. If the strip shows only one page, go to step 3.",
-        "Swipe up on that page: it should go back to the page before, without closing the panel.",
-        "On the first page, drag up from empty space: the panel should follow your finger, tick lightly at the point where letting go closes it, and close on release. A short slow drag should spring back.",
-        "Tap the close button beside power: it should close. Open it again and tap the empty margin around the grid: it should close. Tap between two tiles: it should stay open."
+        "Swipe down between tiles for the next page. Swipe up to go back."
       ]
     },
     {
       "id": "status-rail-press",
-      "title": "Status rail tap and hold",
-      "where": "Home, Side Bar status",
+      "title": "Side Bar tap and hold",
+      "where": "Home, Side Bar",
       "steps": [
-        "Tap the status capsule: Control Center should open.",
-        "Hold the capsule for a couple of seconds: only the capsule should shade, with no faint second pill above it.",
-        "Enter Edit Home and tap the capsule: Control Center should not open."
+        "Tap it for Control Center. Hold it: no second pill."
       ]
     },
     {
       "id": "cc-volume-keys",
-      "title": "Sliders follow the volume keys",
-      "where": "Control Center. Play something in a music app first",
+      "title": "Sliders follow volume keys",
+      "where": "Control Center",
       "steps": [
-        "Open Control Center and press the volume keys: the volume slider should move with each press, within about a quarter of a second.",
-        "Mute the music volume with the keys: the slider should read empty."
+        "Play music, open Control Center, press the volume keys."
       ]
     },
     {
       "id": "folder-blur",
-      "title": "Open folders blur Home behind them",
-      "where": "Home and App Library. Fold: cover and inner screen",
+      "title": "Folders blur Home",
+      "where": "Home and App Library",
       "steps": [
-        "Open a folder on Home: Home should blur and dim behind it as it opens, and none of Home's clock or date text should show behind the folder's title.",
-        "Open a category folder in the App Library: the same blur and dim.",
-        "Close it: Home should be sharp again. With Reduce Transparency on (Settings > Accessibility, switch it back after) there should be no blur, a darker dim and a solid card."
+        "Open a folder. Home should blur behind it."
       ]
     },
     {
       "id": "landscape-home",
-      "title": "Landscape Home keeps every row",
-      "where": "Home app, rotation. Turn auto-rotate on for this, then set it back. Fold: cover and inner",
+      "title": "Landscape Home",
+      "where": "Home, rotated",
       "steps": [
-        "Rotate the phone to landscape on Home: every row of apps should be whole, with labels, above the Search strip. A short window should split into two columns.",
-        "Turn from landscape to portrait and back a few times, and fold and unfold with Home open: Folio should not close."
+        "Rotate the phone. Every row should stay whole."
       ]
     },
     {
       "id": "disabled-app-spot",
       "title": "A turned-off app keeps its spot",
-      "where": "Android Settings > Apps. Turn the app back on afterwards",
+      "where": "Android Settings > Apps",
       "steps": [
-        "Pick an app that is on Home or in the dock and that Android lets you Turn off (a preinstalled app). Tap Turn off, then go to Home: its icon should stay in the same spot, dimmed.",
-        "Turn the app on again: the icon should be back at full strength in the same spot, with no hole left in the grid."
+        "Turn an app off. Its icon should stay, dimmed."
       ]
     },
     {
       "id": "large-font",
-      "title": "Large text is not cut off",
-      "where": "Android Settings > Display > Font size. Set the size back afterwards",
+      "title": "Large text",
+      "where": "Android Settings > Display",
       "steps": [
-        "Set the font to its largest size. On Home, app labels should grow but stay whole, and the clock and date cards should fit.",
-        "Open Spotlight: the web search chips (Ask ChatGPT and the others) should wrap onto a second line, none cut off at the edge.",
-        "Open Folio's Settings and the Market: tab labels should stay whole, the back label should give way to Done, and the Market's Featured banner text should end with an ellipsis rather than being cut."
+        "Set the largest font. Nothing should be cut off."
       ]
     },
     {
       "id": "settings-display-size",
-      "title": "Settings stays put on a size change",
-      "where": "Folio Settings, then Android Settings > Display. Set the size back afterwards",
+      "title": "Settings stays put",
+      "where": "Folio Settings",
       "steps": [
-        "Open Folio's Settings on Wallpaper & Appearance. Switch to Android's Settings, change Display size (Screen zoom on Samsung) one step, and switch back: Folio's Settings should still be on Wallpaper & Appearance.",
-        "Do the same in the Market on its Installed tab: it should stay there and not jump to Featured."
+        "Change Display size, then come back. You should be on the same page."
       ]
     },
     {
       "id": "pull-down-any-app",
       "title": "Pull down from any app",
-      "where": "Settings > Notifications & Control Center > Panels",
+      "where": "Settings > Notifications & Control Center",
       "steps": [
-        "Turn on Folio's panels over other apps, then Pull down from the top of any app (Android asks you to turn on Folio's gestures service).",
-        "Open another app and drag down from the top left: Notification Center should open over it. Drag down from the top right: Control Center.",
-        "Behind each panel there should be a blurred picture of that app. If there is only a flat color, turn Folio's gestures service off and on once in Android's Accessibility settings and try again."
+        "Drag down from the top of another app. A panel should open."
       ]
     },
     {
@@ -301,36 +262,32 @@
       "title": "Control Center look and size",
       "where": "Settings > Notifications & Control Center",
       "steps": [
-        "Under Control Center look, step through Clear glass, Frosted and Solid. Clear glass is the start; white text should stay readable over a bright wallpaper in all three, and Frosted should have no darker plate behind the tiles.",
-        "Step Control Center size from Small to Extra Large: nothing should scroll or be cut off. Hold a tile: it should dip. Drag the brightness slider: it should show its percent."
+        "Try each look and size. Text should stay readable."
       ]
     },
     {
       "id": "smart-clock-ink",
       "title": "Smart clock ink",
-      "where": "Settings > Wallpaper & Appearance > Text on Home. It uses a second accessibility service",
+      "where": "Settings > Wallpaper & Appearance",
       "steps": [
-        "With Android's own wallpaper behind Home and a Big Clock on Home, turn on Smart clock ink. Android's Accessibility screen should open: turn on Folio Smart clock ink.",
-        "Go back to Home: the clock text should be light or dark to suit what is really behind the clock. Try a pale wallpaper and a dark one, and say if the text ever flips back and forth.",
-        "Turn the service off in Accessibility: the clock text should go back to following Android's wallpaper colors."
+        "Turn it on. The clock should be light or dark to suit."
       ]
     },
     {
       "id": "setup-home-apps",
       "title": "Setup: Your Home apps",
-      "where": "First setup, from the button below",
-      "action": "setup",
+      "where": "Open the New Setup below",
       "steps": [
-        "Tap Open the New Setup below and pick a starting point. On the Your Home apps page, tick and untick apps: the grid above should change at once, with ticked apps packed in two rows. Apps that share a name should show their package name underneath.",
-        "Tap Skip: Home should stay as it was. Do not tap Use Folio now or Continue unless you have a layout backup, as they change your Home."
-      ]
+        "Tick some apps. The grid should change at once. Then tap Skip."
+      ],
+      "action": "setup"
     },
     {
       "id": "rows-automatic-label",
-      "title": "The Rows menu names Automatic",
-      "where": "Settings > Home Screen & Dock > Rows",
+      "title": "Rows shows Automatic",
+      "where": "Settings > Home Screen & Dock",
       "steps": [
-        "Choose 6 rows, then open the menu again: Automatic should show the number it would give on this screen, not 6. Put Rows back to what you had."
+        "Pick 6 rows, reopen the menu. Automatic should show its number."
       ]
     },
     {
@@ -338,17 +295,15 @@
       "title": "Settings in three groups",
       "where": "Settings",
       "steps": [
-        "Open Settings: General and Accessibility should come first, then Launcher, then Extensions. Privacy & Permissions and Support Folio should be under General. Say if anything you used to find is now hard to find."
+        "Look around. Tell us if anything is hard to find."
       ]
     },
     {
       "id": "widgets-make-room",
-      "title": "Widgets make room for apps",
-      "where": "Home Screen",
+      "title": "Widgets make room",
+      "where": "Home",
       "steps": [
-        "Drag a widget onto a spot with apps, then resize one taller over a row of apps. The apps should move along instead of the spot turning red.",
-        "With a full page, the last apps should carry on to a new page. Then use Undo Last Layout Change: everything should return.",
-        "Watch that the apps slide into place smoothly, also with Reduce Motion on."
+        "Drop a widget on apps. They should move aside."
       ]
     }
   ]
