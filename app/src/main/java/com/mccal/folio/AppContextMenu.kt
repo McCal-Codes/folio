@@ -108,6 +108,8 @@ internal fun AppContextMenu(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    // The app panel without the flick (A11Y-2); null where the panel is off.
+    val openPanel = LocalAppPanel.current
     val appear = remember { Animatable(0f) }
     var more by remember { mutableStateOf(false) }
     // The 0.6.9 motion pass (MO5, the Lab's "Grow from the icon"): the menu opens on the Menu token instead of its own numbers,
@@ -167,7 +169,7 @@ internal fun AppContextMenu(
             val spaceBelow = screenH - (iconTop + iconSize * 1.1f + gap) - safeBottom
             val spaceAbove = iconTop - gap - safeTop
             // Folio's own rows: Edit Home Screen, Remove/Add, More, plus Clear Badge when the app has one.
-            val folioRows = 3 + if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
+            val folioRows = 3 + (if (openPanel != null) 1 else 0) + if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
             val estimatedH = with(density) { (49.dp * (actions.size + folioRows) + 8.dp).toPx() }
             // Prefer below (like iOS) when it fits; otherwise whichever side has more room, scrolling if needed.
             val below = estimatedH <= spaceBelow || spaceBelow >= spaceAbove
@@ -211,6 +213,10 @@ internal fun AppContextMenu(
                     }
                     if (i == shownActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = if (tintMenu) .35f else .25f)))
                     else MenuDivider()
+                }
+                openPanel?.let { open ->
+                    MenuRow(stringResource(R.string.app_panel), Icons.Rounded.ViewAgenda, tag = "menu-app-panel") { onDismiss(); open(app) }
+                    MenuDivider()
                 }
                 if (lockedBy != null) {
                     Text(stringResource(R.string.home_editing_is_off_while_1_is_on, lockedBy), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
