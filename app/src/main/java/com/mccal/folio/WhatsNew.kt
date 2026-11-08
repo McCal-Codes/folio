@@ -42,6 +42,22 @@ internal object WhatsNew {
     fun symbol(title: String): Pair<androidx.compose.ui.graphics.vector.ImageVector, Long> {
         val t = title.lowercase(java.util.Locale.ROOT)
         return when {
+            // Specific words first, so "Discover" is not read as "cover", "Folders" as "fold" or "Spotlight" as nothing at all.
+            "wallpaper" in t -> Icons.Rounded.Wallpaper to FolioColors.Value.Cyan
+            "discover" in t -> Icons.Rounded.Explore to FolioColors.Value.Teal
+            "folder" in t -> Icons.Rounded.Folder to FolioColors.Value.Red
+            "control center" in t -> Icons.Rounded.ToggleOn to FolioColors.Value.Blue
+            "notification" in t -> Icons.Rounded.Notifications to FolioColors.Value.Red
+            "widget" in t -> Icons.Rounded.Widgets to FolioColors.Value.Blue
+            "panel" in t -> Icons.Rounded.SwipeUp to FolioColors.Value.CyanLight
+            "compatib" in t -> Icons.Rounded.VerifiedUser to FolioColors.Value.Green
+            "spotlight" in t -> Icons.Rounded.Search to FolioColors.Value.Indigo
+            "side bar" in t -> Icons.Rounded.ViewSidebar to FolioColors.Value.Purple
+            "landscape" in t -> Icons.Rounded.ScreenRotation to FolioColors.Value.Green
+            "turned-off" in t -> Icons.Rounded.PowerSettingsNew to FolioColors.Value.Gray
+            "large text" in t -> Icons.Rounded.TextFields to FolioColors.Value.Blue
+            "setup" in t -> Icons.Rounded.Home to FolioColors.Value.Cyan
+            "settings" in t -> Icons.Rounded.Settings to FolioColors.Value.Gray
             "row" in t || "grid" in t -> Icons.Rounded.GridView to FolioColors.Value.Blue
             "slider" in t || "spacing" in t || "gap" in t -> Icons.Rounded.Tune to FolioColors.Value.Indigo
             "position" in t || "dock" in t -> Icons.Rounded.Dock to FolioColors.Value.Green
@@ -240,33 +256,21 @@ internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> 
     }
 }
 
-private const val FEATURES_SHOWN = 6
+/** Four entries on the first sheet, like Apple's; the rest sit behind "N more new features". Matches WN_SHOWN in the Lab scene. */
+internal const val FEATURES_SHOWN = 4
 
-/** A new feature: a soft tinted icon (the symbol in color on a pale tile), its title and what it does. */
+/** A new feature, Apple's way: the same solid colored tile as What to Test, a bold title and gray text, with no card around it. */
 @androidx.compose.runtime.Composable
 private fun FeatureRow(note: NoteItem) {
-    val (symbol, color) = WhatsNew.symbol(note.title ?: note.detail)
-    val tint = androidx.compose.ui.graphics.Color(color)
     androidx.compose.foundation.layout.Row(
         androidx.compose.ui.Modifier
             .fillMaxWidth()
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
-            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .04f))
-            .border(FolioGlass.edge, androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CARD.dp))
-            .padding(FolioSpace.MEDIUM.dp)
+            .padding(vertical = FolioSpace.SMALL.dp)
             .semantics(mergeDescendants = true) {},
         verticalAlignment = androidx.compose.ui.Alignment.Top
     ) {
-        androidx.compose.foundation.layout.Box(
-            androidx.compose.ui.Modifier
-                .size(42.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
-                .background(tint.copy(alpha = .18f)),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
-            androidx.compose.material3.Icon(symbol, null, tint = tint, modifier = androidx.compose.ui.Modifier.size(24.dp))
-        }
-        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(start = FolioSpace.COMFY.dp).weight(1f)) {
+        EntryTile(note.title ?: note.detail)
+        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(start = FolioSpace.LARGE.dp).weight(1f)) {
             note.title?.let {
                 androidx.compose.material3.Text(
                     it,
