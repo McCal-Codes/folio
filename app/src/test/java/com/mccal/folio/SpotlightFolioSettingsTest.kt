@@ -37,6 +37,11 @@ class SpotlightFolioSettingsTest {
         assertTrue(main.contains("onOpenFolioSetting = { page, row -> SettingsFocus.label = row; SettingsLink.page = page; settingsRequests.intValue++ }"))
     }
 
+    @Test fun `the keyboard Search action opens the first Folio setting before the phone's`() {
+        val search = spotlight.substring(spotlight.indexOf("KeyboardActions(onSearch"), spotlight.indexOf("KeyboardActions(onSearch") + 900)
+        assertTrue(search.indexOf("folioHits.isNotEmpty()") in 0 until search.indexOf("settingHits.isNotEmpty()"))
+    }
+
     @Test fun `spotlight lists three rows and counts the rest`() {
         assertTrue(spotlight.contains("private const val FOLIO_SETTING_ROWS = 3"))
         assertTrue(spotlight.contains("R.string.more_in_settings"))

@@ -280,6 +280,8 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         keyboardActions = KeyboardActions(onSearch = {
                             when {
                                 appHits.isNotEmpty() -> launch(appHits.first())
+                                // The order the results are drawn in: Folio's own settings, then the phone's.
+                                folioHits.isNotEmpty() -> folioHits.first().let { hit -> onClose(); onOpenFolioSetting(hit.page, hit.focus) }
                                 settingHits.isNotEmpty() -> openSetting(settingHits.first())
                                 q.isNotEmpty() -> { onClose(); openEnterSearch(context, state, q) }
                             }
