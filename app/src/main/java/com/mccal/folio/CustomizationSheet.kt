@@ -1850,15 +1850,44 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     }
 }
 
-/** Tweak preference page: main switch first, per-screen overrides (dimmed when off), credit, reset. */
+/** A tweak's colored icon square, the same on its Tweak Library row and at the top of its own page. */
+@Composable private fun TweakIconTile(tweak: TweakFeature) {
+    Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(androidx.compose.ui.graphics.Color(tweak.color)), contentAlignment = Alignment.Center) {
+        Icon(tweak.icon, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** What a tweak is after and whether it has any of that tweak's code: the credit line of its About card. */
+@Composable private fun tweakCredit(tweak: TweakFeature) =
+    tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy)
+
+/** Icon and what it is inspired by: the top of every tweak page, whether or not it is installed. The name is the page title above it. */
+@Composable private fun TweakPageHeader(tweak: TweakFeature) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.LARGE.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
+        TweakIconTile(tweak)
+        Spacer(Modifier.width(12.dp))
+        // As tall as the tile at least, so one line sits beside it and a wrapped one at large text still starts at its top.
+        Box(Modifier.weight(1f).heightIn(min = 40.dp), contentAlignment = Alignment.CenterStart) {
+            Text(stringResource(R.string.inspired_by_1, tweak.inspiredBy), fontSize = FolioType.FOOTNOTE.sp, color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f))
+        }
+    }
+}
+
+/**
+ * Tweak preference page, one layout for every tweak: header, the main switch, the tweak's own settings (Flipbook's
+ * effects, Duet's look, [TweakOptions]), where it runs, then About with Reset and Remove. Everything that depends on
+ * the switch is dimmed while it is off ([tweakDependentAlpha]).
+ */
 @Composable private fun TweakPage(tweak: TweakFeature, state: LauncherState, model: LauncherModel, previewBitmap: android.graphics.Bitmap? = null) {
+    TweakPageHeader(tweak)
     // Not installed yet: just what it does and Get, like a package page. Its settings appear once it's installed.
     if (tweak.id !in state.installedTweaks) {
-        SettingsCard(tweak.name) {
+        SettingsCard(stringResource(R.string.about)) {
             CardNote(stringResource(tweak.description))
-            CardNote(tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
+            CardNote(tweakCredit(tweak))
         }
         SheetGroup { IosActionRow(stringResource(R.string.get_tweak, tweak.name), "tweak-get-${tweak.id}") { model.installTweak(tweak) } }
+        CardNote(stringResource(R.string.tweak_options_after_get), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
         return
     }
     val on = tweak.get(state)
@@ -1872,7 +1901,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     if (tweak.id == STANDBY2_ID && on) StandByVisualSettings(state, model)
     TweakOptionsCard(tweak, state, model, on)
     SettingsCard(stringResource(R.string.use_on)) {
-        Column(Modifier.alpha(if (on) 1f else .4f)) {
+        Column(Modifier.alpha(tweakDependentAlpha(on))) {
             FolioScreen.entries.forEach { screen ->
                 val value = FeatureScopes.value(state.featureScopes, tweak.id, screen)
                 IosMenuRow(stringResource(screen.label), ScopeValue.entries.map { it to stringResource(it.label) }, value, { model.setFeatureScope(tweak.id, screen, it) }, enabled = on, tag = "scope-${tweak.id}-${screen.name.lowercase()}")
@@ -1881,8 +1910,8 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         CardNote(stringResource(R.string.default_follows_enabled_on_or_off_applie))
     }
     SettingsCard(stringResource(R.string.about)) {
-        TextButton(onClick = { model.resetTweak(tweak) }) { Text(stringResource(R.string.reset_1, tweak.name)) }
-        CardNote(tweak.credit?.let { stringResource(it) } ?: stringResource(R.string.inspired_by_re_created_from_scratch_no_t, tweak.inspiredBy))
+        IosActionRow(stringResource(R.string.reset_1, tweak.name), "tweak-reset-${tweak.id}") { model.resetTweak(tweak) }
+        CardNote(tweakCredit(tweak))
     }
     SheetGroup { IosActionRow(stringResource(R.string.remove_control, tweak.name), "tweak-remove-${tweak.id}", destructive = true) { model.removeTweak(tweak) } }
 }
@@ -1912,7 +1941,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
         if (tweak.id == STANDBY2_ID && sectionRes == R.string.look) continue
         val cardTitle = sectionRes?.let { stringResource(it) } ?: stringResource(R.string.options)
         SettingsCard(cardTitle) {
-            Column(Modifier.alpha(if (on) 1f else .4f)) {
+            Column(Modifier.alpha(tweakDependentAlpha(on))) {
                 items.forEach { option ->
                     val label = stringResource(option.label)
                     val tag = "tweak-option-${tweak.id}-${option.id}"
@@ -3472,9 +3501,7 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
             Row(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = stringResource(R.string.show_details)) { onOpen(tweak) }
                 .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp).testTag("library-tweak-${tweak.id}"),
                 verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(androidx.compose.ui.graphics.Color(tweak.color)), contentAlignment = Alignment.Center) {
-                    Icon(tweak.icon, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(22.dp))
-                }
+                TweakIconTile(tweak)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(tweak.name, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)

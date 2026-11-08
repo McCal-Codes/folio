@@ -1845,6 +1845,7 @@
     <string name="tweak_opt_subtle">약하게</string>
     <string name="tweak_opt_strong">강하게</string>
     <string name="tweak_opt_tick">슬라이드할 때 틱 진동</string>
+    <string name="tweak_options_after_get">받으면 여기에 옵션이 나타납니다.</string>
     <string name="tweak_opt_music_card">음악 카드</string>
     <string name="tweak_opt_island_bars">아일랜드 사운드 바</string>
     <string name="compatibility">호환성</string>

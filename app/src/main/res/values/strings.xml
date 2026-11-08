@@ -1877,6 +1877,7 @@
     <string name="tweak_opt_subtle">Subtle</string>
     <string name="tweak_opt_strong">Strong</string>
     <string name="tweak_opt_tick">Tick as you slide</string>
+    <string name="tweak_options_after_get">Options appear here once you get it.</string>
     <string name="tweak_opt_music_card">Music card</string>
     <string name="tweak_opt_island_bars">Island sound bars</string>
     <string name="compatibility">Compatibility</string>
