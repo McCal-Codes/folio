@@ -22,7 +22,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| `release-070-beta2` | Bump to 0.7.0-beta.2: Dynamic Island app palette tint & rolling ticker, app shortcut menu palette tint, seamless unfolded two-page spacing, Nixie & Minimal StandBy clocks, interactive 4-card widget stack, dual-screen ambient lamp, left-screen widget stabilization. | `app/build.gradle.kts`, `CHANGELOG.md`, `docs/releases/0.7.0-beta.2.md`, this file |
+| (nothing open on a shared file right now) | | |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.
