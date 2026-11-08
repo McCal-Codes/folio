@@ -121,6 +121,15 @@ class IconActionsTileTest {
         assertEquals(listOf("Swipe up: Flashlight", "Swipe down: Spotlight", "Double tap: Lock Screen"), labels)
     }
 
+    @Test fun `with the panel on, TalkBack can open it from the tile and the action lists after the icon actions`() {
+        show(IconActions(up = torch), panel = true)
+        val actions = compose.onNodeWithTag("tile").fetchSemanticsNode().config.getOrNull(SemanticsActions.CustomActions)!!
+        assertEquals(listOf("Swipe up: Flashlight", "Show App Panel"), actions.map { it.label })
+        compose.runOnIdle { actions.last().action() }
+        assertEquals(1, panels)
+        assertTrue(ran.isEmpty())
+    }
+
     @Test fun `Home provides no host while editing, in Safe Mode, with the gate shut or with nothing saved`() {
         assertTrue(iconActionsAvailable(editing = false, safeMode = false, anySaved = true, gateOpen = true))
         assertFalse("editing", iconActionsAvailable(editing = true, safeMode = false, anySaved = true, gateOpen = true))
