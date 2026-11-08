@@ -1726,6 +1726,51 @@ internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null 
 internal val SettingsEntries: List<Triple<Int, Int?, CustomizationPage>> = SettingsIndex +
     SettingsRows.filter { (title, _) -> SettingsIndex.none { it.first == title } }.map { (title, page) -> Triple(title, null, page) }
 
+/**
+ * The settings Settings search can offer on this phone: every entry in [SettingsEntries] except the ones held back by a gate (or by another condition)
+ * until it applies. Settings search and Spotlight both start from this, so neither offers a row that is not on the page.
+ */
+internal fun availableSettingsEntries(context: android.content.Context): List<Triple<Int, Int?, CustomizationPage>> {
+    // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
+    return SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
+            // Storage is held back for supporters and Folio Dev (FeatureGate.STORAGE), so search doesn't offer it to anyone else.
+            .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
+            // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
+            .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
+            // Private While Recording is held back for supporters and Folio Dev (FeatureGate.PRIVATE_RECORDING).
+            .filter { it.first != R.string.private_while_recording || FeatureGate.PRIVATE_RECORDING.isOpen(context) }
+            // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
+            .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
+            // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
+            .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
+            // The deeper Control Center rows are on the page only while their gate is open, so search only finds them then.
+            .filter { it.first !in CC_SETTINGS_V2_ROWS || FeatureGate.CC_SETTINGS_V2.isOpen(context) }
+            // The motion switch is only on the page while the pass is on trial, so search only finds it then.
+            .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
+}
+
+/**
+ * A Folio setting or page that Spotlight offers. [where] is the page it is on (null for a page found by its own name); [focus] is the row title
+ * Settings scrolls to once the page is open, as it does for a result in Settings search.
+ */
+internal class FolioSettingHit(val title: String, val where: String?, val page: CustomizationPage, val focus: String?)
+
+/**
+ * The Folio settings and pages that match [query], for Spotlight: pages found by their own name first, then single settings with their page
+ * beside them. Same index, same match rule and same gates as Settings search (availableSettingsEntries, settingsMatches). Duet's rows are left
+ * out, because its page needs the tweak open first and Spotlight does not open tweaks.
+ */
+internal fun folioSettingHits(context: android.content.Context, query: String): List<FolioSettingHit> {
+    val resources = context.resources
+    return availableSettingsEntries(context).filter { it.third != CustomizationPage.FOLD_TWEAK }.mapNotNull { (title, keywords, page) ->
+        val name = resources.getString(title)
+        if (!settingsMatches(query, name, keywords?.let(resources::getString).orEmpty())) return@mapNotNull null
+        // Whatever it is, it says which page it is on; only a page found by its own name has no "where". Settings scrolls to it only when it is a row.
+        val where = resources.getString(page.title).takeIf { it != name }
+        FolioSettingHit(name, where, page, name.takeIf { isRowEntry(title, keywords) && where != null })
+    }.sortedBy { it.where != null }
+}
+
 private class Found(val title: String, val keywords: String, val page: CustomizationPage, val row: Boolean)
 
 internal fun settingsMatches(query: String, title: String, keywords: String): Boolean {
@@ -1750,22 +1795,7 @@ internal fun searchableTweaks(context: android.content.Context): List<Pair<Tweak
     val context = androidx.compose.ui.platform.LocalContext.current
     val resources = context.resources
     val index = remember(androidx.compose.ui.platform.LocalConfiguration.current) {
-        // Widget Size is gone from Settings while widgets fill exactly two rows (WIDGETS_FILL_ROWS), so it isn't offered as a result.
-        SettingsEntries.filter { it.first != R.string.widget_size || !FeatureGate.WIDGETS_FILL_ROWS.isOpen(context) }
-            // Storage is held back for supporters and Folio Dev (FeatureGate.STORAGE), so search doesn't offer it to anyone else.
-            .filter { it.third != CustomizationPage.STORAGE || FeatureGate.STORAGE.isOpen(context) }
-            // Adjust island is held back for supporters and Folio Dev (FeatureGate.ISLAND_ADJUST), so search doesn't offer it to anyone else.
-            .filter { it.first != R.string.island_adjust || FeatureGate.ISLAND_ADJUST.isOpen(context) }
-            // Private While Recording is held back for supporters and Folio Dev (FeatureGate.PRIVATE_RECORDING).
-            .filter { it.first != R.string.private_while_recording || FeatureGate.PRIVATE_RECORDING.isOpen(context) }
-            // Advanced island has its own gate (FeatureGate.ISLAND_ADVANCED), so search offers it only while that is open.
-            .filter { it.first != R.string.island_advanced || FeatureGate.ISLAND_ADVANCED.isOpen(context) }
-            // Hinge detents are on the Fold page only while their gate is open, so search only finds them then.
-            .filter { it.first != R.string.hinge_detents || FeatureGate.HINGE_DETENTS.isOpen(context) }
-            // The deeper Control Center rows are on the page only while their gate is open, so search only finds them then.
-            .filter { it.first !in CC_SETTINGS_V2_ROWS || FeatureGate.CC_SETTINGS_V2.isOpen(context) }
-            // The motion switch is only on the page while the pass is on trial, so search only finds it then.
-            .filter { it.first != R.string.motion_pass || FolioMotion.switchVisible(context) }
+        availableSettingsEntries(context)
             .map { (title, keywords, page) -> Found(resources.getString(title), keywords?.let(resources::getString).orEmpty(), page, row = isRowEntry(title, keywords)) }
     }
     val tweaks = remember(androidx.compose.ui.platform.LocalConfiguration.current) { searchableTweaks(context) }

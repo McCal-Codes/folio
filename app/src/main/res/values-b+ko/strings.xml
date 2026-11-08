@@ -675,6 +675,7 @@
     <string name="hotspot">핫스팟</string>
     <string name="battery_saver">절전 모드</string>
     <string name="settings">설정</string>
+    <string name="more_in_settings">설정에 %1$d개 더 있음</string>
     <string name="android_quick_settings">Android 빠른 설정</string>
     <string name="show_connectivity_details">연결 세부사항 표시</string>
     <string name="volume">음량</string>
