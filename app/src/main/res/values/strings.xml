@@ -1928,6 +1928,8 @@
     <string name="what_to_test">What to Test</string>
     <string name="what_to_test_note">Beta %1$s. Most likely broken first. Your answers stay on this phone until you send a report.</string>
     <string name="what_to_test_progress">%1$d of %2$d done</string>
+    <string name="what_to_test_to_try">To try · %1$d</string>
+    <string name="what_to_test_done_label">Done · %1$d</string>
     <string name="it_worked">It Worked</string>
     <string name="something_is_wrong">Something\'s Wrong</string>
     <string name="what_to_test_not_tried">Not tried yet</string>

@@ -1896,6 +1896,8 @@
     <string name="what_to_test">테스트할 항목</string>
     <string name="what_to_test_note">베타 %1$s. 문제가 있을 가능성이 높은 순서입니다. 답변은 보고서를 보내기 전까지 이 휴대전화에만 저장됩니다.</string>
     <string name="what_to_test_progress">%1$d/%2$d 완료</string>
+    <string name="what_to_test_to_try">해볼 것 · %1$d</string>
+    <string name="what_to_test_done_label">완료 · %1$d</string>
     <string name="it_worked">잘 됩니다</string>
     <string name="something_is_wrong">문제가 있습니다</string>
     <string name="what_to_test_not_tried">아직 시도하지 않음</string>
