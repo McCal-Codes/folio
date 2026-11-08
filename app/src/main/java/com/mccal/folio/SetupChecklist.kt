@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** One thing Folio needs (or recommends) and whether it's done. */
 internal data class SetupStep(
@@ -38,16 +40,40 @@ internal data class SetupStep(
     val required: Boolean, val action: String, val onAction: () -> Unit,
 )
 
+/**
+ * A number that goes up whenever what a setup step reads may have changed, so the list re-checks and a finished step
+ * clears. It goes up when Folio resumes, when Android's lists of enabled notification and accessibility services
+ * change (Settings can be open beside Folio on a Fold, so Folio never pauses), and a few times just after either,
+ * because a service takes a moment to connect after Android enables it.
+ */
+@Composable
+internal fun rememberSetupTick(): MutableIntState {
+    val context = LocalContext.current
+    val tick = remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    fun recheck() { scope.launch { for (wait in longArrayOf(0L, 700L, 1500L, 3000L)) { delay(wait); tick.intValue++ } } }
+    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { recheck() } }
+    DisposableEffect(context) {
+        val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) = recheck()
+        }
+        listOf("enabled_notification_listeners", "enabled_accessibility_services").forEach {
+            context.contentResolver.registerContentObserver(Settings.Secure.getUriFor(it), false, observer)
+        }
+        onDispose { context.contentResolver.unregisterContentObserver(observer) }
+    }
+    return tick
+}
+
 @Composable
 internal fun rememberSetupSteps(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onShadeSetup: () -> Unit,
     messagesApp: String? = null, onMessagesApp: (String?) -> Unit = {},
     systemWallpaper: Boolean = false, onSystemWallpaper: (Boolean) -> Unit = {}): List<SetupStep> {
     val context = LocalContext.current
-    // Re-check every time Folio comes back from a settings screen.
-    var tick by remember { mutableIntStateOf(0) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { tick++ } }
-    val contacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
+    val tickState = rememberSetupTick()
+    val tick = tickState.intValue
+    val contacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tickState.intValue++ }
     fun open(intent: Intent) = runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 
     return remember(tick, isDefaultHome, messagesApp, systemWallpaper) {
