@@ -8,7 +8,7 @@ A catalog of every Folio version: its notes, when it shipped and where its relea
 
 | Version | Kind | Published | Notes | Release |
 |---|---|---|---|---|
-| 0.7.0-beta.2 | beta |  | [0.7.0-beta.2.md](0.7.0-beta.2.md) | not published |
+| 0.7.0-beta.2 | beta | 2026-11-09 | [0.7.0-beta.2.md](0.7.0-beta.2.md) | [folio-beta](https://github.com/McCal-Codes/folio-beta/releases/tag/v0.7.0-beta.2) |
 | 0.7.0-beta.1 | beta | 2026-11-09 | [0.7.0-beta.1.md](0.7.0-beta.1.md) | [folio-beta](https://github.com/McCal-Codes/folio-beta/releases/tag/v0.7.0-beta.1) |
 | 0.6.9 | stable | 2026-10-31 | [0.6.9.md](0.6.9.md) | [folio](https://github.com/McCal-Codes/folio/releases/tag/v0.6.9) |
 | 0.6.9-beta.8 | beta | 2026-10-31 | [0.6.9-beta.8.md](0.6.9-beta.8.md) | [folio-beta](https://github.com/McCal-Codes/folio-beta/releases/tag/v0.6.9-beta.8) |
