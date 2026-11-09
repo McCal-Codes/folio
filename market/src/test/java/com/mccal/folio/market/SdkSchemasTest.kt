@@ -13,7 +13,7 @@ class SdkSchemasTest {
 
     @Test fun `every v1 schema is JSON with the right id`() {
         val schemas = File(sdk, "schema/v1").listFiles { f -> f.name.endsWith(".schema.json") }!!.sortedBy { it.name }
-        assertEquals(listOf("depiction", "entry", "index", "manifest", "revoked", "settings", "tweaks"), schemas.map { it.name.substringBefore('.') })
+        assertEquals(listOf("depiction", "effect", "entry", "index", "manifest", "revoked", "settings", "tweaks"), schemas.map { it.name.substringBefore('.') })
         for (file in schemas) {
             val schema = JSONObject(file.readText())
             assertEquals(file.name, "https://folio.mccal.dev/schema/v1/${file.name}", schema.getString("\$id"))

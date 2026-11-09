@@ -64,6 +64,9 @@ internal fun IslandAdvancedPage() {
     }
 
     SettingsCard(null) {
+        IosMenuRow(stringResource(R.string.island_size), IslandSizePreset.entries.map { it to stringResource(it.label) }, values.size,
+            { IslandStyle.saveSize(context, it); version++ }, tag = "island-size")
+        CardNote(stringResource(R.string.island_size_note))
         IosMenuRow(stringResource(R.string.island_corners), IslandCorners.entries.map { it to stringResource(it.label) }, values.corners,
             { IslandStyle.saveCorners(context, it); version++ }, tag = "island-corners")
         CardNote(stringResource(R.string.island_corners_note))

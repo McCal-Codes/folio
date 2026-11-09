@@ -32,15 +32,15 @@ Folio keeps working.
 app open the system notifications and Quick Settings panels: there is no other way for an app to do it. It also shows
 Folio's dock handle and Dynamic Island over other apps, if you turn those on. And it runs Android's "global actions"
 when you ask for one: Back, Home and Recents (Big Buttons and the dock), lock screen, screenshot, the power menu, split
-screen, play/pause, closing the shade, and Android's accessibility All Apps menu, from Control Center and Folio's
-actions (`EverywhereOverlay.kt`, `ActionSpecs.kt`, `FolioActions.kt`, `TopPanels.kt`). It observes no events, cannot read the text or structure of other apps' windows, and cannot tap or type for you
+screen, play/pause, closing the shade, and Android's accessibility All Apps menu, from Control Center, Folio's
+actions and any Icon Action you set, each once, when you trigger it (`EverywhereOverlay.kt`, `ActionSpecs.kt`, `FolioActions.kt`, `TopPanels.kt`). It observes no events, cannot read the text or structure of other apps' windows, and cannot tap or type for you
 (`SystemShadeController.kt`; `canRetrieveWindowContent` and `canPerformGestures` are off in `system_shade_accessibility_service.xml`).
 It does hold Android's `canTakeScreenshot` capability, and a screenshot is of the whole display, not only Folio's own windows.
 Folio asks for one in a single case: Folio's panels open over another app, Blur is on, Reduce Transparency is off, and the phone does not blur windows itself (One UI
 turns that off). The picture behind the panels is then taken before the panel appears, shrunk at once to a few hundred pixels and blurred (`FrostBlur.kt`), and the
 full-size picture is dropped as soon as it has been shrunk. The small blurred picture is shown behind the panels, kept only in memory, never saved, logged or sent, and
 let go of when the panels close (`EverywhereOverlay.kt`). Settings › Blur at zero, or Reduce Transparency, stops it, and without it the panels sit on Folio's frosted
-glass instead. Without the service, Home's swipe-down gestures use Folio's own Notification Center and Control Center. Two launchable entries, Folio Notification Shade and Folio Quick Settings
+glass instead. Without the service, Home's swipe-down gestures use Folio's own Notification Center and Control Center, and Icon Actions that need it say so instead of failing. Two launchable entries, Folio Notification Shade and Folio Quick Settings
 (`ShadeShortcutNotifications` and `ShadeShortcutQuickSettings`), use the same service so a button or gesture action on your phone that opens an app can pull the
 shade down over another app; they ask for nothing new, show nothing, and do nothing without the service.
 

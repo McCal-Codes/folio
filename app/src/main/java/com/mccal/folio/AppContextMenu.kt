@@ -105,6 +105,8 @@ internal fun AppContextMenu(
     onRemoveApp: (() -> Unit)? = null,
     /** In the App Library: Delete App, straight to Android's confirmation. Null where the app can't be deleted here. */
     onDeleteApp: (() -> Unit)? = null,
+    /** This icon's Icon Actions as menu rows ("Swipe up: Flashlight"), the path for a keyboard or Switch Access (INT-16). */
+    iconActions: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -169,7 +171,7 @@ internal fun AppContextMenu(
             val spaceBelow = screenH - (iconTop + iconSize * 1.1f + gap) - safeBottom
             val spaceAbove = iconTop - gap - safeTop
             // Folio's own rows: Edit Home Screen, Remove/Add, More, plus Clear Badge when the app has one.
-            val folioRows = 3 + (if (openPanel != null) 1 else 0) + if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
+            val folioRows = 3 + iconActions.size + (if (openPanel != null) 1 else 0) + if ((LocalBadgeCounts.current[BadgeKey.of(app)] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
             val estimatedH = with(density) { (49.dp * (actions.size + folioRows) + 8.dp).toPx() }
             // Prefer below (like iOS) when it fits; otherwise whichever side has more room, scrolling if needed.
             val below = estimatedH <= spaceBelow || spaceBelow >= spaceAbove
@@ -218,6 +220,12 @@ internal fun AppContextMenu(
                     MenuRow(stringResource(R.string.app_panel), Icons.Rounded.ViewAgenda, tag = "menu-app-panel") { onDismiss(); open(app) }
                     MenuDivider()
                 }
+                // The icon's own gestures, so each one can be run without the gesture itself.
+                if (!more) iconActions.forEachIndexed { i, (label, run) ->
+                    MenuRow(label, Icons.Rounded.TouchApp) { onDismiss(); run() }
+                    if (i == iconActions.lastIndex) Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
+                    else MenuDivider()
+                }
                 if (lockedBy != null) {
                     Text(stringResource(R.string.home_editing_is_off_while_1_is_on, lockedBy), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                         modifier = Modifier.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp))
@@ -225,10 +233,10 @@ internal fun AppContextMenu(
                 } else {
                 MenuRow(stringResource(R.string.edit_home_screen), Icons.Rounded.AppRegistration) { onMove() }
                 MenuDivider()
-                if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF) {
+                if ((LocalBadgeCounts.current[BadgeKey.of(app)] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF) {
                     val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
                     MenuRow(stringResource(R.string.clear_badge), Icons.Rounded.NotificationsOff) {
-                        activity?.let { BadgeClears.clear(app.packageName, it.latestNotifications) }; onDismiss()
+                        activity?.let { BadgeClears.clear(app.packageName, it.latestNotifications, app.user) }; onDismiss()
                     }
                     MenuDivider()
                 }

@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://folio.mccal.dev/schema/v1/effect.schema.json",
+  "title": "Folio page effect",
+  "description": "effect.json in a pageEffect package: how Home's pages move as you swipe. Folio clamps every number to the range its engine draws well, so a number out of range is a folio-pkg warning, not an error here.",
+  "type": "object",
+  "required": [
+    "maxRotation",
+    "pivot",
+    "shrink",
+    "cameraWidths"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "maxRotation": {
+      "description": "Degrees a page turns around its vertical axis at one full page out. Folio holds it to -90 to 90.",
+      "type": "number"
+    },
+    "pivot": {
+      "description": "seam: the edge a page shares with the next one (a box); center: its middle (cards).",
+      "enum": [
+        "seam",
+        "center"
+      ]
+    },
+    "shrink": {
+      "description": "How much smaller a page is at one full page out. Folio holds it to 0 to 0.3.",
+      "type": "number"
+    },
+    "cameraWidths": {
+      "description": "How far the camera sits, in page widths. Folio holds it to 1.5 to 4.",
+      "type": "number"
+    },
+    "channels": {
+      "description": "Since 0.7.0: curves that replace the four numbers one channel at a time. A package using it needs tweaks.pageEffects.channels in requires.features and minFolio 0.7.0, so an older Folio says it needs a newer Folio instead of drawing only the four numbers.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "rotationY": {
+          "description": "Degrees around the vertical axis, mirrored for a page on the left. Folio holds it to -90 to 90.",
+          "$ref": "#/$defs/curve"
+        },
+        "rotationZ": {
+          "description": "Degrees in the page's own plane, clockwise for a page on the right, mirrored on the left. Folio holds it to -45 to 45.",
+          "$ref": "#/$defs/curve"
+        },
+        "translateX": {
+          "description": "A sideways shift as a share of the page's travel, outward for a page on the right, mirrored on the left. -1 keeps a page where it is. Folio holds it to -1 to 1.",
+          "$ref": "#/$defs/curve"
+        },
+        "translateY": {
+          "description": "A drop in page heights, the same on both sides. Folio holds it to 0 to 0.25.",
+          "$ref": "#/$defs/curve"
+        },
+        "scale": {
+          "description": "The page's size, the same on both sides. Folio holds it to 0.6 to 1.",
+          "$ref": "#/$defs/curve"
+        },
+        "pivotX": {
+          "description": "Where the page turns: seam, center, outer, or a share from the seam edge (0) to the outer edge (1). Replaces pivot. Folio holds a number to 0 to 1.",
+          "anyOf": [
+            {
+              "enum": [
+                "seam",
+                "center",
+                "outer"
+              ]
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "pivotY": {
+          "description": "Where the turn's axis crosses the page vertically, in page heights from the top; 0.5 is the middle, above 1 is below the page. Folio holds it to 0 to 2.",
+          "type": "number"
+        }
+      }
+    },
+    "icons": {
+      "description": "Reserved for effects on each icon. Folio refuses a package that uses it until a newer format defines it.",
+      "not": {}
+    }
+  },
+  "$defs": {
+    "curve": {
+      "type": "object",
+      "required": [
+        "keys"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "keys": {
+          "description": "1 to 8 keys, each later than the one before. At 0 every channel is at rest whatever a key says, and past the last key the curve holds its value.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": [
+              "at",
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "description": "How far out the page is, 0 (settled) to 1 (a full page).",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "value": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "ease": {
+          "description": "How the value moves between keys. linear when left out.",
+          "enum": [
+            "linear",
+            "in",
+            "out",
+            "inOut"
+          ]
+        }
+      }
+    }
+  }
+}

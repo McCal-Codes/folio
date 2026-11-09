@@ -119,12 +119,25 @@ object IslandTester {
             .putString(MediaMetadata.METADATA_KEY_ARTIST, "Example Artist").putLong(MediaMetadata.METADATA_KEY_DURATION, 180_000L).build())
         s.setPlaybackState(PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 30_000L, 1f)
             .setActions(PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS).build())
+        // Play and Pause really change the session, so the card's button can be checked (a made-up session has no app behind it).
+        s.setCallback(object : MediaSession.Callback() {
+            override fun onPlay() = setPlaying(s, true)
+            override fun onPause() = setPlaying(s, false)
+        })
         s.isActive = true
-        val media = IslandActivity.Media(context.packageName, "Example Song", "Example Artist", icon(context), true, s.sessionToken) // english-only
+        val media =IslandActivity.Media(context.packageName, "Example Song", "Example Artist", icon(context), true, s.sessionToken) // english-only
         media.controller = MediaController(context, s.sessionToken)
         show(context, media) // releases any earlier session first
         session = s
         return true
+    }
+
+    private fun setPlaying(s: MediaSession, playing: Boolean) {
+        if (session !== s) return
+        s.setPlaybackState(PlaybackState.Builder().setState(if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED, 30_000L, if (playing) 1f else 0f)
+            .setActions(PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS).build())
+        val old = fakeFlow.value as? IslandActivity.Media ?: return
+        fakeFlow.value = old.copy(playing = playing).also { it.controller = old.controller }
     }
 
     private fun post(context: Context, event: IslandEvent): Boolean {

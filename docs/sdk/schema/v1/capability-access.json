@@ -13,6 +13,7 @@
     "tweaks.tintNotifications": { "needs": "notifications" },
     "tweaks.tintMedia": { "needs": "notifications" },
     "tweaks.pageEffects": { "needs": "standard" },
+    "tweaks.pageEffects.channels": { "needs": "standard" },
     "tweaks.foldTransition": { "needs": "standard" },
     "island.messages": { "needs": "standard", "betterWith": "accessibility" },
     "focus.modes": { "needs": "standard" },

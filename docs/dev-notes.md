@@ -2,6 +2,8 @@
 
 Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > What's New > This build).
 
+- Market app checks: add a source whose app lists no developer. The sheet should say why Install with Folio is missing.
+- Shorter What's New: open What's New. Each feature should be one short line, with room for more than two above Continue.
 - Island tint and ticker: get a notification. The pill should match the app's color.
 - App menu color: hold an app. The menu should take the icon's color.
 - Unfolded spacing: unfold flat, then part way. The pages should ease apart.

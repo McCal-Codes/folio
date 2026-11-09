@@ -122,7 +122,7 @@ internal fun IslandAdjustDialog(onDone: () -> Unit) {
         val camera = cutout?.ltrb()
         // A camera on a side edge: Home draws the upright island there, which has no width to adjust (CutoutIsland.kt).
         val sideEdge = cameraSideEdge(cutout, windowWidth, windowHeight) != null
-        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, d, extra, nudge)
+        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, d, extra, nudge, IslandStyle.active(context).size.scaleFor(camera, d))
         val shown = geometry.extraW
         val fit = IslandSize.fitExtra(islandReportedCameraWidthDp(cutoutRaw, d), geometry)
         val pillW = minOf(geometry.wrapW + geometry.pillH, maxOf(geometry.maxW, geometry.camW + geometry.pillH))

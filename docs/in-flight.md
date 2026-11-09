@@ -24,6 +24,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 |---|---|---|
 | `simple-mode-combined` | Simple Mode preview behind the closed `SIMPLE_MODE` gate (beta scope sees it): the #372 and #431 designs in one, with people to call from the contact picker. Merge after the beta 2 build is cut so it ships in beta 3. | `CHANGELOG.md`, `strings.xml` (en, ko, zh), `SimpleHome.kt`, `SimpleSettings.kt`, `SimpleMode.kt`, this file |
 | `release-070-beta2` | Bump to 0.7.0-beta.2: Dynamic Island app palette tint & rolling ticker, app shortcut menu palette tint, seamless unfolded two-page spacing, Nixie & Minimal StandBy clocks, interactive 4-card widget stack, dual-screen ambient lamp, left-screen widget stabilization. | `app/build.gradle.kts`, `CHANGELOG.md`, `docs/releases/0.7.0-beta.2.md`, this file |
+| `icon-actions-picker` | Icon Actions picker for 0.7.0, behind `ICON_ACTIONS`: the catalog, the editor in Edit Icon and Settings › Gestures & Actions, menu rows, and the accessibility service description and PERMISSIONS.md paragraph (PRV-18). | `ActionCatalog.kt`, `IconActionsEditor.kt`, `IconActionsSettings.kt`, `IconEditor.kt`, `AppContextMenu.kt`, `LauncherScreen.kt`, `CustomizationSheet.kt`, `LauncherModel.kt` (`setAllIconActions`), `PERMISSIONS.md`, strings |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.

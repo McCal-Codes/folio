@@ -37,6 +37,36 @@ internal enum class IslandCorners(val key: String, @StringRes val label: Int, va
     companion object { fun of(key: String?): IslandCorners = entries.firstOrNull { it.key == key } ?: ROUND }
 }
 
+/**
+ * How big the resting pill is. [scale] multiplies the pill's minimum height; the pill still wraps a camera hole at the
+ * size the camera needs, so Small never cuts into a lens. Standard is what the island always was.
+ */
+internal enum class IslandSizePreset(val key: String, @StringRes val label: Int, private val fixedScale: Float?) {
+    AUTO("auto", R.string.island_size_auto, null),
+    SMALL("small", R.string.island_size_small, 0.88f),
+    STANDARD("standard", R.string.standard, 1f),
+    LARGE("large", R.string.island_size_large, 1.15f);
+
+    /**
+     * The scale for a screen whose camera is [camera] (left, top, right, bottom in px, or null). Automatic picks Small around
+     * the small punch hole of an ordinary phone and Standard for everything else (no cutout, a notch, the Fold's strip),
+     * and never Large; the other presets are fixed.
+     */
+    fun scaleFor(camera: IntArray?, density: Float): Float = fixedScale ?: autoScale(camera, density)
+
+    companion object {
+        fun of(key: String?): IslandSizePreset = entries.firstOrNull { it.key == key } ?: STANDARD
+        /** A camera hole this short (dp), on the top edge, is a punch hole; anything taller is a notch or strip. */
+        const val PUNCH_HOLE_MAX_DP = 20f
+        fun autoScale(camera: IntArray?, density: Float): Float {
+            if (camera == null || density <= 0f) return 1f
+            val heightDp = (camera[3] - camera[1]) / density
+            val widthDp = (camera[2] - camera[0]) / density
+            return if (camera[1] / density > 0.5f && heightDp in 1f..PUNCH_HOLE_MAX_DP && widthDp <= PUNCH_HOLE_MAX_DP * 1.5f) SMALL.fixedScale!! else 1f
+        }
+    }
+}
+
 /** How fast the island's own motion runs, as a multiplier on its spring stiffness and the inverse of its fade lengths. */
 internal enum class IslandSpeed(val key: String, @StringRes val label: Int, val multiplier: Float) {
     SLOWER("slower", R.string.island_speed_slower, FolioMotion.ISLAND_SLOWER),
@@ -89,6 +119,7 @@ internal object IslandStyle {
     private const val CUSTOM = "island_style_custom_color"
     private const val CORNERS = "island_style_corners"
     private const val SPEED = "island_style_speed"
+    private const val SIZE = "island_style_size"
     private const val HAPTICS = "island_style_haptics"
     private const val NOTIF_ROLLING = "island_style_notif_rolling"
     private fun gestureKey(gesture: IslandGesture) = "island_style_gesture_${gesture.key}"
@@ -108,6 +139,7 @@ internal object IslandStyle {
         val haptics: IslandHaptics = IslandHaptics.STANDARD,
         val gestures: IslandGestureMap = defaultGestures,
         val notificationRolling: Boolean = false,
+        val size: IslandSizePreset = IslandSizePreset.STANDARD,
     ) {
         /** The island's solid color: the preset, or the typed color moved until its text is readable. */
         val background: Int get() = backgroundOf(color, custom)
@@ -134,6 +166,7 @@ internal object IslandStyle {
             haptics = IslandHaptics.of(prefs.getString(HAPTICS, null)),
             gestures = resolveGestures(IslandGesture.entries.mapNotNull { g -> IslandAction.of(prefs.getString(gestureKey(g), null))?.let { g to it } }.toMap()),
             notificationRolling = prefs.getBoolean(NOTIF_ROLLING, false),
+            size = IslandSizePreset.of(prefs.getString(SIZE, null)),
         )
     }
 
@@ -147,6 +180,7 @@ internal object IslandStyle {
     fun saveCustom(context: android.content.Context, argb: Int) = edit(context) { putInt(CUSTOM, opaque(argb)); putString(COLOR, IslandColor.CUSTOM.key) }
     fun saveCorners(context: android.content.Context, corners: IslandCorners) = edit(context) { if (corners == IslandCorners.ROUND) remove(CORNERS) else putString(CORNERS, corners.key) }
     fun saveSpeed(context: android.content.Context, speed: IslandSpeed) = edit(context) { if (speed == IslandSpeed.STANDARD) remove(SPEED) else putString(SPEED, speed.key) }
+    fun saveSize(context: android.content.Context, size: IslandSizePreset) = edit(context) { if (size == IslandSizePreset.STANDARD) remove(SIZE) else putString(SIZE, size.key) }
     fun saveHaptics(context: android.content.Context, haptics: IslandHaptics) = edit(context) { if (haptics == IslandHaptics.STANDARD) remove(HAPTICS) else putString(HAPTICS, haptics.key) }
     fun saveNotificationRolling(context: android.content.Context, rolling: Boolean) = edit(context) { if (!rolling) remove(NOTIF_ROLLING) else putBoolean(NOTIF_ROLLING, true) }
     /** Refused (returns false, nothing saved) when it would leave no gesture on Dismiss ([canSet]). */
@@ -158,7 +192,7 @@ internal object IslandStyle {
 
     /** Clears every option, so the island goes back to how it was. */
     fun reset(context: android.content.Context) = edit(context) {
-        remove(COLOR); remove(CUSTOM); remove(CORNERS); remove(SPEED); remove(HAPTICS); remove(NOTIF_ROLLING)
+        remove(COLOR); remove(CUSTOM); remove(CORNERS); remove(SPEED); remove(HAPTICS); remove(NOTIF_ROLLING); remove(SIZE)
         IslandGesture.entries.forEach { remove(gestureKey(it)) }
     }
 
