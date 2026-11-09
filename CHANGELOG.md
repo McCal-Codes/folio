@@ -39,7 +39,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **One look for every tweak page:** Cabinet, Harborline, Roll Call, Palette, Afterglow, Flipbook and Duet now open on the same layout. The icon and what each is inspired by sit at the top, Reset is a blue action row like Get and Remove, and a tweak you have not got yet shows an About card, Get, and a line saying its options appear once you get it. Nothing about how a tweak behaves changes.
 - **Cabinet without the flick:** the long-press menu has an App Panel row, and TalkBack lists the same action as Show App Panel on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
 - **Icon Actions:** choose what a swipe or a double tap on an icon runs, in Edit Icon and in Settings › Gestures & Actions. An icon's long-press menu lists its actions so you can run one without the gesture.
-- **Market checks an app before Android installs it:** Folio compares the app's package, version and signer with its listing first, and says why it can't install one when the source lists no developer.
+- **Market checks apps before install:** Folio compares the app's package, version and signer with its listing first, and says why it can't install one when the source lists no developer.
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels.
 
 ### Changed
