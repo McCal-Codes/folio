@@ -881,9 +881,19 @@ private const val OVERLAY_CARD_MS = 12_000L
  */
 @Composable
 private fun OverlayExpandedCard(live: IslandActivity, stripH: androidx.compose.ui.unit.Dp, surface: Color, onOpen: () -> Unit, onClose: () -> Unit) {
-    LaunchedEffect(live) { kotlinx.coroutines.delay(OVERLAY_CARD_MS); onClose() }
+    // Any touch on the card starts the countdown again, so it never closes while it is being used.
+    var touches by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(live::class, touches) { kotlinx.coroutines.delay(OVERLAY_CARD_MS); onClose() }
     val closeLabel = stringResource(R.string.close)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(surface)
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    if (e.changes.any { it.pressed && !it.previousPressed }) touches++
+                }
+            }
+        }
         .pointerInput(Unit) {
             var pulled = 0f
             detectVerticalDragGestures(onDragStart = { pulled = 0f }, onDragEnd = { if (pulled < -24.dp.toPx()) onClose() }) { change, dy -> change.consume(); pulled += dy }
