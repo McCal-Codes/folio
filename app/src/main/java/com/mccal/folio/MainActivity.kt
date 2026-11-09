@@ -752,16 +752,16 @@ class MainActivity : ComponentActivity() {
      */
     private fun clearsBadgesWhenOpened(switchOn: Boolean): Boolean = switchOn && badgesGateOpen
 
-    /** The badge showing on [packageName] now counts as seen, so it goes away until a new notification arrives. */
-    private fun noteBadgeSeen(packageName: String) {
+    /** The badge filed under [badge] ([BadgeKey]) now counts as seen, so it goes away until a new notification arrives. */
+    private fun noteBadgeSeen(badge: String) {
         if (!clearsBadgesWhenOpened(model.state.value.badgesWhenOpened)) return
-        model.noteBadgeSeen(packageName, BadgeClears.counts(latestNotifications, BadgeClears.cleared.value)[packageName] ?: 0)
+        model.noteBadgeSeen(badge, BadgeClears.counts(latestNotifications, BadgeClears.cleared.value)[badge] ?: 0)
     }
 
     private fun launchApp(app: AppEntry, bounds: android.graphics.Rect? = null) {
         RecentApps.record(this, app.id)
         NewApps.opened(this, app.packageName)
-        noteBadgeSeen(app.packageName)
+        noteBadgeSeen(BadgeKey.of(app))
         try {
             val user = getSystemService(UserManager::class.java).getUserForSerialNumber(app.userSerial)
                 ?: throw IllegalStateException(getString(R.string.profile_is_unavailable))

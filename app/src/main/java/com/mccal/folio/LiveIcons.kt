@@ -236,7 +236,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
         look.liveLook == "DARK" -> LivePalette.of(IconStyle.DARK, null)
         else -> LivePalette.of(if (look.style == IconStyle.DEFAULT && darkSource) IconStyle.DARK else look.style, accent)
     }
-    val badgeCount = if (!badge || look.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[src.component.packageName] ?: 0
+    val badgeCount = if (!badge || look.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[BadgeKey.of(src.component.packageName, app.user)] ?: 0
     Box(modifier.semantics { contentDescription?.let { this.contentDescription = it } }) {
         val fill = Modifier.fillMaxSize().then(if (clipShape != null) Modifier.clip(clipShape) else Modifier)
         // App icon bitmaps carry a small transparent margin; inset the drawn live icons to the same visual size.
@@ -608,6 +608,17 @@ internal fun mixColor(base: Color, accent: Color?, amount: Float): Color = if (a
  * Clear Badge (in an app's long-press menu): hides the badge for the notifications showing now, without dismissing
  * them. A notification posted later brings the badge back, like iOS. Kept in memory only.
  */
+/**
+ * What a badge count is filed under: the package name, plus the profile for a copy in another one. Android gives Dual
+ * Messenger and work-profile copies the same package name as the original, so counting by package alone showed the
+ * original's count on both icons (#561). The profile Folio runs in keeps the bare package name.
+ */
+internal object BadgeKey {
+    fun of(packageName: String, user: android.os.UserHandle?): String =
+        if (user == null || user == android.os.Process.myUserHandle()) packageName else "$packageName@$user"
+    fun of(app: AppEntry): String = of(app.packageName, app.user)
+}
+
 internal object BadgeClears {
     /**
      * Keys of the notifications that were showing when Clear Badge was tapped. An app updating one of those (a download
@@ -615,13 +626,14 @@ internal object BadgeClears {
      */
     val cleared = kotlinx.coroutines.flow.MutableStateFlow<Set<String>>(emptySet())
 
-    fun clear(packageName: String, items: List<NotificationItem>) {
-        val keys = items.filter { it.packageName == packageName }.map { it.key }
+    fun clear(packageName: String, items: List<NotificationItem>, user: android.os.UserHandle? = null) {
+        val badge = BadgeKey.of(packageName, user)
+        val keys = items.filter { BadgeKey.of(it.packageName, it.user) == badge }.map { it.key }
         if (keys.isNotEmpty()) cleared.value = cleared.value + keys
     }
 
     fun counts(items: List<NotificationItem>, cleared: Set<String>): Map<String, Int> =
-        items.filter { it.key !in cleared }.groupingBy { it.packageName }.eachCount()
+        items.filter { it.key !in cleared }.groupingBy { BadgeKey.of(it.packageName, it.user) }.eachCount()
 }
 
 /**

@@ -169,7 +169,7 @@ internal fun AppContextMenu(
             val spaceBelow = screenH - (iconTop + iconSize * 1.1f + gap) - safeBottom
             val spaceAbove = iconTop - gap - safeTop
             // Folio's own rows: Edit Home Screen, Remove/Add, More, plus Clear Badge when the app has one.
-            val folioRows = 3 + (if (openPanel != null) 1 else 0) + if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
+            val folioRows = 3 + (if (openPanel != null) 1 else 0) + if ((LocalBadgeCounts.current[BadgeKey.of(app)] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF && lockedBy == null) 1 else 0
             val estimatedH = with(density) { (49.dp * (actions.size + folioRows) + 8.dp).toPx() }
             // Prefer below (like iOS) when it fits; otherwise whichever side has more room, scrolling if needed.
             val below = estimatedH <= spaceBelow || spaceBelow >= spaceAbove
@@ -225,10 +225,10 @@ internal fun AppContextMenu(
                 } else {
                 MenuRow(stringResource(R.string.edit_home_screen), Icons.Rounded.AppRegistration) { onMove() }
                 MenuDivider()
-                if ((LocalBadgeCounts.current[app.packageName] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF) {
+                if ((LocalBadgeCounts.current[BadgeKey.of(app)] ?: 0) > 0 && LocalIconLook.current.badges != BadgeStyle.OFF) {
                     val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
                     MenuRow(stringResource(R.string.clear_badge), Icons.Rounded.NotificationsOff) {
-                        activity?.let { BadgeClears.clear(app.packageName, it.latestNotifications) }; onDismiss()
+                        activity?.let { BadgeClears.clear(app.packageName, it.latestNotifications, app.user) }; onDismiss()
                     }
                     MenuDivider()
                 }

@@ -259,7 +259,7 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
     onLaunchApp: ((AppEntry) -> Unit)? = null,
     onClick: () -> Unit) {
     val counts0 = LocalBadgeCounts.current
-    val unread = folder.appIds.mapNotNull { apps[it]?.packageName }.distinct().sumOf { counts0[it] ?: 0 }
+    val unread = folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct().sumOf { counts0[it] ?: 0 }
     val folderApps = pluralStringResource(R.plurals.folder_apps, folder.appIds.size, folder.title, folder.appIds.size)
     val folderLabel = if (unread > 0) pluralStringResource(R.plurals.folder_unread, unread, folderApps, unread) else folderApps
     // The whole cell takes the drop, not just the icon, so an app held near a folder's label still goes in.
@@ -312,7 +312,7 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             val look = LocalIconLook.current
             val counts = LocalBadgeCounts.current
             val total = if (look.badges == BadgeStyle.OFF) 0
-                else folder.appIds.mapNotNull { apps[it]?.packageName }.distinct().sumOf { counts[it] ?: 0 }
+                else folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct().sumOf { counts[it] ?: 0 }
             Box(Modifier.fillMaxSize().clip(RoundedCornerShape((size * .24f).dp))
                 .background(tint?.copy(alpha = .78f) ?: Glass.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp))
                 .testTag("folder-drop-${folder.id}")) {
