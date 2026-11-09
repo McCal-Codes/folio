@@ -88,6 +88,31 @@ class ApkIdentityTest {
         assertFalse(ApkIdentity.descendsFrom(single(old), several(old, new)))
     }
 
+    @Test fun `nothing is trusted when the listing names no key or the APK carries none`() {
+        assertFalse(ApkIdentity.signedBy(single(new), emptySet()))
+        assertFalse(ApkIdentity.signedBy(Signing(multiple = false, signers = emptySet()), setOf(new)))
+        assertEquals(Refusal.WRONG_SIGNER, ApkIdentity.check(apk(signing = Signing(false, emptySet())), keyd, 3000, setOf(new)))
+    }
+
+    @Test fun `a listing with no versionCode accepts any build of the listed app`() {
+        assertNull(ApkIdentity.check(apk(code = 1), keyd, null, setOf(new)))
+    }
+
+    @Test fun `an update is refused when either side has no readable key`() {
+        assertFalse(ApkIdentity.descendsFrom(Signing(false, emptySet()), single(old)))
+        assertFalse(ApkIdentity.descendsFrom(single(old), Signing(false, emptySet())))
+    }
+
+    @Test fun `an APK that only shares some of the listed signers is refused`() {
+        assertFalse(ApkIdentity.signedBy(several(old, new), setOf(old, new, other)))
+        assertFalse(ApkIdentity.signedBy(several(old), setOf(old, new)))
+    }
+
+    @Test fun `a stranger cannot borrow a listed key by putting it in its lineage's past`() {
+        // lineage old -> other: its newest key is not listed, so naming the old key must not be enough.
+        assertFalse(ApkIdentity.signedBy(rotated(old, other), setOf(old)))
+    }
+
     @Test fun `a certificate digest is lowercase SHA-256 hex, the form a listing writes`() {
         assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", ApkIdentity.sha256Hex("abc".toByteArray()))
         assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", ApkIdentity.sha256Hex(ByteArray(0)))
