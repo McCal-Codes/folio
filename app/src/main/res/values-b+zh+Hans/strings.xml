@@ -1101,6 +1101,7 @@
     <string name="folio_couldn_t_hand_that_app_to_android">Folio 无法把那个 App 交给 Android。</string>
     <string name="android_didn_t_install_it_1_s">Android 没有安装它：%1$s</string>
     <string name="android_didn_t_install_that_app">Android 没有安装那个 App。</string>
+    <string name="folio_can_t_check_this_app_s_developer">Folio 无法核实此 App 的开发者，因为其源没有列出开发者，所以无法替你安装。</string>
     <string name="install_with_folio">用 Folio 安装</string>
     <string name="an_app_of_its_own">独立的 App</string>
     <string name="folio_can_t_see_inside_an_app">Folio 无法查看 App 的内部，因此不对它能访问什么做任何承诺。Android 可以：它的权限列在 Android 设置中该 App 的页面里，而为它担保的是它的源。</string>

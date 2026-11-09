@@ -753,6 +753,7 @@ internal fun MarketScreen(
                         MarketExternalSheet(
                             manifest = manifest,
                             signed = listing.source.kind != Source.Kind.LOCAL_DEV,
+                            unverifiable = MarketApkInstall.cannotVerify(listing.source, listing.entry, session.prefs.installApps, listing.unavailable),
                             onInstallHere = if (
                                 MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.unavailable)
                             ) {

@@ -50,6 +50,16 @@ class MarketApkInstallTest {
         return (PackageManifest.parse(json) as ParseResult.Ok).value
     }
 
+    @Test fun `the sheet says why when a listing can't be verified`() {
+        val added = Source("https://x.example/", kind = Source.Kind.ADDED)
+        assertTrue(MarketApkInstall.cannotVerify(added, entry(appId = null), on = true))
+        assertTrue(MarketApkInstall.cannotVerify(added, entry(signers = emptySet()), on = true))
+        assertFalse("a listing Folio can install needs no explanation", MarketApkInstall.cannotVerify(added, entry(), on = true))
+        assertFalse("with installing off, the stores line already says so", MarketApkInstall.cannotVerify(added, entry(appId = null), on = false))
+        assertFalse(MarketApkInstall.cannotVerify(added, entry(appId = null), on = true, revoked = true))
+        assertFalse("a listing with no download has nothing to verify", MarketApkInstall.cannotVerify(added, entry(url = null, appId = null), on = true))
+    }
+
     @Test fun `a first install needs the listing to name the app's package`() {
         assertFalse(MarketApkInstall.canInstall(added, entry(appId = null), on = true))
         // An update is anchored to the app already on the phone, so it doesn't.

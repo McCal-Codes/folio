@@ -1110,6 +1110,7 @@
     <string name="folio_couldn_t_hand_that_app_to_android">Folio couldn\'t hand that app to Android.</string>
     <string name="android_didn_t_install_it_1_s">Android didn\'t install it: %1$s</string>
     <string name="android_didn_t_install_that_app">Android didn\'t install that app.</string>
+    <string name="folio_can_t_check_this_app_s_developer">Folio can\'t check this app\'s developer, because its source doesn\'t list one, so it can\'t install it for you.</string>
     <string name="install_with_folio">Install with Folio</string>
     <string name="an_app_of_its_own">An app of its own</string>
     <string name="folio_can_t_see_inside_an_app">Folio can\'t see inside an app, so it makes no promises about what this one can reach. Android does: its permissions are listed in Android\'s settings for the app, and its source is who vouches for it.</string>

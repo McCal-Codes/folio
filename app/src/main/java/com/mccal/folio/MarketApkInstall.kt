@@ -83,6 +83,15 @@ internal object MarketApkInstall {
             (updating || (entry.signerSha256.isNotEmpty() && appIds(entry).isNotEmpty())) &&
             source.kind != Source.Kind.BUILT_IN && source.kind != Source.Kind.LOCAL_DEV
 
+    /**
+     * True when Folio would install [entry] but can't, because the listing doesn't name its signer or its package:
+     * the sheet says so, so a missing "Install with Folio" row isn't a mystery.
+     */
+    fun cannotVerify(source: Source, entry: IndexPackage, on: Boolean, revoked: Boolean = false): Boolean =
+        on && !revoked && entry.url != null && entry.sha256 != null &&
+            (entry.signerSha256.isEmpty() || appIds(entry).isEmpty()) &&
+            source.kind != Source.Kind.BUILT_IN && source.kind != Source.Kind.LOCAL_DEV
+
     /** The package names a listing says its APK is: the app ids in its `via`. */
     fun appIds(entry: IndexPackage): Set<String> = entry.manifest?.via.orEmpty().mapNotNull { it.appId }.toSet()
 
