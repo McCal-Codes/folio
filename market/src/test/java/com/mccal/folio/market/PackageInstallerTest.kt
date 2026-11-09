@@ -142,6 +142,29 @@ class PackageInstallerTest {
         assertEquals(setOf(Capability.PAGE_EFFECTS), effect.capabilities)
     }
 
+    // Channels are a capability of their own (format 0.7.0): a Folio that can't draw them says it needs a newer one,
+    // even for a package that forgot to list it, instead of drawing only the four v1 numbers.
+    @Test fun `a page effect with channels needs a Folio that draws them`() {
+        val curved = """{"maxRotation":0,"pivot":"center","shrink":0.1,"cameraWidths":3,
+            "channels":{"translateY":{"keys":[{"at":1,"value":0.1}]}}}"""
+        val older = PackageInstaller(store, FakeHost(capabilities = Capability.entries.toSet() - Capability.PAGE_EFFECT_CHANNELS), clock = { now })
+        assertEquals(InstallResult.NeedsNewerFolio(listOf("tweaks.pageEffects.channels")),
+            older.install(effectPackage(curved), origin = InstalledPackage.Origin.FILE))
+        assertTrue(store.installed().none { it.id == "com.mccal.folio.effect.tilt" })
+        val read = installer.read(effectPackage(curved))
+        val effect = (read as PackageInstaller.ReadResult.Ok).pkg.changes.single() as PackageChange.PageEffect
+        assertEquals(setOf(Capability.PAGE_EFFECTS, Capability.PAGE_EFFECT_CHANNELS), effect.capabilities)
+        assertTrue(installer.install(effectPackage(curved), origin = InstalledPackage.Origin.FILE) is InstallResult.Installed)
+    }
+
+    @Test fun `an effect that breaks the format is refused, and reserved icons need a newer Folio`() {
+        val broken = installer.read(effectPackage("""{"maxRotation":0,"pivot":"center","shrink":0.1,"cameraWidths":3,
+            "channels":{"scale":{"keys":[{"at":0.8,"value":0.9},{"at":0.4,"value":0.8}]}}}"""))
+        assertTrue("$broken", broken is PackageInstaller.ReadResult.Failed && "effect.json" in broken.message)
+        val icons = installer.read(effectPackage("""{"maxRotation":0,"pivot":"center","shrink":0.1,"cameraWidths":3,"icons":{}}"""))
+        assertEquals(PackageInstaller.ReadResult.NeedsNewerFolio(listOf("icons")), icons)
+    }
+
     // A page effect is an add-on to Flipbook (PackageKind.hostTweak), like a script for jailbreak Cylinder: without
     // the tweak it would sit on the phone doing nothing, so it isn't applied and the Market offers the tweak instead.
     @Test fun `a page effect needs Flipbook on the phone, however Flipbook got there`() {

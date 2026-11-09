@@ -328,6 +328,11 @@ enum class Capability(val id: String, val needs: PackageAccess, val betterWith: 
     /** Afterglow: what's playing comes only from the notification listener's media sessions (Island.kt). */
     TINT_MEDIA("tweaks.tintMedia", PackageAccess.NOTIFICATIONS),
     PAGE_EFFECTS("tweaks.pageEffects", PackageAccess.STANDARD),
+    /**
+     * Page effect channels (format 0.7.0): curves and the extra movement in `effect.json`'s `channels`. Its own id so a
+     * Folio from before channels says "Needs a newer Folio" instead of drawing only an effect's four v1 numbers.
+     */
+    PAGE_EFFECT_CHANNELS("tweaks.pageEffects.channels", PackageAccess.STANDARD),
     FOLD_TRANSITION("tweaks.foldTransition", PackageAccess.STANDARD),
     /** On Home without accessibility, over other apps with it. Nothing consumes it yet, so this is the plan, not a fact. */
     ISLAND_MESSAGES("island.messages", PackageAccess.STANDARD, betterWith = PackageAccess.ACCESSIBILITY),
