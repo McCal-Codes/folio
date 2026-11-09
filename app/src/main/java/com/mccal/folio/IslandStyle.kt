@@ -41,12 +41,30 @@ internal enum class IslandCorners(val key: String, @StringRes val label: Int, va
  * How big the resting pill is. [scale] multiplies the pill's minimum height; the pill still wraps a camera hole at the
  * size the camera needs, so Small never cuts into a lens. Standard is what the island always was.
  */
-internal enum class IslandSizePreset(val key: String, @StringRes val label: Int, val scale: Float) {
+internal enum class IslandSizePreset(val key: String, @StringRes val label: Int, private val fixedScale: Float?) {
+    AUTO("auto", R.string.island_size_auto, null),
     SMALL("small", R.string.island_size_small, 0.88f),
     STANDARD("standard", R.string.standard, 1f),
     LARGE("large", R.string.island_size_large, 1.15f);
 
-    companion object { fun of(key: String?): IslandSizePreset = entries.firstOrNull { it.key == key } ?: STANDARD }
+    /**
+     * The scale for a screen whose camera is [camera] (left, top, right, bottom in px, or null). Automatic picks Small around
+     * the small punch hole of an ordinary phone and Standard for everything else (no cutout, a notch, the Fold's strip),
+     * and never Large; the other presets are fixed.
+     */
+    fun scaleFor(camera: IntArray?, density: Float): Float = fixedScale ?: autoScale(camera, density)
+
+    companion object {
+        fun of(key: String?): IslandSizePreset = entries.firstOrNull { it.key == key } ?: STANDARD
+        /** A camera hole this short (dp), on the top edge, is a punch hole; anything taller is a notch or strip. */
+        const val PUNCH_HOLE_MAX_DP = 20f
+        fun autoScale(camera: IntArray?, density: Float): Float {
+            if (camera == null || density <= 0f) return 1f
+            val heightDp = (camera[3] - camera[1]) / density
+            val widthDp = (camera[2] - camera[0]) / density
+            return if (camera[1] / density > 0.5f && heightDp in 1f..PUNCH_HOLE_MAX_DP && widthDp <= PUNCH_HOLE_MAX_DP * 1.5f) SMALL.fixedScale!! else 1f
+        }
+    }
 }
 
 /** How fast the island's own motion runs, as a multiplier on its spring stiffness and the inverse of its fade lengths. */

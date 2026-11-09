@@ -8,7 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
-- **Island size:** Settings > Dynamic Island > Advanced island > Size makes the resting island Small, Standard or Large, for phones with a small punch-hole camera as well as the Fold. Around a camera hole it never gets smaller than the camera needs. Standard is how it was. The Korean and Chinese text is machine translated.
+- **Island size:** Settings > Dynamic Island > Advanced island > Size makes the resting island Automatic, Small, Standard or Large, for phones with a small punch-hole camera as well as the Fold. Automatic shrinks it around a small punch hole and leaves notches and the Fold as they were. Around a camera hole it never gets smaller than the camera needs. Standard is how it was. The Korean and Chinese text is machine translated.
 - **Folio's own settings in Spotlight:** type "notif" or "dark" and Spotlight lists Folio's matching settings and pages in a "Folio Settings" section above the phone's, up to three, with a count of the rest. Tapping one opens that Settings page and scrolls to the setting. It follows the same switch as phone settings, and finds the same things Settings search does. The Korean and Chinese text is machine translated.
 - **Island tint & rolling ticker:** Notification popup backgrounds in the dynamic island now subtly adapt to the app's icon color palette, and an optional rolling ticker mode scrolls message content along the island pill instead of expanding into a card.
 - **App shortcut menu palette tint:** The home screen app shortcut menu (on hold or Cabinet swipe) adopts a frosted glass background tinted with the app icon's color palette.
@@ -53,6 +53,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Notification and Quick Settings tiles on Home:** the "Folio Notification Shade" and "Folio Quick Settings" tiles and shortcuts did nothing when Folio's Home was open, because Home coming back took the panel down at once. Home now shows its own panel. Over other apps they worked already.
 - **Island over apps opens its card:** tapping the island on top of another app now opens the same card as on Home (call buttons, media controls, timer), closes on swipe up or after 12 seconds, and Open takes you to the app.
 - **Crash with the StandBy glow on the cover screen:** folding a Fold with Dual-Screen Ambient Light on could close Folio with "ViewTreeLifecycleOwner not found". The glow on the outer screen now has its own lifecycle.
 - **Timer and Alarm in Control Center:** the tiles open Clock's Timers and Alarms screens, and say so when the phone has no clock app to open.

@@ -544,6 +544,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onPause() {
         super.onPause()
+        FolioForeground.pausedAt = android.os.SystemClock.uptimeMillis()
         FolioForeground.visible.value = false
         Diagnostics.event(getString(R.string.home_hidden))
         Diagnostics.checkpoint(this, visible = false)

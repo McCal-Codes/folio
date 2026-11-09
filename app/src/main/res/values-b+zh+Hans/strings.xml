@@ -2338,9 +2338,10 @@
     <string name="island_color_note">始终为实色。文字和图标会在白色与黑色之间切换以保持可读。灵动岛环绕真实的摄像头孔时保持黑色，这样镜头周围不会出现较亮的圆环。</string>
     <string name="island_color_swatch">灵动岛颜色：%1$s</string>
     <string name="island_size">大小</string>
+    <string name="island_size_auto">自动</string>
     <string name="island_size_small">小</string>
     <string name="island_size_large">大</string>
-    <string name="island_size_note">灵动岛平时的高度。包裹摄像头孔时，不会小于摄像头所需的大小。</string>
+    <string name="island_size_note">灵动岛平时的高度。自动会在小型手机摄像头孔周围缩小。包裹摄像头孔时，不会小于摄像头所需的大小。</string>
     <string name="island_corners">圆角</string>
     <string name="island_corners_round">圆形</string>
     <string name="island_corners_soft">柔和</string>

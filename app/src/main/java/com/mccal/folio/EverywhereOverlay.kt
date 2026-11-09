@@ -77,7 +77,14 @@ import androidx.compose.ui.semantics.semantics
 import org.json.JSONObject
 
 /** Set by MainActivity: while Folio's Home is showing, the everywhere overlays step aside. */
-internal object FolioForeground { val visible = MutableStateFlow(false) }
+internal object FolioForeground {
+    val visible = MutableStateFlow(false)
+    /** When Home last paused (uptime ms), so a shortcut that starts on top of Home can tell Home is what is underneath. */
+    @Volatile var pausedAt = 0L
+    /** Whether Home paused only an instant ago, which is what starting a shortcut activity over it looks like. */
+    fun justPaused(now: Long = android.os.SystemClock.uptimeMillis()): Boolean = !visible.value && now - pausedAt in 0..HOME_JUST_PAUSED_MS
+    const val HOME_JUST_PAUSED_MS = 1_000L
+}
 
 /** Lifecycle for ComposeViews that live in windows with no activity behind them: accessibility overlays and the StandBy glow on another display. */
 internal class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner {
@@ -662,7 +669,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight), IslandStyle.active(service).size.scale).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight), IslandStyle.active(service).size.scaleFor(camera?.ltrb(), density)).also { geometry = it }
         islandWindowWidth = windowWidth
         // Advanced island: the saved color only applies when the pill is not wrapping a camera hole Android reports.
         val reportedCutout = metrics.windowInsets.displayCutout?.boundingRects?.any { !it.isEmpty } == true

@@ -183,10 +183,10 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
 
     with(density) {
         val camera = cutout?.ltrb()
-        val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density, style.size.scale)
+        val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density, style.size.scaleFor(camera, density.density))
         // Where the camera really is: the snap target for a drag, even when the pill is drawn at top center instead.
         val realCamera = islandGeometry(camera, windowWidth, density.density)
-        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density, extraWidth, nudge, style.size.scale)
+        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density, extraWidth, nudge, style.size.scaleFor(camera, density.density))
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
         val live = (content as? IslandContent.Live)?.activity

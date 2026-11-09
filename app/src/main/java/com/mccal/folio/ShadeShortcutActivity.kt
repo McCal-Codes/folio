@@ -18,6 +18,12 @@ abstract class ShadeShortcutActivity(private val panelName: String) : Activity()
         created.incrementAndGet()
         val panel = ShadePanel.fromShortcut(panelName)
         if (panel == null) { finish(); return }
+        // Started from Home (the Quick Settings tile, a Home shortcut): Home paused a moment ago and resumes when this leaves, which would take an
+        // overlay down at once. Home draws its own panel, with its own blur, so hand it over.
+        if (FolioForeground.justPaused() && FolioActions.home?.get() != null) {
+            FolioActions.pendingPanel = panel
+            finish(); return
+        }
         // With "Folio's panels over other apps" on, the shortcut draws Folio's own panel; otherwise (or locked, or in Safe Mode) the phone's.
         if (!SystemShadeAccessibilityService.openFolio(panel)) when (SystemShadeAccessibilityService.open(this, panel)) {
             ShadeOpenResult.SERVICE_DISABLED -> startActivity(Intent(this, MainActivity::class.java)
