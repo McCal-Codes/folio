@@ -52,6 +52,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Island over apps opens its card:** tapping the island on top of another app now opens the same card as on Home (call buttons, media controls, timer), closes on swipe up or after 12 seconds, and Open takes you to the app.
 - **Crash with the StandBy glow on the cover screen:** folding a Fold with Dual-Screen Ambient Light on could close Folio with "ViewTreeLifecycleOwner not found". The glow on the outer screen now has its own lifecycle.
 - **Timer and Alarm in Control Center:** the tiles open Clock's Timers and Alarms screens, and say so when the phone has no clock app to open.
 - **Badges on Dual Messenger copies:** an app's copy in another profile has its own badge count, and Clear Badge clears only that copy.
