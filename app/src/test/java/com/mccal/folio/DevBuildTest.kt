@@ -21,6 +21,15 @@ class DevBuildTest {
         assertEquals(listOf("Open System Bridge", "Turn the switch off"), i.notes)
     }
 
+    @Test fun `a note splits into a title and a detail that starts with a capital`() {
+        assertEquals("Island tint" to "Get a notification. It should match.", DevBuild.split("Island tint: get a notification. It should match."))
+        assertEquals("Island tint" to "Already capital.", DevBuild.split("Island tint: Already capital."))
+        assertEquals("Just a title" to null, DevBuild.split("Just a title:"))
+        assertEquals("No colon at all" to null, DevBuild.split("No colon at all"))
+        val long = "x".repeat(41) + ": a detail"
+        assertEquals("a colon after 40 characters is part of the title", long to null, DevBuild.split(long))
+    }
+
     @Test fun `no checklist is fine and a damaged file is nothing`() {
         assertEquals(emptyList<String>(), DevBuild.parse("""{"branch":"b","sha":"s","builtAt":"","commits":[]}""")!!.notes)
         assertNull(DevBuild.parse("not json")); assertNull(DevBuild.parse("""{"branch":"b"}"""))

@@ -262,7 +262,7 @@ internal fun MarketScreen(
         // A newer version than the one on the phone: Folio installs it over the old one when it may, and otherwise
         // the sheet offers the places it installs from, the same as Get.
         MarketAppUpdate.offered(appContext, entry)?.let { onPhone ->
-            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.unavailable)) {
+            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.unavailable, updating = true)) {
                 installApp(entry, onPhone)
             } else {
                 choosing = entry.listingKey
@@ -753,6 +753,7 @@ internal fun MarketScreen(
                         MarketExternalSheet(
                             manifest = manifest,
                             signed = listing.source.kind != Source.Kind.LOCAL_DEV,
+                            unverifiable = MarketApkInstall.cannotVerify(listing.source, listing.entry, session.prefs.installApps, listing.unavailable),
                             onInstallHere = if (
                                 MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.unavailable)
                             ) {

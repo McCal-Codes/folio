@@ -124,7 +124,8 @@ internal object DevBuild {
     /** A note "Title: what to do" as its two parts; a note with no short title before a colon is all title. */
     fun split(note: String): Pair<String, String?> {
         val colon = note.indexOf(':')
-        return if (colon in 1..40) note.substring(0, colon).trim() to note.substring(colon + 1).trim().ifEmpty { null } else note to null
+        // The detail is a sentence of its own under the title, so it starts with a capital whatever the note file did.
+        return if (colon in 1..40) note.substring(0, colon).trim() to note.substring(colon + 1).trim().ifEmpty { null }?.replaceFirstChar { it.uppercase() } else note to null
     }
     const val RECENT_SHOWN = 5
 

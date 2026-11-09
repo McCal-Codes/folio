@@ -75,7 +75,8 @@ class BadgesWhenOpenedTest {
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
         val main = java.io.File(root, "app/src/main/java/com/mccal/folio/MainActivity.kt").readText()
         assertTrue("the badges Home draws should pass through BadgesWhenOpened.visible", "BadgesWhenOpened.visible(" in main)
-        assertTrue("launching an app should remember the badge it was showing", "noteBadgeSeen(app.packageName)" in main)
+        // Filed by package and profile (BadgeKey), so a Dual Messenger copy's badge is its own (#561).
+        assertTrue("launching an app should remember the badge it was showing", "noteBadgeSeen(BadgeKey.of(app))" in main)
         // REL-4a: hidden work that still costs battery is wrong, so the gate is asked where the work starts.
         assertTrue("the work itself should be gated, not only the switch", "FeatureGate.BADGES_WHEN_OPENED.isOpen" in main)
     }

@@ -42,6 +42,8 @@ internal fun MarketExternalSheet(
      * signed" would be untrue there: the checksum is still checked, but nothing vouches for the list it came in.
      */
     signed: Boolean = true,
+    /** Folio would install it here but the listing names no signer or package, so it can't check the APK. */
+    unverifiable: Boolean = false,
     onPick: (ExternalSource) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -61,6 +63,12 @@ internal fun MarketExternalSheet(
             ),
             color = Color.White.copy(alpha = .7f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(top = FolioSpace.SNUG.dp),
         )
+        if (unverifiable && !here) {
+            Text(
+                stringResource(R.string.folio_can_t_check_this_app_s_developer),
+                color = Color.White.copy(alpha = .7f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(top = FolioSpace.SNUG.dp).testTag("market-external-unverifiable"),
+            )
+        }
         Spacer(Modifier.height(14.dp))
         onInstallHere?.let { install ->
             // First, because it is the one that doesn't leave. Sileo's shape: the store fetches and Android asks.

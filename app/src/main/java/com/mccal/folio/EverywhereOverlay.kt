@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
@@ -76,10 +77,17 @@ import androidx.compose.ui.semantics.semantics
 import org.json.JSONObject
 
 /** Set by MainActivity: while Folio's Home is showing, the everywhere overlays step aside. */
-internal object FolioForeground { val visible = MutableStateFlow(false) }
+internal object FolioForeground {
+    val visible = MutableStateFlow(false)
+    /** When Home last paused (uptime ms), so a shortcut that starts on top of Home can tell Home is what is underneath. */
+    @Volatile var pausedAt = 0L
+    /** Whether Home paused only an instant ago, which is what starting a shortcut activity over it looks like. */
+    fun justPaused(now: Long = android.os.SystemClock.uptimeMillis()): Boolean = !visible.value && now - pausedAt in 0..HOME_JUST_PAUSED_MS
+    const val HOME_JUST_PAUSED_MS = 1_000L
+}
 
-/** Lifecycle for ComposeViews that live in accessibility overlay windows. */
-private class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner {
+/** Lifecycle for ComposeViews that live in windows with no activity behind them: accessibility overlays and the StandBy glow on another display. */
+internal class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner {
     private val registry = LifecycleRegistry(this)
     private val saved = SavedStateRegistryController.create(this)
     override val lifecycle: Lifecycle get() = registry
@@ -135,6 +143,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     /** What the island would show right now; the window only exists while this is non-null. */
     private val islandContent = MutableStateFlow<IslandContent?>(null)
 
+    /** The island over an app is opened into its card (media controls, call buttons): a tap opens it, a swipe up or the time closes it (#395). */
+    private val islandExpanded = MutableStateFlow(false)
+
     private val recordingWatch = RecordingWatch(PrivateViewState.OVERLAY)
 
     fun start() {
@@ -149,6 +160,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         foregroundJob = scope.launch { FolioForeground.visible.collect { sync(); if (it) removeShade() } }
         // The Crackgate joke: CrackgateOwner decides when it is up, this only draws it (and a window that is already up stays across a restart of the overlay).
         scope.launch { CrackgateOwner.shown.collect { showCrackgate(it) } }
+        scope.launch { islandExpanded.collect { islandContent.value?.let { c -> resizeIsland(c) } } }
         scope.launch {
             kotlinx.coroutines.flow.combine(IslandListenerService.activity, IslandEvents.latest) { a, e ->
                 a?.takeUnless { it is IslandActivity.Call && "CALL" in settings.value.eventsOff } to e }
@@ -157,6 +169,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     val remaining = eventPair?.takeIf { it.first.kind !in settings.value.eventsOff && it.first !is IslandEvent.Notice }
                         ?.let { IslandEvents.showMs(service, it.first) - (System.currentTimeMillis() - it.second) } ?: 0L
                     islandContent.value = if (remaining > 0) IslandContent.Event(eventPair!!.first) else activity?.let { IslandContent.Live(it) }
+                    if (islandContent.value !is IslandContent.Live) islandExpanded.value = false
                     sync()
                     if (remaining > 0) {
                         kotlinx.coroutines.delay(remaining)
@@ -656,7 +669,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val camera = islandCamera(metrics.windowInsets.displayCutout, wm.defaultDisplay, density)
         val wide = islandWideWindow(windowWidth, density, service.resources.configuration.classScale)
         val custom = IslandPosition.load(service, wide, windowWidth > windowHeight)
-        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight)).also { geometry = it }
+        val g = islandPlacement(camera?.ltrb(), custom, windowWidth, windowHeight, density, IslandSize.load(service, wide, windowWidth > windowHeight), IslandNudge.load(service, wide, windowWidth > windowHeight), IslandStyle.active(service).size.scaleFor(camera?.ltrb(), density)).also { geometry = it }
         islandWindowWidth = windowWidth
         // Advanced island: the saved color only applies when the pill is not wrapping a camera hole Android reports.
         val reportedCutout = metrics.windowInsets.displayCutout?.boundingRects?.any { !it.isEmpty } == true
@@ -666,6 +679,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             setContent {
                 val islandStrings = androidx.compose.ui.platform.LocalContext.current.strings()
                 val content = islandContent.collectAsState().value
+                val cardOpen = islandExpanded.collectAsState().value && content is IslandContent.Live
                 // Folio's own Reduce Motion (saved with the rest) or Android's Remove animations, as on Home (I-9).
                 @Composable fun androidRemovesAnimations(): Boolean {
                     var removed by remember { mutableStateOf(reduceMotionEnabled(service)) }
@@ -695,16 +709,18 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 val w by animateDpAsState(content?.let { g.widthFor(it).dp } ?: 0.dp,
                     if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.scaled(FolioMotion.Appear, speed)), label = "overlay-island")
                 androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduceMotion, LocalIslandStyle provides style, LocalIslandInk provides ink) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // Top, not center: with the card open the window wraps its content and can be taller than the pill.
+                Box(if (cardOpen) Modifier else Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                     val popUp = (content as? IslandContent.Event)?.event is IslandEvent.Message
                     // With Reduce Motion the pill fades in where it lands instead of growing from nothing.
                     if (content != null && w > 1.dp) { val fade = rememberReducedFade().value; val open = {
                             (content as? IslandContent.Live)?.let { IslandListenerService.open(service, it.activity) }
                             ((content as? IslandContent.Event)?.event as? IslandEvent.Message)?.let { IslandListenerService.openKey(service, it.key, it.packageName) }
                         }
-                        // There is no card to expand over an app, so Expand opens the app, as a tap always did; Dismiss puts a pop-up away.
+                        // Expand opens the card for a live activity (media, a call, a timer); a pop-up has no card, so Expand opens its app, as a tap always did. Dismiss puts a pop-up away.
                         val act: (IslandAction) -> Unit = { a ->
-                            when (IslandStyle.overlayAction(a)) {
+                            if (a == IslandAction.EXPAND && content is IslandContent.Live) islandExpanded.value = true
+                            else when (IslandStyle.overlayAction(a)) {
                                 IslandAction.OPEN_APP -> open()
                                 IslandAction.DISMISS -> if (content is IslandContent.Event) IslandEvents.dismiss()
                                 else -> Unit
@@ -713,7 +729,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                         val tapLabel = stringResource(if (IslandStyle.overlayAction(gestures.getValue(IslandGesture.TAP)) == IslandAction.DISMISS) R.string.island_action_dismiss else R.string.open)
                         val dismissLabel = stringResource(R.string.island_action_dismiss)
                         val openLabel = stringResource(R.string.open)
-                        Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape(radius)).background(surface)
+                        if (cardOpen) OverlayExpandedCard((content as IslandContent.Live).activity, g.pillH.dp, surface,
+                            onOpen = { islandExpanded.value = false; open() }, onClose = { islandExpanded.value = false })
+                        else Box(Modifier.size(w, g.pillH.dp).graphicsLayer { alpha = fade }.clip(RoundedCornerShape(radius)).background(surface)
                         // Swipe a message or notification up to put it away early, like an iPhone banner.
                         .pointerInput(popUp, gestures.getValue(IslandGesture.SWIPE_UP)) {
                             if (!popUp || gestures.getValue(IslandGesture.SWIPE_UP) != IslandAction.DISMISS) return@pointerInput
@@ -723,7 +741,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                                 onDragEnd = { if (pulled < -12.dp.toPx()) IslandEvents.dismiss() },
                             ) { change, dy -> change.consume(); pulled += dy }
                         }
-                        .then(if (!customGestures) Modifier.clickable(onClickLabel = service.getString(R.string.open)) { open() }
+                        .then(if (!customGestures) Modifier.clickable(onClickLabel = service.getString(R.string.open)) { act(IslandAction.EXPAND) }
                             else Modifier.islandGestureInput(gestures) { _, action -> act(action) })
                         .semantics {
                             contentDescription = describe(content, islandStrings); liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
@@ -758,14 +776,17 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
         val view = island ?: return
         val params = islandParams ?: return
         val g = geometry ?: return
-        val widthPx = (g.widthFor(content) * density).toInt()
-        if (params.width == widthPx) return
+        val card = islandExpanded.value && content is IslandContent.Live
+        val widthPx = ((if (card) minOf(g.maxW, OVERLAY_CARD_DP) else g.widthFor(content)) * density).toInt()
+        val heightPx = if (card) WindowManager.LayoutParams.WRAP_CONTENT else (g.pillH * density).roundToInt()
+        if (params.width == widthPx && params.height == heightPx) return
         params.width = widthPx
+        params.height = heightPx
         params.x = islandLeftPx(g.centerXPx, widthPx.toFloat(), islandWindowWidth, density).roundToInt()
         runCatching { wm.updateViewLayout(view, params) }
     }
 
-    private fun removeIsland() { island?.let { runCatching { wm.removeView(it) } }; island = null; islandParams = null }
+    private fun removeIsland() { island?.let { runCatching { wm.removeView(it) } }; island = null; islandParams = null; islandExpanded.value = false }
 }
 
 /**
@@ -853,5 +874,38 @@ private fun ButtonBar(s: EverywhereOverlay.ButtonBarSettings, onAction: (Int) ->
                 }
             }
         }
+    }
+}
+
+/** How wide the opened island card is over an app, in dp (never wider than the room the pill has). */
+private const val OVERLAY_CARD_DP = 340f
+/** An opened card closes by itself after this long, so it never sits over an app. */
+private const val OVERLAY_CARD_MS = 12_000L
+
+/**
+ * The island over an app, opened: the same controls Home's card has ([ExpandedCardContent]), drawn below the camera strip.
+ * The strip at the top closes it, so does a swipe up, and it closes on its own after [OVERLAY_CARD_MS].
+ */
+@Composable
+private fun OverlayExpandedCard(live: IslandActivity, stripH: androidx.compose.ui.unit.Dp, surface: Color, onOpen: () -> Unit, onClose: () -> Unit) {
+    // Any touch on the card starts the countdown again, so it never closes while it is being used.
+    var touches by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(live::class, touches) { kotlinx.coroutines.delay(OVERLAY_CARD_MS); onClose() }
+    val closeLabel = stringResource(R.string.close)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(surface)
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    if (e.changes.any { it.pressed && !it.previousPressed }) touches++
+                }
+            }
+        }
+        .pointerInput(Unit) {
+            var pulled = 0f
+            detectVerticalDragGestures(onDragStart = { pulled = 0f }, onDragEnd = { if (pulled < -24.dp.toPx()) onClose() }) { change, dy -> change.consume(); pulled += dy }
+        }.testTag("overlay-island-card")) {
+        Box(Modifier.fillMaxWidth().height(stripH).clickable(onClickLabel = closeLabel) { onClose() })
+        ExpandedCardContent(live, onOpen)
     }
 }

@@ -109,6 +109,13 @@ data class IndexPackage(
     val needs: List<String> = emptyList(),
     /** The author's own signature over this package's id, version and bytes, when they published one. */
     val signedBy: AuthorSignature? = null,
+    /**
+     * For an app: the SHA-256 digests of the certificates it is signed with, lowercase hex, as `apksigner verify
+     * --print-certs` prints them. Folio refuses a first install whose APK isn't signed by one of these.
+     */
+    val signerSha256: Set<String> = emptySet(),
+    /** For an app: the lowest versionCode its APK may have. An APK below it is refused. */
+    val versionCode: Long? = null,
 ) {
     /** True when [bytes] are the size and checksum this listing promised (a missing size or checksum promises nothing). */
     fun matches(bytes: ByteArray): Boolean =
@@ -129,6 +136,12 @@ data class IndexPackage(
          */
         const val MAX_APP_BYTES = 100 * 1024 * 1024
 
+        /** The most signer digests a listing may name: one per key of an APK signed by several. */
+        const val MAX_SIGNERS = 8
+
+        /** Android's versionCode is a long; JSON numbers are exact only this far. */
+        const val MAX_VERSION_CODE = 9007199254740991L
+
         /** Why a listed package can't be used here: it names something this Folio doesn't have. */
         const val NEEDS_NEWER_FOLIO = "a newer Folio"
         private val RELATIVE_OR_HTTPS = Regex("^(https://\\S+|(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+)\\z")
@@ -137,7 +150,7 @@ data class IndexPackage(
 
         internal fun read(parent: Fields, index: Int, json: org.json.JSONObject): IndexPackage? {
             val at = "${parent.where("packages")}[$index]"
-            val f = parent.child(json, at, setOf("id", "version", "url", "sha256", "size", "provenance", "manifest", "signedBy"))
+            val f = parent.child(json, at, setOf("id", "version", "url", "sha256", "size", "provenance", "manifest", "signedBy", "signerSha256", "versionCode"))
             val p = parent.problems
             val id = f.string("id", true, PackageManifest.ID, PackageManifest.MAX_ID, "must be a package id")
             val version = PackageManifest.readVersion(f, "version")
@@ -183,7 +196,17 @@ data class IndexPackage(
             if (signedBy != null && sha256 == null) {
                 p.errors += "$at.signedBy needs the package's sha256 to sign over"
             }
-            return IndexPackage(id, version, url, sha256, size?.toInt(), provenance, embedded, needs, signedBy)
+            val signers = f.strings("signerSha256", false, minItems = 1, maxItems = MAX_SIGNERS, unique = true) { value, where ->
+                f.checkString(value, where, FileRef.SHA256, 64, "must be 64 lowercase hex characters")
+            }
+            val versionCode = f.long("versionCode", false, 1L..MAX_VERSION_CODE)
+            if ((f.has("signerSha256") || f.has("versionCode")) && !f.has("url")) {
+                p.errors += "$at.signerSha256 and versionCode describe an APK, so they need its url"
+            }
+            return IndexPackage(
+                id, version, url, sha256, size?.toInt(), provenance, embedded, needs, signedBy,
+                signerSha256 = signers.orEmpty().toSet(), versionCode = versionCode,
+            )
         }
     }
 }
