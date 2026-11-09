@@ -52,6 +52,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Crash with the StandBy glow on the cover screen:** folding a Fold with Dual-Screen Ambient Light on could close Folio with "ViewTreeLifecycleOwner not found". The glow on the outer screen now has its own lifecycle.
 - **Timer and Alarm in Control Center:** the tiles open Clock's Timers and Alarms screens, and say so when the phone has no clock app to open.
 - **Badges on Dual Messenger copies:** an app's copy in another profile has its own badge count, and Clear Badge clears only that copy.
 - **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.

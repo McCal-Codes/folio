@@ -78,8 +78,8 @@ import org.json.JSONObject
 /** Set by MainActivity: while Folio's Home is showing, the everywhere overlays step aside. */
 internal object FolioForeground { val visible = MutableStateFlow(false) }
 
-/** Lifecycle for ComposeViews that live in accessibility overlay windows. */
-private class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner {
+/** Lifecycle for ComposeViews that live in windows with no activity behind them: accessibility overlays and the StandBy glow on another display. */
+internal class OverlayOwner : LifecycleOwner, SavedStateRegistryOwner {
     private val registry = LifecycleRegistry(this)
     private val saved = SavedStateRegistryController.create(this)
     override val lifecycle: Lifecycle get() = registry

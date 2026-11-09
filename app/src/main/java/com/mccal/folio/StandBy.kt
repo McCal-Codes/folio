@@ -15,6 +15,8 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import androidx.activity.compose.BackHandler
@@ -321,15 +323,21 @@ internal fun StandByOverlay(way: StandByWay?, ready: Boolean, pose: FoldingFeatu
                         activity,
                         executor,
                         object : androidx.window.area.WindowAreaPresentationSessionCallback {
+                            // A window on the rear display has no activity behind it, so the glow brings its own lifecycle
+                            // (without one, Compose throws "ViewTreeLifecycleOwner not found" when the view attaches).
+                            private var owner: OverlayOwner? = null
                             override fun onSessionStarted(session: androidx.window.area.WindowAreaSessionPresenter) {
+                                val glowOwner = OverlayOwner().also { it.start(); owner = it }
                                 val composeView = ComposeView(session.context).apply {
+                                    setViewTreeLifecycleOwner(glowOwner)
+                                    setViewTreeSavedStateRegistryOwner(glowOwner)
                                     setContent {
                                         AmbientScreenGlow(ambientClockInk, ambientNight, config.steadyClock, reduceMotionEnabled(session.context))
                                     }
                                 }
                                 session.setContentView(composeView)
                             }
-                            override fun onSessionEnded(t: Throwable?) {}
+                            override fun onSessionEnded(t: Throwable?) { owner?.stop(); owner = null }
                             override fun onContainerVisibilityChanged(isVisible: Boolean) {}
                         }
                     )
@@ -637,13 +645,26 @@ internal class StandByAmbientPresentation(
             )
             setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
         }
+        // A Presentation is a plain Dialog on another display: give the glow and its window a lifecycle of their own.
+        val glowOwner = OverlayOwner().also { it.start(); owner = it }
         val composeView = ComposeView(context).apply {
             setContent {
                 AmbientScreenGlow(clockColor, night, steady, reduceMotionEnabled(context))
             }
         }
+        listOfNotNull(composeView, window?.decorView).forEach {
+            it.setViewTreeLifecycleOwner(glowOwner)
+            it.setViewTreeSavedStateRegistryOwner(glowOwner)
+        }
         setContentView(composeView)
     }
+
+    override fun onStop() {
+        owner?.stop(); owner = null
+        super.onStop()
+    }
+
+    private var owner: OverlayOwner? = null
 }
 
 /** True when StandBy keeps its clock and glow still (the default). Set from [StandByEffectiveConfig.steadyClock]. */
