@@ -91,7 +91,12 @@ internal object SoftwareUpdate {
 
     fun startCheck(context: Context) = launchExclusive { check(context.applicationContext) }
     fun startInstall(context: Context, release: Release) = launchExclusive { downloadAndInstall(context.applicationContext, release) }
-    fun startCheckIfDue(context: Context) = launchExclusive { checkIfDue(context.applicationContext) }
+    fun startCheckIfDue(context: Context) {
+        // The supporter reminder is local and cheap, and Manual mode has no daily job, so it also runs when Folio opens.
+        val app = context.applicationContext
+        scope.launch { runCatching { SupporterReminder.check(app) } }
+        launchExclusive { checkIfDue(app) }
+    }
 
     private fun launchExclusive(block: suspend () -> Unit) {
         if (!busy.compareAndSet(false, true)) return
@@ -299,6 +304,8 @@ internal object SoftwareUpdate {
 
     /** Run by the daily job, off the main thread. */
     internal suspend fun backgroundCheck(context: Context) {
+        // The supporter reminder rides on the daily job; it reads local state only and never touches the network.
+        runCatching { SupporterReminder.check(context) }
         if (busy.compareAndSet(false, true)) try { checkIfDue(context) } finally { busy.set(false) }
     }
 
@@ -421,6 +428,24 @@ internal object SoftwareUpdate {
         // After process death the handed-over release is gone from memory, but the verified download is still on disk.
         val release = handedOver ?: readyApk(context)?.first
         status.value = if (release != null && readyApk(context) != null) Status.Ready(release, tonight = false) else Status.Idle
+    }
+
+    /** The newest beta newer than this one, and what it brings: shown to someone with no supporter code, so they can see what a coffee gets them. */
+    data class BetaTeaser(val version: String, val highlights: List<String>, val more: Int)
+
+    /**
+     * Read from public places only, the tags and the notes in the open repository, so it needs no code and sends none.
+     * Null when no beta is newer than this phone's version, or when either place can't be reached.
+     */
+    suspend fun betaTeaser(context: Context): BetaTeaser? = withContext(Dispatchers.IO) {
+        runCatching {
+            val tags = org.json.JSONArray(get("https://api.github.com/repos/McCal-Codes/folio/tags?per_page=30"))
+            val newest = (0 until tags.length()).map { tags.getJSONObject(it).getString("name").removePrefix("v") }
+                .filter { "-beta." in it }.reduceOrNull { a, b -> if (isNewer(b, a)) b else a }
+            if (newest == null || !isNewer(newest, installedVersion(context))) return@runCatching null
+            val (shown, more) = betaHighlights(get("https://raw.githubusercontent.com/McCal-Codes/folio/main/docs/releases/$newest.md"))
+            if (shown.isEmpty()) null else BetaTeaser(newest, shown, more)
+        }.getOrNull()
     }
 
     private fun get(url: String, code: String? = null): String {
@@ -589,4 +614,18 @@ class SoftwareUpdateJob : android.app.job.JobService() {
 
         fun cancelInstall(context: Context) { scheduler(context)?.cancel(INSTALL) }
     }
+}
+
+/**
+ * The feature lines of a beta's notes: the bullets under its "What's new" heading, with the Markdown taken out and
+ * each cut to a line's length, [limit] of them plus how many more there were.
+ */
+internal fun betaHighlights(markdown: String, limit: Int = 5): Pair<List<String>, Int> {
+    val lines = markdown.lines()
+    val start = lines.indexOfFirst { it.startsWith("## ") && it.contains("new", ignoreCase = true) }
+    if (start < 0) return emptyList<String>() to 0
+    val bullets = lines.drop(start + 1).takeWhile { !it.startsWith("## ") }.filter { it.startsWith("- ") }
+        .map { it.removePrefix("- ").replace("**", "").replace("`", "").trim() }
+        .map { if (it.length > 150) it.take(147).trimEnd() + "..." else it }
+    return bullets.take(limit) to maxOf(0, bullets.size - limit)
 }
