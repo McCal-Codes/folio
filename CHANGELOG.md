@@ -38,6 +38,9 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Pull tabs in full-screen apps:** in a video, a game or a reader that hides the status bar, two small tabs sit on the top edge, the left for Notification Center and the right for Control Center. Pull one down to open its panel. A switch under "Pull down from the top of any app" turns them off.
 - **One look for every tweak page:** Cabinet, Harborline, Roll Call, Palette, Afterglow, Flipbook and Duet now open on the same layout. The icon and what each is inspired by sit at the top, Reset is a blue action row like Get and Remove, and a tweak you have not got yet shows an About card, Get, and a line saying its options appear once you get it. Nothing about how a tweak behaves changes.
 - **Cabinet without the flick:** the long-press menu has an App Panel row, and TalkBack lists the same action as Show App Panel on an icon, so the app panel no longer needs a swipe up. Dock icons open the panel too. Its Open button and notification rows are now 48 dp targets, it scrolls at large text sizes with Open staying put, and with Reduce Motion it only fades in.
+- **Icon Actions:** choose what a swipe or a double tap on an icon runs, in Edit Icon and in Settings › Gestures & Actions. An icon's long-press menu lists its actions so you can run one without the gesture.
+- **Market checks an app before Android installs it:** Folio compares the app's package, version and signer with its listing first, and says why it can't install one when the source lists no developer.
+- **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels.
 
 ### Changed
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
@@ -49,6 +52,8 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Timer and Alarm in Control Center:** the tiles open Clock's Timers and Alarms screens, and say so when the phone has no clock app to open.
+- **Badges on Dual Messenger copies:** an app's copy in another profile has its own badge count, and Clear Badge clears only that copy.
 - **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.
 - **Unfolded leading page widget stabilization:** Preserved saveable state and improved layout hysteresis for widgets on the left screen of foldables, preventing unmounting or re-creation during page swipes.
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
