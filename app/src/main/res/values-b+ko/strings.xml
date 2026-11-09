@@ -2359,6 +2359,10 @@
     <string name="island_color_camera_note">카메라 구멍 위에서는 테두리가 보이지 않도록 대기 상태의 아일랜드가 검은색으로 유지됩니다. 색은 아일랜드가 열릴 때와 카메라에서 옮겼을 때 나타납니다.</string>
     <string name="island_color_note">항상 불투명합니다. 글자와 아이콘은 읽기 쉽도록 흰색과 검은색 중에서 바뀝니다. 실제 카메라 구멍을 감쌀 때는 렌즈 주변에 밝은 테두리가 보이지 않도록 검은색을 유지합니다.</string>
     <string name="island_color_swatch">%1$s Dynamic Island 색상</string>
+    <string name="island_size">크기</string>
+    <string name="island_size_small">작게</string>
+    <string name="island_size_large">크게</string>
+    <string name="island_size_note">평상시 Dynamic Island의 높이입니다. 카메라 구멍을 감쌀 때는 카메라에 필요한 크기보다 작아지지 않습니다.</string>
     <string name="island_corners">모서리 반경</string>
     <string name="island_corners_round">둥글게</string>
     <string name="island_corners_soft">부드럽게</string>

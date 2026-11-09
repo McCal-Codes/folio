@@ -2398,6 +2398,10 @@
     <string name="island_color_camera_note">Over the camera hole the resting island stays black so no ring shows; the color shows when it opens, and when you move it off the camera.</string>
     <string name="island_color_note">Always solid. Text and icons switch between white and black to stay readable. While the island wraps a real camera hole it stays black, so the lens never shows a lighter ring.</string>
     <string name="island_color_swatch">%1$s island color</string>
+    <string name="island_size">Size</string>
+    <string name="island_size_small">Small</string>
+    <string name="island_size_large">Large</string>
+    <string name="island_size_note">How tall the island is at rest. Around a camera hole it is never smaller than the camera needs.</string>
     <string name="island_corners">Corner radius</string>
     <string name="island_corners_round">Round</string>
     <string name="island_corners_soft">Soft</string>

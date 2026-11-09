@@ -183,10 +183,10 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
 
     with(density) {
         val camera = cutout?.ltrb()
-        val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density)
+        val cameraGeometry = islandCameraGeometry(camera, windowWidth, windowHeight, density.density, style.size.scale)
         // Where the camera really is: the snap target for a drag, even when the pill is drawn at top center instead.
         val realCamera = islandGeometry(camera, windowWidth, density.density)
-        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density, extraWidth, nudge)
+        val geometry = islandPlacement(camera, custom, windowWidth, windowHeight, density.density, extraWidth, nudge, style.size.scale)
         val pillH = geometry.pillH.dp
         val centerX = geometry.centerXPx
         val live = (content as? IslandContent.Live)?.activity
@@ -516,9 +516,9 @@ internal fun islandReportedCameraWidthDp(cutout: android.view.DisplayCutout?, de
     cutout?.boundingRects?.filter { !it.isEmpty }?.minByOrNull { it.top }?.let { it.width() / density }
 
 /** Island placed at a free position (no camera inside). */
-internal fun islandGeometryAt(centerXPx: Float, topDp: Float, windowWidthPx: Int, density: Float): IslandGeometry {
+internal fun islandGeometryAt(centerXPx: Float, topDp: Float, windowWidthPx: Int, density: Float, scale: Float = 1f): IslandGeometry {
     val room = minOf(centerXPx, windowWidthPx - centerXPx) / density - ISLAND_SIDE_MARGIN
-    val pillH = 34f
+    val pillH = 34f * scale
     return IslandGeometry(0f, 0f, centerXPx, topDp + pillH / 2, pillH, maxOf(room * 2, 80f), topDp)
 }
 
@@ -604,10 +604,10 @@ internal fun islandWideWindow(windowWidthPx: Int, density: Float, classScale: Fl
  * [custom] is a spot the user dragged it to on this screen and orientation, kept on screen ([IslandPosition.clamped]).
  */
 internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowWidthPx: Int, windowHeightPx: Int, density: Float,
-    extraWidthDp: Float = 0f, nudge: IslandNudge = IslandNudge.None): IslandGeometry {
-    val atCamera = islandCameraGeometry(camera, windowWidthPx, windowHeightPx, density)
+    extraWidthDp: Float = 0f, nudge: IslandNudge = IslandNudge.None, scale: Float = 1f): IslandGeometry {
+    val atCamera = islandCameraGeometry(camera, windowWidthPx, windowHeightPx, density, scale)
     val placed = custom?.clamped(windowWidthPx, windowHeightPx, density, atCamera.pillH)
-        ?.let { islandGeometryAt(it.xFraction * windowWidthPx, it.topDp, windowWidthPx, density) } ?: atCamera
+        ?.let { islandGeometryAt(it.xFraction * windowWidthPx, it.topDp, windowWidthPx, density, scale) } ?: atCamera
     // A nudge shifts the pill as it is (wrapping the camera or free), so the wrap width and height are never lost to it.
     // Kept on screen: a pill already near the bottom must not be nudged off it (the same bottom bound as a dragged spot, IslandPosition.clamped).
     val lowest = maxOf((windowHeightPx / density - placed.pillH - ISLAND_EDGE_GAP).coerceAtLeast(0f), placed.top)
@@ -622,8 +622,8 @@ internal fun islandPlacement(camera: IntArray?, custom: IslandPosition?, windowW
  * down) has no pill to sit in: wrapping it put the pill mid-edge and partly off screen, so the island goes to the top
  * center instead. Home stands an upright island at a side camera itself ([VerticalIsland]).
  */
-internal fun islandCameraGeometry(camera: IntArray?, windowWidthPx: Int, windowHeightPx: Int, density: Float): IslandGeometry =
-    islandGeometry(camera?.takeIf { cameraOnTopEdge(it, windowWidthPx, windowHeightPx) }, windowWidthPx, density)
+internal fun islandCameraGeometry(camera: IntArray?, windowWidthPx: Int, windowHeightPx: Int, density: Float, scale: Float = 1f): IslandGeometry =
+    islandGeometry(camera?.takeIf { cameraOnTopEdge(it, windowWidthPx, windowHeightPx) }, windowWidthPx, density, scale)
 
 /** Whether the top is the screen edge [camera] is nearest. An unknown window size counts as top. */
 internal fun cameraOnTopEdge(camera: IntArray, windowWidthPx: Int, windowHeightPx: Int): Boolean {
@@ -642,7 +642,7 @@ internal fun islandLeftPx(centerXPx: Float, widthPx: Float, windowWidthPx: Int, 
 }
 
 /** [cutoutLtrb] is left, top, right, bottom in px (or null when the display has no cutout). */
-internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: Float): IslandGeometry {
+internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: Float, scale: Float = 1f): IslandGeometry {
     val camW = (cutoutLtrb?.let { it[2] - it[0] } ?: 0) / density
     val camH = (cutoutLtrb?.let { it[3] - it[1] } ?: 0) / density
     val centerXPx = cutoutLtrb?.let { (it[0] + it[2]) / 2f } ?: (windowWidthPx / 2f)
@@ -658,7 +658,8 @@ internal fun islandGeometry(cutoutLtrb: IntArray?, windowWidthPx: Int, density: 
     val atEdge = cutoutLtrb != null && cutoutLtrb[1] <= OUTLINE_SLACK
     val top = if (cutoutLtrb == null || atEdge) ISLAND_EDGE_GAP
         else minOf(maxOf(ISLAND_EDGE_GAP, camTop - ISLAND_CAMERA_MARGIN), camTop - ISLAND_CAMERA_MIN_OVERLAP).coerceAtLeast(0f)
-    val pillH = maxOf(camBottom + ISLAND_CAMERA_MARGIN - top, ISLAND_MIN_HEIGHT)
+    // The preset scales the usual minimum; a camera hole still sets the floor, so Small never cuts into a lens.
+    val pillH = maxOf(camBottom + ISLAND_CAMERA_MARGIN - top, ISLAND_MIN_HEIGHT * scale)
     // Width stays symmetric around the camera, capped by the room on the narrower side.
     val room = minOf(centerXPx, windowWidthPx - centerXPx) / density - ISLAND_SIDE_MARGIN
     return IslandGeometry(camW, camH, centerXPx, top + pillH / 2, pillH, room * 2, top)
